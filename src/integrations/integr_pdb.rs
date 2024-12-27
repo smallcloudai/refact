@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
+use crate::files_correction::get_active_project_path;
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
@@ -118,7 +120,7 @@ impl Tool for ToolPdb {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let command = parse_command(args)?;
+        let (command, workdir_maybe) = parse_args(args)?;
         let mut command_args = split_command(&command)?;
 
         let (gcx, chat_id) = {
@@ -132,7 +134,7 @@ impl Tool for ToolPdb {
             python_command = "python3".to_string();
         }
         if command_args.windows(2).any(|w| w == ["-m", "pdb"]) {
-            let output = start_pdb_session(&python_command, &mut command_args, &session_hashmap_key, gcx.clone(), 10).await?;
+            let output = start_pdb_session(&python_command, &mut command_args, &session_hashmap_key, &workdir_maybe, gcx.clone(), 10).await?;
             return Ok(tool_answer(output, tool_call_id));
         }
 
@@ -169,7 +171,7 @@ impl Tool for ToolPdb {
         &self,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        let command = parse_command(args)?;
+        let (command, _) = parse_args(args)?;
         let command_args = split_command(&command)?;
         Ok(command_args.join(" "))
     }
@@ -185,6 +187,11 @@ impl Tool for ToolPdb {
                     name: "command".to_string(),
                     param_type: "string".to_string(),
                     description: "Examples: 'python -m pdb script.py', 'break module_name.function_name', 'break 10', 'continue', 'print(variable_name)', 'list', 'quit'".to_string(),
+                },
+                ToolParam {
+                    name: "workdir".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Working directory for the command, needed to start a pdb session from a relative path.".to_string(),
                 },
             ],
             parameters_required: vec!["command".to_string()],
@@ -206,12 +213,29 @@ impl Tool for ToolPdb {
     }
 }
 
-fn parse_command(args: &HashMap<String, Value>) -> Result<String, String> {
-    match args.get("command") {
-        Some(Value::String(s)) => Ok(s.to_string()),
-        Some(v) => Err(format!("argument `command` is not a string: {:?}", v)),
-        None => Err("Missing argument `command`".to_string()),
-    }
+fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
+    let command = match args.get("command") {
+        Some(Value::String(s)) => s.to_string(),
+        Some(v) => return Err(format!("argument `command` is not a string: {:?}", v)),
+        None => return Err("Missing argument `command`".to_string()),
+    };
+    let workdir_maybe = match args.get("workdir") {
+        Some(Value::String(s)) => {
+            if s.is_empty() {
+                None
+            } else {
+                let workdir = crate::files_correction::to_pathbuf_normalize(s);
+                if !workdir.exists() {
+                    return Err("Workdir doesn't exist".to_string());
+                } else {
+                    Some(workdir)
+                }
+            }
+        },
+        Some(v) => return Err(format!("argument `workdir` is not a string: {:?}", v)),
+        None => None
+    };
+    Ok((command, workdir_maybe))
 }
 
 fn split_command(command: &str) -> Result<Vec<String>, String> {
@@ -227,6 +251,7 @@ async fn start_pdb_session(
     python_command: &String,
     command_args: &mut Vec<String>,
     session_hashmap_key: &String,
+    workdir_maybe: &Option<PathBuf>,
     gcx: Arc<ARwLock<GlobalContext>>,
     timeout_seconds: u64,
 ) -> Result<String, String> {
@@ -236,16 +261,24 @@ async fn start_pdb_session(
     command_args.remove(0);
 
     info!("Starting pdb session with command: {} {:?}", python_command, command_args);
-    let mut process = Command::new(python_command)
-        .args(&command_args[..])
+    let mut process_command = Command::new(python_command);
+    process_command.args(&command_args[..])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| {
-            error!("Failed to start pdb process: {}", e);
-            e.to_string()
-        })?;
+        .stderr(std::process::Stdio::piped());
+
+    if let Some(workdir) = workdir_maybe {
+        process_command.current_dir(workdir);
+    } else if let Some(project_path) = get_active_project_path(gcx.clone()).await {
+        process_command.current_dir(project_path);
+    } else {
+        tracing::warn!("no working directory, using whatever directory this binary is run :/");
+    }
+
+    let mut process = process_command.spawn().map_err(|e| { 
+        error!("Failed to start pdb process: {}", e); 
+        e.to_string()
+    })?;
 
     let stdin = process.stdin.take().ok_or("Failed to open stdin for pdb process")?;
     let stdout = BufReader::new(process.stdout.take().ok_or("Failed to open stdout for pdb process")?);
