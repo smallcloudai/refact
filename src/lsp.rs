@@ -337,11 +337,15 @@ impl LanguageServer for LspBackend {
     }
 
     async fn did_change_workspace_folders(&self, params: DidChangeWorkspaceFoldersParams) {
-        for add_folder in params.event.added {
-            info!("UNCLEAR LSP EVENT: did_change_workspace_folders/add {}", add_folder.name);
+        for folder in params.event.added {
+            info!("did_change_workspace_folders/add {}", folder.name);
+            let path = crate::files_correction::canonical_path(&folder.uri.to_file_path().unwrap_or_default().display().to_string());
+            files_in_workspace::add_folder(self.gcx.clone(), &path).await;
         }
-        for delete_folder in params.event.removed {
-            info!("UNCLEAR LSP EVENT: did_change_workspace_folders/delete {}", delete_folder.name);
+        for folder in params.event.removed {
+            info!("did_change_workspace_folders/delete {}", folder.name);
+            let path = crate::files_correction::canonical_path(&folder.uri.to_file_path().unwrap_or_default().display().to_string());
+            files_in_workspace::remove_folder(self.gcx.clone(), &path).await;
         }
     }
 
