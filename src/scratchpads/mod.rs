@@ -91,13 +91,6 @@ pub async fn create_chat_scratchpad(
             tokenizer_arc.clone(), post, messages, allow_at
         ));
     } else if scratchpad_name == "PASSTHROUGH" {
-        // warning! line below added by sergey. He says that it might be a workaround for something
-        // yet sergey cannot recall for what and I could not find "holes" it might cover, as:
-        // create_chat_scratchpad is used only in subchat and _chat, and:
-        // - subchat does not support stream=true at all
-        // - _chat is used in handlers: v1/chat, v1/chat/completion
-        // therefore, I deduct, that it is safe to comment line bellow and re-enable streaming
-        // post.stream = Some(true);  // this should be passed from the request
         result = Box::new(chat_passthrough::ChatPassthrough::new(
             tokenizer_arc.clone(), post, messages, allow_at, supports_tools, supports_clicks
         ));
