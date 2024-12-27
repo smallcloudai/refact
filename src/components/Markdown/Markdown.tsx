@@ -250,7 +250,15 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <Kbd {...props} />;
       },
       a({ color: _color, ref: _ref, node: _node, ...props }) {
-        return <Link {...props} />;
+        const shouldTargetBeBlank =
+          props.href &&
+          (props.href.startsWith("http") || props.href.startsWith("https"));
+        return (
+          <Link
+            {...props}
+            target={shouldTargetBeBlank ? "_blank" : undefined}
+          />
+        );
       },
       q({ color: _color, ref: _ref, node: _node, ...props }) {
         return <Quote {...props} />;

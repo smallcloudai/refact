@@ -123,7 +123,6 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
     columns,
     defaultColumn,
     getCoreRowModel: getCoreRowModel(),
-    debugTable: true,
   });
 
   return (
