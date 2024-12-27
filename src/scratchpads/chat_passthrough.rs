@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use serde_json::{json, Value};
@@ -129,6 +130,8 @@ impl ScratchpadAbstract for ChatPassthrough {
                 run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style, self.post.tools_confirmation).await?
             }
         };
+
+        remove_unanswered_tool_call_messages(&mut messages);
         let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
@@ -244,4 +247,20 @@ impl ScratchpadAbstract for ChatPassthrough {
             "object": "chat.completion.chunk",
         }))
     }
+}
+
+fn remove_unanswered_tool_call_messages(messages: &mut Vec<ChatMessage>) {
+    let tool_call_ids: HashSet<_> = messages.iter()
+        .filter(|m| !m.tool_call_id.is_empty())
+        .map(|m| &m.tool_call_id)
+        .cloned()
+        .collect();
+
+    messages.retain(|m| {
+        if let Some(tool_calls) = &m.tool_calls {
+            tool_calls.iter().all(|tc| tool_call_ids.contains(&tc.id))
+        } else {
+            true
+        }
+    });
 }
