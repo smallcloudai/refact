@@ -51,6 +51,14 @@ fn is_default_json_value(value: &serde_json::Value) -> bool {
     value == &serde_json::Value::Null
 }
 
+fn last_message_assistant_without_tools(messages: &Vec<ChatMessage>) -> bool {
+    if let Some(m) = messages.last() {
+        m.role == "assistant" && m.tool_calls.as_ref().map(|x| x.is_empty()).unwrap_or(true)
+    } else {
+        false
+    }
+}
+
 
 pub async fn handle_v1_links(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -84,6 +92,15 @@ pub async fn handle_v1_links(
                 link_action: LinkAction::PatchAll,
                 link_text: "Save and return".to_string(),
                 link_goto: Some("NEWCHAT".to_string()),
+                link_summary_path: None,
+                link_tooltip: format!(""),
+                ..Default::default()
+            });
+        } else if last_message_assistant_without_tools(&post.messages) {
+            links.push(Link {
+                link_action: LinkAction::FollowUp,
+                link_text: "Looks alright! Please, save the generated summary!".to_string(),
+                link_goto: None,
                 link_summary_path: None,
                 link_tooltip: format!(""),
                 ..Default::default()
