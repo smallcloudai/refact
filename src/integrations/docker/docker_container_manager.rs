@@ -204,6 +204,10 @@ pub async fn docker_container_get_host_lsp_port_to_connect(
     }
 }
 
+pub fn get_container_name(chat_id: &str) -> String {
+    format!("refact-{chat_id}")
+}
+
 async fn docker_container_create(
     docker: &ToolDocker,
     isolation: &SettingsIsolation,
@@ -238,8 +242,9 @@ async fn docker_container_create(
     } else {
         String::new()
     };
+    let container_name = get_container_name(chat_id);
     let run_command = format!(
-        "container create --name=refact-{chat_id} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "container create --name={container_name} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         {ports_to_forward_as_arg_list} {network_if_set} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
     );
 
