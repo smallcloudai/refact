@@ -188,7 +188,7 @@ const GITHUB_INTEGRATION_SCHEMA: &str = r#"
 fields:
   gh_token:
     f_type: string_long
-    f_desc: "GitHub Personal Access Token, you can create one at https://github.com/settings/tokens. If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write $MY_SECRET_VARIABLE in this field."
+    f_desc: "GitHub Personal Access Token, you can create one [here](https://github.com/settings/tokens). If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write $MY_SECRET_VARIABLE in this field."
     f_placeholder: "ghp_xxxxxxxxxxxxxxxx"
     f_label: "Token"
     smartlinks:
