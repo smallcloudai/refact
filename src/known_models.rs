@@ -142,6 +142,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "claude-3-haiku",
+                "claude-3-5-haiku",
+                "claude-3-5-haiku-20241022",
                 "claude-3-opus",
                 "claude-3-5-sonnet",
                 "claude-3-5-sonnet-20241022"
@@ -346,6 +348,27 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": true,
             "supports_clicks": true,
             "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
+        "claude-3-5-haiku": {
+            "n_ctx": 16384,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_agent": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "claude-3-5-haiku-20241022"
+            ]
+        },
+        "claude-3-5-haiku-20241022": {
+            "n_ctx": 16384,
+            "supports_tools": true,
+            "supports_multimodality": false,         
+            "supports_agent": false,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             }
@@ -580,6 +603,8 @@ pub const KNOWN_MODELS: &str = r####"
         "openai/gpt-4o":          "Xenova/gpt-4o",
 
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
+        "claude-3-5-haiku":           "Xenova/claude-tokenizer",
+        "claude-3-5-haiku-20241022":  "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
 
