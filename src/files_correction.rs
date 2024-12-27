@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
-use std::path::{Component, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
+use std::path::{Component, PathBuf};
+use home;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
@@ -276,10 +277,33 @@ pub async fn get_project_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> 
 pub async fn get_active_project_path(gcx: Arc<ARwLock<GlobalContext>>) -> Option<PathBuf> {
     let active_file = gcx.read().await.documents_state.active_file_path.clone();
     let workspace_folders = get_project_dirs(gcx.clone()).await;
+    tracing::info!("get_active_project_path(), active_file={:?} workspace_folders={:?}", active_file, workspace_folders);
     if workspace_folders.is_empty() { return None; }
 
-    Some(detect_vcs_for_a_file_path(&active_file.unwrap_or_else(|| workspace_folders[0].clone()))
-        .await.map(|(path, _)| path).unwrap_or_else(|| workspace_folders[0].clone()))
+    let active_file_path = active_file.unwrap_or_else(|| workspace_folders[0].clone());
+    if let Some((path, _)) = detect_vcs_for_a_file_path(&active_file_path).await {
+        tracing::info!("found VCS path: {:?}", path);
+        return Some(path);
+    }
+
+    // Without VCS, we can potentially find .refact and that would be the project then
+    let mut dir = active_file_path.clone();
+    let home_dir = home::home_dir().unwrap_or_default();
+    loop {
+        if dir == home_dir {
+            break;
+        }
+        if dir.join(".refact").is_dir() {
+            tracing::info!("found .refact directory at: {:?}", dir);
+            return Some(dir);
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+
+    tracing::info!("returning the first workspace folder: {:?}", workspace_folders[0]);
+    Some(workspace_folders[0].clone())
 }
 
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {
