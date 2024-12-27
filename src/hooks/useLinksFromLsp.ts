@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   diffApi,
   isCommitLink,
-  isPostChatLink,
   isUserMessage,
   linksApi,
   type ChatLink,
@@ -222,11 +221,6 @@ export function useLinksFromLsp() {
           });
 
         return;
-      }
-
-      if (isPostChatLink(link)) {
-        // eslint-disable-next-line no-console
-        console.warn(`post chat link action: ${JSON.stringify(link)}`);
       }
 
       // eslint-disable-next-line no-console
