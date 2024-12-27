@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../../app/store";
-import { ChatMessages } from "./types";
+import { ChatMessage, ChatMessages } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 import { CHAT_COMMIT_LINK_URL, CHAT_LINKS_URL } from "./consts";
 import { LspChatMode } from "../../features/Chat";
@@ -58,10 +58,7 @@ export type PostChatLinkPayload = {
     chat_mode: "CONFIGURE";
     current_config_file: string;
   };
-  messages: {
-    role: string;
-    content: string;
-  }[];
+  messages: ChatMessage[];
 };
 
 function isChatLink(json: unknown): json is ChatLink {

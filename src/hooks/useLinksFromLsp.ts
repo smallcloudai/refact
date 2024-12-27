@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   diffApi,
   isCommitLink,
+  isPostChatLink,
   isUserMessage,
   linksApi,
   type ChatLink,
@@ -220,6 +221,26 @@ export function useLinksFromLsp() {
             }
           });
 
+        return;
+      }
+
+      if (isPostChatLink(link)) {
+        const chatMessageText =
+          link.link_payload.messages
+            .filter(isUserMessage)
+            .map((m) => m.content)
+            .join("\n") +
+          ` Modify @file ${link.link_payload.chat_meta.current_config_file} file.`;
+
+        dispatch(
+          setIntegrationData({
+            path: link.link_payload.chat_meta.current_config_file,
+          }),
+        );
+        // doesn't really work with chat.mode == "CONFIGURE"
+        // should stop recommending integrations link be opening a chat?
+        // maybe it's better to do something similar to commit link, just call endpoint in the LSP
+        submit(chatMessageText, "AGENT");
         return;
       }
 
