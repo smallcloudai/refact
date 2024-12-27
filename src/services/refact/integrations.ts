@@ -186,7 +186,7 @@ export type Integration = {
     | ToolParameterEntity[]
     | ToolConfirmation
   > | null;
-  error_log: null | YamlError[];
+  error_log: YamlError[];
 };
 
 function isIntegration(json: unknown): json is Integration {
