@@ -186,7 +186,7 @@ const GITLAB_INTEGRATION_SCHEMA: &str = r#"
 fields:
   glab_token:
     f_type: string_long
-    f_desc: "GitLab Personal Access Token, you can get one [here](https://gitlab.com/-/user_settings/personal_access_tokens). If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write $MY_SECRET_VARIABLE in this field."
+    f_desc: "GitLab Personal Access Token, you can get one [here](https://gitlab.com/-/user_settings/personal_access_tokens). If you don't want to send your key to the AI model that helps you to configure the agent, put it into secrets.yaml and write `$MY_SECRET_VARIABLE` in this field."
     f_placeholder: "glpat_xxxxxxxxxxxxxxxx"
     smartlinks:
       - sl_label: "Open secrets.yaml"
