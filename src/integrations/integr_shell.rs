@@ -4,12 +4,14 @@ use std::sync::Arc;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::process::Command;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::files_correction::get_active_project_path;
+use crate::global_context::GlobalContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
@@ -84,21 +86,20 @@ impl Tool for ToolShell {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let (command, workdir) = parse_args(args)?;
+        let (command, workdir_maybe) = parse_args(args)?;
         let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
 
         let gcx = ccx.lock().await.global_context.clone();
         let mut error_log = Vec::<YamlError>::new();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
-        let project_dirs = crate::files_correction::get_project_dirs(gcx.clone()).await;
 
         let tool_output = execute_shell_command(
             &command,
-            &workdir,
+            &workdir_maybe,
             timeout,
             &self.cfg.output_filter,
             &env_variables,
-            project_dirs
+            gcx.clone(),
         ).await?;
 
         let result = vec![ContextEnum::ChatMessage(ChatMessage {
@@ -180,24 +181,22 @@ impl Tool for ToolShell {
 
 pub async fn execute_shell_command(
     command: &str,
-    workdir: &str,
+    workdir_maybe: &Option<PathBuf>,
     timeout: u64,
     output_filter: &CmdlineOutputFilter,
     env_variables: &HashMap<String, String>,
-    project_dirs: Vec<PathBuf>,
+    gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
     let shell = if cfg!(target_os = "windows") { "cmd.exe" } else { "sh" };
     let shell_arg = if cfg!(target_os = "windows") { "/C" } else { "-c" };
     let mut cmd = Command::new(shell);
 
-    if workdir.is_empty() {
-        if let Some(first_project_dir) = project_dirs.first() {
-            cmd.current_dir(first_project_dir);
-        } else {
-            tracing::warn!("no working directory, using whatever directory this binary is run :/");
-        }
-    } else {
+    if let Some(workdir) = workdir_maybe {
         cmd.current_dir(workdir);
+    } else if let Some(project_path) = get_active_project_path(gcx.clone()).await {
+        cmd.current_dir(project_path);
+    } else {
+        tracing::warn!("no working directory, using whatever directory this binary is run :/");
     }
 
     for (key, value) in env_variables {
@@ -225,7 +224,7 @@ pub async fn execute_shell_command(
     Ok(filtered_stdout)
 }
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<(String, String), String> {
+fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -241,18 +240,18 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(String, String), String>
     let workdir = match args.get("workdir") {
         Some(Value::String(s)) => {
             if s.is_empty() {
-                "".to_string()
+                None
             } else {
-                let workdir = PathBuf::from(s.clone());
+                let workdir = crate::files_correction::to_pathbuf_normalize(s);
                 if !workdir.exists() {
                     return Err("Workdir doesn't exist".to_string());
                 } else {
-                    s.clone()
+                    Some(workdir)
                 }
             }
         },
         Some(v) => return Err(format!("argument `workdir` is not a string: {:?}", v)),
-        None => "".to_string()
+        None => None
     };
 
     Ok((command, workdir))
