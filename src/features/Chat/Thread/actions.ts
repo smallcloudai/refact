@@ -150,6 +150,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     messages: messagesForLsp,
     model: state.chat.thread.model,
     stream: true,
+    abortSignal: thunkAPI.signal,
     chatId,
     apiKey: state.config.apiKey,
     port: state.config.lspPort,
