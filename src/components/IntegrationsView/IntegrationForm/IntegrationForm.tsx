@@ -220,7 +220,13 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         <Flex direction="column" gap="2">
           <Grid mt="2" mb="0">
             {integration.data.integr_values && (
-              <Flex gap="4" mb="3" className={styles.switchInline}>
+              <Flex
+                gap="4"
+                mb="4"
+                align="center"
+                justify="between"
+                className={styles.switchInline}
+              >
                 {integration.data.integr_values.available &&
                   Object.keys(integration.data.integr_values.available).map(
                     (key) => (
@@ -232,6 +238,13 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                       />
                     ),
                   )}
+                <IntegrationDeletePopover
+                  integrationName={integration.data.integr_name}
+                  integrationConfigPath={integration.data.integr_config_path}
+                  isApplying={isApplying}
+                  isDeletingIntegration={isDeletingIntegration}
+                  handleDeleteIntegration={handleDeleteIntegration}
+                />
               </Flex>
             )}
             <Grid gap="2" className={styles.gridContainer}>
@@ -301,15 +314,6 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           )}
           <Flex justify="end" width="100%">
             <Flex gap="4">
-              {integration.data.integr_values && (
-                <IntegrationDeletePopover
-                  integrationName={integration.data.integr_name}
-                  integrationConfigPath={integration.data.integr_config_path}
-                  isApplying={isApplying}
-                  isDeletingIntegration={isDeletingIntegration}
-                  handleDeleteIntegration={handleDeleteIntegration}
-                />
-              )}
               <Button
                 color="green"
                 variant="solid"

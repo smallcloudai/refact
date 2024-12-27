@@ -32,7 +32,7 @@ export const IntegrationDeletePopover: FC<IntegrationDeletePopoverProps> = ({
       <Popover.Trigger>
         <IconButton
           color="red"
-          variant="solid"
+          variant="outline"
           type="button"
           size="2"
           title={"Delete configuration data of this integration"}

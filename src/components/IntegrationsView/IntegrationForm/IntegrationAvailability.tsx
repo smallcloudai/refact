@@ -23,7 +23,7 @@ export const IntegrationAvailability: FC<IntegrationAvailabilityProps> = ({
 
   return (
     <Flex style={{ marginBottom: "0.75rem" }}>
-      <Flex align="center" justify="between">
+      <Flex align="center" justify="between" gap="1">
         <label htmlFor={`switch-${fieldName}`}>
           <CustomLabel
             label={toPascalCase(
