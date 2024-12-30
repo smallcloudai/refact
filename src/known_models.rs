@@ -200,7 +200,8 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "similar_models": [
-                "grok-2-1212"
+                "grok-2-1212",
+                "grok-2"
             ]
         },
         "grok-vision-beta": {
@@ -219,7 +220,10 @@ pub const KNOWN_MODELS: &str = r####"
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
-            }
+            },
+            "similar_models": [
+                "grok-2-vision"
+            ]
         },
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
@@ -554,7 +558,14 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {}
             }
         },
-
+        "grok-2": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
             "supports_tools": false,
