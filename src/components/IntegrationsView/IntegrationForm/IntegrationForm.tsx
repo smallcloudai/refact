@@ -182,8 +182,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     return (
       <Flex width="100%" direction="column" align="start" gap="4">
         <Text size="2" color="gray">
-          Seems, that your integration is set up incorrectly. Consider editing
-          integration&apos;s file manually
+          Whoops, this integration has a syntax error in the config file. You
+          can fix this problem by editing the config file.
         </Text>
         <Badge size="2" color="red">
           <ExclamationTriangleIcon />
