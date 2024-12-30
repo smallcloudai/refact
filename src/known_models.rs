@@ -119,7 +119,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4o": {
             "n_ctx": 128000,
             "supports_scratchpads": {
-                "REPLACE_PASSTHROUGH": { 
+                "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
@@ -152,7 +152,7 @@ pub const KNOWN_MODELS: &str = r####"
         "groq-llama-3.1-8b": {
             "n_ctx": 128000,
             "supports_scratchpads": {
-                "REPLACE_PASSTHROUGH": { 
+                "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
@@ -164,11 +164,11 @@ pub const KNOWN_MODELS: &str = r####"
                 "groq-llama-3.2-11b-vision",
                 "groq-llama-3.2-90b-vision"
             ]
-        },        
+        },
         "cerebras-llama3.1-8b": {
             "n_ctx": 8192,
             "supports_scratchpads": {
-                "REPLACE_PASSTHROUGH": { 
+                "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
@@ -179,6 +179,9 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "gemini-2.0-flash-exp": {
             "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
             "supports_scratchpads": {
                 "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
@@ -193,6 +196,9 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "grok-beta": {
             "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
             "supports_scratchpads": {
                 "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
@@ -371,7 +377,7 @@ pub const KNOWN_MODELS: &str = r####"
         "claude-3-5-haiku-20241022": {
             "n_ctx": 16384,
             "supports_tools": true,
-            "supports_multimodality": false,         
+            "supports_multimodality": false,
             "supports_agent": false,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
