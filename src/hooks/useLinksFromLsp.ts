@@ -225,12 +225,10 @@ export function useLinksFromLsp() {
       }
 
       if (isPostChatLink(link)) {
-        const chatMessageText =
-          link.link_payload.messages
-            .filter(isUserMessage)
-            .map((m) => m.content)
-            .join("\n") +
-          ` Modify @file ${link.link_payload.chat_meta.current_config_file} file.`;
+        const chatMessageText = link.link_payload.messages
+          .filter(isUserMessage)
+          .map((m) => m.content)
+          .join("\n");
 
         dispatch(
           setIntegrationData({
@@ -240,7 +238,7 @@ export function useLinksFromLsp() {
         // doesn't really work with chat.mode == "CONFIGURE"
         // should stop recommending integrations link be opening a chat?
         // maybe it's better to do something similar to commit link, just call endpoint in the LSP
-        submit(chatMessageText, "AGENT");
+        submit(chatMessageText, link.link_payload.chat_meta.chat_mode);
         return;
       }
 
