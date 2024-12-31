@@ -161,8 +161,8 @@ impl DocumentsState {
         };
         let mut watcher = RecommendedWatcher::new(event_callback, Config::default()).unwrap();
         for folder in self.workspace_folders.lock().unwrap().iter() {
-            info!("ADD WATCHER: {}", folder.display());
-            watcher.watch(folder, RecursiveMode::Recursive).unwrap();
+            info!("ADD WATCHER (1): {}", folder.display());
+            let _ = watcher.watch(folder, RecursiveMode::Recursive);  // actually that might not exist because you can load a project into IDE and the folder is deleted for whatever reason
         }
         self.fs_watcher = Arc::new(ARwLock::new(watcher));
     }
@@ -609,6 +609,7 @@ pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     {
         let documents_state = &mut gcx.write().await.documents_state;
         documents_state.workspace_folders.lock().unwrap().push(path.clone());
+        info!("ADD WATCHER (2): {}", path.display());
         let _ = documents_state.fs_watcher.write().await.watch(&path.clone(), RecursiveMode::Recursive);
     }
     let paths = retrieve_files_in_workspace_folders(
