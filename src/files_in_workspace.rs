@@ -264,7 +264,6 @@ pub fn ls_files(path: &PathBuf, recursive: bool) -> Result<Vec<PathBuf>, String>
     Ok(paths)
 }
 
-#[allow(dead_code)]
 pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf, &'static str)> {
     let mut dir = file_path.clone();
     if dir.is_file() {
@@ -316,8 +315,8 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 // }
 
 async fn ls_files_under_version_control_recursive(
-    path: PathBuf, 
-    allow_files_in_hidden_folders: bool, 
+    path: PathBuf,
+    allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool
 ) -> Vec<PathBuf> {
     let mut paths: Vec<PathBuf> = vec![];
@@ -381,8 +380,8 @@ async fn ls_files_under_version_control_recursive(
 }
 
 pub async fn retrieve_files_in_workspace_folders(
-    proj_folders: Vec<PathBuf>, 
-    allow_files_in_hidden_folders: bool, 
+    proj_folders: Vec<PathBuf>,
+    allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool,
 ) -> Vec<PathBuf> {
     let mut all_files: Vec<PathBuf> = Vec::new();
