@@ -8,7 +8,6 @@ use tracing::{error, info};
 use crate::background_tasks::BackgroundTasksHolder;
 use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
-use crate::files_in_workspace::Document;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{lance_search, MemoriesDatabase};
 use crate::trajectories::try_to_download_trajectories;
@@ -227,7 +226,7 @@ pub async fn vecdb_background_reload(
                 }
             };
             trajectories_updated_once = true;
-        } 
+        }
         tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
 }
@@ -271,7 +270,7 @@ impl VecDb {
         return vecdb_start_background_tasks(self.vecdb_emb_client.clone(), self.vectorizer_service.clone(), gcx.clone()).await;
     }
 
-    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<Document>, process_immediately: bool) {
+    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<String>, process_immediately: bool) {
         vectorizer_enqueue_files(self.vectorizer_service.clone(), documents, process_immediately).await;
     }
 

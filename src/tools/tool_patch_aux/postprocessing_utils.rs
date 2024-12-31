@@ -51,7 +51,7 @@ pub async fn does_doc_have_symbol(
     let ast_service = gcx.read().await.ast_service.clone()
         .ok_or("ast_service is absent".to_string())?;
     let ast_index = ast_service.lock().await.ast_index.clone();
-    ast_indexer_enqueue_files(ast_service.clone(), vec![doc_path.clone()], true).await;
+    ast_indexer_enqueue_files(ast_service.clone(), &vec![doc_path.clone()], true).await;
     ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
     let doc_syms = doc_defs(ast_index, doc_path).await;
     let filtered_syms = doc_syms.iter().filter(|s| s.official_path.ends_with(&symbol_parts)).cloned().collect::<Vec<_>>();

@@ -373,9 +373,7 @@ pub async fn create_global_context(
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
     };
     let gcx = Arc::new(ARwLock::new(cx));
-    {
-        let gcx_weak = Arc::downgrade(&gcx);
-        gcx.write().await.documents_state.init_watcher(gcx_weak);
-    }
+    let gcx_weak = Arc::downgrade(&gcx);
+    crate::files_in_workspace::watcher_init(&mut gcx.write().await.documents_state, gcx_weak.clone());
     (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
 }

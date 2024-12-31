@@ -149,23 +149,23 @@ impl DocumentsState {
             fs_watcher: Arc::new(ARwLock::new(watcher)),
         }
     }
+}
 
-    pub fn init_watcher(&mut self, gcx_weak: Weak<ARwLock<GlobalContext>>) {
-        let rt = tokio::runtime::Handle::current();
-        let event_callback = move |res| {
-            rt.block_on(async {
-                if let Ok(event) = res {
-                    file_watcher_event(event, gcx_weak.clone()).await;
-                }
-            });
-        };
-        let mut watcher = RecommendedWatcher::new(event_callback, Config::default()).unwrap();
-        for folder in self.workspace_folders.lock().unwrap().iter() {
-            info!("ADD WATCHER (1): {}", folder.display());
-            let _ = watcher.watch(folder, RecursiveMode::Recursive);  // actually that might not exist because you can load a project into IDE and the folder is deleted for whatever reason
-        }
-        self.fs_watcher = Arc::new(ARwLock::new(watcher));
+pub fn watcher_init(documents_state: &mut DocumentsState, gcx_weak: Weak<ARwLock<GlobalContext>>) {
+    let rt = tokio::runtime::Handle::current();
+    let event_callback = move |res| {
+        rt.block_on(async {
+            if let Ok(event) = res {
+                file_watcher_event(event, gcx_weak.clone()).await;
+            }
+        });
+    };
+    let mut watcher = RecommendedWatcher::new(event_callback, Config::default()).unwrap();
+    for folder in documents_state.workspace_folders.lock().unwrap().iter() {
+        info!("ADD WATCHER (1): {}", folder.display());
+        let _ = watcher.watch(folder, RecursiveMode::Recursive);
     }
+    documents_state.fs_watcher = Arc::new(ARwLock::new(watcher));
 }
 
 async fn read_file_from_disk_without_privacy_check(
@@ -314,7 +314,7 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 //         .unwrap_or(false)
 // }
 
-async fn ls_files_under_version_control_recursive(
+async fn _ls_files_under_version_control_recursive(
     path: PathBuf,
     allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool
@@ -381,13 +381,16 @@ async fn ls_files_under_version_control_recursive(
 
 pub async fn retrieve_files_in_workspace_folders(
     proj_folders: Vec<PathBuf>,
-    allow_files_in_hidden_folders: bool,
+    allow_files_in_hidden_folders: bool,   // true when syncing to remote container
     ignore_size_thresholds: bool,
 ) -> Vec<PathBuf> {
     let mut all_files: Vec<PathBuf> = Vec::new();
     for proj_folder in proj_folders {
-        let files = ls_files_under_version_control_recursive(
-            proj_folder.clone(), allow_files_in_hidden_folders, ignore_size_thresholds).await;
+        let files = _ls_files_under_version_control_recursive(
+            proj_folder.clone(),
+            allow_files_in_hidden_folders,
+            ignore_size_thresholds
+        ).await;
         all_files.extend(files);
     }
     all_files
@@ -403,14 +406,14 @@ pub fn is_path_to_enqueue_valid(path: &PathBuf) -> Result<(), String> {
 
 async fn enqueue_some_docs(
     gcx: Arc<ARwLock<GlobalContext>>,
-    docs: &Vec<Document>,
+    paths: &Vec<String>,
     force: bool,
 ) {
-    info!("detected {} modified/added/removed files", docs.len());
-    for d in docs.iter().take(5) {
-        info!("    {}", crate::nicer_logs::last_n_chars(&d.doc_path.display().to_string(), 30));
+    info!("detected {} modified/added/removed files", paths.len());
+    for d in paths.iter().take(5) {
+        info!("    {}", crate::nicer_logs::last_n_chars(&d, 30));
     }
-    if docs.len() > 5 {
+    if paths.len() > 5 {
         info!("    ...");
     }
     let (vec_db_module, ast_service) = {
@@ -419,20 +422,18 @@ async fn enqueue_some_docs(
     };
     #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
-        db.vectorizer_enqueue_files(&docs, force).await;
+        db.vectorizer_enqueue_files(&paths, force).await;
     }
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;
     if let Some(ast) = &ast_service {
-        let cpaths: Vec<String> = docs.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
-        ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
+        ast_indexer_enqueue_files(ast.clone(), paths, force).await;
     }
     let (cache_correction_arc, _) = crate::files_correction::files_cache_rebuild_as_needed(gcx.clone()).await;
     let mut moar_files: Vec<PathBuf> = Vec::new();
-    for doc in docs {
-        let doc_path_str = doc.doc_path.to_string_lossy().to_string();
-        if !cache_correction_arc.contains_key(&doc_path_str) {
-            moar_files.push(doc.doc_path.clone());
+    for p in paths {
+        if !cache_correction_arc.contains_key(p) {
+            moar_files.push(PathBuf::from(p.clone()));
         }
     }
     if moar_files.len() > 0 {
@@ -475,19 +476,22 @@ pub async fn enqueue_all_files_from_workspace_folders(
         (cx.vec_db.clone(), cx.ast_service.clone(), old_workspace_files)
     };
 
+    let cpaths1: Vec<String> = documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
+    let cpaths2: Vec<String> = previous_list.iter().map(|p| p.to_string_lossy().to_string()).collect();
+
     #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         // TODO: enqueue both lists, ones that don't open should be removed from vecdb
-        db.vectorizer_enqueue_files(&documents, force).await;
+        db.vectorizer_enqueue_files(&cpaths1, force).await;
+        db.vectorizer_enqueue_files(&cpaths2, force).await;
     }
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;
+
     if let Some(ast) = ast_service {
         if !vecdb_only {
-            let cpaths1: Vec<String> = documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
-            let cpaths2: Vec<String> = previous_list.iter().map(|p| p.to_string_lossy().to_string()).collect();
-            ast_indexer_enqueue_files(ast.clone(), cpaths1, force).await;
-            ast_indexer_enqueue_files(ast.clone(), cpaths2, force).await;
+            ast_indexer_enqueue_files(ast.clone(), &cpaths1, force).await;
+            ast_indexer_enqueue_files(ast.clone(), &cpaths2, force).await;
         }
     }
     documents.len() as i32
@@ -499,8 +503,8 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     // Not called from main.rs as part of initialization
     {
         let gcx_weak = Arc::downgrade(&gcx);
-        let mut gcx_lock = gcx.write().await;
-        gcx_lock.documents_state.init_watcher(gcx_weak);
+        let mut gcx_locked = gcx.write().await;
+        watcher_init(&mut gcx_locked.documents_state, gcx_weak);
     }
     enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await
 }
@@ -564,9 +568,9 @@ pub async fn on_did_change(
         }
     }
 
-    let doc = Document { doc_path: doc_arc.read().await.doc_path.clone(), doc_text: None };
+    let cpath = doc_arc.read().await.doc_path.clone().to_string_lossy().to_string();
     if go_ahead {
-        enqueue_some_docs(gcx.clone(), &vec![doc], false).await;
+        enqueue_some_docs(gcx.clone(), &vec![cpath], false).await;
     }
 
     telemetry::snippets_collection::sources_changed(
@@ -600,32 +604,34 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         let cpath = path.to_string_lossy().to_string();
-        ast_indexer_enqueue_files(ast.clone(), vec![cpath], false).await;
+        ast_indexer_enqueue_files(ast.clone(), &vec![cpath], false).await;
     }
 }
 
-pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
+pub async fn add_folder(gcx: Arc<ARwLock<GlobalContext>>, fpath: &PathBuf)
 {
     {
         let documents_state = &mut gcx.write().await.documents_state;
-        documents_state.workspace_folders.lock().unwrap().push(path.clone());
-        info!("ADD WATCHER (2): {}", path.display());
-        let _ = documents_state.fs_watcher.write().await.watch(&path.clone(), RecursiveMode::Recursive);
+        documents_state.workspace_folders.lock().unwrap().push(fpath.clone());
     }
-    let paths = retrieve_files_in_workspace_folders(
-        vec![path.clone()], false, false).await;
-    let docs: Vec<Document> = paths.into_iter().map(|p| Document { doc_path: p, doc_text: None }).collect();
-    enqueue_some_docs(gcx, &docs, false).await;
+    on_workspaces_init(gcx.clone()).await;
 }
 
 pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
 {
-    {
+    let was_removed = {
         let documents_state = &mut gcx.write().await.documents_state;
+        let initial_len = documents_state.workspace_folders.lock().unwrap().len();
         documents_state.workspace_folders.lock().unwrap().retain(|p| p != path);
-        let _ = documents_state.fs_watcher.write().await.unwatch(&path.clone());
+        let final_len = documents_state.workspace_folders.lock().unwrap().len();
+        initial_len > final_len
+    };
+    if was_removed {
+        tracing::info!("Folder {} was successfully removed from workspace_folders.", path.display());
+        on_workspaces_init(gcx.clone()).await;
+    } else {
+        tracing::error!("Folder {} was not found in workspace_folders.", path.display());
     }
-    enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 }
 
 pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalContext>>)
@@ -648,7 +654,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
             if go_ahead {
                 let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-                docs.push(Document { doc_path: cpath, doc_text: None });
+                docs.push(cpath.to_string_lossy().to_string());
             }
         }
         if docs.is_empty() {
@@ -672,7 +678,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                     continue;
                 }
                 let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-                docs.push(Document { doc_path: cpath, doc_text: None });
+                docs.push(cpath.to_string_lossy().to_string());
             }
         }
         if docs.is_empty() {

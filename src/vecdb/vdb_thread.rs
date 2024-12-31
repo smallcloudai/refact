@@ -24,8 +24,8 @@ const COOLDOWN_SECONDS: u64 = 10;
 
 
 enum MessageToVecdbThread {
-    RegularDocument(Document),
-    ImmediatelyRegularDocument(Document),
+    RegularDocument(String),
+    ImmediatelyRegularDocument(String),
     MemoriesSomethingDirty(),
 }
 
@@ -188,7 +188,7 @@ async fn vectorize_thread(
         )
     };
 
-    let mut last_updated: HashMap<Document, SystemTime> = HashMap::new();
+    let mut last_updated: HashMap<String, SystemTime> = HashMap::new();
     loop {
         let mut work_on_one: Option<MessageToVecdbThread> = None;
         let current_time = SystemTime::now();
@@ -197,8 +197,8 @@ async fn vectorize_thread(
             let mut vecdb_todo_locked = vecdb_todo.lock().await;
             while let Some(msg) = vecdb_todo_locked.pop_front() {
                 match msg {
-                    MessageToVecdbThread::RegularDocument(doc) => {
-                        last_updated.insert(doc, current_time);
+                    MessageToVecdbThread::RegularDocument(cpath) => {
+                        last_updated.insert(cpath, current_time);
                     }
                     MessageToVecdbThread::ImmediatelyRegularDocument(_) | MessageToVecdbThread::MemoriesSomethingDirty() => {
                         work_on_one = Some(msg);
@@ -272,11 +272,11 @@ async fn vectorize_thread(
             info!("have {} unprocessed files", files_unprocessed);
             reported_unprocessed = files_unprocessed;
         }
-        let mut doc = {
+        let cpath = {
             match work_on_one {
-                Some(MessageToVecdbThread::RegularDocument(doc)) |
-                Some(MessageToVecdbThread::ImmediatelyRegularDocument(doc)) => {
-                    doc
+                Some(MessageToVecdbThread::RegularDocument(cpath)) |
+                Some(MessageToVecdbThread::ImmediatelyRegularDocument(cpath)) => {
+                    cpath
                 }
                 Some(MessageToVecdbThread::MemoriesSomethingDirty()) => {
                     info!("MEMDB VECTORIZER START");
@@ -336,9 +336,10 @@ async fn vectorize_thread(
                 _ => continue
             }
         };
-        let last_30_chars = crate::nicer_logs::last_n_chars(&doc.doc_path.display().to_string(), 30);
+        let last_30_chars = crate::nicer_logs::last_n_chars(&cpath, 30);
 
         // Not from memory, vecdb works on files from disk, because they change less
+        let mut doc: Document = Document { doc_path: cpath.clone().into(), doc_text: None };
         if let Err(_) = doc.update_text_from_disk(gcx.clone()).await {
             info!("{} cannot read, deleting from index", last_30_chars);  // don't care what the error is, trivial (or privacy)
             vecdb_handler_arc.lock().await.vecdb_records_remove(vec![doc.doc_path.to_string_lossy().to_string()]).await;
@@ -479,12 +480,12 @@ pub async fn vectorizer_enqueue_dirty_memory(
     vstatus_notify.notify_waiters();
 }
 
-fn filter_docs_to_enqueue(docs: &Vec<Document>) -> Vec<Document> {
+fn _filter_docs_to_enqueue(docs: &Vec<String>) -> Vec<String> {
     let mut rejected_reasons = HashMap::new();
     let mut filtered_docs = vec![];
 
     for d in docs {
-        let path = d.doc_path.clone();
+        let path: std::path::PathBuf = d.clone().into();
         match is_path_to_enqueue_valid(&path) {
             Ok(_) => {
                 filtered_docs.push(d.clone());
@@ -505,11 +506,11 @@ fn filter_docs_to_enqueue(docs: &Vec<Document>) -> Vec<Document> {
 
 pub async fn vectorizer_enqueue_files(
     vservice: Arc<AMutex<FileVectorizerService>>,
-    documents: &Vec<Document>,
+    documents: &Vec<String>,
     process_immediately: bool,
 ) {
     info!("adding {} files", documents.len());
-    let documents = filter_docs_to_enqueue(documents);
+    let documents = _filter_docs_to_enqueue(documents);
     let (vecdb_todo, vstatus, vstatus_notify, vecdb_max_files) = {
         let service = vservice.lock().await;
         (

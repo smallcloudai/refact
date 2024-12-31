@@ -10,7 +10,6 @@ use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 
@@ -24,9 +23,9 @@ pub async fn enqueue_all_docs_from_jsonl(
     if paths.is_empty() {
         return;
     }
-    let mut docs: Vec<Document> = vec![];
+    let mut docs: Vec<String> = vec![];
     for d in paths.iter() {
-        docs.push(Document { doc_path: d.clone(), doc_text: None });
+        docs.push(d.to_string_lossy().to_string());
     }
     let (vec_db_module, ast_service) = {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
@@ -43,8 +42,7 @@ pub async fn enqueue_all_docs_from_jsonl(
     };
     if let Some(ast) = &ast_service {
         if !vecdb_only {
-            let cpaths: Vec<String> = docs.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
-            ast_indexer_enqueue_files(ast.clone(), cpaths, force).await;
+            ast_indexer_enqueue_files(ast.clone(), &docs, force).await;
         }
     }
     #[cfg(feature="vecdb")]

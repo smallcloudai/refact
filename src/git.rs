@@ -234,6 +234,7 @@ pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>, max_siz
 pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
     let mut commits = Vec::new();
 
+    // XXX this is completely wrong, project dirs are not repositories, subdirs likely are
     for project_path in crate::files_correction::get_project_dirs(gcx.clone()).await {
         let repository = match git2::Repository::open(&project_path) {
             Ok(repo) => repo,

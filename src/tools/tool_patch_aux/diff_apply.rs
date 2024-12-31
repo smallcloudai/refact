@@ -123,7 +123,7 @@ async fn set_chunks_detail_and_sync_documents_ast_vecdb(
             if let Some(ast_service) = &ast_service_mb {
                 ast_indexer_enqueue_files(
                     ast_service.clone(),
-                    vec![doc.doc_path.to_string_lossy().to_string()],
+                    &vec![doc.doc_path.to_string_lossy().to_string()],
                     true,
                 ).await;
             }

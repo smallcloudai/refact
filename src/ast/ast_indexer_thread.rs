@@ -336,7 +336,7 @@ pub async fn ast_indexer_start(
     return vec![indexer_handle];
 }
 
-pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>, cpaths: Vec<String>, wake_up_indexer: bool)
+pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>, cpaths: &Vec<String>, wake_up_indexer: bool)
 {
     let ast_status;
     let nonzero = cpaths.len() > 0;
@@ -344,7 +344,7 @@ pub async fn ast_indexer_enqueue_files(ast_service: Arc<AMutex<AstIndexService>>
         let mut ast_service_locked = ast_service.lock().await;
         ast_status = ast_service_locked.ast_status.clone();
         for cpath in cpaths {
-            ast_service_locked.ast_todo.insert(cpath);
+            ast_service_locked.ast_todo.insert(cpath.clone());
         }
     }
     {
