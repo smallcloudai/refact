@@ -197,7 +197,6 @@ pub const KNOWN_MODELS: &str = r####"
         "grok-beta": {
             "n_ctx": 128000,
             "supports_tools": true,
-            "supports_multimodality": true,
             "supports_agent": true,
             "supports_scratchpads": {
                 "REPLACE_PASSTHROUGH": {
