@@ -11,7 +11,13 @@ import {
 import { getSelectedChatModel, setChatModel } from "../features/Chat";
 
 // TODO: hard coded for now.
-const PAID_AGENT_LIST = ["gpt-4o", "claude-3-5-sonnet"];
+const PAID_AGENT_LIST = [
+  "gpt-4o",
+  "claude-3-5-sonnet",
+  "grok-2-1212",
+  "grok-beta",
+  "gemini-2.0-flash-exp",
+];
 
 export function useCapsForToolUse() {
   const caps = useGetCapsQuery();
@@ -52,6 +58,7 @@ export function useCapsForToolUse() {
 
   const usableModelsForPlan = useMemo(() => {
     if (user.data?.inference === "PRO") return usableModels;
+    if (user.data?.inference === "ROBOT") return usableModels;
     if (!usage.aboveUsageLimit) return usableModels;
     return usableModels.map((model) => {
       if (!PAID_AGENT_LIST.includes(model)) return model;

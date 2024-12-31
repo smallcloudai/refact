@@ -132,12 +132,9 @@ export async function sendChat({
   const body = JSON.stringify({
     messages,
     model: model,
-    parameters: {
-      max_new_tokens: 2048,
-    },
     stream,
     tools,
-    max_tokens: 2048,
+    max_tokens: 4096,
     only_deterministic_messages,
     tools_confirmation: toolsConfirmed,
     // chat_id,
