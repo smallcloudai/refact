@@ -352,9 +352,13 @@ async fn docker_container_sync_workspace(
     tar_builder.follow_symlinks(true);
     tar_builder.mode(async_tar::HeaderMode::Complete);
 
-    let files = crate::files_in_workspace::retrieve_files_in_workspace_folders(
-        vec![workspace_folder.clone()], true, true).await;
-    for file in &files {
+    let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
+        vec![workspace_folder.clone()],
+        false,
+        false,
+    ).await;
+
+    for file in &all_files {
         let relative_path = file.strip_prefix(&workspace_folder)
            .map_err(|e| format!("Error stripping prefix: {}", e))?;
 
