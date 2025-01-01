@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::RwLock as ARwLock;
 use std::path::PathBuf;
 use url::Url;
@@ -231,12 +231,19 @@ pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>, max_siz
     Ok(diff_str)
 }
 
-pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
+pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo>
+{
     let mut commits = Vec::new();
 
-    // XXX this is completely wrong, project dirs are not repositories, subdirs likely are
-    for project_path in crate::files_correction::get_project_dirs(gcx.clone()).await {
-        let repository = match git2::Repository::open(&project_path) {
+    let workspace_vcs_roots: Arc<StdMutex<Vec<PathBuf>>> = {
+        let cx_locked = gcx.write().await;
+        cx_locked.documents_state.workspace_vcs_roots.clone()
+    };
+
+    let vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
+    tracing::info!("get_commit_information_from_current_changes() vcs_roots={:?}", vcs_roots_locked);
+    for project_path in vcs_roots_locked.iter() {
+        let repository = match git2::Repository::open(project_path) {
             Ok(repo) => repo,
             Err(e) => { tracing::warn!("{}", e); continue; }
         };
@@ -248,7 +255,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
         };
 
         commits.push(CommitInfo {
-            project_path: Url::from_file_path(&project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
+            project_path: Url::from_file_path(project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
             commit_message: "".to_string(),
             file_changes,
         });
