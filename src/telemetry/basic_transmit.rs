@@ -38,11 +38,12 @@ pub async fn send_telemetry_data(
     }
     let resp_body = resp.text().await.unwrap_or_else(|_| "-empty-".to_string());
     // info!("telemetry send success, response:\n{}", resp_body);
-    info!("telemetry send success");
     let resp_json = serde_json::from_str::<serde_json::Value>(&resp_body).unwrap_or_else(|_| json!({}));
     let retcode = resp_json["retcode"].as_str().unwrap_or("").to_string();
     if retcode != "OK" {
         return Err("retcode is not OK".to_string());
+    } else {
+        info!("telemetry send success");
     }
     Ok(())
 }
@@ -62,11 +63,12 @@ pub async fn send_telemetry_files_to_mothership(
         let cx = gcx.read().await;
         cx.cmdline.get_prefix()
     };
+
     for path in files {
         let contents_maybe = read_file(path.clone()).await;
         if contents_maybe.is_err() {
             error!("cannot read {}: {}", path.display(), contents_maybe.err().unwrap());
-            continue
+            continue;
         }
         let contents = contents_maybe.unwrap();
         let path_str = path.to_str().unwrap();

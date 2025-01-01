@@ -135,14 +135,32 @@ pub async fn cleanup_old_files(
     dir: PathBuf,
     how_much_to_keep: i32,
 ) {
+    const HOPELESSLY_OLD_DAYS: u64 = 3;
+    let max_age = std::time::Duration::from_secs(HOPELESSLY_OLD_DAYS * 24 * 60 * 60);
+    let now = std::time::SystemTime::now();
+
     let files = sorted_json_files(dir.clone()).await;
     let mut leave_alone = how_much_to_keep;
     for path in files {
+        if let Ok(metadata) = tokio::fs::metadata(&path).await {
+            if let Ok(modified) = metadata.modified() {
+                if now.duration_since(modified).unwrap_or_default() > max_age {
+                    if let Err(e) = tokio::fs::remove_file(&path).await {
+                        error!("failed to delete old file {}: {}", path.display(), e);
+                    } else {
+                        info!("deleted old file {}", path.display());
+                    }
+                    continue;
+                }
+            }
+        }
+
         leave_alone -= 1;
         if leave_alone > 0 {
             // info!("leave_alone telemetry file: {}", path.to_str().unwrap());
             continue;
         }
+
         tokio::fs::remove_file(path).await.unwrap_or_else(|e| {
             error!("error removing old telemetry file: {}", e);
             // better to continue deleting, not much we can do
