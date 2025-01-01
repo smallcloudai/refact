@@ -4,6 +4,7 @@ use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, Weak, Mutex as StdMutex};
 use std::time::Instant;
+use indexmap::IndexSet;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
 use ropey::Rope;
@@ -476,22 +477,23 @@ pub async fn enqueue_all_files_from_workspace_folders(
         (cx.vec_db.clone(), cx.ast_service.clone(), old_workspace_files)
     };
 
-    let cpaths1: Vec<String> = documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()).collect();
-    let cpaths2: Vec<String> = previous_list.iter().map(|p| p.to_string_lossy().to_string()).collect();
+    // Both vecdb and ast support paths to non-existant files (possibly previously existing files) as a way to remove them from index
+
+    let mut updated_or_removed: IndexSet<String> = IndexSet::new();
+    updated_or_removed.extend(documents.iter().map(|doc| doc.doc_path.to_string_lossy().to_string()));
+    updated_or_removed.extend(previous_list.iter().map(|p| p.to_string_lossy().to_string()));
+    let paths_nodups: Vec<String> = updated_or_removed.into_iter().collect();
 
     #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
-        // TODO: enqueue both lists, ones that don't open should be removed from vecdb
-        db.vectorizer_enqueue_files(&cpaths1, force).await;
-        db.vectorizer_enqueue_files(&cpaths2, force).await;
+        db.vectorizer_enqueue_files(&paths_nodups, force).await;
     }
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;
 
     if let Some(ast) = ast_service {
         if !vecdb_only {
-            ast_indexer_enqueue_files(ast.clone(), &cpaths1, force).await;
-            ast_indexer_enqueue_files(ast.clone(), &cpaths2, force).await;
+            ast_indexer_enqueue_files(ast.clone(), &paths_nodups, force).await;
         }
     }
     documents.len() as i32
