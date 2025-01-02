@@ -92,24 +92,25 @@ pub async fn handle_v1_links(
     }
 
     // GIT uncommitted
-    if post.meta.chat_mode == ChatMode::AGENT {
+    if post.meta.chat_mode == ChatMode::AGENT && post.messages.is_empty() {
         let commits = get_commit_information_from_current_changes(gcx.clone()).await;
 
-        let mut project_changes = Vec::new();
+        let mut s = Vec::new();
         for commit in &commits {
-            project_changes.push(format!(
+            s.push(format!(
                 "In project {}:\n{}{}",
                 commit.get_project_name(),
                 commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
-                if commit.file_changes.len() > 3 { "\n...\n" } else { "\n" },
+                if commit.file_changes.len() > 3 { format!("\n...{} files more\n", commit.file_changes.len() - 3) } else { format!("\n") },
             ));
         }
-        if !project_changes.is_empty() && post.messages.is_empty() {
-            if project_changes.len() > 4 {
-                project_changes.truncate(4);
-                project_changes.push("...".to_string());
+        if !s.is_empty() {
+            if s.len() > 5 {
+                let omitted_projects = s.len() - 4;
+                s.truncate(4);
+                s.push(format!("...{} projects more", omitted_projects));
             }
-            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\nIt's fine, but you might have a problem rolling back agent's changes.", project_changes.join("\n"));
+            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\nIt's fine, but you might have a problem rolling back agent's changes.", s.join("\n"));
         }
 
         if false {
