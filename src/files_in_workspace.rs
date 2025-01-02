@@ -154,7 +154,10 @@ impl DocumentsState {
     }
 }
 
-pub fn watcher_init(documents_state: &mut DocumentsState, gcx_weak: Weak<ARwLock<GlobalContext>>) {
+pub async fn watcher_init(
+    gcx: Arc<ARwLock<GlobalContext>>
+) {
+    let gcx_weak = Arc::downgrade(&gcx);
     let rt = tokio::runtime::Handle::current();
     let event_callback = move |res| {
         rt.block_on(async {
@@ -164,11 +167,19 @@ pub fn watcher_init(documents_state: &mut DocumentsState, gcx_weak: Weak<ARwLock
         });
     };
     let mut watcher = RecommendedWatcher::new(event_callback, Config::default()).unwrap();
-    for folder in documents_state.workspace_folders.lock().unwrap().iter() {
+
+    let workspace_folders: Arc<StdMutex<Vec<PathBuf>>> = gcx.read().await.documents_state.workspace_folders.clone();
+
+    for folder in workspace_folders.lock().unwrap().iter() {
         info!("ADD WATCHER (1): {}", folder.display());
         let _ = watcher.watch(folder, RecursiveMode::Recursive);
     }
-    documents_state.fs_watcher = Arc::new(ARwLock::new(watcher));
+
+    let mut fs_watcher_on_stack = Arc::new(ARwLock::new(watcher));
+    {
+        let mut gcx_locked = gcx.write().await;
+        std::mem::swap(&mut gcx_locked.documents_state.fs_watcher, &mut fs_watcher_on_stack);  // avoid destructor under lock
+    }
 }
 
 async fn read_file_from_disk_without_privacy_check(
@@ -324,7 +335,7 @@ async fn _ls_files_under_version_control_recursive(
     allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool
 ) {
-    let mut candidates: Vec<PathBuf> = vec![path];
+    let mut candidates: Vec<PathBuf> = vec![path.clone()];
     let mut rejected_reasons: HashMap<String, usize> = HashMap::new();
     let mut blacklisted_dirs_cnt: usize = 0;
     while !candidates.is_empty() {
@@ -373,7 +384,7 @@ async fn _ls_files_under_version_control_recursive(
             }
         }
     }
-    info!("rejected files reasons:");
+    info!("when inspecting {:?} rejected files reasons:", path);
     for (reason, count) in &rejected_reasons {
         info!("    {:>6} {}", count, reason);
     }
@@ -381,11 +392,6 @@ async fn _ls_files_under_version_control_recursive(
         info!("    no bad files at all");
     }
     info!("also the loop bumped into {} blacklisted dirs", blacklisted_dirs_cnt);
-
-    info!("VCS roots found:");
-    for vcs_folder in vcs_folders {
-        info!("    {}", vcs_folder.display());
-    }
 }
 
 pub async fn retrieve_files_in_workspace_folders(
@@ -403,6 +409,10 @@ pub async fn retrieve_files_in_workspace_folders(
             allow_files_in_hidden_folders,
             ignore_size_thresholds
         ).await;
+    }
+    info!("in all workspace folders, VCS roots found:");
+    for vcs_folder in vcs_folders.iter() {
+        info!("    {}", vcs_folder.display());
     }
     (all_files, vcs_folders)
 }
@@ -428,7 +438,7 @@ async fn enqueue_some_docs(
         info!("    ...");
     }
     let (vec_db_module, ast_service) = {
-        let cx = gcx.write().await;
+        let cx = gcx.read().await;
         (cx.vec_db.clone(), cx.ast_service.clone())
     };
     #[cfg(feature="vecdb")]
@@ -450,7 +460,7 @@ async fn enqueue_some_docs(
     if moar_files.len() > 0 {
         info!("this made file cache dirty");
         let dirty_arc = {
-            let gcx_locked = gcx.write().await;
+            let gcx_locked = gcx.read().await;
             gcx_locked.documents_state.workspace_files.lock().unwrap().extend(moar_files);
             gcx_locked.documents_state.cache_dirty.clone()
         };
@@ -461,7 +471,7 @@ async fn enqueue_some_docs(
 
 pub async fn enqueue_all_files_from_workspace_folders(
     gcx: Arc<ARwLock<GlobalContext>>,
-    force: bool,
+    wake_up_indexers: bool,
     vecdb_only: bool,
 ) -> i32 {
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
@@ -477,16 +487,16 @@ pub async fn enqueue_all_files_from_workspace_folders(
 
     let mut old_workspace_files = Vec::new();
     let cache_dirty = {
-        let mut cx_locked = gcx.write().await;
+        let mut gcx_locked = gcx.write().await;
         {
-            let mut workspace_files = cx_locked.documents_state.workspace_files.lock().unwrap();
+            let mut workspace_files = gcx_locked.documents_state.workspace_files.lock().unwrap();
             std::mem::swap(&mut *workspace_files, &mut old_workspace_files);
             workspace_files.extend(all_files.clone());
         }
         {
-            std::mem::swap(&mut cx_locked.documents_state.workspace_vcs_roots, &mut workspace_vcs_roots);
+            std::mem::swap(&mut gcx_locked.documents_state.workspace_vcs_roots, &mut workspace_vcs_roots);
         }
-        cx_locked.documents_state.cache_dirty.clone()
+        gcx_locked.documents_state.cache_dirty.clone()
     };
 
     *cache_dirty.lock().await = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
@@ -505,14 +515,14 @@ pub async fn enqueue_all_files_from_workspace_folders(
 
     #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
-        db.vectorizer_enqueue_files(&paths_nodups, force).await;
+        db.vectorizer_enqueue_files(&paths_nodups, wake_up_indexers).await;
     }
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;
 
     if let Some(ast) = ast_service {
         if !vecdb_only {
-            ast_indexer_enqueue_files(ast.clone(), &paths_nodups, force).await;
+            ast_indexer_enqueue_files(ast.clone(), &paths_nodups, wake_up_indexers).await;
         }
     }
     all_files.len() as i32
@@ -522,11 +532,7 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
-    {
-        let gcx_weak = Arc::downgrade(&gcx);
-        let mut gcx_locked = gcx.write().await;
-        watcher_init(&mut gcx_locked.documents_state, gcx_weak);
-    }
+    watcher_init(gcx.clone()).await;
     enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await
 }
 

@@ -422,7 +422,7 @@ pub async fn spawn_lsp_task(
             tower_lsp::Server::new(stdin, stdout, socket).serve(lsp_service).await;
             info!("LSP loop exit");
             match gcx_t.write().await.ask_shutdown_sender.lock() {
-                Ok(mut sender) => {
+                Ok(sender) => {
                     if let Err(err) = sender.send("going-down-because-lsp-exited".to_string()) {
                         error!("Failed to send shutdown message: {}", err);
                     }
