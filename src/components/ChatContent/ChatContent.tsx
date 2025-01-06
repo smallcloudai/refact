@@ -45,7 +45,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
-  const threadToolUse = thread.tool_use;
   const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
@@ -106,7 +105,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       <Flex direction="column" className={styles.content} p="2" gap="1">
         {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper)}
-        {threadToolUse === "agent" && <UncommittedChangesWarning />}
+        <UncommittedChangesWarning />
 
         <Container py="4">
           <Spinner spinning={isWaiting} />

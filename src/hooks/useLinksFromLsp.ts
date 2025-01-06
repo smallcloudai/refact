@@ -19,7 +19,6 @@ import {
   selectMessages,
   selectModel,
   selectThreadMode,
-  selectThreadToolUse,
   setIntegrationData,
 } from "../features/Chat";
 import { useGoToLink } from "./useGoToLink";
@@ -36,7 +35,6 @@ export function useGetLinksFromLsp() {
   const chatId = useAppSelector(selectChatId);
   const maybeIntegration = useAppSelector(selectIntegration);
   const threadMode = useAppSelector(selectThreadMode);
-  const toolUse = useAppSelector(selectThreadToolUse);
 
   // TODO: add the model
   const caps = useGetCapsQuery();
@@ -58,19 +56,10 @@ export function useGetLinksFromLsp() {
       messages.length > 0 && isUserMessage(messages[messages.length - 1]);
     if (!model) return true;
     if (!caps.data) return true;
-    if (toolUse !== "agent") return true;
     return (
       isStreaming || isWaiting || unCalledTools || lastMessageIsUserMessage
     );
-  }, [
-    caps.data,
-    isStreaming,
-    isWaiting,
-    messages,
-    model,
-    toolUse,
-    unCalledTools,
-  ]);
+  }, [caps.data, isStreaming, isWaiting, messages, model, unCalledTools]);
 
   const linksResult = linksApi.useGetLinksForChatQuery(
     {
