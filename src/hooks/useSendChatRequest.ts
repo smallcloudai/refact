@@ -179,10 +179,23 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    (question: string, maybeMode?: LspChatMode) => {
+    ({
+      question,
+      maybeMode,
+      maybeMessages,
+    }: {
+      question?: string;
+      maybeMode?: LspChatMode;
+      maybeMessages?: ChatMessage[];
+    }) => {
+      if (!question && !maybeMessages) return;
       // const message: ChatMessage = { role: "user", content: question };
-      const message: UserMessage = maybeAddImagesToQuestion(question);
-      const messages = messagesWithSystemPrompt.concat(message);
+      const message: UserMessage = question
+        ? maybeAddImagesToQuestion(question)
+        : ({} as UserMessage);
+      const messages = maybeMessages
+        ? maybeMessages
+        : messagesWithSystemPrompt.concat(message);
 
       // TODO: make a better way for setting / detecting thread mode.
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;

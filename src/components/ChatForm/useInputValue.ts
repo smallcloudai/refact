@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useSendChatRequest,
+} from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
 import { setInputValue, addInputValue } from "./actions";
 
@@ -13,6 +17,7 @@ export function useInputValue(
 ] {
   const [value, setValue] = useState<string>("");
   const [isSendImmediately, setIsSendImmediately] = useState<boolean>(false);
+  const { submit } = useSendChatRequest();
   const dispatch = useAppDispatch();
   const pages = useAppSelector(selectPages);
 
@@ -28,22 +33,39 @@ export function useInputValue(
     const listener = (event: MessageEvent) => {
       if (addInputValue.match(event.data)) {
         const { payload } = event.data;
-        setUpIfNotReady();
-        setValue((prev) => prev + payload.value);
+        const { send_immediately, value, messages } = payload;
 
-        if (payload.send_immediately) {
-          setIsSendImmediately(payload.send_immediately);
+        setUpIfNotReady();
+
+        if (!messages) {
+          setValue((prev) => prev + value);
+          setIsSendImmediately(send_immediately);
+        } else {
+          setIsSendImmediately(true); // if we set messages, we should create new chat immediatelly
+          submit({
+            maybeMessages: messages,
+          });
         }
       } else if (setInputValue.match(event.data)) {
         const { payload } = event.data;
+        const { send_immediately, value, messages } = payload;
+
         setUpIfNotReady();
-        setValue(payload.value);
         uncheckCheckboxes();
-        if (payload.send_immediately) {
-          const timeoutID = setTimeout(() => {
-            setIsSendImmediately(payload.send_immediately);
-            clearTimeout(timeoutID);
-          }, 100);
+
+        if (!messages) {
+          setValue(value);
+          if (send_immediately) {
+            const timeoutID = setTimeout(() => {
+              setIsSendImmediately(send_immediately);
+              clearTimeout(timeoutID);
+            }, 100);
+          }
+        } else {
+          setIsSendImmediately(true); // if we set messages, we should create new chat immediatelly
+          submit({
+            maybeMessages: messages,
+          });
         }
       }
     };

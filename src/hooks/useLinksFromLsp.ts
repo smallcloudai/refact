@@ -25,7 +25,7 @@ import {
 import { useGoToLink } from "./useGoToLink";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
-import { debugIntegrations } from "../debugConfig";
+import { debugIntegrations, debugRefact } from "../debugConfig";
 import { telemetryApi } from "../services/refact/telemetry";
 import { isAbsolutePath } from "../utils";
 
@@ -182,7 +182,9 @@ export function useLinksFromLsp() {
       }
 
       if (link.link_action === "follow-up") {
-        submit(link.link_text);
+        submit({
+          question: link.link_text,
+        });
         return;
       }
 
@@ -191,7 +193,10 @@ export function useLinksFromLsp() {
           dispatch(setIntegrationData({ path: link.link_summary_path }));
           // set the integration data
         }
-        submit(link.link_text, "PROJECT_SUMMARY");
+        submit({
+          question: link.link_text,
+          maybeMode: "PROJECT_SUMMARY",
+        });
         return;
       }
 
@@ -225,20 +230,18 @@ export function useLinksFromLsp() {
       }
 
       if (isPostChatLink(link)) {
-        const chatMessageText = link.link_payload.messages
-          .filter(isUserMessage)
-          .map((m) => m.content)
-          .join("\n");
-
         dispatch(
           setIntegrationData({
             path: link.link_payload.chat_meta.current_config_file,
           }),
         );
-        // doesn't really work with chat.mode == "CONFIGURE"
         // should stop recommending integrations link be opening a chat?
-        // maybe it's better to do something similar to commit link, just call endpoint in the LSP
-        submit(chatMessageText, link.link_payload.chat_meta.chat_mode);
+        // maybe it's better to do something similar to commit link, by calling endpoint in the LSP
+        debugRefact(`[DEBUG]: link messages: `, link.link_payload.messages);
+        submit({
+          maybeMode: link.link_payload.chat_meta.chat_mode,
+          maybeMessages: link.link_payload.messages,
+        });
         return;
       }
 
