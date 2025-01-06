@@ -263,11 +263,9 @@ tools:
   - name: "patch"
     agentic: true
     description: |
-      Collect context first, then write the necessary changes using the 📍-notation before code blocks, then call this function to apply the changes.
-      To make this call correctly, you only need the tickets.
-      If you wrote changes for multiple files, call this tool in parallel for each file.
-      If you have several attempts to change a single thing, for example following a correction from the user, pass only the ticket for the latest one.
-      Multiple tickets is allowed only for PARTIAL_EDIT, otherwise only one ticket must be provided.
+      The function to apply changes from the 📍-notation code blocks.
+      To make this call correctly, you need the 📍-notation code block ticket number.
+      Multiple tickets is allowed only for 📍PARTIAL_EDIT, otherwise only one ticket must be provided.
     parameters:
       - name: "path"
         type: "string"
