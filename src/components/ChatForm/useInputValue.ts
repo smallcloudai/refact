@@ -5,7 +5,7 @@ import {
   useSendChatRequest,
 } from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
-import { setInputValue, addInputValue } from "./actions";
+import { setInputValue, addInputValue, InputActionPayload } from "./actions";
 
 export function useInputValue(
   uncheckCheckboxes: () => void,
@@ -29,51 +29,53 @@ export function useInputValue(
     }
   }, [dispatch, pages]);
 
-  useEffect(() => {
-    const listener = (event: MessageEvent) => {
-      if (addInputValue.match(event.data)) {
-        const { payload } = event.data;
-        const { send_immediately, value, messages } = payload;
+  const handleEvent = useCallback(
+    (event: MessageEvent) => {
+      const { payload } = event.data as {
+        payload: InputActionPayload;
+        type: string;
+      };
 
+      if (addInputValue.match(event.data) || setInputValue.match(event.data)) {
         setUpIfNotReady();
 
-        if (!messages) {
-          setValue((prev) => prev + value);
-          setIsSendImmediately(send_immediately);
-        } else {
-          setIsSendImmediately(true); // if we set messages, we should create new chat immediatelly
+        if (payload.messages) {
+          setIsSendImmediately(true);
           submit({
-            maybeMessages: messages,
+            maybeMessages: payload.messages,
           });
-        }
-      } else if (setInputValue.match(event.data)) {
-        const { payload } = event.data;
-        const { send_immediately, value, messages } = payload;
-
-        setUpIfNotReady();
-        uncheckCheckboxes();
-
-        if (!messages) {
-          setValue(value);
-          if (send_immediately) {
-            const timeoutID = setTimeout(() => {
-              setIsSendImmediately(send_immediately);
-              clearTimeout(timeoutID);
-            }, 100);
-          }
-        } else {
-          setIsSendImmediately(true); // if we set messages, we should create new chat immediatelly
-          submit({
-            maybeMessages: messages,
-          });
+          return;
         }
       }
-    };
 
-    window.addEventListener("message", listener);
+      if (addInputValue.match(event.data)) {
+        const { send_immediately, value } = payload;
+        setValue((prev) => prev + value);
+        setIsSendImmediately(send_immediately);
+        return;
+      }
 
-    return () => window.removeEventListener("message", listener);
-  });
+      if (setInputValue.match(event.data)) {
+        const { send_immediately, value } = payload;
+        uncheckCheckboxes();
+        setValue(value ?? "");
+        if (send_immediately) {
+          const timeoutID = setTimeout(() => {
+            setIsSendImmediately(send_immediately);
+            clearTimeout(timeoutID);
+          }, 100);
+        }
+        return;
+      }
+    },
+    [setUpIfNotReady, submit, uncheckCheckboxes],
+  );
+
+  useEffect(() => {
+    window.addEventListener("message", handleEvent);
+
+    return () => window.removeEventListener("message", handleEvent);
+  }, [handleEvent]);
 
   return [value, setValue, isSendImmediately, setIsSendImmediately];
 }
