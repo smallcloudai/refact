@@ -5,7 +5,8 @@ import {
   useSendChatRequest,
 } from "../../hooks";
 import { selectPages, change, ChatPage } from "../../features/Pages/pagesSlice";
-import { setInputValue, addInputValue, InputActionPayload } from "./actions";
+import { setInputValue, addInputValue } from "./actions";
+import { debugRefact } from "../../debugConfig";
 
 export function useInputValue(
   uncheckCheckboxes: () => void,
@@ -31,15 +32,13 @@ export function useInputValue(
 
   const handleEvent = useCallback(
     (event: MessageEvent) => {
-      const { payload } = event.data as {
-        payload: InputActionPayload;
-        type: string;
-      };
-
       if (addInputValue.match(event.data) || setInputValue.match(event.data)) {
+        const { payload } = event.data;
+        debugRefact(`[DEBUG]: receiving event setInputValue/addInputValue`);
         setUpIfNotReady();
 
         if (payload.messages) {
+          debugRefact(`[DEBUG]: payload messages: `, payload.messages);
           setIsSendImmediately(true);
           submit({
             maybeMessages: payload.messages,
@@ -49,6 +48,7 @@ export function useInputValue(
       }
 
       if (addInputValue.match(event.data)) {
+        const { payload } = event.data;
         const { send_immediately, value } = payload;
         setValue((prev) => prev + value);
         setIsSendImmediately(send_immediately);
@@ -56,15 +56,12 @@ export function useInputValue(
       }
 
       if (setInputValue.match(event.data)) {
+        const { payload } = event.data;
         const { send_immediately, value } = payload;
         uncheckCheckboxes();
         setValue(value ?? "");
-        if (send_immediately) {
-          const timeoutID = setTimeout(() => {
-            setIsSendImmediately(send_immediately);
-            clearTimeout(timeoutID);
-          }, 100);
-        }
+        debugRefact(`[DEBUG]: setInputValue.payload: `, payload);
+        setIsSendImmediately(send_immediately);
         return;
       }
     },

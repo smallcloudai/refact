@@ -49,6 +49,14 @@ import {
   setIsWaitingForResponse,
 } from "../features/Chat";
 
+type SubmitHandlerParams =
+  | { question: string; maybeMode?: LspChatMode; maybeMessages?: undefined }
+  | {
+      question?: undefined;
+      maybeMode?: LspChatMode;
+      maybeMessages: ChatMessage[];
+    };
+
 let recallCounter = 0;
 
 export const useSendChatRequest = () => {
@@ -179,23 +187,17 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    ({
-      question,
-      maybeMode,
-      maybeMessages,
-    }: {
-      question?: string;
-      maybeMode?: LspChatMode;
-      maybeMessages?: ChatMessage[];
-    }) => {
+    ({ question, maybeMode, maybeMessages }: SubmitHandlerParams) => {
       if (!question && !maybeMessages) return;
-      // const message: ChatMessage = { role: "user", content: question };
-      const message: UserMessage = question
-        ? maybeAddImagesToQuestion(question)
-        : ({} as UserMessage);
-      const messages = maybeMessages
-        ? maybeMessages
-        : messagesWithSystemPrompt.concat(message);
+
+      let messages = messagesWithSystemPrompt;
+
+      if (question) {
+        const message = maybeAddImagesToQuestion(question);
+        messages = messages.concat(message);
+      } else if (maybeMessages) {
+        messages = maybeMessages;
+      }
 
       // TODO: make a better way for setting / detecting thread mode.
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
