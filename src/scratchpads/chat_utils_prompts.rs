@@ -165,7 +165,6 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
     chat_meta: &call_validation::ChatMeta,
     stream_back_to_user: &mut HasRagResults,
 ) -> Vec<call_validation::ChatMessage> {
-    tracing::info!("messages__ {:?}", messages);
     let have_system = !messages.is_empty() && messages[0].role == "system";
     if have_system {
         return messages;
