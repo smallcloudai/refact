@@ -38,6 +38,10 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
     }
   }, [scrollRef]);
 
+  useEffect(() => {
+    scrollIntoView();
+  }, [scrollRef, scrollIntoView]);
+
   const handleScrollButtonClick = useCallback(() => {
     setFollowRef(isStreaming);
     scrollIntoView();
