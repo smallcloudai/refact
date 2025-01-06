@@ -281,56 +281,48 @@ pub async fn get_vars_for_replacements(
     };
     let mut variables = HashMap::new();
 
-    match fs::read_to_string(&secrets_yaml_path) {
-        Ok(secrets_content) => {
-            match serde_yaml::from_str::<HashMap<String, String>>(&secrets_content) {
-                Ok(secrets_yaml) => {
-                    variables.extend(secrets_yaml);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to parse secrets.yaml: {}", e);
-                    error_log.push(YamlError {
-                        integr_config_path: secrets_yaml_path.to_string_lossy().to_string(),
-                        error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
-                        error_msg: format!("Failed to parse secrets.yaml: {}", e),
-                    });
-                }
-            }
+    // Helper function to read and parse a YAML file
+    async fn read_and_parse_yaml(
+        path: &PathBuf,
+        error_log: &mut Vec<YamlError>,
+    ) -> Result<HashMap<String, String>, ()> {
+        if !path.exists() {
+            return Ok(HashMap::new());
         }
-        Err(e) => {
-            tracing::info!("Failed to read secrets.yaml: {}", e);
-            error_log.push(YamlError {
-                integr_config_path: secrets_yaml_path.to_string_lossy().to_string(),
-                error_line: 0,
-                error_msg: format!("Failed to read secrets.yaml: {}", e),
-            });
+
+        match fs::read_to_string(path) {
+            Ok(content) => match serde_yaml::from_str::<HashMap<String, String>>(&content) {
+                Ok(parsed_yaml) => Ok(parsed_yaml),
+                Err(e) => {
+                    tracing::warn!("Failed to parse {}: {}", path.display(), e);
+                    error_log.push(YamlError {
+                        integr_config_path: path.to_string_lossy().to_string(),
+                        error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
+                        error_msg: format!("Failed to parse {}: {}", path.display(), e),
+                    });
+                    Err(())
+                }
+            },
+            Err(e) => {
+                tracing::info!("Failed to read {}: {}", path.display(), e);
+                error_log.push(YamlError {
+                    integr_config_path: path.to_string_lossy().to_string(),
+                    error_line: 0,
+                    error_msg: format!("Failed to read {}: {}", path.display(), e),
+                });
+                Err(())
+            }
         }
     }
 
-    match fs::read_to_string(&variables_yaml_path) {
-        Ok(variables_content) => {
-            match serde_yaml::from_str::<HashMap<String, String>>(&variables_content) {
-                Ok(variables_yaml) => {
-                    variables.extend(variables_yaml);
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to parse variables.yaml: {}", e);
-                    error_log.push(YamlError {
-                        integr_config_path: variables_yaml_path.to_string_lossy().to_string(),
-                        error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
-                        error_msg: format!("Failed to parse variables.yaml: {}", e),
-                    });
-                }
-            }
-        }
-        Err(e) => {
-            tracing::info!("Failed to read variables.yaml: {}", e);
-            error_log.push(YamlError {
-                integr_config_path: variables_yaml_path.to_string_lossy().to_string(),
-                error_line: 0,
-                error_msg: format!("Failed to read variables.yaml: {}", e),
-            });
-        }
+    // Read and parse secrets.yaml
+    if let Ok(secrets_yaml) = read_and_parse_yaml(&secrets_yaml_path, error_log).await {
+        variables.extend(secrets_yaml);
+    }
+
+    // Read and parse variables.yaml
+    if let Ok(variables_yaml) = read_and_parse_yaml(&variables_yaml_path, error_log).await {
+        variables.extend(variables_yaml);
     }
 
     variables
