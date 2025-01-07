@@ -69,26 +69,33 @@ pub async fn start_server(
     }))
 }
 
-async fn _make_http_post<T: Serialize>(
+async fn _make_http_request<T: Serialize>(
+    method: &str,
     url: &str,
     body: &T,
 ) -> Result<Response, String> {
     let client = Client::builder().build().map_err(|e| e.to_string())?;
-    let post_result = client.post(url).json(body).send().await.map_err(|e| e.to_string())?;
+    
+    let request_builder = match method {
+        "POST" => client.post(url).json(body),
+        "GET" => client.get(url),
+        _ => return Err(format!("HTTP method {method} not supported")),
+    };
+    let response = request_builder.send().await.map_err(|e| e.to_string())?;
 
-    if !post_result.status().is_success() {
-        let status = post_result.status();
-        let error_text = post_result.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
         return Err(format!("HTTP request failed with status {}: {}", status, error_text));
     }
-    Ok(post_result)
+    Ok(response)
 }
 
 pub async fn http_post_json<T: Serialize, R: for<'de> serde::Deserialize<'de>>(
     url: &str,
     body: &T,
 ) -> Result<R, String> {
-    let post_result = _make_http_post(url, body).await?;
+    let post_result = _make_http_request("POST", url, body).await?;
     post_result.json::<R>().await.map_err(|e| e.to_string())
 }
 
@@ -96,5 +103,12 @@ pub async fn http_post<T: Serialize>(
     url: &str,
     body: &T,
 ) -> Result<(), String> {
-    _make_http_post(url, body).await.map(|_| ())
+    _make_http_request("POST", url, body).await.map(|_| ())
+}
+
+pub async fn http_get_json<R: for<'de> serde::Deserialize<'de>>(
+    url: &str,
+) -> Result<R, String> {
+    let get_result = _make_http_request("GET", url, &()).await?;
+    get_result.json::<R>().await.map_err(|e| e.to_string())
 }
