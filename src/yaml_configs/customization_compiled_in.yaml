@@ -312,8 +312,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Make code shorter"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
@@ -325,8 +323,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Find and fix bugs"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
@@ -338,8 +334,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Comment each line"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
@@ -351,8 +345,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Add type hints"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
@@ -364,8 +356,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Explain code"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
@@ -377,8 +367,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Summarize code in 1 paragraph"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
@@ -390,8 +378,6 @@ toolbox_commands:
     selection_needed: [1, 50]
     description: "Fix typos"
     messages:
-    - role: "system"
-      content: "%PROMPT_EXPLORATION_TOOLS%"
     - role: "user"
       content: |
         @file %CURRENT_FILE%:%CURSOR_LINE%
