@@ -47,7 +47,7 @@ export const ChatLinks: React.FC = () => {
   return null;
 };
 
-const ChatLinkButton: React.FC<{
+export const ChatLinkButton: React.FC<{
   link: ChatLink;
   onClick: (link: ChatLink) => void;
 }> = ({ link, onClick }) => {

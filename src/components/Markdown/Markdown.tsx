@@ -34,7 +34,7 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
-import { usePatchActions } from "../../hooks";
+import { useLinksFromLsp, usePatchActions } from "../../hooks";
 
 import { ErrorCallout, DiffWarningCallout } from "../Callout";
 
@@ -42,6 +42,9 @@ import { TruncateLeft } from "../Text";
 import { extractFilePathFromPin } from "../../utils";
 
 import { telemetryApi } from "../../services/refact/telemetry";
+import { ChatLinkButton } from "../ChatLinks";
+import { ChatLink } from "../../services/refact";
+import { toPascalCase } from "../../utils/toPascalCase";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -50,7 +53,10 @@ export type MarkdownProps = Pick<
   Pick<
     MarkdownCodeBlockProps,
     "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
-  > & { canHavePins?: boolean; wrap?: boolean } & Partial<MarkdownControls>;
+  > & {
+    canHaveInteractiveElements?: boolean;
+    wrap?: boolean;
+  } & Partial<MarkdownControls>;
 
 const PinMessages: React.FC<{
   children: string;
@@ -175,7 +181,34 @@ const PinMessages: React.FC<{
   );
 };
 
-const MaybePinButton: React.FC<{
+const PuzzleLink: React.FC<{
+  children: string;
+}> = ({ children }) => {
+  const { handleLinkAction } = useLinksFromLsp();
+  const puzzleLinkPayload = children.slice(2);
+  if (!puzzleLinkPayload) return children;
+
+  const [_linkType, linkPath] = puzzleLinkPayload.split(":");
+
+  if (!linkPath) return children;
+
+  const linkLabel = `🧩 Setup ${toPascalCase(linkPath)}`;
+
+  const link: ChatLink = {
+    link_action: "goto",
+    link_text: linkLabel,
+    link_goto: puzzleLinkPayload,
+    link_tooltip: linkLabel,
+  };
+
+  return (
+    <Flex direction="column" align="start" gap="2" mt="2">
+      <ChatLinkButton link={link} onClick={handleLinkAction} />
+    </Flex>
+  );
+};
+
+const MaybeInteractiveElement: React.FC<{
   key?: Key | null;
   children?: React.ReactNode;
 }> = ({ children }) => {
@@ -183,6 +216,10 @@ const MaybePinButton: React.FC<{
     if (typeof child === "string" && child.startsWith("📍")) {
       const key = `pin-message-${index}`;
       return <PinMessages key={key}>{child}</PinMessages>;
+    }
+    if (typeof child === "string" && child.startsWith("🧩")) {
+      const key = `puzzle-link-${index}`;
+      return <PuzzleLink key={key}>{child}</PuzzleLink>;
     }
     return child;
   });
@@ -198,7 +235,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
   children,
   allowedElements,
   unwrapDisallowed,
-  canHavePins,
+  canHaveInteractiveElements,
   ...rest
 }) => {
   const components: Partial<Components> = useMemo(() => {
@@ -217,8 +254,8 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <MarkdownCodeBlock {...props} {...rest} />;
       },
       p({ color: _color, ref: _ref, node: _node, ...props }) {
-        if (canHavePins) {
-          return <MaybePinButton {...props} />;
+        if (canHaveInteractiveElements) {
+          return <MaybeInteractiveElement {...props} />;
         }
         return <Text as="p" {...props} />;
       },
@@ -291,7 +328,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <Table.Cell {...props} />;
       },
     };
-  }, [rest, canHavePins]);
+  }, [rest, canHaveInteractiveElements]);
   return (
     <ReactMarkdown
       className={styles.markdown}
