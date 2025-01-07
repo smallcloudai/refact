@@ -176,11 +176,8 @@ impl ScratchpadAbstract for ChatPassthrough {
                     let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &self.post.meta.chat_id).await?;
                     tracing::info!("Calling tools on port: {}", port);
                     let tool_desclist: Vec<Value> = http_get_json(&format!("http://localhost:{port}/v1/tools")).await?;
-                    tracing::info!("Got response: {:?}", tool_desclist.iter().filter(|tool_desc| {
-                        tool_desc.get("name").and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
-                    }).collect::<Vec<_>>());
                     Some(tool_desclist.into_iter().filter(|tool_desc| {
-                        tool_desc.get("name").and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
+                        tool_desc.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
                     }).collect::<Vec<_>>())
                 } else {
                     let allow_experimental = gcx.read().await.cmdline.experimental;
