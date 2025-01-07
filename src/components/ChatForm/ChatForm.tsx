@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -33,7 +33,12 @@ import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachFileButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
-import { selectIsStreaming, selectIsWaiting } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+} from "../../features/Chat";
+import { isAssistantMessage } from "../../services/refact/types";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -56,6 +61,17 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const { disableInput } = useAgentUsage();
+  const isOnline = useIsOnline();
+  const messages = useAppSelector(selectMessages);
+
+  const disableSend = useMemo(() => {
+    // TODO: if interrupting chat some errors can occur
+    if (messages.length === 0) return false;
+    const lastMessage = messages[messages.length - 1];
+    return (
+      isAssistantMessage(lastMessage) && (isWaiting || isStreaming || !isOnline)
+    );
+  }, [isOnline, isStreaming, isWaiting, messages]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
@@ -97,8 +113,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const refs = useTourRefs();
 
-  const isOnline = useIsOnline();
-
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (disableInput) {
@@ -106,7 +120,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
       );
       dispatch(action);
-    } else if (trimmedValue.length > 0 && !isStreaming && isOnline) {
+    } else if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(
         trimmedValue,
         checkboxes,
@@ -121,8 +135,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }, [
     value,
     disableInput,
-    isStreaming,
-    isOnline,
+    disableSend,
     dispatch,
     checkboxes,
     config.features?.vecdb,
@@ -237,9 +250,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           </Flex>
         )}
         <Form
-          disabled={isStreaming || !isOnline}
+          disabled={disableSend}
           className={className}
-          onSubmit={() => handleSubmit()}
+          onSubmit={handleSubmit}
         >
           <FilesPreview files={previewFiles} />
 
@@ -259,7 +272,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               <TextArea
                 data-testid="chat-form-textarea"
                 required={true}
-                disabled={isStreaming}
+                // disabled={isStreaming}
                 {...props}
                 autoFocus={true}
                 style={{ boxShadow: "none", outline: "none" }}
@@ -279,7 +292,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             {config.features?.images !== false && <AttachFileButton />}
             {/* TODO: Reserved space for microphone button coming later on */}
             <PaperPlaneButton
-              disabled={isStreaming || !isOnline || disableInput}
+              disabled={disableSend || disableInput}
               title="send"
               size="1"
               type="submit"
