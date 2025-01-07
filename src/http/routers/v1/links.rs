@@ -1,7 +1,10 @@
 use std::sync::Arc;
+use std::fs;
+use std::path::PathBuf;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
@@ -27,6 +30,7 @@ enum LinkAction {
     PatchAll,
     FollowUp,
     Commit,
+    GitInit,
     Goto,
     SummarizeProject,
     PostChat,
@@ -104,6 +108,26 @@ pub async fn handle_v1_links(
                 link_tooltip: format!(""),
                 ..Default::default()
             });
+        }
+    }
+    
+    // GIT Init
+    if post.meta.chat_mode == ChatMode::AGENT && post.messages.is_empty() {
+        if let Some(path) = crate::files_correction::get_active_project_path(gcx.clone()).await {
+            let path_has_vcs = {
+                let cx_locked = gcx.write().await;
+                let x = cx_locked.documents_state.workspace_vcs_roots.lock().unwrap().iter().contains(&path); x
+            };
+            if !path_has_vcs {
+                links.push(Link {
+                    link_action: LinkAction::GitInit,
+                    link_text: format!("Initialize git in the `{}`", path.to_string_lossy().to_string()),
+                    link_goto: Some("LINKS_AGAIN".to_string()),
+                    link_summary_path: None,
+                    link_tooltip: format!("git init {}", path.to_string_lossy().to_string()),
+                    ..Default::default()
+                });
+            }
         }
     }
 
