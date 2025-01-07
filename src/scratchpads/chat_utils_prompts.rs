@@ -2,7 +2,6 @@ use std::fs;
 use std::sync::Arc;
 use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
-use tracing::info;
 
 use crate::call_validation;
 use crate::global_context::GlobalContext;
@@ -235,7 +234,6 @@ pub async fn prepend_system_prompt_and_maybe_more_initial_messages_from_remote(
     let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_meta.chat_id).await?;
     let url = format!("http://localhost:{port}/v1/prepend-system-prompt-and-maybe-more-initial-messages");
     let response: PrependSystemPromptResponse = http_post_json(&url, &post).await?;
-    info!("prepend_the_right_system_prompt_and_maybe_more_initial_messages_from_remote response: {:?}", response);
 
     for msg in response.messages_to_stream_back {
         stream_back_to_user.push_in_json(msg);

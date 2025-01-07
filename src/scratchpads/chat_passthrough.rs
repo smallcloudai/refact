@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use indexmap::IndexMap;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
@@ -10,6 +11,8 @@ use tracing::{error, info};
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
+use crate::http::http_get_json;
+use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -108,7 +111,11 @@ impl ScratchpadAbstract for ChatPassthrough {
             (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
         };
         let style = self.post.style.clone();
-        let mut at_tools = tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?;
+        let mut at_tools = if !should_execute_remotely { 
+            tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?
+        } else {
+            IndexMap::new()
+        };
 
         let messages = if self.prepend_system_prompt && self.allow_at {
             prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
@@ -164,10 +171,22 @@ impl ScratchpadAbstract for ChatPassthrough {
                         None
                     }
                 }).collect::<Vec<String>>();
-                let allow_experimental = gcx.read().await.cmdline.experimental;
                 // and take descriptions of tools from the official source
-                let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
-                Some(tool_descriptions.into_iter().map(|x|x.into_openai_style()).collect::<Vec<_>>())
+                if should_execute_remotely {
+                    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &self.post.meta.chat_id).await?;
+                    tracing::info!("Calling tools on port: {}", port);
+                    let tool_desclist: Vec<Value> = http_get_json(&format!("http://localhost:{port}/v1/tools")).await?;
+                    tracing::info!("Got response: {:?}", tool_desclist.iter().filter(|tool_desc| {
+                        tool_desc.get("name").and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
+                    }).collect::<Vec<_>>());
+                    Some(tool_desclist.into_iter().filter(|tool_desc| {
+                        tool_desc.get("name").and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
+                    }).collect::<Vec<_>>())
+                } else {
+                    let allow_experimental = gcx.read().await.cmdline.experimental;
+                    let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
+                    Some(tool_descriptions.into_iter().map(|x: crate::tools::tools_description::ToolDesc|x.into_openai_style()).collect::<Vec<_>>())
+                }
             } else {
                 None
             };
