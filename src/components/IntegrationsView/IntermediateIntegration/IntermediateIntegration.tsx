@@ -83,7 +83,8 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
         </Text>
       )}
       <Text size="2" color="gray">
-        Choose where you want to configure your integration:
+        Where do you want to configure this integration? Any project that has
+        version control can have its own integrations configured.
       </Text>
       <form onSubmit={handleSubmit} id={`form-${integration.integr_name}`}>
         <Flex gap="5" direction="column" width="100%">
