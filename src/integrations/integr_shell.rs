@@ -125,7 +125,7 @@ impl Tool for ToolShell {
             name: "shell".to_string(),
             agentic: true,
             experimental: false,
-            description: "Execute a single command, using the \"sh\" on unix-like systems and \"cmd.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
+            description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "command".to_string(),
@@ -195,8 +195,8 @@ pub async fn execute_shell_command(
     env_variables: &HashMap<String, String>,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<String, String> {
-    let shell = if cfg!(target_os = "windows") { "cmd.exe" } else { "sh" };
-    let shell_arg = if cfg!(target_os = "windows") { "/C" } else { "-c" };
+    let shell = if cfg!(target_os = "windows") { "powershell.exe" } else { "sh" };
+    let shell_arg = if cfg!(target_os = "windows") { "-Command" } else { "-c" };
     let mut cmd = Command::new(shell);
 
     if let Some(workdir) = workdir_maybe {
