@@ -336,12 +336,40 @@ pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String
 pub async fn get_config_dirs(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (Vec<PathBuf>, PathBuf) {
-    let (global_config_dir, workspace_folders_arc, _integrations_yaml) = {
+    let (global_config_dir, workspace_folders_arc, workspace_vcs_roots_arc, _integrations_yaml) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_folders.clone(), gcx_locked.cmdline.integrations_yaml.clone())
+        (
+            gcx_locked.config_dir.clone(),
+            gcx_locked.documents_state.workspace_folders.clone(),
+            gcx_locked.documents_state.workspace_vcs_roots.clone(),
+            gcx_locked.cmdline.integrations_yaml.clone(),
+        )
     };
-    let mut config_dirs = workspace_folders_arc.lock().unwrap().clone();
-    config_dirs = config_dirs.iter().map(|dir| dir.join(".refact")).collect();
+
+    let workspace_folders = workspace_folders_arc.lock().unwrap().clone();
+    let workspace_vcs_roots = workspace_vcs_roots_arc.lock().unwrap().clone();
+
+    let mut config_dirs = Vec::new();
+
+    for folder in workspace_folders {
+        let vcs_roots: Vec<PathBuf> = workspace_vcs_roots
+            .iter()
+            .filter(|root| root.starts_with(&folder))
+            .cloned()
+            .collect();
+
+        if !vcs_roots.is_empty() {
+            // it has any workspace_vcs_roots => take them as projects
+            for root in vcs_roots {
+                config_dirs.push(root.join(".refact"));
+            }
+        } else {
+            // it doesn't => use workspace_folder itself
+            // probably we see this because it's a new project that doesn't have version control yet, but added to the workspace already
+            config_dirs.push(folder.join(".refact"));
+        }
+    }
+
     (config_dirs, global_config_dir)
 }
 
