@@ -43,8 +43,7 @@ import { extractFilePathFromPin } from "../../utils";
 
 import { telemetryApi } from "../../services/refact/telemetry";
 import { ChatLinkButton } from "../ChatLinks";
-import { ChatLink } from "../../services/refact";
-import { toPascalCase } from "../../utils/toPascalCase";
+import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -185,21 +184,9 @@ const PuzzleLink: React.FC<{
   children: string;
 }> = ({ children }) => {
   const { handleLinkAction } = useLinksFromLsp();
-  const puzzleLinkPayload = children.slice(2);
-  if (!puzzleLinkPayload) return children;
+  const link = extractLinkFromPuzzle(children);
 
-  const [_linkType, linkPath] = puzzleLinkPayload.split(":");
-
-  if (!linkPath) return children;
-
-  const linkLabel = `🧩 Setup ${toPascalCase(linkPath)}`;
-
-  const link: ChatLink = {
-    link_action: "goto",
-    link_text: linkLabel,
-    link_goto: puzzleLinkPayload,
-    link_tooltip: linkLabel,
-  };
+  if (!link) return children;
 
   return (
     <Flex direction="column" align="start" gap="2" mt="2">
