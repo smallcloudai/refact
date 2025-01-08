@@ -1012,7 +1012,13 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
                       align="start"
                     >
                       <Heading as="h4" size="3">
-                        <Flex align="start" gap="3" justify="center">
+                        <Flex
+                          align="start"
+                          gapX="3"
+                          gapY="1"
+                          justify="start"
+                          wrap="wrap"
+                        >
                           ⚙️ In
                           <Markdown>{formattedProjectName}</Markdown>
                           configured {integrations.length}{" "}
