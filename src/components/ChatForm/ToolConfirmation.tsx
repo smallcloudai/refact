@@ -1,5 +1,4 @@
 import React from "react";
-import type { PauseReason } from "../../features/ToolConfirmation/confirmationSlice";
 import {
   useAppDispatch,
   useSendChatRequest,
@@ -10,9 +9,10 @@ import { Markdown } from "../Markdown";
 import { Link } from "../Link";
 import styles from "./ToolConfirmation.module.css";
 import { push } from "../../features/Pages/pagesSlice";
+import { ToolConfirmationPauseReason } from "../../services/refact";
 
 type ToolConfirmationProps = {
-  pauseReasons: PauseReason[];
+  pauseReasons: ToolConfirmationPauseReason[];
 };
 
 const getConfirmationalMessage = (
@@ -53,12 +53,17 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
 }) => {
   const dispatch = useAppDispatch();
 
-  // const { openIntegrationsFile } = useEventsBusForIDE();
-
   const commands = pauseReasons.map((reason) => reason.command);
   const rules = pauseReasons.map((reason) => reason.rule);
   const types = pauseReasons.map((reason) => reason.type);
   const toolCallIds = pauseReasons.map((reason) => reason.tool_call_id);
+
+  const integrationPaths = pauseReasons.map(
+    (reason) => reason.integr_config_path,
+  );
+
+  // assuming that at least one path out of all objects is not null so we can show up the link
+  const maybeIntegrationPath = integrationPaths.find((path) => path !== null);
 
   const allConfirmational = types.every((type) => type === "confirmation");
   const confirmationalCommands = commands.filter(
@@ -96,16 +101,24 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
           ))}
           <Text className={styles.ToolConfirmationText}>
             <Markdown>{message.concat("\n\n")}</Markdown>
-            <Text className={styles.ToolConfirmationText} mt="3">
-              You can modify the ruleset on{" "}
-              <Link
-                onClick={() => {
-                  dispatch(push({ name: "integrations page" }));
-                }}
-              >
-                Configuration Page
-              </Link>
-            </Text>
+            {maybeIntegrationPath && (
+              <Text className={styles.ToolConfirmationText} mt="3">
+                You can modify the ruleset on{" "}
+                <Link
+                  onClick={() => {
+                    dispatch(
+                      push({
+                        name: "integrations page",
+                        integrationPath: maybeIntegrationPath,
+                        wasOpenedThroughChat: true,
+                      }),
+                    );
+                  }}
+                >
+                  Configuration Page
+                </Link>
+              </Text>
+            )}
           </Text>
         </Flex>
         <Flex align="end" justify="start" gap="2" direction="row">

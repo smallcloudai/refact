@@ -2,6 +2,7 @@ import { RootState } from "../../app/store";
 import { AT_TOOLS_AVAILABLE_URL, TOOLS_CHECK_CONFIRMATION } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { ToolCall } from "./types";
+import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 export const toolsApi = createApi({
   reducerPath: "tools",
@@ -52,12 +53,16 @@ export const toolsApi = createApi({
         const getState = api.getState as () => RootState;
         const state = getState();
         const port = state.config.lspPort;
+        const messages = state.chat.thread.messages;
+        const messagesForLsp = formatMessagesForLsp(messages);
+
         const url = `http://127.0.0.1:${port}${TOOLS_CHECK_CONFIRMATION}`;
         const result = await baseQuery({
           url,
           method: "POST",
           body: {
             tool_calls: tool_calls,
+            messages: messagesForLsp,
           },
           credentials: "same-origin",
           redirect: "follow",
@@ -100,14 +105,17 @@ export type ToolCommand = {
   type: "function";
 };
 
+export type ToolConfirmationPauseReason = {
+  type: "confirmation" | "denial";
+  command: string;
+  rule: string;
+  tool_call_id: string;
+  integr_config_path: string | null;
+};
+
 export type ToolConfirmationResponse = {
   pause: boolean;
-  pause_reasons: {
-    type: "confirmation" | "denial";
-    command: string;
-    rule: string;
-    tool_call_id: string;
-  }[];
+  pause_reasons: ToolConfirmationPauseReason[];
 };
 
 function isToolCommand(tool: unknown): tool is ToolCommand {

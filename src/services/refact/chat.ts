@@ -144,6 +144,7 @@ export async function sendChat({
       // TODO: pass this through
       chat_mode: mode ?? "EXPLORE",
       // chat_mode: "EXPLORE", // NOTOOLS, EXPLORE, AGENT, CONFIGURE, PROJECTSUMMARY,
+      // TODO: not clear, that if we set integration.path it's going to be set also in meta as current_config_file
       ...(integration?.path ? { current_config_file: integration.path } : {}),
     },
   });
