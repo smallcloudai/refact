@@ -41,6 +41,7 @@ describe("Pin messages", () => {
           streaming: false,
           error: null,
           waiting_for_response: false,
+          max_new_tokens: 4096,
           cache: {},
           system_prompt: {},
           tool_use: "explore",
