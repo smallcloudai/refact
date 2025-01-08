@@ -41,7 +41,7 @@ type StreamArgs =
 type SendChatArgs = {
   messages: LspChatMessage[];
   model: string;
-  completion_context_size: number;
+  max_new_tokens: number;
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
@@ -112,7 +112,7 @@ export async function sendChat({
   model,
   abortSignal,
   stream,
-  completion_context_size,
+  max_new_tokens,
   // lspUrl,
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
@@ -140,7 +140,7 @@ export async function sendChat({
     model: model,
     stream,
     tools,
-    max_tokens: completion_context_size,
+    max_tokens: max_new_tokens,
     only_deterministic_messages,
     tools_confirmation: toolsConfirmed,
     // chat_id,

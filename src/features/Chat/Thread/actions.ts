@@ -281,7 +281,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       tools,
       stream: true,
       abortSignal: thunkAPI.signal,
-      completion_context_size: state.chat.max_new_tokens,
+      max_new_tokens: state.chat.max_new_tokens,
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,
