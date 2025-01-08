@@ -36,6 +36,7 @@ pub struct SettingsPdb {
 pub struct ToolPdb {
     pub common:  IntegrationCommon,
     pub settings_pdb: SettingsPdb,
+    pub config_path: String,
 }
 
 pub struct PdbSession {
@@ -71,7 +72,7 @@ impl IntegrationSession for PdbSession
 impl IntegrationTrait for ToolPdb {
     fn as_any(&self) -> &dyn Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsPdb>(value.clone()) {
             Ok(settings_pdb) => {
                 info!("PDB settings applied: {:?}", settings_pdb);
@@ -89,6 +90,7 @@ impl IntegrationTrait for ToolPdb {
                 return Err(e.to_string());
             }
         };
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -103,7 +105,8 @@ impl IntegrationTrait for ToolPdb {
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolPdb {
             common: self.common.clone(),
-            settings_pdb: self.settings_pdb.clone()
+            settings_pdb: self.settings_pdb.clone(),
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 
@@ -208,8 +211,12 @@ impl Tool for ToolPdb {
         unsafe { &mut DEFAULT_USAGE }
     }
 
-    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(self.integr_common().confirmation)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 
@@ -275,8 +282,8 @@ async fn start_pdb_session(
         tracing::warn!("no working directory, using whatever directory this binary is run :/");
     }
 
-    let mut process = process_command.spawn().map_err(|e| { 
-        error!("Failed to start pdb process: {}", e); 
+    let mut process = process_command.spawn().map_err(|e| {
+        error!("Failed to start pdb process: {}", e);
         e.to_string()
     })?;
 

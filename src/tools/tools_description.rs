@@ -49,7 +49,8 @@ pub trait Tool: Send + Sync {
         })?;
 
         if !command_to_match.is_empty() {
-            if let Some(rules) = &self.confirmation_info() {
+            if let Some(rules) = &self.confirm_deny_rules() {
+                tracing::info!("confirmation: match {:?} against {:?}", command_to_match, rules);
                 let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.deny);
                 if is_denied {
                     return Ok(MatchConfirmDeny {
@@ -66,6 +67,8 @@ pub trait Tool: Send + Sync {
                         rule: confirmation_rule.clone(),
                     });
                 }
+            } else {
+                tracing::error!("No confirmation info available for {:?}", command_to_match);
             }
         }
         Ok(MatchConfirmDeny {
@@ -82,10 +85,14 @@ pub trait Tool: Send + Sync {
         Ok("".to_string())
     }
 
-    fn confirmation_info(
+    fn confirm_deny_rules(
         &self,
     ) -> Option<IntegrationConfirmation> {
         None
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        return None;
     }
 
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"

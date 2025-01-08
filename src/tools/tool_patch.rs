@@ -14,6 +14,7 @@ use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
 use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
 use crate::tools::tools_description::Tool;
 use crate::tools::tools_execute::unwrap_subchat_params;
+use crate::integrations::integr_abstract::IntegrationConfirmation;
 
 
 pub struct ToolPatch {
@@ -224,6 +225,20 @@ impl Tool for ToolPatch {
             .map(|x| ContextEnum::ChatMessage(x))
             .collect::<Vec<_>>();
         Ok((false, results))
+    }
+
+    fn command_to_match_against_confirm_deny(
+        &self,
+        _args: &HashMap<String, Value>,
+    ) -> Result<String, String> {
+        Ok("patch".to_string())
+    }
+
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
+        return Some(IntegrationConfirmation {
+            ask_user: vec!["patch*".to_string()],
+            deny: vec![],
+        });
     }
 
     fn usage(&mut self) -> &mut Option<ChatUsage> {

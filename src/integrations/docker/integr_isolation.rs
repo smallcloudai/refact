@@ -28,7 +28,7 @@ pub struct IntegrationIsolation {
 impl IntegrationTrait for IntegrationIsolation {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, _config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsIsolation>(value.clone()) {
             Ok(settings_isolation) => {
                 tracing::info!("Isolation settings applied: {:?}", settings_isolation);

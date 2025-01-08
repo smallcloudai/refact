@@ -274,7 +274,7 @@ pub async fn get_vars_for_replacements(
         (gcx_locked.config_dir.clone(), gcx_locked.cmdline.variables_yaml.clone())
     };
     let secrets_yaml_path = config_dir.join("secrets.yaml");
-    let variables_yaml_path = if variables_yaml.is_empty() { 
+    let variables_yaml_path = if variables_yaml.is_empty() {
         config_dir.join("variables.yaml")
     } else {
         crate::files_correction::to_pathbuf_normalize(&variables_yaml)
@@ -393,16 +393,13 @@ pub async fn integration_config_get(
 ) -> Result<IntegrationGetResult, String> {
     let sanitized_path = crate::files_correction::canonical_path(&integr_config_path);
     let exists = sanitized_path.exists();
-    let integr_name = sanitized_path.file_stem().and_then(|s| s.to_str()).unwrap_or_default().to_string();
-    if integr_name.is_empty() {
-        return Err(format!("can't derive integration name from file name"));
-    }
 
     let (integr_name, project_path) = split_path_into_project_and_integration(&sanitized_path)?;
+    let better_integr_config_path = sanitized_path.to_string_lossy().to_string();
     let mut result = IntegrationGetResult {
         project_path: project_path.clone(),
         integr_name: integr_name.clone(),
-        integr_config_path: integr_config_path.clone(),
+        integr_config_path: better_integr_config_path.clone(),
         integr_config_exists: exists,
         integr_schema: serde_json::Value::Null,
         integr_values: serde_json::Value::Null,
@@ -422,16 +419,16 @@ pub async fn integration_config_get(
                 match serde_yaml::from_str::<serde_yaml::Value>(&content) {
                     Ok(y) => {
                         let j = serde_json::to_value(y).unwrap();
-                        match integration_box.integr_settings_apply(&j) {
+                        match integration_box.integr_settings_apply(&j, better_integr_config_path.clone()) {
                             Ok(_) => {
                             }
                             Err(err) => {
                                 result.error_log.push(YamlError {
-                                    integr_config_path: integr_config_path.clone(),
+                                    integr_config_path: better_integr_config_path.clone(),
                                     error_line: 0,
                                     error_msg: err.to_string(),
                                 });
-                                tracing::warn!("cannot deserialize some fields in the integration cfg {integr_config_path}: {err}");
+                                tracing::warn!("cannot deserialize some fields in the integration cfg {better_integr_config_path}: {err}");
                             }
                         }
                         let common_settings = integration_box.integr_common();
@@ -443,11 +440,11 @@ pub async fn integration_config_get(
                     }
                     Err(err) => {
                         result.error_log.push(YamlError {
-                            integr_config_path: integr_config_path.clone(),
+                            integr_config_path: better_integr_config_path.clone(),
                             error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
                             error_msg: err.to_string(),
                         });
-                        tracing::warn!("cannot parse {integr_config_path}: {err}");
+                        tracing::warn!("cannot parse {better_integr_config_path}: {err}");
                         return Ok(result);
                     }
                 };
@@ -470,7 +467,7 @@ pub async fn integration_config_save(
     let mut integration_box = crate::integrations::integration_from_name(integr_name.as_str())
         .map_err(|e| format!("Failed to load integrations: {}", e))?;
 
-    integration_box.integr_settings_apply(integr_values)?;  // this will produce "no field XXX" errors
+    integration_box.integr_settings_apply(integr_values, integr_config_path.clone())?;  // this will produce "no field XXX" errors
     let mut sanitized_json: serde_json::Value = integration_box.integr_settings_as_json();
     let common_settings = integration_box.integr_common();
     if let (Value::Object(sanitized_json_m), Value::Object(common_settings_m)) = (&mut sanitized_json, json!(common_settings)) {

@@ -27,12 +27,13 @@ pub struct ToolService {
     pub common:  IntegrationCommon,
     pub name: String,
     pub cfg: CmdlineToolConfig,
+    pub config_path: String,
 }
 
 impl IntegrationTrait for ToolService {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &serde_json::Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {
@@ -47,6 +48,7 @@ impl IntegrationTrait for ToolService {
                 return Err(e.to_string());
             }
         }
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -63,6 +65,7 @@ impl IntegrationTrait for ToolService {
             common: self.common.clone(),
             name: integr_name.to_string(),
             cfg: self.cfg.clone(),
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 
@@ -335,8 +338,12 @@ impl Tool for ToolService {
         }
     }
 
-    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(self.integr_common().confirmation)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 

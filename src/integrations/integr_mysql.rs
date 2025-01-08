@@ -28,12 +28,13 @@ pub struct SettingsMysql {
 pub struct ToolMysql {
     pub common:  IntegrationCommon,
     pub settings_mysql: SettingsMysql,
+    pub config_path: String,
 }
 
 impl IntegrationTrait for ToolMysql {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsMysql>(value.clone()) {
             Ok(settings_mysql) => self.settings_mysql = settings_mysql,
             Err(e) => {
@@ -48,6 +49,7 @@ impl IntegrationTrait for ToolMysql {
                 return Err(e.to_string());
             }
         }
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -62,13 +64,14 @@ impl IntegrationTrait for ToolMysql {
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolMysql {
             common: self.common.clone(),
-            settings_mysql: self.settings_mysql.clone()
+            settings_mysql: self.settings_mysql.clone(),
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 
     fn integr_schema(&self) -> &str
     {
-      MYSQL_INTEGRATION_SCHEMA
+        MYSQL_INTEGRATION_SCHEMA
     }
 }
 
@@ -163,8 +166,12 @@ impl Tool for ToolMysql {
         unsafe { &mut DEFAULT_USAGE }
     }
 
-    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(self.integr_common().confirmation)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 

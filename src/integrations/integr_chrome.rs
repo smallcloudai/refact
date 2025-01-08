@@ -73,6 +73,7 @@ pub struct ToolChrome {
     pub common: IntegrationCommon,
     pub settings_chrome: SettingsChrome,
     pub supports_clicks: bool,
+    pub config_path: String,
 }
 
 #[derive(Clone, Debug)]
@@ -150,7 +151,7 @@ impl IntegrationSession for ChromeSession
 impl IntegrationTrait for ToolChrome {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsChrome>(value.clone()) {
             Ok(settings_chrome) => self.settings_chrome = settings_chrome,
             Err(e) => {
@@ -165,6 +166,7 @@ impl IntegrationTrait for ToolChrome {
                 return Err(e.to_string());
             }
         }
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -181,6 +183,7 @@ impl IntegrationTrait for ToolChrome {
             common: self.common.clone(),
             settings_chrome: self.settings_chrome.clone(),
             supports_clicks: false,
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 
@@ -300,8 +303,12 @@ impl Tool for ToolChrome {
     }
 
 
-    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(self.integr_common().confirmation)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 

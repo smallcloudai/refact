@@ -47,12 +47,13 @@ impl SettingsDocker {
 pub struct ToolDocker {
     pub common:  IntegrationCommon,
     pub settings_docker: SettingsDocker,
+    pub config_path: String,
 }
 
 impl IntegrationTrait for ToolDocker {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsDocker>(value.clone()) {
             Ok(settings_docker) => {
                 tracing::info!("Docker settings applied: {:?}", settings_docker);
@@ -70,6 +71,7 @@ impl IntegrationTrait for ToolDocker {
                 return Err(e.to_string());
             }
         }
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -84,7 +86,8 @@ impl IntegrationTrait for ToolDocker {
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolDocker {
             common: self.common.clone(),
-            settings_docker: self.settings_docker.clone()
+            settings_docker: self.settings_docker.clone(),
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 
@@ -179,8 +182,12 @@ impl Tool for ToolDocker {
         Ok(command_args.join(" "))
     }
 
-    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(self.integr_common().confirmation)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 

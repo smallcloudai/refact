@@ -179,8 +179,8 @@ pub async fn scratchpad_interaction_not_stream_json(
                 match (x.get("message"), x.get("message").and_then(|msg| msg.get("content")), x.get("message").and_then(|msg| msg.get("content")).and_then(|content| content.as_str())) {
                     (Some(_), Some(_), Some(content)) => content.to_string(),
                     (msg, content, as_str) => {
-                        tracing::error!(
-                            "Failed to get message content: msg={:?}, content={:?}, as_str={:?}",
+                        tracing::info!(
+                            "no text content: msg={:?}, content={:?}, as_str={:?}",
                             msg, content, as_str
                         );
                         "".to_string()

@@ -28,12 +28,13 @@ pub struct SettingsPostgres {
 pub struct ToolPostgres {
     pub common:  IntegrationCommon,
     pub settings_postgres: SettingsPostgres,
+    pub config_path: String,
 }
 
 impl IntegrationTrait for ToolPostgres {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsPostgres>(value.clone()) {
             Ok(settings_postgres) => self.settings_postgres = settings_postgres,
             Err(e) => {
@@ -48,6 +49,7 @@ impl IntegrationTrait for ToolPostgres {
                 return Err(e.to_string());
             }
         }
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -62,7 +64,8 @@ impl IntegrationTrait for ToolPostgres {
     fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
         Box::new(ToolPostgres {
             common: self.common.clone(),
-            settings_postgres: self.settings_postgres.clone()
+            settings_postgres: self.settings_postgres.clone(),
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 
@@ -162,8 +165,12 @@ impl Tool for ToolPostgres {
         unsafe { &mut DEFAULT_USAGE }
     }
 
-    fn confirmation_info(&self) -> Option<IntegrationConfirmation> {
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(self.integr_common().confirmation)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 

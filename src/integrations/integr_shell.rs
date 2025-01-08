@@ -32,6 +32,7 @@ pub struct SettingsShell {
 pub struct ToolShell {
     pub common: IntegrationCommon,
     pub cfg: SettingsShell,
+    pub config_path: String,
 }
 
 impl IntegrationTrait for ToolShell {
@@ -42,7 +43,7 @@ impl IntegrationTrait for ToolShell {
         SHELL_INTEGRATION_SCHEMA
     }
 
-    fn integr_settings_apply(&mut self, value: &Value) -> Result<(), String> {
+    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsShell>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {
@@ -57,6 +58,7 @@ impl IntegrationTrait for ToolShell {
                 return Err(e.to_string());
             }
         }
+        self.config_path = config_path;
         Ok(())
     }
 
@@ -72,6 +74,7 @@ impl IntegrationTrait for ToolShell {
         Box::new(ToolShell {
             common: self.common.clone(),
             cfg: self.cfg.clone(),
+            config_path: self.config_path.clone(),
         }) as Box<dyn Tool + Send>
     }
 }
@@ -152,7 +155,7 @@ impl Tool for ToolShell {
         if command_to_match.is_empty() {
             return Err("Empty command to match".to_string());
         }
-        if let Some(rules) = &self.confirmation_info() {
+        if let Some(rules) = &self.confirm_deny_rules() {
             let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.deny);
             if is_denied {
                 return Ok(MatchConfirmDeny {
@@ -176,6 +179,10 @@ impl Tool for ToolShell {
     ) -> Result<String, String> {
         let (command, _) = parse_args(args)?;
         Ok(command)
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
     }
 }
 

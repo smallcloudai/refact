@@ -37,6 +37,7 @@ struct PauseReason {
     command: String,
     rule: String,
     tool_call_id: String,
+    integr_config_path: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -127,28 +128,35 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             }
         };
 
-        let result = {
+        let should_confirm = {
             let tool_locked = tool.lock().await;
             tool_locked.match_against_confirm_deny(&args)
         }.map_err(|e| {
             ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
         })?;
 
-        match result.result {
+        let has_config_path = {
+            let tool_locked = tool.lock().await;
+            tool_locked.has_config_path()
+        };
+
+        match should_confirm.result {
             MatchConfirmDenyResult::DENY => {
                 result_messages.push(PauseReason {
                     reason_type: PauseReasonType::Denial,
-                    command: result.command.clone(),
-                    rule: result.rule.clone(),
+                    command: should_confirm.command.clone(),
+                    rule: should_confirm.rule.clone(),
                     tool_call_id: tool_call.id.clone(),
+                    integr_config_path: has_config_path,
                 });
             },
             MatchConfirmDenyResult::CONFIRMATION => {
                 result_messages.push(PauseReason {
                     reason_type: PauseReasonType::Confirmation,
-                    command: result.command.clone(),
-                    rule: result.rule.clone(),
+                    command: should_confirm.command.clone(),
+                    rule: should_confirm.rule.clone(),
                     tool_call_id: tool_call.id.clone(),
+                    integr_config_path: has_config_path,
                 });
             },
             _ => {},
