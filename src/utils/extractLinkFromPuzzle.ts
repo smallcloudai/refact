@@ -17,12 +17,10 @@ export function extractLinkFromPuzzle(inputString: string): ChatLink | null {
 
   const linkLabel = `🧩 Setup ${toPascalCase(linkPayload)}`;
 
-  const link: ChatLink = {
+  return {
     link_action: "goto",
     link_text: linkLabel,
     link_goto: puzzleLinkGoto,
     link_tooltip: linkLabel,
   };
-
-  return link;
 }
