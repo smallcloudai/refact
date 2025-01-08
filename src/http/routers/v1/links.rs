@@ -32,6 +32,7 @@ enum LinkAction {
     Goto,
     SummarizeProject,
     PostChat,
+    RegenerateWithIncreasedContextSize,
 }
 
 #[derive(Default, Serialize, Debug)]
@@ -54,6 +55,22 @@ fn is_default_json_value(value: &serde_json::Value) -> bool {
 fn last_message_assistant_without_tools(messages: &Vec<ChatMessage>) -> bool {
     if let Some(m) = messages.last() {
         m.role == "assistant" && m.tool_calls.as_ref().map(|x| x.is_empty()).unwrap_or(true)
+    } else {
+        false
+    }
+}
+
+fn last_message_stripped_assistant(messages: &Vec<ChatMessage>) -> bool {
+    if let Some(m) = messages.last() {
+        m.role == "assistant" && m.finish_reason == Some("length".to_string())
+    } else {
+        false
+    }
+}
+
+fn last_message_have_pinned_messages(messages: &Vec<ChatMessage>) -> bool {
+    if let Some(m) = messages.last() {
+        m.role == "assistant" && m.content.content_text_only().contains("📍")
     } else {
         false
     }
@@ -174,6 +191,36 @@ pub async fn handle_v1_links(
             link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
             ..Default::default()
         });
+    }
+    
+    // RegenerateWithIncreasedContextSize
+    if last_message_stripped_assistant(&post.messages) {
+        links.push(Link {
+            link_action: LinkAction::RegenerateWithIncreasedContextSize,
+            link_text: format!("Regenerate last with increased token limit"),
+            link_goto: None,
+            link_summary_path: None,
+            link_tooltip: format!(""),
+            ..Default::default()
+        });
+        links.push(Link {
+            link_action: LinkAction::FollowUp,
+            link_text: "Continue the last message".to_string(),
+            link_goto: None,
+            link_summary_path: None,
+            link_tooltip: format!(""),
+            ..Default::default()
+        });
+        if last_message_have_pinned_messages(&post.messages) {
+            links.push(Link {
+                link_action: LinkAction::FollowUp,
+                link_text: "Split 📍 tickets into smaller parts ".to_string(),
+                link_goto: None,
+                link_summary_path: None,
+                link_tooltip: format!(""),
+                ..Default::default()
+            });
+        }
     }
 
     // Tool recommendations

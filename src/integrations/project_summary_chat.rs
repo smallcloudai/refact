@@ -51,6 +51,7 @@ pub async fn mix_project_summary_messages(
         tool_calls: None,
         tool_call_id: String::new(),
         usage: None,
+        ..Default::default()
     };
 
     if messages.len() == 1 {

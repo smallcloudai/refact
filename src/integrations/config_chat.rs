@@ -104,6 +104,7 @@ pub async fn mix_config_messages(
                 tool_calls: None,
                 tool_call_id: String::new(),
                 usage: None,
+                ..Default::default()
             }
         },
         Err(e) => {
@@ -132,6 +133,7 @@ pub async fn mix_config_messages(
         tool_calls: None,
         tool_call_id: String::new(),
         usage: None,
+        ..Default::default()
     };
     let system_message = ChatMessage {
         role: "system".to_string(),
@@ -141,6 +143,7 @@ pub async fn mix_config_messages(
         tool_calls: None,
         tool_call_id: String::new(),
         usage: None,
+        ..Default::default()
     };
 
     // Interestingly, here you can stream messages to user or not, and both options will work -- this function will be called or not called again the next chat call.

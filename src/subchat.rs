@@ -204,6 +204,7 @@ async fn chat_interaction_non_stream(
             tool_calls,
             tool_call_id,
             usage: usage_mb.clone(),
+            ..Default::default()
         };
         ch_results.extend(det_messages.clone());
         ch_results.push(msg);

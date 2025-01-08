@@ -284,6 +284,7 @@ impl<'de> Deserialize<'de> for ChatMessage {
             },
             None => ChatContent::SimpleText(String::new()),
         };
+        let finish_reason = value.get("finish_reason").and_then(|x| x.as_str().map(|x| x.to_string()));
 
         let tool_calls: Option<Vec<ChatToolCall>> = value.get("tool_calls")
             .and_then(|v| v.as_array())
@@ -295,6 +296,7 @@ impl<'de> Deserialize<'de> for ChatMessage {
         Ok(ChatMessage {
             role,
             content,
+            finish_reason,
             tool_calls,
             tool_call_id: tool_call_id.unwrap_or_default(),
             ..Default::default()
