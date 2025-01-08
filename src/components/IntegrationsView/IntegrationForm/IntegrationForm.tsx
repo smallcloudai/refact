@@ -247,6 +247,41 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 />
               </Flex>
             )}
+            {integration.data.integr_schema.smartlinks &&
+              integration.data.integr_schema.smartlinks.length > 0 && (
+                <Flex width="100%" direction="column" gap="2" mb="6">
+                  <Heading as="h4" size="3">
+                    Ask AI to do it for you (experimental)
+                  </Heading>
+                  <Flex align="center" gap="2" mt="2" wrap="wrap">
+                    {integration.data.integr_schema.smartlinks.map(
+                      (smartlink, index) => {
+                        return (
+                          <SmartLink
+                            key={`smartlink-${index}`}
+                            smartlink={smartlink}
+                            integrationName={
+                              integration.data?.integr_name ?? ""
+                            }
+                            integrationProject={
+                              integration.data?.project_path ?? ""
+                            }
+                            integrationPath={
+                              integration.data?.integr_config_path ?? ""
+                            }
+                            shouldBeDisabled={
+                              smartlink.sl_enable_only_with_tool
+                                ? integration.data?.integr_values === null ||
+                                  !shouldIntegrationFormBeDisabled
+                                : false
+                            }
+                          />
+                        );
+                      },
+                    )}
+                  </Flex>
+                </Flex>
+              )}
             <Grid gap="2" className={styles.gridContainer}>
               {Object.keys(importantFields).map((fieldKey) => {
                 if (integration.data) {
@@ -312,7 +347,13 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
               />
             </Flex>
           )}
-          <Flex justify="end" width="100%">
+          <Flex
+            justify="end"
+            width="100%"
+            position="fixed"
+            bottom="4"
+            right="8"
+          >
             <Flex gap="4">
               <Button
                 color="green"
@@ -340,37 +381,6 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           </Flex>
         </Flex>
       </form>
-      {integration.data.integr_schema.smartlinks &&
-        integration.data.integr_schema.smartlinks.length > 0 && (
-          <Flex width="100%" direction="column" gap="2" mt="4">
-            <Heading as="h4" size="3">
-              Ask AI to do it for you (experimental)
-            </Heading>
-            <Flex align="center" gap="2" mt="2" wrap="wrap">
-              {integration.data.integr_schema.smartlinks.map(
-                (smartlink, index) => {
-                  return (
-                    <SmartLink
-                      key={`smartlink-${index}`}
-                      smartlink={smartlink}
-                      integrationName={integration.data?.integr_name ?? ""}
-                      integrationProject={integration.data?.project_path ?? ""}
-                      integrationPath={
-                        integration.data?.integr_config_path ?? ""
-                      }
-                      shouldBeDisabled={
-                        smartlink.sl_enable_only_with_tool
-                          ? integration.data?.integr_values === null ||
-                            !shouldIntegrationFormBeDisabled
-                          : false
-                      }
-                    />
-                  );
-                },
-              )}
-            </Flex>
-          </Flex>
-        )}
       {integration.data.integr_schema.docker && (
         <Flex mt="6" direction="column" align="start" gap="5">
           <IntegrationDocker
