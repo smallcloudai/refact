@@ -370,6 +370,7 @@ pub async fn get_config_dirs(
         }
     }
 
+    config_dirs.sort();
     (config_dirs, global_config_dir)
 }
 
