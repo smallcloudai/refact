@@ -108,7 +108,6 @@ export const useSendChatRequest = () => {
   const sendMessages = useCallback(
     async (messages: ChatMessages, maybeMode?: LspChatMode) => {
       dispatch(setIsWaitingForResponse(true));
-
       let tools = await triggerGetTools(undefined).unwrap();
       // TODO: save tool use to state.chat
       // if (toolUse && isToolUse(toolUse)) {

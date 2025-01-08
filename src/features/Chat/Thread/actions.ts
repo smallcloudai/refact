@@ -275,19 +275,13 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
 
     const messagesForLsp = formatMessagesForLsp(messages);
     const realMode = mode ?? thread?.mode;
-    // Use increased completion size only once
-    const current_completion_context_size = state.chat.max_new_tokens;
-    if (current_completion_context_size != DEFAULT_MAX_NEW_TOKENS) {
-      state.chat.max_new_tokens = DEFAULT_MAX_NEW_TOKENS;
-    }
-
     return sendChat({
       messages: messagesForLsp,
       model: state.chat.thread.model,
       tools,
       stream: true,
       abortSignal: thunkAPI.signal,
-      completion_context_size: current_completion_context_size,
+      completion_context_size: state.chat.max_new_tokens,
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,
@@ -319,6 +313,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         return thunkAPI.rejectWithValue(err.message);
       })
       .finally(() => {
+        thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
       });
   },
