@@ -134,16 +134,9 @@ pub fn create_command_from_string(
     env_variables: &HashMap<String, String>,
     project_dirs: Vec<PathBuf>,
 ) -> Result<Command, String> {
-    let command_args = shell_words::split(cmd_string)
-        .map_err(|e| format!("Failed to parse command: {}", e))?;
-    if command_args.is_empty() {
-        return Err("Command is empty after parsing".to_string());
-    }
-    let mut cmd = Command::new(&command_args[0]);
-    if command_args.len() > 1 {
-        cmd.args(&command_args[1..]);
-    }
-    tracing::info!("command_args: {:?}", command_args);
+    let shell = if cfg!(target_os = "windows") { "powershell.exe" } else { "sh" };
+    let shell_arg = if cfg!(target_os = "windows") { "-Command" } else { "-c" };
+    let mut cmd = Command::new(shell);
 
     if command_workdir.is_empty() {
         if let Some(first_project_dir) = project_dirs.first() {
@@ -158,6 +151,13 @@ pub fn create_command_from_string(
     for (key, value) in env_variables {
         cmd.env(key, value);
     }
+
+    if cmd_string.is_empty() {
+        return Err("Command is empty".to_string());
+    }
+    cmd.arg(shell_arg).arg(cmd_string);
+    tracing::info!("command: {}", cmd_string);
+
     Ok(cmd)
 }
 
