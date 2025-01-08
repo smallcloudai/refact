@@ -266,15 +266,24 @@ impl Tool for ToolPatch {
     }
 
     async fn match_against_confirm_deny(&self, ccx: Arc<AMutex<AtCommandsContext>>, args: &HashMap<String, Value>) -> Result<MatchConfirmDeny, String> {
-        // if we cannot execute patch, there's no need for confirmation
-        if let Err(_) = can_execute_patch(ccx.clone(), args).await {
-            return Ok(MatchConfirmDeny {
-                result: MatchConfirmDenyResult::PASS,
-                command: "patch".to_string(),
-                rule: "".to_string(),
-            });
+        let msgs_len = ccx.lock().await.messages.len();
+
+        // workaround: if messages weren't passed by ToolsPermissionCheckPost, legacy
+        if msgs_len != 0 {
+            // if we cannot execute patch, there's no need for confirmation
+            if let Err(_) = can_execute_patch(ccx.clone(), args).await {
+                return Ok(MatchConfirmDeny {
+                    result: MatchConfirmDenyResult::PASS,
+                    command: "patch".to_string(),
+                    rule: "".to_string(),
+                });
+            }
         }
-        Tool::match_against_confirm_deny(self, ccx, args).await
+        Ok(MatchConfirmDeny {
+            result: MatchConfirmDenyResult::CONFIRMATION,
+            command: "patch".to_string(),
+            rule: "default".to_string(),
+        })
     }
 
     fn command_to_match_against_confirm_deny(

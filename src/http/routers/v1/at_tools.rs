@@ -21,6 +21,8 @@ use crate::tools::tools_execute::run_tools;
 #[derive(Serialize, Deserialize, Clone)]
 struct ToolsPermissionCheckPost {
     pub tool_calls: Vec<ChatToolCall>,
+    #[serde(default)]
+    pub messages: Vec<ChatMessage>,
 }
 
 #[derive(Serialize)]
@@ -101,7 +103,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
-        gcx.clone(), 1000, 1, false, vec![], "".to_string(), false
+        gcx.clone(), 1000, 1, false, post.messages.clone(), "".to_string(), false
     ).await)); // used only for should_confirm
 
     let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
