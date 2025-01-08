@@ -211,6 +211,7 @@ export function formatChatResponse(
           role: cur.delta.role,
           content: cur.delta.content,
           tool_calls: cur.delta.tool_calls,
+          finish_reason: cur.finish_reason,
         };
         return acc.concat([msg]);
       }
@@ -218,6 +219,7 @@ export function formatChatResponse(
       const message = {
         role: cur.delta.role,
         content: cur.delta.content,
+        finish_reason: cur.finish_reason,
       } as ChatMessage;
       return acc.concat([message]);
     }
@@ -231,6 +233,7 @@ export function formatChatResponse(
             role: "assistant",
             content: cur.delta.content ?? "",
             tool_calls: cur.delta.tool_calls,
+            finish_reason: cur.finish_reason,
           },
         ]);
       }
@@ -244,7 +247,12 @@ export function formatChatResponse(
         : lastMessage.content;
 
       return last.concat([
-        { role: "assistant", content: message, tool_calls: calls },
+        {
+          role: "assistant",
+          content: message,
+          tool_calls: calls,
+          finish_reason: cur.finish_reason,
+        },
       ]);
     }
 
@@ -261,13 +269,20 @@ export function formatChatResponse(
           role: "assistant",
           content: currentMessage + cur.delta.content,
           tool_calls: toolCalls,
+          finish_reason: cur.finish_reason,
         },
       ]);
     } else if (
       isAssistantDelta(cur.delta) &&
       typeof cur.delta.content === "string"
     ) {
-      return acc.concat([{ role: "assistant", content: cur.delta.content }]);
+      return acc.concat([
+        {
+          role: "assistant",
+          content: cur.delta.content,
+          finish_reason: cur.finish_reason,
+        },
+      ]);
     } else if (cur.delta.role === "assistant") {
       // empty message from JB
       return acc;
@@ -373,6 +388,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
           role: message.role,
           content: message.content,
           tool_calls: message.tool_calls ?? undefined,
+          finish_reason: message.finish_reason,
         },
       ]);
     }

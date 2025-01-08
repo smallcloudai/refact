@@ -142,6 +142,7 @@ export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
   tool_calls?: ToolCall[] | null;
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -327,7 +328,7 @@ type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
 
 export type ChatChoice = {
   delta: Delta;
-  finish_reason?: "stop" | "abort" | "tool_calls" | null;
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   index: number;
 };
 

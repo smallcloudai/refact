@@ -8,6 +8,7 @@ export type LspChatMessage =
       role: ChatRole;
       // TODO make this a union type for user message
       content: string | null;
+      finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
       // TBD: why was index omitted ?
       // tool_calls?: Omit<ToolCall, "index">[];
       tool_calls?: ToolCall[];
@@ -134,7 +135,7 @@ export async function sendChat({
     model: model,
     stream,
     tools,
-    max_tokens: 4096,
+    max_tokens: 8192,
     only_deterministic_messages,
     tools_confirmation: toolsConfirmed,
     // chat_id,
