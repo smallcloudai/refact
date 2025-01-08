@@ -27,6 +27,7 @@ import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
+import { resetConfirmationInteractedState } from "../features/ToolConfirmation/confirmationSlice";
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -51,6 +52,7 @@ startListening({
       commandsApi.util.resetApiState(),
       diffApi.util.resetApiState(),
       resetAttachedImagesSlice(),
+      resetConfirmationInteractedState(),
     ].forEach((api) => listenerApi.dispatch(api));
 
     listenerApi.dispatch(clearError());

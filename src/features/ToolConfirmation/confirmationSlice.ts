@@ -38,6 +38,11 @@ export const confirmationSlice = createSlice({
       state.pause = true;
       state.pauseReasons = action.payload;
     },
+    resetConfirmationInteractedState(state) {
+      state.status.wasInteracted = false;
+      state.pause = false;
+      state.pauseReasons = [];
+    },
     clearPauseReasonsAndHandleToolsStatus(
       state,
       action: PayloadAction<ConfirmationActionPayload>,
@@ -55,8 +60,11 @@ export const confirmationSlice = createSlice({
   },
 });
 
-export const { setPauseReasons, clearPauseReasonsAndHandleToolsStatus } =
-  confirmationSlice.actions;
+export const {
+  setPauseReasons,
+  resetConfirmationInteractedState,
+  clearPauseReasonsAndHandleToolsStatus,
+} = confirmationSlice.actions;
 export const {
   getPauseReasonsWithPauseStatus,
   getToolsConfirmationStatus,
