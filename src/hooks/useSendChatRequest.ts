@@ -156,6 +156,7 @@ export const useSendChatRequest = () => {
       threadMode,
       wasInteracted,
       areToolsConfirmed,
+      currentMessages,
       abortControllers,
       incrementIfLastMessageIsFromUser,
       triggerCheckForConfirmation,
