@@ -190,7 +190,7 @@ pub async fn run_tools(
 
         {
             let cmd_lock = cmd.lock().await;
-            match cmd_lock.match_against_confirm_deny(&args) {
+            match cmd_lock.match_against_confirm_deny(ccx.clone(), &args).await {
                 Ok(res) => {
                     match res.result {
                         MatchConfirmDenyResult::DENY => {

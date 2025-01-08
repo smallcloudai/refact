@@ -100,6 +100,10 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
     let post = serde_json::from_slice::<ToolsPermissionCheckPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
+    let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(), 1000, 1, false, vec![], "".to_string(), false
+    ).await)); // used only for should_confirm
+
     let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
         Ok(tools) => tools,
         Err(e) => {
@@ -130,7 +134,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
 
         let should_confirm = {
             let tool_locked = tool.lock().await;
-            tool_locked.match_against_confirm_deny(&args)
+            tool_locked.match_against_confirm_deny(ccx.clone(), &args).await
         }.map_err(|e| {
             ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
         })?;

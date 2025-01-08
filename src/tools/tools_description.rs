@@ -40,8 +40,9 @@ pub trait Tool: Send + Sync {
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String>;
 
-    fn match_against_confirm_deny(
+    async fn match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>
     ) -> Result<MatchConfirmDeny, String> {
         let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {

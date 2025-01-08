@@ -12,7 +12,7 @@ use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_t
 use crate::tools::tool_patch_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
 use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
 use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use crate::tools::tools_execute::unwrap_subchat_params;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 
@@ -123,6 +123,67 @@ fn return_cd_instruction_or_error(
     }
 }
 
+fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, String), String> {
+    let tickets = match args.get("tickets") {
+        Some(Value::String(s)) => s.split(",").map(|s| s.trim().to_string()).collect::<Vec<_>>(),
+        Some(v) => { return Err(format!("argument 'ticket' should be a string: {:?}", v)) }
+        None => { vec![] }
+    };
+    let path = match args.get("path") {
+        Some(Value::String(s)) => s.trim().to_string(),
+        Some(v) => { return Err(format!("argument 'path' should be a string: {:?}", v)) }
+        None => { return Err("argument 'path' is required".to_string()) }
+    };
+    if tickets.is_empty() {
+        return Err("`tickets` shouldn't be empty".to_string());
+    }
+    Ok((tickets, path))
+}
+
+async fn create_ccx(ccx: Arc<AMutex<AtCommandsContext>>, params: &SubchatParameters) -> Result<Arc<AMutex<AtCommandsContext>>, String> {
+    let ccx_lock = ccx.lock().await;
+    Ok(Arc::new(AMutex::new(AtCommandsContext::new(
+        ccx_lock.global_context.clone(),
+        params.subchat_n_ctx,
+        ccx_lock.top_n,
+        false,
+        ccx_lock.messages.clone(),
+        ccx_lock.chat_id.clone(),
+        ccx_lock.should_execute_remotely,
+    ).await)))
+}
+
+async fn can_execute_patch(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    args: &HashMap<String, Value>,
+) -> Result<(), String> {
+    let (tickets, path) = parse_args(args)?;
+    let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
+    let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
+
+    let (gcx, messages) = {
+        let ccx_lock = ccx_subchat.lock().await;
+        (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
+    };
+
+    let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages).await;
+
+    let active_tickets = get_and_correct_active_tickets(
+        gcx.clone(),
+        tickets.clone(),
+        all_tickets_from_above.clone()
+    ).await.map_err(|err| format!("Couldn't get active tickets from messages: {}", err.0))?;
+
+    if active_tickets.is_empty() {
+        return Err("no active tickets found".to_string());
+    }
+
+    if to_pathbuf_normalize(&active_tickets[0].filename_before) != to_pathbuf_normalize(&path) {
+        return Err("the filename of the ticket(s) you provided doesn't match the filename of the file you provided".to_string());
+    }
+
+    Ok(())
+}
 
 #[async_trait]
 impl Tool for ToolPatch {
@@ -134,34 +195,11 @@ impl Tool for ToolPatch {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let tickets = match args.get("tickets") {
-            Some(Value::String(s)) => s.split(",").map(|s| s.trim().to_string()).collect::<Vec<_>>(),
-            Some(v) => { return Err(format!("argument 'ticket' should be a string: {:?}", v)) }
-            None => { vec![] }
-        };
-        let path = match args.get("path") {
-            Some(Value::String(s)) => s.trim().to_string(),
-            Some(v) => { return Err(format!("argument 'path' should be a string: {:?}", v)) }
-            None => { return Err("argument 'path' is required".to_string()) }
-        };
-        if tickets.is_empty() {
-            return Err("`tickets` shouldn't be empty".to_string());
-        }
+        let (tickets, path) = parse_args(args)?;
+        let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
+        let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
 
         let mut usage = ChatUsage { ..Default::default() };
-        let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
-        let ccx_subchat = {
-            let ccx_lock = ccx.lock().await;
-            Arc::new(AMutex::new(AtCommandsContext::new(
-                ccx_lock.global_context.clone(),
-                params.subchat_n_ctx,
-                ccx_lock.top_n,
-                false,
-                ccx_lock.messages.clone(),
-                ccx_lock.chat_id.clone(),
-                ccx_lock.should_execute_remotely,
-            ).await))
-        };
 
         let (gcx, messages) = {
             let ccx_lock = ccx_subchat.lock().await;
@@ -225,6 +263,18 @@ impl Tool for ToolPatch {
             .map(|x| ContextEnum::ChatMessage(x))
             .collect::<Vec<_>>();
         Ok((false, results))
+    }
+
+    async fn match_against_confirm_deny(&self, ccx: Arc<AMutex<AtCommandsContext>>, args: &HashMap<String, Value>) -> Result<MatchConfirmDeny, String> {
+        // if we cannot execute patch, there's no need for confirmation
+        if let Err(_) = can_execute_patch(ccx.clone(), args).await {
+            return Ok(MatchConfirmDeny {
+                result: MatchConfirmDenyResult::PASS,
+                command: "patch".to_string(),
+                rule: "".to_string(),
+            });
+        }
+        Tool::match_against_confirm_deny(self, ccx, args).await
     }
 
     fn command_to_match_against_confirm_deny(
