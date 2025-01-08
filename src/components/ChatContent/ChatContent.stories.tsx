@@ -34,6 +34,7 @@ const MockedStore: React.FC<{
       streaming: false,
       prevent_send: false,
       waiting_for_response: false,
+      max_new_tokens: 4096,
       tool_use: "quick",
       send_immediately: false,
       error: null,

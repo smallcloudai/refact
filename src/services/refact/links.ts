@@ -19,7 +19,8 @@ type LinkActions =
   | "commit"
   | "goto"
   | "summarize-project"
-  | "post-chat";
+  | "post-chat"
+  | "regenerate-with-increased-context-size";
 
 export type ChatLink = BaseLink | CommitLink | PostChatLink;
 

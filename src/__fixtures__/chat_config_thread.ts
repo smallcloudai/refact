@@ -465,6 +465,7 @@ export const CHAT_CONFIG_THREAD: Chat = {
   error: null,
   prevent_send: true,
   waiting_for_response: false,
+  max_new_tokens: 4096,
   cache: {},
   system_prompt: {},
   tool_use: "agent",

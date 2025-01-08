@@ -6,6 +6,7 @@ import {
   isUserMessage,
   linksApi,
   type ChatLink,
+  INCREASED_MAX_NEW_TOKENS,
 } from "..//services/refact";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
@@ -20,6 +21,7 @@ import {
   selectModel,
   selectThreadMode,
   setIntegrationData,
+  setMaxNewTokens,
 } from "../features/Chat";
 import { useGoToLink } from "./useGoToLink";
 import { setError } from "../features/Errors/errorsSlice";
@@ -185,6 +187,14 @@ export function useLinksFromLsp() {
         submit({
           question: link.link_text,
           maybeMode: "PROJECT_SUMMARY",
+        });
+        return;
+      }
+
+      if (link.link_action === "regenerate-with-increased-context-size") {
+        dispatch(setMaxNewTokens(INCREASED_MAX_NEW_TOKENS));
+        submit({
+          maybeDropLastMessage: true,
         });
         return;
       }

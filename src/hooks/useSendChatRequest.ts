@@ -50,11 +50,23 @@ import {
 } from "../features/Chat";
 
 type SubmitHandlerParams =
-  | { question: string; maybeMode?: LspChatMode; maybeMessages?: undefined }
+  | {
+      question: string;
+      maybeMode?: LspChatMode;
+      maybeMessages?: undefined;
+      maybeDropLastMessage?: boolean;
+    }
+  | {
+      question?: undefined;
+      maybeMode?: LspChatMode;
+      maybeMessages?: undefined;
+      maybeDropLastMessage?: boolean;
+    }
   | {
       question?: undefined;
       maybeMode?: LspChatMode;
       maybeMessages: ChatMessage[];
+      maybeDropLastMessage?: boolean;
     };
 
 let recallCounter = 0;
@@ -189,10 +201,16 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    ({ question, maybeMode, maybeMessages }: SubmitHandlerParams) => {
-      if (!question && !maybeMessages) return;
-
+    ({
+      question,
+      maybeMode,
+      maybeMessages,
+      maybeDropLastMessage,
+    }: SubmitHandlerParams) => {
       let messages = messagesWithSystemPrompt;
+      if (maybeDropLastMessage) {
+        messages = messages.slice(0, -1);
+      }
 
       if (question) {
         const message = maybeAddImagesToQuestion(question);

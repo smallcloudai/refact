@@ -23,7 +23,11 @@ import {
 import type { AppDispatch, RootState } from "../../../app/store";
 import { type SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
-import { generateChatTitle, sendChat } from "../../../services/refact/chat";
+import {
+  DEFAULT_MAX_NEW_TOKENS,
+  generateChatTitle,
+  sendChat,
+} from "../../../services/refact/chat";
 import { ToolCommand } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
@@ -104,6 +108,10 @@ export const setIntegrationData = createAction<Partial<IntegrationMeta> | null>(
 
 export const setIsWaitingForResponse = createAction<boolean>(
   "chatThread/setIsWaiting",
+);
+
+export const setMaxNewTokens = createAction<number>(
+  "chatThread/setMaxNewTokens",
 );
 
 // TODO: This is the circular dep when imported from hooks :/
@@ -267,6 +275,11 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
 
     const messagesForLsp = formatMessagesForLsp(messages);
     const realMode = mode ?? thread?.mode;
+    // Use increased completion size only once
+    const current_completion_context_size = state.chat.max_new_tokens;
+    if (current_completion_context_size != DEFAULT_MAX_NEW_TOKENS) {
+      state.chat.max_new_tokens = DEFAULT_MAX_NEW_TOKENS;
+    }
 
     return sendChat({
       messages: messagesForLsp,
@@ -274,6 +287,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       tools,
       stream: true,
       abortSignal: thunkAPI.signal,
+      completion_context_size: current_completion_context_size,
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,

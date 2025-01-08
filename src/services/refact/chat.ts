@@ -3,6 +3,9 @@ import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
 import { ChatRole, ToolCall, ToolResult, UserMessage } from "./types";
 
+export const DEFAULT_MAX_NEW_TOKENS = 4096;
+export const INCREASED_MAX_NEW_TOKENS = 16384;
+
 export type LspChatMessage =
   | {
       role: ChatRole;
@@ -38,6 +41,7 @@ type StreamArgs =
 type SendChatArgs = {
   messages: LspChatMessage[];
   model: string;
+  completion_context_size: number;
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
@@ -108,6 +112,7 @@ export async function sendChat({
   model,
   abortSignal,
   stream,
+  completion_context_size,
   // lspUrl,
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
@@ -135,7 +140,7 @@ export async function sendChat({
     model: model,
     stream,
     tools,
-    max_tokens: 8192,
+    max_tokens: completion_context_size,
     only_deterministic_messages,
     tools_confirmation: toolsConfirmed,
     // chat_id,
@@ -183,9 +188,6 @@ export async function generateChatTitle({
   const body = JSON.stringify({
     messages,
     model: model,
-    parameters: {
-      max_new_tokens: 2048,
-    },
     stream,
     max_tokens: 300,
     only_deterministic_messages,

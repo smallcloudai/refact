@@ -37,6 +37,7 @@ const Template: React.FC<{
       streaming: false,
       prevent_send: false,
       waiting_for_response: false,
+      max_new_tokens: 4096,
       tool_use: "agent",
       send_immediately: false,
       error: null,
