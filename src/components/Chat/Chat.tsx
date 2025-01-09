@@ -10,7 +10,7 @@ import {
   useGetCapsQuery,
   useCapsForToolUse,
 } from "../../hooks";
-import type { Config } from "../../features/Config/configSlice";
+import { selectConfig, type Config } from "../../features/Config/configSlice";
 import {
   enableSend,
   selectIsStreaming,
@@ -43,6 +43,8 @@ export const Chat: React.FC<ChatProps> = ({
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const caps = useGetCapsQuery();
+
+  const config = useAppSelector(selectConfig);
 
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retryFromIndex } = useSendChatRequest();
@@ -126,7 +128,7 @@ export const Chat: React.FC<ChatProps> = ({
 
         <Flex justify="between" pl="1" pr="1" pt="1">
           {/* Two flexboxes are left for the future UI element on the right side */}
-          {messages.length > 0 && (
+          {messages.length > 0 && config.host === "web" && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="1">
                 <Text size="1">
