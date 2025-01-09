@@ -3,6 +3,7 @@ import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
   getSelectedSystemPrompt,
+  selectAutomaticPatch,
   selectChatError,
   selectChatId,
   selectIntegration,
@@ -93,6 +94,8 @@ export const useSendChatRequest = () => {
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
+  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
+
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
     if (prompts.length === 0) return currentMessages;
@@ -124,6 +127,9 @@ export const useSendChatRequest = () => {
       });
 
       const lastMessage = messages.slice(-1)[0];
+
+      let isCurrentToolCallAPatch = false;
+
       if (
         !isWaiting &&
         !wasInteracted &&
@@ -131,13 +137,17 @@ export const useSendChatRequest = () => {
         lastMessage.tool_calls
       ) {
         const toolCalls = lastMessage.tool_calls;
-        const confirmationResponse = await triggerCheckForConfirmation({
-          tool_calls: toolCalls,
-          messages: messages,
-        }).unwrap();
-        if (confirmationResponse.pause) {
-          dispatch(setPauseReasons(confirmationResponse.pause_reasons));
-          return;
+        if (!(toolCalls[0].function.name === "patch" && isPatchAutomatic)) {
+          const confirmationResponse = await triggerCheckForConfirmation({
+            tool_calls: toolCalls,
+            messages: messages,
+          }).unwrap();
+          if (confirmationResponse.pause) {
+            dispatch(setPauseReasons(confirmationResponse.pause_reasons));
+            return;
+          }
+        } else {
+          isCurrentToolCallAPatch = true;
         }
       }
 
@@ -146,10 +156,15 @@ export const useSendChatRequest = () => {
 
       const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
 
+      const toolsConfirmed =
+        isCurrentToolCallAPatch && isPatchAutomatic
+          ? isPatchAutomatic
+          : areToolsConfirmed;
+
       const action = chatAskQuestionThunk({
         messages,
         tools,
-        toolsConfirmed: areToolsConfirmed,
+        toolsConfirmed,
         chatId,
         mode,
       });
@@ -170,6 +185,7 @@ export const useSendChatRequest = () => {
       abortControllers,
       incrementIfLastMessageIsFromUser,
       triggerCheckForConfirmation,
+      isPatchAutomatic,
     ],
   );
 

@@ -15,7 +15,7 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
 import { FilesPreview } from "./FilesPreview";
-import { ChatControls } from "./ChatControls";
+import { ApplyPatchSwitch, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -37,6 +37,7 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
+  selectToolUse,
 } from "../../features/Chat";
 
 export type ChatFormProps = {
@@ -54,6 +55,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const config = useConfig();
+  const toolUse = useAppSelector(selectToolUse);
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
@@ -243,6 +245,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         {helpInfo && (
           <Flex mb="3" direction="column">
             {helpInfo}
+          </Flex>
+        )}
+        {toolUse === "agent" && (
+          <Flex mb="2">
+            <ApplyPatchSwitch />
           </Flex>
         )}
         <Form

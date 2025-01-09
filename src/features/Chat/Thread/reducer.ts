@@ -29,6 +29,7 @@ import {
   setIntegrationData,
   setIsWaitingForResponse,
   setMaxNewTokens,
+  setAutomaticPatch,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import { DEFAULT_MAX_NEW_TOKENS } from "../../../services/refact";
@@ -156,6 +157,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = false;
     state.thread.read = true;
     state.prevent_send = false;
+  });
+
+  builder.addCase(setAutomaticPatch, (state, action) => {
+    state.automatic_patch = action.payload;
   });
 
   builder.addCase(chatAskedQuestion, (state, action) => {

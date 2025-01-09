@@ -34,7 +34,7 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
-import { useLinksFromLsp, usePatchActions } from "../../hooks";
+import { useAppSelector, useLinksFromLsp, usePatchActions } from "../../hooks";
 
 import { ErrorCallout, DiffWarningCallout } from "../Callout";
 
@@ -44,6 +44,7 @@ import { extractFilePathFromPin } from "../../utils";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { ChatLinkButton } from "../ChatLinks";
 import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
+import { selectToolUse } from "../../features/Chat";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -72,6 +73,8 @@ const PinMessages: React.FC<{
   } = usePatchActions();
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
+
+  const toolUse = useAppSelector(selectToolUse);
 
   const getMarkdown = useCallback(() => {
     return (
@@ -147,22 +150,26 @@ const PinMessages: React.FC<{
           </Link>
         </TruncateLeft>{" "}
         <div style={{ flexGrow: 1 }} />
-        <Button
-          size="1"
-          onClick={(event) => handleAutoApply(event, children, filePath)}
-          disabled={disable}
-          title={`Show: ${children}`}
-        >
-          ➕ Auto Apply
-        </Button>
-        <Button
-          size="1"
-          onClick={onDiffClick}
-          disabled={disable || !hasMarkdown || !canPaste}
-          title="Replace the current selection in the ide."
-        >
-          ➕ Replace Selection
-        </Button>
+        {toolUse !== "agent" && (
+          <Flex gap="2">
+            <Button
+              size="1"
+              onClick={(event) => handleAutoApply(event, children, filePath)}
+              disabled={disable}
+              title={`Show: ${children}`}
+            >
+              ➕ Auto Apply
+            </Button>
+            <Button
+              size="1"
+              onClick={onDiffClick}
+              disabled={disable || !hasMarkdown || !canPaste}
+              title="Replace the current selection in the ide."
+            >
+              ➕ Replace Selection
+            </Button>
+          </Flex>
+        )}
       </Flex>
       {errorMessage && errorMessage.type === "error" && (
         <ErrorCallout onClick={resetErrorMessage} timeout={5000}>

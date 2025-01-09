@@ -92,6 +92,10 @@ export const setPreventSend = createAction<PayloadWithId>(
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
+export const setAutomaticPatch = createAction<boolean>(
+  "chat/setAutomaticPatch",
+);
+
 export const saveTitle = createAction<PayloadWithIdAndTitle>(
   "chatThread/saveTitle",
 );
