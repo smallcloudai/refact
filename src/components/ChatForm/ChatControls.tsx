@@ -68,7 +68,7 @@ export const ApplyPatchSwitch: React.FC = () => {
             Disabled
           </Text>
           <Text as="p" size="2">
-            When disabled, Refact Agent will prompt you for confirmation before
+            When disabled, Refact Agent will ask for your confirmation before
             applying any unsaved changes.
           </Text>
         </HoverCard.Content>
