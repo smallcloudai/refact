@@ -189,18 +189,27 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           <ExclamationTriangleIcon />
           {errorMessage}
         </Badge>
-        <Button
-          variant="outline"
-          color="gray"
-          onClick={() =>
-            openFile({
-              file_name: integrationFile,
-              line: errorLine === 0 ? 1 : errorLine,
-            })
-          }
-        >
-          Open {integration.data.integr_name}.yaml
-        </Button>
+        <Flex align="center" gap="2">
+          <Button
+            variant="outline"
+            color="gray"
+            onClick={() =>
+              openFile({
+                file_name: integrationFile,
+                line: errorLine === 0 ? 1 : errorLine,
+              })
+            }
+          >
+            Open {integration.data.integr_name}.yaml
+          </Button>
+          <IntegrationDeletePopover
+            integrationName={integration.data.integr_name}
+            integrationConfigPath={integration.data.integr_config_path}
+            isApplying={isApplying}
+            isDeletingIntegration={isDeletingIntegration}
+            handleDeleteIntegration={handleDeleteIntegration}
+          />
+        </Flex>
       </Flex>
     );
   }
