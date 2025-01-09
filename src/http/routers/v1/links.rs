@@ -88,7 +88,7 @@ pub async fn handle_v1_links(
 
     tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
     let experimental = gcx.read().await.cmdline.experimental;
-    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), "".to_string(), experimental).await;
+    let (integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), experimental).await;
 
     // if post.meta.chat_mode == ChatMode::CONFIGURE {
     //     if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {

@@ -1,7 +1,9 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::fs;
 use tokio::sync::RwLock as ARwLock;
 
+use crate::files_correction::{get_active_project_path, to_pathbuf_normalize};
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile, ChatMeta};
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -42,7 +44,21 @@ pub async fn mix_config_messages(
         context_file_vec.push(context_file);
     }
 
-    let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
+    let global_config_dir = gcx.read().await.config_dir.clone();
+    let current_config_path = to_pathbuf_normalize(&chat_meta.current_config_file);
+    let mut active_project_path = if current_config_path.starts_with(&global_config_dir) {
+        Some(PathBuf::new()) // If it's global config, it shouldn't use specific project info
+    } else {
+        current_config_path.parent().and_then(|p| {
+            p.parent().filter(|gp| p.file_name() == Some("integrations.d".as_ref()) && gp.file_name() == Some(".refact".as_ref()))
+                .and_then(|gp| gp.parent().map(|gpp| gpp.to_path_buf()))
+        })
+    };
+    if active_project_path.is_none() {
+        active_project_path = get_active_project_path(gcx.clone()).await;
+    }
+
+    let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone(), &active_project_path).await;
     let mut variables_yaml_instruction = String::new();
     for dir in config_dirs.iter().chain(std::iter::once(&global_config_dir)) {
         let variables_path = dir.join("variables.yaml");

@@ -10,10 +10,9 @@ use crate::integrations::integr_abstract::IntegrationTrait;
 
 pub async fn load_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
-    _current_project: String,
     allow_experimental: bool,
 ) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
-    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), _current_project, allow_experimental).await;
+    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental).await;
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
         if integr.can_upgrade_to_tool() {
@@ -25,11 +24,10 @@ pub async fn load_integration_tools(
 
 pub async fn load_integrations(
     gcx: Arc<ARwLock<GlobalContext>>,
-    _current_project: String,
     allow_experimental: bool,
 ) -> (IndexMap<String, Box<dyn IntegrationTrait + Send + Sync>>, Vec<crate::integrations::setting_up_integrations::YamlError>) {
-    // XXX filter _workspace_folders_arc that fit _current_project
-    let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone()).await;
+    let active_project_path = crate::files_correction::get_active_project_path(gcx.clone()).await;
+    let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone(), &active_project_path).await;
     let (integrations_yaml_path, is_inside_container) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cmdline.integrations_yaml.clone(), gcx_locked.cmdline.inside_container)

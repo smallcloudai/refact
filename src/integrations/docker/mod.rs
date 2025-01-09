@@ -15,7 +15,7 @@ pub mod docker_container_manager;
 pub async fn docker_and_isolation_load(gcx: Arc<ARwLock<GlobalContext>>) -> Result<(ToolDocker, Option<SettingsIsolation>), String>
 {
     // XXX: why load all integrations if we need one or two?
-    let (integrations, _yaml_errors) = load_integrations(gcx.clone(), "".to_string(), true).await;
+    let (integrations, _yaml_errors) = load_integrations(gcx.clone(), true).await;
 
     let docker_tool = integrations.get("docker")
         .ok_or("Docker integration not found".to_string())?

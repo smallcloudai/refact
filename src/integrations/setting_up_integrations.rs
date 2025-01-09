@@ -335,6 +335,7 @@ pub fn join_config_path(config_dir: &PathBuf, integr_name: &str) -> String
 
 pub async fn get_config_dirs(
     gcx: Arc<ARwLock<GlobalContext>>,
+    current_project_path: &Option<PathBuf>
 ) -> (Vec<PathBuf>, PathBuf) {
     let (global_config_dir, workspace_folders_arc, workspace_vcs_roots_arc, _integrations_yaml) = {
         let gcx_locked = gcx.read().await;
@@ -346,7 +347,11 @@ pub async fn get_config_dirs(
         )
     };
 
-    let workspace_folders = workspace_folders_arc.lock().unwrap().clone();
+    let mut workspace_folders = workspace_folders_arc.lock().unwrap().clone();
+    if let Some(current_project_path) = current_project_path {
+        workspace_folders = workspace_folders.into_iter()
+            .filter(|folder| current_project_path.starts_with(&folder)).collect::<Vec<_>>();
+    }
     let workspace_vcs_roots = workspace_vcs_roots_arc.lock().unwrap().clone();
 
     let mut config_dirs = Vec::new();
@@ -394,7 +399,7 @@ pub fn split_path_into_project_and_integration(cfg_path: &PathBuf) -> Result<(St
 pub async fn integrations_all(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> IntegrationResult {
-    let (config_dirs, global_config_dir) = get_config_dirs(gcx.clone()).await;
+    let (config_dirs, global_config_dir) = get_config_dirs(gcx.clone(), &None).await;
     let (allow_experimental, integrations_yaml_path) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cmdline.experimental, gcx_locked.cmdline.integrations_yaml.clone())

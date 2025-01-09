@@ -142,7 +142,6 @@ pub async fn tools_merged_and_filtered(
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
         gcx.clone(),
-        "".to_string(),
         allow_experimental,
     ).await;
     tools_all.extend(integrations);
