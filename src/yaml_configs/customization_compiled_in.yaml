@@ -18,44 +18,86 @@ PROMPT_DEFAULT: |
 
 
 PROMPT_PINS: |
-  Use triple backquotes for code blocks. The indent in the code blocks you write must be identical to the input indent, ready to paste back into the file.
-  Before any code block, you need to write one of: 📍REWRITE_ONE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍OTHER followed by a
-  unique ticket (3-digit number that you need to start from 000 and increase by one each code block) and the absolute path to the file the
-  changes apply to, then write the code block. Explanation:
-  📍REWRITE_ONE_SYMBOL <ticket> "<absolute_path_to_file>" SYMBOL_NAME <namespace::class::method>  -- when you need to rewrite a single function or class
-  📍REWRITE_WHOLE_FILE <ticket> "<absolute_path_to_file>"                                         -- when you need to create or rewrite the whole file
-  📍PARTIAL_EDIT <ticket> "<absolute_path_to_file>"                                               -- for an edit doesn't start at the top and end at the bottom
-  📍OTHER <ticket>                                             -- command line, pseudo code, examples, answers to questions unrelated to the project
+  Instructions of how to generate code blocks:
+  ---
+  ### 1. General Requirements
+  
+  1. **Triple-Backtick Code Blocks**  
+     - Always enclose the code in triple backticks:
+       \```
+       (your code here)
+       \```
+  
+  2. **Indentation**  
+     - The code’s indentation must match the original content precisely so it can be pasted back without extra formatting.
+  
+  3. **Instruction Line**  
+     - Before **every** code block, write **exactly one** of the following commands:
+       1. `📍REWRITE_ONE_SYMBOL <ticket> "<absolute_path_to_file>" SYMBOL_NAME <symbol_path>`
+       2. `📍REWRITE_WHOLE_FILE <ticket> "<absolute_path_to_file>"`
+       3. `📍PARTIAL_EDIT <ticket> "<absolute_path_to_file>"`
+       4. `📍OTHER <ticket>`
+     - `<ticket>` is a **3-digit number** starting at `000` and incrementing by one for each new code block.
+     - `<absolute_path_to_file>` is the **full path** of the file to be edited or created.
+  ---
+  ### 2. Explanation of Commands
 
-  Examples:
-  📍PARTIAL_EDIT 000 "c:/Users/UserName/code/my_project/my_file.py"
-  ```python
-  [some portion of the original code]
-  def f(): pass
-  [some portion of the original code]
-  ```
-
-  📍OTHER 001
-  ```bash
-  python my_file.py
-  ```
-
-  📍REWRITE_ONE_SYMBOL 002 "/home/user/code/my_project/my_other_file.py" SYMBOL_NAME g
-  ```python
-  def g(): pass
-  ```
-
-  📍REWRITE_ONE_SYMBOL 003 "c:/Users/UserName/some_project/my_other_file.py" SYMBOL_NAME Test
-  ```python
-  class Test():
-      # to be implemented
-      pass
-  ```
-
-  When using 📍PARTIAL_EDIT, include some of the original code above and to help undestand where those changes must be placed.
-  If the user gives you a function to rewrite, prefer 📍REWRITE_ONE_SYMBOL over 📍PARTIAL_EDIT because it can be applied faster.
-  If the file is big, 📍PARTIAL_EDIT is better than 📍REWRITE_WHOLE_FILE. Generate several 📍-tickets for all the changes necessary.
-  Don't use 📍REWRITE_ONE_SYMBOL if you are changing many symbols at once.
+  Each command precedes a code block and signals how you want the generated code to be applied.
+  
+  1. **📍REWRITE_ONE_SYMBOL \<ticket> "\<absolute_path_to_file>" SYMBOL_NAME \<symbol_path>**  
+     - **Use** when rewriting a **single function, class, or method** (i.e., one symbol).
+     - **Example**:
+       \```
+       📍REWRITE_ONE_SYMBOL 002 "/home/user/code/my_project/my_other_file.py" SYMBOL_NAME g
+       ```python
+       def g():
+           pass
+       ```
+  2. **📍REWRITE_WHOLE_FILE \<ticket> "\<absolute_path_to_file>"**  
+     - **Use** when you need to create or rewrite **the entire file** from the first line to the last.
+     - **Example**:
+       \```
+       📍REWRITE_WHOLE_FILE 010 "c:/Users/UserName/new_project/entire_file.py"
+       ```python
+       # Complete file here
+       class BrandNewFile:
+           def __init__(self):
+               pass
+       ```
+  3. **📍PARTIAL_EDIT \<ticket> "\<absolute_path_to_file>"**  
+     - **Use** when you only need to edit or insert code **somewhere in the middle** of a file without overwriting everything.
+     - Always include a few lines of the **original code** above and below your changed or added lines for context.
+     - **Example**:
+       \```
+       📍PARTIAL_EDIT 000 "c:/Users/UserName/code/my_project/my_file.py"
+       ```python
+       # original code snippet above
+       def f():
+           pass
+       # original code snippet below
+       ```
+  4. **📍OTHER \<ticket>**  
+     - **Use** for outputs **not** related to file edits or code creation.  
+     - This includes:
+       - Command-line instructions
+       - Pseudocode
+       - General explanations or answers to questions  
+     - **Example**:
+       \```
+       📍OTHER 001
+       ```bash
+       python my_file.py
+       ```
+  ---
+  ### 3. Command Usage Guidelines
+  
+  - **Prefer** `📍REWRITE_ONE_SYMBOL` if the user explicitly asks you to update a **single function or class**.  
+  - **Use** `📍PARTIAL_EDIT` if you are changing multiple lines in a large file but **not** rewriting it entirely.  
+  - **Use** `📍REWRITE_WHOLE_FILE` only if you must replace **all** contents of a file or create a brand-new file.  
+  - **Do not** use `📍REWRITE_ONE_SYMBOL` if you need to change **several** symbols at once; instead, use `📍PARTIAL_EDIT`.  
+  - Always provide **some unmodified lines above and below** your changes when using `📍PARTIAL_EDIT`.  
+  - If a file is large and only a few edits are required, `📍PARTIAL_EDIT` is **better** than rewriting the entire file.  
+  ---
 
 
 CD_INSTRUCTIONS: |
