@@ -191,7 +191,8 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gemini-1.5-flash",
                 "gemini-1.5-flash-8b",
-                "gemini-1.5-pro"
+                "gemini-1.5-pro",
+                "gemini-2.0-exp-advanced"
             ]
         },
         "grok-beta": {
@@ -393,7 +394,8 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gemini-1.5-flash",
                 "gemini-1.5-flash-8b",
-                "gemini-1.5-pro"
+                "gemini-1.5-pro",
+                "gemini-2.0-exp-advanced"
             ]
         },
         "llama3/8b/instruct": {
@@ -636,7 +638,8 @@ pub const KNOWN_MODELS: &str = r####"
         "gemini-2.0-flash-exp": "Xenova/gemma2-tokenizer",
         "gemini-1.5-flash": "Xenova/gemma2-tokenizer",
         "gemini-1.5-flash-8b": "Xenova/gemma2-tokenizer",
-        "gemini-1.5-pro": "Xenova/gemma2-tokenizer"
+        "gemini-1.5-pro": "Xenova/gemma2-tokenizer",
+        "gemini-2.0-exp-advanced": "Xenova/gemma2-tokenizer"
     }
 }
 "####;
