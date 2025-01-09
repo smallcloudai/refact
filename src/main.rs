@@ -2,6 +2,7 @@ use std::io::Write;
 use std::env;
 use std::panic;
 
+use files_correction::to_pathbuf_normalize;
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
@@ -71,9 +72,9 @@ mod trajectories;
 async fn main() {
     let cpu_num = std::thread::available_parallelism().unwrap().get();
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
-    let home_dir = home::home_dir().ok_or(()).expect("failed to find home dir");
-    let cache_dir = home_dir.join(".cache/refact");
-    let config_dir = home_dir.join(".config/refact");
+    let home_dir = to_pathbuf_normalize(&home::home_dir().ok_or(()).expect("failed to find home dir").to_string_lossy().to_string());
+    let cache_dir = home_dir.join(".cache").join("refact");
+    let config_dir = home_dir.join(".config").join("refact");
     let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone(), config_dir.clone()).await;
     let mut writer_is_stderr = false;
     let (logs_writer, _guard) = if cmdline.logs_stderr {

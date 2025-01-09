@@ -139,7 +139,7 @@ fn winpath_normalize(p: &str) -> PathBuf {
     }
 }
 
-pub fn to_pathbuf_normalize(path: &String) -> PathBuf {
+pub fn to_pathbuf_normalize(path: &str) -> PathBuf {
     if cfg!(target_os = "windows") {
         PathBuf::from(winpath_normalize(path))
     } else {
@@ -359,7 +359,7 @@ fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {
     Ok(normalized)
 }
 
-pub fn canonical_path(s: &String) -> PathBuf {
+pub fn canonical_path(s: &str) -> PathBuf {
     let mut res = match PathBuf::from(s).canonicalize() {
         Ok(x) => x,
         Err(_) => {
