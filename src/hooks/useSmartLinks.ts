@@ -13,7 +13,7 @@ import { useAgentUsage } from "./useAgentUsage";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();
-  const { disableInput } = useAgentUsage();
+  const { aboveUsageLimit } = useAgentUsage();
   const { handleGoTo } = useGoToLink();
   const handleSmartLink = useCallback(
     (
@@ -23,7 +23,7 @@ export function useSmartLinks() {
       integrationProject: string,
     ) => {
       const messages = formatMessagesForChat(sl_chat);
-      if (disableInput) {
+      if (aboveUsageLimit) {
         const action = setInformation(
           "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
         );
@@ -43,7 +43,7 @@ export function useSmartLinks() {
       );
       dispatch(push({ name: "chat" }));
     },
-    [dispatch, disableInput],
+    [dispatch, aboveUsageLimit],
   );
 
   return {
