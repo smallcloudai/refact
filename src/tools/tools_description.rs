@@ -264,7 +264,7 @@ tools:
     agentic: true
     description: |
       The function to apply changes from the existing 📍-notation edit blocks.
-      To make this call correctly, you need an existing 📍-notation edit block ticket number.
+      Do not call the function unless you have a generated 📍-notation edit blocks, you need an existing 📍-notation edit block ticket number!
       Multiple tickets is allowed only for 📍PARTIAL_EDIT, otherwise only one ticket must be provided.
     parameters:
       - name: "path"
