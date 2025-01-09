@@ -219,39 +219,59 @@ pub struct BlocksOfCodeParser {}
 
 impl BlocksOfCodeParser {
     pub fn prompt() -> String {
-        let prompt = r#"You will receive an original file, modified sections within that file and extra hint messages. 
-Your task is to identify and extract all original sections that correspond to the provided modified sections and output them in the desired format. 
-Carefully read the hints if they're given, they contain important information about the changes (i.e. exact spots where to paste those sections).
-Follow the steps below to ensure accuracy and clarity in your response.
+        let prompt = r#"**You will be given:
+1. An **original file** (the complete, unmodified content).
+2. **Modified sections** (portions of the file that have changed).
+3. **Hint messages** (optional but important clues about how and where to place changes).
+
+Your task is to:
+1. Identify **all** original sections in the file that correspond to the provided modified sections.
+2. **Extract** these original sections exactly as they appear (including all indentation, spacing, and formatting).
+3. Pair each original section with its corresponding modified version using the **exact output format** provided below.
+4. Use hints (if any) to determine the correct placement or grouping of changes.
+
+---
 
 ## Steps
-1. **Locate Modified Sections:** Carefully review the provided file and identify all sections that differ between the original and modified versions.
-2. **Output Modifications:** Prepare the output using the format specified below. Ensure the original formatting (indents especially) is preserved for both the original and modified sections.
 
-## Output Format:
+1. **Locate Modified Sections**  
+   Compare the original file with the modified sections. Identify every instance where the content differs. Some modifications may span entire functions or classes, while others may be smaller. Pay attention to any hints that indicate specific lines or blocks of code.
+
+2. **Output Modifications**  
+   Produce your response in the exact format shown below. **Preserve indentation** and other formatting details from the original file to avoid introducing new errors.  
+   - If a single original section has multiple, non-contiguous changes, split it into separate pairs of "Original" and "Modified" sections to reflect each distinct change.
+   - If a new block of code is added in the modified version (with no direct equivalent in the original), still provide an “Original Section” block indicating where the new code is inserted, and a “Modified Section” block showing the old plus the new code.
+
+---
+
+## Output Format
+
+For **each** modification, use the exact structure shown below. 
+
+```
 ### Original Section (to be replaced)
 ```
-[an original section content]
+```
+[the exact original section content here]
+```
 ```
 ### Modified Section (to replace with)
 ```
-[a modified section content]
 ```
+[the exact modified section content here]
+```
+
+---
 
 ## Notes
-- Where possible, replace entire functions instead of making multiple small changes within them for better clarity.
-- Split a single modified section into multiple if changes are located in different parts of the original file.
-- Preserve the original indentation and formatting to avoid introducing errors during code replacement.
-- Do not skip any modification, even if they are invalid or insufficient!
-- If there is new code added without any modifications, use this format:
-### Original Section (to be replaced)
-```
-[an old section where you need to insert new text]
-```
-### Modified Section (to replace with)
-```
-[an old section + new section]
-```"#.to_string();
+
+- **Entire Functions vs. Small Changes:** Whenever possible, replace or show changes for the entire function, method, or logical block rather than multiple small snippets.
+- **Multiple Changes in a Single Section:** If multiple modifications occur in different parts of the same original section, create separate "Original/Modified" pairs for each.
+- **Preserve Indentation and Formatting:** Do not change or normalize spacing, tabs, newlines, etc.
+- **Do Not Skip Any Modifications:** Include every single changed section, even if it appears trivial, invalid, or incomplete.
+- **New Code Additions:** If you must insert code that was not previously present in the original file, pair the old section with the expanded new content (see above format on inserting new text).
+
+Failure to follow these instructions or use the specified format will result in an incorrect response!"#.to_string();
         prompt
     }
 

@@ -263,8 +263,8 @@ tools:
   - name: "patch"
     agentic: true
     description: |
-      The function to apply changes from the 📍-notation code blocks.
-      To make this call correctly, you need the 📍-notation code block ticket number.
+      The function to apply changes from the existing 📍-notation edit blocks.
+      To make this call correctly, you need an existing 📍-notation edit block ticket number.
       Multiple tickets is allowed only for 📍PARTIAL_EDIT, otherwise only one ticket must be provided.
     parameters:
       - name: "path"
@@ -272,7 +272,7 @@ tools:
         description: "Path to the file to change."
       - name: "tickets"
         type: "string"
-        description: "Use 3-digit tickets comma separated to refer to the changes within ONE file. No need to copy anything else. Additionaly, you can put DELETE here to delete the file."
+        description: "Use 3-digit tickets comma separated to refer to the changes within a single file"
     parameters_required:
       - "tickets"
       - "path"

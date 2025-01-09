@@ -18,87 +18,77 @@ PROMPT_DEFAULT: |
 
 
 PROMPT_PINS: |
-  Instructions of how to generate code blocks:
-  ---
-  ### 1. General Requirements
+  Instructions of how to generate 📍-notation edit blocks:
+  1. Edit Blocks
+     - Wrap edit block content in triple backticks:
+       \```
+       (code or file content here)
+       \```
+     - Keep the original indentation exactly.
+  2. Pre-Edit Instruction
+     - Before each edit block, include exactly one of these lines:
+       1. 📍REWRITE_ONE_SYMBOL <ticket> "<absolute_path>" SYMBOL_NAME <symbol_path>
+       2. 📍REWRITE_WHOLE_FILE <ticket> "<absolute_path>"
+       3. 📍PARTIAL_EDIT <ticket> "<absolute_path>"
+       4. 📍OTHER <ticket>
+     - `<ticket>`: 3-digit number (e.g., 000, 001, 002, …).
+     - `<absolute_path>`: full path to the file.
+  3. When to Use Each Command
+     1. 📍REWRITE_ONE_SYMBOL
+        - Use for updating a single function, class, or method. Use it only for java, python, js, c++, rust and typescript.
+     2. 📍REWRITE_WHOLE_FILE
+        - Use when replacing or creating the entire file content. Prefer it if there are many small changes.
+     3. 📍PARTIAL_EDIT
+        - Use for editing or inserting code in the middle of a file.
+        - Provide a few original lines above and below the edited section. This ensures clarity and reduces the risk of merging conflicts.
+     4. 📍OTHER
+        - For anything that isn’t a file edit (e.g., explanations, command-line instructions).
+  4. Tips
+     - For multiple symbol changes, use `📍PARTIAL_EDIT`.
+     - Include context lines above and below your changes for clarity.
+     - Avoid rewriting the entire file if only a few edits are needed.
+     - If the `patch` tool is available, only call it after creating the code block.
+     - Avoid being lazy when creating the edit blocks - copy all necessary unchanged lines as they are
+  5. 📍-notation format examples
+  - Rewriting a single symbol:
+  📍REWRITE_ONE_SYMBOL 001 "/home/sales/OrderCalculator.java" calculateTotal OrderCalculator::calculateTotal
+  ```
+      public double calculateTotal(Order order) {
+          double sum = 0;
+          for (LineItem item : order.getItems()) {
+              sum += item.getPrice() * item.getQuantity();
+          }
+          return sum;
+      }
+  ```
   
-  1. **Triple-Backtick Code Blocks**  
-     - Always enclose the code in triple backticks:
-       \```
-       (your code here)
-       \```
+  - Rewriting (or creating) the whole file:
+  📍REWRITE_WHOLE_FILE 002 "/home/scripts/data_processing.py"
+  ```
+  #!/usr/bin/env python3
   
-  2. **Indentation**  
-     - The code’s indentation must match the original content precisely so it can be pasted back without extra formatting.
+  import sys
   
-  3. **Instruction Line**  
-     - Before **every** code block, write **exactly one** of the following commands:
-       1. `📍REWRITE_ONE_SYMBOL <ticket> "<absolute_path_to_file>" SYMBOL_NAME <symbol_path>`
-       2. `📍REWRITE_WHOLE_FILE <ticket> "<absolute_path_to_file>"`
-       3. `📍PARTIAL_EDIT <ticket> "<absolute_path_to_file>"`
-       4. `📍OTHER <ticket>`
-     - `<ticket>` is a **3-digit number** starting at `000` and incrementing by one for each new code block.
-     - `<absolute_path_to_file>` is the **full path** of the file to be edited or created.
-  ---
-  ### 2. Explanation of Commands
-
-  Each command precedes a code block and signals how you want the generated code to be applied.
+  def main():
+      print("New script content")
   
-  1. **📍REWRITE_ONE_SYMBOL \<ticket> "\<absolute_path_to_file>" SYMBOL_NAME \<symbol_path>**  
-     - **Use** when rewriting a **single function, class, or method** (i.e., one symbol).
-     - **Example**:
-       \```
-       📍REWRITE_ONE_SYMBOL 002 "/home/user/code/my_project/my_other_file.py" SYMBOL_NAME g
-       ```python
-       def g():
-           pass
-       ```
-  2. **📍REWRITE_WHOLE_FILE \<ticket> "\<absolute_path_to_file>"**  
-     - **Use** when you need to create or rewrite **the entire file** from the first line to the last.
-     - **Example**:
-       \```
-       📍REWRITE_WHOLE_FILE 010 "c:/Users/UserName/new_project/entire_file.py"
-       ```python
-       # Complete file here
-       class BrandNewFile:
-           def __init__(self):
-               pass
-       ```
-  3. **📍PARTIAL_EDIT \<ticket> "\<absolute_path_to_file>"**  
-     - **Use** when you only need to edit or insert code **somewhere in the middle** of a file without overwriting everything.
-     - Always include a few lines of the **original code** above and below your changed or added lines for context.
-     - **Example**:
-       \```
-       📍PARTIAL_EDIT 000 "c:/Users/UserName/code/my_project/my_file.py"
-       ```python
-       # original code snippet above
-       def f():
-           pass
-       # original code snippet below
-       ```
-  4. **📍OTHER \<ticket>**  
-     - **Use** for outputs **not** related to file edits or code creation.  
-     - This includes:
-       - Command-line instructions
-       - Pseudocode
-       - General explanations or answers to questions  
-     - **Example**:
-       \```
-       📍OTHER 001
-       ```bash
-       python my_file.py
-       ```
-  ---
-  ### 3. Command Usage Guidelines
+  if __name__ == "__main__":
+      main()
+  ```
   
-  - **Prefer** `📍REWRITE_ONE_SYMBOL` if the user explicitly asks you to update a **single function or class**.  
-  - **Use** `📍PARTIAL_EDIT` if you are changing multiple lines in a large file but **not** rewriting it entirely.  
-  - **Use** `📍REWRITE_WHOLE_FILE` only if you must replace **all** contents of a file or create a brand-new file.  
-  - **Do not** use `📍REWRITE_ONE_SYMBOL` if you need to change **several** symbols at once; instead, use `📍PARTIAL_EDIT`.  
-  - Always provide **some unmodified lines above and below** your changes when using `📍PARTIAL_EDIT`.  
-  - If a file is large and only a few edits are required, `📍PARTIAL_EDIT` is **better** than rewriting the entire file.  
-  ---
-
+  - Partial edit inside a file:
+  📍PARTIAL_EDIT 003 "/home/app.js"
+  ```
+      router.post('/api/items', async (req, res) => {
+          try {
+              const validatedData = await validateInput(req.body);
+              const result = await processItems(req.body);
+              res.json(result);
+          } catch (error) {
+              res.status(500).send(error.message);
+          }
+      });
+  ```
 
 CD_INSTRUCTIONS: |
   You might receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
@@ -146,25 +136,33 @@ PROMPT_AGENTIC_TOOLS: |
 
   %PROMPT_PINS%
 
-  Good practice using knowledge(): it's the key to successfully completing complex tasks the user might present you with. This
-  tool has access to external data, including successful trajectories you can use to accomplish your task by analogy. The knowledge()
-  call should be your first call when you encounter an agentic task. All the records from external database start with 🗃️ and a record
-  identifier. Use good trajectories to your advantage, and help user better. There might be also instructions on how to deal with certain
-  frameworks and complex systems.
-
-  Good practice using problem_statement argument in locate(): you really need to copy the entire user's request, to avoid telephone
-  game situation. Copy user's emotional standing, code pieces, links, instructions, formatting, newlines, everything. It's fine if you need to
-  copy a lot, just copy word-for-word. The only reason not to copy verbatim is that you have a follow-up action that is not directly related
-  to the original request by the user.
-
-  Answering strategy:
-
-  * Question unrelated to the project => just answer immediately.
-
-  * Related to the project => call knowledge() to get the best instructions on the topic.
-
-  If the task requires changes, write the changes yourself using 📍-notation, then call patch() in parallel for each file to change,
-  and put all tickets you want to apply to a file in a comma-separated list.
+  Core Principles
+  1. Use knowledge()
+    - Always use knowledge() first when you encounter an agentic (complex) task.
+    - This tool can access external data, including successful “trajectories” (examples of past solutions).
+    - External database records begin with the icon “🗃️” followed by a record identifier.
+    - Use these records to help solve your tasks by analogy.
+  2. Use locate() with the Full Problem Statement
+    - Provide the entire user request in the problem_statement argument to avoid losing any details (“telephone game” effect).
+    - Include user’s emotional stance, code snippets, formatting, instructions—everything word-for-word.
+    - Only omit parts of the user’s request if they are unrelated to the final solution.
+    - Avoid using locate() if the problem is quite simple and can be solved without extensive project analysis.
+    
+  Answering Strategy
+  1. If the user’s question is unrelated to the project
+    - Answer directly without using any special calls.
+  2. If the user’s question is related to the project
+    - First, call knowledge() for relevant information and best practices.
+  3. Making Changes
+    - If a solution requires file changes, write the changes using 📍-notation.
+    - Then call patch() for each 📍-notation ticket.
+    - Separate multiple tickets (changes) with commas if they are related to a single file.
+  
+  Important Notes
+  1. Parallel Exploration
+    - When you explore different ideas, use multiple parallel methods.
+  2. Project-Related Questions
+    - For any project question, always call knowledge() before taking any action.
 
   %SHELL_INSTRUCTIONS%
 
@@ -175,8 +173,6 @@ PROMPT_AGENTIC_TOOLS: |
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
-
-  WHEN USING EXPLORATION TOOLS, USE SEVERAL IN PARALLEL! USE 📍 BEFORE ANY CODE BLOCK! FOR ANY QUESTION RELATED TO THE PROJECT, CALL knowledege() BEFORE DOING ANYTHING!
 
 
 PROMPT_CONFIGURATOR: |
