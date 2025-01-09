@@ -38,7 +38,6 @@ import {
   selectIsWaiting,
   selectMessages,
 } from "../../features/Chat";
-import { isAssistantMessage } from "../../services/refact/types";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -67,10 +66,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (messages.length === 0) return false;
-    const lastMessage = messages[messages.length - 1];
-    return (
-      isAssistantMessage(lastMessage) && (isWaiting || isStreaming || !isOnline)
-    );
+    return isWaiting || isStreaming || !isOnline;
   }, [isOnline, isStreaming, isWaiting, messages]);
 
   const { processAndInsertImages } = useAttachedImages();

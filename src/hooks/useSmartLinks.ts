@@ -2,13 +2,18 @@ import { useCallback } from "react";
 import { LspChatMessage } from "../services/refact/chat";
 import { formatMessagesForChat } from "../features/Chat/Thread/utils";
 import { useAppDispatch } from "./useAppDispatch";
-import { clearInformation } from "../features/Errors/informationSlice";
+import {
+  clearInformation,
+  setInformation,
+} from "../features/Errors/informationSlice";
 import { newIntegrationChat } from "../features/Chat/Thread/actions";
 import { push } from "../features/Pages/pagesSlice";
 import { useGoToLink } from "./useGoToLink";
+import { useAgentUsage } from "./useAgentUsage";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();
+  const { disableInput } = useAgentUsage();
   const { handleGoTo } = useGoToLink();
   const handleSmartLink = useCallback(
     (
@@ -18,7 +23,13 @@ export function useSmartLinks() {
       integrationProject: string,
     ) => {
       const messages = formatMessagesForChat(sl_chat);
-
+      if (disableInput) {
+        const action = setInformation(
+          "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
+        );
+        dispatch(action);
+        return;
+      }
       dispatch(clearInformation());
       dispatch(
         newIntegrationChat({
@@ -32,7 +43,7 @@ export function useSmartLinks() {
       );
       dispatch(push({ name: "chat" }));
     },
-    [dispatch],
+    [dispatch, disableInput],
   );
 
   return {
