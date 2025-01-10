@@ -280,22 +280,37 @@ async fn docker_container_sync_config_folder(
     let temp_dir = tempfile::Builder::new().tempdir()
         .map_err(|e| format!("Error creating temporary directory: {}", e))?;
     let temp_dir_path = temp_dir.path().to_string_lossy().to_string();
-    docker.command_execute(&format!("container cp {} {}:{}/.config/", shell_words::quote(&temp_dir_path), container_id, container_home_dir), gcx.clone(), true, true).await?;
-    docker.command_execute(&format!("container cp {} {}:{}/.config/refact", shell_words::quote(&config_dir_string), container_id, container_home_dir), gcx.clone(), true, true).await?;
 
+    docker_container_copy(docker, gcx.clone(), container_id, &temp_dir_path, 
+        &format!("{container_home_dir}/.config/")).await?;
+    docker_container_copy(docker, gcx.clone(), container_id, &config_dir_string, 
+        &format!("{container_home_dir}/.config/refact/")).await?;
+    
     if !integrations_yaml.is_empty() {
-        let cp_integrations_command = format!("container cp {} {}:{}/.config/refact/integrations.yaml", shell_words::quote(&integrations_yaml), container_id, container_home_dir);
-        docker.command_execute(&cp_integrations_command, gcx.clone(), true, true).await?;
+        docker_container_copy(docker, gcx.clone(), container_id, &integrations_yaml, 
+            &format!("{container_home_dir}/.config/refact/integrations.yaml")).await?;
     }
     if !variables_yaml.is_empty() {
-        let cp_variables_command = format!("container cp {} {}:{}/.config/refact/variables.yaml", shell_words::quote(&variables_yaml), container_id, container_home_dir);
-        docker.command_execute(&cp_variables_command, gcx.clone(), true, true).await?;
+        docker_container_copy(docker, gcx.clone(), container_id, &variables_yaml, 
+            &format!("{container_home_dir}/.config/refact/variables.yaml")).await?;
     }
     if !secrets_yaml.is_empty() {
-        let cp_secrets_command = format!("container cp {} {}:{}/.config/refact/secrets.yaml", shell_words::quote(&secrets_yaml), container_id, container_home_dir);
-        docker.command_execute(&cp_secrets_command, gcx.clone(), true, true).await?;
+        docker_container_copy(docker, gcx.clone(), container_id, &secrets_yaml, 
+            &format!("{container_home_dir}/.config/refact/secrets.yaml")).await?;
     }
 
+    Ok(())
+}
+
+async fn docker_container_copy(
+    docker: &ToolDocker, 
+    gcx: Arc<ARwLock<GlobalContext>>, 
+    container_id_or_name: &str, 
+    local_path: &str, 
+    remote_path: &str
+) -> Result<(), String> {
+    let cp_command = format!("container cp {} {}:{}", shell_words::quote(&local_path), container_id_or_name, shell_words::quote(&remote_path));
+    docker.command_execute(&cp_command, gcx.clone(), true, true).await?;
     Ok(())
 }
 
@@ -383,8 +398,8 @@ async fn docker_container_sync_workspace(
 
     tar_builder.finish().await.map_err(|e| format!("Error finishing tar archive: {}", e))?;
 
-    let cp_command = format!("container cp {} {}:{}", shell_words::quote(&temp_tar_file.to_string_lossy().to_string()), container_id, container_workspace_folder);
-    docker.command_execute(&cp_command, gcx.clone(), true, true).await?;
+    docker_container_copy(docker, gcx.clone(), container_id, 
+        &temp_tar_file.to_string_lossy().to_string(), &container_workspace_folder).await?;
 
     let sync_files_post = SyncFilesExtractTarPost {
         tar_path: format!("{}/{}", container_workspace_folder.trim_end_matches('/'), tar_file_name),
@@ -397,8 +412,11 @@ async fn docker_container_sync_workspace(
 
     info!("Workspace synced successfully.");
 
-    let container_workspace_folder_url = Url::from_file_path(&container_workspace_folder)
-        .map_err(|_| "Error creating URL for container workspace folder")?;
+    const ENCODE_SET: &percent_encoding::AsciiSet = &percent_encoding::NON_ALPHANUMERIC.remove(b'/');
+
+    let container_workspace_folder_url = Url::parse(&format!("file://{}", 
+        percent_encoding::utf8_percent_encode(&container_workspace_folder, ENCODE_SET)))
+        .map_err(|e| format!("Error parsing URL for container workspace folder: {}", e))?;
     let initialize_post = LspLikeInit {
         project_roots: vec![container_workspace_folder_url],
     };
