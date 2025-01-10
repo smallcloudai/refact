@@ -31,7 +31,7 @@ export type Chat = {
   prevent_send: boolean;
   automatic_patch?: boolean;
   waiting_for_response: boolean;
-  max_new_tokens: number;
+  max_new_tokens?: number;
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
   tool_use: ToolUse;
