@@ -84,7 +84,7 @@ class ModelAssigner:
                 continue
             model_dict = self.models_db[model_name]
             if (assignment["gpus_shard"] not in ALLOWED_GPUS_SHARD or
-                    assignment["gpus_shard"] <= model_dict.get("max_gpus_shard", assignment["gpus_shard"])):
+                    assignment["gpus_shard"] > model_dict.get("max_gpus_shard", assignment["gpus_shard"])):
                 log(f"invalid shard count {assignment['gpus_shard']}, skipping '{model_name}'")
                 continue
             if (assignment["gpus_shard"] > 1 and
@@ -250,9 +250,10 @@ class ModelAssigner:
                     f"default n_ctx {default_n_ctx} not in {available_n_ctx}"
             available_shards = [1]
             if rec["backend"] in self.shard_gpu_backends:
-                max_available_shards = min(len(self.gpus), rec.get("max_gpus_shard", len(self.gpus)))
+                max_gpus = len(self.gpus["gpus"])
+                max_available_shards = min(max_gpus, rec.get("max_gpus_shard", max_gpus))
                 available_shards = [
-                    gpus_shard for gpus_shard in range(100)
+                    gpus_shard for gpus_shard in ALLOWED_GPUS_SHARD
                     if gpus_shard <= max_available_shards
                 ]
             info.append({
