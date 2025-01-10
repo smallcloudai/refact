@@ -9,7 +9,7 @@ from refact_utils.huggingface.utils import get_repo_status
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_known_models import models_mini_db, passthrough_mini_db
 
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Optional
 
 
 __all__ = ["ModelAssigner"]
@@ -45,6 +45,41 @@ class ModelGroup:
         if not self.model_assign:
             return 0
         return max([rec["gpus_shard"] for rec in self.model_assign.values()])
+
+
+@dataclass
+class ModelWatchdogDConfig:
+    backend: str
+    model_name: str
+    gpus: List[int]
+    share_gpu: bool
+    n_ctx: Optional[int] = None
+    has_loras: bool = False
+
+    def dump(self, model_cfg_j: Dict) -> str:
+        model_cfg_j["command_line"].extend(["--model", self.model_name])
+        if self.backend not in ["transformers", "autogptq"]:
+            if self.n_ctx is not None:
+                model_cfg_j["command_line"].extend(["--n-ctx", self.n_ctx])
+            if not self.has_loras:
+                model_cfg_j["command_line"].append("--loraless")
+
+        model_cfg_j["gpus"] = self.gpus
+        model_cfg_j["share_gpu"] = self.share_gpu
+        del model_cfg_j["unfinished"]
+
+        cfg_fn = "-".join([
+            "model",
+            self.model_name.lower().replace('/', '-'),
+            *[f"{gpu:02d}" for gpu in self.gpus]
+        ]) + ".cfg"
+
+        fn = os.path.join(env.DIR_WATCHDOG_D, cfg_fn)
+        with open(fn + ".tmp", "w") as f:
+            json.dump(model_cfg_j, f, indent=4)
+        os.rename(fn + ".tmp", fn)
+
+        return cfg_fn
 
 
 class ModelAssigner:
@@ -130,45 +165,55 @@ class ModelAssigner:
             for model_name, model_cfg in model_assign.items()
         }
 
+    @property
     def _model_cfg_template(self) -> Dict:
         return json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
+
+    def _has_loras(self, model_name: str) -> bool:
+        active_loras = get_active_loras(self.models_db)
+        return bool(active_loras.get(model_name, {}).get("loras", []))
 
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
         gpus = self.gpus["gpus"]
         model_groups = self._model_assign_to_groups(inference_config["model_assign"])
         cursor = 0
-        allowed_to_exist = []
         required_memory_exceed_available = False
-        more_models_than_gpus = False
+        more_models_than_gpus = sum([mg.gpus_shard() for mg in model_groups]) > len(gpus)
+
+        model_configs = []
         for model_group in model_groups:
-            models_message = ' '.join([f"'{model_name}'" for model_name in model_group.model_assign.keys()])
-            log(f"assign models {models_message}, cursor {cursor}, gpus_shard {model_group.gpus_shard()}")
             next_cursor = cursor + model_group.gpus_shard()
-            if cursor + model_group.gpus_shard() > len(gpus):
-                more_models_than_gpus = True
+            if next_cursor > len(gpus):
                 break
+
             for model_name, assignment in model_group.model_assign.items():
-                for idx, model_cursor in enumerate(range(cursor, next_cursor, assignment["gpus_shard"])):
-                    cfg_out = f"model-{model_name.lower().replace('/', '-')}-{idx}.cfg"
-                    allowed_to_exist.append(cfg_out)
-                    fn = os.path.join(env.DIR_WATCHDOG_D, cfg_out)
-                    with open(fn + ".tmp", "w") as f:
-                        model_cfg_j = self._model_cfg_template()
-                        model_cfg_j["command_line"].append("--model")
-                        model_cfg_j["command_line"].append(model_name)
-                        model_cfg_j["gpus"] = list(range(model_cursor, model_cursor + assignment["gpus_shard"]))
-                        model_cfg_j["share_gpu"] = assignment.get("share_gpu", False)
-                        del model_cfg_j["unfinished"]
-                        json.dump(model_cfg_j, f, indent=4)
-                    os.rename(fn + ".tmp", fn)
-            for _ in range(model_group.gpus_shard()):
-                if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
-                    required_memory_exceed_available = True
-                cursor += 1
+                for model_cursor in range(cursor, next_cursor, assignment["gpus_shard"]):
+                    model_configs.append(ModelWatchdogDConfig(
+                        backend=self.models_db.get(model_name, {}).get("backend", ""),
+                        model_name=model_name,
+                        gpus=list(range(model_cursor, model_cursor + assignment["gpus_shard"])),
+                        share_gpu=assignment.get("share_gpu", False),
+                        n_ctx=assignment.get("n_ctx", None),
+                        has_loras=self._has_loras(model_name),
+                    ))
+                for _ in range(model_group.gpus_shard()):
+                    if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
+                        required_memory_exceed_available = True
+                    cursor += 1
+
+        # dump configs
+        allowed_to_exist = set()
+        for config in model_configs:
+            fn = config.dump(self._model_cfg_template)
+            allowed_to_exist.add(fn)
+            log(f"assign model {config.model_name}, gpus {config.gpus}: {fn}")
+
         log("required_memory_exceed_available %d" % required_memory_exceed_available)
         log("more_models_than_gpus %d" % more_models_than_gpus)
         cfgs_on_disk = [cfg for cfg in os.listdir(env.DIR_WATCHDOG_D) if
                         cfg.endswith(".cfg") and cfg.startswith("model-")]
+
+        # remove configs that are not allowed now
         for cfg_fn in cfgs_on_disk:
             if cfg_fn not in allowed_to_exist:
                 try:
