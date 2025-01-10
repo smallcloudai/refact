@@ -96,8 +96,10 @@ pub struct CommandLine {
     #[structopt(long, default_value="", help="Specify the integrations.yaml, this also disables the global integrations.d")]
     pub integrations_yaml: String,
 
-    #[structopt(long, default_value="", help="Specify the variables.yaml, this also disables the global variables.yaml")]
+    #[structopt(long, default_value="", help="Specify the variables.yaml, disabling the global one")]
     pub variables_yaml: String,
+    #[structopt(long, default_value="", help="Specify the secrets.yaml, disabling the global one")]
+    pub secrets_yaml: String,
 }
 
 impl CommandLine {
