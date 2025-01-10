@@ -41,7 +41,7 @@ type StreamArgs =
 type SendChatArgs = {
   messages: LspChatMessage[];
   model: string;
-  max_new_tokens: number;
+  max_new_tokens?: number;
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
