@@ -77,6 +77,7 @@ export const RetryForm: React.FC<{
   };
 
   const handleRetry = () => {
+    if (disableInput) return;
     const trimmedText = textValue.trim();
     if (imageValue.length === 0 && trimmedText.length > 0) {
       props.onSubmit(trimmedText);
