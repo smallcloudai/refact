@@ -23,9 +23,9 @@ function isOverflowing(element: HTMLDivElement | null) {
 }
 
 export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
-  const [followRef, setFollowRef] = useState(false);
+  const [followRef, setFollowRef] = useState(true);
 
-  const [isScrolledTillBottom, setIsScrolledTillBottom] = useState(false);
+  const [isScrolledTillBottom, setIsScrolledTillBottom] = useState(true);
 
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
