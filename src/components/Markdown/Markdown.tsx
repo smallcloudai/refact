@@ -44,7 +44,7 @@ import { extractFilePathFromPin } from "../../utils";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { ChatLinkButton } from "../ChatLinks";
 import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
-import { selectToolUse } from "../../features/Chat";
+import { selectAutomaticPatch, selectToolUse } from "../../features/Chat";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -75,6 +75,12 @@ const PinMessages: React.FC<{
     telemetryApi.useLazySendTelemetryChatEventQuery();
 
   const toolUse = useAppSelector(selectToolUse);
+  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
+
+  const shouldInteractiveButtonsBeVisible = useMemo(() => {
+    if (toolUse === "agent") return !!isPatchAutomatic;
+    return true;
+  }, [isPatchAutomatic, toolUse]);
 
   const getMarkdown = useCallback(() => {
     return (
@@ -129,6 +135,7 @@ const PinMessages: React.FC<{
   }
 
   const filePath = extractFilePathFromPin(children);
+
   return (
     <Card
       className={styles.patch_title}
@@ -150,8 +157,8 @@ const PinMessages: React.FC<{
           </Link>
         </TruncateLeft>{" "}
         <div style={{ flexGrow: 1 }} />
-        {toolUse !== "agent" && (
-          <Flex gap="2">
+        {shouldInteractiveButtonsBeVisible && (
+          <>
             <Button
               size="1"
               onClick={(event) => handleAutoApply(event, children, filePath)}
@@ -168,7 +175,7 @@ const PinMessages: React.FC<{
             >
               ➕ Replace Selection
             </Button>
-          </Flex>
+          </>
         )}
       </Flex>
       {errorMessage && errorMessage.type === "error" && (
