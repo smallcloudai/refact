@@ -42,15 +42,12 @@ pub async fn mix_project_summary_messages(
         let integrations = integrations_all.iter().filter(|x|x.integr_config_exists && x.project_path.is_empty()).collect::<Vec<_>>();
         sp_text = sp_text.replace("%AVAILABLE_INTEGRATIONS%", &integrations.iter().map(|x|x.integr_name.clone()).collect::<Vec<_>>().join(", "));
     }
-    
+
     sp_text = system_prompt_add_workspace_info(gcx.clone(), &sp_text).await;    // print inside
 
     let system_message = ChatMessage {
         role: "system".to_string(),
         content: ChatContent::SimpleText(sp_text),
-        tool_calls: None,
-        tool_call_id: String::new(),
-        usage: None,
         ..Default::default()
     };
 

@@ -101,9 +101,6 @@ pub async fn mix_config_messages(
             ChatMessage {
                 role: "cd_instruction".to_string(),
                 content: ChatContent::SimpleText(msg),
-                tool_calls: None,
-                tool_call_id: String::new(),
-                usage: None,
                 ..Default::default()
             }
         },
@@ -130,9 +127,6 @@ pub async fn mix_config_messages(
     let context_file_message = ChatMessage {
         role: "context_file".to_string(),
         content: ChatContent::SimpleText(serde_json::to_string(&context_file_vec).unwrap()),
-        tool_calls: None,
-        tool_call_id: String::new(),
-        usage: None,
         ..Default::default()
     };
     let system_message = ChatMessage {
@@ -140,9 +134,6 @@ pub async fn mix_config_messages(
         content: ChatContent::SimpleText(
             crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info(gcx.clone(), &sp.text).await
         ),
-        tool_calls: None,
-        tool_call_id: String::new(),
-        usage: None,
         ..Default::default()
     };
 
