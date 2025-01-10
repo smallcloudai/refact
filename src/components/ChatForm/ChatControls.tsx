@@ -47,7 +47,7 @@ export const ApplyPatchSwitch: React.FC = () => {
       flexShrink="0"
       width="100%"
     >
-      <Text size="2">Auto apply patches:</Text>
+      <Text size="2">Auto apply patches</Text>
       <Switch
         size="1"
         title="Enable/disable automatic patch calls by Agent"
