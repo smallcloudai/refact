@@ -78,7 +78,7 @@ const PinMessages: React.FC<{
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
 
   const shouldInteractiveButtonsBeVisible = useMemo(() => {
-    if (toolUse === "agent") return !!isPatchAutomatic;
+    if (toolUse === "agent") return !isPatchAutomatic;
     return true;
   }, [isPatchAutomatic, toolUse]);
 
