@@ -9,14 +9,14 @@ from refact_utils.huggingface.utils import get_repo_status
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_known_models import models_mini_db, passthrough_mini_db
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 
 
 __all__ = ["ModelAssigner"]
 
 
 ALLOWED_N_CTX = [2 ** p for p in range(10, 20)]
-SHARE_GPU_BACKENDS = ["transformers", "autogptq"]
+ALLOWED_GPUS_SHARD = [2 ** p for p in range(10)]
 
 
 def has_context_switch(filter_caps: List[str]) -> bool:
@@ -56,6 +56,14 @@ class ModelAssigner:
         }
 
     @property
+    def shard_gpu_backends(self) -> Set[str]:
+        return {"transformers"}
+
+    @property
+    def share_gpu_backends(self) -> Set[str]:
+        return {"transformers", "autogptq"}
+
+    @property
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
 
@@ -74,13 +82,17 @@ class ModelAssigner:
             if model_name not in self.models_db.keys():
                 log(f"unknown model '{model_name}', skipping")
                 continue
-            if assignment["gpus_shard"] not in [1, 2, 4]:
+            model_dict = self.models_db[model_name]
+            if (assignment["gpus_shard"] not in ALLOWED_GPUS_SHARD or
+                    assignment["gpus_shard"] <= model_dict.get("max_gpus_shard", assignment["gpus_shard"])):
                 log(f"invalid shard count {assignment['gpus_shard']}, skipping '{model_name}'")
                 continue
-            if self.models_db[model_name]["backend"] not in ["transformers"] and assignment["gpus_shard"] > 1:
-                log(f"sharding not supported for '{self.models_db['backend']}' backend, skipping '{model_name}'")
+            if (assignment["gpus_shard"] > 1 and
+                    model_dict["backend"] not in self.shard_gpu_backends):
+                log(f"sharding not supported for '{model_dict['backend']}' backend, skipping '{model_name}'")
                 continue
-            if assignment.get("share_gpu", False) and self.models_db[model_name]["backend"] in SHARE_GPU_BACKENDS:
+            if (assignment.get("share_gpu", False)
+                    and model_dict["backend"] in self.share_gpu_backends):
                 if not shared_group.model_assign:
                     model_groups.append(shared_group)
                 shared_group.model_assign[model_name] = assignment
@@ -109,7 +121,7 @@ class ModelAssigner:
 
     def _share_gpu_filter(self, model_assign: Dict[str, Any]) -> Dict[str, Any]:
         def _update_share_gpu(model: str, record: Dict) -> Dict:
-            allow_share_gpu = self.models_db[model]["backend"] in SHARE_GPU_BACKENDS
+            allow_share_gpu = self.models_db[model]["backend"] in self.share_gpu_backends
             record["share_gpu"] = record.get("share_gpu", False) and allow_share_gpu
             return record
 
@@ -236,6 +248,13 @@ class ModelAssigner:
                 available_n_ctx = list(filter(lambda n_ctx: n_ctx <= default_n_ctx, ALLOWED_N_CTX))
                 assert default_n_ctx in available_n_ctx, \
                     f"default n_ctx {default_n_ctx} not in {available_n_ctx}"
+            available_shards = [1]
+            if rec["backend"] in self.shard_gpu_backends:
+                max_available_shards = min(len(self.gpus), rec.get("max_gpus_shard", len(self.gpus)))
+                available_shards = [
+                    gpus_shard for gpus_shard in range(100)
+                    if gpus_shard <= max_available_shards
+                ]
             info.append({
                 "name": k,
                 "backend": rec["backend"],
@@ -245,10 +264,10 @@ class ModelAssigner:
                 "has_finetune": has_finetune,
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
-                "has_sharding": rec["backend"] in ["transformers"],
-                "has_share_gpu": rec["backend"] in SHARE_GPU_BACKENDS,
+                "has_share_gpu": rec["backend"] in self.share_gpu_backends,
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
+                "available_shards": available_shards,
                 "is_deprecated": bool(rec.get("deprecated", False)),
                 "repo_status": self._models_repo_status[k],
                 "repo_url": f"https://huggingface.co/{rec['model_path']}",

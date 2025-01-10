@@ -271,13 +271,13 @@ function render_models_assigned(models) {
         }
         finetune_info_factory(index, models_info, finetune_info, finetune_runs, models_data.multiple_loras);
 
-         if (models_info[index].hasOwnProperty('has_sharding') && models_info[index].has_sharding) {
+         if (models_info[index].available_shards.length > 1) {
             const select_gpus_div = document.createElement("div");
             select_gpus_div.setAttribute("class", "btn-group btn-group-sm");
             select_gpus_div.setAttribute("role", "group");
             select_gpus_div.setAttribute("aria-label", "basic radio toggle button group");
 
-            [1, 2, 4].forEach((gpus_shard_n) => {
+            models_info[index].available_shards.forEach((gpus_shard_n) => {
                 const input_name = `gpu-${index}`;
                 const input_id = `${input_name}-${gpus_shard_n}`;
 
