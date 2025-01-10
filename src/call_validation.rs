@@ -137,6 +137,7 @@ pub struct ChatUsage {
 pub struct ChatMessage {
     pub role: String,
     pub content: ChatContent,
+    #[serde(default, skip_serializing_if="is_none")]
     pub finish_reason: Option<String>,
     #[serde(default, skip_serializing_if="is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
