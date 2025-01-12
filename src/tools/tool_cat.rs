@@ -27,7 +27,7 @@ const CAT_MAX_IMAGES_CNT: usize = 1;
 #[async_trait]
 impl Tool for ToolCat {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -84,7 +84,7 @@ impl Tool for ToolCat {
             }
         }
         if !not_found_messages.is_empty() {
-            content.push_str(&format!("Problems:\n\n{}\n\n", not_found_messages.join("\n\n")));
+            content.push_str(&format!("Problems:\n{}\n\n", not_found_messages.join("\n\n")));
             corrections = true;
         }
 
@@ -269,16 +269,16 @@ pub async fn paths_and_symbols_to_cat(
         let f_type = get_file_type(&PathBuf::from(p));
 
         if f_type.starts_with("image/") {
+            filenames_present.push(p.clone());
+            if image_counter == CAT_MAX_IMAGES_CNT {
+                not_found_messages.push("Cat() shows only 1 image per call to avoid token overflow, call several cat() in parallel to see more images.".to_string());
+            }
+            image_counter += 1;
+            if image_counter > CAT_MAX_IMAGES_CNT {
+                continue
+            }
             match load_image(p, &f_type).await {
                 Ok(mm) => {
-                    if image_counter == CAT_MAX_IMAGES_CNT {
-                        not_found_messages.push("cat can show only 1 image per call. cat(image_path) in parallel if need to show all images".to_string());
-                    }
-                    image_counter += 1;
-                    if image_counter > CAT_MAX_IMAGES_CNT {
-                        continue
-                    }
-                    filenames_present.push(p.clone());
                     multimodal.push(mm);
                 },
                 Err(e) => { not_found_messages.push(format!("{}: {}", p, e)); }
