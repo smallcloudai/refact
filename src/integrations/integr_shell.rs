@@ -216,7 +216,7 @@ pub async fn execute_shell_command(
     cmd.stderr(Stdio::piped());
 
     let t0 = tokio::time::Instant::now();
-    tracing::info!("SHELL: running command directory {}\n{:?}", workdir, command);
+    tracing::info!("SHELL: running command directory {:?}\n{:?}", workdir_maybe, command);
     let output = tokio::time::timeout(tokio::time::Duration::from_secs(timeout), cmd.output())
         .await
         .map_err(|_| format!("Command timed out after {} seconds", timeout))?
