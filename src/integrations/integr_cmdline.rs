@@ -113,7 +113,7 @@ pub fn format_output(stdout_out: &str, stderr_out: &str) -> String {
     let mut out = String::new();
     if !stdout_out.is_empty() && stderr_out.is_empty() {
         // special case: just clean output, nice
-        out.push_str(&format!("{}\n", stdout_out));
+        out.push_str(&format!("{}\n\n", stdout_out));
     } else {
         if !stdout_out.is_empty() {
             out.push_str(&format!("STDOUT\n```\n{}```\n\n", stdout_out));
@@ -195,7 +195,7 @@ pub async fn execute_blocking_command(
 
         let mut out = format_output(&stdout, &stderr);
         let exit_code = output.status.code().unwrap_or_default();
-        out.push_str(&format!("command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
+        out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
         Ok(out)
     };
 

@@ -212,12 +212,17 @@ pub async fn execute_shell_command(
     }
 
     cmd.arg(shell_arg).arg(command);
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
 
+    let t0 = tokio::time::Instant::now();
+    tracing::info!("SHELL: running command directory {}\n{:?}", workdir, command);
     let output = tokio::time::timeout(tokio::time::Duration::from_secs(timeout), cmd.output())
         .await
         .map_err(|_| format!("Command timed out after {} seconds", timeout))?
         .map_err(|e| format!("Failed to execute command: {}", e))?;
+    let duration = t0.elapsed();
+    tracing::info!("SHELL: /finished in {:.3}s", duration.as_secs_f64());
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -225,11 +230,10 @@ pub async fn execute_shell_command(
     let filtered_stdout = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stdout);
     let filtered_stderr = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stderr);
 
-    if !filtered_stderr.is_empty() {
-        return Err(filtered_stderr);
-    }
-
-    Ok(filtered_stdout)
+    let mut out = crate::integrations::integr_cmdline::format_output(&filtered_stdout, &filtered_stderr);
+    let exit_code = output.status.code().unwrap_or_default();
+    out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
+    Ok(out)
 }
 
 fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
