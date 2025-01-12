@@ -39,7 +39,6 @@ pub async fn forward_to_openai_style_endpoint(
     }
     if model_name != "o1-mini" {
         data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
-        data["max_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
         data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     } else {
         data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
@@ -104,7 +103,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "model": model_name,
         "stream": true,
         "temperature": sampling_parameters.temperature,
-        "max_tokens": sampling_parameters.max_new_tokens,
         "max_completion_tokens": sampling_parameters.max_new_tokens,
         "stream_options": {"include_usage": true},
         // "stop": sampling_parameters.stop, // openai does not like stop: []
