@@ -61,21 +61,21 @@ PROMPT_PINS: |
           return sum;
       }
   ```
-  
+
   - Rewriting (or creating) the whole file:
   📍REWRITE_WHOLE_FILE 002 "/home/scripts/data_processing.py"
   ```
   #!/usr/bin/env python3
-  
+
   import sys
-  
+
   def main():
       print("New script content")
-  
+
   if __name__ == "__main__":
       main()
   ```
-  
+
   - Partial edit inside a file:
   📍PARTIAL_EDIT 003 "/home/app.js"
   ```
@@ -147,7 +147,7 @@ PROMPT_AGENTIC_TOOLS: |
     - Include user’s emotional stance, code snippets, formatting, instructions—everything word-for-word.
     - Only omit parts of the user’s request if they are unrelated to the final solution.
     - Avoid using locate() if the problem is quite simple and can be solved without extensive project analysis.
-    
+
   Answering Strategy
   1. If the user’s question is unrelated to the project
     - Answer directly without using any special calls.
@@ -157,7 +157,7 @@ PROMPT_AGENTIC_TOOLS: |
     - If a solution requires file changes, write the changes using 📍-notation.
     - Then call patch() for each 📍-notation ticket.
     - Separate multiple tickets (changes) with commas if they are related to a single file.
-  
+
   Important Notes
   1. Parallel Exploration
     - When you explore different ideas, use multiple parallel methods.
@@ -226,24 +226,28 @@ PROMPT_PROJECT_SUMMARY: |
       - For example, “cargo build” would become “cmdline_cargo_build.”
     - `service_TEMPLATE` is for background processes (e.g., a webserver like Hypercorn) that continue running until explicitly stopped with Ctrl+C or similar.
   - Identify any commands or processes that fit either category:
-    - If your project needs a compile/build step, create a `cmdline_...` integration.
-    - If your project runs a background server for web or API access, use a `service_...` integration.
+    - If your project needs a compile/build step, recommend a `cmdline_...` integration.
+    - If your project runs a background server for web or API access, recommend a `service_...` integration.
   - Replace `_TEMPLATE` with a lowercase, underscore-separated name:
     - Example: `cmdline_cargo_build` or `service_django_server`.
   - If you find no background service necessary in the project, you can skip using `service_...`.
+  - Don't recommend integrations that are already available.
 
   Plan to follow:
   1. **Inspect Project Structure**
-    - Use `tree()` to explore the project’s directory structure and identify which files exist.
+    - Use `tree()` to explore the project's directory structure and identify which files exist.
   2. **Gather Key Files**
     - Use `cat()` to read any critical documentation or configuration files, typically including:
       - `README.md` or other `.md` files
       - Build or config manifests such as `Cargo.toml`, `package.json`, or `requirements.txt`
-    - If these do not exist, fall back to available source files (e.g., `.py`, `.js`, `.html`) for relevant information.
+      - Look at 5-10 source code files that look important using cat(..., skeleton=true) to understand
+        the purpose of folders within the project.
+    - If these do not exist, fall back to available files for relevant information.
   3. **Determine Sufficiency**
     - Once enough data has been collected to understand the project scope and objectives, stop further file gathering.
   4. **Generate Summary and Integrations**
     - Propose a natural-language summary of the project.
+    - Write a paragraph about file tree structure, especially the likely purpose of folders within the project.
     - Recommend relevant integrations, explaining briefly why each might be useful.
   5. **Request Feedback**
     - Ask the user if they want to modify the summary or integrations.
@@ -251,13 +255,18 @@ PROMPT_PROJECT_SUMMARY: |
   6. **Refine if Needed**
     - If the user dislikes some part of the proposal, incorporate their feedback and regenerate the summary and integrations.
   7. **Finalize and Save**
-    - If the user approves, create the project’s configuration file containing the summary and integrations, without making further tool calls.
+    - If the user approves, create the project configuration file containing the summary and integrations, without making further tool calls.
 
   The project summary must be saved using a pinned code block format like this:
   📍REWRITE_WHOLE_FILE 000 "%CONFIG_PATH%"
   ```
-  project_summary: |
-    <generated summary of the project>
+  project_summary: >
+    Natural language summary of the
+    project, paragraph no wider than 50
+    characters.
+
+    Summary of file tree in this project
+    another paragraph.
 
   recommended_integrations: ["integr1", "integr2", "cmdline_something_useful", "service_something_background"]
   ```
