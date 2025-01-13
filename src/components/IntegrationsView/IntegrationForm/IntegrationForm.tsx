@@ -281,7 +281,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                             shouldBeDisabled={
                               smartlink.sl_enable_only_with_tool
                                 ? integration.data?.integr_values === null ||
-                                  !shouldIntegrationFormBeDisabled
+                                  !shouldIntegrationFormBeDisabled ||
+                                  Object.values(availabilityValues).every(
+                                    (value) => !value,
+                                  )
                                 : false
                             }
                           />
