@@ -100,7 +100,7 @@ pub async fn mix_config_messages(
                 serde_json::to_string(&schema_struct).unwrap(),
             );
             if the_get.integr_config_exists {
-                msg.push_str(format!("This is how the system loads the YAML so you can detect which fields are not loaded in reality:\n\n{}\n\n", serde_json::to_string(&the_get.integr_values).unwrap()).as_str());
+                msg.push_str(format!("This is how the system loads the YAML currently so you can detect which fields are not actually loaded:\n\n{}\n\n", serde_json::to_string(&the_get.integr_values).unwrap()).as_str());
             } else {
                 let mut yaml_value = serde_yaml::to_value(&the_get.integr_values).unwrap();
                 if let serde_yaml::Value::Mapping(ref mut map) = yaml_value {
@@ -121,8 +121,12 @@ pub async fn mix_config_messages(
             }
         },
         Err(e) => {
-            tracing::error!("Failed to load integration {}: {}", chat_meta.current_config_file, e);
-            return;
+            tracing::warn!("Not a real integration {}: {}", chat_meta.current_config_file, e);
+            ChatMessage {
+                role: "cd_instruction".to_string(),
+                content: ChatContent::SimpleText(format!("The current config file is not an integration config, so there's no integration-specific information. Follow the system prompt.")),
+                ..Default::default()
+            }
         }
     };
 
@@ -153,7 +157,6 @@ pub async fn mix_config_messages(
         ..Default::default()
     };
 
-    // Interestingly, here you can stream messages to user or not, and both options will work -- this function will be called or not called again the next chat call.
     if messages.len() == 1 {
         stream_back_to_user.push_in_json(serde_json::json!(system_message));
         stream_back_to_user.push_in_json(serde_json::json!(context_file_message));
