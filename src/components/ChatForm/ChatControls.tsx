@@ -226,8 +226,8 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   );
 
   const showControls = useMemo(
-    () => !isStreaming && !isWaiting,
-    [isStreaming, isWaiting],
+    () => messages.length === 0 && !isStreaming && !isWaiting,
+    [isStreaming, isWaiting, messages],
   );
 
   return (
@@ -263,17 +263,14 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       })}
 
       {showControls && (
-        <ToolUseSwitch
-          ref={(x) => refs.setUseTools(x)}
-          toolUse={toolUse}
-          setToolUse={onSetToolUse}
-        />
-      )}
-
-      {showControls && (
         <Flex gap="2" direction="column">
+          <ToolUseSwitch
+            ref={(x) => refs.setUseTools(x)}
+            toolUse={toolUse}
+            setToolUse={onSetToolUse}
+          />
           <CapsSelect />
-          {messages.length === 0 && <PromptSelect />}
+          <PromptSelect />
         </Flex>
       )}
     </Flex>
