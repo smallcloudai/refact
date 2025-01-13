@@ -34,12 +34,12 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
   };
 
   return (
-    <Flex className={styles.IntegrationsHeader} px={leftRightPadding}>
+    <Flex className={styles.IntegrationsHeader} px={leftRightPadding} pt="5">
       <Flex align="center" justify="between" width="100%" px={leftRightPadding}>
         <Flex
           gap={{
             initial: "3",
-            xs: "4",
+            xs: "5",
           }}
           align="center"
         >
@@ -53,19 +53,20 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
               <ArrowLeftIcon width="16" height="16" />
             </IconButton>
           )}
-          <img
-            src={icon}
-            className={styles.IntegrationsHeaderIcon}
-            alt={integrationName}
-          />
-          <Heading as="h5" size="3">
-            Setup{" "}
-            {integrationName.includes("TEMPLATE")
-              ? integrationName.startsWith("cmdline")
-                ? "Command Line Tool"
-                : "Command Line Service"
-              : toPascalCase(integrationName)}
-          </Heading>
+          <Flex gap="2" align="center" mt={width > 500 ? "1" : "0"}>
+            <img
+              src={icon}
+              className={styles.IntegrationsHeaderIcon}
+              alt={integrationName}
+            />
+            <Heading as="h5" size="3">
+              {integrationName.includes("TEMPLATE")
+                ? integrationName.startsWith("cmdline")
+                  ? "Command Line Tool"
+                  : "Command Line Service"
+                : toPascalCase(integrationName)}
+            </Heading>
+          </Flex>
         </Flex>
       </Flex>
     </Flex>

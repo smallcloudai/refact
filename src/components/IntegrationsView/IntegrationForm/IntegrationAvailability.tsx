@@ -21,23 +21,26 @@ export const IntegrationAvailability: FC<IntegrationAvailabilityProps> = ({
   // TODO: temporal solution to hide the switch for isolated mode
   if (fieldName === "when_isolated") return null;
 
+  const handleLabelClick = () => {
+    handleSwitchChange(!value);
+  };
+
   return (
     <Flex style={{ marginBottom: "0.75rem" }}>
-      <Flex align="center" justify="between" gap="1">
-        <label htmlFor={`switch-${fieldName}`}>
-          <CustomLabel
-            label={toPascalCase(
-              fieldName === "on_your_laptop" ? "enabled" : "run_in_docker",
-            )}
-          />
-        </label>
+      <Flex align="center" justify="between" gap="3">
         <Switch
           id={`switch-${fieldName}`}
           size="2"
-          ml="2"
           checked={value}
           onCheckedChange={handleSwitchChange}
         />
+        <label htmlFor={`switch-${fieldName}`} onClick={handleLabelClick}>
+          <CustomLabel
+            label={toPascalCase(
+              fieldName === "on_your_laptop" ? "enable" : "run_in_docker",
+            )}
+          />
+        </label>
       </Flex>
     </Flex>
   );

@@ -37,6 +37,7 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
+  selectPreventSend,
   selectToolUse,
 } from "../../features/Chat";
 
@@ -64,12 +65,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { disableInput } = useAgentUsage();
   const isOnline = useIsOnline();
   const messages = useAppSelector(selectMessages);
+  const preventSend = useAppSelector(selectPreventSend);
 
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (messages.length === 0) return false;
-    return isWaiting || isStreaming || !isOnline;
-  }, [isOnline, isStreaming, isWaiting, messages]);
+    return isWaiting || isStreaming || !isOnline || preventSend;
+  }, [isOnline, isStreaming, isWaiting, preventSend, messages]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(

@@ -227,26 +227,28 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         id={`form-${integration.data.integr_name}`}
       >
         <Flex direction="column" gap="2">
-          <Grid mt="2" mb="0">
+          <Grid mb="0">
             {integration.data.integr_values && (
-              <Flex
-                gap="4"
-                mb="4"
-                align="center"
-                justify="between"
-                className={styles.switchInline}
-              >
-                {integration.data.integr_values.available &&
-                  Object.keys(integration.data.integr_values.available).map(
-                    (key) => (
-                      <IntegrationAvailability
-                        key={key}
-                        fieldName={key}
-                        value={availabilityValues[key]}
-                        onChange={handleAvailabilityChange}
-                      />
-                    ),
-                  )}
+              <Flex align="start" justify="between">
+                <Flex
+                  gap="4"
+                  mb="4"
+                  align="center"
+                  justify="between"
+                  className={styles.switchInline}
+                >
+                  {integration.data.integr_values.available &&
+                    Object.keys(integration.data.integr_values.available).map(
+                      (key) => (
+                        <IntegrationAvailability
+                          key={key}
+                          fieldName={key}
+                          value={availabilityValues[key]}
+                          onChange={handleAvailabilityChange}
+                        />
+                      ),
+                    )}
+                </Flex>
                 <IntegrationDeletePopover
                   integrationName={integration.data.integr_name}
                   integrationConfigPath={integration.data.integr_config_path}
@@ -258,11 +260,11 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
             )}
             {integration.data.integr_schema.smartlinks &&
               integration.data.integr_schema.smartlinks.length > 0 && (
-                <Flex width="100%" direction="column" gap="2" mb="6">
-                  <Heading as="h4" size="3">
-                    Ask AI to do it for you (experimental)
-                  </Heading>
-                  <Flex align="center" gap="2" mt="2" wrap="wrap">
+                <Flex width="100%" direction="column" gap="1" mb="6">
+                  <Flex align="center" gap="3" mt="2" wrap="wrap">
+                    <Heading as="h6" size="2" weight="medium">
+                      Actions:
+                    </Heading>
                     {integration.data.integr_schema.smartlinks.map(
                       (smartlink, index) => {
                         return (
@@ -332,7 +334,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
               size="2"
               onClick={() => setAreExtraFieldsRevealed((prev) => !prev)}
               mb="1"
-              mt="3"
+              mt={{
+                initial: "3",
+                xs: "0",
+              }}
               className={styles.advancedButton}
             >
               {areExtraFieldsRevealed
@@ -404,6 +409,11 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           />
         </Flex>
       )}
+      <Spacer />
     </Flex>
   );
+};
+
+const Spacer = () => {
+  return <Flex height="65px" />;
 };

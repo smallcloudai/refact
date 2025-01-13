@@ -91,9 +91,14 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
         gap="4"
       >
         <Flex align="start" direction="column" gap="3" maxWidth="100%">
-          <Text className={styles.ToolConfirmationHeading}>
-            🔨 Model {allConfirmational ? "wants" : "tried"} to run:
-          </Text>
+          <Flex
+            align="baseline"
+            gap="1"
+            className={styles.ToolConfirmationHeading}
+          >
+            <Text as="span">⚠️</Text>
+            <Text>Model {allConfirmational ? "wants" : "tried"} to run:</Text>
+          </Flex>
           {commands.map((command, i) => (
             <Markdown
               key={toolCallIds[i]}

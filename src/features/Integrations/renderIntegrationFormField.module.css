@@ -1,7 +1,7 @@
 @media screen and (min-width: 424px) {
   .flexField {
     flex-direction: row;
-    margin-bottom: 15px;
+    /* margin-bottom: 15px; */
   }
   .flexLabel {
     width: 200px;

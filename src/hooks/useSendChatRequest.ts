@@ -354,7 +354,7 @@ export function useAutoSend() {
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
       ) {
-        if (!isIntegration && !wasInteracted) {
+        if (!isIntegration && !wasInteracted && !areToolsConfirmed) {
           abort();
           if (recallCounter < 1) {
             recallCounter++;
