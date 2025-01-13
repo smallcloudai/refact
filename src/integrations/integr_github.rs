@@ -221,7 +221,7 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The `github` (`gh`) tool should be visible now. To test the tool, list opened pull requests for `smallcloudai/refact-lsp`, and briefly describe them and express
-          happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          🔧 The `github` tool should be visible now. To test the tool, list opened pull requests for the current project, and briefly describe them.
+          If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
     sl_enable_only_with_tool: true
 "#;

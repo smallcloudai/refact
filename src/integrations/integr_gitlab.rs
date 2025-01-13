@@ -218,7 +218,7 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: |
-          🔧 The `gitlab` (`glab`) tool should be visible now. To test the tool, list opened merge requests for your GitLab project, and briefly describe them and express
-          happiness, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
+          🔧 The `gitlab` tool should be visible now. To test the tool, list opened merge requests for the current project on GitLab, and briefly describe them.
+          If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.
     sl_enable_only_with_tool: true
 "#;
