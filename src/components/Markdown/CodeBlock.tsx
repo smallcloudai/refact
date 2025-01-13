@@ -2,7 +2,7 @@ import React, { CSSProperties } from "react";
 import SyntaxHighlighter, {
   type SyntaxHighlighterProps,
 } from "react-syntax-highlighter";
-import { Code, Text } from "@radix-ui/themes";
+import { Code, CodeProps, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import { PreTag, PreTagProps } from "./Pre";
 // import "./highlightjs.css";
@@ -19,6 +19,7 @@ export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] & {
   node?: Element | undefined;
   style?: Record<string, CSSProperties> | SyntaxHighlighterProps["style"];
   wrap?: boolean;
+  color?: CodeProps["color"];
 } & Pick<
     SyntaxHighlighterProps,
     "showLineNumbers" | "startingLineNumber" | "useInlineStyles"
@@ -31,6 +32,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   style = hljsStyle,
   onCopyClick,
   wrap = false,
+  color = undefined,
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
@@ -76,7 +78,10 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   }
 
   return (
-    <Code className={classNames(styles.code, styles.code_inline, className)}>
+    <Code
+      className={classNames(styles.code, styles.code_inline, className)}
+      color={color}
+    >
       {children}
     </Code>
   );

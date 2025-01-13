@@ -52,7 +52,11 @@ export type MarkdownProps = Pick<
 > &
   Pick<
     MarkdownCodeBlockProps,
-    "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
+    | "startingLineNumber"
+    | "showLineNumbers"
+    | "useInlineStyles"
+    | "style"
+    | "color"
   > & {
     canHaveInteractiveElements?: boolean;
     wrap?: boolean;
@@ -237,6 +241,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
   allowedElements,
   unwrapDisallowed,
   canHaveInteractiveElements,
+  color,
   ...rest
 }) => {
   const components: Partial<Components> = useMemo(() => {
@@ -251,8 +256,8 @@ const _Markdown: React.FC<MarkdownProps> = ({
           <ul {...props} className={classNames(styles.list, props.className)} />
         );
       },
-      code({ style: _style, ...props }) {
-        return <MarkdownCodeBlock {...props} {...rest} />;
+      code({ style: _style, color: _color, ...props }) {
+        return <MarkdownCodeBlock color={color} {...props} {...rest} />;
       },
       p({ color: _color, ref: _ref, node: _node, ...props }) {
         if (canHaveInteractiveElements) {
@@ -329,7 +334,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <Table.Cell {...props} />;
       },
     };
-  }, [rest, canHaveInteractiveElements]);
+  }, [rest, canHaveInteractiveElements, color]);
   return (
     <ReactMarkdown
       className={styles.markdown}

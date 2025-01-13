@@ -100,7 +100,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
             >{`${"```bash\n"}${command}${"\n```"}`}</Markdown>
           ))}
           <Text className={styles.ToolConfirmationText}>
-            <Markdown>{message.concat("\n\n")}</Markdown>
+            <Markdown color="indigo">{message.concat("\n\n")}</Markdown>
             {maybeIntegrationPath && (
               <Text className={styles.ToolConfirmationText} mt="3">
                 You can modify the ruleset on{" "}
@@ -114,6 +114,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
                       }),
                     );
                   }}
+                  color="indigo"
                 >
                   Configuration Page
                 </Link>
