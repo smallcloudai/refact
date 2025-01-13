@@ -22,7 +22,7 @@ export const Markdown: React.FC<{
   return (
     <ReactMarkDown
       components={{
-        code({ style: _style, ...codeProps }) {
+        code({ style: _style, color: _color, ...codeProps }) {
           return (
             <MarkdownCodeBlock
               {...codeProps}
