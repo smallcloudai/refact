@@ -33,7 +33,7 @@ RUN pip install --no-cache-dir xformers==v0.0.28.post2
 RUN pip install ninja
 RUN pip install setuptools_scm
 ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=60;61;70;75;80;86;89;90+PTX"
-RUN pip install -v --no-build-isolation git+https://github.com/smallcloudai/vllm@refact_v0.6.3_2adb440
+RUN pip install -v --no-build-isolation git+https://github.com/smallcloudai/vllm@refact_v0.6.6.post1_2339d59
 
 # there is no prebuild auto-gptq with torch 2.5.0 support
 ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
