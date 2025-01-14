@@ -13,7 +13,7 @@ pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "scss", "sass", "less", "json", "xml", "yml", "yaml", "md", "sql", "db", "sqlite",
     "mdf", "cfg", "conf", "ini", "toml", "dockerfile", "ipynb", "rmd", "xml", "kt",
     "xaml", "unity", "gd", "uproject", "uasset", "asm", "s", "tex", "makefile", "mk",
-    "cmake", "gradle",
+    "cmake", "gradle", "liquid"
 ];
 
 pub(crate) const BLACKLISTED_DIRS: &[&str] = &[
