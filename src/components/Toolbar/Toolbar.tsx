@@ -1,19 +1,38 @@
 import {
   Button,
+  DropdownMenu,
   Flex,
   IconButton,
   Spinner,
   TabNav,
   Text,
+  TextField,
 } from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
-import { DotFilledIcon, HomeIcon, PlusIcon } from "@radix-ui/react-icons";
+import {
+  DotFilledIcon,
+  HomeIcon,
+  MixerVerticalIcon,
+  PlusIcon,
+} from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getHistory } from "../../features/History/historySlice";
-import { restoreChat } from "../../features/Chat";
+import {
+  ChangeEvent,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  deleteChatById,
+  getHistory,
+  updateChatTitleById,
+} from "../../features/History/historySlice";
+import { restoreChat, selectThread } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
 import {
   useAppDispatch,
@@ -62,8 +81,13 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     devModeChecks: { stabilityCheck: "never" },
   });
   const isStreaming = useAppSelector((app) => app.chat.streaming);
+  const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
   const cache = useAppSelector((app) => app.chat.cache);
   const { openSettings, openHotKeys } = useEventsBusForIDE();
+
+  const [isOnlyOneChatTab, setIsOnlyOneChatTab] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newTitle, setNewTitle] = useState<string | null>(null);
 
   const handleNavigation = useCallback(
     (to: DropdownNavigationOptions | "chat") => {
@@ -120,6 +144,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   );
 
   const onCreateNewChat = useCallback(() => {
+    setIsRenaming((prev) => (prev ? !prev : prev));
     dispatch(newChatAction());
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
@@ -141,6 +166,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         dispatch(popBackTo({ name: "history" }));
         dispatch(newChatAction());
       } else {
+        if (isOnlyOneChatTab) return;
         const chat = history.find((chat) => chat.id === tab.id);
         if (chat != undefined) {
           dispatch(restoreChat(chat));
@@ -154,7 +180,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         error_message: "",
       });
     },
-    [dispatch, history, sendTelemetryEvent],
+    [dispatch, history, isOnlyOneChatTab, sendTelemetryEvent],
   );
 
   useEffect(() => {
@@ -188,6 +214,37 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     return tabNavWidth < totalWidth;
   }, [tabNavWidth, tabs.length, windowWidth]);
 
+  const handleChatThreadDeletion = useCallback(() => {
+    dispatch(deleteChatById(chatId));
+    goToTab({ type: "dashboard" });
+  }, [dispatch, chatId, goToTab]);
+
+  const handleChatThreadRenaming = useCallback(() => {
+    setIsRenaming(true);
+  }, []);
+
+  const handleKeyUpOnRename = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.code === "Escape") {
+        setIsRenaming(false);
+      }
+      if (event.code === "Enter") {
+        setIsRenaming(false);
+        if (!newTitle || newTitle.trim() === "") return;
+        dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
+      }
+    },
+    [dispatch, newTitle, chatId],
+  );
+
+  const handleChatTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setNewTitle(event.target.value);
+  };
+
+  useEffect(() => {
+    setIsOnlyOneChatTab(tabs.length < 2);
+  }, [tabs]);
+
   return (
     <Flex align="center" m="4px" gap="4px" style={{ alignSelf: "stretch" }}>
       <Flex flexGrow="1" align="start" maxHeight="40px" overflowY="hidden">
@@ -195,7 +252,10 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           <TabNav.Link
             active={isDashboardTab(activeTab)}
             ref={(x) => refs.setBack(x)}
-            onClick={() => goToTab({ type: "dashboard" })}
+            onClick={() => {
+              setIsRenaming((prev) => (prev ? !prev : prev));
+              goToTab({ type: "dashboard" });
+            }}
             style={{ cursor: "pointer" }}
           >
             {windowWidth < 400 || shouldCollapse ? <HomeIcon /> : "Home"}
@@ -205,12 +265,30 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
               chat.id in cache ||
               (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
             const isActive = isChatTab(activeTab) && activeTab.id == chat.id;
+            if (isRenaming) {
+              return (
+                <TextField.Root
+                  my="auto"
+                  key={chat.id}
+                  autoComplete="off"
+                  onKeyUp={handleKeyUpOnRename}
+                  onBlur={() => setIsRenaming(false)}
+                  autoFocus
+                  size="1"
+                  defaultValue={chat.title}
+                  onChange={handleChatTitleChange}
+                />
+              );
+            }
             return (
               <TabNav.Link
                 active={isActive}
                 key={chat.id}
-                onClick={() => goToTab({ type: "chat", id: chat.id })}
-                style={{ minWidth: 0, maxWidth: "140px", cursor: "pointer" }}
+                onClick={() => {
+                  if (isOnlyOneChatTab) return;
+                  goToTab({ type: "chat", id: chat.id });
+                }}
+                style={{ minWidth: 0, maxWidth: "150px", cursor: "pointer" }}
                 ref={isActive ? setFocus : undefined}
                 title={chat.title}
               >
@@ -218,13 +296,49 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 {!isStreamingThisTab && chat.read === false && (
                   <DotFilledIcon />
                 )}
-                <TruncateLeft
-                  style={{
-                    maxWidth: shouldCollapse ? "25px" : "110px",
-                  }}
-                >
-                  {chat.title}
-                </TruncateLeft>
+                <Flex gap="3" align="center">
+                  <TruncateLeft
+                    style={{
+                      maxWidth: shouldCollapse ? "25px" : "110px",
+                    }}
+                  >
+                    {chat.title}
+                  </TruncateLeft>
+                  {isTitleGenerated &&
+                    !isStreamingThisTab &&
+                    isOnlyOneChatTab && (
+                      <DropdownMenu.Root>
+                        <DropdownMenu.Trigger>
+                          <IconButton
+                            size="2"
+                            variant="ghost"
+                            color="gray"
+                            title="Title actions"
+                          >
+                            <MixerVerticalIcon />
+                          </IconButton>
+                        </DropdownMenu.Trigger>
+                        <DropdownMenu.Content
+                          size="1"
+                          side="bottom"
+                          align="end"
+                          style={{
+                            minWidth: 110,
+                          }}
+                        >
+                          <DropdownMenu.Item onClick={handleChatThreadRenaming}>
+                            Rename
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item
+                            onClick={handleChatThreadDeletion}
+                            color="red"
+                          >
+                            Delete chat
+                          </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Root>
+                    )}
+                </Flex>
               </TabNav.Link>
             );
           })}
