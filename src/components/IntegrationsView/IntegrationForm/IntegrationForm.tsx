@@ -409,7 +409,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           />
         </Flex>
       )}
-      <Flex mb="8" />
+      <Flex pb="8" />
     </Flex>
   );
 };
