@@ -51,7 +51,7 @@ PROMPT_PINS: |
      - Avoid being lazy when creating the edit blocks - copy all necessary unchanged lines as they are
   5. 📍-notation format examples
   - Rewriting a single symbol:
-  📍REWRITE_ONE_SYMBOL 001 "/home/sales/OrderCalculator.java" calculateTotal OrderCalculator::calculateTotal
+  📍REWRITE_ONE_SYMBOL 001 "C:\Users\username\sales\OrderCalculator.java" calculateTotal OrderCalculator::calculateTotal
   ```
       public double calculateTotal(Order order) {
           double sum = 0;
@@ -63,7 +63,7 @@ PROMPT_PINS: |
   ```
 
   - Rewriting (or creating) the whole file:
-  📍REWRITE_WHOLE_FILE 002 "/home/scripts/data_processing.py"
+  📍REWRITE_WHOLE_FILE 002 "/home/username/scripts/data_processing.py"
   ```
   #!/usr/bin/env python3
 
@@ -77,7 +77,7 @@ PROMPT_PINS: |
   ```
 
   - Partial edit inside a file:
-  📍PARTIAL_EDIT 003 "/home/app.js"
+  📍PARTIAL_EDIT 003 "/Users/username/app.js"
   ```
       router.post('/api/items', async (req, res) => {
           try {
