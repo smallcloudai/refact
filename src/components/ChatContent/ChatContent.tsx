@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   ChatMessages,
   isChatContextFileMessage,
@@ -18,6 +18,7 @@ import { PlainText } from "./PlainText";
 import { useAppDispatch } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
+  selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
@@ -49,6 +50,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
+  const integrationMeta = useAppSelector(selectIntegration);
 
   const {
     handleScroll,
@@ -93,6 +95,10 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     });
   }, [onStopStreaming, sendTelemetryEvent]);
 
+  const shouldConfigButtonBeVisible = useMemo(() => {
+    return isConfig && !integrationMeta?.path?.includes("project_summary");
+  }, [isConfig, integrationMeta?.path]);
+
   return (
     <ScrollArea
       ref={scrollRef}
@@ -134,7 +140,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
                 Stop
               </Button>
             )}
-            {isConfig && (
+            {shouldConfigButtonBeVisible && (
               <Button
                 // ml="auto"
                 color="gray"
