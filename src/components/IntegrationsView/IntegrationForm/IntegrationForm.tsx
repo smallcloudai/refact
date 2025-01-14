@@ -215,7 +215,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   }
 
   return (
-    <Flex width="100%" direction="column" gap="2">
+    <Flex width="100%" direction="column" gap="2" pb="8">
       {integration.data.integr_schema.description && (
         <Text size="2" color="gray" mb="3">
           {integration.data.integr_schema.description}
@@ -409,7 +409,6 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           />
         </Flex>
       )}
-      <Flex pb="8" />
     </Flex>
   );
 };
