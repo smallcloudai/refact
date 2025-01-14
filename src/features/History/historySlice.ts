@@ -118,7 +118,6 @@ export const historySlice = createSlice({
     },
 
     markChatAsRead: (state, action: PayloadAction<string>) => {
-      console.log(`[DEBUG]: markChatAsRead fired, action: `, action);
       const chatId = action.payload;
       state[chatId].read = true;
     },
