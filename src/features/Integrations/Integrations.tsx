@@ -69,7 +69,7 @@ export const Integrations: React.FC<IntegrationsProps> = ({
       host={host}
       style={{
         padding: 0,
-        marginTop: isInnerIntegrationSelected ? 80 : 0,
+        marginTop: isInnerIntegrationSelected ? 50 : 0,
       }}
     >
       {!isInnerIntegrationSelected && (

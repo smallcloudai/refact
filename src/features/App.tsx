@@ -172,7 +172,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         alignItems: "stretch",
         height:
           page.name === "integrations page" && isPaddingApplied
-            ? "calc(100vh - 80px)"
+            ? "calc(100vh - 50px)"
             : "100vh",
         ...style,
       }}
