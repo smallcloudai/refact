@@ -21,7 +21,7 @@ pub(crate) const BLACKLISTED_DIRS: &[&str] = &[
     "bin", "pkg", "lib", "lib64", "obj",
     "out", "venv", "env", "tmp", "temp", "logs",
     "coverage", "backup", "__pycache__",
-    "_trajectories",
+    "_trajectories", ".gradle"
 ];
 
 pub fn is_valid_file(path: &PathBuf, allow_hidden_folders: bool, ignore_size_thresholds: bool) -> Result<(), Box<dyn std::error::Error>> {
