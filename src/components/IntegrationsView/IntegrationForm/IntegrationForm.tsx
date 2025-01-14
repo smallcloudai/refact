@@ -409,11 +409,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           />
         </Flex>
       )}
-      <Spacer />
+      <Flex mb="8" />
     </Flex>
   );
-};
-
-const Spacer = () => {
-  return <Flex height="65px" />;
 };
