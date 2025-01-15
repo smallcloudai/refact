@@ -112,7 +112,7 @@ pub trait Tool: Send + Sync {
 pub async fn tools_merged_and_filtered(
     gcx: Arc<ARwLock<GlobalContext>>,
     _supports_clicks: bool,  // XXX
-) -> Result<IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>, String> {
+) -> Result<IndexMap<String, Box<dyn Tool + Send>>, String> {
     let (ast_on, vecdb_on, allow_experimental) = {
         let gcx_locked = gcx.read().await;
         #[cfg(feature="vecdb")]
@@ -123,22 +123,22 @@ pub async fn tools_merged_and_filtered(
     };
 
     let mut tools_all = IndexMap::from([
-        ("definition".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>))),
-        ("references".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>))),
-        ("tree".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>))),
-        ("patch".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_patch::ToolPatch::new()) as Box<dyn Tool + Send>))),
-        ("web".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>))),
-        ("cat".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>))),
-        // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
-        // ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
+        ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
+        ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
+        ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
+        ("patch".to_string(), Box::new(crate::tools::tool_patch::ToolPatch::new()) as Box<dyn Tool + Send>),
+        ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
+        ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
+        // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
+        // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
-        ("search".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>))),
+        ("search".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
-        ("locate".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>))),
+        ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
     ]);
 
     #[cfg(feature="vecdb")]
-    tools_all.insert("knowledge".to_string(), Arc::new(AMutex::new(Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>)));
+    tools_all.insert("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>);
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
         gcx.clone(),
@@ -147,16 +147,15 @@ pub async fn tools_merged_and_filtered(
     tools_all.extend(integrations);
 
     let mut filtered_tools = IndexMap::new();
-    for (tool_name, tool_arc) in tools_all {
-        let tool_locked = tool_arc.lock().await;
-        let dependencies = tool_locked.tool_depends_on();
+    for (tool_name, tool) in tools_all {
+        let dependencies = tool.tool_depends_on();
         if dependencies.contains(&"ast".to_string()) && !ast_on {
             continue;
         }
         if dependencies.contains(&"vecdb".to_string()) && !vecdb_on {
             continue;
         }
-        filtered_tools.insert(tool_name, tool_arc.clone());
+        filtered_tools.insert(tool_name, tool);
     }
 
     Ok(filtered_tools)
@@ -453,7 +452,7 @@ pub struct ToolDictDeserialize {
 }
 
 pub async fn tool_description_list_from_yaml(
-    tools: IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>>,
+    tools: IndexMap<String, Box<dyn Tool + Send>>,
     turned_on: &Vec<String>,
     allow_experimental: bool,
 ) -> Result<Vec<ToolDesc>, String> {
@@ -463,14 +462,9 @@ pub async fn tool_description_list_from_yaml(
     let mut tool_desc_vec = vec![];
     tool_desc_vec.extend(tool_desc_deser.tools.iter().cloned());
 
-    for (tool_name, tool_arc) in tools {
+    for (tool_name, tool) in tools {
         if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
-            let tool_desc = {
-                let tool_locked = tool_arc.lock().await;
-
-                tool_locked.tool_description()
-            };
-            tool_desc_vec.push(tool_desc);
+            tool_desc_vec.push(tool.tool_description());
         }
     }
 

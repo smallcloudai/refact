@@ -109,7 +109,7 @@ pub async fn run_tools_remotely(
 
 pub async fn run_tools_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
+    tools: &mut IndexMap<String, Box<dyn Tool + Send>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
@@ -132,7 +132,7 @@ pub async fn run_tools_locally(
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tools: IndexMap<String, Arc<AMutex<Box<dyn Tool+Send>>>>,
+    tools: &mut IndexMap<String, Box<dyn Tool+Send>>,
     tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
@@ -164,8 +164,8 @@ pub async fn run_tools(
     let mut any_corrections = false;
 
     for t_call in last_msg_tool_calls {
-        let cmd = match tools.get(&t_call.function.name) {
-            Some(cmd) => cmd.clone(),
+        let cmd = match tools.get_mut(&t_call.function.name) {
+            Some(cmd) => cmd,
             None => {
                 let tool_failed_message = tool_answer(
                     format!("tool use: function {:?} not found", &t_call.function.name), t_call.id.to_string()
@@ -188,45 +188,41 @@ pub async fn run_tools(
         };
         info!("tool use {}({:?})", &t_call.function.name, args);
 
-        {
-            let cmd_lock = cmd.lock().await;
-            match cmd_lock.match_against_confirm_deny(ccx.clone(), &args).await {
-                Ok(res) => {
-                    match res.result {
-                        MatchConfirmDenyResult::DENY => {
-                            let command_to_match = cmd_lock
-                                .command_to_match_against_confirm_deny(&args)
-                                .unwrap_or("<error_command>".to_string());
-                            generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
-                            continue;
-                        }
-                        MatchConfirmDenyResult::CONFIRMATION if !tools_confirmation => {
-                            let command_to_match = cmd_lock
-                                .command_to_match_against_confirm_deny(&args)
-                                .unwrap_or("<error_command>".to_string());
-                            generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' has been denied by the user"), t_call.id.to_string()));
-                            continue;
-                        }
-                        _ => {}
+        match cmd.match_against_confirm_deny(ccx.clone(), &args).await {
+            Ok(res) => {
+                match res.result {
+                    MatchConfirmDenyResult::DENY => {
+                        let command_to_match = cmd
+                            .command_to_match_against_confirm_deny(&args)
+                            .unwrap_or("<error_command>".to_string());
+                        generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
+                        continue;
                     }
+                    MatchConfirmDenyResult::CONFIRMATION if !tools_confirmation => {
+                        let command_to_match = cmd
+                            .command_to_match_against_confirm_deny(&args)
+                            .unwrap_or("<error_command>".to_string());
+                        generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' has been denied by the user"), t_call.id.to_string()));
+                        continue;
+                    }
+                    _ => {}
                 }
-                Err(err) => {
-                    generated_tool.push(tool_answer(format!("tool use: {}", err), t_call.id.to_string()));
-                    continue;
-                }
+            }
+            Err(err) => {
+                generated_tool.push(tool_answer(format!("tool use: {}", err), t_call.id.to_string()));
+                continue;
             }
         };
 
         let (corrections, tool_execute_results) = {
-            let mut cmd_lock = cmd.lock().await;
-            match cmd_lock.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
+            match cmd.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
                 Ok(msg_and_maybe_more) => msg_and_maybe_more,
                 Err(e) => {
                     info!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
                     let mut tool_failed_message = tool_answer(e, t_call.id.to_string());
 
-                    tool_failed_message.usage = cmd_lock.usage().clone();
-                    *cmd_lock.usage() = None;
+                    tool_failed_message.usage = cmd.usage().clone();
+                    *cmd.usage() = None;
 
                     generated_tool.push(tool_failed_message.clone());
                     continue;

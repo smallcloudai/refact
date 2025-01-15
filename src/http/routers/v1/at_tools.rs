@@ -134,17 +134,8 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             }
         };
 
-        let should_confirm = {
-            let tool_locked = tool.lock().await;
-            tool_locked.match_against_confirm_deny(ccx.clone(), &args).await
-        }.map_err(|e| {
-            ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
-        })?;
-
-        let has_config_path = {
-            let tool_locked = tool.lock().await;
-            tool_locked.has_config_path()
-        };
+        let should_confirm = tool.match_against_confirm_deny(ccx.clone(), &args).await
+            .map_err(|e| { ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)})?;
 
         match should_confirm.result {
             MatchConfirmDenyResult::DENY => {
@@ -153,7 +144,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
                     command: should_confirm.command.clone(),
                     rule: should_confirm.rule.clone(),
                     tool_call_id: tool_call.id.clone(),
-                    integr_config_path: has_config_path,
+                    integr_config_path: tool.has_config_path(),
                 });
             },
             MatchConfirmDenyResult::CONFIRMATION => {
@@ -162,7 +153,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
                     command: should_confirm.command.clone(),
                     rule: should_confirm.rule.clone(),
                     tool_call_id: tool_call.id.clone(),
-                    integr_config_path: has_config_path,
+                    integr_config_path: tool.has_config_path(),
                 });
             },
             _ => {},
@@ -205,11 +196,11 @@ pub async fn handle_v1_tools_execute(
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
-    let at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
+    let mut at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
     })?;
     let (messages, tools_runned) = run_tools( // todo: fix typo "runned"
-        ccx_arc.clone(), at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style, tools_execute_post.tools_confirmation
+        ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style, tools_execute_post.tools_confirmation
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 
     let response = ToolExecuteResponse {

@@ -2,7 +2,6 @@
 use std::sync::Arc;
 use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
-use tokio::sync::Mutex as AMutex;
 
 use crate::tools::tools_description::Tool;
 use crate::global_context::GlobalContext;
@@ -11,12 +10,12 @@ use crate::integrations::integr_abstract::IntegrationTrait;
 pub async fn load_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     allow_experimental: bool,
-) -> IndexMap<String, Arc<AMutex<Box<dyn Tool + Send>>>> {
+) -> IndexMap<String, Box<dyn Tool + Send>> {
     let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental).await;
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
         if integr.can_upgrade_to_tool() {
-            tools.insert(name.clone(), Arc::new(AMutex::new(integr.integr_upgrade_to_tool(&name))));
+            tools.insert(name.clone(), integr.integr_upgrade_to_tool(&name));
         }
     }
     tools
