@@ -300,6 +300,7 @@ pub async fn get_active_project_path(gcx: Arc<ARwLock<GlobalContext>>) -> Option
         }
     }
 
+    tracing::info!("no project is active");
     None
 }
 
