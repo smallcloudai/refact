@@ -25,7 +25,6 @@ import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
 import { AgentUsage } from "../../features/AgentUsage";
-import { setInformation } from "../../features/Errors/informationSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -59,16 +58,7 @@ export const Chat: React.FC<ChatProps> = ({
     useState(false);
 
   const preventSend = useAppSelector(selectPreventSend);
-  const onEnableSend = () => {
-    if (disableInput) {
-      const action = setInformation(
-        "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
-      );
-      dispatch(action);
-      return;
-    }
-    dispatch(enableSend({ id: chatId }));
-  };
+  const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
   const handleSummit = useCallback(
     (value: string) => {
