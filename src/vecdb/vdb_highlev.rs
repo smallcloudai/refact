@@ -9,7 +9,7 @@ use crate::background_tasks::BackgroundTasksHolder;
 use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
-use crate::knowledge::{lance_search, MemdbSubEvent, MemoriesDatabase};
+use crate::knowledge::{MemdbSubEvent, MemoriesDatabase};
 use crate::trajectories::try_to_download_trajectories;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
@@ -293,7 +293,7 @@ pub async fn memories_add(
 
     let memid = {
         let mut memdb_locked = memdb.lock().await;
-        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_origin)?;
+        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_origin).await?;
         memdb_locked.dirty_memids.push(x.clone());
         x
     };
@@ -434,7 +434,7 @@ pub async fn memories_update(
     };
 
     let memdb_locked = memdb.lock().await;
-    let updated_cnt = memdb_locked.permdb_update_used(memid, mstat_correct, mstat_relevant)?;
+    let updated_cnt = memdb_locked.permdb_update_used(memid, mstat_correct, mstat_relevant).await?;
     Ok(updated_cnt)
 }
 
@@ -479,11 +479,10 @@ pub async fn memories_search(
     }
     info!("search query {:?}, it took {:.3}s to vectorize the query", query, t0.elapsed().as_secs_f64());
 
-    let lance_results = match lance_search(memdb.clone(), &embedding[0], top_n).await {
-        Ok(res) => res,
-        Err(err) => { return Err(err.to_string()) }
+    let mut results = {
+        let memdb_locked = memdb.lock().await;
+        memdb_locked.search_similar_records(&embedding[0], top_n).await?
     };
-    let mut results: Vec<MemoRecord> = memdb.lock().await.permdb_fillout_records(lance_results).await?;
     results.sort_by(|a, b| {
         let score_a = calculate_score(a.distance, a.mstat_times_used);
         let score_b = calculate_score(b.distance, b.mstat_times_used);

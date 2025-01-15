@@ -13,7 +13,7 @@ build = "build.rs"
 
 [features]
 default = ["vecdb"]
-vecdb = ["arrow", "arrow-array", "arrow-schema", "lance", "vectordb"]
+vecdb = ["sqlite-vec"]
 
 [build-dependencies]
 shadow-rs = "0.36.0"
@@ -70,12 +70,6 @@ tree-sitter-python = "0.21"
 tree-sitter-rust = "0.21"
 tree-sitter-typescript = "0.21"
 
-arrow = { version = "47.0.0", optional = true }
-arrow-array  = { version = "47.0.0", optional = true }
-arrow-schema = { version = "47.0.0", optional = true }
-lance = { version = "=0.9.0", optional = true, default-features = false }
-vectordb = { version = "=0.4.0", optional = true, default-features = false }
-
 async_once= "0.2.6"
 async-process = "2.0.1"
 diff = "0.1.13"
@@ -113,7 +107,7 @@ process-wrap = { version = "8.0.2", features = ["tokio1"] }
 rust-embed = "8.5.0"
 serde_urlencoded = "0.7.1"
 libsqlite3-sys = "0.27.0"
-sqlite-vec = "0.1.6"
+sqlite-vec = { version = "0.1.6", optional = true }
 zerocopy = "0.7.35"
 mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
 
