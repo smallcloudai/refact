@@ -11,8 +11,8 @@ import {
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
 import {
   DotFilledIcon,
+  DotsVerticalIcon,
   HomeIcon,
-  MixerVerticalIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
 import { newChatAction } from "../../events";
@@ -296,7 +296,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 {!isStreamingThisTab && chat.read === false && (
                   <DotFilledIcon />
                 )}
-                <Flex gap="3" align="center">
+                <Flex gap="2" align="center">
                   <TruncateLeft
                     style={{
                       maxWidth: shouldCollapse ? "25px" : "110px",
@@ -310,12 +310,12 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                       <DropdownMenu.Root>
                         <DropdownMenu.Trigger>
                           <IconButton
-                            size="2"
+                            size="1"
                             variant="ghost"
                             color="gray"
                             title="Title actions"
                           >
-                            <MixerVerticalIcon />
+                            <DotsVerticalIcon />
                           </IconButton>
                         </DropdownMenu.Trigger>
                         <DropdownMenu.Content
