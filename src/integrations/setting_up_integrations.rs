@@ -105,7 +105,9 @@ pub fn read_integrations_d(
                         continue;
                     }
                 };
-                if file_name_str.starts_with("cmdline_") || file_name_str.starts_with("service_") {
+                tracing::info!("XXX file_name_str={:?}", file_name_str);
+                if file_name_str.starts_with("cmdline_") || file_name_str.starts_with("service_") || file_name_str.starts_with("mcp_") {
+                    tracing::info!("XXXX file_name_str={:?}", file_name_str);
                     files_to_read.push((entry.path().to_string_lossy().to_string(), file_name_str_no_yaml.to_string(), project_path));
                 }
             }

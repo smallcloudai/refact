@@ -111,3 +111,5 @@ async-tar = "0.5.0"
 git2 = "0.19.0"
 process-wrap = { version = "8.0.2", features = ["tokio1"] }
 rust-embed = "8.5.0"
+jsonrpc_client = { version = "0.7.1", features = ["reqwest"] }
+

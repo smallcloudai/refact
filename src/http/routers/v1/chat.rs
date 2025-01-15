@@ -122,7 +122,7 @@ async fn _chat(
     })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
 
-    tracing::info!("chat_mode {:?}\n", chat_post.meta.chat_mode);
+    tracing::info!("chat_mode {:?}", chat_post.meta.chat_mode);
 
     if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
         chat_post.tools = None;

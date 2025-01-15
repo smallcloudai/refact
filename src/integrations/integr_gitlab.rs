@@ -23,7 +23,7 @@ pub struct SettingsGitLab {
 
 #[derive(Default)]
 pub struct ToolGitlab {
-    pub common:  IntegrationCommon,
+    pub common: IntegrationCommon,
     pub settings_gitlab: SettingsGitLab,
     pub config_path: String,
 }

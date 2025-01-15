@@ -1,8 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use async_trait::async_trait;
-use jsonrpc_core::{IoHandler, Params, Value};
-use jsonrpc_client_transports::RpcError;
+use jsonrpc_client::JsonRpcError;
+use jsonrpc_client::{
+    Request,
+    Response,
+    SendRequest,
+    Error,
+};
+
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
@@ -14,29 +20,26 @@ use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, 
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]
-pub struct McpToolConfig {
-    pub description: String,
-    pub parameters: Vec<ToolParam>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters_required: Option<Vec<String>>,
+pub struct ConfigMCP {
+    pub name: String,
+    pub command: String,
+    pub args: Vec<String>,
 }
 
 #[derive(Default)]
-pub struct ToolMcp {
+pub struct IntegrationMCP {
     pub common: IntegrationCommon,
-    pub name: String,
-    pub cfg: McpToolConfig,
+    pub cfg: ConfigMCP,
     pub config_path: String,
-    io_handler: IoHandler,
 }
 
-impl IntegrationTrait for ToolMcp {
+impl IntegrationTrait for IntegrationMCP {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 
     fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
-        match serde_json::from_value::<McpToolConfig>(value.clone()) {
+        match serde_json::from_value::<ConfigMCP>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {
                 tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
@@ -63,13 +66,13 @@ impl IntegrationTrait for ToolMcp {
     }
 
     fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-        vec![Box::new(ToolMcp {
-            common: self.common.clone(),
-            name: integr_name.to_string(),
-            cfg: self.cfg.clone(),
-            config_path: self.config_path.clone(),
-            io_handler: IoHandler::new(),
-        })]
+        vec![]
+        // vec![Box::new(IntegrationMCP {
+        //     common: self.common.clone(),
+        //     name: integr_name.to_string(),
+        //     // cfg: self.cfg.clone(),
+        //     // config_path: self.config_path.clone(),
+        // })]
     }
 
     fn integr_schema(&self) -> &str {
@@ -77,77 +80,77 @@ impl IntegrationTrait for ToolMcp {
     }
 }
 
-#[async_trait]
-impl Tool for ToolMcp {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
+// #[async_trait]
+// impl Tool for ToolMcp {
+//     fn as_any(&self) -> &dyn std::any::Any {
+//         self
+//     }
 
-    async fn tool_execute(
-        &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        tool_call_id: &String,
-        args: &HashMap<String, serde_json::Value>,
-    ) -> Result<(bool, Vec<ContextEnum>), String> {
-        // Initialize JSON-RPC request
-        let request = jsonrpc_core::Request {
-            jsonrpc: Some(String::from("2.0")),
-            method: self.name.clone(),
-            params: Params::Map(serde_json::Map::from_iter(args.clone().into_iter())),
-            id: jsonrpc_core::Id::Num(1),
-        };
+//     async fn tool_execute(
+//         &mut self,
+//         ccx: Arc<AMutex<AtCommandsContext>>,
+//         tool_call_id: &String,
+//         args: &HashMap<String, serde_json::Value>,
+//     ) -> Result<(bool, Vec<ContextEnum>), String> {
+//         // Initialize JSON-RPC request
+//         let request = jsonrpc_core::Request {
+//             jsonrpc: Some(String::from("2.0")),
+//             method: self.name.clone(),
+//             params: Params::Map(serde_json::Map::from_iter(args.clone().into_iter())),
+//             id: jsonrpc_core::Id::Num(1),
+//         };
 
-        // Execute the request
-        let response = match self.io_handler.handle_request(&serde_json::to_string(&request).unwrap()).await {
-            Ok(response) => response.unwrap_or_default(),
-            Err(e) => return Err(format!("RPC error: {}", e)),
-        };
+//         // Execute the request
+//         let response = match self.io_handler.handle_request(&serde_json::to_string(&request).unwrap()).await {
+//             Ok(response) => response.unwrap_or_default(),
+//             Err(e) => return Err(format!("RPC error: {}", e)),
+//         };
 
-        // Format the response
-        let result = vec![ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: ChatContent::SimpleText(response),
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        })];
+//         // Format the response
+//         let result = vec![ContextEnum::ChatMessage(ChatMessage {
+//             role: "tool".to_string(),
+//             content: ChatContent::SimpleText(response),
+//             tool_calls: None,
+//             tool_call_id: tool_call_id.clone(),
+//             ..Default::default()
+//         })];
 
-        Ok((false, result))
-    }
+//         Ok((false, result))
+//     }
 
-    fn tool_depends_on(&self) -> Vec<String> {
-        vec![]
-    }
+//     fn tool_depends_on(&self) -> Vec<String> {
+//         vec![]
+//     }
 
-    fn tool_description(&self) -> ToolDesc {
-        let parameters_required = self.cfg.parameters_required.clone().unwrap_or_else(|| {
-            self.cfg.parameters.iter().map(|param| param.name.clone()).collect()
-        });
-        ToolDesc {
-            name: self.name.clone(),
-            agentic: true,
-            experimental: false,
-            description: self.cfg.description.clone(),
-            parameters: self.cfg.parameters.clone(),
-            parameters_required,
-        }
-    }
+//     fn tool_description(&self) -> ToolDesc {
+//         let parameters_required = self.cfg.parameters_required.clone().unwrap_or_else(|| {
+//             self.cfg.parameters.iter().map(|param| param.name.clone()).collect()
+//         });
+//         ToolDesc {
+//             name: self.name.clone(),
+//             agentic: true,
+//             experimental: false,
+//             description: self.cfg.description.clone(),
+//             parameters: self.cfg.parameters.clone(),
+//             parameters_required,
+//         }
+//     }
 
-    fn command_to_match_against_confirm_deny(
-        &self,
-        _args: &HashMap<String, serde_json::Value>,
-    ) -> Result<String, String> {
-        Ok(self.name.clone())
-    }
+//     fn command_to_match_against_confirm_deny(
+//         &self,
+//         _args: &HashMap<String, serde_json::Value>,
+//     ) -> Result<String, String> {
+//         Ok(self.name.clone())
+//     }
 
-    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
-        Some(self.integr_common().confirmation)
-    }
+//     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
+//         Some(self.integr_common().confirmation)
+//     }
 
-    fn has_config_path(&self) -> Option<String> {
-        Some(self.config_path.clone())
-    }
-}
+//     fn has_config_path(&self) -> Option<String> {
+//         Some(self.config_path.clone())
+//     }
+// }
 
 pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:

@@ -18,7 +18,7 @@ pub mod integr_mysql;
 pub mod integr_cmdline;
 pub mod integr_cmdline_service;
 pub mod integr_shell;
-//pub mod integr_mcp;
+pub mod integr_mcp;
 
 pub mod process_io_utils;
 pub mod docker;
@@ -49,8 +49,10 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
             Ok(Box::new(integr_cmdline::ToolCmdline {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         service if service.starts_with("service_") => {
-            // let tool_name = service.strip_prefix("service_").unwrap();
             Ok(Box::new(integr_cmdline_service::ToolService {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
+        },
+        mcp if mcp.starts_with("mcp_") => {
+            Ok(Box::new(integr_mcp::IntegrationMCP {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         "isolation" => Ok(Box::new(docker::integr_isolation::IntegrationIsolation {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>),
         _ => Err(format!("Unknown integration name: {}", n)),
@@ -67,6 +69,7 @@ pub fn integrations_list(allow_experimental: bool) -> Vec<&'static str> {
         "mysql",
         "cmdline_TEMPLATE",
         "service_TEMPLATE",
+        "mcp_TEMPLATE",
         "docker",
         "shell",
     ];
