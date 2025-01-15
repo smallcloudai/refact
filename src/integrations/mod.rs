@@ -18,6 +18,7 @@ pub mod integr_mysql;
 pub mod integr_cmdline;
 pub mod integr_cmdline_service;
 pub mod integr_shell;
+//pub mod integr_mcp;
 
 pub mod process_io_utils;
 pub mod docker;
