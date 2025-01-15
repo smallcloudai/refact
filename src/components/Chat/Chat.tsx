@@ -122,6 +122,7 @@ export const Chat: React.FC<ChatProps> = ({
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
           onSubmit={handleSummit}
           onClose={maybeSendToSidebar}
+          unCalledTools={unCalledTools}
         />
 
         <Flex justify="between" pl="1" pr="1" pt="1">

@@ -47,12 +47,14 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
+  unCalledTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
+  unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
@@ -198,10 +200,24 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   useEffect(() => {
     // this use effect is required to reset preventSend when chat was restored
-    if (preventSend && !isStreaming && !isWaiting && isOnline) {
+    if (
+      preventSend &&
+      !unCalledTools &&
+      !isStreaming &&
+      !isWaiting &&
+      isOnline
+    ) {
       dispatch(enableSend({ id: chatId }));
     }
-  }, [dispatch, isOnline, isWaiting, isStreaming, preventSend, chatId]);
+  }, [
+    dispatch,
+    isOnline,
+    isWaiting,
+    isStreaming,
+    preventSend,
+    chatId,
+    unCalledTools,
+  ]);
 
   useEffect(() => {
     if (isSendImmediately && !isWaiting && !isStreaming) {
