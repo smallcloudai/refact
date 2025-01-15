@@ -18,7 +18,7 @@ use crate::yaml_configs::customization_loader::load_customization;
 const MAX_NEW_TOKENS: usize = 4096;
 
 
-async fn create_chat_post_and_scratchpad(
+pub async fn create_chat_post_and_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
@@ -140,7 +140,7 @@ async fn chat_interaction_non_stream(
         meta
     ).await.map_err(|e| {
         warn!("network error communicating with the model (2): {:?}", e);
-        format!("network error communicating with the model (2): {:?}", e)
+        format!("network error communicating with the model (2): {}", e)
     })?;
     info!("non stream generation took {:?}ms", t1.elapsed().as_millis() as i32);
 
@@ -231,7 +231,7 @@ async fn chat_interaction_non_stream(
 }
 
 
-async fn chat_interaction(
+pub async fn chat_interaction(
     ccx: Arc<AMutex<AtCommandsContext>>,
     mut spad: Box<dyn ScratchpadAbstract>,
     chat_post: &mut ChatPost,
@@ -266,7 +266,7 @@ pub async fn subchat_single(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
     messages: Vec<ChatMessage>,
-    tools_subset: Vec<String>,
+    tools_subset: Option<Vec<String>>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
     temperature: Option<f32>,
@@ -282,13 +282,16 @@ pub async fn subchat_single(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
     };
-    // this ignores customized tools
     let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone(), false).await?;
-    let tools_turn_on_set: HashSet<String> = tools_subset.iter().cloned().collect();
     let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.keys().cloned().collect();
-    let tools_on_intersection: Vec<String> = tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect();
+    let tools_on_intersection: Vec<String> = if let Some(tools_s) = &tools_subset {
+        let tools_turn_on_set: HashSet<String> = tools_s.iter().cloned().collect();
+        tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect()
+    } else {
+        tools_turned_on_by_cmdline_set.iter().cloned().collect()
+    };
     let allow_experimental = gcx.read().await.cmdline.experimental;
-    let tools_desclist = tool_description_list_from_yaml(tools_turned_on_by_cmdline, &tools_on_intersection, allow_experimental).await.unwrap_or_else(|e|{
+    let tools_desclist = tool_description_list_from_yaml(tools_turned_on_by_cmdline, Some(&tools_on_intersection), allow_experimental).await.unwrap_or_else(|e|{
         error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });
@@ -390,7 +393,7 @@ pub async fn subchat(
                 ccx.clone(),
                 model_name,
                 messages.clone(),
-                tools_subset.clone(),
+                Some(tools_subset.clone()),
                 Some("auto".to_string()),
                 false,
                 temperature,
@@ -413,7 +416,7 @@ pub async fn subchat(
                 ccx.clone(),
                 model_name,
                 messages,
-                vec![],
+                Some(vec![]),
                 Some("none".to_string()),
                 true,   // <-- only runs tool calls
                 temperature,
@@ -432,7 +435,7 @@ pub async fn subchat(
         ccx.clone(),
         model_name,
         messages,
-        vec![],
+        Some(vec![]),
         Some("none".to_string()),
         false,
         temperature,

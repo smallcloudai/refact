@@ -227,7 +227,7 @@ pub async fn generate_commit_message_by_diff(
         ccx.clone(),
         model_name.as_str(),
         messages,
-        vec![],
+        Some(vec![]),
         None,
         false,
         Some(TEMPERATURE),

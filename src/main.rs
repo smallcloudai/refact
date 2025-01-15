@@ -58,9 +58,11 @@ mod forward_to_openai_endpoint;
 mod restream;
 
 mod call_validation;
+mod agent_db;
 mod dashboard;
 mod lsp;
 mod http;
+mod autonomy;
 
 mod integrations;
 mod privacy;
@@ -75,7 +77,7 @@ async fn main() {
     let home_dir = to_pathbuf_normalize(&home::home_dir().ok_or(()).expect("failed to find home dir").to_string_lossy().to_string());
     let cache_dir = home_dir.join(".cache").join("refact");
     let config_dir = home_dir.join(".config").join("refact");
-    let (gcx, ask_shutdown_receiver, shutdown_flag, cmdline) = global_context::create_global_context(cache_dir.clone(), config_dir.clone()).await;
+    let (gcx, ask_shutdown_receiver, cmdline) = global_context::create_global_context(cache_dir.clone(), config_dir.clone()).await;
     let mut writer_is_stderr = false;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
         writer_is_stderr = true;
@@ -181,7 +183,7 @@ async fn main() {
 
     let mut main_handle: Option<JoinHandle<()>> = None;
     if should_start_http {
-        main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver, shutdown_flag).await;
+        main_handle = http::start_server(gcx.clone(), ask_shutdown_receiver).await;
     }
     if should_start_lsp {
         if main_handle.is_none() {

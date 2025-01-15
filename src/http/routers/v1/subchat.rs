@@ -95,7 +95,7 @@ pub async fn handle_v1_subchat_single(
         ccx.clone(),
         post.model_name.as_str(),
         messages,
-        post.tools_turn_on,
+        Some(post.tools_turn_on),
         post.tool_choice,
         post.only_deterministic_messages,
         post.temperature,

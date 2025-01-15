@@ -1,3 +1,4 @@
+use std::os::raw::{c_int, c_void};
 use std::sync::Arc;
 use std::path::PathBuf;
 use tracing::info;
@@ -14,9 +15,10 @@ use futures_util::TryStreamExt;
 use itertools::Itertools;
 use lance::dataset::{WriteMode, WriteParams};
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use vectordb::database::Database;
 use tempfile::TempDir;
-use tokio::sync::Mutex as AMutex;
+use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::time::Instant;
 use vectordb::table::Table;
 
@@ -33,7 +35,17 @@ pub struct MemoriesDatabase {
     pub schema_arc: SchemaRef,
     pub dirty_memids: Vec<String>,
     pub dirty_everything: bool,
+    pub pubsub_notifier: Arc<Notify>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemdbSubEvent {
+    pub pubevent_id: i64,
+    pub pubevent_action: String,
+    pub pubevent_memid: String,
+    pub pubevent_json: String,
+}
+
 
 fn map_row_to_memo_record(row: &rusqlite::Row) -> rusqlite::Result<MemoRecord> {
     Ok(MemoRecord {
@@ -53,6 +65,29 @@ fn map_row_to_memo_record(row: &rusqlite::Row) -> rusqlite::Result<MemoRecord> {
 
 fn fields_ordered() -> String {
     "memid,m_type,m_goal,m_project,m_payload,m_origin,mstat_correct,mstat_relevant,mstat_times_used".to_string()
+}
+
+extern "C" fn pubsub_trigger_hook(
+    user_data: *mut c_void, 
+    action: c_int,
+    db_name: *const i8,
+    table_name: *const i8,
+    _: i64,
+) {
+    let notify = unsafe { &*(user_data as *const Notify) };
+    let db_name = unsafe { std::ffi::CStr::from_ptr(db_name).to_str().unwrap_or("unknown") };
+    let table_name = unsafe { std::ffi::CStr::from_ptr(table_name).to_str().unwrap_or("unknown") };
+    let operation = match action {
+        18 => "INSERT",
+        9 => "DELETE",
+        23 => "UPDATE",
+        _ => "UNKNOWN",
+    };
+    if db_name != "main" && table_name != "pubsub_events" {
+        return;
+    }
+    info!("memdb pubsub {} action triggered", operation);
+    notify.notify_one();
 }
 
 impl MemoriesDatabase {
@@ -95,7 +130,6 @@ impl MemoriesDatabase {
             Err(err) => return Err(format!("{:?}", err))
         };
 
-        // Return everything
         let db = MemoriesDatabase {
             conn: Arc::new(ParkMutex::new(cache_database)),
             vecdb_constants: constants.clone(),
@@ -103,9 +137,17 @@ impl MemoriesDatabase {
             schema_arc,
             dirty_memids: Vec::new(),
             dirty_everything: true,
+            pubsub_notifier: Arc::new(Notify::new())
         };
         db._permdb_create_table(reset_memory)?;
         db._migrate_add_m_origin()?;
+        unsafe {
+            libsqlite3_sys::sqlite3_update_hook(
+                db.conn.lock().handle(), 
+                Some(pubsub_trigger_hook),
+                Arc::into_raw(db.pubsub_notifier.clone()) as *mut c_void,
+            );
+        }
         Ok(db)
     }
 
@@ -134,18 +176,102 @@ impl MemoriesDatabase {
         }
         conn.execute(
             "CREATE TABLE IF NOT EXISTS memories (
-                memid TEXT PRIMARY KEY,
-                m_type TEXT NOT NULL,
-                m_goal TEXT NOT NULL,
-                m_project TEXT NOT NULL,
-                m_payload TEXT NOT NULL,
-                m_origin TEXT NOT NULL,
-                mstat_correct REAL NOT NULL DEFAULT 0,
-                mstat_relevant REAL NOT NULL DEFAULT 0,
-                mstat_times_used INTEGER NOT NULL DEFAULT 0
-            )",
+            memid TEXT PRIMARY KEY,
+            m_type TEXT NOT NULL,
+            m_goal TEXT NOT NULL,
+            m_project TEXT NOT NULL,
+            m_payload TEXT NOT NULL,
+            m_origin TEXT NOT NULL,
+            mstat_correct REAL NOT NULL DEFAULT 0,
+            mstat_relevant REAL NOT NULL DEFAULT 0,
+            mstat_times_used INTEGER NOT NULL DEFAULT 0
+        )",
             [],
         ).map_err(|e| e.to_string())?;
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS pubsub_events (
+            pubevent_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pubevent_action TEXT NOT NULL,
+            pubevent_memid TEXT NOT NULL,
+            pubevent_json TEXT NOT NULL,
+            pubevent_ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+            [],
+        ).map_err(|e| e.to_string())?;
+
+        // Trigger for INSERT actions
+        conn.execute(
+            "CREATE TRIGGER IF NOT EXISTS pubsub_events_on_insert
+            AFTER INSERT ON memories
+            BEGIN
+                INSERT INTO pubsub_events (pubevent_action, pubevent_memid, pubevent_json)
+                VALUES ('INSERT', NEW.memid, json_object(
+                    'memid', NEW.memid,
+                    'm_type', NEW.m_type,
+                    'm_goal', NEW.m_goal,
+                    'm_project', NEW.m_project,
+                    'm_payload', NEW.m_payload,
+                    'm_origin', NEW.m_origin,
+                    'mstat_correct', NEW.mstat_correct,
+                    'mstat_relevant', NEW.mstat_relevant,
+                    'mstat_times_used', NEW.mstat_times_used
+                ));
+            END;",
+            [],
+        ).map_err(|e| e.to_string())?;
+
+        // Trigger for UPDATE actions
+        conn.execute(
+            "CREATE TRIGGER IF NOT EXISTS pubsub_events_on_update
+            AFTER UPDATE ON memories
+            BEGIN
+                INSERT INTO pubsub_events (pubevent_action, pubevent_memid, pubevent_json)
+                VALUES ('UPDATE', NEW.memid, json_object(
+                    'memid', NEW.memid,
+                    'm_type', NEW.m_type,
+                    'm_goal', NEW.m_goal,
+                    'm_project', NEW.m_project,
+                    'm_payload', NEW.m_payload,
+                    'm_origin', NEW.m_origin,
+                    'mstat_correct', NEW.mstat_correct,
+                    'mstat_relevant', NEW.mstat_relevant,
+                    'mstat_times_used', NEW.mstat_times_used
+                ));
+            END;",
+            [],
+        ).map_err(|e| e.to_string())?;
+
+        // Trigger for DELETE actions
+        conn.execute(
+            "CREATE TRIGGER IF NOT EXISTS pubsub_events_on_delete
+            AFTER DELETE ON memories
+            BEGIN
+                INSERT INTO pubsub_events (pubevent_action, pubevent_memid, pubevent_json)
+                VALUES ('DELETE', OLD.memid, json_object(
+                    'memid', OLD.memid,
+                    'm_type', OLD.m_type,
+                    'm_goal', OLD.m_goal,
+                    'm_project', OLD.m_project,
+                    'm_payload', OLD.m_payload,
+                    'm_origin', OLD.m_origin,
+                    'mstat_correct', OLD.mstat_correct,
+                    'mstat_relevant', OLD.mstat_relevant,
+                    'mstat_times_used', OLD.mstat_times_used
+                ));
+            END;",
+            [],
+        ).map_err(|e| e.to_string())?;
+
+        // Trigger to delete old events
+        conn.execute(
+            "CREATE TRIGGER IF NOT EXISTS pubsub_events_delete_old
+            AFTER INSERT ON pubsub_events
+            BEGIN
+                DELETE FROM pubsub_events WHERE pubevent_ts <= datetime('now', '-15 minutes');
+            END;",
+            [],
+        ).map_err(|e| e.to_string())?;
+
         Ok(())
     }
 
@@ -225,15 +351,32 @@ impl MemoriesDatabase {
         Ok(table_contents)
     }
 
-    pub async fn permdb_select_all(&self, filter: Option<&str>) -> Result<Vec<MemoRecord>, String> {
+    pub async fn permdb_select_all(&self) -> Result<Vec<MemoRecord>, String> {
         let conn = self.conn.lock();
-        let query = match filter {
-            Some(f) => format!("SELECT {} FROM memories WHERE {f}", fields_ordered()),
-            None => format!("SELECT {} FROM memories", fields_ordered()),
-        };
+        let query = format!("SELECT {} FROM memories", fields_ordered());
 
         let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
         let rows = stmt.query_map([], map_row_to_memo_record).map_err(|e| e.to_string())?;
+
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    }
+
+    pub async fn permdb_select_like(&self, query: &String) -> Result<Vec<MemoRecord>, String> {
+        let conn = self.conn.lock();
+
+        let query_str = format!(
+            "SELECT {} FROM memories WHERE 
+            m_type LIKE ? COLLATE NOCASE OR 
+            m_goal LIKE ? COLLATE NOCASE OR 
+            m_project LIKE ? COLLATE NOCASE OR 
+            m_payload LIKE ? COLLATE NOCASE", 
+            fields_ordered()
+        );
+
+        let pattern = format!("%{}%", query);
+        let mut stmt = conn.prepare(&query_str).map_err(|e| e.to_string())?;
+        let rows = stmt.query_map(params![pattern, pattern, pattern, pattern], map_row_to_memo_record)
+            .map_err(|e| e.to_string())?;
 
         rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
     }
@@ -277,6 +420,34 @@ impl MemoriesDatabase {
         info!("permdb_fillout_records({}) took {:.2}s", memids.len(), elapsed_time.as_secs_f64());
         Ok(result)
     }
+
+    pub async fn permdb_sub_select_all(&self, from_memid: Option<i64>) -> Result<Vec<MemdbSubEvent>, String> {
+        let conn = self.conn.lock();
+        let query = "
+            SELECT pubevent_id, pubevent_action, pubevent_memid, pubevent_json
+            FROM pubsub_events
+            WHERE pubevent_id > ?1
+            ORDER BY pubevent_id ASC
+        ";
+
+        let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
+        let mut rows = match from_memid {
+            Some(id) => stmt.query([id]).map_err(|e| format!("Failed to execute query: {}", e))?,
+            None => stmt.query([0]).map_err(|e| format!("Failed to execute query: {}", e))?
+        };
+
+        let mut results = Vec::new();
+        while let Some(row) = rows.next().map_err(|e| format!("Failed to fetch row: {}", e))? {
+            let pubevent_id: i64 = row.get(0).map_err(|e| format!("Failed to read pubevent_id: {}", e))?;
+            let pubevent_action: String = row.get(1).map_err(|e| format!("Failed to read pubevent_action: {}", e))?;
+            let pubevent_memid: String = row.get(2).map_err(|e| format!("Failed to read pubevent_action: {}", e))?;
+            let pubevent_json: String = row.get(3).map_err(|e| format!("Failed to read pubevent_json: {}", e))?;
+            results.push(MemdbSubEvent { pubevent_id, pubevent_action, pubevent_memid, pubevent_json });
+        }
+        Ok(results)
+    }
+
+
 }
 
 fn _lance_fetch_all_records_measuring_distance(

@@ -179,6 +179,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             if let Ok(det_msgs) = scratchpad.response_spontaneous() {
                 model_says["deterministic_messages"] = json!(det_msgs);
             }
+            info!("{:?}", oai_choices);
             let choices = oai_choices.clone().as_array().unwrap().iter().map(|x| {
                 match (x.get("message"), x.get("message").and_then(|msg| msg.get("content")), x.get("message").and_then(|msg| msg.get("content")).and_then(|content| content.as_str())) {
                     (Some(_), Some(_), Some(content)) => content.to_string(),
@@ -277,7 +278,7 @@ pub async fn scratchpad_interaction_not_stream(
         only_deterministic_messages,
         meta
     ).await?;
-    scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+    scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
 
     try_insert_usage(&mut scratchpad_response_json);
 
@@ -458,7 +459,7 @@ pub async fn scratchpad_interaction_stream(
                                     last_finish_reason = finish_reason;
                                 }
                                 try_insert_usage(&mut value);
-                                value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+                                value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                                 // let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
                                 // info!("yield: {:?}", last_60_chars);
@@ -511,7 +512,7 @@ pub async fn scratchpad_interaction_stream(
             }
 
             let mut value = my_scratchpad.streaming_finished(last_finish_reason)?;
-            value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
+            value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
             value["model"] = json!(model_name.clone());
             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
             info!("yield final: {:?}", value_str);

@@ -101,13 +101,3 @@ pub struct MemoSearchResult {
     pub query_text: String,
     pub results: Vec<MemoRecord>,
 }
-
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct OngoingWork {
-    pub ongoing_goal: String,        // several structures might present inside -lsp process for different goals
-    pub ongoing_attempt_n: usize,    // attempt number
-    pub ongoing_progress: IndexMap<String, serde_json::Value>,                 // any dict that model sends to its future self, no additional operations on top
-    pub ongoing_action_sequences: Vec<IndexMap<String, serde_json::Value>>,    // a new sequence appended to the list
-    pub ongoing_output: IndexMap<String, IndexMap<String, serde_json::Value>>, // this dict updated from new data each attempt
-}

@@ -9,7 +9,7 @@ use crate::background_tasks::BackgroundTasksHolder;
 use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
-use crate::knowledge::{lance_search, MemoriesDatabase};
+use crate::knowledge::{lance_search, MemdbSubEvent, MemoriesDatabase};
 use crate::trajectories::try_to_download_trajectories;
 use crate::vecdb::vdb_cache::VecDBCache;
 use crate::vecdb::vdb_lance::VecDBHandler;
@@ -392,7 +392,22 @@ pub async fn memories_select_all(
     };
 
     let memdb_locked = memdb.lock().await;
-    let results = memdb_locked.permdb_select_all(None).await?;
+    let results = memdb_locked.permdb_select_all().await?;
+    Ok(results)
+}
+
+pub async fn memories_select_like(
+    vec_db: Arc<AMutex<Option<VecDb>>>,
+    query: &String
+) -> Result<Vec<MemoRecord>, String> {
+    let memdb = {
+        let vec_db_guard = vec_db.lock().await;
+        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+        vec_db.memdb.clone()
+    };
+
+    let memdb_locked = memdb.lock().await;
+    let results = memdb_locked.permdb_select_like(query).await?;
     Ok(results)
 }
 
@@ -482,63 +497,37 @@ pub async fn memories_search(
     Ok(MemoSearchResult { query_text: query.clone(), results })
 }
 
-// pub async fn ongoing_find(
-//     vec_db: Arc<AMutex<Option<VecDb>>>,
-//     goal: String,
-// ) -> Result<Option<OngoingWork>, String> {
-//     let ongoing_map_arc = {
-//         let vec_db_guard = vec_db.lock().await;
-//         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-//         vec_db.mem_ongoing.clone()
-//     };
-//     let ongoing_map = ongoing_map_arc.lock().unwrap();
-//     if let Some(ongoing_work) = ongoing_map.get(&goal) {
-//         Ok(Some(ongoing_work.clone()))
-//     } else {
-//         Ok(None)
-//     }
-// }
+pub async fn memdb_subscription_poll(
+    vec_db: Arc<AMutex<Option<VecDb>>>,
+    from_memid: Option<i64>
+) -> Result<Vec<MemdbSubEvent>, String> {
+    let memdb = {
+        let vec_db_guard = vec_db.lock().await;
+        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+        vec_db.memdb.clone()
+    };
 
-// pub async fn ongoing_dump(
-//     vec_db: Arc<AMutex<Option<VecDb>>>,
-// ) -> Result<String, String> {
-//     let ongoing_map_arc = {
-//         let vec_db_guard = vec_db.lock().await;
-//         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-//         vec_db.mem_ongoing.clone()
-//     };
-//     let ongoing_map = ongoing_map_arc.lock().unwrap();
+    let x = memdb.lock().await.permdb_sub_select_all(from_memid).await; x
+}
 
-//     let mut output = String::new();
-//     for (_, ongoing) in ongoing_map.iter() {
-//         let mut ordered_map = IndexMap::new();
-//         ordered_map.insert("PROGRESS".to_string(), serde_json::Value::Object(ongoing.ongoing_progress.clone().into_iter().collect()));
-//         let action_sequences: Vec<serde_json::Value> = ongoing.ongoing_action_sequences
-//             .iter()
-//             .map(|map| serde_json::Value::Object(map.clone().into_iter().collect()))
-//             .collect();
-//         ordered_map.insert("TRIED_ACTION_SEQUENCES".to_string(), serde_json::Value::Array(action_sequences));
-//         let output_value: serde_json::Value = serde_json::Value::Object(
-//             ongoing.ongoing_output
-//                 .clone()
-//                 .into_iter()
-//                 .map(|(k, v)| (k, serde_json::Value::Object(v.into_iter().collect())))
-//                 .collect()
-//         );
-//         ordered_map.insert("OUTPUT".to_string(), output_value);
-//         output.push_str(&format!(
-//             "💿 Ongoing session with goal: {}\nAttempt number: {}\nSummary of progress:\n\n{}\n\n",
-//             ongoing.ongoing_goal,
-//             ongoing.ongoing_attempt_n,
-//             serde_json::to_string_pretty(&ordered_map).unwrap()
-//         ));
-//     }
-//     if output.is_empty() {
-//         output = "No ongoing work found.\n".to_string();
-//     }
 
-//     Ok(output)
-// }
+pub async fn memdb_pubsub_trigerred(
+    vec_db: Arc<AMutex<Option<VecDb>>>,
+    sleep_seconds: u64
+) -> Result<(), String> {
+    let memdb = {
+        let vec_db_guard = vec_db.lock().await;
+        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+        vec_db.memdb.clone()
+    };
+    let pubsub_notifier = memdb.lock().await.pubsub_notifier.clone();
+    match tokio::time::timeout(tokio::time::Duration::from_secs(sleep_seconds), pubsub_notifier.notified()).await {
+        Ok(_) => { },
+        Err(_) => { }
+    }
+    Ok(())
+}
+
 
 #[async_trait]
 impl VecdbSearch for VecDb {

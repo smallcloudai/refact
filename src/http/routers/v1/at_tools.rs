@@ -80,7 +80,7 @@ pub async fn handle_v1_tools(
     let turned_on = all_tools.keys().cloned().collect::<Vec<_>>();
     let allow_experimental = gcx.read().await.cmdline.experimental;
 
-    let tool_desclist = tool_description_list_from_yaml(all_tools, &turned_on, allow_experimental).await.unwrap_or_else(|e| {
+    let tool_desclist = tool_description_list_from_yaml(all_tools, Some(&turned_on), allow_experimental).await.unwrap_or_else(|e| {
         tracing::error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });

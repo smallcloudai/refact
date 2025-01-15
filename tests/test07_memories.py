@@ -25,15 +25,6 @@ async def test_memory_operations():
     http_status, query_result = await chat_client.mem_query(base_url, "compile", "proj1")
     print("Query result: %s\n%s" % (http_status, json.dumps(query_result, indent=4)))
 
-    # x = await chat_client.ongoing_update(base_url, "compile", "{\"HELLO\": \"world\"}")
-    # print("Save ongoing: %s" % (x))
-
-    # You can add more assertions here to verify the results
-    # For example:
-    # assert "memid" in m0, "Memory addition failed"
-    # assert update_result["status"] == "success", "Memory update failed"
-    # assert erase_result["status"] == "success", "Memory erasure failed"
-
 
 if __name__ == "__main__":
     asyncio.run(test_memory_operations())

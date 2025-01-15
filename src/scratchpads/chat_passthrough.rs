@@ -109,7 +109,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         let style = self.post.style.clone();
         let mut at_tools = tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?;
 
-        let messages = if self.prepend_system_prompt {
+        let messages = if self.prepend_system_prompt && self.allow_at {
             prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
         } else {
             self.messages.clone()
@@ -163,7 +163,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 }).collect::<Vec<String>>();
                 let allow_experimental = gcx.read().await.cmdline.experimental;
                 // and take descriptions of tools from the official source
-                let tool_descriptions = tool_description_list_from_yaml(at_tools, &turned_on, allow_experimental).await?;
+                let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
                 Some(tool_descriptions.into_iter().map(|x|x.into_openai_style()).collect::<Vec<_>>())
             } else {
                 None
@@ -217,23 +217,6 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 
     fn response_spontaneous(&mut self) -> Result<Vec<Value>, String>  {
-        // let mut deterministic: Vec<Value> = vec![];
-        // let mut cursor = 0;
-        // while cursor < self.messages.len() {
-
-        // }
-
-
-
-        // let have_system_prompt_in_post = !self.post.messages.is_empty() && self.post.messages[0].get("role") == Some(&serde_json::Value::String("system".to_string()));
-        // let have_system_prompt_in_messages = !self.messages.is_empty() && self.messages[0].role == "system";
-        // if !have_system_prompt_in_post && have_system_prompt_in_messages && self.post.messages.len() == 1 {  // only the user message present in request
-
-        //     self.has_rag_results.in_json.insert(0, json!(self.messages[0]));
-
-        // }
-        // deterministic.extend(self.has_rag_results.response_streaming()?);
-        // Ok(deterministic)
         self.has_rag_results.response_streaming()
     }
 

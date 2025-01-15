@@ -60,7 +60,7 @@ pub async fn generate_follow_up_message(
         ccx.clone(),
         model_name,
         messages.clone(),
-        vec![],
+        Some(vec![]),
         None,
         false,
         Some(0.5),
