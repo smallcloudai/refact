@@ -27,6 +27,7 @@ server.use(...handlers);
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
     onSubmit: (_str: string) => ({}),
+    unCalledTools: false,
     ...props,
   };
 
