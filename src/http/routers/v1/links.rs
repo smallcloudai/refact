@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::fs;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
@@ -179,18 +178,18 @@ pub async fn handle_v1_links(
                 ..Default::default()
             })
         }
-    }
-
-    // YAML problems
-    for e in integration_yaml_errors {
-        links.push(Link {
-            link_action: LinkAction::Goto,
-            link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
-            link_goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
-            link_summary_path: None,
-            link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
-            ..Default::default()
-        });
+    
+        // YAML problems
+        for e in integration_yaml_errors {
+            links.push(Link {
+                link_action: LinkAction::Goto,
+                link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
+                link_goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
+                link_summary_path: None,
+                link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
+                ..Default::default()
+            });
+        }
     }
     
     // RegenerateWithIncreasedContextSize
@@ -224,86 +223,90 @@ pub async fn handle_v1_links(
     }
 
     // Tool recommendations
-    if post.messages.is_empty() {
-        let (summary_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
-        if !summary_exists {
-            // doesn't exist
-            links.push(Link {
-                link_action: LinkAction::SummarizeProject,
-                link_text: "Initial project summarization".to_string(),
-                link_goto: None,
-                link_summary_path: summary_path_option,
-                link_tooltip: format!("Project summary is a starting point for Refact Agent."),
-                ..Default::default()
-            });
-        } else {
-            // exists
-            if let Some(summary_path) = summary_path_option {
-                match fs::read_to_string(&summary_path) {
-                    Ok(content) => {
-                        match serde_yaml::from_str::<serde_yaml::Value>(&content) {
-                            Ok(yaml) => {
-                                if let Some(recommended_integrations) = yaml.get("recommended_integrations").and_then(|rt| rt.as_sequence()) {
-                                    let mut any_recommended = false;
-                                    for igname_value in recommended_integrations {
-                                        if let Some(igname) = igname_value.as_str() {
-                                            if igname == "isolation" || igname == "docker" {
-                                                continue;
-                                            }
-                                            if !integrations_map.contains_key(igname) {
-                                                tracing::info!("tool {} not present => link", igname);
-                                                links.push(Link {
-                                                    link_action: LinkAction::Goto,
-                                                    link_text: format!("Configure {igname}"),
-                                                    link_goto: Some(format!("SETTINGS:{igname}")),
-                                                    link_summary_path: None,
-                                                    link_tooltip: format!(""),
-                                                    ..Default::default()
-                                                });
-                                                any_recommended = true;
-                                            } else {
-                                                tracing::info!("tool {} present => happy", igname);
+    /* temporary remove project summary and recomended integrations 
+    if (post.meta.chat_mode == ChatMode::AGENT) {
+        if post.messages.is_empty() {
+            let (summary_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
+            if !summary_exists {
+                // doesn't exist
+                links.push(Link {
+                    link_action: LinkAction::SummarizeProject,
+                    link_text: "Initial project summarization".to_string(),
+                    link_goto: None,
+                    link_summary_path: summary_path_option,
+                    link_tooltip: format!("Project summary is a starting point for Refact Agent."),
+                    ..Default::default()
+                });
+            } else {
+                // exists
+                if let Some(summary_path) = summary_path_option {
+                    match fs::read_to_string(&summary_path) {
+                        Ok(content) => {
+                            match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                                Ok(yaml) => {
+                                    if let Some(recommended_integrations) = yaml.get("recommended_integrations").and_then(|rt| rt.as_sequence()) {
+                                        let mut any_recommended = false;
+                                        for igname_value in recommended_integrations {
+                                            if let Some(igname) = igname_value.as_str() {
+                                                if igname == "isolation" || igname == "docker" {
+                                                    continue;
+                                                }
+                                                if !integrations_map.contains_key(igname) {
+                                                    tracing::info!("tool {} not present => link", igname);
+                                                    links.push(Link {
+                                                        link_action: LinkAction::Goto,
+                                                        link_text: format!("Configure {igname}"),
+                                                        link_goto: Some(format!("SETTINGS:{igname}")),
+                                                        link_summary_path: None,
+                                                        link_tooltip: format!(""),
+                                                        ..Default::default()
+                                                    });
+                                                    any_recommended = true;
+                                                } else {
+                                                    tracing::info!("tool {} present => happy", igname);
+                                                }
                                             }
                                         }
-                                    }
-                                    if any_recommended {
-                                        links.push(Link {
-                                            link_action: LinkAction::PostChat,
-                                            link_text: format!("Stop recommending integrations"),
-                                            link_goto: None,
-                                            link_summary_path: None,
-                                            link_tooltip: format!(""),
-                                            link_payload: serde_json::json!({
-                                                "chat_meta": crate::call_validation::ChatMeta {
-                                                    chat_id: "".to_string(),
-                                                    chat_remote: false,
-                                                    chat_mode: crate::call_validation::ChatMode::CONFIGURE,
-                                                    current_config_file: summary_path.clone(),
-                                                },
-                                                "messages": [
-                                                    crate::call_validation::ChatMessage {
-                                                        role: "user".to_string(),
-                                                        content: crate::call_validation::ChatContent::SimpleText(format!("Make recommended_integrations an empty list, follow the system prompt.")),
-                                                        ..Default::default()
+                                        if any_recommended {
+                                            links.push(Link {
+                                                link_action: LinkAction::PostChat,
+                                                link_text: format!("Stop recommending integrations"),
+                                                link_goto: None,
+                                                link_summary_path: None,
+                                                link_tooltip: format!(""),
+                                                link_payload: serde_json::json!({
+                                                    "chat_meta": crate::call_validation::ChatMeta {
+                                                        chat_id: "".to_string(),
+                                                        chat_remote: false,
+                                                        chat_mode: crate::call_validation::ChatMode::CONFIGURE,
+                                                        current_config_file: summary_path.clone(),
                                                     },
-                                                ]
-                                            }),
-                                        });
+                                                    "messages": [
+                                                        crate::call_validation::ChatMessage {
+                                                            role: "user".to_string(),
+                                                            content: crate::call_validation::ChatContent::SimpleText(format!("Make recommended_integrations an empty list, follow the system prompt.")),
+                                                            ..Default::default()
+                                                        },
+                                                    ]
+                                                }),
+                                            });
+                                        }
                                     }
+                                },
+                                Err(e) => {
+                                    tracing::error!("Failed to parse project summary YAML file: {}", e);
                                 }
-                            },
-                            Err(e) => {
-                                tracing::error!("Failed to parse project summary YAML file: {}", e);
                             }
+                        },
+                        Err(e) => {
+                            tracing::error!("Failed to read project summary file: {}", e);
                         }
-                    },
-                    Err(e) => {
-                        tracing::error!("Failed to read project summary file: {}", e);
                     }
                 }
-            }
+            }      
         }
     }
+    */
 
     // Follow-up
     if false {
