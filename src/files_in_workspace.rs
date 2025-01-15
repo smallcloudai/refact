@@ -631,7 +631,10 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
 
     #[cfg(feature="vecdb")]
     match *vec_db_module.lock().await {
-        Some(ref mut db) => db.remove_file(path).await,
+        Some(ref mut db) => match db.remove_file(path).await {
+            Ok(_) => {}
+            Err(err) => info!("VECDB Error removing: {}", err),
+        },
         None => {}
     }
     #[cfg(not(feature="vecdb"))]

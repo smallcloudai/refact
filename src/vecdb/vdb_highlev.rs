@@ -11,8 +11,7 @@ use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{lance_search, MemdbSubEvent, MemoriesDatabase};
 use crate::trajectories::try_to_download_trajectories;
-use crate::vecdb::vdb_cache::VecDBCache;
-use crate::vecdb::vdb_lance::VecDBHandler;
+use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
 
@@ -29,7 +28,7 @@ fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
 pub struct VecDb {
     pub memdb: Arc<AMutex<MemoriesDatabase>>,
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
-    vecdb_handler: Arc<AMutex<VecDBHandler>>,
+    vecdb_handler: Arc<AMutex<VecDBSqlite>>,
     pub vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     // cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
     constants: VecdbConstants,
@@ -239,15 +238,12 @@ impl VecDb {
         constants: VecdbConstants,
         api_key: &String
     ) -> Result<VecDb, String> {
-        let handler = VecDBHandler::init(constants.embedding_size).await?;
-        let cache = VecDBCache::init(cache_dir, &constants.embedding_model, constants.embedding_size).await?;
+        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
-        let vecdb_cache = Arc::new(AMutex::new(cache));
         let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, cmdline.reset_memory).await?));
 
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
-            vecdb_cache.clone(),
             constants.clone(),
             api_key.clone(),
             memdb.clone(),
@@ -274,10 +270,10 @@ impl VecDb {
         vectorizer_enqueue_files(self.vectorizer_service.clone(), documents, process_immediately).await;
     }
 
-    pub async fn remove_file(&self, file_path: &PathBuf) {
+    pub async fn remove_file(&self, file_path: &PathBuf) -> Result<(), String> {
         let mut handler_locked = self.vecdb_handler.lock().await;
         let file_path_str = file_path.to_string_lossy().to_string();
-        handler_locked.vecdb_records_remove(vec![file_path_str]).await;
+        handler_locked.vecdb_records_remove(vec![file_path_str]).await
     }
 }
 
@@ -359,12 +355,11 @@ pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<Vec
         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
         vec_db.vectorizer_service.clone()
     };
-    let (vstatus, vecdb_handler, vecdb_cache) = {
+    let (vstatus, vecdb_handler) = {
         let vectorizer_locked = vectorizer_service.lock().await;
         (
             vectorizer_locked.vstatus.clone(),
             vectorizer_locked.vecdb_handler.clone(),
-            vectorizer_locked.vecdb_cache.clone(),
         )
     };
     let mut vstatus_copy = vstatus.lock().await.clone();
@@ -372,7 +367,7 @@ pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<Vec
         Ok(res) => res,
         Err(err) => return Err(err)
     };
-    vstatus_copy.db_cache_size = match vecdb_cache.lock().await.size().await {
+    vstatus_copy.db_cache_size = match vecdb_handler.lock().await.cache_size().await {
         Ok(res) => res,
         Err(err) => return Err(err.to_string())
     };

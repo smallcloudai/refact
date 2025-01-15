@@ -22,8 +22,7 @@ use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::time::Instant;
 use vectordb::table::Table;
 
-use crate::vecdb::vdb_cache::VecDBCache;
-use crate::vecdb::vdb_lance::cosine_distance;
+use crate::vecdb::vdb_sqlite::{cos_dist, VecDBSqlite};
 use crate::vecdb::vdb_structs::{MemoRecord, SimpleTextHashVector, VecdbConstants, VecDbStatus};
 use crate::ast::chunk_utils::official_text_hashing_function;
 
@@ -93,7 +92,6 @@ extern "C" fn pubsub_trigger_hook(
 impl MemoriesDatabase {
     pub async fn init(
         config_dir: &PathBuf,
-        // vecdb_cache: Arc<AMutex<VecDBCache>>,
         constants: &VecdbConstants,
         reset_memory: bool,
     ) -> Result<MemoriesDatabase, String> {
@@ -468,7 +466,7 @@ fn _lance_fetch_all_records_measuring_distance(
             None => { -1.0 }
             Some(embedding) => {
                 // info!("cosine_distance, embd\n{:?}\nv\n{:?}\n", embedding, gathered_vec);
-                cosine_distance(&embedding, &gathered_vec)
+                cos_dist(&embedding, &gathered_vec)
             }
         };
         let embedding = match include_embedding {
@@ -576,7 +574,7 @@ async fn recall_dirty_memories_and_mark_them_not_dirty(
 
 pub async fn vectorize_dirty_memories(
     memdb: Arc<AMutex<MemoriesDatabase>>,
-    vecdb_cache: Arc<AMutex<VecDBCache>>,
+    vecdb_handler: Arc<AMutex<VecDBSqlite>>,
     _status: Arc<AMutex<VecDbStatus>>,
     client: Arc<AMutex<Client>>,
     api_key: &String,
@@ -589,8 +587,8 @@ pub async fn vectorize_dirty_memories(
     }
 
     {
-        let mut cache_locked = vecdb_cache.lock().await;
-        cache_locked.process_simple_hash_text_vector(&mut todo).await.map_err(|e| format!("Failed to get vectors from cache: {}", e))?
+        let mut handler_locked = vecdb_handler.lock().await;
+        handler_locked.process_simple_hash_text_vector(&mut todo).await.map_err(|e| format!("Failed to get vectors from cache: {}", e))?
         // this makes todo[].vector appear for records that exist in cache
     }
 
@@ -615,9 +613,9 @@ pub async fn vectorize_dirty_memories(
     }
 
     {
-        let mut cache_locked = vecdb_cache.lock().await;
+        let mut handler_locked = vecdb_handler.lock().await;
         let temp_vec: Vec<SimpleTextHashVector> = to_vectorize.iter().map(|x| (**x).clone()).collect();
-        cache_locked.cache_add_new_records(temp_vec).await.map_err(|e| format!("Failed to update cache: {}", e))?;
+        handler_locked.cache_add_new_records(temp_vec).await.map_err(|e| format!("Failed to update cache: {}", e))?;
     }
 
     // Save to lance
