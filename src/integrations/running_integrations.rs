@@ -14,8 +14,17 @@ pub async fn load_integration_tools(
     let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental).await;
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
-        if integr.can_upgrade_to_tool() {
-            tools.insert(name.clone(), integr.integr_upgrade_to_tool(&name));
+        // if integr.can_upgrade_to_tool() {
+            // tools.insert(name.clone(), integr.integr_upgrade_to_tool(&name));
+        for tool in integr.integr_tools(&name) {
+            let mut tool_name = tool.tool_name();
+            if tool_name.is_empty() {
+                tool_name = name.clone();
+            }
+            if tools.contains_key(&tool_name) {
+                tracing::warn!("tool with name '{}' already exists, overwriting previous definition", tool_name);
+            }
+            tools.insert(tool_name, tool);
         }
     }
     tools

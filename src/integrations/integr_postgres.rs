@@ -61,12 +61,12 @@ impl IntegrationTrait for ToolPostgres {
         self.common.clone()
     }
 
-    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolPostgres {
+    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+        vec![Box::new(ToolPostgres {
             common: self.common.clone(),
             settings_postgres: self.settings_postgres.clone(),
             config_path: self.config_path.clone(),
-        }) as Box<dyn Tool + Send>
+        })]
     }
 
     fn integr_schema(&self) -> &str

@@ -83,12 +83,12 @@ impl IntegrationTrait for ToolDocker {
         self.common.clone()
     }
 
-    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolDocker {
+    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+        vec![Box::new(ToolDocker {
             common: self.common.clone(),
             settings_docker: self.settings_docker.clone(),
             config_path: self.config_path.clone(),
-        }) as Box<dyn Tool + Send>
+        })]
     }
 
     fn integr_schema(&self) -> &str

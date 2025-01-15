@@ -17,9 +17,11 @@ pub async fn docker_and_isolation_load(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
     // XXX: why load all integrations if we need one or two?
     let (integrations, _yaml_errors) = load_integrations(gcx.clone(), true).await;
 
-    let docker_tool = integrations.get("docker")
+    let docker_tools = integrations.get("docker")
         .ok_or("Docker integration not found".to_string())?
-        .integr_upgrade_to_tool("docker")
+        .integr_tools("docker");
+
+    let docker_tool = docker_tools[0]
         .as_any().downcast_ref::<ToolDocker>()
         .ok_or("Failed to downcast docker tool".to_string())?
         .clone();

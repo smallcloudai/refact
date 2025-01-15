@@ -104,6 +104,10 @@ pub trait Tool: Send + Sync {
         unsafe { &mut DEFAULT_USAGE }
     }
 
+    fn tool_name(&self) -> String  {
+        return "".to_string();
+    }
+
     fn tool_description(&self) -> ToolDesc {
         unimplemented!();
     }

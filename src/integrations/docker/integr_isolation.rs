@@ -4,7 +4,6 @@ use serde_json::Value;
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports};
 use crate::integrations::docker::docker_container_manager::Port;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
-use crate::tools::tools_description::Tool;
 
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
@@ -57,10 +56,8 @@ impl IntegrationTrait for IntegrationIsolation {
         self.common.clone()
     }
 
-    fn can_upgrade_to_tool(&self) -> bool { false }
-
-    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
-        unimplemented!("Isolation cannot be upgraded to a tool, its configuration is used to run the project in isolation.")
+    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+      vec![]
     }
 
     fn integr_schema(&self) -> &str

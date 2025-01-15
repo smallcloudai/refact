@@ -70,12 +70,12 @@ impl IntegrationTrait for ToolShell {
         self.common.clone()
     }
 
-    fn integr_upgrade_to_tool(&self, _integr_name: &str) -> Box<dyn Tool + Send> {
-        Box::new(ToolShell {
+    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+        vec![Box::new(ToolShell {
             common: self.common.clone(),
             cfg: self.cfg.clone(),
             config_path: self.config_path.clone(),
-        }) as Box<dyn Tool + Send>
+        })]
     }
 }
 

@@ -8,8 +8,7 @@ pub trait IntegrationTrait: Send + Sync {
     fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String>;
     fn integr_settings_as_json(&self) -> serde_json::Value;
     fn integr_common(&self) -> IntegrationCommon;
-    fn can_upgrade_to_tool(&self) -> bool { true }
-    fn integr_upgrade_to_tool(&self, integr_name: &str) -> Box<dyn crate::tools::tools_description::Tool + Send>;   // integr_name is sometimes different, "cmdline_compile_my_project" != "cmdline"
+    fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>>;  // integr_name is sometimes different, "cmdline_compile_my_project" != "cmdline"
 }
 
 #[derive(Deserialize, Serialize, Clone, Default)]
