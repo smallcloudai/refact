@@ -181,17 +181,24 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 128000,
             "supports_tools": true,
             "supports_multimodality": true,
-            "supports_agent": true,
+            "supports_agent": false,
             "supports_scratchpads": {
-                "REPLACE_PASSTHROUGH": {
-                    "context_format": "chat",
-                    "rag_ratio": 0.5
-                }
+                "PASSTHROUGH": {}
             },
             "similar_models": [
                 "gemini-1.5-flash",
-                "gemini-1.5-flash-8b",
-                "gemini-1.5-pro",
+                "gemini-1.5-flash-8b"
+            ]
+        },
+        "gemini-1.5-pro": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
                 "gemini-2.0-exp-advanced"
             ]
         },
@@ -387,14 +394,24 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 128000,
             "supports_tools": true,
             "supports_multimodality": true,
-            "supports_agent": true,
+            "supports_agent": false,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
             "similar_models": [
                 "gemini-1.5-flash",
-                "gemini-1.5-flash-8b",
-                "gemini-1.5-pro",
+                "gemini-1.5-flash-8b"
+            ]
+        },
+        "gemini-1.5-pro": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
                 "gemini-2.0-exp-advanced"
             ]
         },
