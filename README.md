@@ -29,6 +29,9 @@ This repo consists Refact WebUI for fine-tuning and self-hosting of code models,
 
 The easiest way to run the self-hosted server is a pre-build Docker image.
 
+Your host system should have **nvidia drivers** with cuda 12 support,
+see Table 2 [here](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html).
+
 Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker).
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
 
