@@ -243,7 +243,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
       }
     },
-    [dispatch, newTitle, chatId],
+    [dispatch, newTitle, chatId, isTitleGenerated],
   );
 
   const handleChatTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
