@@ -89,6 +89,7 @@ pub async fn ssh_tunnel_open(ports_to_forward: &mut Vec<Port>, ssh_config: &SshC
     }
     command.arg("-p").arg(ssh_config.port.to_string());
     command.arg(&format!("{}@{}", ssh_config.user, ssh_config.host));
+    command.stdin(Stdio::null());
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
 

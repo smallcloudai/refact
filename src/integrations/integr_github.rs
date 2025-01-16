@@ -99,6 +99,7 @@ impl Tool for ToolGithub {
             .current_dir(&to_pathbuf_normalize(&project_dir))
             .env("GH_TOKEN", &self.settings_github.gh_token)
             .env("GITHUB_TOKEN", &self.settings_github.gh_token)
+            .stdin(std::process::Stdio::null())
             .output()
             .await
             .map_err(|e| format!("!{}, {} failed:\n{}",

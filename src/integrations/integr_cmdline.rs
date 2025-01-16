@@ -155,6 +155,7 @@ pub fn create_command_from_string(
     if cmd_string.is_empty() {
         return Err("Command is empty".to_string());
     }
+    cmd.stdin(std::process::Stdio::null());
     cmd.arg(shell_arg).arg(cmd_string);
     tracing::info!("command: {}", cmd_string);
 

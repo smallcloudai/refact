@@ -91,6 +91,7 @@ impl ToolPostgres {
             .arg("ON_ERROR_STOP=1")
             .arg("-c")
             .arg(query)
+            .stdin(std::process::Stdio::null())
             .output();
         if let Ok(output) = tokio::time::timeout(tokio::time::Duration::from_millis(10_000), output_future).await {
             if output.is_err() {

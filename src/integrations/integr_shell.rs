@@ -212,6 +212,7 @@ pub async fn execute_shell_command(
     }
 
     cmd.arg(shell_arg).arg(command);
+    cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 

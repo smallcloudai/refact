@@ -97,6 +97,7 @@ impl Tool for ToolGitlab {
             .args(&command_args)
             .current_dir(&to_pathbuf_normalize(&project_dir))
             .env("GITLAB_TOKEN", &self.settings_gitlab.glab_token)
+            .stdin(std::process::Stdio::null())
             .output()
             .await
             .map_err(|e| format!("!{}, {} failed:\n{}",

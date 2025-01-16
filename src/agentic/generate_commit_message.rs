@@ -279,6 +279,7 @@ pub async fn _generate_commit_message_for_projects(
 
         let output = tokio::process::Command::new(command)
             .current_dir(&folder)
+            .stdin(std::process::Stdio::null())
             .output()
             .await
             .map_err(|e| format!("Failed to execute command for folder {folder:?}: {e}"))?;

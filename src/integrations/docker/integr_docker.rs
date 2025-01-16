@@ -113,7 +113,12 @@ impl ToolDocker {
         if !docker_host.is_empty() {
             command_process.arg("-H").arg(&docker_host);
         }
-        let output = command_process.args(&command_args).output().await.map_err(|e| e.to_string())?;
+        let output = command_process
+            .args(&command_args)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .await
+            .map_err(|e| e.to_string())?;
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
