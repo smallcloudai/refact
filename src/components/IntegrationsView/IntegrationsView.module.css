@@ -34,8 +34,11 @@
 
 .popup {
   position: fixed;
-  width: calc(100% - 6rem);
+  width: max-content;
+  max-width: 80%;
+  left: 50%;
+  translate: -50%;
   background-color: var(--accent-3);
   overflow: hidden;
-  bottom: 20px;
+  bottom: 65px;
 }
