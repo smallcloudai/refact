@@ -10,7 +10,10 @@ use async_trait::async_trait;
 // };
 
 // use mcp_client_rs::dotenv::dotenv;
-use mcp_client_rs::{Protocol, ClientError};
+// use mcp_client_rs::{Protocol, ClientError};
+use mcp_rust_sdk::client::Client;
+// use mcp_rust_sdk::transport::websocket::WebSocketTransport;
+use mcp_rust_sdk::transport::stdio::StdioTransport;
 
 
 use serde::{Deserialize, Serialize};
@@ -59,7 +62,7 @@ impl IntegrationTrait for IntegrationMCP {
         }
         self.config_path = config_path;
 
-        let mut envs = HashMap::new();
+        // let mut envs = HashMap::new();
         // envs.insert(
         //     "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
         //     std::env::var("GITHUB_PERSONAL_ACCESS_TOKEN").unwrap_or_default(),
@@ -67,19 +70,22 @@ impl IntegrationTrait for IntegrationMCP {
 
         tracing::info!("AAA GEEEEE {:?}", self.config_path);
 
-        let protocol_maybe: Result<Protocol, ClientError> = Protocol::new(
-            "0",
-            self.cfg.command.as_str(),
-            self.cfg.args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
-            envs,
-        ).await;
+        let (transport, _) = StdioTransport::new();
+        let client = Client::new(transport);
 
-        if let Err(client_error) = protocol_maybe {
-            tracing::error!("Failed to initialize protocol: {:?}", client_error);
-            return Err(client_error.to_string());
-        }
+        // let protocol_maybe: Result<Protocol, ClientError> = Protocol::new(
+        //     "0",
+        //     self.cfg.command.as_str(),
+        //     self.cfg.args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+        //     envs,
+        // ).await;
 
-        let client = Arc::new(protocol_maybe.unwrap());
+        // if let Err(client_error) = protocol_maybe {
+        //     tracing::error!("Failed to initialize protocol: {:?}", client_error);
+        //     return Err(client_error.to_string());
+        // }
+
+        // let client = Arc::new(protocol_maybe.unwrap());
 
         Ok(())
     }
