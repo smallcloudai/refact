@@ -148,10 +148,11 @@ impl IntegrationSession for ChromeSession
     }
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolChrome {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsChrome>(value.clone()) {
             Ok(settings_chrome) => self.settings_chrome = settings_chrome,
             Err(e) => {

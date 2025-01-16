@@ -31,10 +31,11 @@ pub struct ToolPostgres {
     pub config_path: String,
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolPostgres {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsPostgres>(value.clone()) {
             Ok(settings_postgres) => self.settings_postgres = settings_postgres,
             Err(e) => {

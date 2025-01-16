@@ -50,10 +50,11 @@ pub struct ToolDocker {
     pub config_path: String,
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolDocker {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsDocker>(value.clone()) {
             Ok(settings_docker) => {
                 tracing::info!("Docker settings applied: {:?}", settings_docker);

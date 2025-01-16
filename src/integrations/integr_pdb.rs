@@ -69,10 +69,11 @@ impl IntegrationSession for PdbSession
     }
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolPdb {
     fn as_any(&self) -> &dyn Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsPdb>(value.clone()) {
             Ok(settings_pdb) => {
                 info!("PDB settings applied: {:?}", settings_pdb);

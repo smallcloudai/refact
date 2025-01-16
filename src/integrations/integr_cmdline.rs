@@ -56,10 +56,11 @@ pub struct ToolCmdline {
     pub config_path: String,
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolCmdline {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {

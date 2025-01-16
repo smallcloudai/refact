@@ -30,10 +30,11 @@ pub struct ToolGithub {
     pub config_path: String,
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsGitHub>(value.clone()) {
             Ok(settings_github) => {
                 self.settings_github = settings_github;

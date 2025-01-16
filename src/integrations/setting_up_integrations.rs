@@ -455,7 +455,7 @@ pub async fn integration_config_get(
                 match serde_yaml::from_str::<serde_yaml::Value>(&content) {
                     Ok(y) => {
                         let j = serde_json::to_value(y).unwrap();
-                        match integration_box.integr_settings_apply(&j, better_integr_config_path.clone()) {
+                        match integration_box.integr_settings_apply(&j, better_integr_config_path.clone()).await {
                             Ok(_) => {
                             }
                             Err(err) => {
@@ -503,7 +503,7 @@ pub async fn integration_config_save(
     let mut integration_box = crate::integrations::integration_from_name(integr_name.as_str())
         .map_err(|e| format!("Failed to load integrations: {}", e))?;
 
-    integration_box.integr_settings_apply(integr_values, integr_config_path.clone())?;  // this will produce "no field XXX" errors
+    integration_box.integr_settings_apply(integr_values, integr_config_path.clone()).await?;  // this will produce "no field XXX" errors
     let mut sanitized_json: serde_json::Value = integration_box.integr_settings_as_json();
     let common_settings = integration_box.integr_common();
     if let (Value::Object(sanitized_json_m), Value::Object(common_settings_m)) = (&mut sanitized_json, json!(common_settings)) {

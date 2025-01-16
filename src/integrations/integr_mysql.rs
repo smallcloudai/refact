@@ -31,10 +31,11 @@ pub struct ToolMysql {
     pub config_path: String,
 }
 
+#[async_trait]
 impl IntegrationTrait for ToolMysql {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsMysql>(value.clone()) {
             Ok(settings_mysql) => self.settings_mysql = settings_mysql,
             Err(e) => {

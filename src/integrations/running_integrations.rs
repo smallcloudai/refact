@@ -63,7 +63,7 @@ pub async fn load_integrations(
                 continue;
             }
         };
-        let should_be_fine = integr.integr_settings_apply(&rec.config_unparsed, rec.integr_config_path.clone());
+        let should_be_fine = integr.integr_settings_apply(&rec.config_unparsed, rec.integr_config_path.clone()).await;
         if should_be_fine.is_err() {
             // tracing::warn!("failed to apply settings for integration {}: {:?}", rec.integr_name, should_be_fine.err());
             error_log.push(crate::integrations::setting_up_integrations::YamlError {

@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
+use async_trait::async_trait;
 
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports};
 use crate::integrations::docker::docker_container_manager::Port;
@@ -24,10 +25,11 @@ pub struct IntegrationIsolation {
     pub settings_isolation: SettingsIsolation,
 }
 
+#[async_trait]
 impl IntegrationTrait for IntegrationIsolation {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    fn integr_settings_apply(&mut self, value: &Value, _config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &Value, _config_path: String) -> Result<(), String> {
         match serde_json::from_value::<SettingsIsolation>(value.clone()) {
             Ok(settings_isolation) => {
                 tracing::info!("Isolation settings applied: {:?}", settings_isolation);
