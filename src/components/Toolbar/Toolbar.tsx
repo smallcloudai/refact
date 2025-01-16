@@ -32,7 +32,7 @@ import {
   getHistory,
   updateChatTitleById,
 } from "../../features/History/historySlice";
-import { restoreChat, selectThread } from "../../features/Chat";
+import { restoreChat, saveTitle, selectThread } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
 import {
   useAppDispatch,
@@ -231,6 +231,15 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       if (event.code === "Enter") {
         setIsRenaming(false);
         if (!newTitle || newTitle.trim() === "") return;
+        if (!isTitleGenerated) {
+          dispatch(
+            saveTitle({
+              id: chatId,
+              title: newTitle,
+              isTitleGenerated: true,
+            }),
+          );
+        }
         dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
       }
     },
