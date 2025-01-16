@@ -168,6 +168,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                 token=token, **self._model_dict["model_class_kwargs"]
             )
         elif model_dict["backend"] == "autogptq":
+            # TODO: remove this code later, we have no atogptq models for now
             self._model = CustomAutoGPTQForCausalLM.from_quantized(
                 self._model_dict["model_path"], cache_dir=self.cache_dir, device=self._device,
                 trust_remote_code=True, token=token,
