@@ -79,7 +79,7 @@ async fn setup_db(conn: &Connection, pubsub_notifier: Arc<Notify>) -> Result<(),
     conn.call(move |conn| {
         conn.busy_timeout(std::time::Duration::from_secs(30))?;
         conn.execute_batch("PRAGMA cache_size = 0; PRAGMA shared_cache = OFF;")?;
-        conn.execute("PRAGMA journal_mode=WAL", params![])?;
+        let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
         unsafe {
             libsqlite3_sys::sqlite3_update_hook(
                 conn.handle(),
@@ -195,8 +195,9 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32, reset_memory: bo
         )?;
 
         // Embeddings
+        conn.execute("DROP TABLE IF EXISTS embeddings", [])?;
         conn.execute(&format!(
-            "CREATE VIRTUAL TABLE embeddings using vec0(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS embeddings using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
               +memid text
             );"),

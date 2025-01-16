@@ -50,7 +50,7 @@ async fn vecdb_test_request(
     }
 }
 
-async fn _create_vecdb(
+async fn _create_vecdb( 
     gcx: Arc<ARwLock<GlobalContext>>,
     background_tasks: &mut BackgroundTasksHolder,
     constants: VecdbConstants,

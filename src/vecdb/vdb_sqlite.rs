@@ -97,18 +97,17 @@ async fn migrate_202406(conn: &Connection) -> tokio_rusqlite::Result<()> {
 
 async fn migrate_202501(conn: &Connection, embedding_size: i32) -> tokio_rusqlite::Result<()> {
     conn.call(move |conn| {
-        match conn.execute("ALTER TABLE embeddings RENAME TO embeddings_cache;", []) {
+        match conn.execute(&format!("ALTER TABLE embeddings RENAME TO embeddings_cache;"), []) {
             _ => {}
         };
-        match conn.execute(&format!(
-            "CREATE VIRTUAL TABLE embeddings using vec0(
+        conn.execute("DROP TABLE IF EXISTS embeddings", [])?;
+        conn.execute(&format!(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS embeddings using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
               scope text partition key,
-              +start_line integer
+              +start_line integer,
               +end_line integer
-            );"), []) {
-            _ => {}
-        };
+            );"), [])?;
         Ok(())
     }).await
 }
@@ -124,17 +123,12 @@ impl VecDBSqlite {
             Ok(db) => db,
             Err(err) => return Err(format!("{:?}", err))
         };
-        let _ = conn.call(move |conn| {
-            Ok(conn.execute("PRAGMA journal_mode=WAL", params![])?)
-        }).await;
-        match migrate_202406(&conn).await {
-            Ok(_) => {}
-            Err(err) => return Err(format!("{:?}", err))
-        }
-        match migrate_202501(&conn, embedding_size).await {
-            Ok(_) => {}
-            Err(err) => return Err(format!("{:?}", err))
-        }
+        conn.call(move |conn| {
+            conn.execute("PRAGMA journal_mode=WAL", params![])?;
+            Ok(())
+        }).await.map_err(|e| e.to_string())?;
+        migrate_202406(&conn).await.map_err(|e| e.to_string())?;
+        migrate_202501(&conn, embedding_size).await.map_err(|e| e.to_string())?;
         info!("vecdb initialized");
         Ok(VecDBSqlite { conn })
     }
