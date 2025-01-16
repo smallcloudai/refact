@@ -13,26 +13,6 @@ huggingface_mini_db = {
         "T": 4096,
         "filter_caps": ["completion", "finetune"],
     },
-    "magicoder/6.7b": {
-        "backend": "autogptq",
-        "model_path": "TheBloke/Magicoder-S-DS-6.7B-GPTQ",
-        "model_class_kwargs": {
-            "inject_fused_attention": False,
-        },
-        "required_memory_mb": 8000,
-        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "filter_caps": ["chat"],
-        "deprecated": True
-    },
-    "mistral/7b/instruct-v0.1": {
-        "backend": "autogptq",
-        "model_path": "TheBloke/Mistral-7B-Instruct-v0.1-GPTQ",
-        "model_class_kwargs": {},
-        "required_memory_mb": 8000,
-        "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
-        "filter_caps": ["chat"],
-        "deprecated": True
-    },
     "mixtral/8x7b/instruct-v0.1": {
         "backend": "transformers",
         "model_path": "mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -42,17 +22,6 @@ huggingface_mini_db = {
         "required_memory_mb": 35000,
         "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
         "filter_caps": ["chat"],
-    },
-    "deepseek-coder/6.7b/instruct": {
-        "backend": "autogptq",
-        "model_path": "TheBloke/deepseek-coder-6.7B-instruct-GPTQ",
-        "model_class_kwargs": {
-            "inject_fused_attention": False,
-        },
-        "required_memory_mb": 8000,
-        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "filter_caps": ["chat"],
-        "deprecated": True
     },
     "deepseek-coder/33b/instruct": {
         "backend": "transformers",
