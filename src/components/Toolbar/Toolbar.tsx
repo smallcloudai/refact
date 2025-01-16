@@ -275,7 +275,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                   onBlur={() => setIsRenaming(false)}
                   autoFocus
                   size="1"
-                  defaultValue={chat.title}
+                  defaultValue={isTitleGenerated ? chat.title : ""}
                   onChange={handleChatTitleChange}
                 />
               );
@@ -304,40 +304,38 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                   >
                     {chat.title}
                   </TruncateLeft>
-                  {isTitleGenerated &&
-                    !isStreamingThisTab &&
-                    isOnlyOneChatTab && (
-                      <DropdownMenu.Root>
-                        <DropdownMenu.Trigger>
-                          <IconButton
-                            size="1"
-                            variant="ghost"
-                            color="gray"
-                            title="Title actions"
-                          >
-                            <DotsVerticalIcon />
-                          </IconButton>
-                        </DropdownMenu.Trigger>
-                        <DropdownMenu.Content
+                  {isActive && !isStreamingThisTab && isOnlyOneChatTab && (
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger>
+                        <IconButton
                           size="1"
-                          side="bottom"
-                          align="end"
-                          style={{
-                            minWidth: 110,
-                          }}
+                          variant="ghost"
+                          color="gray"
+                          title="Title actions"
                         >
-                          <DropdownMenu.Item onClick={handleChatThreadRenaming}>
-                            Rename
-                          </DropdownMenu.Item>
-                          <DropdownMenu.Item
-                            onClick={handleChatThreadDeletion}
-                            color="red"
-                          >
-                            Delete chat
-                          </DropdownMenu.Item>
-                        </DropdownMenu.Content>
-                      </DropdownMenu.Root>
-                    )}
+                          <DotsVerticalIcon />
+                        </IconButton>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Content
+                        size="1"
+                        side="bottom"
+                        align="end"
+                        style={{
+                          minWidth: 110,
+                        }}
+                      >
+                        <DropdownMenu.Item onClick={handleChatThreadRenaming}>
+                          Rename
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item
+                          onClick={handleChatThreadDeletion}
+                          color="red"
+                        >
+                          Delete chat
+                        </DropdownMenu.Item>
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Root>
+                  )}
                 </Flex>
               </TabNav.Link>
             );
