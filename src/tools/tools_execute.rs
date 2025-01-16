@@ -104,7 +104,7 @@ pub async fn run_tools_remotely(
         stream_back_to_user.push_in_json(json!(msg));
     }
 
-    Ok((all_messages, response.tools_runned))
+    Ok((all_messages, response.tools_ran))
 }
 
 pub async fn run_tools_locally(
@@ -117,7 +117,7 @@ pub async fn run_tools_locally(
     style: &Option<String>,
     tools_confirmation: bool,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (new_messages, tools_runned) = run_tools( // todo: fix typo "runned"
+    let (new_messages, tools_ran) = run_tools(
         ccx, tools, tokenizer, maxgen, original_messages, style, tools_confirmation
     ).await?;
 
@@ -127,7 +127,7 @@ pub async fn run_tools_locally(
         stream_back_to_user.push_in_json(json!(msg));
     }
 
-    Ok((all_messages, tools_runned))
+    Ok((all_messages, tools_ran))
 }
 
 pub async fn run_tools(

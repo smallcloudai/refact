@@ -58,7 +58,7 @@ pub struct ToolsExecutePost {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ToolExecuteResponse {
     pub messages: Vec<ChatMessage>,
-    pub tools_runned: bool,
+    pub tools_ran: bool,
 }
 
 pub async fn handle_v1_tools(
@@ -199,13 +199,13 @@ pub async fn handle_v1_tools_execute(
     let mut at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
     })?;
-    let (messages, tools_runned) = run_tools( // todo: fix typo "runned"
+    let (messages, tools_ran) = run_tools( // todo: fix typo "runned"
         ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style, tools_execute_post.tools_confirmation
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 
     let response = ToolExecuteResponse {
         messages,
-        tools_runned,
+        tools_ran,
     };
 
     let response_json = serde_json::to_string(&response)
