@@ -1,6 +1,7 @@
 use std::os::raw::{c_int, c_void};
 use std::path::PathBuf;
 use std::sync::Arc;
+use itertools::Itertools;
 use tracing::info;
 
 use rand::Rng;
@@ -340,7 +341,7 @@ impl MemoriesDatabase {
 
         let embedding_owned = embedding.clone();
         conn.call(move |conn| {
-            // Query that combines vector search with memories table data
+            let fields = fields_ordered().split(',').map(|x| format!("memories.{x}")).join(",");
             let query = format!(
                 "WITH knn_matches AS (
                     SELECT memid, distance
@@ -348,13 +349,11 @@ impl MemoriesDatabase {
                     WHERE embedding MATCH ?1
                         AND k = ?2
                 )
-                SELECT {}, knn_matches.distance
+                SELECT {fields},knn_matches.distance
                 FROM knn_matches
                 LEFT JOIN memories ON memories.memid = knn_matches.memid
-                ORDER BY knn_matches.distance",
-                fields_ordered()
+                ORDER BY knn_matches.distance"
             );
-
             let mut stmt = conn.prepare(&query)?;
             let rows = stmt.query_map(params![embedding_owned.as_bytes(), top_n as i64], |row| {
                 let mut record = map_row_to_memo_record(row)?;

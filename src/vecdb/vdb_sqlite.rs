@@ -124,7 +124,7 @@ impl VecDBSqlite {
             Err(err) => return Err(format!("{:?}", err))
         };
         conn.call(move |conn| {
-            conn.execute("PRAGMA journal_mode=WAL", params![])?;
+            let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
             Ok(())
         }).await.map_err(|e| e.to_string())?;
         migrate_202406(&conn).await.map_err(|e| e.to_string())?;
