@@ -1,21 +1,24 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use async_trait::async_trait;
-use jsonrpc_client::JsonRpcError;
-use jsonrpc_client::{
-    Request,
-    Response,
-    SendRequest,
-    Error,
-};
+// use jsonrpc_client::{
+//     Request,
+//     Response,
+//     SendRequest,
+//     Error,
+//     JsonRpcError,
+// };
+
+// use mcp_client_rs::dotenv::dotenv;
+use mcp_client_rs::{Protocol, ClientError};
+
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
-use tracing::info;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
+// use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+// use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 
 
@@ -33,12 +36,13 @@ pub struct IntegrationMCP {
     pub config_path: String,
 }
 
+#[async_trait]
 impl IntegrationTrait for IntegrationMCP {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
 
-    fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
         match serde_json::from_value::<ConfigMCP>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {
@@ -54,6 +58,29 @@ impl IntegrationTrait for IntegrationMCP {
             }
         }
         self.config_path = config_path;
+
+        let mut envs = HashMap::new();
+        // envs.insert(
+        //     "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
+        //     std::env::var("GITHUB_PERSONAL_ACCESS_TOKEN").unwrap_or_default(),
+        // );
+
+        tracing::info!("AAA GEEEEE {:?}", self.config_path);
+
+        let protocol_maybe: Result<Protocol, ClientError> = Protocol::new(
+            "0",
+            self.cfg.command.as_str(),
+            self.cfg.args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
+            envs,
+        ).await;
+
+        if let Err(client_error) = protocol_maybe {
+            tracing::error!("Failed to initialize protocol: {:?}", client_error);
+            return Err(client_error.to_string());
+        }
+
+        let client = Arc::new(protocol_maybe.unwrap());
+
         Ok(())
     }
 
