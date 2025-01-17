@@ -7,6 +7,7 @@ use serde_json::json;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
+use tracing::warn;
 use serde::Deserialize;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -231,7 +232,7 @@ pub async fn handle_mem_sub(
         }
         
         loop {
-            match crate::vecdb::vdb_highlev::memdb_pubsub_trigerred(vec_db.clone(), 10).await {
+            match crate::vecdb::vdb_highlev::memdb_pubsub_trigerred(vec_db.clone(), 5).await {
                 Ok(_) => {}
                 Err(_) => {
                     break;
@@ -256,6 +257,21 @@ pub async fn handle_mem_sub(
                     break;
                 }
             };
+            
+            match crate::vecdb::vdb_highlev::get_status(vec_db.clone()).await {
+                Ok(Some(status)) => {
+                    yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&status).unwrap()));
+                },
+                Err(err) => {
+                    warn!("Error while getting vecdb status: {}", err);
+                    continue;
+                },
+                _ => {
+                    warn!("Cannot get vecdb status");
+                    continue;
+                }
+            };
+            
         }
     };
 

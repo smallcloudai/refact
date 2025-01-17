@@ -41,6 +41,23 @@ class MemdbSubEvent:
                                 colors[self.pubevent_action]))
 
 
+@dataclass
+class VecdbStatusEvent:
+    files_unprocessed: int
+    files_total: int
+    requests_made_since_start: int
+    vectors_made_since_start: int
+    db_size: int
+    db_cache_size: int
+    state: str
+    queue_additions: bool
+    vecdb_max_files_hit: bool
+    vecdb_errors: str
+
+    def print(self):
+        print(self)
+
+
 tasks: Dict[str, asyncio.Task] = {}
 
 
@@ -50,8 +67,15 @@ async def memdb_sub(session):
         if decoded_line.startswith("data: "):
             decoded_line = decoded_line[6:].strip()
         j = json.loads(decoded_line)
-        event = MemdbSubEvent(**j)
-        event.print()
+        try:
+            event = MemdbSubEvent(**j)
+            event.print()
+        except Exception as e:
+            try:
+                status = VecdbStatusEvent(**j)
+                status.print()
+            except Exception as e:
+                print(termcolor.colored(f"Failed to decode event: {e}", "red"))
 
     global quit_flag
     try:
