@@ -1,4 +1,4 @@
-use rusqlite::{params, OpenFlags, Result};
+use rusqlite::{OpenFlags, Result};
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt::{Debug, Formatter};

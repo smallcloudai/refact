@@ -22,6 +22,16 @@ struct MemAddRequest {
 }
 
 #[derive(Deserialize)]
+struct MemUpdateRequest {
+    memid: String,
+    mem_type: String,
+    goal: String,
+    project: String,
+    payload: String,
+    origin: String,   // TODO: upgrade to serde_json::Value
+}
+
+#[derive(Deserialize)]
 struct MemEraseRequest {
     memid: String,
 }
@@ -31,14 +41,6 @@ struct MemUpdateUsedRequest {
     memid: String,
     correct: i32,
     relevant: i32,
-}
-
-#[derive(Deserialize)]
-struct MemQuery {
-    goal: String,
-    #[allow(unused)]
-    project: String,
-    top_n: usize,
 }
 
 pub async fn handle_mem_add(
@@ -57,7 +59,7 @@ pub async fn handle_mem_add(
         &post.goal,
         &post.project,
         &post.payload,
-        &post.origin
+        &post.origin,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
@@ -84,11 +86,33 @@ pub async fn handle_mem_erase(
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
 
-    assert!(erased_cnt <= 1);
+    let response = Response::builder()
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&json!({"success": erased_cnt > 0})).unwrap()))
+        .unwrap();
+
+    Ok(response)
+}
+
+pub async fn handle_mem_upd(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post: MemUpdateRequest = serde_json::from_slice(&body_bytes).map_err(|e| {
+        tracing::info!("cannot parse input:\n{:?}", body_bytes);
+        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+    })?;
+
+    let vec_db = gcx.read().await.vec_db.clone();
+    let upd_cnt = crate::vecdb::vdb_highlev::memories_update(
+        vec_db, &post.memid, &post.mem_type, &post.goal, &post.project, &post.payload, &post.origin,
+    ).await.map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+    })?;
 
     let response = Response::builder()
         .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&json!({"success": erased_cnt>0})).unwrap()))
+        .body(Body::from(serde_json::to_string(&json!({"success": upd_cnt > 0})).unwrap()))
         .unwrap();
 
     Ok(response)
@@ -104,11 +128,11 @@ pub async fn handle_mem_update_used(
     })?;
 
     let vec_db = gcx.read().await.vec_db.clone();
-    let updated_cnt = crate::vecdb::vdb_highlev::memories_update(
+    let updated_cnt = crate::vecdb::vdb_highlev::memories_update_used(
         vec_db,
         &post.memid,
         post.correct,
-        post.relevant
+        post.relevant,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
@@ -137,32 +161,6 @@ pub async fn handle_mem_block_until_vectorized(
         .body(Body::from(serde_json::to_string(&json!({"success": true})).unwrap()))
         .unwrap();
 
-    Ok(response)
-}
-
-pub async fn handle_mem_query(
-    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    body_bytes: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
-    let post: MemQuery = serde_json::from_slice(&body_bytes).map_err(|e| {
-        tracing::info!("cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
-
-    let memories = crate::vecdb::vdb_highlev::memories_search(
-        gcx.clone(),
-        &post.goal,
-        post.top_n,
-    ).await.map_err(|e| {
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{e}"))
-    })?;
-
-    let response_body = serde_json::to_string_pretty(&memories).unwrap();
-
-    let response = Response::builder()
-        .header("Content-Type", "application/json")
-        .body(Body::from(response_body))
-        .unwrap();
     Ok(response)
 }
 
@@ -227,7 +225,7 @@ pub async fn handle_mem_sub(
                 "pubevent_id": -1,
                 "pubevent_action": "INSERT",
                 "pubevent_memid": memory.memid,
-                "pubevent_json": memory,
+                "pubevent_json": serde_json::to_string(&memory).unwrap(),
             });
             yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&e).unwrap()));
         }

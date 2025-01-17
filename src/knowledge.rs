@@ -294,12 +294,48 @@ impl MemoriesDatabase {
         }).await.map_err(|e| e.to_string())
     }
 
+    pub async fn permdb_update(
+        &mut self,
+        memid: &str,
+        mem_type: &str,
+        goal: &str,
+        project: &str,
+        payload: &str,
+        m_origin: &str,
+    ) -> rusqlite::Result<usize, String> {
+        let conn = self.conn.lock().await;
+        let mem_type_owned = mem_type.to_string();
+        let goal_owned = goal.to_string();
+        let project_owned = project.to_string();
+        let payload_owned = payload.to_string();
+        let m_origin_owned = m_origin.to_string();
+        let memid_owned = memid.to_string();
+        conn.call(move |conn| {
+            let count: usize = conn.execute(
+                "UPDATE memories SET 
+                       m_type=?1,
+                       m_goal=?2,
+                       m_project=?3,
+                       m_payload=?4,
+                       m_origin=?5,
+                     WHERE memid = ?6",
+                params![mem_type_owned, goal_owned, project_owned, payload_owned, m_origin_owned, memid_owned],
+            )?;
+            Ok(count)
+        }).await.map_err(|e| e.to_string())
+    }
+
+
     pub async fn permdb_update_used(&self, memid: &str, mstat_correct: i32, mstat_relevant: i32) -> rusqlite::Result<usize, String> {
         let conn = self.conn.lock().await;
         let memid_owned = memid.to_string();        
         conn.call(move |conn| {
             let count: usize = conn.execute(
-                "UPDATE memories SET mstat_times_used = mstat_times_used + 1, mstat_correct = mstat_correct + ?1, mstat_relevant = mstat_relevant + ?2 WHERE memid = ?3",
+                "UPDATE memories SET 
+                       mstat_times_used = mstat_times_used + 1, 
+                       mstat_correct = mstat_correct + ?1, 
+                       mstat_relevant = mstat_relevant + ?2 
+                     WHERE memid = ?3",
                 params![mstat_correct, mstat_relevant, memid_owned],
             )?;
             Ok(count)

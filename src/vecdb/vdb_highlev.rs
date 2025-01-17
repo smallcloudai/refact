@@ -424,6 +424,31 @@ pub async fn memories_erase(
 pub async fn memories_update(
     vec_db: Arc<AMutex<Option<VecDb>>>,
     memid: &str,
+    m_type: &str,
+    m_goal: &str,
+    m_project: &str,
+    m_payload: &str,
+    m_origin: &str
+) -> Result<usize, String> {
+    let (memdb, vectorizer_service) = {
+        let vec_db_guard = vec_db.lock().await;
+        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
+        (vec_db.memdb.clone(), vec_db.vectorizer_service.clone())
+    };
+    let updated_cnt = {
+        let mut memdb_locked = memdb.lock().await;
+        let updated_cnt = memdb_locked.permdb_update(memid, m_type, m_goal, m_project, m_payload, m_origin).await?;
+        memdb_locked.dirty_memids.push(memid.to_string());
+        updated_cnt
+    };
+    vectorizer_enqueue_dirty_memory(vectorizer_service).await;
+    
+    Ok(updated_cnt)
+}
+
+pub async fn memories_update_used(
+    vec_db: Arc<AMutex<Option<VecDb>>>,
+    memid: &str,
     mstat_correct: i32,
     mstat_relevant: i32,
 ) -> Result<usize, String> {
