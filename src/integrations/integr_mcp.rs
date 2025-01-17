@@ -11,17 +11,19 @@ use async_trait::async_trait;
 
 // use mcp_client_rs::dotenv::dotenv;
 // use mcp_client_rs::{Protocol, ClientError};
-use mcp_rust_sdk::client::Client;
+// use mcp_rust_sdk::client::Client;
 // use mcp_rust_sdk::transport::websocket::WebSocketTransport;
-use mcp_rust_sdk::transport::stdio::StdioTransport;
+// use mcp_rust_sdk::transport::stdio::StdioTransport;
+// use mcp_rust_sdk::client::ClientBuilder;
+use mcp_client_rs::client::ClientBuilder;
 
 
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-// use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
-// use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 
 
@@ -32,11 +34,20 @@ pub struct ConfigMCP {
     pub args: Vec<String>,
 }
 
+pub struct ToolMCP {
+    pub common: IntegrationCommon,
+    pub config_path: String,
+    pub mcp_client: Arc<AMutex<mcp_client_rs::client::Client>>,
+    pub mcp_tool: mcp_client_rs::Tool,
+}
+
 #[derive(Default)]
 pub struct IntegrationMCP {
     pub common: IntegrationCommon,
     pub cfg: ConfigMCP,
     pub config_path: String,
+    pub mcp_client: Option<Arc<AMutex<mcp_client_rs::client::Client>>>,
+    pub mcp_tools: Vec<mcp_client_rs::Tool>,
 }
 
 #[async_trait]
@@ -69,23 +80,24 @@ impl IntegrationTrait for IntegrationMCP {
         // );
 
         tracing::info!("AAA GEEEEE {:?}", self.config_path);
+        let mut client_builder = ClientBuilder::new(self.cfg.command.as_str());
+        for arg in &self.cfg.args {
+            client_builder = client_builder.arg(arg);
+        }
+        let client_maybe = client_builder.spawn_and_initialize().await;
 
-        let (transport, _) = StdioTransport::new();
-        let client = Client::new(transport);
+        if let Err(client_error) = client_maybe {
+            tracing::error!("Failed to initialize protocol: {:?}", client_error);
+            return Err(client_error.to_string());
+        }
 
-        // let protocol_maybe: Result<Protocol, ClientError> = Protocol::new(
-        //     "0",
-        //     self.cfg.command.as_str(),
-        //     self.cfg.args.iter().map(|s| s.as_str()).collect::<Vec<&str>>(),
-        //     envs,
-        // ).await;
-
-        // if let Err(client_error) = protocol_maybe {
-        //     tracing::error!("Failed to initialize protocol: {:?}", client_error);
-        //     return Err(client_error.to_string());
-        // }
-
-        // let client = Arc::new(protocol_maybe.unwrap());
+        let client = client_maybe.unwrap();
+        let tool_result_maybe: Result<mcp_client_rs::ListToolsResult, mcp_client_rs::Error> = client.list_tools().await;
+        if let Ok(tools_result) = tool_result_maybe {
+            tracing::info!("AAA TOOLS {:?}", tools_result);
+            self.mcp_tools = tools_result.tools;
+        }
+        self.mcp_client = Some(Arc::new(AMutex::new(client)));
 
         Ok(())
     }
@@ -99,13 +111,25 @@ impl IntegrationTrait for IntegrationMCP {
     }
 
     fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-        vec![]
-        // vec![Box::new(IntegrationMCP {
-        //     common: self.common.clone(),
-        //     name: integr_name.to_string(),
-        //     // cfg: self.cfg.clone(),
-        //     // config_path: self.config_path.clone(),
-        // })]
+        if self.mcp_client.is_none() {
+            return vec![];
+        }
+        // self.mcp_tools is ListToolsResult { tools: [Tool { name: "add", description: "Add two numbers", input_schema: Object {"properties": Object {"a": Object {"title": String("A"), "type": String("integer")}, "b": Object {"title": String("B"), "type": String("integer")}}, "required": Array [String("a"), String("b")], "title": String("addArguments"), "type": String("object")} }] }
+        let mut result: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> = vec![];
+        tracing::info!("AAA integr_tools {:?}", self.mcp_tools);
+        for tool in self.mcp_tools.iter() {
+            tracing::info!("AAA      {:?}", tool.name);
+            tracing::info!("AAA      {:?}", tool.description);
+            tracing::info!("AAA      {:?}", tool.input_schema);
+            result.push(Box::new(ToolMCP {
+                common: self.common.clone(),
+                config_path: self.config_path.clone(),
+                mcp_client: self.mcp_client.clone().unwrap(),
+                mcp_tool: tool.clone(),
+            }));
+        }
+        // tracing::info!("AAAAA RETURN {:?}", result);
+        result
     }
 
     fn integr_schema(&self) -> &str {
@@ -113,77 +137,176 @@ impl IntegrationTrait for IntegrationMCP {
     }
 }
 
-// #[async_trait]
-// impl Tool for ToolMcp {
-//     fn as_any(&self) -> &dyn std::any::Any {
-//         self
-//     }
+#[async_trait]
+impl Tool for ToolMCP {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 
-//     async fn tool_execute(
-//         &mut self,
-//         ccx: Arc<AMutex<AtCommandsContext>>,
-//         tool_call_id: &String,
-//         args: &HashMap<String, serde_json::Value>,
-//     ) -> Result<(bool, Vec<ContextEnum>), String> {
-//         // Initialize JSON-RPC request
-//         let request = jsonrpc_core::Request {
-//             jsonrpc: Some(String::from("2.0")),
-//             method: self.name.clone(),
-//             params: Params::Map(serde_json::Map::from_iter(args.clone().into_iter())),
-//             id: jsonrpc_core::Id::Num(1),
-//         };
+    async fn tool_execute(
+        &mut self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
+        tool_call_id: &String,
+        args: &HashMap<String, serde_json::Value>,
+    ) -> Result<(bool, Vec<ContextEnum>), String> {
+        tracing::info!("\nCALL\n\n\n");
 
-//         // Execute the request
-//         let response = match self.io_handler.handle_request(&serde_json::to_string(&request).unwrap()).await {
-//             Ok(response) => response.unwrap_or_default(),
-//             Err(e) => return Err(format!("RPC error: {}", e)),
-//         };
+        let mut json_arguments: serde_json::Value = serde_json::json!({});
+        if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {
+            if let Some(serde_json::Value::Object(properties)) = schema.get("properties") {
+                for (name, prop) in properties {
+                    if let Some(prop_type) = prop.get("type") {
+                        match prop_type.as_str().unwrap_or("") {
+                            "string" => {
+                                if let Some(arg_value) = args.get(name) {
+                                    json_arguments[name] = serde_json::Value::String(arg_value.as_str().unwrap_or("").to_string());
+                                }
+                            },
+                            "integer" => {
+                                if let Some(arg_value) = args.get(name) {
+                                    json_arguments[name] = serde_json::Value::Number(arg_value.as_i64().unwrap_or(0).into());
+                                }
+                            },
+                            "boolean" => {
+                                if let Some(arg_value) = args.get(name) {
+                                    json_arguments[name] = serde_json::Value::Bool(arg_value.as_bool().unwrap_or(false));
+                                }
+                            },
+                            _ => {
+                                tracing::warn!("Unsupported argument type: {}", prop_type);
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(serde_json::Value::Array(required)) = schema.get("required") {
+                for req in required {
+                    if let Some(req_str) = req.as_str() {
+                        if !json_arguments.as_object().unwrap().contains_key(req_str) {
+                            return Err(format!("Missing required argument: {}", req_str));
+                        }
+                    }
+                }
+            }
+        }
 
-//         // Format the response
-//         let result = vec![ContextEnum::ChatMessage(ChatMessage {
-//             role: "tool".to_string(),
-//             content: ChatContent::SimpleText(response),
-//             tool_calls: None,
-//             tool_call_id: tool_call_id.clone(),
-//             ..Default::default()
-//         })];
+        tracing::info!("\nCALL tool '{}' with arguments: {:?}\n", self.mcp_tool.name, json_arguments);
 
-//         Ok((false, result))
-//     }
+        let tool_output = {
+            let mcp_client_locked = self.mcp_client.lock().await;
+            let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_arguments).await;
 
-//     fn tool_depends_on(&self) -> Vec<String> {
-//         vec![]
-//     }
+            match result_probably {
+                Ok(result) => {
+                    tracing::info!("BBBBB result.is_error={:?}", result.is_error);
+                    tracing::info!("BBBBB result.content={:?}", result.content);
+                    if result.is_error {
+                        tracing::error!("Tool execution error: {:?}", result.content);
+                        return Err("Tool execution error".to_string());
+                    }
+                    if let Some(mcp_client_rs::MessageContent::Text { text }) = result.content.get(0) {
+                        text.clone()
+                    } else {
+                        tracing::error!("Unexpected tool output format: {:?}", result.content);
+                        return Err("Unexpected tool output format".to_string());
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Failed to call tool: {:?}", e);
+                    return Err("Failed to call tool".to_string());
+                }
+            }
+        };
 
-//     fn tool_description(&self) -> ToolDesc {
-//         let parameters_required = self.cfg.parameters_required.clone().unwrap_or_else(|| {
-//             self.cfg.parameters.iter().map(|param| param.name.clone()).collect()
-//         });
-//         ToolDesc {
-//             name: self.name.clone(),
-//             agentic: true,
-//             experimental: false,
-//             description: self.cfg.description.clone(),
-//             parameters: self.cfg.parameters.clone(),
-//             parameters_required,
-//         }
-//     }
+        let result = vec![ContextEnum::ChatMessage(ChatMessage {
+            role: "tool".to_string(),
+            content: ChatContent::SimpleText(tool_output),
+            tool_calls: None,
+            tool_call_id: tool_call_id.clone(),
+            ..Default::default()
+        })];
 
-//     fn command_to_match_against_confirm_deny(
-//         &self,
-//         _args: &HashMap<String, serde_json::Value>,
-//     ) -> Result<String, String> {
-//         Ok(self.name.clone())
-//     }
+        Ok((false, result))
+    }
 
-//     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
-//         Some(self.integr_common().confirmation)
-//     }
+    fn tool_depends_on(&self) -> Vec<String> {
+        vec![]
+    }
 
-//     fn has_config_path(&self) -> Option<String> {
-//         Some(self.config_path.clone())
-//     }
-// }
+    fn tool_description(&self) -> ToolDesc {
+        // self.mcp_tool.input_schema = Object {
+        //     "properties": Object {
+        //         "a": Object {
+        //             "title": String("A"),
+        //             "type": String("integer")
+        //         },
+        //         "b": Object {
+        //             "title": String("B"),
+        //             "type": String("integer")
+        //         }
+        //     },
+        //     "required": Array [
+        //         String("a"),
+        //         String("b")
+        //     ],
+        //     "title": String("addArguments"),
+        //     "type": String("object")
+        // }
+        let mut parameters = vec![];
+        let mut parameters_required = vec![];
+
+        if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {
+            if let Some(serde_json::Value::Object(properties)) = schema.get("properties") {
+                for (name, prop) in properties {
+                    if let serde_json::Value::Object(prop_obj) = prop {
+                        let param_type = prop_obj.get("type").and_then(|v| v.as_str()).unwrap_or("string").to_string();
+                        let description = prop_obj.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                        parameters.push(ToolParam {
+                            name: name.clone(),
+                            param_type,
+                            description,
+                        });
+                    }
+                }
+            }
+            if let Some(serde_json::Value::Array(required)) = schema.get("required") {
+                for req in required {
+                    if let Some(req_str) = req.as_str() {
+                        parameters_required.push(req_str.to_string());
+                    }
+                }
+            }
+        }
+
+        ToolDesc {
+            name: self.mcp_tool.name.clone(),
+            agentic: true,
+            experimental: false,
+            description: self.mcp_tool.description.clone(),
+            parameters,
+            parameters_required,
+        }
+    }
+
+    fn tool_name(&self) -> String  {
+        self.mcp_tool.name.clone()
+    }
+
+    fn command_to_match_against_confirm_deny(
+        &self,
+        _args: &HashMap<String, serde_json::Value>,
+    ) -> Result<String, String> {
+        Ok(self.mcp_tool.name.clone())
+    }
+
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
+        Some(self.common.confirmation.clone())
+    }
+
+    fn has_config_path(&self) -> Option<String> {
+        Some(self.config_path.clone())
+    }
+}
 
 pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:
