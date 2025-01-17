@@ -76,7 +76,6 @@ pub struct CodeAssistantCaps {
     pub cloud_name: String,
 
     #[serde(default = "default_endpoint_style")]
-    #[serde(alias = "chat_endpoint_style")]
     pub endpoint_style: String,
     #[serde(default)]
     pub chat_endpoint_style: String,
@@ -99,7 +98,6 @@ pub struct CodeAssistantCaps {
     pub embedding_apikey: String,
 
     #[serde(default)]
-    #[serde(alias = "chat_endpoint")]
     pub endpoint_chat_passthrough: String,
     #[serde(default = "default_tokenizer_path_template")]
     pub tokenizer_path_template: String,

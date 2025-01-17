@@ -445,7 +445,7 @@ pub async fn scratchpad_interaction_stream(
                             &mut was_correct_output_even_if_error,
                         ) {
                             Ok((mut value, finish_reason)) => {
-                                if finish_reason != FinishReason::None { // last event has service info(usage and other), there is no finish_reason 
+                                if finish_reason != FinishReason::None { // last event has service info(usage and other), there is no finish_reason
                                     last_finish_reason = finish_reason;
                                 }
                                 try_insert_usage(&mut value);
