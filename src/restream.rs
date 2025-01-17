@@ -6,10 +6,11 @@ use async_stream::stream;
 use futures::StreamExt;
 use hyper::{Body, Response, StatusCode};
 use reqwest_eventsource::Event;
-use serde_json::json;
+use reqwest_eventsource::Error as REError;
+use serde_json::{json, Value};
 use tracing::info;
 
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::custom_error::ScratchError;
 use crate::nicer_logs;
 use crate::scratchpad_abstract::{FinishReason, ScratchpadAbstract};
@@ -77,6 +78,7 @@ pub async fn scratchpad_interaction_not_stream_json(
     model_name: String,
     parameters: &SamplingParameters,  // includes n
     only_deterministic_messages: bool,
+    meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let gcx = ccx.lock().await.global_context.clone();
@@ -112,6 +114,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             &client,
             &endpoint_template,
             &parameters,
+            meta
         ).await
     } else {
         crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
@@ -123,6 +126,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             &endpoint_template,
             &endpoint_chat_passthrough,
             &parameters,  // includes n
+            meta
         ).await
     }.map_err(|e| {
         tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
@@ -251,6 +255,7 @@ pub async fn scratchpad_interaction_not_stream(
     model_name: String,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
+    meta: Option<ChatMeta>
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
@@ -270,6 +275,7 @@ pub async fn scratchpad_interaction_not_stream(
         model_name,
         parameters,
         only_deterministic_messages,
+        meta
     ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as f64 / 1000.0);
 
@@ -291,6 +297,7 @@ pub async fn scratchpad_interaction_stream(
     mut model_name: String,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
+    meta: Option<ChatMeta>
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::SystemTime::now();
     let evstream = stream! {
@@ -396,6 +403,7 @@ pub async fn scratchpad_interaction_stream(
                     &client,
                     &endpoint_template,
                     &parameters,
+                    meta
                 ).await
             } else {
                 crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
@@ -407,6 +415,7 @@ pub async fn scratchpad_interaction_stream(
                     &endpoint_template,
                     &endpoint_chat_passthrough,
                     &parameters,
+                    meta
                 ).await
             };
             let mut event_source = match event_source_maybe {
@@ -470,8 +479,22 @@ pub async fn scratchpad_interaction_stream(
                             // "restream error: Stream ended"
                             break;
                         }
-                        tracing::error!("restream error: {}\n{:?}", err, err);
-                        let problem_str = format!("restream error: {}", err);
+                        let problem_str = match err {
+                            REError::InvalidStatusCode(err, resp) => {
+                                let text = resp.text().await.unwrap();
+                                let mut res = format!("{} with details = {:?}", err, text);
+                                if let Ok(value) = serde_json::from_str::<Value>(&text) {
+                                    if let Some(detail) = value.get("detail") {
+                                        res = format!("{}: {}", err, detail);
+                                    }
+                                }
+                                res
+                            }
+                            _ => {
+                                format!("{}", err)
+                            }
+                        };
+                        tracing::error!("restream error: {}\n", problem_str);
                         {
                             tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
                                 save_url.clone(),

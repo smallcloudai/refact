@@ -12,7 +12,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::global_context::{GlobalContext, SharedGlobalContext};
+use crate::global_context::{is_cloud, GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 
 
@@ -211,7 +211,15 @@ async fn _chat(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 
-
+    let meta = {
+        if is_cloud(gcx.clone()).await {
+            Some(chat_post.meta.clone())
+        } else {
+            None
+        }
+    };
+    
+    
     // SYSTEM PROMPT WAS HERE
 
 
@@ -264,6 +272,7 @@ async fn _chat(
             model_name,
             &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
+            meta
         ).await
     } else {
         crate::restream::scratchpad_interaction_stream(
@@ -273,6 +282,7 @@ async fn _chat(
             model_name,
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
+            meta
         ).await
     }
 }

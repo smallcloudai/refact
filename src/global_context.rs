@@ -379,3 +379,10 @@ pub async fn create_global_context(
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
     (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
 }
+
+pub async fn is_cloud(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
+    // true
+    let gcx_locked = gcx.read().await;
+    let address_url = gcx_locked.cmdline.address_url.clone();
+    address_url.to_lowercase() == "refact" || address_url.contains("inference-backup.smallcloud.ai")
+}

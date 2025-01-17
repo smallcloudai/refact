@@ -7,7 +7,7 @@ use serde_json::json;
 #[cfg(feature="vecdb")]
 use tokio::sync::Mutex as AMutex;
 
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatMeta, SamplingParameters};
 
 // Idea: use USER_AGENT
 // let user_agent = format!("{NAME}/{VERSION}; rust/unknown; ide/{ide:?}");
@@ -21,6 +21,7 @@ pub async fn forward_to_hf_style_endpoint(
     client: &reqwest::Client,
     endpoint_template: &String,
     sampling_parameters: &SamplingParameters,
+    meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, String> {
     let url = endpoint_template.replace("$MODEL", model_name);
     save_url.clone_from(&&url);
@@ -33,10 +34,14 @@ pub async fn forward_to_hf_style_endpoint(
     let mut params_json = serde_json::from_str::<serde_json::Value>(&params_string).unwrap();
     params_json["return_full_text"] = serde_json::Value::Bool(false);
 
-    let data = json!({
+    let mut data = json!({
         "inputs": prompt,
         "parameters": params_json,
     });
+    if let Some(meta) = meta {
+        data["meta"] = serde_json::to_value(meta).unwrap();
+    }
+    
     let req = client.post(&url)
         .headers(headers)
         .body(data.to_string())
@@ -65,6 +70,7 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     client: &reqwest::Client,
     endpoint_template: &String,
     sampling_parameters: &SamplingParameters,
+    meta: Option<ChatMeta>
 ) -> Result<EventSource, String> {
     let url = endpoint_template.replace("$MODEL", model_name);
     save_url.clone_from(&&url);
@@ -77,11 +83,14 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     let mut params_json = serde_json::from_str::<serde_json::Value>(&params_string).unwrap();
     params_json["return_full_text"] = serde_json::Value::Bool(false);
 
-    let data = json!({
+    let mut data = json!({
         "inputs": prompt,
         "parameters": params_json,
         "stream": true,
     });
+    if let Some(meta) = meta {
+        data["meta"] = serde_json::to_value(meta).unwrap();
+    }
 
     let builder = client.post(&url)
         .headers(headers)

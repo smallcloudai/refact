@@ -8,7 +8,7 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
-use crate::call_validation::SamplingParameters;
+use crate::call_validation::{ChatMeta, SamplingParameters};
 
 
 pub async fn forward_to_openai_style_endpoint(
@@ -20,6 +20,7 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -55,6 +56,10 @@ pub async fn forward_to_openai_style_endpoint(
         data["prompt"] = serde_json::Value::String(prompt.to_string());
         data["echo"] = serde_json::Value::Bool(false);
     }
+    if let Some(meta) = meta {
+        data["meta"] = json!(meta);
+    }
+    
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&url)
         .headers(headers)
@@ -90,6 +95,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    meta: Option<ChatMeta>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
@@ -115,6 +121,9 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
+    }
+    if let Some(meta) = meta {
+        data["meta"] = json!(meta);
     }
     let builder = client.post(&url)
         .headers(headers)

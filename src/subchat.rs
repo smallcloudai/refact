@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 use crate::tools::tools_description::{tools_merged_and_filtered, tool_description_list_from_yaml};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall};
-use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
+use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present, is_cloud};
 use crate::http::routers::v1::chat::lookup_chat_scratchpad;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::scratchpads::multimodality::chat_content_raw_from_value;
@@ -116,6 +116,15 @@ async fn chat_interaction_non_stream(
     prompt: &String,
     chat_post: &ChatPost,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
+    let meta = {
+        let gcx = ccx.lock().await.global_context.clone();
+        if is_cloud(gcx).await {
+            Some(chat_post.meta.clone())
+        } else {
+            None
+        }
+    };
+    
     let t1 = std::time::Instant::now();
     let j = crate::restream::scratchpad_interaction_not_stream_json(
         ccx.clone(),
@@ -125,6 +134,7 @@ async fn chat_interaction_non_stream(
         chat_post.model.clone(),
         &chat_post.parameters,   // careful: includes n
         chat_post.only_deterministic_messages,
+        meta
     ).await.map_err(|e| {
         warn!("network error communicating with the model (2): {:?}", e);
         format!("network error communicating with the model (2): {:?}", e)
