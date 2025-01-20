@@ -30,6 +30,7 @@ import {
   setIsWaitingForResponse,
   setMaxNewTokens,
   setAutomaticPatch,
+  setLastUserMessageId,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import { DEFAULT_MAX_NEW_TOKENS } from "../../../services/refact";
@@ -44,6 +45,7 @@ const createChatThread = (
     messages: [],
     title: "",
     model: "",
+    last_user_message_id: "",
     tool_use,
     integration,
     mode,
@@ -162,6 +164,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setAutomaticPatch, (state, action) => {
     state.automatic_patch = action.payload;
+  });
+
+  builder.addCase(setLastUserMessageId, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.last_user_message_id = action.payload.messageId;
   });
 
   builder.addCase(chatAskedQuestion, (state, action) => {

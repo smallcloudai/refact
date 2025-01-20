@@ -10,6 +10,7 @@ import {
   chatAskQuestionThunk,
   restoreChat,
   newIntegrationChat,
+  chatResponse,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -28,6 +29,14 @@ import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
 import { resetConfirmationInteractedState } from "../features/ToolConfirmation/confirmationSlice";
+import {
+  getAgentUsageCounter,
+  getMaxFreeAgentUsage,
+} from "../features/Chat/Thread/utils";
+import {
+  updateAgentUsage,
+  updateMaxAgentUsageAmount,
+} from "../features/AgentUsage/agentUsageSlice";
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -69,6 +78,31 @@ startListening({
       listenerApi.dispatch(api),
     );
     listenerApi.dispatch(clearError());
+  },
+});
+
+type ChatResponseAction = ReturnType<typeof chatResponse>;
+
+startListening({
+  matcher: isAnyOf((d: unknown): d is ChatResponseAction =>
+    chatResponse.match(d),
+  ),
+  effect: (action: ChatResponseAction, listenerApi) => {
+    const dispatch = listenerApi.dispatch;
+    // saving to store agent_usage counter from the backend, only one chunk has this field.
+    const { payload } = action;
+
+    if ("refact_agent_request_available" in payload) {
+      const agentUsageCounter = getAgentUsageCounter(payload);
+
+      dispatch(updateAgentUsage(agentUsageCounter ?? null));
+      // localStorage.setItem("agent_usage", agentUsageCounter?.toString() ?? "");
+    }
+
+    if ("refact_agent_max_request_num" in payload) {
+      const maxFreeAgentUsage = getMaxFreeAgentUsage(payload);
+      dispatch(updateMaxAgentUsageAmount(maxFreeAgentUsage));
+    }
   },
 });
 

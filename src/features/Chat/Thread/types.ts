@@ -20,6 +20,7 @@ export type ChatThread = {
   isTitleGenerated?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode;
+  last_user_message_id?: string;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -39,6 +40,7 @@ export type Chat = {
 };
 
 export type PayloadWithId = { id: string };
+export type PayloadWithChatAndMessageId = { chatId: string; messageId: string };
 export type PayloadWithIdAndTitle = {
   title: string;
   isTitleGenerated: boolean;

@@ -24,6 +24,7 @@ import {
   ChatMessage,
   ChatMessages,
   isAssistantMessage,
+  isUserMessage,
   UserMessage,
   UserMessageContentWithImage,
 } from "../services/refact/types";
@@ -42,13 +43,15 @@ import {
   getToolsInteractionStatus,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
-import { useAgentUsage } from "./useAgentUsage";
 import {
   chatModeToLspMode,
   LspChatMode,
   setChatMode,
   setIsWaitingForResponse,
+  setLastUserMessageId,
 } from "../features/Chat";
+
+import { v4 as uuidv4 } from "uuid";
 
 type SubmitHandlerParams =
   | {
@@ -78,7 +81,6 @@ export const useSendChatRequest = () => {
 
   const [triggerGetTools] = useGetToolsLazyQuery();
   const [triggerCheckForConfirmation] = useCheckForConfirmationMutation();
-  const { incrementIfLastMessageIsFromUser } = useAgentUsage();
 
   const chatId = useAppSelector(selectChatId);
 
@@ -161,6 +163,11 @@ export const useSendChatRequest = () => {
           ? isPatchAutomatic
           : areToolsConfirmed;
 
+      const maybeLastUserMessageIsFromUser = isUserMessage(lastMessage);
+      if (maybeLastUserMessageIsFromUser) {
+        dispatch(setLastUserMessageId({ chatId: chatId, messageId: uuidv4() }));
+      }
+
       const action = chatAskQuestionThunk({
         messages,
         tools,
@@ -171,7 +178,6 @@ export const useSendChatRequest = () => {
 
       const dispatchedAction = dispatch(action);
       abortControllers.addAbortController(chatId, dispatchedAction.abort);
-      incrementIfLastMessageIsFromUser(messages);
     },
     [
       triggerGetTools,
@@ -183,7 +189,6 @@ export const useSendChatRequest = () => {
       wasInteracted,
       areToolsConfirmed,
       abortControllers,
-      incrementIfLastMessageIsFromUser,
       triggerCheckForConfirmation,
       isPatchAutomatic,
     ],

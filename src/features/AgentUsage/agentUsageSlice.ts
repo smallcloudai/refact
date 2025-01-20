@@ -1,34 +1,45 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-export type AgentUsageItem = {
-  time: number;
-  user: string;
+export type AgentUsageMeta = {
+  agent_usage: null | number; // null if plan is PRO or ROBOT
+  agent_max_usage_amount: number; // maximum amount of agent usage allowed per UTC day for users with FREE plan
 };
 
-const initialState: { items: AgentUsageItem[] } = { items: [] };
-
-const oneDay = 24 * 60 * 60 * 1000;
+const initialState: AgentUsageMeta = {
+  agent_usage: null,
+  agent_max_usage_amount: 20,
+};
 
 export const agentUsageSlice = createSlice({
   name: "agentUsage",
   initialState,
   reducers: {
-    addAgentUsageItem: (state, action: PayloadAction<{ user: string }>) => {
-      const now = Date.now();
-      const todaysItems = state.items.filter(
-        (item) => item.time + oneDay > now,
-      );
-      const item = { time: now, user: action.payload.user };
-      state.items = [...todaysItems, item];
+    updateAgentUsage: (
+      state,
+      action: PayloadAction<AgentUsageMeta["agent_usage"]>,
+    ) => {
+      state.agent_usage = action.payload;
+    },
+    updateMaxAgentUsageAmount: (state, action: PayloadAction<number>) => {
+      state.agent_max_usage_amount = action.payload;
+    },
+    setInitialAgentUsage: (state, action: PayloadAction<AgentUsageMeta>) => {
+      const { agent_max_usage_amount, agent_usage } = action.payload;
+      state.agent_usage = agent_usage;
+      state.agent_max_usage_amount = agent_max_usage_amount;
     },
   },
 
   selectors: {
-    selectAgentUsageItems: (state) => {
-      return state.items;
-    },
+    selectAgentUsage: (state) => state.agent_usage,
+    selectMaxAgentUsageAmount: (state) => state.agent_max_usage_amount,
   },
 });
 
-export const { addAgentUsageItem } = agentUsageSlice.actions;
-export const { selectAgentUsageItems } = agentUsageSlice.selectors;
+export const {
+  updateAgentUsage,
+  updateMaxAgentUsageAmount,
+  setInitialAgentUsage,
+} = agentUsageSlice.actions;
+export const { selectAgentUsage, selectMaxAgentUsageAmount } =
+  agentUsageSlice.selectors;

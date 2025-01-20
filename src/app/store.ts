@@ -54,9 +54,19 @@ const tipOfTheDayPersistConfig = {
   stateReconciler: mergeInitialState,
 };
 
+const agentUsagePersistConfig = {
+  key: "agentUsage",
+  storage: storage(),
+  stateReconciler: mergeInitialState,
+};
+
 const persistedTipOfTheDayReducer = persistReducer<
   ReturnType<typeof tipOfTheDaySlice.reducer>
 >(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
+
+const persistedAgentUsageReducer = persistReducer<
+  ReturnType<typeof agentUsageSlice.reducer>
+>(agentUsagePersistConfig, agentUsageSlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -67,6 +77,7 @@ const rootReducer = combineSlices(
     tour: tourReducer,
     // tipOfTheDay: persistedTipOfTheDayReducer,
     [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
+    [agentUsageSlice.reducerPath]: persistedAgentUsageReducer,
     config: configReducer,
     active_file: activeFileReducer,
     selected_snippet: selectedSnippetReducer,
@@ -93,7 +104,6 @@ const rootReducer = combineSlices(
   attachedImagesSlice,
   userSurveySlice,
   integrationsSlice,
-  agentUsageSlice,
 );
 
 const rootPersistConfig = {

@@ -518,6 +518,8 @@ type ChatResponseChoice = {
   created: number;
   model: string;
   id: string;
+  refact_agent_request_available: null | number;
+  refact_agent_max_request_num: number;
 };
 
 export function isChatResponseChoice(

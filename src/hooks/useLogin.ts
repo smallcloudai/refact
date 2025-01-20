@@ -7,6 +7,7 @@ import { useGetUser } from "./useGetUser";
 import { useLogout } from "./useLogout";
 import { useOpenUrl } from "./useOpenUrl";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
+import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 
 export const useLogin = () => {
   const { setupHost } = useEventsBusForIDE();
@@ -53,7 +54,17 @@ export const useLogin = () => {
 
   useEffect(() => {
     if (isGoodResponse(loginPollingResult.data)) {
-      dispatch(setApiKey(loginPollingResult.data.secret_key));
+      const actions = [
+        setApiKey(loginPollingResult.data.secret_key),
+        setInitialAgentUsage({
+          agent_usage: loginPollingResult.data.refact_agent_request_available,
+          agent_max_usage_amount:
+            loginPollingResult.data.refact_agent_max_request_num,
+        }),
+      ];
+
+      actions.forEach((action) => dispatch(action));
+
       setupHost({
         type: "cloud",
         apiKey: loginPollingResult.data.secret_key,

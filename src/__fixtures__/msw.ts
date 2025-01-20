@@ -66,6 +66,8 @@ export const goodUser: HttpHandler = http.get(
       inference: "PRO",
       metering_balance: -100000,
       questionnaire: {},
+      refact_agent_max_request_num: 20,
+      refact_agent_request_available: null,
     });
   },
 );
@@ -80,6 +82,8 @@ export const nonProUser: HttpHandler = http.get(
       inference: "FREE",
       metering_balance: -100000,
       questionnaire: {},
+      refact_agent_max_request_num: 20,
+      refact_agent_request_available: 5,
     });
   },
 );

@@ -6,18 +6,18 @@ import { Theme } from "../../components/Theme";
 import { AgentUsage } from "./AgentUsage";
 import { nonProUser } from "../../__fixtures__/msw";
 
-const items = Array.from({ length: 100 }).map(() => ({
-  user: "party@refact.ai",
-  time: Date.now(),
-}));
-
 const Template: React.FC = () => {
   const store = setUpStore({
     tour: {
       type: "finished",
     },
     agentUsage: {
-      items,
+      agent_usage: 5,
+      agent_max_usage_amount: 20,
+      _persist: {
+        rehydrated: true,
+        version: 1,
+      },
     },
     config: {
       apiKey: "foo",

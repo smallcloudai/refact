@@ -6,6 +6,7 @@ import {
   type ToolUse,
   IntegrationMeta,
   LspChatMode,
+  PayloadWithChatAndMessageId,
 } from "./types";
 import {
   isAssistantDelta,
@@ -49,6 +50,10 @@ export const chatTitleGenerationResponse = createAction<
 
 export const chatAskedQuestion = createAction<PayloadWithId>(
   "chatThread/askQuestion",
+);
+
+export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
+  "chatThread/setLastUserMessageId",
 );
 
 export const backUpMessages = createAction<
@@ -279,8 +284,11 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
 
     const messagesForLsp = formatMessagesForLsp(messages);
     const realMode = mode ?? thread?.mode;
+    const maybeLastUserMessageId = thread?.last_user_message_id;
+
     return sendChat({
       messages: messagesForLsp,
+      last_user_message_id: maybeLastUserMessageId,
       model: state.chat.thread.model,
       tools,
       stream: true,

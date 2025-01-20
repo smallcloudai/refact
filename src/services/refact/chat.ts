@@ -40,6 +40,7 @@ type StreamArgs =
 
 type SendChatArgs = {
   messages: LspChatMessage[];
+  last_user_message_id?: string; // used for `refact-message-id` header
   model: string;
   max_new_tokens?: number;
   lspUrl?: string;
@@ -123,6 +124,7 @@ export async function sendChat({
   toolsConfirmed = true,
   // isConfig = false,
   integration,
+  last_user_message_id = "",
   mode,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
@@ -146,6 +148,7 @@ export async function sendChat({
     // chat_id,
     meta: {
       chat_id,
+      message_id: last_user_message_id,
       // chat_remote,
       // TODO: pass this through
       chat_mode: mode ?? "EXPLORE",

@@ -25,9 +25,12 @@ const userMock = http.get(
       inference: "PRO",
       metering_balance: -100000,
       questionnaire: false,
+      refact_agent_max_request_num: 20,
+      refact_agent_request_available: null,
     });
   },
-  { once: true },
+  // TODO: if once if true, it still runs twice without refact_agent_max_request_num & refact_agent_request_available
+  // { once: true },
 );
 
 const questionnaireMock = http.get(
