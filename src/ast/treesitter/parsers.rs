@@ -61,6 +61,10 @@ pub(crate) fn get_ast_parser(language_id: LanguageId) -> Result<Box<dyn AstLangu
             let parser = js::JSParser::new()?;
             Ok(Box::new(parser))
         }
+        LanguageId::TypeScriptReact => {
+            let parser = ts::TSParser::new()?; //quick fix untill we have a dedicated parser for TypeScriptReact
+            Ok(Box::new(parser))
+        }
         other => Err(ParserError {
             message: "Unsupported language id: ".to_string() + &other.to_string()
         }),
