@@ -24,7 +24,7 @@ const getConfirmationMessage = (
   commands: string[],
   rules: string[],
   types: string[],
-  confirmatioCommands: string[],
+  confirmationCommands: string[],
   denialCommands: string[],
 ) => {
   const ruleText = `${rules.join(", ")}`;
@@ -42,8 +42,8 @@ const getConfirmationMessage = (
     }.`;
   } else {
     return `${
-      confirmatioCommands.length > 1 ? "Commands need" : "Command needs"
-    } confirmation: ${confirmatioCommands.join(", ")}.\n\nFollowing ${
+      confirmationCommands.length > 1 ? "Commands need" : "Command needs"
+    } confirmation: ${confirmationCommands.join(", ")}.\n\nFollowing ${
       denialCommands.length > 1 ? "commands were" : "command was"
     } denied: ${denialCommands.join(
       ", ",
