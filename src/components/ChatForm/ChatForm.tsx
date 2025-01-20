@@ -11,6 +11,7 @@ import {
   useIsOnline,
   useConfig,
   useAgentUsage,
+  useSendChatRequest,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -42,6 +43,7 @@ import {
   selectPreventSend,
   selectToolUse,
 } from "../../features/Chat";
+import { isUserMessage } from "../../services/refact";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -59,19 +61,36 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
+  const { retryFromIndex } = useSendChatRequest();
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
-  const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
   const { disableInput } = useAgentUsage();
   const isOnline = useIsOnline();
 
   const chatId = useAppSelector(selectChatId);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
+
+  const onClearError = useCallback(() => {
+    dispatch(clearError());
+    const userMessages = messages.filter(isUserMessage);
+
+    // getting second-to-last user message
+    const lastSuccessfulUserMessage =
+      userMessages.slice(-2, -1)[0] || userMessages[0];
+
+    const lastSuccessfulUserMessageIndex = messages.indexOf(
+      lastSuccessfulUserMessage,
+    );
+    retryFromIndex(
+      lastSuccessfulUserMessageIndex,
+      lastSuccessfulUserMessage.content,
+    );
+  }, [dispatch, retryFromIndex, messages]);
 
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
