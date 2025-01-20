@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   useAppDispatch,
+  useAppSelector,
   useSendChatRequest,
   // useEventsBusForIDE
 } from "../../hooks";
@@ -9,17 +10,21 @@ import { Markdown } from "../Markdown";
 import { Link } from "../Link";
 import styles from "./ToolConfirmation.module.css";
 import { push } from "../../features/Pages/pagesSlice";
-import { ToolConfirmationPauseReason } from "../../services/refact";
+import {
+  isAssistantMessage,
+  ToolConfirmationPauseReason,
+} from "../../services/refact";
+import { selectMessages, setAutomaticPatch } from "../../features/Chat";
 
 type ToolConfirmationProps = {
   pauseReasons: ToolConfirmationPauseReason[];
 };
 
-const getConfirmationalMessage = (
+const getConfirmationMessage = (
   commands: string[],
   rules: string[],
   types: string[],
-  confirmationalCommands: string[],
+  confirmatioCommands: string[],
   denialCommands: string[],
 ) => {
   const ruleText = `${rules.join(", ")}`;
@@ -37,8 +42,8 @@ const getConfirmationalMessage = (
     }.`;
   } else {
     return `${
-      confirmationalCommands.length > 1 ? "Commands need" : "Command needs"
-    } confirmation: ${confirmationalCommands.join(", ")}.\n\nFollowing ${
+      confirmatioCommands.length > 1 ? "Commands need" : "Command needs"
+    } confirmation: ${confirmatioCommands.join(", ")}.\n\nFollowing ${
       denialCommands.length > 1 ? "commands were" : "command was"
     } denied: ${denialCommands.join(
       ", ",
@@ -58,6 +63,8 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   const types = pauseReasons.map((reason) => reason.type);
   const toolCallIds = pauseReasons.map((reason) => reason.tool_call_id);
 
+  const isPatchConfirmation = commands.some((command) => command === "patch");
+
   const integrationPaths = pauseReasons.map(
     (reason) => reason.integr_config_path,
   );
@@ -65,21 +72,37 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   // assuming that at least one path out of all objects is not null so we can show up the link
   const maybeIntegrationPath = integrationPaths.find((path) => path !== null);
 
-  const allConfirmational = types.every((type) => type === "confirmation");
-  const confirmationalCommands = commands.filter(
+  const allConfirmation = types.every((type) => type === "confirmation");
+  const confirmationCommands = commands.filter(
     (_, i) => types[i] === "confirmation",
   );
   const denialCommands = commands.filter((_, i) => types[i] === "denial");
 
   const { rejectToolUsage, confirmToolUsage } = useSendChatRequest();
 
-  const message = getConfirmationalMessage(
+  const handleAllowForThisChat = () => {
+    dispatch(setAutomaticPatch(true));
+    confirmToolUsage();
+  };
+
+  const message = getConfirmationMessage(
     commands,
     rules,
     types,
-    confirmationalCommands,
+    confirmationCommands,
     denialCommands,
   );
+
+  if (isPatchConfirmation) {
+    // TODO: think of multiple toolcalls support
+    return (
+      <PatchConfirmation
+        handleAllowForThisChat={handleAllowForThisChat}
+        rejectToolUsage={rejectToolUsage}
+        confirmToolUsage={confirmToolUsage}
+      />
+    );
+  }
 
   return (
     <Card className={styles.ToolConfirmationCard}>
@@ -97,7 +120,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
             className={styles.ToolConfirmationHeading}
           >
             <Text as="span">⚠️</Text>
-            <Text>Model {allConfirmational ? "wants" : "tried"} to run:</Text>
+            <Text>Model {allConfirmation ? "wants" : "tried"} to run:</Text>
           </Flex>
           {commands.map((command, i) => (
             <Markdown
@@ -134,9 +157,9 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
             size="1"
             onClick={confirmToolUsage}
           >
-            {allConfirmational ? "Confirm" : "Continue"}
+            {allConfirmation ? "Confirm" : "Continue"}
           </Button>
-          {allConfirmational && (
+          {allConfirmation && (
             <Button
               color="red"
               variant="surface"
@@ -146,6 +169,94 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
               Deny
             </Button>
           )}
+        </Flex>
+      </Flex>
+    </Card>
+  );
+};
+
+type PatchConfirmationProps = {
+  handleAllowForThisChat: () => void;
+  rejectToolUsage: () => void;
+  confirmToolUsage: () => void;
+};
+
+const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
+  handleAllowForThisChat,
+  confirmToolUsage,
+  rejectToolUsage,
+}) => {
+  const messages = useAppSelector(selectMessages);
+  const assistantMessages = messages.filter(isAssistantMessage);
+  const lastAsssitantMessage = useMemo(
+    () => assistantMessages[assistantMessages.length - 1],
+    [assistantMessages],
+  );
+  const toolCalls = lastAsssitantMessage.tool_calls;
+
+  if (!toolCalls) return;
+
+  const parsedArgsFromToolCall = JSON.parse(
+    toolCalls[0].function.arguments,
+  ) as {
+    path: string;
+    tickets: string;
+  };
+  const extractedFileNameFromPath =
+    parsedArgsFromToolCall.path.split(/[/\\]/)[
+      parsedArgsFromToolCall.path.split(/[/\\]/).length - 1
+    ];
+  const messageForPatch = "Patch " + "`" + extractedFileNameFromPath + "`";
+
+  return (
+    <Card className={styles.ToolConfirmationCard}>
+      <Flex
+        align="start"
+        justify="between"
+        direction="column"
+        wrap="wrap"
+        gap="4"
+      >
+        <Flex align="start" direction="column" gap="3" maxWidth="100%">
+          <Flex
+            align="baseline"
+            gap="1"
+            className={styles.ToolConfirmationHeading}
+          >
+            <Text as="span">⚠️</Text>
+            <Text>Model wants to apply changes:</Text>
+          </Flex>
+          <Text className={styles.ToolConfirmationText}>
+            <Markdown color="indigo">{messageForPatch.concat("\n\n")}</Markdown>
+          </Text>
+        </Flex>
+        <Flex align="center" justify="between" gap="2" width="100%">
+          <Flex gap="2">
+            <Button
+              color="grass"
+              variant="surface"
+              size="1"
+              onClick={handleAllowForThisChat}
+            >
+              Allow for This Chat
+            </Button>
+            <Button
+              color="grass"
+              variant="surface"
+              size="1"
+              onClick={confirmToolUsage}
+            >
+              Allow Once
+            </Button>
+          </Flex>
+          <Button
+            color="red"
+            variant="surface"
+            size="1"
+            onClick={rejectToolUsage}
+          >
+            Deny
+          </Button>
         </Flex>
       </Flex>
     </Card>
