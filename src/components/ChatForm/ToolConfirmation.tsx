@@ -188,11 +188,11 @@ const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
 }) => {
   const messages = useAppSelector(selectMessages);
   const assistantMessages = messages.filter(isAssistantMessage);
-  const lastAsssitantMessage = useMemo(
+  const lastAssistantMessage = useMemo(
     () => assistantMessages[assistantMessages.length - 1],
     [assistantMessages],
   );
-  const toolCalls = lastAsssitantMessage.tool_calls;
+  const toolCalls = lastAssistantMessage.tool_calls;
 
   if (!toolCalls) return;
 
