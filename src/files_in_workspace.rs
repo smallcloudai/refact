@@ -16,9 +16,10 @@ use tracing::info;
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
-use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS, SOURCE_FILE_EXTENSIONS};
+use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
+use crate::blocklist::{is_this_inside_blacklisted_dir, is_path_blacklisted, load_indexing_settings_if_needed, IndexingSettings, WorkspaceIndexingSettings};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -241,7 +242,11 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
     }
 }
 
-pub fn ls_files(path: &PathBuf, recursive: bool) -> Result<Vec<PathBuf>, String> {
+pub fn ls_files(
+    indexing_settings: &IndexingSettings,
+    path: &PathBuf,
+    recursive: bool,
+) -> Result<Vec<PathBuf>, String> {
     if !path.is_dir() {
         return Err(format!("path '{}' is not a directory", path.display()));
     }
@@ -265,10 +270,7 @@ pub fn ls_files(path: &PathBuf, recursive: bool) -> Result<Vec<PathBuf>, String>
         entries.sort_by_key(|entry| entry.file_name());
         for entry in entries {
             let path = entry.path();
-            if recursive && path.is_dir() && !(
-                path.file_name().unwrap_or_default().to_str().unwrap_or_default().starts_with(".") ||
-                BLACKLISTED_DIRS.contains(&path.file_name().unwrap_or_default().to_str().unwrap_or_default())
-            ) {
+            if recursive && path.is_dir() && !is_path_blacklisted(&indexing_settings, &path) {
                 dirs_to_visit.push(path);
             } else if path.is_file() {
                 paths.push(path);
@@ -331,6 +333,7 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 async fn _ls_files_under_version_control_recursive(
     all_files: &mut Vec<PathBuf>,
     vcs_folders: &mut Vec<PathBuf>,
+    workspace_indexing_settings: Arc<WorkspaceIndexingSettings>,
     path: PathBuf,
     allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool
@@ -354,7 +357,8 @@ async fn _ls_files_under_version_control_recursive(
             }
         }
         if local_path.is_dir() {
-            if BLACKLISTED_DIRS.contains(&local_path.file_name().unwrap().to_str().unwrap()) {
+            let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
+            if is_path_blacklisted(&indexing_settings, &local_path) {
                 blacklisted_dirs_cnt += 1;
                 continue;
             }
@@ -396,6 +400,7 @@ async fn _ls_files_under_version_control_recursive(
 
 pub async fn retrieve_files_in_workspace_folders(
     proj_folders: Vec<PathBuf>,
+    workspace_indexing_settings: Arc<WorkspaceIndexingSettings>,
     allow_files_in_hidden_folders: bool,   // true when syncing to remote container
     ignore_size_thresholds: bool,
 ) -> (Vec<PathBuf>, Vec<PathBuf>) {
@@ -405,6 +410,7 @@ pub async fn retrieve_files_in_workspace_folders(
         _ls_files_under_version_control_recursive(
             &mut all_files,
             &mut vcs_folders,
+            workspace_indexing_settings.clone(),
             proj_folder.clone(),
             allow_files_in_hidden_folders,
             ignore_size_thresholds
@@ -477,8 +483,10 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
+    let workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
     let (all_files, vcs_folders) = retrieve_files_in_workspace_folders(
         folders,
+        workspace_indexing_settings,
         false,
         false
     ).await;
@@ -675,8 +683,13 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 {
     async fn on_create_modify(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
+        let mut workspace_indexing_settings = Arc::new(WorkspaceIndexingSettings::default());
+        if let Some(gcx) = gcx_weak.clone().upgrade() {
+            workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
+        }
         for p in &event.paths {
-            if is_this_inside_blacklisted_dir(&p) {  // important to filter BEFORE canonical_path
+            let indexing_settings = workspace_indexing_settings.get_indexing_settings(p.clone());
+            if is_this_inside_blacklisted_dir(&indexing_settings, &p) {  // important to filter BEFORE canonical_path
                 continue;
             }
 
@@ -705,13 +718,19 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
     async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut never_mind = true;
+        let mut workspace_indexing_settings = Arc::new(WorkspaceIndexingSettings::default());
+        if let Some(gcx) = gcx_weak.clone().upgrade() {
+            workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
+        }
         for p in &event.paths {
-            never_mind &= is_this_inside_blacklisted_dir(&p);
+            let indexing_settings = workspace_indexing_settings.get_indexing_settings(p.clone());
+            never_mind &= is_this_inside_blacklisted_dir(&indexing_settings, &p);
         }
         let mut docs = vec![];
         if !never_mind {
             for p in &event.paths {
-                if is_this_inside_blacklisted_dir(&p) {
+                let indexing_settings = workspace_indexing_settings.get_indexing_settings(p.clone());
+                if is_this_inside_blacklisted_dir(&indexing_settings, &p) {
                     continue;
                 }
                 let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());

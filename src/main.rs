@@ -71,6 +71,8 @@ mod git;
 mod agentic;
 mod trajectories;
 
+mod blocklist;
+
 #[tokio::main]
 async fn main() {
     unsafe {

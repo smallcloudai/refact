@@ -23,6 +23,7 @@ use crate::files_in_workspace::DocumentsState;
 use crate::integrations::docker::docker_ssh_tunnel_utils::SshTunnel;
 use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
+use crate::blocklist::WorkspaceIndexingSettings;
 use crate::telemetry::telemetry_structs;
 
 
@@ -165,6 +166,7 @@ pub struct GlobalContext {
     pub documents_state: DocumentsState,
     pub at_commands_preview_cache: Arc<AMutex<AtCommandsPreviewCache>>,
     pub privacy_settings: Arc<PrivacySettings>,
+    pub indexing_settings: Arc<WorkspaceIndexingSettings>,
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
@@ -381,6 +383,7 @@ pub async fn create_global_context(
         documents_state: DocumentsState::new(workspace_dirs).await,
         at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
         privacy_settings: Arc::new(PrivacySettings::default()),
+        indexing_settings: Arc::new(WorkspaceIndexingSettings::default()),
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
