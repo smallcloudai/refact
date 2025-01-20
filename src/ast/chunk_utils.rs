@@ -11,7 +11,7 @@ use crate::ast::count_tokens;
 use crate::vecdb::vdb_structs::SplitResult;
 
 
-pub fn official_text_hashing_function(s: &String) -> String {
+pub fn official_text_hashing_function(s: &str) -> String {
     let digest = md5::compute(s);
     format!("{:x}", digest)
 }

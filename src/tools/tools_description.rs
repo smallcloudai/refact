@@ -271,7 +271,7 @@ tools:
     parameters:
       - name: "path"
         type: "string"
-        description: "Path to the file to change."
+        description: "Absolute path to the file to change."
       - name: "tickets"
         type: "string"
         description: "Use 3-digit tickets comma separated to refer to the changes within a single file"
