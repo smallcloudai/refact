@@ -218,7 +218,7 @@ pub async fn run_tools(
             match cmd.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
                 Ok(msg_and_maybe_more) => msg_and_maybe_more,
                 Err(e) => {
-                    info!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
+                    warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
                     let mut tool_failed_message = tool_answer(e, t_call.id.to_string());
 
                     tool_failed_message.usage = cmd.usage().clone();
