@@ -36,6 +36,8 @@ import { ThreadHistory } from "./ThreadHistory";
 import { Integrations } from "./Integrations";
 import { UserSurvey } from "./UserSurvey";
 import { integrationsApi } from "../services/refact";
+import styles from "./App.module.css";
+import classNames from "classnames";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -167,15 +169,13 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 
   return (
     <Flex
-      style={{
-        flexDirection: "column",
-        alignItems: "stretch",
-        height:
-          page.name === "integrations page" && isPaddingApplied
-            ? "calc(100vh - 50px)"
-            : "100vh",
-        ...style,
-      }}
+      align="stretch"
+      direction="column"
+      style={style}
+      className={classNames(styles.rootFlex, {
+        [styles.integrationsPagePadding]:
+          page.name === "integrations page" && isPaddingApplied,
+      })}
     >
       <PageWrapper
         host={config.host}

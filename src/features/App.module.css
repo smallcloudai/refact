@@ -1,0 +1,13 @@
+.rootFlex {
+  height: 100vh;
+}
+
+.integrationsPagePadding {
+  height: calc(100vh - 50px);
+}
+
+@media print {
+  .rootFlex {
+    height: 100%;
+  }
+}
