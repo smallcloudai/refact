@@ -6,6 +6,8 @@ use serde::{Serialize, Deserialize};
 use tracing::error;
 use git2::{Branch, DiffOptions, Oid, Repository, Signature, Status, StatusOptions};
 
+use crate::ast::chunk_utils::official_text_hashing_function;
+use crate::files_correction::{get_active_workspace_folder, to_pathbuf_normalize};
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 
@@ -71,28 +73,28 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
 }
 
 /// Similar to git checkout -b <branch_name>
-// pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {
-//     let branch = match repository.find_branch(branch_name, git2::BranchType::Local) {
-//         Ok(branch) => branch,
-//         Err(_) => {
-//             let head_commit = repository.head()
-//                 .and_then(|h| h.peel_to_commit())
-//                 .map_err(|e| format!("Failed to get HEAD commit: {}", e))?;
-//             repository.branch(branch_name, &head_commit, false)
-//                 .map_err(|e| format!("Failed to create branch: {}", e))?
-//         }
-//     };
+pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {
+    let branch = match repository.find_branch(branch_name, git2::BranchType::Local) {
+        Ok(branch) => branch,
+        Err(_) => {
+            let head_commit = repository.head()
+                .and_then(|h| h.peel_to_commit())
+                .map_err(|e| format!("Failed to get HEAD commit: {}", e))?;
+            repository.branch(branch_name, &head_commit, false)
+                .map_err(|e| format!("Failed to create branch: {}", e))?
+        }
+    };
 
-//     // Checkout to the branch
-//     let object = repository.revparse_single(&("refs/heads/".to_owned() + branch_name))
-//         .map_err(|e| format!("Failed to revparse single: {}", e))?;
-//     repository.checkout_tree(&object, None)
-//         .map_err(|e| format!("Failed to checkout tree: {}", e))?;
-//     repository.set_head(&format!("refs/heads/{}", branch_name))
-//       .map_err(|e| format!("Failed to set head: {}", e))?;
+    // Checkout to the branch
+    let object = repository.revparse_single(&("refs/heads/".to_owned() + branch_name))
+        .map_err(|e| format!("Failed to revparse single: {}", e))?;
+    repository.checkout_tree(&object, None)
+        .map_err(|e| format!("Failed to checkout tree: {}", e))?;
+    repository.set_head(&format!("refs/heads/{}", branch_name))
+      .map_err(|e| format!("Failed to set head: {}", e))?;
 
-//     Ok(branch)
-// }
+    Ok(branch)
+}
 
 pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<(), String> {
     let mut index = repository.index()
@@ -294,4 +296,70 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
     }
 
     commits_with_messages
+}
+
+pub fn initialize_repo(workspace_path: &PathBuf, git_dir_path: &PathBuf) -> Result<Repository, String> {
+    let repo = git2::Repository::init(&git_dir_path)
+        .map_err(|e| format!("Failed to initialize repository: {}", e))?;
+
+    repo.set_workdir(&workspace_path, false)
+        .map_err(|e| format!("Failed to set workdir: {}", e))?;
+
+    {
+        let tree_id = {
+            let mut index = repo.index().map_err(|e| format!("Failed to get index: {}", e))?;
+            index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?
+        };
+        let tree = repo.find_tree(tree_id).map_err(|e| format!("Failed to find tree: {}", e))?;
+        let signature = git2::Signature::now("Refact Agent", "agent@refact.ai")
+            .map_err(|e| format!("Failed to create signature: {}", e))?;
+        repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[])
+            .map_err(|e| format!("Failed to create initial commit: {}", e))?;
+    }
+
+    Ok(repo)
+}
+
+
+pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_revision: &str) -> Result<String, String> {
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let workspace_folder = get_active_workspace_folder(gcx.clone()).await
+        .ok_or_else(|| "No active workspace folder".to_string())?;
+    let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
+
+    let parts: Vec<&str> = last_revision.split('/').collect();
+    let (last_rev_workspace_hash, _) = match parts.as_slice() {
+        [workspace_hash, commit_hash] => (*workspace_hash, *commit_hash),
+        [""] => ("", ""),
+        _ => return Err("Invalid last revision format".to_string()),
+    };
+
+    if !last_rev_workspace_hash.is_empty() && last_rev_workspace_hash != workspace_folder_hash {
+        return Err("Can not create checkpoint for different workspace folder".to_string());
+    }
+
+    let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
+    let repo = temp_env::with_vars(&[
+        ("GIT_DIR", Some(&shadow_repo_path.join(".git").to_string_lossy().to_string())),
+        ("GIT_WORK_TREE", Some(&workspace_folder.to_string_lossy().to_string())),
+    ], || {
+        match git2::Repository::open_from_env() {
+            Ok(repo) => Ok(repo),
+            Err(e) => {
+                if e.code() == git2::ErrorCode::NotFound {
+                    initialize_repo(&workspace_folder, &shadow_repo_path)
+                } else {
+                    Err(format!("Failed to open repository: {}", e))
+                }
+            },
+        }
+    })?;
+
+    let file_changes = get_file_changes(&repo, true)?;
+    stage_changes(&repo, &file_changes)?;
+
+    let branch = create_or_checkout_to_branch(&repo, "refact-agent")?;
+    let commit_oid = commit(&repo, &branch, "Auto commit", "Refact Agent", "agent@refact.ai")?;
+
+    Ok(format!("{workspace_folder_hash}/{commit_oid}"))
 }
