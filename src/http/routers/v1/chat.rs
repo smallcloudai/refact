@@ -12,6 +12,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::git::create_workspace_checkpoint;
 use crate::global_context::{is_metadata_supported, GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 
@@ -220,7 +221,30 @@ async fn _chat(
         }
     };
     
-    
+    let mut last_user_msg_with_rev_maybe = None;
+    let mut last_user_msg_without_rev_maybe = None;
+    for msg in messages.iter_mut().rev() {
+        if msg.role == "user" {
+            if msg.revision.is_empty() {
+                last_user_msg_without_rev_maybe = Some(msg);
+            } else {
+                last_user_msg_with_rev_maybe = Some(msg);
+                break;
+            }
+        }
+    }
+
+    if let Some(last_user_msg_without_rev) = last_user_msg_without_rev_maybe {
+        let last_rev = last_user_msg_with_rev_maybe.as_ref().map(|m| m.revision.clone());
+        match create_workspace_checkpoint(gcx.clone(), &last_rev.unwrap_or_default()).await {
+            Ok(rev) => {
+                tracing::info!("Checkpoint created: {}", rev);
+                last_user_msg_without_rev.revision = rev;
+            },
+            Err(e) => tracing::error!("Failed to create checkpoint: {}", e),
+        };
+    }
+
     // SYSTEM PROMPT WAS HERE
 
 
