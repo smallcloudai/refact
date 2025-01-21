@@ -5,6 +5,7 @@ import { DropzoneInputProps, FileRejection, useDropzone } from "react-dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { TruncateLeft } from "../Text";
 import { telemetryApi } from "../../services/refact/telemetry";
+import { useCapsForToolUse } from "../../hooks";
 
 export const FileUploadContext = createContext<{
   open: () => void;
@@ -19,9 +20,11 @@ export const DropzoneProvider: React.FC<
   React.PropsWithChildren<{ asChild?: boolean }>
 > = ({ asChild, ...props }) => {
   const { setError, processAndInsertImages } = useAttachedImages();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]): void => {
+      if (!isMultimodalitySupportedForCurrentModel) return;
       processAndInsertImages(acceptedFiles);
 
       if (fileRejections.length) {
@@ -34,7 +37,7 @@ export const DropzoneProvider: React.FC<
         setError(rejectedFileMessage.join("\n"));
       }
     },
-    [processAndInsertImages, setError],
+    [processAndInsertImages, setError, isMultimodalitySupportedForCurrentModel],
   );
 
   // TODO: disable when chat is busy

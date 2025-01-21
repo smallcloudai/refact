@@ -5,7 +5,7 @@ import { TextArea } from "../TextArea";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { Form } from "./Form";
 
-import { useAgentUsage, useAppSelector } from "../../hooks";
+import { useAgentUsage, useAppSelector, useCapsForToolUse } from "../../hooks";
 import { selectSubmitOption } from "../../features/Config/configSlice";
 import {
   ProcessedUserMessageContentWithImages,
@@ -59,6 +59,7 @@ export const RetryForm: React.FC<{
 }> = (props) => {
   const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
   const { disableInput } = useAgentUsage();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const inputText = getTextFromUserMessage(props.value);
   const inputImages = getImageFromUserMessage(props.value);
   const [textValue, onChangeTextValue] = useState(inputText);
@@ -180,7 +181,9 @@ export const RetryForm: React.FC<{
           Cancel
         </Button>
 
-        <MyDropzone addImage={addImage} />
+        {isMultimodalitySupportedForCurrentModel && (
+          <MyDropzone addImage={addImage} />
+        )}
       </Flex>
     </Form>
   );
