@@ -317,7 +317,7 @@ impl MemoriesDatabase {
                        m_goal=?2,
                        m_project=?3,
                        m_payload=?4,
-                       m_origin=?5,
+                       m_origin=?5
                      WHERE memid = ?6",
                 params![mem_type_owned, goal_owned, project_owned, payload_owned, m_origin_owned, memid_owned],
             )?;
