@@ -19,7 +19,7 @@ use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
-use crate::blocklist::{is_this_inside_blacklisted_dir, is_path_blacklisted, load_indexing_settings_if_needed, IndexingSettings, WorkspaceIndexingSettings};
+use crate::blocklist::{is_this_inside_blacklisted_dir, is_blacklisted, load_indexing_settings_if_needed, WorkspaceIndexingSettings};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -242,15 +242,12 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
     }
 }
 
-pub fn ls_files(
-    indexing_settings: &IndexingSettings,
+pub fn _ls_files(
+    workspace_indexing_settings: &WorkspaceIndexingSettings,
     path: &PathBuf,
     recursive: bool,
+    blacklist_check: bool,
 ) -> Result<Vec<PathBuf>, String> {
-    if !path.is_dir() {
-        return Err(format!("path '{}' is not a directory", path.display()));
-    }
-
     let mut paths = vec![];
     let mut dirs_to_visit = vec![path.clone()];
 
@@ -270,13 +267,36 @@ pub fn ls_files(
         entries.sort_by_key(|entry| entry.file_name());
         for entry in entries {
             let path = entry.path();
-            if recursive && path.is_dir() && !is_path_blacklisted(&indexing_settings, &path) {
-                dirs_to_visit.push(path);
+            let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
+            if recursive && path.is_dir() {
+                if !blacklist_check || !is_blacklisted(&indexing_settings, &path) {
+                    dirs_to_visit.push(path);
+                }
             } else if path.is_file() {
                 paths.push(path);
             }
         }
     }
+    Ok(paths)
+}
+
+pub fn ls_files(
+    workspace_indexing_settings: &WorkspaceIndexingSettings,
+    path: &PathBuf,
+    recursive: bool,
+) -> Result<Vec<PathBuf>, String> {
+    if !path.is_dir() {
+        return Err(format!("path '{}' is not a directory", path.display()));
+    }
+
+    let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
+    let mut paths = _ls_files(workspace_indexing_settings, path, recursive, true).unwrap();
+    if recursive {
+        for additional_indexing_dir in indexing_settings.additional_indexing_dirs.iter() {
+            paths.extend(_ls_files(workspace_indexing_settings, &PathBuf::from(additional_indexing_dir), recursive, false).unwrap());
+        }
+    }
+
     Ok(paths)
 }
 
@@ -333,14 +353,12 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 async fn _ls_files_under_version_control_recursive(
     all_files: &mut Vec<PathBuf>,
     vcs_folders: &mut Vec<PathBuf>,
-    workspace_indexing_settings: Arc<WorkspaceIndexingSettings>,
     path: PathBuf,
     allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool
 ) {
     let mut candidates: Vec<PathBuf> = vec![path.clone()];
     let mut rejected_reasons: HashMap<String, usize> = HashMap::new();
-    let mut blacklisted_dirs_cnt: usize = 0;
     while !candidates.is_empty() {
         let local_path = candidates.pop().unwrap();
         if local_path.is_file() {
@@ -357,11 +375,6 @@ async fn _ls_files_under_version_control_recursive(
             }
         }
         if local_path.is_dir() {
-            let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
-            if is_path_blacklisted(&indexing_settings, &local_path) {
-                blacklisted_dirs_cnt += 1;
-                continue;
-            }
             let maybe_files = ls_files_under_version_control(&local_path).await;
             if let Some(v) = maybe_files {
                 vcs_folders.push(local_path.clone());
@@ -395,12 +408,10 @@ async fn _ls_files_under_version_control_recursive(
     if rejected_reasons.is_empty() {
         info!("    no bad files at all");
     }
-    info!("also the loop bumped into {} blacklisted dirs", blacklisted_dirs_cnt);
 }
 
 pub async fn retrieve_files_in_workspace_folders(
     proj_folders: Vec<PathBuf>,
-    workspace_indexing_settings: Arc<WorkspaceIndexingSettings>,
     allow_files_in_hidden_folders: bool,   // true when syncing to remote container
     ignore_size_thresholds: bool,
 ) -> (Vec<PathBuf>, Vec<PathBuf>) {
@@ -410,7 +421,6 @@ pub async fn retrieve_files_in_workspace_folders(
         _ls_files_under_version_control_recursive(
             &mut all_files,
             &mut vcs_folders,
-            workspace_indexing_settings.clone(),
             proj_folder.clone(),
             allow_files_in_hidden_folders,
             ignore_size_thresholds
@@ -483,10 +493,8 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
     let (all_files, vcs_folders) = retrieve_files_in_workspace_folders(
         folders,
-        workspace_indexing_settings,
         false,
         false
     ).await;

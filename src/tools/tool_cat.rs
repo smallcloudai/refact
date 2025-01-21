@@ -214,8 +214,7 @@ pub async fn paths_and_symbols_to_cat(
             };
             let path = PathBuf::from(candidate);
             let workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
-            let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
-            let files_in_dir = ls_files(&indexing_settings, &path, false).unwrap_or(vec![]);
+            let files_in_dir = ls_files(&workspace_indexing_settings, &path, false).unwrap_or(vec![]);
             corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
         }
     }

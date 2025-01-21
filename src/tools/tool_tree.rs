@@ -66,8 +66,7 @@ impl Tool for ToolTree {
                 }
 
                 let workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
-                let indexing_settings = workspace_indexing_settings.get_indexing_settings(true_path.clone());
-                let paths_in_dir = ls_files(&indexing_settings, &true_path, true).unwrap_or(vec![]);
+                let paths_in_dir = ls_files(&workspace_indexing_settings, &true_path, true).unwrap_or(vec![]);
                 construct_tree_out_of_flat_list_of_paths(&paths_in_dir)
             },
             None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)

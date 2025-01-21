@@ -84,10 +84,8 @@ mod tests {
         let proj_folders = vec![PathBuf::from(".").canonicalize().unwrap()];
         let proj_folder = &proj_folders[0];
 
-        let workspace_indexing_settings = Arc::new(WorkspaceIndexingSettings::default());
         let (workspace_files, _vcs_folders) = retrieve_files_in_workspace_folders(
             proj_folders.clone(),
-            workspace_indexing_settings.clone(),
             false,
             false
         ).await;
