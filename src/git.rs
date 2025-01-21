@@ -320,46 +320,38 @@ pub fn initialize_repo(workspace_path: &PathBuf, git_dir_path: &PathBuf) -> Resu
     Ok(repo)
 }
 
-
-pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_revision: &str) -> Result<String, String> {
+pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_checkpoint: &str, chat_id: &str) -> Result<String, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
     let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
 
-    let parts: Vec<&str> = last_revision.split('/').collect();
-    let (last_rev_workspace_hash, _) = match parts.as_slice() {
-        [workspace_hash, commit_hash] => (*workspace_hash, *commit_hash),
-        [""] => ("", ""),
-        _ => return Err("Invalid last revision format".to_string()),
-    };
-
-    if !last_rev_workspace_hash.is_empty() && last_rev_workspace_hash != workspace_folder_hash {
+    let (last_check_workspace_hash, _) = get_workspace_and_commit_hash_from_checkpoint(last_checkpoint)?;
+    if !last_check_workspace_hash.is_empty() && last_check_workspace_hash != workspace_folder_hash {
         return Err("Can not create checkpoint for different workspace folder".to_string());
     }
 
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
-    let repo = temp_env::with_vars(&[
-        ("GIT_DIR", Some(&shadow_repo_path.join(".git").to_string_lossy().to_string())),
-        ("GIT_WORK_TREE", Some(&workspace_folder.to_string_lossy().to_string())),
-    ], || {
-        match git2::Repository::open_from_env() {
-            Ok(repo) => Ok(repo),
-            Err(e) => {
-                if e.code() == git2::ErrorCode::NotFound {
-                    initialize_repo(&workspace_folder, &shadow_repo_path)
-                } else {
-                    Err(format!("Failed to open repository: {}", e))
-                }
-            },
-        }
-    })?;
+    let repo = match git2::Repository::open(&shadow_repo_path) {
+        Ok(repo) => {
+            repo.set_workdir(&workspace_folder, false)
+                .map_err(|e| format!("Failed to set workdir: {}", e))?;
+            Ok(repo)
+        },
+        Err(e) => {
+            if e.code() == git2::ErrorCode::NotFound {
+                initialize_repo(&workspace_folder, &shadow_repo_path)
+            } else {
+                Err(format!("Failed to open repository: {}", e))
+            }
+        },
+    }?;
 
     let file_changes = get_file_changes(&repo, true)?;
     stage_changes(&repo, &file_changes)?;
 
-    let branch = create_or_checkout_to_branch(&repo, "refact-agent")?;
-    let commit_oid = commit(&repo, &branch, "Auto commit", "Refact Agent", "agent@refact.ai")?;
+    let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
+    let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
 
     Ok(format!("{workspace_folder_hash}/{commit_oid}"))
 }

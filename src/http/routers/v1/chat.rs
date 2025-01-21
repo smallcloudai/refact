@@ -236,7 +236,7 @@ async fn _chat(
 
     if let Some(last_user_msg_without_rev) = last_user_msg_without_rev_maybe {
         let last_rev = last_user_msg_with_rev_maybe.as_ref().map(|m| m.revision.clone());
-        match create_workspace_checkpoint(gcx.clone(), &last_rev.unwrap_or_default()).await {
+        match create_workspace_checkpoint(gcx.clone(), &last_rev.unwrap_or_default(), &chat_post.meta.chat_id).await {
             Ok(rev) => {
                 tracing::info!("Checkpoint created: {}", rev);
                 last_user_msg_without_rev.revision = rev;
