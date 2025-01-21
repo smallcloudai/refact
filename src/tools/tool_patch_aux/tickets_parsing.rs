@@ -222,16 +222,31 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_
             }
         }
 
-        if let Some(code_block_fence_line) = lines.get(line_num + 1) {
-            if !code_block_fence_line.contains("```") {
+        // strip other pin messages if present
+        let stripped_lines: Vec<&str> = if let Some((idx, _)) = lines
+            .iter()
+            .skip(line_num + 1)
+            .find_position(|x| x.contains("📍")) {
+            lines[..line_num + 1 + idx].iter().cloned().collect()
+        } else {
+            lines.iter().cloned().collect()
+        };
+        if let Some(code_block_fence_line) = stripped_lines.get(line_num + 1) {
+            if !code_block_fence_line.starts_with("```") {
                 return Err("failed to parse ticket, invalid code block fence".to_string());
             }
+            let mut depth = 0;
             for (idx, line) in lines.iter().enumerate().skip(line_num + 2) {
-                if line.contains("```") {
-                    ticket.code = ticket.code.trim_end().to_string();
-                    return Ok((2 + idx, ticket));
+                if line.starts_with("```") && line.len() > 3 {
+                    depth += 1;
+                } else if *line == "```" {
+                    if depth == 0 {
+                        ticket.code = stripped_lines[line_num + 2..idx].iter().join("\n").trim_end().to_string();
+                        return Ok((2 + idx, ticket));
+                    } else {
+                        depth -= 1;
+                    }
                 }
-                ticket.code.push_str(format!("{}\n", line).as_str());
             }
             Err("failed to parse ticket, no ending fence for the code block".to_string())
         } else {
