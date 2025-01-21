@@ -24,8 +24,8 @@ pub struct GitError {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GitRollbackPost {
-    pub revision: String,
+pub struct RestoreCheckpointsPost {
+    pub checkpoints: Vec<String>,
 }
 
 pub async fn handle_v1_git_commit(
@@ -99,14 +99,21 @@ pub async fn handle_v1_git_commit(
         .unwrap())
 }
 
-pub async fn handle_v1_rollback_changes(
+pub async fn handle_v1_restore_checkpoints(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<GitRollbackPost>(&body_bytes)
+    let post = serde_json::from_slice::<RestoreCheckpointsPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    restore_workspace_checkpoint(gcx.clone(), &post.revision).await
+    if post.checkpoints.is_empty() {
+        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "No checkpoints to restore".to_string()));
+    }
+    if post.checkpoints.len() > 1 {
+        return Err(ScratchError::new(StatusCode::NOT_IMPLEMENTED, "Multiple checkpoints to restore not implemented yet".to_string()));
+    }
+
+    restore_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap()).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     
     Ok(Response::builder()

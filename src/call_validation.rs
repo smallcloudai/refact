@@ -152,24 +152,16 @@ pub struct ChatUsage {
 pub struct ChatMessage {
     pub role: String,
     pub content: ChatContent,
-    #[serde(default, skip_serializing_if="is_none")]
+    #[serde(default, skip_serializing_if="Option::is_none")]
     pub finish_reason: Option<String>,
-    #[serde(default, skip_serializing_if="is_none")]
+    #[serde(default, skip_serializing_if="Option::is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
-    #[serde(default, skip_serializing_if="is_empty_string")]
+    #[serde(default, skip_serializing_if="String::is_empty")]
     pub tool_call_id: String,
-    #[serde(default, skip_serializing_if="is_none")]
+    #[serde(default, skip_serializing_if="Option::is_none")]
     pub usage: Option<ChatUsage>,
-    #[serde(default, skip_serializing_if="is_empty_string")]
-    pub revision: String,
-}
-
-fn is_none<T>(opt: &Option<T>) -> bool {
-    opt.is_none()
-}
-
-fn is_empty_string(something: &String) -> bool {
-    something.is_empty()
+    #[serde(default, skip_serializing_if="Vec::is_empty")]
+    pub checkpoints: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
