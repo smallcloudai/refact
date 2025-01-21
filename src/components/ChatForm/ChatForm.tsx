@@ -255,9 +255,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {error}
-        <Text size="1" as="div">
-          Click to retry
-        </Text>
       </ErrorCallout>
     );
   }

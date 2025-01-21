@@ -36,6 +36,7 @@ import { ThreadHistory } from "./ThreadHistory";
 import { Integrations } from "./Integrations";
 import { UserSurvey } from "./UserSurvey";
 import { integrationsApi } from "../services/refact";
+
 import styles from "./App.module.css";
 import classNames from "classnames";
 
@@ -45,8 +46,10 @@ export interface AppProps {
 
 export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const dispatch = useAppDispatch();
+
   const pages = useAppSelector(selectPages);
   const isStreaming = useAppSelector(selectIsStreaming);
+
   const isPageInHistory = useCallback(
     (pageName: string) => {
       return pages.some((page) => page.name === pageName);
