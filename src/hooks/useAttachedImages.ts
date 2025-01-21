@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
 import {
@@ -6,12 +6,15 @@ import {
   removeImageByIndex,
   addImage,
   type ImageFile,
+  resetAttachedImagesSlice,
 } from "../features/AttachedImages";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
+import { useCapsForToolUse } from "./useCapsForToolUse";
 
 export function useAttachedImages() {
   const images = useAppSelector(selectAllImages);
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const dispatch = useAppDispatch();
 
   const removeImage = useCallback(
@@ -57,6 +60,13 @@ export function useAttachedImages() {
     },
     [handleError, handleWarning, insertImage],
   );
+
+  useEffect(() => {
+    if (!isMultimodalitySupportedForCurrentModel) {
+      const action = resetAttachedImagesSlice();
+      dispatch(action);
+    }
+  }, [isMultimodalitySupportedForCurrentModel, dispatch]);
 
   return {
     images,

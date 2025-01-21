@@ -12,6 +12,7 @@ import {
   useConfig,
   useAgentUsage,
   useSendChatRequest,
+  useCapsForToolUse,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -62,6 +63,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const { retryFromIndex } = useSendChatRequest();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
   const error = useAppSelector(getErrorMessage);
@@ -101,6 +103,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
     (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!isMultimodalitySupportedForCurrentModel) return;
       const files: File[] = [];
       const items = event.clipboardData.items;
       for (const item of items) {
@@ -114,7 +117,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         processAndInsertImages(files);
       }
     },
-    [processAndInsertImages],
+    [processAndInsertImages, isMultimodalitySupportedForCurrentModel],
   );
 
   const {
@@ -337,7 +340,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 onClick={onClose}
               />
             )}
-            {config.features?.images !== false && <AttachFileButton />}
+            {config.features?.images !== false &&
+              isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
             {/* TODO: Reserved space for microphone button coming later on */}
             <PaperPlaneButton
               disabled={disableSend || disableInput}

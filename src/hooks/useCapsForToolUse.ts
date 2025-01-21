@@ -40,6 +40,14 @@ export function useCapsForToolUse() {
     [caps.data?.code_chat_default_model, dispatch],
   );
 
+  const isMultimodalitySupportedForCurrentModel = useMemo(() => {
+    const models = caps.data?.code_chat_models;
+    if (!models) return false;
+    const item = models[currentModel];
+    if (!item.supports_multimodality) return false;
+    return true;
+  }, [caps.data?.code_chat_models, currentModel]);
+
   const usableModels = useMemo(() => {
     const models = caps.data?.code_chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
@@ -92,6 +100,7 @@ export function useCapsForToolUse() {
     usableModelsForPlan,
     currentModel,
     setCapModel,
+    isMultimodalitySupportedForCurrentModel,
     loading: !caps.data && (caps.isFetching || caps.isLoading),
   };
 }
