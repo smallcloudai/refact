@@ -112,7 +112,7 @@ impl Tool for ToolGithub {
             match serde_json::from_str::<Value>(&stdout) {
                 Ok(Value::Array(arr)) => {
                     let row_count = arr.len();
-                    format!("{}\n\n💿 The UI has the capability to view tool result json efficiently. The result contains {} rows. Write no more than 3 rows as text and possibly \"and N more\" wording, keep it short.",
+                    format!("{}\n\n💿 The UI has the capability to view tool result json efficiently. The result contains {} rows. Unless user specified otherwise, write no more than 3 rows as text and possibly \"and N more\" wording, keep it short.",
                         stdout, row_count
                     )
                 },
