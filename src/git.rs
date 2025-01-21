@@ -320,6 +320,44 @@ pub fn initialize_repo(workspace_path: &PathBuf, git_dir_path: &PathBuf) -> Resu
     Ok(repo)
 }
 
+pub fn clean_and_hard_reset(repo: &Repository, commit_hash: &str) -> Result<(), String> {
+    // Clean untracked files and directories
+    let statuses = repo.statuses(None)
+        .map_err(|e| format!("Failed to get statuses: {}", e))?;
+    for entry in statuses.iter() {
+        let status = entry.status();
+        if status.contains(git2::Status::WT_NEW) {
+            if let Some(path) = entry.path() {
+                let full_path = repo.workdir().unwrap().join(path);
+                if full_path.is_dir() {
+                    std::fs::remove_dir_all(&full_path).map_err(|e| format!("Failed to remove directory: {}", e))?;
+                } else {
+                    std::fs::remove_file(&full_path).map_err(|e| format!("Failed to remove file: {}", e))?;
+                }
+            }
+        }
+    }
+
+    // Perform a hard reset to the specified commit
+    let oid = Oid::from_str(commit_hash)
+        .map_err(|e| format!("Invalid commit hash: {}", e))?;
+    let obj = repo.find_object(oid, None)
+        .map_err(|e| format!("Failed to find object: {}", e))?;
+    repo.reset(&obj, git2::ResetType::Hard, None)
+        .map_err(|e| format!("Failed to perform hard reset: {}", e))?;
+
+    Ok(())
+}
+
+fn get_workspace_and_commit_hash_from_checkpoint(checkpoint: &str) -> Result<(String, String), String> {
+    let parts: Vec<&str> = checkpoint.split('/').collect();
+    match parts.as_slice() {
+        [workspace_hash, commit_hash] => Ok((workspace_hash.to_string(), commit_hash.to_string())),
+        [""] => Ok(("".to_string(), "".to_string())),
+        _ => return Err("Invalid checkpoint".to_string()),
+    }
+}
+
 pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_checkpoint: &str, chat_id: &str) -> Result<String, String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
@@ -354,4 +392,28 @@ pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_
     let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
 
     Ok(format!("{workspace_folder_hash}/{commit_oid}"))
+}
+
+pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &str) -> Result<(), String> {
+    let cache_dir = gcx.read().await.cache_dir.clone();
+    let workspace_folder = get_active_workspace_folder(gcx.clone()).await
+       .ok_or_else(|| "No active workspace folder".to_string())?;
+    let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
+
+    let (checkpoint_workspace_hash, checkpoint_commit_hash) = 
+        get_workspace_and_commit_hash_from_checkpoint(checkpoint)?;
+
+    if !checkpoint_workspace_hash.is_empty() && checkpoint_workspace_hash != workspace_folder_hash {
+        return Err("Can not restore checkpoint for different workspace folder".to_string());
+    }
+
+    let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
+
+    let repo = git2::Repository::open(&shadow_repo_path)
+        .map_err(|e| format!("Failed to open repository: {}", e))?;
+    repo.set_workdir(&workspace_folder, false)
+        .map_err(|e| format!("Failed to set workdir: {}", e))?;
+
+    clean_and_hard_reset(&repo, &checkpoint_commit_hash)?;
+    Ok(())
 }

@@ -8,7 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 use url::Url;
 
 use crate::custom_error::ScratchError;
-use crate::git::{CommitInfo, stage_changes, get_configured_author_email_and_name};
+use crate::git::{get_configured_author_email_and_name, restore_workspace_checkpoint, stage_changes, CommitInfo};
 use crate::global_context::GlobalContext;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,6 +21,11 @@ pub struct GitError {
     pub error_message: String,
     pub project_name: String,
     pub project_path: Url,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GitRollbackPost {
+    pub revision: String,
 }
 
 pub async fn handle_v1_git_commit(
@@ -91,5 +96,22 @@ pub async fn handle_v1_git_commit(
             "commits_applied": commits_applied,
             "error_log": error_log,
         })).unwrap()))
+        .unwrap())
+}
+
+pub async fn handle_v1_rollback_changes(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<GitRollbackPost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    restore_workspace_checkpoint(gcx.clone(), &post.revision).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::json!({"success": true}).to_string()))
         .unwrap())
 }
