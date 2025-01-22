@@ -1,14 +1,15 @@
 use std::sync::Arc;
 use std::collections::HashMap;
-use tokio::sync::Mutex as AMutex;
-use tokio::process::Command;
 use async_trait::async_trait;
 use tracing::{error, info};
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
+use tokio::process::Command;
 
+use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
-
 use crate::files_correction::to_pathbuf_normalize;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
@@ -34,7 +35,7 @@ pub struct ToolGithub {
 impl IntegrationTrait for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsGitHub>(value.clone()) {
             Ok(settings_github) => {
                 self.settings_github = settings_github;
@@ -63,7 +64,7 @@ impl IntegrationTrait for ToolGithub {
         self.common.clone()
     }
 
-    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![Box::new(ToolGithub {
             common: self.common.clone(),
             settings_github: self.settings_github.clone(),

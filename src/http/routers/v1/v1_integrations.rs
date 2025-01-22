@@ -84,13 +84,14 @@ struct IntegrationGetPost {
 }
 
 pub async fn handle_v1_integration_get(
-    Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<IntegrationGetPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let the_get = crate::integrations::setting_up_integrations::integration_config_get(
+        gcx.clone(),
         post.integr_config_path,
     ).await.map_err(|e|{
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to load integrations: {}", e))
@@ -113,13 +114,17 @@ struct IntegrationSavePost {
 }
 
 pub async fn handle_v1_integration_save(
-    Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<IntegrationSavePost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    crate::integrations::setting_up_integrations::integration_config_save(&post.integr_config_path, &post.integr_values).await.map_err(|e| {
+    crate::integrations::setting_up_integrations::integration_config_save(
+        gcx.clone(),
+        &post.integr_config_path,
+        &post.integr_values
+    ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
 

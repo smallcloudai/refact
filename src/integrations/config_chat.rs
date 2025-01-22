@@ -86,6 +86,7 @@ pub async fn mix_config_messages(
     }
 
     let schema_message = match crate::integrations::setting_up_integrations::integration_config_get(
+        gcx.clone(),
         chat_meta.current_config_file.clone(),
     ).await {
         Ok(the_get) => {

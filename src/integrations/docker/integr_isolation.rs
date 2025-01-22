@@ -1,7 +1,10 @@
+use std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use serde_json::Value;
 use async_trait::async_trait;
+use tokio::sync::RwLock as ARwLock;
 
+use crate::global_context::GlobalContext;
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports};
 use crate::integrations::docker::docker_container_manager::Port;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
@@ -29,7 +32,7 @@ pub struct IntegrationIsolation {
 impl IntegrationTrait for IntegrationIsolation {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &Value, _config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, _config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsIsolation>(value.clone()) {
             Ok(settings_isolation) => {
                 tracing::info!("Isolation settings applied: {:?}", settings_isolation);
@@ -58,12 +61,11 @@ impl IntegrationTrait for IntegrationIsolation {
         self.common.clone()
     }
 
-    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-      vec![]
+    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+        vec![]
     }
 
-    fn integr_schema(&self) -> &str
-    {
+    fn integr_schema(&self) -> &str {
         ISOLATION_INTEGRATION_SCHEMA
     }
 }

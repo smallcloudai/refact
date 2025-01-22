@@ -54,7 +54,7 @@ pub struct ToolDocker {
 impl IntegrationTrait for ToolDocker {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsDocker>(value.clone()) {
             Ok(settings_docker) => {
                 tracing::info!("Docker settings applied: {:?}", settings_docker);
@@ -84,7 +84,7 @@ impl IntegrationTrait for ToolDocker {
         self.common.clone()
     }
 
-    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![Box::new(ToolDocker {
             common: self.common.clone(),
             settings_docker: self.settings_docker.clone(),

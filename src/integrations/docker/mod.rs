@@ -19,7 +19,7 @@ pub async fn docker_and_isolation_load(gcx: Arc<ARwLock<GlobalContext>>) -> Resu
 
     let docker_tools = integrations.get("docker")
         .ok_or("Docker integration not found".to_string())?
-        .integr_tools("docker");
+        .integr_tools("docker").await;
 
     let docker_tool = docker_tools[0]
         .as_any().downcast_ref::<ToolDocker>()

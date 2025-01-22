@@ -1,16 +1,19 @@
-use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::ContextEnum;
-use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
-use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
+use async_trait::async_trait;
+
+use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::call_validation::ContextEnum;
+use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
+use crate::integrations::go_to_configuration_message;
+use crate::tools::tools_description::Tool;
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -35,7 +38,7 @@ pub struct ToolPostgres {
 impl IntegrationTrait for ToolPostgres {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsPostgres>(value.clone()) {
             Ok(settings_postgres) => self.settings_postgres = settings_postgres,
             Err(e) => {
@@ -62,7 +65,7 @@ impl IntegrationTrait for ToolPostgres {
         self.common.clone()
     }
 
-    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![Box::new(ToolPostgres {
             common: self.common.clone(),
             settings_postgres: self.settings_postgres.clone(),

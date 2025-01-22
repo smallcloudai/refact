@@ -1,39 +1,34 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::Weak;
+use std::future::Future;
 use async_trait::async_trait;
-// use jsonrpc_client::{
-//     Request,
-//     Response,
-//     SendRequest,
-//     Error,
-//     JsonRpcError,
-// };
-
-// use mcp_client_rs::dotenv::dotenv;
-// use mcp_client_rs::{Protocol, ClientError};
-// use mcp_rust_sdk::client::Client;
-// use mcp_rust_sdk::transport::websocket::WebSocketTransport;
-// use mcp_rust_sdk::transport::stdio::StdioTransport;
-// use mcp_rust_sdk::client::ClientBuilder;
-use mcp_client_rs::client::ClientBuilder;
-
-
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 
+use mcp_client_rs::client::ClientBuilder;
+
+use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
+use crate::integrations::sessions::IntegrationSession;
 
 
-#[derive(Deserialize, Serialize, Clone, Default)]
-pub struct ConfigMCP {
-    pub name: String,
-    pub command: String,
-    pub args: Vec<String>,
+#[derive(Deserialize, Serialize, Clone, Default, PartialEq)]
+pub struct SettingsMCP {
+    #[serde(rename = "name")]
+    pub mcp_name: String,
+    #[serde(rename = "command")]
+    pub mcp_command: String,
+    #[serde(rename = "args")]
+    pub mcp_args: Vec<String>,
 }
 
+// #[derive(PartialEq)]
 pub struct ToolMCP {
     pub common: IntegrationCommon,
     pub config_path: String,
@@ -43,12 +38,44 @@ pub struct ToolMCP {
 
 #[derive(Default)]
 pub struct IntegrationMCP {
+    pub gcx_option: Option<Weak<ARwLock<GlobalContext>>>,  // need default to zero, to have access to all the virtual functions and then set it up
+    pub cfg: SettingsMCP,
     pub common: IntegrationCommon,
-    pub cfg: ConfigMCP,
     pub config_path: String,
-    pub mcp_client: Option<Arc<AMutex<mcp_client_rs::client::Client>>>,
+}
+
+// #[derive(Default)]
+pub struct SessionMCP {
+    pub launched_cfg: SettingsMCP,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
+    pub mcp_client: Arc<AMutex<mcp_client_rs::client::Client>>,
     pub mcp_tools: Vec<mcp_client_rs::Tool>,
 }
+
+impl IntegrationSession for SessionMCP {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn is_expired(&self) -> bool { false }
+
+    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
+        Box::new(async {
+            tracing::info!("MCP STOP {}", self.launched_cfg.mcp_name);
+            format!("hello world stop")
+            // let t0 = tokio::time::Instant::now();
+            // match Box::into_pin(self.cmdline_process.kill()).await {
+            //     Ok(_) => {
+            //         format!("Success, it took {:.3}s to stop it.\n\n", t0.elapsed().as_secs_f64())
+            //     },
+            //     Err(e) => {
+            //         tracing::warn!("Failed to kill service '{}'. Error: {}. Assuming process died on its own.", self.service_name, e);
+            //         format!("Failed to kill service. Error: {}.\nAssuming process died on its own, let's continue.\n\n", e)
+            //     }
+            // }
+        })
+    }
+}
+
 
 #[async_trait]
 impl IntegrationTrait for IntegrationMCP {
@@ -56,14 +83,68 @@ impl IntegrationTrait for IntegrationMCP {
         self
     }
 
-    async fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
-        match serde_json::from_value::<ConfigMCP>(value.clone()) {
-            Ok(x) => self.cfg = x,
+    async fn integr_settings_apply(
+        &mut self,
+        gcx: Arc<ARwLock<GlobalContext>>,
+        config_path: String,
+        value: &serde_json::Value
+    ) -> Result<(), String> {
+        let session_key = format!("{}", config_path);
+        self.gcx_option = Some(Arc::downgrade(&gcx));
+        // gcx.write().await.integration_sessions.remove(&session_key);
+        // gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
+
+        let cfg = match serde_json::from_value::<SettingsMCP>(value.clone()) {
+            Ok(x) => x,
             Err(e) => {
                 tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
                 return Err(e.to_string());
             }
+        };
+
+        let mut session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
+        let mut wrong_cfg = false;
+        if let Some(ref session) = session_option {
+            let mut session_locked = session.lock().await;
+            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            if session_downcasted.launched_cfg != cfg {
+                wrong_cfg = true;
+            }
         }
+        if session_option.is_none() || wrong_cfg {
+            tracing::info!("MCP START SESSION {:?}", session_key);
+            let mut client_builder = ClientBuilder::new(cfg.mcp_command.as_str());
+            for arg in &cfg.mcp_args {
+                client_builder = client_builder.arg(arg);
+            }
+            // let mut envs = HashMap::new();
+            // envs.insert(
+            //     "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
+            //     std::env::var("GITHUB_PERSONAL_ACCESS_TOKEN").unwrap_or_default(),
+            // );
+            let client = match client_builder.spawn_and_initialize().await {
+                Ok(client) => client,
+                Err(client_error) => {
+                    tracing::error!("Failed to initialize {}: {:?}", session_key, client_error);
+                    return Err(client_error.to_string());
+                }
+            };
+            let tools_result = match client.list_tools().await {
+                Ok(result) => result,
+                Err(tools_error) => {
+                    tracing::error!("Failed to list tools for {}: {:?}", session_key, tools_error);
+                    return Err(tools_error.to_string());
+                }
+            };
+            let mcp_client = Arc::new(AMutex::new(client));
+            session_option = Some(Arc::new(AMutex::new(Box::new(SessionMCP {
+                launched_cfg: cfg.clone(),
+                mcp_client,
+                mcp_tools: tools_result.tools.clone(),
+            }))));
+            gcx.write().await.integration_sessions.insert(session_key.clone(), session_option.clone().unwrap());
+        }
+
         match serde_json::from_value::<IntegrationCommon>(value.clone()) {
             Ok(x) => self.common = x,
             Err(e) => {
@@ -72,32 +153,6 @@ impl IntegrationTrait for IntegrationMCP {
             }
         }
         self.config_path = config_path;
-
-        // let mut envs = HashMap::new();
-        // envs.insert(
-        //     "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
-        //     std::env::var("GITHUB_PERSONAL_ACCESS_TOKEN").unwrap_or_default(),
-        // );
-
-        tracing::info!("AAA GEEEEE {:?}", self.config_path);
-        let mut client_builder = ClientBuilder::new(self.cfg.command.as_str());
-        for arg in &self.cfg.args {
-            client_builder = client_builder.arg(arg);
-        }
-        let client_maybe = client_builder.spawn_and_initialize().await;
-
-        if let Err(client_error) = client_maybe {
-            tracing::error!("Failed to initialize protocol: {:?}", client_error);
-            return Err(client_error.to_string());
-        }
-
-        let client = client_maybe.unwrap();
-        let tool_result_maybe: Result<mcp_client_rs::ListToolsResult, mcp_client_rs::Error> = client.list_tools().await;
-        if let Ok(tools_result) = tool_result_maybe {
-            tracing::info!("AAA TOOLS {:?}", tools_result);
-            self.mcp_tools = tools_result.tools;
-        }
-        self.mcp_client = Some(Arc::new(AMutex::new(client)));
 
         Ok(())
     }
@@ -110,25 +165,43 @@ impl IntegrationTrait for IntegrationMCP {
         self.common.clone()
     }
 
-    fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-        if self.mcp_client.is_none() {
+    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+        let session_key = format!("{}", self.config_path);
+        let gcx = match self.gcx_option.as_ref() {
+            Some(gcx) => match gcx.upgrade() {
+                Some(gcx) => gcx,
+                None => {
+                    tracing::error!("Whoops the system is shutting down!");
+                    return vec![];
+                }
+            },
+            None => {
+                tracing::error!("MCP is not set up yet");
+                return vec![];
+            }
+        };
+        let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
+        if session_option.is_none() {
+            tracing::error!("No session for {:?}, strange", session_key);
             return vec![];
         }
-        // self.mcp_tools is ListToolsResult { tools: [Tool { name: "add", description: "Add two numbers", input_schema: Object {"properties": Object {"a": Object {"title": String("A"), "type": String("integer")}, "b": Object {"title": String("B"), "type": String("integer")}}, "required": Array [String("a"), String("b")], "title": String("addArguments"), "type": String("object")} }] }
+
         let mut result: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> = vec![];
-        tracing::info!("AAA integr_tools {:?}", self.mcp_tools);
-        for tool in self.mcp_tools.iter() {
-            tracing::info!("AAA      {:?}", tool.name);
-            tracing::info!("AAA      {:?}", tool.description);
-            tracing::info!("AAA      {:?}", tool.input_schema);
-            result.push(Box::new(ToolMCP {
-                common: self.common.clone(),
-                config_path: self.config_path.clone(),
-                mcp_client: self.mcp_client.clone().unwrap(),
-                mcp_tool: tool.clone(),
-            }));
+        {
+            let session = session_option.unwrap();
+            let mut session_locked = session.lock().await;
+            let session_downcasted: &mut SessionMCP = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            // no long operations here
+            for tool in session_downcasted.mcp_tools.iter() {
+                result.push(Box::new(ToolMCP {
+                    common: self.common.clone(),
+                    config_path: self.config_path.clone(),
+                    mcp_client: session_downcasted.mcp_client.clone(),
+                    mcp_tool: tool.clone(),
+                }));
+            }
         }
-        // tracing::info!("AAAAA RETURN {:?}", result);
+
         result
     }
 
@@ -145,7 +218,7 @@ impl Tool for ToolMCP {
 
     async fn tool_execute(
         &mut self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {

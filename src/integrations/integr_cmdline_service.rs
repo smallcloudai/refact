@@ -34,7 +34,7 @@ pub struct ToolService {
 impl IntegrationTrait for ToolService {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {
@@ -61,7 +61,7 @@ impl IntegrationTrait for ToolService {
         self.common.clone()
     }
 
-    fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![Box::new(ToolService {
             common: self.common.clone(),
             name: integr_name.to_string(),
@@ -80,9 +80,7 @@ pub struct CmdlineSession {
     cmdline_string: String,
     cmdline_workdir: String,
     cmdline_process: Box<dyn TokioChildWrapper>,
-    #[allow(dead_code)]
     cmdline_stdout: BufReader<tokio::process::ChildStdout>,
-    #[allow(dead_code)]
     cmdline_stderr: BufReader<tokio::process::ChildStderr>,
     service_name: String,
 }

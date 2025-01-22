@@ -1,4 +1,3 @@
-// use std::path::PathBuf;
 use std::sync::Arc;
 use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
@@ -7,6 +6,7 @@ use crate::tools::tools_description::Tool;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationTrait;
 
+
 pub async fn load_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     allow_experimental: bool,
@@ -14,7 +14,7 @@ pub async fn load_integration_tools(
     let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental).await;
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
-        for tool in integr.integr_tools(&name) {
+        for tool in integr.integr_tools(&name).await {
             let mut tool_name = tool.tool_name();
             if tool_name.is_empty() {
                 tool_name = name.clone();
@@ -63,7 +63,7 @@ pub async fn load_integrations(
                 continue;
             }
         };
-        let should_be_fine = integr.integr_settings_apply(&rec.config_unparsed, rec.integr_config_path.clone()).await;
+        let should_be_fine = integr.integr_settings_apply(gcx.clone(), rec.integr_config_path.clone(), &rec.config_unparsed).await;
         if should_be_fine.is_err() {
             // tracing::warn!("failed to apply settings for integration {}: {:?}", rec.integr_name, should_be_fine.err());
             error_log.push(crate::integrations::setting_up_integrations::YamlError {

@@ -3,12 +3,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::process::Stdio;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use serde::Deserialize;
 use serde::Serialize;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
 
+use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
@@ -60,7 +62,7 @@ pub struct ToolCmdline {
 impl IntegrationTrait for ToolCmdline {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &serde_json::Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
             Ok(x) => self.cfg = x,
             Err(e) => {
@@ -87,7 +89,7 @@ impl IntegrationTrait for ToolCmdline {
         self.common.clone()
     }
 
-    fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(&self, integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![Box::new(ToolCmdline {
             common: self.common.clone(),
             name: integr_name.to_string(),

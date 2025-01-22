@@ -152,7 +152,7 @@ impl IntegrationSession for ChromeSession
 impl IntegrationTrait for ToolChrome {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, value: &Value, config_path: String) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
         match serde_json::from_value::<SettingsChrome>(value.clone()) {
             Ok(settings_chrome) => self.settings_chrome = settings_chrome,
             Err(e) => {
@@ -179,7 +179,7 @@ impl IntegrationTrait for ToolChrome {
         self.common.clone()
     }
 
-    fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![Box::new(ToolChrome {
             common: self.common.clone(),
             settings_chrome: self.settings_chrome.clone(),
