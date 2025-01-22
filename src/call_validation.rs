@@ -205,7 +205,7 @@ pub struct ChatMeta {
     #[serde(default)]
     pub chat_id: String,
     #[serde(default)]
-    pub message_id: String,
+    pub request_attempt_id: String,
     #[serde(default)]
     pub chat_remote: bool,
     #[serde(default)]

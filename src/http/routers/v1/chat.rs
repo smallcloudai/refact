@@ -12,7 +12,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::global_context::{is_cloud, GlobalContext, SharedGlobalContext};
+use crate::global_context::{is_metadata_supported, GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 
 
@@ -212,7 +212,7 @@ async fn _chat(
     }
 
     let meta = {
-        if is_cloud(gcx.clone()).await {
+        if is_metadata_supported(gcx.clone()).await {
             Some(chat_post.meta.clone())
         } else {
             None

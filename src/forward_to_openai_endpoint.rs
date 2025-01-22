@@ -1,5 +1,6 @@
 use reqwest::header::AUTHORIZATION;
 use reqwest::header::CONTENT_TYPE;
+use reqwest::header::USER_AGENT;
 use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
@@ -29,6 +30,9 @@ pub async fn forward_to_openai_style_endpoint(
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
+    }
+    if meta.is_some() {
+        headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
     }
     let mut data = json!({
         "model": model_name,
@@ -105,6 +109,10 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
+    if meta.is_some() {
+        headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
+    }
+
     let mut data = json!({
         "model": model_name,
         "stream": true,

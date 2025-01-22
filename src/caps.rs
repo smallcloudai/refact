@@ -71,6 +71,8 @@ fn default_endpoint_embeddings_style() -> String {
     String::from("openai")
 }
 
+fn default_support_metadata() -> bool { false }
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     pub cloud_name: String,
@@ -150,6 +152,9 @@ pub struct CodeAssistantCaps {
 
     #[serde(default)]
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
+
+    #[serde(default = "default_support_metadata")]
+    pub support_metadata: bool,
 }
 
 fn load_caps_from_buf(

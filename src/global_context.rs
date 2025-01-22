@@ -380,9 +380,12 @@ pub async fn create_global_context(
     (gcx, ask_shutdown_receiver, shutdown_flag, cmdline)
 }
 
-pub async fn is_cloud(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
-    // true
+pub async fn is_metadata_supported(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
     let gcx_locked = gcx.read().await;
-    let address_url = gcx_locked.cmdline.address_url.clone();
-    address_url.to_lowercase() == "refact" || address_url.contains("inference-backup.smallcloud.ai")
+    if let Some(caps_arc) = gcx_locked.caps.clone() {
+        if let Ok(caps) = caps_arc.read() {
+            return caps.support_metadata;
+        }
+    }
+    false
 }
