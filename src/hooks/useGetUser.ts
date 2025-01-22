@@ -8,13 +8,19 @@ const NOT_SKIPPABLE_ADDRESS_URLS = [
 ];
 
 export const useGetUser = () => {
-  const addressURL = useAppSelector(selectAddressURL);
+  const maybeAddressURL = useAppSelector(selectAddressURL);
+  const addressURL = maybeAddressURL ? maybeAddressURL.trim() : "";
   const maybeApiKey = useAppSelector(selectApiKey);
   const apiKey = maybeApiKey ?? "";
+  const isAddressURLALink =
+    addressURL.startsWith("https://") || addressURL.startsWith("http://");
+
   return smallCloudApi.useGetUserQuery(
-    { apiKey, addressURL: addressURL?.trim() },
+    { apiKey, addressURL: addressURL },
     {
-      skip: !NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL?.trim() ?? ""),
+      skip: !(
+        NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL) || isAddressURLALink
+      ),
       refetchOnMountOrArgChange: true,
     },
   );
