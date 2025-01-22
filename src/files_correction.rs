@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 use std::path::{Component, PathBuf};
+use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
@@ -407,6 +408,14 @@ pub fn canonical_path(s: &str) -> PathBuf {
     });
     // info!("canonical_path:\n{:?}\n{:?}", s, res);
     res
+}
+
+pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&path.to_string_lossy().to_string())
+}
+
+pub fn deserialize_path<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<PathBuf, D::Error> {
+    Ok(PathBuf::from(String::deserialize(deserializer)?))
 }
 
 #[cfg(test)]

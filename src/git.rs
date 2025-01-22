@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::RwLock as ARwLock;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use url::Url;
 use serde::{Serialize, Deserialize};
 use tracing::error;
@@ -10,6 +10,7 @@ use crate::ast::chunk_utils::official_text_hashing_function;
 use crate::files_correction::{get_active_workspace_folder, to_pathbuf_normalize};
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
+use crate::files_correction::{serialize_path, deserialize_path};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CommitInfo {
@@ -27,8 +28,17 @@ impl CommitInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileChange {
-    pub path: String,
+    pub relative_path: String,
+    #[serde(serialize_with = "serialize_path", deserialize_with = "deserialize_path")]
+    pub absolute_path: PathBuf,
     pub status: FileChangeStatus,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FileDiff {
+    pub file_change: FileChange,
+    pub content_before: String,
+    pub content_after: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -102,11 +112,11 @@ pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) ->
     for file_change in file_changes {
         match file_change.status {
             FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
-                index.add_path(std::path::Path::new(&file_change.path))
+                index.add_path(Path::new(&file_change.relative_path))
                     .map_err(|e| format!("Failed to add file to index: {}", e))?;
             },
             FileChangeStatus::DELETED => {
-                index.remove_path(std::path::Path::new(&file_change.path))
+                index.remove_path(Path::new(&file_change.relative_path))
                     .map_err(|e| format!("Failed to remove file from index: {}", e))?;
             },
         }
@@ -120,30 +130,40 @@ pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) ->
 
 pub fn get_file_changes(repository: &Repository, include_unstaged: bool) -> Result<Vec<FileChange>, String> {
     let mut result = Vec::new();
+    let repository_workdir = repository.workdir()
+        .ok_or("Failed to get workdir from repository".to_string())?;
 
     let statuses = repository.statuses(None)
         .map_err(|e| format!("Failed to get statuses: {}", e))?;
     for entry in statuses.iter() {
         let status = entry.status();
-        if status.contains(Status::INDEX_NEW) {
-            result.push(FileChange {status: FileChangeStatus::ADDED, path: entry.path().unwrap().to_string()})
+        let relative_path = String::from_utf8_lossy(entry.path_bytes()).to_string();
+        let absolute_path_str = repository_workdir.join(&relative_path).to_string_lossy().to_string();
+        let absolute_path = to_pathbuf_normalize(&absolute_path_str);
+
+        if status.contains(Status::INDEX_NEW) || 
+           (include_unstaged && status.contains(Status::WT_NEW)) {
+            result.push(FileChange {
+                status: FileChangeStatus::ADDED,
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            });
         }
-        if status.contains(Status::INDEX_MODIFIED) {
-            result.push(FileChange {status: FileChangeStatus::MODIFIED, path: entry.path().unwrap().to_string()})
+        if status.contains(Status::INDEX_MODIFIED) || 
+           (include_unstaged && status.contains(Status::WT_MODIFIED)) {
+            result.push(FileChange {
+                status: FileChangeStatus::MODIFIED,
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            });
         }
-        if status.contains(Status::INDEX_DELETED) {
-            result.push(FileChange {status: FileChangeStatus::DELETED, path: entry.path().unwrap().to_string()})
-        }
-        if include_unstaged {
-            if status.contains(Status::WT_NEW) {
-                result.push(FileChange {status: FileChangeStatus::ADDED, path: entry.path().unwrap().to_string()})
-            }
-            if status.contains(Status::WT_MODIFIED) {
-                result.push(FileChange {status: FileChangeStatus::MODIFIED, path: entry.path().unwrap().to_string()})
-            }
-            if status.contains(Status::WT_DELETED) {
-                result.push(FileChange {status: FileChangeStatus::DELETED, path: entry.path().unwrap().to_string()})
-            }
+        if status.contains(Status::INDEX_DELETED) || 
+           (include_unstaged && status.contains(Status::WT_DELETED)) {
+            result.push(FileChange {
+                status: FileChangeStatus::DELETED,
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path,
+            });
         }
     }
 
@@ -191,18 +211,18 @@ fn git_diff<'repo>(repository: &'repo Repository, file_changes: &Vec<FileChange>
     diff_options.include_untracked(true);
     diff_options.recurse_untracked_dirs(true);
     for file_change in file_changes {
-        diff_options.pathspec(&file_change.path);
+        diff_options.pathspec(&file_change.relative_path);
     }
 
     let mut sorted_file_changes = file_changes.clone();
     sorted_file_changes.sort_by_key(|fc| {
-        std::fs::metadata(&fc.path).map(|meta| meta.len()).unwrap_or(0)
+        std::fs::metadata(&fc.relative_path).map(|meta| meta.len()).unwrap_or(0)
     });
 
     // Create a new temporary tree, with all changes staged
     let mut index = repository.index().map_err(|e| format!("Failed to get repository index: {}", e))?;
     for file_change in &sorted_file_changes {
-        index.add_path(std::path::Path::new(&file_change.path))
+        index.add_path(Path::new(&file_change.relative_path))
             .map_err(|e| format!("Failed to add file to index: {}", e))?;
     }
     let oid = index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?;

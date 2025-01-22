@@ -188,7 +188,7 @@ pub async fn handle_v1_links(
             s.push(format!(
                 "In project {}:\n{}{}",
                 commit.get_project_name(),
-                commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
+                commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.relative_path)).collect::<Vec<_>>().join("\n"),
                 if commit.file_changes.len() > 3 { format!("\n...{} files more\n", commit.file_changes.len() - 3) } else { format!("\n") },
             ));
         }
@@ -207,7 +207,7 @@ pub async fn handle_v1_links(
                     "git commit -m \"{}{}\"\n{}",
                     commit_with_msg.commit_message.lines().next().unwrap_or(""),
                     if commit_with_msg.commit_message.lines().count() > 1 { "..." } else { "" },
-                    commit_with_msg.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.path)).collect::<Vec<_>>().join("\n"),
+                    commit_with_msg.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.relative_path)).collect::<Vec<_>>().join("\n"),
                 );
                 links.push(Link {
                     link_action: LinkAction::Commit,
