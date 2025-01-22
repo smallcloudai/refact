@@ -28,7 +28,8 @@ impl CommitInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FileChange {
-    pub relative_path: String,
+    #[serde(serialize_with = "serialize_path", deserialize_with = "deserialize_path")]
+    pub relative_path: PathBuf,
     #[serde(serialize_with = "serialize_path", deserialize_with = "deserialize_path")]
     pub absolute_path: PathBuf,
     pub status: FileChangeStatus,
@@ -112,11 +113,11 @@ pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) ->
     for file_change in file_changes {
         match file_change.status {
             FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
-                index.add_path(Path::new(&file_change.relative_path))
+                index.add_path(&file_change.relative_path)
                     .map_err(|e| format!("Failed to add file to index: {}", e))?;
             },
             FileChangeStatus::DELETED => {
-                index.remove_path(Path::new(&file_change.relative_path))
+                index.remove_path(&file_change.relative_path)
                     .map_err(|e| format!("Failed to remove file from index: {}", e))?;
             },
         }
@@ -137,7 +138,7 @@ pub fn get_file_changes(repository: &Repository, include_unstaged: bool) -> Resu
         .map_err(|e| format!("Failed to get statuses: {}", e))?;
     for entry in statuses.iter() {
         let status = entry.status();
-        let relative_path = String::from_utf8_lossy(entry.path_bytes()).to_string();
+        let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
         let absolute_path_str = repository_workdir.join(&relative_path).to_string_lossy().to_string();
         let absolute_path = to_pathbuf_normalize(&absolute_path_str);
 

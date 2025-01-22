@@ -411,7 +411,7 @@ pub fn canonical_path(s: &str) -> PathBuf {
 }
 
 pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&path.to_string_lossy().to_string())
+    serializer.serialize_str(&path.to_string_lossy())
 }
 
 pub fn deserialize_path<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<PathBuf, D::Error> {
