@@ -39,7 +39,6 @@ import { integrationsApi } from "../services/refact";
 
 import styles from "./App.module.css";
 import classNames from "classnames";
-import { AddressURLSubscriber } from "../components/AddressURLSubscriber";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -265,7 +264,6 @@ export const App = () => {
           <TourProvider>
             <AbortControllerProvider>
               <InnerApp />
-              <AddressURLSubscriber />
             </AbortControllerProvider>
           </TourProvider>
         </Theme>

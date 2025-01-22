@@ -11,7 +11,11 @@ export const useGetUser = () => {
   const addressURL = useAppSelector(selectAddressURL);
   const maybeApiKey = useAppSelector(selectApiKey);
   const apiKey = maybeApiKey ?? "";
-  return smallCloudApi.useGetUserQuery(apiKey, {
-    skip: !NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL ?? ""),
-  });
+  return smallCloudApi.useGetUserQuery(
+    { apiKey, addressURL: addressURL?.trim() },
+    {
+      skip: !NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL?.trim() ?? ""),
+      refetchOnMountOrArgChange: true,
+    },
+  );
 };

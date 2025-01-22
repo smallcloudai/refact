@@ -167,8 +167,15 @@ export const smallCloudApi = createApi({
         });
       },
     }),
-    getUser: builder.query<User, string>({
-      query: (apiKey: string) => {
+    getUser: builder.query<
+      User,
+      {
+        apiKey: string;
+        addressURL?: string;
+      }
+    >({
+      query: (args) => {
+        const { apiKey } = args;
         return {
           url: "login",
           method: "GET",
