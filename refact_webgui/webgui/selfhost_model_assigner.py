@@ -196,10 +196,10 @@ class ModelAssigner:
                         n_ctx=assignment.get("n_ctx", None),
                         has_loras=self._has_loras(model_name),
                     ))
-                for _ in range(model_group.gpus_shard()):
-                    if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
-                        required_memory_exceed_available = True
-                    cursor += 1
+            for _ in range(model_group.gpus_shard()):
+                if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
+                    required_memory_exceed_available = True
+                cursor += 1
 
         # dump configs
         allowed_to_exist = set()
