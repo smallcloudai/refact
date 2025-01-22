@@ -196,7 +196,7 @@ function tab_finetune_config_and_runs() {
             if (model_selector.options.length == 0) {
                 model_selector.innerHTML = '';
                 global_model_list.forEach(model => {
-                    if(model.has_finetune && model.backend != "vllm") {
+                    if(model.has_finetune && model.backend == "transformers") {
                         const new_option = new Option(model.name, model.name);
                         if(finetune_configs_and_runs.config.model_name === model.name) {
                             new_option.selected = true;
