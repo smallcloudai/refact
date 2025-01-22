@@ -9,7 +9,6 @@ const NOT_SKIPPABLE_ADDRESS_URLS = [
 
 export const useGetUser = () => {
   const addressURL = useAppSelector(selectAddressURL);
-  console.log(`[DEBUG]: addressURL: `, addressURL);
   const maybeApiKey = useAppSelector(selectApiKey);
   const apiKey = maybeApiKey ?? "";
   return smallCloudApi.useGetUserQuery(apiKey, {

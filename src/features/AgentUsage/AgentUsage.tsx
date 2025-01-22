@@ -5,9 +5,11 @@ import { Flex, Card, Text } from "@radix-ui/themes";
 import { LinkButton } from "../../components/Buttons";
 import styles from "./AgentUsage.module.css";
 import { selectAgentUsage } from "./agentUsageSlice";
+import { selectToolUse } from "../Chat";
 
 export const AgentUsage: React.FC = () => {
   const userRequest = useGetUser();
+  const toolUse = useAppSelector(selectToolUse);
   const agentUsageAmount = useAppSelector(selectAgentUsage);
 
   const { shouldShow, maxAgentUsageAmount, startPollingForUser, plan } =
@@ -17,7 +19,9 @@ export const AgentUsage: React.FC = () => {
     if (agentUsageAmount === null) return null;
     if (agentUsageAmount === 0) {
       return `You have reached your usage limit of ${maxAgentUsageAmount} messages a day.
-          You can use agent again tomorrow, or upgrade to PRO.`;
+          You can ${
+            toolUse === "agent" ? "use agent" : "send messages"
+          } again tomorrow, or upgrade to PRO.`;
     }
 
     if (agentUsageAmount <= 5) {
@@ -25,9 +29,11 @@ export const AgentUsage: React.FC = () => {
           the limit upgrade to PRO.`;
     }
 
-    return `You have ${agentUsageAmount} agent messages left on our ${plan}
+    return `You have ${agentUsageAmount} ${
+      toolUse === "agent" ? "agent messages" : "messages"
+    } left on our ${plan}
         plan.`;
-  }, [maxAgentUsageAmount, plan, agentUsageAmount]);
+  }, [maxAgentUsageAmount, plan, agentUsageAmount, toolUse]);
 
   if (!userRequest.data) return null;
   if (!shouldShow) return null;

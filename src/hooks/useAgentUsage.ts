@@ -5,17 +5,12 @@ import {
 } from "../features/AgentUsage/agentUsageSlice";
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
-import {
-  selectIsStreaming,
-  selectIsWaiting,
-  selectThreadToolUse,
-} from "../features/Chat";
+import { selectIsStreaming, selectIsWaiting } from "../features/Chat";
 
 export function useAgentUsage() {
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
-  const toolUse = useAppSelector(selectThreadToolUse);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
 
@@ -59,13 +54,12 @@ export function useAgentUsage() {
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
-    if (toolUse !== "agent") return false;
-    if (isStreaming || isWaiting) return false;
     if (user.data?.inference !== "FREE") return false;
+    if (isStreaming || isWaiting) return false;
     if (agentUsage === null) return false;
     if (agentUsage > 5) return false;
     return true;
-  }, [isStreaming, isWaiting, agentUsage, toolUse, user.data?.inference]);
+  }, [isStreaming, isWaiting, agentUsage, user.data?.inference]);
 
   const disableInput = useMemo(() => {
     return shouldShow && aboveUsageLimit;
