@@ -148,7 +148,7 @@ export async function sendChat({
     // chat_id,
     meta: {
       chat_id,
-      message_id: last_user_message_id,
+      request_attempt_id: last_user_message_id,
       // chat_remote,
       // TODO: pass this through
       chat_mode: mode ?? "EXPLORE",
