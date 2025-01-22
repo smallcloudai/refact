@@ -19,7 +19,7 @@ use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
-use crate::blocklist::{is_this_inside_blacklisted_dir, is_blacklisted, load_indexing_settings_if_needed, WorkspaceIndexingSettings};
+use crate::blocklist::{is_this_inside_blacklisted_dir, is_blacklisted, load_indexing_yaml, load_indexing_settings_if_needed, WorkspaceIndexingSettings, IndexingSettings};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -355,10 +355,12 @@ async fn _ls_files_under_version_control_recursive(
     vcs_folders: &mut Vec<PathBuf>,
     path: PathBuf,
     allow_files_in_hidden_folders: bool,
-    ignore_size_thresholds: bool
+    ignore_size_thresholds: bool,
+    check_blacklist: bool,
 ) {
     let mut candidates: Vec<PathBuf> = vec![path.clone()];
     let mut rejected_reasons: HashMap<String, usize> = HashMap::new();
+    let mut blacklisted_dirs_cnt: usize = 0;
     while !candidates.is_empty() {
         let local_path = candidates.pop().unwrap();
         if local_path.is_file() {
@@ -391,6 +393,11 @@ async fn _ls_files_under_version_control_recursive(
                     }
                 }
             } else {
+                let indexing_settings = IndexingSettings::default();
+                if check_blacklist && is_blacklisted(&indexing_settings, &local_path) {
+                    blacklisted_dirs_cnt += 1;
+                    continue;
+                }
                 let local_paths: Vec<PathBuf> = WalkDir::new(local_path.clone()).max_depth(1)
                     .into_iter()
                     .filter_map(|e| e.ok())
@@ -408,6 +415,7 @@ async fn _ls_files_under_version_control_recursive(
     if rejected_reasons.is_empty() {
         info!("    no bad files at all");
     }
+    info!("also the loop bumped into {} blacklisted dirs", blacklisted_dirs_cnt);
 }
 
 pub async fn retrieve_files_in_workspace_folders(
@@ -423,8 +431,24 @@ pub async fn retrieve_files_in_workspace_folders(
             &mut vcs_folders,
             proj_folder.clone(),
             allow_files_in_hidden_folders,
-            ignore_size_thresholds
+            ignore_size_thresholds,
+            true,
         ).await;
+    }
+    for vcs_folder in vcs_folders.iter() {
+        let indexing_settings = load_indexing_yaml(&vcs_folder).await;
+        for additional_indexing_dirs in indexing_settings.additional_indexing_dirs {
+            info!("retrieve files from additional indexing dir: {}", additional_indexing_dirs);
+            let mut _vcs_folders = vec![];
+            _ls_files_under_version_control_recursive(
+                &mut all_files,
+                &mut _vcs_folders,
+                PathBuf::from(additional_indexing_dirs.clone()),
+                allow_files_in_hidden_folders,
+                ignore_size_thresholds,
+                false,
+            ).await;
+        }
     }
     info!("in all workspace folders, VCS roots found:");
     for vcs_folder in vcs_folders.iter() {

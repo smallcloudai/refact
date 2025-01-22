@@ -69,8 +69,44 @@ impl WorkspaceIndexingSettings {
     }
 }
 
-async fn get_vcs_refact_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
-    let mut vcs_refact_dirs = vec![];
+pub async fn load_indexing_yaml(vcs_root: &PathBuf) -> IndexingSettings {
+    let indexing_path = vcs_root.join(".refact").join("indexing.yaml");
+    match fs::read_to_string(&indexing_path.as_path()).await.map_err(|e| e.to_string()) {
+        Ok(content) => {
+            match serde_yaml::from_str::<IndexingSettings>(&content) {
+                Ok(indexing_settings) => {
+                    let default_indexing_settings = IndexingSettings::default();
+                    let blocklist = default_indexing_settings.blocklist.iter().chain(indexing_settings.blocklist.iter()).cloned().collect();
+                    let mut additional_indexing_dirs = vec![];
+                    for indexing_dir in default_indexing_settings.additional_indexing_dirs.iter().chain(indexing_settings.additional_indexing_dirs.iter()) {
+                        if indexing_dir.is_empty() {
+                            continue;
+                        }
+                        let indexing_dir_path = PathBuf::from(indexing_dir);
+                        if indexing_dir_path.is_absolute() {
+                            // TODO: complicated case
+                            additional_indexing_dirs.push(indexing_dir.clone());
+                        } else {
+                            additional_indexing_dirs.push(vcs_root.join(indexing_dir).to_str().unwrap().to_string());
+                        }
+                    }
+                    return IndexingSettings{blocklist, additional_indexing_dirs}
+                }
+                Err(e) => {
+                    error!("parsing {} failed\n{}", indexing_path.display(), e);
+                    IndexingSettings::default()
+                }
+            }
+        }
+        Err(e) => {
+            error!("parsing {} failed\n{}", indexing_path.display(), e);
+            IndexingSettings::default()
+        }
+    }
+}
+
+async fn get_vcs_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
+    let mut vcs_dirs = vec![];
 
     let workspace_vcs_roots = {
         let gcx_locked = gcx.read().await;
@@ -79,53 +115,22 @@ async fn get_vcs_refact_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
 
     let vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
     for project_path in vcs_roots_locked.iter() {
-        let refact_dir = project_path.join(".refact");
-        if refact_dir.exists() {
-            vcs_refact_dirs.push(refact_dir.clone());
+        if project_path.join(".refact").exists() {
+            vcs_dirs.push(project_path.clone());
         }
     }
 
-    vcs_refact_dirs
+    vcs_dirs
 }
 
 async fn load_project_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> WorkspaceIndexingSettings {
-    let refact_dirs = get_vcs_refact_dirs(gcx.clone()).await;
+    let vcs_dirs = get_vcs_dirs(gcx.clone()).await;
     let mut indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
-    for refact_dir in refact_dirs {
-        if let Some(project_path) = refact_dir.parent() {
-            let indexing_path = refact_dir.join("indexing.yaml");
-            match fs::read_to_string(&indexing_path.as_path()).await {
-                Ok(content) => {
-                    match serde_yaml::from_str::<IndexingSettings>(&content) {
-                        Ok(indexing_settings) => {
-                            let default_indexing_settings = IndexingSettings::default();
-                            let blocklist = default_indexing_settings.blocklist.iter().chain(indexing_settings.blocklist.iter()).cloned().collect();
-                            let mut additional_indexing_dirs = vec![];
-                            for indexing_dir in default_indexing_settings.additional_indexing_dirs.iter().chain(indexing_settings.additional_indexing_dirs.iter()) {
-                                if indexing_dir.is_empty() {
-                                    continue;
-                                }
-                                let indexing_dir_path = PathBuf::from(indexing_dir);
-                                if indexing_dir_path.is_absolute() {
-                                    // TODO: complicated case
-                                    additional_indexing_dirs.push(indexing_dir.clone());
-                                } else {
-                                    additional_indexing_dirs.push(project_path.join(indexing_dir).to_str().unwrap().to_string());
-                                }
-                            }
-                            indexing_settings_map.insert(
-                                project_path.to_str().unwrap().to_string(),
-                                IndexingSettings{blocklist, additional_indexing_dirs},
-                            );
-                        }
-                        Err(e) => {
-                            error!("parsing {} failed\n{}", indexing_path.display(), e);
-                        }
-                    }
-                }
-                Err(_) => {}
-            }
-        }
+    for project_path in vcs_dirs {
+        indexing_settings_map.insert(
+            project_path.to_str().unwrap().to_string(),
+            load_indexing_yaml(&project_path.to_path_buf()).await,
+        );
     }
 
     let loaded_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
