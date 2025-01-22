@@ -187,8 +187,7 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
     ).map_err(|e| format!("Failed to create commit: {}", e))
 }
 
-/// Similar to `git diff`, from specified file changes.
-pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>, max_size: usize) -> Result<String, String> {
+fn git_diff<'repo>(repository: &'repo Repository, file_changes: &Vec<FileChange>) -> Result<git2::Diff<'repo>, String> {
     let mut diff_options = DiffOptions::new();
     diff_options.include_untracked(true);
     diff_options.recurse_untracked_dirs(true);
@@ -215,6 +214,13 @@ pub fn git_diff(repository: &Repository, file_changes: &Vec<FileChange>, max_siz
 
     let diff = repository.diff_tree_to_tree(Some(&head), Some(&new_tree), Some(&mut diff_options))
         .map_err(|e| format!("Failed to generate diff: {}", e))?;
+
+    Ok(diff)
+}
+
+/// Similar to `git diff`, from specified file changes.
+pub fn git_diff_as_string(repository: &Repository, file_changes: &Vec<FileChange>, max_size: usize) -> Result<String, String> {
+    let diff = git_diff(repository, file_changes)?;
 
     let mut diff_str = String::new();
     diff.print(git2::DiffFormat::Patch, |_, _, line| {
@@ -250,7 +256,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { tracing::warn!("{}", e); continue; }
         };
 
-        let file_changes = match crate::git::get_file_changes(&repository, true) {
+        let file_changes = match get_file_changes(&repository, true) {
             Ok(changes) if changes.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { tracing::warn!("{}", e); continue; }
@@ -277,7 +283,7 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
             Err(e) => { error!("{}", e); continue; }
         };
 
-        let diff = match git_diff(&repository, &commit.file_changes, MAX_DIFF_SIZE) {
+        let diff = match git_diff_as_string(&repository, &commit.file_changes, MAX_DIFF_SIZE) {
             Ok(d) if d.is_empty() => { continue; }
             Ok(d) => d,
             Err(e) => { error!("{}", e); continue; }
