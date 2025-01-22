@@ -60,3 +60,20 @@ impl ScratchError {
         response
     }
 }
+
+pub trait MapErrToString<T> {
+    /// Same as .map_err(|e| e.to_string())
+    fn map_err_to_string(self) -> Result<T, String>;
+    /// Same as .map_err(|e| format!("{} {}", pref, e))
+    fn map_err_with_prefix<P: std::fmt::Display>(self, pref: P) -> Result<T, String>;
+}
+
+impl<T, E: std::fmt::Display> MapErrToString<T> for Result<T, E> {
+    fn map_err_to_string(self) -> Result<T, String> {
+        self.map_err(|e| e.to_string())
+    }
+
+    fn map_err_with_prefix<P: std::fmt::Display>(self, pref: P) -> Result<T, String> {
+        self.map_err(|e| format!("{pref} {e}"))
+    }
+}
