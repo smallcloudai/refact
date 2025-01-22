@@ -65,9 +65,8 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
 
     let mut files = Vec::new();
     for entry in statuses.iter() {
-        if let Some(path) = entry.path() {
-            files.push(repository_path.join(path));
-        }
+        let path = String::from_utf8_lossy(entry.path_bytes()).to_string();
+        files.push(repository_path.join(path));
     }
     if !files.is_empty() { Some(files) } else { None }
 }
@@ -330,16 +329,17 @@ pub fn clean_and_hard_reset(repo: &Repository, commit_hash: &str) -> Result<(), 
     // Clean untracked files and directories
     let statuses = repo.statuses(None)
         .map_err(|e| format!("Failed to get statuses: {}", e))?;
+    let workspace_dir = repo.workdir()
+        .ok_or("Failed to get workdir from repository".to_string())?;
     for entry in statuses.iter() {
         let status = entry.status();
         if status.contains(git2::Status::WT_NEW) {
-            if let Some(path) = entry.path() {
-                let full_path = repo.workdir().unwrap().join(path);
-                if full_path.is_dir() {
-                    std::fs::remove_dir_all(&full_path).map_err(|e| format!("Failed to remove directory: {}", e))?;
-                } else {
-                    std::fs::remove_file(&full_path).map_err(|e| format!("Failed to remove file: {}", e))?;
-                }
+            let path = String::from_utf8_lossy(entry.path_bytes()).to_string();
+            let full_path = workspace_dir.join(path);
+            if full_path.is_dir() {
+                std::fs::remove_dir_all(&full_path).map_err(|e| format!("Failed to remove directory: {}", e))?;
+            } else {
+                std::fs::remove_file(&full_path).map_err(|e| format!("Failed to remove file: {}", e))?;
             }
         }
     }
