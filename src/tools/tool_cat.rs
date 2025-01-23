@@ -17,7 +17,7 @@ use crate::scratchpads::multimodality::MultimodalElement;
 use std::io::Cursor;
 use image::imageops::FilterType;
 use image::{ImageFormat, ImageReader};
-use crate::blocklist::load_indexing_settings_if_needed;
+use crate::blocklist::load_global_indexing_settings_if_needed;
 
 pub struct ToolCat;
 
@@ -213,8 +213,8 @@ pub async fn paths_and_symbols_to_cat(
                 Err(e) => { not_found_messages.push(e); continue;}
             };
             let path = PathBuf::from(candidate);
-            let workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
-            let files_in_dir = ls_files(&workspace_indexing_settings, &path, false).unwrap_or(vec![]);
+            let global_indexing_settings = load_global_indexing_settings_if_needed(gcx.clone()).await;
+            let files_in_dir = ls_files(&global_indexing_settings, &path, false).unwrap_or(vec![]);
             corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
         }
     }

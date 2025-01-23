@@ -33,21 +33,21 @@ impl Default for IndexingSettings {
     }
 }
 
-pub struct WorkspaceIndexingSettings {
+pub struct GlobalIndexingSettings {
     pub indexing_settings_map: HashMap<String, IndexingSettings>,
     pub loaded_ts: u64,
 }
 
-impl Default for WorkspaceIndexingSettings {
+impl Default for GlobalIndexingSettings {
     fn default() -> Self {
-        WorkspaceIndexingSettings {
+        GlobalIndexingSettings {
             indexing_settings_map: HashMap::new(),
             loaded_ts: 0,
         }
     }
 }
 
-impl WorkspaceIndexingSettings {
+impl GlobalIndexingSettings {
     // NOTE: path argument should be absolute
     pub fn get_indexing_settings(&self, path: PathBuf) -> IndexingSettings {
         let mut best_workspace: Option<PathBuf> = None;
@@ -123,7 +123,7 @@ async fn get_vcs_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
     vcs_dirs
 }
 
-async fn load_project_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> WorkspaceIndexingSettings {
+async fn load_global_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> GlobalIndexingSettings {
     let vcs_dirs = get_vcs_dirs(gcx.clone()).await;
     let mut indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
     for project_path in vcs_dirs {
@@ -134,7 +134,7 @@ async fn load_project_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> Wor
     }
 
     let loaded_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-    WorkspaceIndexingSettings{
+    GlobalIndexingSettings{
         indexing_settings_map,
         loaded_ts,
     }
@@ -142,21 +142,21 @@ async fn load_project_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> Wor
 
 const INDEXING_TOO_OLD: Duration = Duration::from_secs(3);
 
-pub async fn load_indexing_settings_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<WorkspaceIndexingSettings>
+pub async fn load_global_indexing_settings_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<GlobalIndexingSettings>
 {
     {
         let gcx_locked = gcx.read().await;
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-        if gcx_locked.indexing_settings.loaded_ts + INDEXING_TOO_OLD.as_secs() > current_time {
-            return gcx_locked.indexing_settings.clone();
+        if gcx_locked.global_indexing_settings.loaded_ts + INDEXING_TOO_OLD.as_secs() > current_time {
+            return gcx_locked.global_indexing_settings.clone();
         }
     }
 
-    let indexing_settings = load_project_indexing_settings(gcx.clone()).await;
+    let global_indexing_settings = load_global_indexing_settings(gcx.clone()).await;
     {
         let mut gcx_locked = gcx.write().await;
-        gcx_locked.indexing_settings = Arc::new(indexing_settings);
-        gcx_locked.indexing_settings.clone()
+        gcx_locked.global_indexing_settings = Arc::new(global_indexing_settings);
+        gcx_locked.global_indexing_settings.clone()
     }
 }
 

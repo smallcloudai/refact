@@ -19,7 +19,7 @@ use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
-use crate::blocklist::{is_this_inside_blacklisted_dir, is_blacklisted, load_indexing_yaml, load_indexing_settings_if_needed, WorkspaceIndexingSettings, IndexingSettings};
+use crate::blocklist::{is_this_inside_blacklisted_dir, is_blacklisted, load_indexing_yaml, load_global_indexing_settings_if_needed, GlobalIndexingSettings, IndexingSettings};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -243,7 +243,7 @@ async fn ls_files_under_version_control(path: &PathBuf) -> Option<Vec<PathBuf>> 
 }
 
 pub fn _ls_files(
-    workspace_indexing_settings: &WorkspaceIndexingSettings,
+    global_indexing_settings: &GlobalIndexingSettings,
     path: &PathBuf,
     recursive: bool,
     blacklist_check: bool,
@@ -267,7 +267,7 @@ pub fn _ls_files(
         entries.sort_by_key(|entry| entry.file_name());
         for entry in entries {
             let path = entry.path();
-            let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
+            let indexing_settings = global_indexing_settings.get_indexing_settings(path.clone());
             if recursive && path.is_dir() {
                 if !blacklist_check || !is_blacklisted(&indexing_settings, &path) {
                     dirs_to_visit.push(path);
@@ -281,7 +281,7 @@ pub fn _ls_files(
 }
 
 pub fn ls_files(
-    workspace_indexing_settings: &WorkspaceIndexingSettings,
+    global_indexing_settings: &GlobalIndexingSettings,
     path: &PathBuf,
     recursive: bool,
 ) -> Result<Vec<PathBuf>, String> {
@@ -289,11 +289,11 @@ pub fn ls_files(
         return Err(format!("path '{}' is not a directory", path.display()));
     }
 
-    let indexing_settings = workspace_indexing_settings.get_indexing_settings(path.clone());
-    let mut paths = _ls_files(workspace_indexing_settings, path, recursive, true).unwrap();
+    let indexing_settings = global_indexing_settings.get_indexing_settings(path.clone());
+    let mut paths = _ls_files(global_indexing_settings, path, recursive, true).unwrap();
     if recursive {
         for additional_indexing_dir in indexing_settings.additional_indexing_dirs.iter() {
-            paths.extend(_ls_files(workspace_indexing_settings, &PathBuf::from(additional_indexing_dir), recursive, false).unwrap());
+            paths.extend(_ls_files(global_indexing_settings, &PathBuf::from(additional_indexing_dir), recursive, false).unwrap());
         }
     }
 
@@ -715,12 +715,15 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 {
     async fn on_create_modify(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
-        let mut workspace_indexing_settings = Arc::new(WorkspaceIndexingSettings::default());
+        let global_indexing_settings;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
+            global_indexing_settings = load_global_indexing_settings_if_needed(gcx.clone()).await;
+        } else {
+            // the program is shutting down
+            return;
         }
         for p in &event.paths {
-            let indexing_settings = workspace_indexing_settings.get_indexing_settings(p.clone());
+            let indexing_settings = global_indexing_settings.get_indexing_settings(p.clone());
             if is_this_inside_blacklisted_dir(&indexing_settings, &p) {  // important to filter BEFORE canonical_path
                 continue;
             }
@@ -750,18 +753,21 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
     async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut never_mind = true;
-        let mut workspace_indexing_settings = Arc::new(WorkspaceIndexingSettings::default());
+        let global_indexing_settings;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            workspace_indexing_settings = load_indexing_settings_if_needed(gcx.clone()).await;
+            global_indexing_settings = load_global_indexing_settings_if_needed(gcx.clone()).await;
+        } else {
+            // the program is shutting down
+            return;
         }
         for p in &event.paths {
-            let indexing_settings = workspace_indexing_settings.get_indexing_settings(p.clone());
+            let indexing_settings = global_indexing_settings.get_indexing_settings(p.clone());
             never_mind &= is_this_inside_blacklisted_dir(&indexing_settings, &p);
         }
         let mut docs = vec![];
         if !never_mind {
             for p in &event.paths {
-                let indexing_settings = workspace_indexing_settings.get_indexing_settings(p.clone());
+                let indexing_settings = global_indexing_settings.get_indexing_settings(p.clone());
                 if is_this_inside_blacklisted_dir(&indexing_settings, &p) {
                     continue;
                 }

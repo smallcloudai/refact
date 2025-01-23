@@ -76,8 +76,6 @@ where I: IntoIterator<Item = String> {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    use std::sync::Arc;
-    use crate::blocklist::WorkspaceIndexingSettings;
     use crate::files_in_workspace::retrieve_files_in_workspace_folders;
 
     async fn get_candidates_from_workspace_files() -> Vec<String> {
