@@ -20,8 +20,6 @@ use crate::integrations::sessions::IntegrationSession;
 
 #[derive(Deserialize, Serialize, Clone, Default, PartialEq)]
 pub struct SettingsMCP {
-    #[serde(rename = "name")]
-    pub mcp_name: String,
     #[serde(rename = "command")]
     pub mcp_command: String,
     #[serde(rename = "args")]
@@ -46,6 +44,7 @@ pub struct IntegrationMCP {
 
 // #[derive(Default)]
 pub struct SessionMCP {
+    pub debug_name: String,
     pub launched_cfg: SettingsMCP,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
     pub mcp_client: Arc<AMutex<mcp_client_rs::client::Client>>,
     pub mcp_tools: Vec<mcp_client_rs::Tool>,
@@ -60,14 +59,14 @@ impl IntegrationSession for SessionMCP {
 
     fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
         Box::new(async {
-            tracing::info!("MCP STOP {}", self.launched_cfg.mcp_name);
+            tracing::info!("MCP STOP {}", self.debug_name);
             let mcp_client_locked = self.mcp_client.lock().await;
             let maybe_err = mcp_client_locked.shutdown().await;
             if let Err(e) = maybe_err {
-                tracing::error!("Failed to stop MCP {}:\n{:?}", self.launched_cfg.mcp_name, e);
-                format!("{} failed to stop", self.launched_cfg.mcp_name)
+                tracing::error!("Failed to stop MCP {}:\n{:?}", self.debug_name, e);
+                format!("{} failed to stop", self.debug_name)
             } else {
-                format!("{} stopped", self.launched_cfg.mcp_name)
+                format!("{} stopped", self.debug_name)
             }
         })
     }
@@ -88,8 +87,6 @@ impl IntegrationTrait for IntegrationMCP {
     ) -> Result<(), String> {
         let session_key = format!("{}", config_path);
         self.gcx_option = Some(Arc::downgrade(&gcx));
-        // gcx.write().await.integration_sessions.remove(&session_key);
-        // gcx.write().await.integration_sessions.insert(session_key.to_string(), Arc::new(AMutex::new(session)));
 
         let cfg = match serde_json::from_value::<SettingsMCP>(value.clone()) {
             Ok(x) => x,
@@ -109,7 +106,7 @@ impl IntegrationTrait for IntegrationMCP {
             }
         }
         if session_option.is_none() || wrong_cfg {
-            tracing::info!("MCP START SESSION {:?}", session_key);
+            tracing::info!("MCP START SESSION (1) {:?}", session_key);
             let mut client_builder = ClientBuilder::new(cfg.mcp_command.as_str());
             for arg in &cfg.mcp_args {
                 client_builder = client_builder.arg(arg);
@@ -126,6 +123,7 @@ impl IntegrationTrait for IntegrationMCP {
                     return Err(client_error.to_string());
                 }
             };
+            tracing::info!("MCP START SESSION (2) {:?}", session_key);
             let tools_result = match client.list_tools().await {
                 Ok(result) => result,
                 Err(tools_error) => {
@@ -133,8 +131,10 @@ impl IntegrationTrait for IntegrationMCP {
                     return Err(tools_error.to_string());
                 }
             };
+            tracing::info!("MCP START SESSION (3) {:?}", session_key);
             let mcp_client = Arc::new(AMutex::new(client));
             session_option = Some(Arc::new(AMutex::new(Box::new(SessionMCP {
+                debug_name: session_key.clone(),
                 launched_cfg: cfg.clone(),
                 mcp_client,
                 mcp_tools: tools_result.tools.clone(),
@@ -179,7 +179,7 @@ impl IntegrationTrait for IntegrationMCP {
         };
         let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
         if session_option.is_none() {
-            tracing::error!("No session for {:?}, strange", session_key);
+            tracing::error!("No session for {:?}, strange (1)", session_key);
             return vec![];
         }
 
@@ -219,7 +219,13 @@ impl Tool for ToolMCP {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        tracing::info!("\nCALL\n\n\n");
+        // let session_key = format!("{}", self.config_path);
+        // let gcx = ccx.lock().await.global_context.clone();
+        // let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
+        // if session_option.is_none() {
+        //     tracing::error!("No session for {:?}, strange (2)", session_key);
+        //     return Err(format!("No session for {:?}", session_key));
+        // }
 
         let mut json_arguments: serde_json::Value = serde_json::json!({});
         if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {
@@ -271,8 +277,7 @@ impl Tool for ToolMCP {
                     tracing::info!("BBBBB result.is_error={:?}", result.is_error);
                     tracing::info!("BBBBB result.content={:?}", result.content);
                     if result.is_error {
-                        tracing::error!("Tool execution error: {:?}", result.content);
-                        return Err("Tool execution error".to_string());
+                        return Err(format!("Tool execution error: {:?}", result.content));
                     }
                     if let Some(mcp_client_rs::MessageContent::Text { text }) = result.content.get(0) {
                         text.clone()
