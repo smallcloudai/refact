@@ -67,6 +67,7 @@ pub async fn handle_v1_trajectory_save(
         &goal.as_str(),
         &post.project.as_str(),
         &trajectory.as_str(),
+        "local-compressed-traj",
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;

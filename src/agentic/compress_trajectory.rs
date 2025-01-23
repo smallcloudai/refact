@@ -20,7 +20,7 @@ towards entities in the project. If something is junk according to the user, tha
 fluff, explanations for the user. Write one sentense: the evidence (specifics and facts), the thought process, motivated decision.
 4. Each tool call should be a separate record. Write all the parameters. Summarize facts about output of a tool, especially the facts
 useful for the goal, what the assistant learned, what was surprising to see?
-5. Each 📍-ticket should become a separate record, starts with "coding". Start with 📍REWRITE_ONE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍NEW_FILE, 📍OTHER and
+5. Each 📍-ticket should become a separate record, starts with "coding". Start with 📍REWRITE_ONE_SYMBOL, 📍REWRITE_WHOLE_FILE, 📍PARTIAL_EDIT, 📍OTHER and
 the three digit ticket number, summarize what the assistant wrote, give some stats, how is the new code different.
 6. Skip unsuccesful calls that are later corrected. Keep the corrected one.
 7. When writing paths to files, only output short relative paths from the project dir.
@@ -102,7 +102,7 @@ pub async fn compress_trajectory(
         ccx.clone(),
         model_name.as_str(),
         messages_compress,
-        vec![],
+        Some(vec![]),
         None,
         false,
         Some(TEMPERATURE),
