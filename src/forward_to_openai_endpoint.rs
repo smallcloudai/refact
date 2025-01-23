@@ -37,8 +37,10 @@ pub async fn forward_to_openai_style_endpoint(
     let mut data = json!({
         "model": model_name,
         "stream": false,
-        // "stop": sampling_parameters.stop, // openai does not like stop: []
     });
+    if !sampling_parameters.stop.is_empty() {  // openai does not like empty stop
+        data["stop"] = serde_json::Value::from(sampling_parameters.stop.clone());
+    };
     if let Some(n) = sampling_parameters.n {
         data["n"] = serde_json::Value::from(n);
     }
