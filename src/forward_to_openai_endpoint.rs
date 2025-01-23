@@ -121,8 +121,10 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "temperature": sampling_parameters.temperature,
         "max_completion_tokens": sampling_parameters.max_new_tokens,
         "stream_options": {"include_usage": true},
-        // "stop": sampling_parameters.stop, // openai does not like stop: []
     });
+    if !sampling_parameters.stop.is_empty() {  // openai does not like empty stop
+        data["stop"] = serde_json::Value::from(sampling_parameters.stop.clone());
+    };
     if let Some(n) = sampling_parameters.n{
         data["n"] = serde_json::Value::from(n);
     }
