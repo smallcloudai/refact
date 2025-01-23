@@ -89,13 +89,14 @@ pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<Pri
     }
 }
 
-fn any_glob_matches_path(globs: &Vec<String>, path: &Path) -> bool {
+pub fn any_glob_matches_path(globs: &Vec<String>, path: &Path) -> bool {
     globs.iter().any(|glob| {
         let pattern = Pattern::new(glob).unwrap();
         let matches = pattern.matches_path(path);
         matches
     })
 }
+
 fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -> FilePrivacyLevel
 {
     if any_glob_matches_path(&privacy_settings.privacy_rules.blocked, path) {

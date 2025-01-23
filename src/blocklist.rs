@@ -8,14 +8,16 @@ use tracing::{warn, error};
 use std::time::SystemTime;
 use std::collections::HashMap;
 use crate::global_context::GlobalContext;
+use crate::privacy::any_glob_matches_path;
 
 
 pub const DEFAULT_BLOCKLIST_DIRS: &[&str] = &[
-    "target", "node_modules", "vendor", "build", "dist",
-    "bin", "pkg", "lib", "lib64", "obj",
-    "out", "venv", "env", "tmp", "temp", "logs",
-    "coverage", "backup", "__pycache__",
-    "_trajectories", ".gradle",
+    "*\\.*", "*/.*",
+    "*target*", "*node_modules*", "*vendor*",
+    "*build*", "*dist*", "*bin*", "*pkg*", "*lib*",
+    "*obj*", "*out*", "*venv*", "*env*", "*tmp*", "*temp*",
+    "*logs*", "*coverage*", "*backup*", "*__pycache__*",
+    "*_trajectories*", "*.gradle*",
 ];
 
 #[derive(Debug, Clone, Deserialize)]
@@ -161,8 +163,11 @@ async fn load_global_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> Glob
         match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
             Ok(indexing_settings) => {
                 vcs_indexing_settings_map.insert(
-                    indexing_path.to_str().unwrap().to_string(),
-                    indexing_settings,
+                    indexing_root.to_str().unwrap().to_string(),
+                    IndexingSettings {
+                        blocklist: global_indexing_settings.blocklist.iter().chain(indexing_settings.blocklist.iter()).cloned().collect(),
+                        additional_indexing_dirs: global_indexing_settings.additional_indexing_dirs.iter().chain(indexing_settings.additional_indexing_dirs.iter()).cloned().collect(),
+                    },
                 );
             },
             Err(e) => {
@@ -212,26 +217,9 @@ pub fn is_this_inside_blocklisted_dir(indexing_settings: &IndexingSettings, path
     if is_path_in_additional_indexing_dirs(indexing_settings, path.to_str().unwrap()) {
         return false;
     }
-    let mut path = path.clone();
-    while path.parent().is_some() {
-        path = path.parent().unwrap().to_path_buf();
-        if is_blocklisted(&indexing_settings, &path) {
-            return true;
-        }
-    }
-    false
+    is_blocklisted(&indexing_settings, &path)
 }
 
 pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
-    if let Some(file_name) = path.file_name() {
-        if indexing_settings.blocklist.contains(&file_name.to_str().unwrap_or_default().to_string()) {
-            return true;
-        }
-        if let Some(file_name_str) = file_name.to_str() {
-            if file_name_str.starts_with(".") {
-                return true;
-            }
-        }
-    }
-    false
+    return any_glob_matches_path(&indexing_settings.blocklist, &path)
 }
