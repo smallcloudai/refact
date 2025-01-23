@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tokio::fs;
 use tokio_rusqlite::Connection;
 use tracing::info;
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 use crate::vecdb::vdb_structs::{SimpleTextHashVector, SplitResult, VecdbRecord};
 

@@ -12,7 +12,7 @@ use tokio::sync::{Mutex as AMutex, Notify};
 use tokio::time::Instant;
 use tokio_rusqlite::Connection;
 
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 use crate::ast::chunk_utils::official_text_hashing_function;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{MemoRecord, SimpleTextHashVector, VecDbStatus, VecdbConstants};
