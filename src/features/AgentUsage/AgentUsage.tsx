@@ -1,19 +1,25 @@
 import React, { useMemo } from "react";
 
 import { useAgentUsage, useAppSelector, useGetUser } from "../../hooks";
-import { Flex, Card, Text } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
 import { LinkButton } from "../../components/Buttons";
 import styles from "./AgentUsage.module.css";
 import { selectAgentUsage } from "./agentUsageSlice";
 import { selectToolUse } from "../Chat";
+import { ReloadIcon } from "@radix-ui/react-icons";
 
 export const AgentUsage: React.FC = () => {
   const userRequest = useGetUser();
   const toolUse = useAppSelector(selectToolUse);
   const agentUsageAmount = useAppSelector(selectAgentUsage);
 
-  const { shouldShow, maxAgentUsageAmount, startPollingForUser, plan } =
-    useAgentUsage();
+  const {
+    shouldShow,
+    maxAgentUsageAmount,
+    startPollingForUser,
+    refetchUser,
+    plan,
+  } = useAgentUsage();
 
   const usageMessage = useMemo(() => {
     if (agentUsageAmount === null) return null;
@@ -43,7 +49,15 @@ export const AgentUsage: React.FC = () => {
       <Flex gap="4" direction="column">
         <Text size="2">{usageMessage}</Text>
 
-        <Flex gap="3" justify="end">
+        <Flex gap="2" justify="end">
+          <IconButton
+            size="2"
+            variant="outline"
+            title="Refetch limits data"
+            onClick={refetchUser}
+          >
+            <ReloadIcon />
+          </IconButton>
           <LinkButton
             size="2"
             variant="outline"

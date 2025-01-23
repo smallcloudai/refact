@@ -6,8 +6,11 @@ import {
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
 import { selectIsStreaming, selectIsWaiting } from "../features/Chat";
+import { smallCloudApi } from "../services/smallcloud";
+import { useAppDispatch } from "./useAppDispatch";
 
 export function useAgentUsage() {
+  const dispatch = useAppDispatch();
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
@@ -52,6 +55,10 @@ export function useAgentUsage() {
     setPollingForUser(true);
   }, []);
 
+  const refetchUser = useCallback(() => {
+    dispatch(smallCloudApi.util.resetApiState());
+  }, [dispatch]);
+
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
     if (user.data?.inference !== "FREE") return false;
@@ -70,6 +77,7 @@ export function useAgentUsage() {
     maxAgentUsageAmount,
     aboveUsageLimit,
     startPollingForUser,
+    refetchUser,
     pollingForUser,
     disableInput,
     plan: user.data?.inference ?? "",
