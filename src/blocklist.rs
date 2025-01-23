@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use crate::global_context::GlobalContext;
 
 
-pub const DEFAULT_BLACKLIST_DIRS: &[&str] = &[
+pub const DEFAULT_BLOCKLIST_DIRS: &[&str] = &[
     "target", "node_modules", "vendor", "build", "dist",
     "bin", "pkg", "lib", "lib64", "obj",
     "out", "venv", "env", "tmp", "temp", "logs",
@@ -27,7 +27,7 @@ pub struct IndexingSettings {
 impl Default for IndexingSettings {
     fn default() -> Self {
         IndexingSettings {
-            blocklist: DEFAULT_BLACKLIST_DIRS.iter().map(|s| s.to_string()).collect(),
+            blocklist: DEFAULT_BLOCKLIST_DIRS.iter().map(|s| s.to_string()).collect(),
             additional_indexing_dirs: vec![],
         }
     }
@@ -169,21 +169,21 @@ fn is_path_in_additional_indexing_dirs(indexing_settings: &IndexingSettings, pat
     false
 }
 
-pub fn is_this_inside_blacklisted_dir(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
+pub fn is_this_inside_blocklisted_dir(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
     if is_path_in_additional_indexing_dirs(indexing_settings, path.to_str().unwrap()) {
         return false;
     }
     let mut path = path.clone();
     while path.parent().is_some() {
         path = path.parent().unwrap().to_path_buf();
-        if is_blacklisted(&indexing_settings, &path) {
+        if is_blocklisted(&indexing_settings, &path) {
             return true;
         }
     }
     false
 }
 
-pub fn is_blacklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
+pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
     if let Some(file_name) = path.file_name() {
         if indexing_settings.blocklist.contains(&file_name.to_str().unwrap_or_default().to_string()) {
             return true;
