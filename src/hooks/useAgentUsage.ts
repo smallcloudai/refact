@@ -2,12 +2,15 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   selectMaxAgentUsageAmount,
   selectAgentUsage,
+  setInitialAgentUsage,
 } from "../features/AgentUsage/agentUsageSlice";
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
 import { selectIsStreaming, selectIsWaiting } from "../features/Chat";
+import { useAppDispatch } from "./useAppDispatch";
 
 export function useAgentUsage() {
+  const dispatch = useAppDispatch();
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
@@ -52,9 +55,16 @@ export function useAgentUsage() {
     setPollingForUser(true);
   }, []);
 
-  const refetchUser = useCallback(() => {
-    void user.refetch();
-  }, [user]);
+  const refetchUser = useCallback(async () => {
+    // TODO: find a better way to refetch user and update store state :/
+    const updatedUserData = await user.refetch();
+    if (!updatedUserData.data) return;
+    const action = setInitialAgentUsage({
+      agent_usage: updatedUserData.data.refact_agent_request_available,
+      agent_max_usage_amount: updatedUserData.data.refact_agent_max_request_num,
+    });
+    dispatch(action);
+  }, [dispatch, user]);
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
