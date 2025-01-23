@@ -396,26 +396,32 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
     commits_with_messages
 }
 
-pub fn initialize_repo(workspace_path: &PathBuf, git_dir_path: &PathBuf) -> Result<Repository, String> {
-    let repo = git2::Repository::init(&git_dir_path)
-        .map_err(|e| format!("Failed to initialize repository: {}", e))?;
+pub fn open_or_initialize_repo(workdir: &PathBuf, git_dir_path: &PathBuf) -> Result<Repository, String> {
+    match git2::Repository::open(&git_dir_path) {
+        Ok(repo) => {
+            repo.set_workdir(&workdir, false).map_err_to_string()?;
+            Ok(repo)
+        },
+        Err(not_found_err) if not_found_err.code() == git2::ErrorCode::NotFound => {
+            let repo = git2::Repository::init(&git_dir_path).map_err_to_string()?;
+            repo.set_workdir(&workdir, false).map_err_to_string()?;
 
-    repo.set_workdir(&workspace_path, false)
-        .map_err(|e| format!("Failed to set workdir: {}", e))?;
+            {
+                let tree_id = {
+                    let mut index = repo.index().map_err_to_string()?;
+                    index.write_tree().map_err_to_string()?
+                };
+                let tree = repo.find_tree(tree_id).map_err_to_string()?;
+                let signature = git2::Signature::now("Refact Agent", "agent@refact.ai")
+                    .map_err_to_string()?;
+                repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[])
+                    .map_err_to_string()?;
+            }
 
-    {
-        let tree_id = {
-            let mut index = repo.index().map_err(|e| format!("Failed to get index: {}", e))?;
-            index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?
-        };
-        let tree = repo.find_tree(tree_id).map_err(|e| format!("Failed to find tree: {}", e))?;
-        let signature = git2::Signature::now("Refact Agent", "agent@refact.ai")
-            .map_err(|e| format!("Failed to create signature: {}", e))?;
-        repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[])
-            .map_err(|e| format!("Failed to create initial commit: {}", e))?;
+            Ok(repo)
+        },
+        Err(e) => Err(e.to_string()),
     }
-
-    Ok(repo)
 }
 
 pub fn clean_and_hard_reset(repo: &Repository, commit_hash: &str) -> Result<(), String> {
@@ -448,50 +454,37 @@ pub fn clean_and_hard_reset(repo: &Repository, commit_hash: &str) -> Result<(), 
     Ok(())
 }
 
-fn get_workspace_and_commit_hash_from_checkpoint(checkpoint: &str) -> Result<(String, String), String> {
-    let parts: Vec<&str> = checkpoint.split('/').collect();
-    match parts.as_slice() {
-        [workspace_hash, commit_hash] => Ok((workspace_hash.to_string(), commit_hash.to_string())),
-        [""] => Ok(("".to_string(), "".to_string())),
-        _ => return Err("Invalid checkpoint".to_string()),
-    }
-}
-
-pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_checkpoint: &str, chat_id: &str) -> Result<String, String> {
+pub async fn create_workspace_checkpoint(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    prev_checkpoint: Option<&Checkpoint>,
+    chat_id: &str,
+) -> Result<(Checkpoint, Vec<FileChange>, Repository), String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
     let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
 
-    let (last_check_workspace_hash, _) = get_workspace_and_commit_hash_from_checkpoint(last_checkpoint)?;
-    if !last_check_workspace_hash.is_empty() && last_check_workspace_hash != workspace_folder_hash {
-        return Err("Can not create checkpoint for different workspace folder".to_string());
+    if let Some(prev_checkpoint) = prev_checkpoint {
+        if prev_checkpoint.workspace_hash != workspace_folder_hash {
+            return Err("Can not create checkpoint for different workspace folder".to_string());
+        }
     }
 
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
-    let repo = match git2::Repository::open(&shadow_repo_path) {
-        Ok(repo) => {
-            repo.set_workdir(&workspace_folder, false)
-                .map_err(|e| format!("Failed to set workdir: {}", e))?;
-            Ok(repo)
-        },
-        Err(e) => {
-            if e.code() == git2::ErrorCode::NotFound {
-                initialize_repo(&workspace_folder, &shadow_repo_path)
-            } else {
-                Err(format!("Failed to open repository: {}", e))
-            }
-        },
-    }?;
+    let repo = open_or_initialize_repo(&workspace_folder, &shadow_repo_path)
+        .map_err_with_prefix("Failed to open or init repo:")?;
 
-    let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
-    let commit_oid_from_branch = branch.get().target().map(|oid| oid.to_string());
-    let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref())?;
-    stage_changes(&repo, &file_changes)?;
+    let (checkpoint, file_changes) = {
+        let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
+        let commit_oid_from_branch = branch.get().target().map(|oid| oid.to_string());
+        let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref())?;
+        stage_changes(&repo, &file_changes)?;
 
-    let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
+        let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
+        (Checkpoint {workspace_hash: workspace_folder_hash, commit_hash: commit_oid.to_string()}, file_changes)
+    };
 
-    Ok(format!("{workspace_folder_hash}/{commit_oid}"))
+    Ok((checkpoint, file_changes, repo))
 }
 
 pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &Checkpoint) -> Result<(), String> {
@@ -514,3 +507,22 @@ pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, chec
     clean_and_hard_reset(&repo, &checkpoint.commit_hash)?;
     Ok(())
 }
+
+// pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &Checkpoint, chat_id: &str) -> Result<(String, Vec<FileChange>), String> {
+//     let cache_dir = gcx.read().await.cache_dir.clone();
+//     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
+//        .ok_or_else(|| "No active workspace folder".to_string())?;
+//     let (new_checkpoint, _) = create_workspace_checkpoint(gcx.clone(), checkpoint, chat_id).await?;
+
+//     let commit_to_restore = Oid::from_str(&checkpoint.commit_hash)
+//         .and_then(|oid| repo.find_commit(oid))
+//         .map_err_with_prefix("Can't get commit to restore:")?;
+//     repo.checkout_tree(&commit_to_restore.as_object(), None)
+//         .map_err_with_prefix("Failed to checkout commit")?;
+//     repo.reference(&branch_ref, commit_to_restore.id(), true, "restore checkpoint")
+//         .map_err_with_prefix("Failed to update branch reference")?;
+//     repo.set_head(&branch_ref).map_err_with_prefix("Failed to set HEAD to branch:")?;
+
+//     let checkpoint = Checkpoint {workspace_hash: workspace_folder_hash, commit_hash: new_commit_oid.to_string()};
+//     Ok((checkpoint, file_changes))
+// }
