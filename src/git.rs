@@ -1,13 +1,14 @@
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::RwLock as ARwLock;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use url::Url;
 use serde::{Serialize, Deserialize};
 use tracing::error;
-use git2::{Branch, DiffOptions, Oid, Repository, Signature, Status, StatusOptions};
+use git2::{Branch, DiffOptions, Oid, Repository, Signature, StatusOptions, Tree};
 
 use crate::ast::chunk_utils::official_text_hashing_function;
-use crate::files_correction::{get_active_workspace_folder, to_pathbuf_normalize};
+use crate::custom_error::MapErrToString;
+use crate::files_correction::get_active_workspace_folder;
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::files_correction::{serialize_path, deserialize_path};
@@ -106,6 +107,105 @@ pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch
     Ok(branch)
 }
 
+/// Tries to get tree in given repository, from commit_id if given, otherwise HEAD tree, 
+/// or empty tree if there is no HEAD commit
+fn get_tree<'repo>(repository: &'repo Repository, commit_id: Option<&str>) -> Result<Tree<'repo>, String> {
+    match commit_id {
+        Some(commit_id) => {
+            repository.revparse_single(commit_id)
+                .and_then(|o| o.peel_to_commit())
+                .and_then(|c| c.tree())
+                .map_err_to_string()
+        },
+        None => {
+            match repository.head().and_then(|h| h.peel_to_commit()) {
+                Ok(commit) => commit.tree().map_err_to_string(),
+                Err(_) => {
+                    repository.treebuilder(None)
+                        .and_then(|tb| tb.write())
+                        .and_then(|oid| repository.find_tree(oid))
+                        .map_err_to_string()
+                },
+            }
+        },
+    }
+}
+
+pub fn get_file_changes(repository: &Repository, include_unstaged: bool, commit_id: Option<&str>) -> Result<Vec<FileChange>, String> {
+    let repository_workdir = repository.workdir()
+        .ok_or("Failed to get workdir from repository".to_string())?;
+
+    let tree = get_tree(repository, commit_id).map_err_with_prefix("Failed to get tree:")?;
+
+    let mut diff_options = git2::DiffOptions::new();
+    diff_options.include_untracked(include_unstaged).recurse_untracked_dirs(include_unstaged);
+
+    let diff = repository.diff_tree_to_workdir(Some(&tree), Some(&mut diff_options))
+        .map_err_with_prefix("Failed to get diff:")?;
+
+    let mut file_changes = Vec::new();
+    for delta in diff.deltas() {
+        let old_paths_maybe = delta.old_file().path()
+            .map(|path| (path.to_path_buf(), repository_workdir.join(path)));
+        let new_paths_maybe = delta.new_file().path()
+            .map(|path| (path.to_path_buf(), repository_workdir.join(path)));
+
+        match delta.status() {
+            git2::Delta::Added | git2::Delta::Copied | git2::Delta::Untracked => {
+                let (relative_path, absolute_path) = new_paths_maybe
+                    .ok_or("Failed to get new file path for file added")?;
+                file_changes.push(FileChange {
+                    relative_path,
+                    absolute_path,
+                    status: FileChangeStatus::ADDED,
+                });
+            },
+            git2::Delta::Modified | git2::Delta::Conflicted => {
+                let (relative_path, absolute_path) = new_paths_maybe
+                    .ok_or("Failed to get new file path for file added")?;
+                file_changes.push(FileChange {
+                    relative_path,
+                    absolute_path,
+                    status: FileChangeStatus::MODIFIED,
+                });
+            },
+            git2::Delta::Deleted => {
+                let (relative_path, absolute_path) = old_paths_maybe
+                    .ok_or("Failed to get old file path for file deleted")?;
+                file_changes.push(FileChange {
+                    relative_path,
+                    absolute_path,
+                    status: FileChangeStatus::DELETED,
+                });
+            },
+            git2::Delta::Typechange | git2::Delta::Renamed => {
+                if let Some((old_rel_path, old_abs_path)) = old_paths_maybe {
+                    file_changes.push(FileChange {
+                        relative_path: old_rel_path,
+                        absolute_path: old_abs_path,
+                        status: FileChangeStatus::DELETED,
+                    });
+                }
+                if let Some((new_rel_path, new_abs_path)) = new_paths_maybe {
+                    file_changes.push(FileChange {
+                        relative_path: new_rel_path,
+                        absolute_path: new_abs_path,
+                        status: FileChangeStatus::ADDED,
+                    });
+                }
+            },
+            git2::Delta::Unmodified | git2::Delta::Ignored => {},
+            git2::Delta::Unreadable => { 
+                tracing::error!("Failed to read file: (old) {} (new) {}", 
+                    delta.old_file().path().map_or("<none>", |p| p.to_str().unwrap_or("<invalid>")),
+                    delta.new_file().path().map_or("<none>", |p| p.to_str().unwrap_or("<invalid>")));
+            },
+        };
+    }
+
+    Ok(file_changes)
+}
+
 pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<(), String> {
     let mut index = repository.index()
         .map_err(|e| format!("Failed to get index: {}", e))?;
@@ -127,48 +227,6 @@ pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) ->
         .map_err(|e| format!("Failed to write index: {}", e))?;
 
     Ok(())
-}
-
-pub fn get_file_changes(repository: &Repository, include_unstaged: bool) -> Result<Vec<FileChange>, String> {
-    let mut result = Vec::new();
-    let repository_workdir = repository.workdir()
-        .ok_or("Failed to get workdir from repository".to_string())?;
-
-    let statuses = repository.statuses(None)
-        .map_err(|e| format!("Failed to get statuses: {}", e))?;
-    for entry in statuses.iter() {
-        let status = entry.status();
-        let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
-        let absolute_path_str = repository_workdir.join(&relative_path).to_string_lossy().to_string();
-        let absolute_path = to_pathbuf_normalize(&absolute_path_str);
-
-        if status.contains(Status::INDEX_NEW) || 
-           (include_unstaged && status.contains(Status::WT_NEW)) {
-            result.push(FileChange {
-                status: FileChangeStatus::ADDED,
-                relative_path: relative_path.clone(),
-                absolute_path: absolute_path.clone(),
-            });
-        }
-        if status.contains(Status::INDEX_MODIFIED) || 
-           (include_unstaged && status.contains(Status::WT_MODIFIED)) {
-            result.push(FileChange {
-                status: FileChangeStatus::MODIFIED,
-                relative_path: relative_path.clone(),
-                absolute_path: absolute_path.clone(),
-            });
-        }
-        if status.contains(Status::INDEX_DELETED) || 
-           (include_unstaged && status.contains(Status::WT_DELETED)) {
-            result.push(FileChange {
-                status: FileChangeStatus::DELETED,
-                relative_path: relative_path.clone(),
-                absolute_path: absolute_path,
-            });
-        }
-    }
-
-    Ok(result)
 }
 
 pub fn get_configured_author_email_and_name(repository: &Repository) -> Result<(String, String), String> {
@@ -223,8 +281,16 @@ fn git_diff<'repo>(repository: &'repo Repository, file_changes: &Vec<FileChange>
     // Create a new temporary tree, with all changes staged
     let mut index = repository.index().map_err(|e| format!("Failed to get repository index: {}", e))?;
     for file_change in &sorted_file_changes {
-        index.add_path(Path::new(&file_change.relative_path))
-            .map_err(|e| format!("Failed to add file to index: {}", e))?;
+        match file_change.status {
+            FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
+                index.add_path(&file_change.relative_path)
+                    .map_err(|e| format!("Failed to add file to index: {}", e))?;
+            },
+            FileChangeStatus::DELETED => {
+                index.remove_path(&file_change.relative_path)
+                    .map_err(|e| format!("Failed to remove file from index: {}", e))?;
+            },
+        }
     }
     let oid = index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?;
     let new_tree = repository.find_tree(oid).map_err(|e| format!("Failed to find tree: {}", e))?;
@@ -276,7 +342,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { tracing::warn!("{}", e); continue; }
         };
 
-        let file_changes = match get_file_changes(&repository, true) {
+        let file_changes = match get_file_changes(&repository, true, None) {
             Ok(changes) if changes.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { tracing::warn!("{}", e); continue; }
@@ -412,10 +478,11 @@ pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_
         },
     }?;
 
-    let file_changes = get_file_changes(&repo, true)?;
+    let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
+    let commit_oid_from_branch = branch.get().target().map(|oid| oid.to_string());
+    let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref())?;
     stage_changes(&repo, &file_changes)?;
 
-    let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
     let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
 
     Ok(format!("{workspace_folder_hash}/{commit_oid}"))
