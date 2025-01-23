@@ -91,14 +91,6 @@ jobs:
         if: matrix.target == 'arm-unknown-linux-gnueabihf'
         run: sudo apt-get install gcc-arm-linux-gnueabihf
 
-      - name: Install toolchain dependencies (MacOS)
-        if: startsWith(matrix.os, 'macos')
-        run: brew install protobuf
-
-      - name: Install toolchain dependencies (Windows)
-        if: startsWith(matrix.os, 'windows')
-        run: choco install protoc
-      
       - name: Restore cached cargo
         uses: swatinem/rust-cache@v2
         with:

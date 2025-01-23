@@ -17,7 +17,6 @@ RUN apk add --no-cache \
     openssl-dev \
     openssl-libs-static \
     pkgconfig \
-    protobuf-dev \
     zlib-static
 
 RUN cargo chef cook --recipe-path recipe.json
