@@ -54,7 +54,7 @@ export const AgentUsage: React.FC = () => {
             size="2"
             variant="outline"
             title="Refetch limits data"
-            onClick={refetchUser}
+            onClick={() => void refetchUser()}
           >
             <ReloadIcon />
           </IconButton>
