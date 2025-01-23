@@ -471,11 +471,7 @@ pub async fn tool_description_list_from_yaml(
 
     for (tool_name, tool) in tools {
         if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
-            let tool_desc = {
-                let tool_locked = tool_arc.lock().await;
-                tool_locked.tool_description()
-            };
-            tool_desc_vec.push(tool_desc);
+            tool_desc_vec.push(tool.tool_description());
         }
     }
 

@@ -22,7 +22,7 @@ pub async fn load_integration_tools(
             if tools.contains_key(&tool_name) {
                 tracing::warn!("tool with name '{}' already exists, overwriting previous definition", tool_name);
             }
-            tools.insert(tool_name, Arc::new(AMutex::new(tool)));
+            tools.insert(tool_name, tool);
         }
     }
     tools
