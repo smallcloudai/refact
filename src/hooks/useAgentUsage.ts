@@ -6,11 +6,8 @@ import {
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
 import { selectIsStreaming, selectIsWaiting } from "../features/Chat";
-import { smallCloudApi } from "../services/smallcloud";
-import { useAppDispatch } from "./useAppDispatch";
 
 export function useAgentUsage() {
-  const dispatch = useAppDispatch();
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
@@ -56,8 +53,8 @@ export function useAgentUsage() {
   }, []);
 
   const refetchUser = useCallback(() => {
-    dispatch(smallCloudApi.util.resetApiState());
-  }, [dispatch]);
+    void user.refetch();
+  }, [user]);
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
