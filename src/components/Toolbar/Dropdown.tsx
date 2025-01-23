@@ -128,7 +128,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
-          Plugin Settings
+          Extension Settings
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
