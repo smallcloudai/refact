@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::RwLock as ARwLock;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use url::Url;
 use serde::{Serialize, Deserialize};
 use tracing::error;
@@ -57,6 +57,12 @@ impl FileChangeStatus {
             FileChangeStatus::DELETED => 'D',
         }
     }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug)]
+pub struct Checkpoint {
+    pub workspace_hash: String,
+    pub commit_hash: String,
 }
 
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
@@ -131,14 +137,14 @@ fn get_tree<'repo>(repository: &'repo Repository, commit_id: Option<&str>) -> Re
     }
 }
 
-pub fn get_file_changes(repository: &Repository, include_unstaged: bool, commit_id: Option<&str>) -> Result<Vec<FileChange>, String> {
+pub fn get_file_changes(repository: &Repository, include_untracked: bool, commit_id: Option<&str>) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
     let tree = get_tree(repository, commit_id).map_err_with_prefix("Failed to get tree:")?;
 
     let mut diff_options = git2::DiffOptions::new();
-    diff_options.include_untracked(include_unstaged).recurse_untracked_dirs(include_unstaged);
+    diff_options.include_untracked(include_untracked).recurse_untracked_dirs(include_untracked);
 
     let diff = repository.diff_tree_to_workdir(Some(&tree), Some(&mut diff_options))
         .map_err_with_prefix("Failed to get diff:")?;
@@ -488,16 +494,13 @@ pub async fn create_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, last_
     Ok(format!("{workspace_folder_hash}/{commit_oid}"))
 }
 
-pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &str) -> Result<(), String> {
+pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &Checkpoint) -> Result<(), String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
        .ok_or_else(|| "No active workspace folder".to_string())?;
     let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
 
-    let (checkpoint_workspace_hash, checkpoint_commit_hash) = 
-        get_workspace_and_commit_hash_from_checkpoint(checkpoint)?;
-
-    if !checkpoint_workspace_hash.is_empty() && checkpoint_workspace_hash != workspace_folder_hash {
+    if !checkpoint.workspace_hash.is_empty() && checkpoint.workspace_hash != workspace_folder_hash {
         return Err("Can not restore checkpoint for different workspace folder".to_string());
     }
 
@@ -508,6 +511,6 @@ pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, chec
     repo.set_workdir(&workspace_folder, false)
         .map_err(|e| format!("Failed to set workdir: {}", e))?;
 
-    clean_and_hard_reset(&repo, &checkpoint_commit_hash)?;
+    clean_and_hard_reset(&repo, &checkpoint.commit_hash)?;
     Ok(())
 }
