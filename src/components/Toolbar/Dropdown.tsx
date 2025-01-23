@@ -92,7 +92,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Item>
         )}
 
-        {/* 
+        {/*
         Hide coins (until coins logic is reworked)
         {user.data && (
           <DropdownMenu.Label>
@@ -127,12 +127,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
           Setup Agent Integrations
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
-          IDE Hotkeys Settings
+        <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
+          Plugin Settings
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
-          IDE Settings
+        <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
+          IDE Hotkeys
         </DropdownMenu.Item>
 
         <DropdownMenu.Item
