@@ -25,7 +25,10 @@ const Preview: React.FC<{ file: string | ChatContextFile }> = ({ file }) => {
       </FileNameAndContent>
     );
   }
-  const lineText = `:${file.line1}-${file.line2}`;
+
+  const lineText =
+    file.line1 !== 0 && file.line2 !== 0 && `:${file.line1}-${file.line2}`;
+
   return (
     <FileNameAndContent title={file.file_content}>
       📎&nbsp;

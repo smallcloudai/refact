@@ -27,7 +27,7 @@ export type Config = {
 
 const initialState: Config = {
   host: "web",
-  lspPort: 8001,
+  lspPort: __REFACT_LSP_PORT__ ?? 8001,
   apiKey: null,
   features: {
     statistics: true,

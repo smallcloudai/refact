@@ -46,6 +46,13 @@ function isToolCall(call: unknown): call is ToolCall {
 }
 
 type ToolContent = string | MultiModalToolContent[];
+
+export function isToolContent(json: unknown): json is ToolContent {
+  if (!json) return false;
+  if (typeof json === "string") return true;
+  if (Array.isArray(json)) return json.every(isMultiModalToolContent);
+  return false;
+}
 export interface BaseToolResult {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
@@ -135,6 +142,7 @@ export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
   tool_calls?: ToolCall[] | null;
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -242,6 +250,12 @@ export function isDiffMessage(message: ChatMessage): message is DiffMessage {
   return message.role === "diff";
 }
 
+export function isSystemMessage(
+  message: ChatMessage,
+): message is SystemMessage {
+  return message.role === "system";
+}
+
 export function isToolCallMessage(
   message: ChatMessage,
 ): message is ToolCallMessage {
@@ -314,7 +328,7 @@ type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
 
 export type ChatChoice = {
   delta: Delta;
-  finish_reason?: "stop" | "abort" | "tool_calls" | null;
+  finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   index: number;
 };
 
@@ -483,6 +497,13 @@ export function isSubchatResponse(json: unknown): json is SubchatResponse {
   return true;
 }
 
+export function isSystemResponse(json: unknown): json is SystemMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  return json.role === "system";
+}
+
 export function isCDInstructionResponse(
   json: unknown,
 ): json is CDInstructionMessage {
@@ -497,6 +518,8 @@ type ChatResponseChoice = {
   created: number;
   model: string;
   id: string;
+  refact_agent_request_available: null | number;
+  refact_agent_max_request_num: number;
 };
 
 export function isChatResponseChoice(
@@ -511,3 +534,13 @@ export type ChatResponse =
   | ChatUserMessageResponse
   | ToolResponse
   | PlainTextResponse;
+
+export function areAllFieldsBoolean(
+  json: unknown,
+): json is Record<string, boolean> {
+  return (
+    typeof json === "object" &&
+    json !== null &&
+    Object.values(json).every((value) => typeof value === "boolean")
+  );
+}

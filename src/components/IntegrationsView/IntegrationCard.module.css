@@ -1,0 +1,23 @@
+.integrationCard {
+  padding: 1rem;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+}
+
+.integrationCardInline {
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  .integrationIcon {
+    max-width: 45px;
+  }
+}
+
+.integrationIcon {
+  max-width: 30px;
+  object-fit: cover;
+}

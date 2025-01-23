@@ -43,6 +43,7 @@ import {
   noCompletions,
   goodUser,
   goodPing,
+  chatLinks,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -53,6 +54,7 @@ const handlers = [
   noCompletions,
   goodUser,
   goodPing,
+  chatLinks,
 ];
 
 // const handlers = [
@@ -210,7 +212,7 @@ describe("Chat", () => {
             },
           });
         },
-        { once: true },
+        // { once: true }, // TODO: title
       ),
     );
 
@@ -218,16 +220,6 @@ describe("Chat", () => {
       <Chat host="vscode" tabbed={false} backFromChat={() => ({})} />,
       { preloadedState: { pages: [{ name: "chat" }] } },
     );
-
-    // const select = await screen.findByTitle("chat model");
-
-    await waitFor(() => {
-      // TODO: find out why this is not near the select?
-      // app.debug(select.parentElement?.parentElement, 10000);
-      // expect(app.container.textContent).toContain("gpt-3.5-turbo");
-
-      expect(screen.findByText("gpt-3.5-turbo")).not.toBeNull();
-    });
 
     const textarea = screen.getByTestId("chat-form-textarea");
 
@@ -373,6 +365,7 @@ describe("Chat", () => {
       noCommandPreview,
       noCompletions,
       noTools,
+      chatLinks,
     );
     server.use(
       http.post(
@@ -396,7 +389,7 @@ describe("Chat", () => {
             },
           });
         },
-        { once: true },
+        // { once: true }, TODO: title
       ),
     );
     const { user, ...app } = render(<App />);

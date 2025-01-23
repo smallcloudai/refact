@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
-export type ErrorSliceState = { message: string | null };
+export type ErrorSliceState = { message: string | null; isAuthError?: boolean };
 
 const initialState: ErrorSliceState = { message: null };
 export const errorSlice = createSlice({
@@ -11,17 +11,21 @@ export const errorSlice = createSlice({
       if (state.message) return state;
       state.message = action.payload;
     },
+    setIsAuthError: (state, action: PayloadAction<boolean>) => {
+      state.isAuthError = action.payload;
+    },
     clearError: (state, _action: PayloadAction) => {
       state.message = null;
     },
   },
   selectors: {
     getErrorMessage: (state) => state.message,
+    getIsAuthError: (state) => state.isAuthError,
   },
 });
 
-export const { setError, clearError } = errorSlice.actions;
-export const { getErrorMessage } = errorSlice.selectors;
+export const { setError, setIsAuthError, clearError } = errorSlice.actions;
+export const { getErrorMessage, getIsAuthError } = errorSlice.selectors;
 
 // export const errorMiddleware = createListenerMiddleware();
 // const startErrorListening = errorMiddleware.startListening.withTypes<

@@ -19,6 +19,9 @@ import {
   diffApi,
   pathApi,
   pingApi,
+  integrationsApi,
+  dockerApi,
+  telemetryApi,
 } from "../services/refact";
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
@@ -41,6 +44,9 @@ import { informationSlice } from "../features/Errors/informationSlice";
 import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
+import { linksApi } from "../services/refact/links";
+import { integrationsSlice } from "../features/Integrations";
+import { agentUsageSlice } from "../features/AgentUsage/agentUsageSlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -48,9 +54,19 @@ const tipOfTheDayPersistConfig = {
   stateReconciler: mergeInitialState,
 };
 
+const agentUsagePersistConfig = {
+  key: "agentUsage",
+  storage: storage(),
+  stateReconciler: mergeInitialState,
+};
+
 const persistedTipOfTheDayReducer = persistReducer<
   ReturnType<typeof tipOfTheDaySlice.reducer>
 >(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
+
+const persistedAgentUsageReducer = persistReducer<
+  ReturnType<typeof agentUsageSlice.reducer>
+>(agentUsagePersistConfig, agentUsageSlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -61,6 +77,7 @@ const rootReducer = combineSlices(
     tour: tourReducer,
     // tipOfTheDay: persistedTipOfTheDayReducer,
     [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
+    [agentUsageSlice.reducerPath]: persistedAgentUsageReducer,
     config: configReducer,
     active_file: activeFileReducer,
     selected_snippet: selectedSnippetReducer,
@@ -74,20 +91,30 @@ const rootReducer = combineSlices(
     [smallCloudApi.reducerPath]: smallCloudApi.reducer,
     [pathApi.reducerPath]: pathApi.reducer,
     [pingApi.reducerPath]: pingApi.reducer,
+    [linksApi.reducerPath]: linksApi.reducer,
+    [telemetryApi.reducerPath]: telemetryApi.reducer,
   },
   historySlice,
   errorSlice,
   informationSlice,
   pagesSlice,
+  integrationsApi,
+  dockerApi,
   confirmationSlice,
   attachedImagesSlice,
   userSurveySlice,
+  integrationsSlice,
 );
 
 const rootPersistConfig = {
   key: "root",
   storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
+  whitelist: [
+    historySlice.reducerPath,
+    "tour",
+    userSurveySlice.reducerPath,
+    agentUsageSlice.reducerPath,
+  ],
   stateReconciler: mergeInitialState,
 };
 
@@ -143,6 +170,10 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             diffApi.middleware,
             smallCloudApi.middleware,
             pathApi.middleware,
+            linksApi.middleware,
+            integrationsApi.middleware,
+            dockerApi.middleware,
+            telemetryApi.middleware,
           )
           .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)

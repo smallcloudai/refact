@@ -7,9 +7,7 @@ import {
   selectIsStreaming,
   selectMessages,
 } from "../../features/Chat/Thread/selectors";
-import { selectVecdb } from "../../features/Config/configSlice";
 import { createSelector } from "@reduxjs/toolkit";
-import { useCanUseTools } from "../../hooks/useCanUseTools";
 
 const shouldShowSelector = createSelector(
   [selectMessages, selectIsStreaming],
@@ -161,47 +159,7 @@ const useAttachSelectedSnippet = (
   return [attachedSelectedSnippet, onToggleAttachedSelectedSnippet];
 };
 
-const useSearchWorkSpace = (): [Checkbox, () => void] => {
-  const vecdb = useAppSelector(selectVecdb);
-  const canUseTools = useCanUseTools();
-  const shouldShow = useAppSelector(shouldShowSelector);
-
-  const [searchWorkspace, setSearchWorkspace] = useState<Checkbox>({
-    name: "search_workspace",
-    checked: false,
-    label: "Search workspace",
-    disabled: false,
-    hide: !vecdb || !shouldShow || canUseTools,
-    info: {
-      text: "Searches all files in your workspace using vector database, uses the whole text in the input box as a search query. Setting this checkbox is equivalent to @workspace command in the text.",
-      link: "https://docs.refact.ai/features/ai-chat/",
-      linkText: "documentation",
-    },
-  });
-
-  useEffect(() => {
-    setSearchWorkspace((prev) => {
-      return {
-        ...prev,
-        hide: !vecdb || !shouldShow || canUseTools,
-      };
-    });
-  }, [vecdb, shouldShow, canUseTools]);
-
-  const onToggleSearchWorkspace = useCallback(() => {
-    setSearchWorkspace((prev) => {
-      return {
-        ...prev,
-        checked: !prev.checked,
-      };
-    });
-  }, []);
-
-  return [searchWorkspace, onToggleSearchWorkspace];
-};
-
 export type Checkboxes = {
-  search_workspace: Checkbox;
   file_upload: Checkbox;
   selected_lines: Checkbox;
 };
@@ -213,7 +171,6 @@ export const useCheckboxes = () => {
 
   const [attachedSelectedSnippet, onToggleAttachedSelectedSnippet] =
     useAttachSelectedSnippet(lineSelectionInteracted);
-  const [searchWorkspace, onToggleSearchWorkspace] = useSearchWorkSpace();
 
   const [attachFileCheckboxData, onToggleAttachFile] = useAttachActiveFile(
     fileInteracted,
@@ -222,19 +179,15 @@ export const useCheckboxes = () => {
 
   const checkboxes = useMemo(
     () => ({
-      search_workspace: searchWorkspace,
       file_upload: attachFileCheckboxData,
       selected_lines: attachedSelectedSnippet,
     }),
-    [attachFileCheckboxData, attachedSelectedSnippet, searchWorkspace],
+    [attachFileCheckboxData, attachedSelectedSnippet],
   );
 
   const onToggleCheckbox = useCallback(
     (name: string) => {
       switch (name) {
-        case "search_workspace":
-          onToggleSearchWorkspace();
-          break;
         case "file_upload":
           onToggleAttachFile();
           setFileInteracted(true);
@@ -246,11 +199,7 @@ export const useCheckboxes = () => {
           break;
       }
     },
-    [
-      onToggleAttachFile,
-      onToggleAttachedSelectedSnippet,
-      onToggleSearchWorkspace,
-    ],
+    [onToggleAttachFile, onToggleAttachedSelectedSnippet],
   );
 
   const unCheckAll = useCallback(() => {
@@ -260,16 +209,11 @@ export const useCheckboxes = () => {
     if (attachedSelectedSnippet.checked) {
       onToggleAttachedSelectedSnippet();
     }
-    if (searchWorkspace.checked) {
-      onToggleSearchWorkspace();
-    }
   }, [
     attachFileCheckboxData.checked,
     attachedSelectedSnippet.checked,
     onToggleAttachFile,
     onToggleAttachedSelectedSnippet,
-    onToggleSearchWorkspace,
-    searchWorkspace.checked,
   ]);
 
   return {

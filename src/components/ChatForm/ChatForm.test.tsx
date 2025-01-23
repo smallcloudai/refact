@@ -2,7 +2,6 @@ import { render } from "../../utils/test-utils";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { ChatForm, ChatFormProps } from "./ChatForm";
 import React from "react";
-import { SYSTEM_PROMPTS } from "../../__fixtures__";
 
 import {
   server,
@@ -25,26 +24,10 @@ const handlers = [
 
 server.use(...handlers);
 
-const noop = () => ({});
-
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
-    chatId: "chatId",
     onSubmit: (_str: string) => ({}),
-    isStreaming: false,
-    onSetChatModel: noop,
-    model: "gpt-3.5-turbo",
-    caps: {
-      fetching: false,
-      default_cap: "foo",
-      available_caps: {},
-      error: "",
-    },
-    showControls: true,
-    prompts: SYSTEM_PROMPTS,
-    onSetSystemPrompt: noop,
-    onToolConfirm: noop,
-    selectedSystemPrompt: {},
+    unCalledTools: false,
     ...props,
   };
 
@@ -85,52 +68,6 @@ describe("ChatForm", () => {
     expect(fakeOnSubmit).not.toHaveBeenCalled();
   });
 
-  test("checkbox workspace", async () => {
-    const fakeOnSubmit = vi.fn();
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
-
-    const label = app.queryByText("Search workspace");
-    expect(label).not.toBeNull();
-    const btn = label?.querySelector("button");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await user.click(btn!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const textarea = app.container.querySelector("textarea")!;
-    await user.type(textarea, "foo");
-    await user.keyboard("{Enter}");
-    const expected = "@workspace\nfoo\n";
-    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
-  });
-
-  test.skip("checkbox lookup symbols", async () => {
-    const fakeOnSubmit = vi.fn();
-    const activeFile = {
-      name: "foo.txt",
-      line1: 1,
-      line2: 2,
-      can_paste: false,
-      attach: false,
-      path: "path/to/foo.txt",
-      cursor: 2,
-    };
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
-      preloadedState: { active_file: activeFile },
-    });
-
-    const label = app.queryByText(/Lookup symbols/);
-    expect(label).not.toBeNull();
-    const btn = label?.querySelector("button");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    await user.click(btn!);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const textarea = app.container.querySelector("textarea")!;
-    await user.type(textarea, "foo");
-    await user.keyboard("{Enter}");
-    const expected = `@file ${activeFile.path}:${activeFile.line1}-${activeFile.line2}\n@symbols-at ${activeFile.path}:${activeFile.cursor}\nfoo\n`;
-
-    expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
-  });
-
   test("checkbox snippet", async () => {
     const fakeOnSubmit = vi.fn();
     const snippet = {
@@ -139,23 +76,20 @@ describe("ChatForm", () => {
       path: "/Users/refact/projects/print1.py",
       basename: "print1.py",
     };
-    const { user, ...app } = render(
-      <App chatId="test-3" onSubmit={fakeOnSubmit} />,
-      {
-        preloadedState: {
-          selected_snippet: snippet,
-          active_file: {
-            name: "foo.txt",
-            cursor: 2,
-            path: "foo.txt",
-            line1: 1,
-            line2: 3,
-            can_paste: true,
-          },
-          config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
+      preloadedState: {
+        selected_snippet: snippet,
+        active_file: {
+          name: "foo.txt",
+          cursor: 2,
+          path: "foo.txt",
+          line1: 1,
+          line2: 3,
+          can_paste: true,
         },
+        config: { host: "vscode", themeProps: {}, lspPort: 8001 },
       },
-    );
+    });
 
     const label = app.queryByText(/Selected \d* lines/);
     expect(label).not.toBeNull();

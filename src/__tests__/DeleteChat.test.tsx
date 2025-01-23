@@ -1,11 +1,11 @@
 import { render } from "../utils/test-utils";
 import { describe, expect, it } from "vitest";
-import { server, goodUser, goodPing } from "../utils/mockServer";
+import { server, goodUser, goodPing, chatLinks } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 import { HistoryState } from "../features/History/historySlice";
 
 describe("Delete a Chat form history", () => {
-  server.use(goodUser, goodPing);
+  server.use(goodUser, goodPing, chatLinks);
   it("can delete a chat", async () => {
     const now = new Date().toISOString();
     const history: HistoryState = {

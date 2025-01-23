@@ -1,31 +1,30 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
-import { Flex, Button, Text, Container, Card } from "@radix-ui/themes";
+import { Flex, Button, Text, Card } from "@radix-ui/themes";
 import {
   useAppSelector,
   useAppDispatch,
   useSendChatRequest,
-  useGetPromptsQuery,
+  useAutoSend,
+  useGetCapsQuery,
+  useCapsForToolUse,
+  useAgentUsage,
 } from "../../hooks";
-import type { Config } from "../../features/Config/configSlice";
+import { type Config } from "../../features/Config/configSlice";
 import {
   enableSend,
-  getSelectedChatModel,
   selectIsStreaming,
   selectIsWaiting,
-  setChatModel,
   selectPreventSend,
   selectChatId,
   selectMessages,
   getSelectedToolUse,
-  getSelectedSystemPrompt,
-  setSystemPrompt,
 } from "../../features/Chat/Thread";
 import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
-import { SystemPrompts } from "../../services/refact";
+import { AgentUsage } from "../../features/AgentUsage";
 
 export type ChatProps = {
   host: Config["host"];
@@ -33,49 +32,37 @@ export type ChatProps = {
   backFromChat: () => void;
   style?: React.CSSProperties;
   unCalledTools: boolean;
-  // TODO: update this
-  caps: ChatFormProps["caps"];
   maybeSendToSidebar: ChatFormProps["onClose"];
 };
 
 export const Chat: React.FC<ChatProps> = ({
   style,
   unCalledTools,
-  caps,
   maybeSendToSidebar,
 }) => {
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
+  const caps = useGetCapsQuery();
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex, confirmToolUsage } =
-    useSendChatRequest();
-  const chatModel = useAppSelector(getSelectedChatModel);
+  const { submit, abort, retryFromIndex } = useSendChatRequest();
+
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
+  const capsForToolUse = useCapsForToolUse();
+  const { disableInput } = useAgentUsage();
 
-  const promptsRequest = useGetPromptsQuery();
-  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
-  const onSetSelectedSystemPrompt = (prompt: SystemPrompts) =>
-    dispatch(setSystemPrompt(prompt));
   const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
     useState(false);
 
-  const onSetChatModel = useCallback(
-    (value: string) => {
-      const model = caps.default_cap === value ? "" : value;
-      dispatch(setChatModel(model));
-    },
-    [caps.default_cap, dispatch],
-  );
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
   const handleSummit = useCallback(
     (value: string) => {
-      submit(value);
+      submit({ question: value });
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
@@ -102,6 +89,8 @@ export const Chat: React.FC<ChatProps> = ({
     }
   }, [isWaiting, isStreaming, focusTextarea]);
 
+  useAutoSend();
+
   return (
     <DropzoneProvider asChild>
       <Flex
@@ -118,31 +107,26 @@ export const Chat: React.FC<ChatProps> = ({
           onRetry={retryFromIndex}
           onStopStreaming={abort}
         />
+
+        <AgentUsage />
         {!isStreaming && preventSend && unCalledTools && (
-          <Container py="4" bottom="0" style={{ justifyContent: "flex-end" }}>
-            <Card>
-              <Flex direction="column" align="center" gap="2">
+          <Flex py="4">
+            <Card style={{ width: "100%" }}>
+              <Flex direction="column" align="center" gap="2" width="100%">
                 Chat was interrupted with uncalled tools calls.
-                <Button onClick={onEnableSend}>Resume</Button>
+                <Button onClick={onEnableSend} disabled={disableInput}>
+                  Resume
+                </Button>
               </Flex>
             </Card>
-          </Container>
+          </Flex>
         )}
 
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
-          chatId={chatId}
-          isStreaming={isStreaming}
-          showControls={messages.length === 0 && !isStreaming}
           onSubmit={handleSummit}
-          model={chatModel}
-          onSetChatModel={onSetChatModel}
-          caps={caps}
           onClose={maybeSendToSidebar}
-          prompts={promptsRequest.data ?? {}}
-          onSetSystemPrompt={onSetSelectedSystemPrompt}
-          selectedSystemPrompt={selectedSystemPrompt}
-          onToolConfirm={confirmToolUsage}
+          unCalledTools={unCalledTools}
         />
 
         <Flex justify="between" pl="1" pr="1" pt="1">
@@ -150,7 +134,12 @@ export const Chat: React.FC<ChatProps> = ({
           {messages.length > 0 && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="1">
-                <Text size="1">model: {chatModel || caps.default_cap} </Text> •{" "}
+                <Text size="1">
+                  model:{" "}
+                  {capsForToolUse.currentModel ||
+                    caps.data?.code_chat_default_model}{" "}
+                </Text>{" "}
+                •{" "}
                 <Text
                   size="1"
                   onClick={() => setIsDebugChatHistoryVisible((prev) => !prev)}

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
 import { ChatForm } from "./ChatForm";
-import { SYSTEM_PROMPTS } from "../../__fixtures__";
 import { useDebounceCallback } from "usehooks-ts";
 
 // const _testCommands = [
@@ -42,9 +41,7 @@ import { useDebounceCallback } from "usehooks-ts";
 //   "@Zucchini",
 // ];
 
-const noop = () => ({});
-
-const long = "long".repeat(30);
+// const noop = () => ({});
 
 const meta: Meta<typeof ChatForm> = {
   title: "Chat Form",
@@ -58,39 +55,6 @@ const meta: Meta<typeof ChatForm> = {
       // eslint-disable-next-line no-console
       console.log("onclose called");
     },
-    isStreaming: false,
-    onSetChatModel: noop,
-    caps: {
-      fetching: false,
-      default_cap: "foo",
-      available_caps: {
-        bar: {
-          default_scratchpad: "",
-          n_ctx: 2048,
-          similar_models: [],
-          supports_tools: false,
-          supports_scratchpads: {},
-        },
-        [long]: {
-          default_scratchpad: "",
-          n_ctx: 2048,
-          similar_models: [],
-          supports_tools: false,
-          supports_scratchpads: {},
-        },
-        baz: {
-          default_scratchpad: "",
-          n_ctx: 2048,
-          similar_models: [],
-          supports_tools: false,
-          supports_scratchpads: {},
-        },
-      },
-      error: "",
-    },
-    showControls: true,
-    prompts: SYSTEM_PROMPTS,
-    onSetSystemPrompt: noop,
   },
   decorators: [
     (Children) => {
@@ -112,7 +76,5 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {
-  args: {
-    model: "foo",
-  },
+  args: {},
 };

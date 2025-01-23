@@ -2,6 +2,12 @@ import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
 
+export type IntegrationMeta = {
+  name?: string;
+  path?: string;
+  project?: string;
+  shouldIntermediatePageShowUp?: boolean;
+};
 export type ChatThread = {
   id: string;
   messages: ChatMessages;
@@ -12,6 +18,9 @@ export type ChatThread = {
   tool_use?: ToolUse;
   read?: boolean;
   isTitleGenerated?: boolean;
+  integration?: IntegrationMeta | null;
+  mode?: LspChatMode;
+  last_user_message_id?: string;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -21,7 +30,9 @@ export type Chat = {
   thread: ChatThread;
   error: null | string;
   prevent_send: boolean;
+  automatic_patch?: boolean;
   waiting_for_response: boolean;
+  max_new_tokens?: number;
   cache: Record<string, ChatThread>;
   system_prompt: SystemPrompts;
   tool_use: ToolUse;
@@ -29,6 +40,7 @@ export type Chat = {
 };
 
 export type PayloadWithId = { id: string };
+export type PayloadWithChatAndMessageId = { chatId: string; messageId: string };
 export type PayloadWithIdAndTitle = {
   title: string;
   isTitleGenerated: boolean;
@@ -52,4 +64,21 @@ export function isToolUse(str: string): str is ToolUse {
   if (!str) return false;
   if (typeof str !== "string") return false;
   return str === "quick" || str === "explore" || str === "agent";
+}
+
+export type LspChatMode =
+  | "NO_TOOLS"
+  | "EXPLORE"
+  | "AGENT"
+  | "CONFIGURE"
+  | "PROJECT_SUMMARY";
+
+export function chatModeToLspMode(
+  toolUse?: ToolUse,
+  mode?: LspChatMode,
+): LspChatMode {
+  if (mode) return mode;
+  if (toolUse === "agent") return "AGENT";
+  if (toolUse === "quick") return "NO_TOOLS";
+  return "EXPLORE";
 }

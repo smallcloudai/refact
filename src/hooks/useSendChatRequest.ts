@@ -3,14 +3,18 @@ import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
   getSelectedSystemPrompt,
+  selectAutomaticPatch,
   selectChatError,
   selectChatId,
+  selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
   selectSendImmediately,
-  selectToolUse,
+  selectThread,
+  selectThreadMode,
+  selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
 import {
   useCheckForConfirmationMutation,
@@ -20,6 +24,7 @@ import {
   ChatMessage,
   ChatMessages,
   isAssistantMessage,
+  isUserMessage,
   UserMessage,
   UserMessageContentWithImage,
 } from "../services/refact/types";
@@ -27,42 +32,71 @@ import {
   backUpMessages,
   chatAskQuestionThunk,
   chatAskedQuestion,
-  setToolUse,
+  setSendImmediately,
 } from "../features/Chat/Thread/actions";
-import { isToolUse } from "../features/Chat";
+
 import { selectAllImages } from "../features/AttachedImages";
 import { useAbortControllers } from "./useAbortControllers";
 import {
-  clearPauseReasonsAndConfirmTools,
+  clearPauseReasonsAndHandleToolsStatus,
   getToolsConfirmationStatus,
+  getToolsInteractionStatus,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
+import {
+  chatModeToLspMode,
+  LspChatMode,
+  setChatMode,
+  setIsWaitingForResponse,
+  setLastUserMessageId,
+} from "../features/Chat";
+
+import { v4 as uuidv4 } from "uuid";
+
+type SubmitHandlerParams =
+  | {
+      question: string;
+      maybeMode?: LspChatMode;
+      maybeMessages?: undefined;
+      maybeDropLastMessage?: boolean;
+    }
+  | {
+      question?: undefined;
+      maybeMode?: LspChatMode;
+      maybeMessages?: undefined;
+      maybeDropLastMessage?: boolean;
+    }
+  | {
+      question?: undefined;
+      maybeMode?: LspChatMode;
+      maybeMessages: ChatMessage[];
+      maybeDropLastMessage?: boolean;
+    };
 
 let recallCounter = 0;
 
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
-  const hasError = useAppSelector(selectChatError);
   const abortControllers = useAbortControllers();
 
   const [triggerGetTools] = useGetToolsLazyQuery();
   const [triggerCheckForConfirmation] = useCheckForConfirmationMutation();
 
   const chatId = useAppSelector(selectChatId);
-  const streaming = useAppSelector(selectIsStreaming);
-  const chatError = useAppSelector(selectChatError);
 
-  const errored: boolean = !!hasError || !!chatError;
-  const preventSend = useAppSelector(selectPreventSend);
   const isWaiting = useAppSelector(selectIsWaiting);
 
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
   const sendImmediately = useAppSelector(selectSendImmediately);
-  const toolUse = useAppSelector(selectToolUse);
+  const toolUse = useAppSelector(selectThreadToolUse);
   const attachedImages = useAppSelector(selectAllImages);
-
+  const threadMode = useAppSelector(selectThreadMode);
+  const threadIntegration = useAppSelector(selectIntegration);
+  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
+
+  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -77,11 +111,13 @@ export const useSendChatRequest = () => {
   }, [currentMessages, systemPrompt]);
 
   const sendMessages = useCallback(
-    async (messages: ChatMessages) => {
+    async (messages: ChatMessages, maybeMode?: LspChatMode) => {
+      dispatch(setIsWaitingForResponse(true));
       let tools = await triggerGetTools(undefined).unwrap();
-      if (isToolUse(toolUse)) {
-        dispatch(setToolUse(toolUse));
-      }
+      // TODO: save tool use to state.chat
+      // if (toolUse && isToolUse(toolUse)) {
+      //   dispatch(setToolUse(toolUse));
+      // }
       if (toolUse === "quick") {
         tools = [];
       } else if (toolUse === "explore") {
@@ -93,28 +129,51 @@ export const useSendChatRequest = () => {
       });
 
       const lastMessage = messages.slice(-1)[0];
+
+      let isCurrentToolCallAPatch = false;
+
       if (
         !isWaiting &&
-        !areToolsConfirmed &&
+        !wasInteracted &&
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls
       ) {
         const toolCalls = lastMessage.tool_calls;
-        const confirmationResponse =
-          await triggerCheckForConfirmation(toolCalls).unwrap();
-        if (confirmationResponse.pause) {
-          dispatch(setPauseReasons(confirmationResponse.pause_reasons));
-          return;
+        if (!(toolCalls[0].function.name === "patch" && isPatchAutomatic)) {
+          const confirmationResponse = await triggerCheckForConfirmation({
+            tool_calls: toolCalls,
+            messages: messages,
+          }).unwrap();
+          if (confirmationResponse.pause) {
+            dispatch(setPauseReasons(confirmationResponse.pause_reasons));
+            return;
+          }
+        } else {
+          isCurrentToolCallAPatch = true;
         }
       }
 
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
+      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
+
+      const toolsConfirmed =
+        isCurrentToolCallAPatch && isPatchAutomatic
+          ? isPatchAutomatic
+          : areToolsConfirmed;
+
+      const maybeLastUserMessageIsFromUser = isUserMessage(lastMessage);
+      if (maybeLastUserMessageIsFromUser) {
+        dispatch(setLastUserMessageId({ chatId: chatId, messageId: uuidv4() }));
+      }
+
       const action = chatAskQuestionThunk({
         messages,
         tools,
+        toolsConfirmed,
         chatId,
+        mode,
       });
 
       const dispatchedAction = dispatch(action);
@@ -122,13 +181,16 @@ export const useSendChatRequest = () => {
     },
     [
       triggerGetTools,
-      triggerCheckForConfirmation,
       toolUse,
+      isWaiting,
       dispatch,
       chatId,
-      abortControllers,
+      threadMode,
+      wasInteracted,
       areToolsConfirmed,
-      isWaiting,
+      abortControllers,
+      triggerCheckForConfirmation,
+      isPatchAutomatic,
     ],
   );
 
@@ -159,13 +221,43 @@ export const useSendChatRequest = () => {
   );
 
   const submit = useCallback(
-    (question: string) => {
-      // const message: ChatMessage = { role: "user", content: question };
-      const message: UserMessage = maybeAddImagesToQuestion(question);
-      const messages = messagesWithSystemPrompt.concat(message);
-      void sendMessages(messages);
+    ({
+      question,
+      maybeMode,
+      maybeMessages,
+      maybeDropLastMessage,
+    }: SubmitHandlerParams) => {
+      let messages = messagesWithSystemPrompt;
+      if (maybeDropLastMessage) {
+        messages = messages.slice(0, -1);
+      }
+
+      if (question) {
+        const message = maybeAddImagesToQuestion(question);
+        messages = messages.concat(message);
+      } else if (maybeMessages) {
+        messages = maybeMessages;
+      }
+
+      // TODO: make a better way for setting / detecting thread mode.
+      const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
+      const mode = chatModeToLspMode(
+        toolUse,
+        maybeMode ?? threadMode ?? maybeConfigure,
+      );
+      dispatch(setChatMode(mode));
+
+      void sendMessages(messages, mode);
     },
-    [maybeAddImagesToQuestion, messagesWithSystemPrompt, sendMessages],
+    [
+      dispatch,
+      maybeAddImagesToQuestion,
+      messagesWithSystemPrompt,
+      sendMessages,
+      threadIntegration,
+      threadMode,
+      toolUse,
+    ],
   );
 
   const abort = useCallback(() => {
@@ -174,53 +266,46 @@ export const useSendChatRequest = () => {
 
   useEffect(() => {
     if (sendImmediately) {
+      dispatch(setSendImmediately(false));
       void sendMessages(messagesWithSystemPrompt);
     }
-  }, [sendImmediately, sendMessages, messagesWithSystemPrompt]);
-
-  // TODO: Automatically calls tool calls. This means that this hook can only be used once :/
-  // TODO: Think of better way to manage useEffect calls, not with outer counter
-  useEffect(() => {
-    if (!streaming && currentMessages.length > 0 && !errored && !preventSend) {
-      const lastMessage = currentMessages.slice(-1)[0];
-      if (
-        isAssistantMessage(lastMessage) &&
-        lastMessage.tool_calls &&
-        lastMessage.tool_calls.length > 0
-      ) {
-        if (!areToolsConfirmed) {
-          abort();
-          if (recallCounter < 1) {
-            recallCounter++;
-            return;
-          }
-        }
-        void sendMessages(currentMessages);
-        recallCounter = 0;
-      }
-    }
-  }, [
-    errored,
-    currentMessages,
-    preventSend,
-    sendMessages,
-    abort,
-    streaming,
-    areToolsConfirmed,
-  ]);
+  }, [dispatch, messagesWithSystemPrompt, sendImmediately, sendMessages]);
 
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
-      dispatch(clearPauseReasonsAndConfirmTools(false));
+      dispatch(
+        clearPauseReasonsAndHandleToolsStatus({
+          wasInteracted: false,
+          confirmationStatus: areToolsConfirmed,
+        }),
+      );
       void sendMessages(messages);
     },
-    [abort, sendMessages, dispatch],
+    [abort, sendMessages, dispatch, areToolsConfirmed],
   );
 
   const confirmToolUsage = useCallback(() => {
     abort();
-    dispatch(clearPauseReasonsAndConfirmTools(true));
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: true,
+        confirmationStatus: true,
+      }),
+    );
+
+    dispatch(setIsWaitingForResponse(false));
+  }, [abort, dispatch]);
+
+  const rejectToolUsage = useCallback(() => {
+    abort();
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: true,
+        confirmationStatus: false,
+      }),
+    );
+    dispatch(setIsWaitingForResponse(false));
   }, [abort, dispatch]);
 
   const retryFromIndex = useCallback(
@@ -240,5 +325,71 @@ export const useSendChatRequest = () => {
     retry,
     retryFromIndex,
     confirmToolUsage,
+    rejectToolUsage,
+    sendMessages,
   };
 };
+
+// NOTE: only use this once
+export function useAutoSend() {
+  const dispatch = useAppDispatch();
+  const streaming = useAppSelector(selectIsStreaming);
+  const currentMessages = useAppSelector(selectMessages);
+  const errored = useAppSelector(selectChatError);
+  const preventSend = useAppSelector(selectPreventSend);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
+  const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
+  const { sendMessages, abort } = useSendChatRequest();
+  // TODO: make a selector for this, or show tool formation
+  const thread = useAppSelector(selectThread);
+  const isIntegration = thread.integration ?? false;
+
+  useEffect(() => {
+    if (
+      !isWaiting &&
+      !streaming &&
+      currentMessages.length > 0 &&
+      !errored &&
+      !preventSend
+    ) {
+      const lastMessage = currentMessages.slice(-1)[0];
+      if (
+        isAssistantMessage(lastMessage) &&
+        lastMessage.tool_calls &&
+        lastMessage.tool_calls.length > 0
+      ) {
+        if (!isIntegration && !wasInteracted && !areToolsConfirmed) {
+          abort();
+          if (recallCounter < 1) {
+            recallCounter++;
+            return;
+          }
+        }
+
+        dispatch(
+          clearPauseReasonsAndHandleToolsStatus({
+            wasInteracted: false,
+            confirmationStatus: areToolsConfirmed,
+          }),
+        );
+        void sendMessages(currentMessages, thread.mode);
+        recallCounter = 0;
+      }
+    }
+  }, [
+    dispatch,
+    errored,
+    currentMessages,
+    preventSend,
+    sendMessages,
+    abort,
+    streaming,
+    wasInteracted,
+    areToolsConfirmed,
+    isWaiting,
+    isIntegration,
+    thread.mode,
+    thread,
+  ]);
+}

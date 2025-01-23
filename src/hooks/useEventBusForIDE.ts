@@ -49,6 +49,8 @@ export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
 import { pathApi } from "../services/refact/path";
 
+import { telemetryApi } from "../services/refact/telemetry";
+
 export const useEventsBusForIDE = () => {
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
@@ -188,6 +190,8 @@ export const useEventsBusForIDE = () => {
   const [getIntegrationsPath] = pathApi.useLazyIntegrationsPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
   const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   // Creating a generic function to trigger different queries from RTK Query (to avoid duplicative code)
   const openFileFromPathQuery = useCallback(
@@ -201,9 +205,21 @@ export const useEventsBusForIDE = () => {
       if (res) {
         const action = ideOpenFile({ file_name: res });
         postMessage(action);
+        const res_split = res.split("/");
+        void sendTelemetryEvent({
+          scope: `ideOpenFile/${res_split[res_split.length - 1]}`,
+          success: true,
+          error_message: "",
+        });
+      } else {
+        void sendTelemetryEvent({
+          scope: `ideOpenFile`,
+          success: false,
+          error_message: res?.toString() ?? "path is not found",
+        });
       }
     },
-    [postMessage],
+    [postMessage, sendTelemetryEvent],
   );
 
   const openCustomizationFile = () =>

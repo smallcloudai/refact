@@ -1,17 +1,12 @@
 .ToolConfirmationCard {
-  position: absolute;
-  width: calc(100% - 80px);
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-
+  width: 100%;
   padding: 15px 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   border-radius: 8px;
-  background-color: var(--color-surface);
-  min-height: fit-content;
+  background-color: var(--gray-1);
+  flex-shrink: 0; /* this one should fix issue with shrinking */
   & pre {
     margin: 0;
   }

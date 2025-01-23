@@ -19,7 +19,7 @@ export const capsApi = createApi({
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
         const url = `http://127.0.0.1:${port}${CAPS_URL}`;
-        // return baseQuery(url);
+
         const result = await baseQuery({
           url,
           credentials: "same-origin",
@@ -55,9 +55,13 @@ export type CodeChatModel = {
   supports_scratchpads: Record<
     string,
     {
-      default_system_message: string;
+      default_system_message?: string;
     }
   >;
+  supports_multimodality?: boolean;
+  supports_clicks?: boolean;
+  // TODO: could be defined
+  supports_agent?: boolean;
 };
 
 export type CodeCompletionModel = {
@@ -65,6 +69,9 @@ export type CodeCompletionModel = {
   n_ctx: number;
   similar_models: string[];
   supports_scratchpads: Record<string, Record<string, unknown>>;
+  supports_tools?: boolean;
+  supports_multimodality?: boolean;
+  supports_clicks?: boolean;
 };
 
 export type CapsResponse = {

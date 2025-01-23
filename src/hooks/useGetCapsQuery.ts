@@ -7,5 +7,9 @@ export const useGetCapsQuery = () => {
   const error = useAppSelector(getErrorMessage);
   const pong = useGetPing();
   const skip = !!error || !pong.data;
-  return capsApi.useGetCapsQuery(undefined, { skip });
+  const caps = capsApi.useGetCapsQuery(undefined, {
+    skip,
+  });
+
+  return caps;
 };

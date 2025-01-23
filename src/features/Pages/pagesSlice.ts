@@ -50,7 +50,17 @@ export interface DocumentationSettingsPage {
 
 export interface ChatThreadHistoryPage {
   name: "thread history page";
+  // causes a bug with other pages
   chatId: string;
+}
+
+export interface IntegrationsSetupPage {
+  name: "integrations page";
+  projectPath?: string;
+  integrationName?: string;
+  integrationPath?: string;
+  shouldIntermediatePageShowUp?: boolean;
+  wasOpenedThroughChat?: boolean;
 }
 
 export type Page =
@@ -66,7 +76,14 @@ export type Page =
   | FIMDebugPage
   | StatisticsPage
   | DocumentationSettingsPage
-  | ChatThreadHistoryPage;
+  | ChatThreadHistoryPage
+  | IntegrationsSetupPage;
+
+export function isIntegrationSetupPage(
+  page: Page,
+): page is IntegrationsSetupPage {
+  return page.name === "integrations page";
+}
 
 export type PageSliceState = Page[];
 
@@ -82,11 +99,25 @@ export const pagesSlice = createSlice({
     push: (state, action: PayloadAction<Page>) => {
       state.push(action.payload);
     },
-    popBackTo: (state, action: PayloadAction<Page["name"]>) => {
-      return state.slice(
-        0,
-        state.findIndex((page) => page.name === action.payload) + 1,
-      );
+    popBackTo: (state, action: PayloadAction<Page>) => {
+      const pageIndex = state.findIndex((page) => {
+        if (
+          isIntegrationSetupPage(action.payload) &&
+          isIntegrationSetupPage(page) &&
+          action.payload.projectPath === page.projectPath &&
+          action.payload.integrationName === page.integrationName
+        ) {
+          return true;
+        } else if (isIntegrationSetupPage(action.payload)) {
+          return false;
+        }
+        return page.name === action.payload.name;
+      });
+      if (pageIndex === -1) {
+        state.push(action.payload);
+        return state;
+      }
+      return state.slice(0, pageIndex + 1);
     },
 
     change: (state, action: PayloadAction<Page>) => {
@@ -99,8 +130,14 @@ export const pagesSlice = createSlice({
       return state.some((page) => page.name === name);
     },
     selectPages: (state) => state,
+
+    selectCurrentPage: (state) => {
+      if (state.length === 0) return undefined;
+      return state[state.length - 1];
+    },
   },
 });
 
 export const { pop, push, popBackTo, change } = pagesSlice.actions;
-export const { selectPages, isPageInHistory } = pagesSlice.selectors;
+export const { selectPages, isPageInHistory, selectCurrentPage } =
+  pagesSlice.selectors;

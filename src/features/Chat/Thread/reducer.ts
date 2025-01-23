@@ -1,5 +1,12 @@
 import { createReducer } from "@reduxjs/toolkit";
-import { Chat, ChatThread, ToolUse } from "./types";
+import {
+  Chat,
+  ChatThread,
+  IntegrationMeta,
+  ToolUse,
+  LspChatMode,
+  chatModeToLspMode,
+} from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
 import {
@@ -16,27 +23,50 @@ import {
   restoreChat,
   setPreventSend,
   saveTitle,
+  newIntegrationChat,
+  setSendImmediately,
+  setChatMode,
+  setIntegrationData,
+  setIsWaitingForResponse,
+  setMaxNewTokens,
+  setAutomaticPatch,
+  setLastUserMessageId,
 } from "./actions";
 import { formatChatResponse } from "./utils";
+import { DEFAULT_MAX_NEW_TOKENS } from "../../../services/refact";
 
-const createChatThread = (tool_use: ToolUse): ChatThread => {
+const createChatThread = (
+  tool_use: ToolUse,
+  integration?: IntegrationMeta | null,
+  mode?: LspChatMode,
+): ChatThread => {
   const chat: ChatThread = {
     id: uuidv4(),
     messages: [],
     title: "",
     model: "",
+    last_user_message_id: "",
     tool_use,
+    integration,
+    mode,
   };
   return chat;
 };
 
-const createInitialState = (tool_use: ToolUse = "explore"): Chat => {
+const createInitialState = (
+  tool_use: ToolUse = "agent",
+  integration?: IntegrationMeta | null,
+  maybeMode?: LspChatMode,
+): Chat => {
+  const mode =
+    maybeMode ?? integration ? "CONFIGURE" : chatModeToLspMode(tool_use);
   return {
     streaming: false,
-    thread: createChatThread(tool_use),
+    thread: createChatThread(tool_use, integration, mode),
     error: null,
     prevent_send: false,
     waiting_for_response: false,
+    max_new_tokens: DEFAULT_MAX_NEW_TOKENS,
     cache: {},
     system_prompt: {},
     tool_use,
@@ -50,6 +80,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setToolUse, (state, action) => {
     state.thread.tool_use = action.payload;
     state.tool_use = action.payload;
+    state.thread.mode = chatModeToLspMode(action.payload);
   });
 
   builder.addCase(setPreventSend, (state, action) => {
@@ -83,6 +114,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
     next.thread.model = state.thread.model;
     next.system_prompt = state.system_prompt;
+    next.automatic_patch = state.automatic_patch;
     return next;
   });
 
@@ -128,6 +160,15 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = false;
     state.thread.read = true;
     state.prevent_send = false;
+  });
+
+  builder.addCase(setAutomaticPatch, (state, action) => {
+    state.automatic_patch = action.payload;
+  });
+
+  builder.addCase(setLastUserMessageId, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.last_user_message_id = action.payload.messageId;
   });
 
   builder.addCase(chatAskedQuestion, (state, action) => {
@@ -181,5 +222,45 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id !== action.payload.id) return state;
     state.thread.title = action.payload.title;
     state.thread.isTitleGenerated = action.payload.isTitleGenerated;
+  });
+
+  builder.addCase(newIntegrationChat, (state, action) => {
+    // TODO: find out about tool use
+    // TODO: should be CONFIGURE ?
+    const next = createInitialState(
+      "agent",
+      action.payload.integration,
+      "CONFIGURE",
+    );
+    next.thread.integration = action.payload.integration;
+    next.thread.messages = action.payload.messages;
+
+    next.thread.model = state.thread.model;
+    next.system_prompt = state.system_prompt;
+    next.cache = { ...state.cache };
+    if (state.streaming) {
+      next.cache[state.thread.id] = { ...state.thread, read: false };
+    }
+    return next;
+  });
+
+  builder.addCase(setSendImmediately, (state, action) => {
+    state.send_immediately = action.payload;
+  });
+
+  builder.addCase(setChatMode, (state, action) => {
+    state.thread.mode = action.payload;
+  });
+
+  builder.addCase(setIntegrationData, (state, action) => {
+    state.thread.integration = action.payload;
+  });
+
+  builder.addCase(setIsWaitingForResponse, (state, action) => {
+    state.waiting_for_response = action.payload;
+  });
+
+  builder.addCase(setMaxNewTokens, (state, action) => {
+    state.max_new_tokens = action.payload;
   });
 });

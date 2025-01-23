@@ -77,7 +77,6 @@ export const usePatchActions = () => {
     (pin: string) => {
       const fileName = extractFilePathFromPin(pin);
       const cleanedFileName = fileName.replace(/\\\?\\|^\\+/g, "");
-
       startFileAnimation(cleanedFileName);
       getPatch({ pin, messages })
         .unwrap()
@@ -92,9 +91,11 @@ export const usePatchActions = () => {
           stopFileAnimation(cleanedFileName);
 
           if (patch.results.every((result) => result.already_applied)) {
+            const errorText =
+              "Already applied, no significant changes generated.";
             setErrorMessage({
               type: "warning",
-              text: "Already applied, no significant changes generated.",
+              text: errorText,
             });
           } else {
             diffPreview(patch, pin, pinMessages);
@@ -102,17 +103,16 @@ export const usePatchActions = () => {
         })
         .catch((error: Error | { data: { detail: string } }) => {
           stopFileAnimation(cleanedFileName);
+          let text = "";
           if ("message" in error) {
-            setErrorMessage({
-              type: "error",
-              text: "Failed to open patch: " + error.message,
-            });
+            text = "Failed to open patch: " + error.message;
           } else {
-            setErrorMessage({
-              type: "error",
-              text: "Failed to open patch: " + error.data.detail,
-            });
+            text = "Failed to open patch: " + error.data.detail;
           }
+          setErrorMessage({
+            type: "error",
+            text: text,
+          });
         });
     },
     [

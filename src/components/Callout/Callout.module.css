@@ -33,3 +33,19 @@
     visibility 0.3s ease-in-out,
     opacity 0.3s ease-in-out;
 }
+
+.callout_from_top {
+  overflow-wrap: anywhere;
+  position: absolute;
+  animation: rollin_from_top 0.2s ease-out;
+  z-index: 1;
+}
+
+@keyframes rollin_from_top {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}

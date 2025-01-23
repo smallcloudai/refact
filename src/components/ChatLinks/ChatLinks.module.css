@@ -1,0 +1,4 @@
+.chat_link_button {
+  max-width: 100%;
+  backdrop-filter: blur(10px);
+}

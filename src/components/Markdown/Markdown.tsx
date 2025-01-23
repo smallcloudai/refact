@@ -34,12 +34,17 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
-import { usePatchActions } from "../../hooks";
+import { useAppSelector, useLinksFromLsp, usePatchActions } from "../../hooks";
 
 import { ErrorCallout, DiffWarningCallout } from "../Callout";
 
 import { TruncateLeft } from "../Text";
 import { extractFilePathFromPin } from "../../utils";
+
+import { telemetryApi } from "../../services/refact/telemetry";
+import { ChatLinkButton } from "../ChatLinks";
+import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
+import { selectAutomaticPatch, selectToolUse } from "../../features/Chat";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -47,8 +52,15 @@ export type MarkdownProps = Pick<
 > &
   Pick<
     MarkdownCodeBlockProps,
-    "startingLineNumber" | "showLineNumbers" | "useInlineStyles" | "style"
-  > & { canHavePins?: boolean } & Partial<MarkdownControls>;
+    | "startingLineNumber"
+    | "showLineNumbers"
+    | "useInlineStyles"
+    | "style"
+    | "color"
+  > & {
+    canHaveInteractiveElements?: boolean;
+    wrap?: boolean;
+  } & Partial<MarkdownControls>;
 
 const PinMessages: React.FC<{
   children: string;
@@ -63,6 +75,16 @@ const PinMessages: React.FC<{
     handlePaste,
     canPaste,
   } = usePatchActions();
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
+
+  const toolUse = useAppSelector(selectToolUse);
+  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
+
+  const shouldInteractiveButtonsBeVisible = useMemo(() => {
+    if (toolUse === "agent") return !isPatchAutomatic;
+    return true;
+  }, [isPatchAutomatic, toolUse]);
 
   const getMarkdown = useCallback(() => {
     return (
@@ -76,7 +98,13 @@ const PinMessages: React.FC<{
     if (markdown) {
       handlePaste(markdown);
     }
-  }, [getMarkdown, handlePaste]);
+
+    void sendTelemetryEvent({
+      scope: `replaceSelection`,
+      success: true,
+      error_message: "",
+    });
+  }, [getMarkdown, handlePaste, sendTelemetryEvent]);
 
   const handleAutoApply = useCallback(
     (
@@ -111,6 +139,7 @@ const PinMessages: React.FC<{
   }
 
   const filePath = extractFilePathFromPin(children);
+
   return (
     <Card
       className={styles.patch_title}
@@ -132,22 +161,26 @@ const PinMessages: React.FC<{
           </Link>
         </TruncateLeft>{" "}
         <div style={{ flexGrow: 1 }} />
-        <Button
-          size="1"
-          onClick={(event) => handleAutoApply(event, children, filePath)}
-          disabled={disable}
-          title={`Show: ${children}`}
-        >
-          ➕ Auto Apply
-        </Button>
-        <Button
-          size="1"
-          onClick={onDiffClick}
-          disabled={disable || !hasMarkdown || !canPaste}
-          title="Replace the current selection in the ide."
-        >
-          ➕ Replace Selection
-        </Button>
+        {shouldInteractiveButtonsBeVisible && (
+          <>
+            <Button
+              size="1"
+              onClick={(event) => handleAutoApply(event, children, filePath)}
+              disabled={disable}
+              title={`Show: ${children}`}
+            >
+              ➕ Auto Apply
+            </Button>
+            <Button
+              size="1"
+              onClick={onDiffClick}
+              disabled={disable || !hasMarkdown || !canPaste}
+              title="Replace the current selection in the ide."
+            >
+              ➕ Replace Selection
+            </Button>
+          </>
+        )}
       </Flex>
       {errorMessage && errorMessage.type === "error" && (
         <ErrorCallout onClick={resetErrorMessage} timeout={5000}>
@@ -165,7 +198,22 @@ const PinMessages: React.FC<{
   );
 };
 
-const MaybePinButton: React.FC<{
+const PuzzleLink: React.FC<{
+  children: string;
+}> = ({ children }) => {
+  const { handleLinkAction } = useLinksFromLsp();
+  const link = extractLinkFromPuzzle(children);
+
+  if (!link) return children;
+
+  return (
+    <Flex direction="column" align="start" gap="2" mt="2">
+      <ChatLinkButton link={link} onClick={handleLinkAction} />
+    </Flex>
+  );
+};
+
+const MaybeInteractiveElement: React.FC<{
   key?: Key | null;
   children?: React.ReactNode;
 }> = ({ children }) => {
@@ -173,6 +221,10 @@ const MaybePinButton: React.FC<{
     if (typeof child === "string" && child.startsWith("📍")) {
       const key = `pin-message-${index}`;
       return <PinMessages key={key}>{child}</PinMessages>;
+    }
+    if (typeof child === "string" && child.startsWith("🧩")) {
+      const key = `puzzle-link-${index}`;
+      return <PuzzleLink key={key}>{child}</PuzzleLink>;
     }
     return child;
   });
@@ -188,7 +240,8 @@ const _Markdown: React.FC<MarkdownProps> = ({
   children,
   allowedElements,
   unwrapDisallowed,
-  canHavePins,
+  canHaveInteractiveElements,
+  color,
   ...rest
 }) => {
   const components: Partial<Components> = useMemo(() => {
@@ -203,14 +256,14 @@ const _Markdown: React.FC<MarkdownProps> = ({
           <ul {...props} className={classNames(styles.list, props.className)} />
         );
       },
-      code({ style: _style, ...props }) {
-        return <MarkdownCodeBlock {...props} {...rest} />;
+      code({ style: _style, color: _color, ...props }) {
+        return <MarkdownCodeBlock color={color} {...props} {...rest} />;
       },
       p({ color: _color, ref: _ref, node: _node, ...props }) {
-        if (canHavePins) {
-          return <MaybePinButton {...props} />;
+        if (canHaveInteractiveElements) {
+          return <MaybeInteractiveElement {...props} />;
         }
-        return <Text my="2" as="p" {...props} />;
+        return <Text as="p" {...props} />;
       },
       h1({ color: _color, ref: _ref, node: _node, ...props }) {
         return <Heading my="4" size="4" as="h1" {...props} />;
@@ -240,7 +293,15 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <Kbd {...props} />;
       },
       a({ color: _color, ref: _ref, node: _node, ...props }) {
-        return <Link {...props} />;
+        const shouldTargetBeBlank =
+          props.href &&
+          (props.href.startsWith("http") || props.href.startsWith("https"));
+        return (
+          <Link
+            {...props}
+            target={shouldTargetBeBlank ? "_blank" : undefined}
+          />
+        );
       },
       q({ color: _color, ref: _ref, node: _node, ...props }) {
         return <Quote {...props} />;
@@ -273,7 +334,7 @@ const _Markdown: React.FC<MarkdownProps> = ({
         return <Table.Cell {...props} />;
       },
     };
-  }, [rest, canHavePins]);
+  }, [rest, canHaveInteractiveElements, color]);
   return (
     <ReactMarkdown
       className={styles.markdown}

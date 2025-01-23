@@ -7,6 +7,7 @@ import {
   noTools,
   goodUser,
   goodPing,
+  chatLinks,
 } from "../utils/mockServer";
 import { Chat } from "../features/Chat";
 
@@ -19,6 +20,7 @@ describe("chat caps error", () => {
       noTools,
       goodPrompts,
       goodUser,
+      chatLinks,
       http.get("http://127.0.0.1:8001/v1/caps", () => {
         return HttpResponse.json(
           {

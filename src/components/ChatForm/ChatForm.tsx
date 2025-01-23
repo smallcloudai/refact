@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
@@ -6,12 +6,18 @@ import styles from "./ChatForm.module.css";
 import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
-import { useOnPressedEnter, useIsOnline, useConfig } from "../../hooks";
+import {
+  useOnPressedEnter,
+  useIsOnline,
+  useConfig,
+  useAgentUsage,
+  useSendChatRequest,
+  useCapsForToolUse,
+} from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
-import { CodeChatModel, SystemPrompts } from "../../services/refact";
 import { FilesPreview } from "./FilesPreview";
-import { ChatControls } from "./ChatControls";
+import { ApplyPatchSwitch, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -22,55 +28,98 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
+  setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachFileButton, FileList } from "../Dropzone";
+import { useAttachedImages } from "../../hooks/useAttachedImages";
+import {
+  enableSend,
+  selectChatId,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+  selectPreventSend,
+  selectToolUse,
+} from "../../features/Chat";
+import { isUserMessage } from "../../services/refact";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  caps: {
-    error: string | null;
-    fetching: boolean;
-    default_cap: string;
-    available_caps: Record<string, CodeChatModel>;
-  };
-  model: string;
-  onSetChatModel: (model: string) => void;
-  isStreaming: boolean;
-
-  showControls: boolean;
-  prompts: SystemPrompts;
-  onSetSystemPrompt: (prompt: SystemPrompts) => void;
-  selectedSystemPrompt: SystemPrompts;
-  chatId: string;
-  onToolConfirm: () => void;
+  unCalledTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  caps,
-  model,
-  onSetChatModel,
-  isStreaming,
-  showControls,
-  prompts,
-  onSetSystemPrompt,
-  selectedSystemPrompt,
-  onToolConfirm,
+  unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const { retryFromIndex } = useSendChatRequest();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const config = useConfig();
+  const toolUse = useAppSelector(selectToolUse);
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
-  const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
+  const { disableInput } = useAgentUsage();
+  const isOnline = useIsOnline();
+
+  const chatId = useAppSelector(selectChatId);
+  const messages = useAppSelector(selectMessages);
+  const preventSend = useAppSelector(selectPreventSend);
+
+  const onClearError = useCallback(() => {
+    dispatch(clearError());
+    const userMessages = messages.filter(isUserMessage);
+
+    // getting second-to-last user message
+    const lastSuccessfulUserMessage =
+      userMessages.slice(-2, -1)[0] || userMessages[0];
+
+    const lastSuccessfulUserMessageIndex = messages.indexOf(
+      lastSuccessfulUserMessage,
+    );
+    retryFromIndex(
+      lastSuccessfulUserMessageIndex,
+      lastSuccessfulUserMessage.content,
+    );
+  }, [dispatch, retryFromIndex, messages]);
+
+  const disableSend = useMemo(() => {
+    // TODO: if interrupting chat some errors can occur
+    if (messages.length === 0) return false;
+    return isWaiting || isStreaming || !isOnline || preventSend;
+  }, [isOnline, isStreaming, isWaiting, preventSend, messages]);
+
+  const { processAndInsertImages } = useAttachedImages();
+  const handlePastingFile = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (!isMultimodalitySupportedForCurrentModel) return;
+      const files: File[] = [];
+      const items = event.clipboardData.items;
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          file && files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        processAndInsertImages(files);
+      }
+    },
+    [processAndInsertImages, isMultimodalitySupportedForCurrentModel],
+  );
+
   const {
     checkboxes,
     onToggleCheckbox,
@@ -92,11 +141,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const refs = useTourRefs();
 
-  const isOnline = useIsOnline();
-
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
-    if (trimmedValue.length > 0 && !isStreaming && isOnline) {
+    if (disableInput) {
+      const action = setInformation(
+        "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
+      );
+      dispatch(action);
+    } else if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(
         trimmedValue,
         checkboxes,
@@ -110,15 +162,16 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     }
   }, [
     value,
-    isStreaming,
-    isOnline,
+    disableInput,
+    disableSend,
+    dispatch,
     checkboxes,
     config.features?.vecdb,
+    setFileInteracted,
+    setLineSelectionInteracted,
     onSubmit,
     setValue,
     unCheckAll,
-    setFileInteracted,
-    setLineSelectionInteracted,
   ]);
 
   const handleEnter = useOnPressedEnter(handleSubmit);
@@ -167,24 +220,44 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
   );
 
-  const handleToolConfirmation = useCallback(() => {
-    onToolConfirm();
-  }, [onToolConfirm]);
+  useEffect(() => {
+    // this use effect is required to reset preventSend when chat was restored
+    if (
+      preventSend &&
+      !unCalledTools &&
+      !isStreaming &&
+      !isWaiting &&
+      isOnline
+    ) {
+      dispatch(enableSend({ id: chatId }));
+    }
+  }, [
+    dispatch,
+    isOnline,
+    isWaiting,
+    isStreaming,
+    preventSend,
+    chatId,
+    unCalledTools,
+  ]);
 
   useEffect(() => {
-    if (isSendImmediately) {
+    if (isSendImmediately && !isWaiting && !isStreaming) {
       handleSubmit();
       setIsSendImmediately(false);
     }
-  }, [isSendImmediately, handleSubmit, setIsSendImmediately]);
+  }, [
+    isSendImmediately,
+    isWaiting,
+    isStreaming,
+    handleSubmit,
+    setIsSendImmediately,
+  ]);
 
   if (error) {
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {error}
-        <Text size="1" as="div">
-          Click to retry
-        </Text>
       </ErrorCallout>
     );
   }
@@ -199,10 +272,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (!isStreaming && pauseReasonsWithPause.pause) {
     return (
-      <ToolConfirmation
-        pauseReasons={pauseReasonsWithPause.pauseReasons}
-        onConfirm={handleToolConfirmation}
-      />
+      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
     );
   }
 
@@ -225,10 +295,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             {helpInfo}
           </Flex>
         )}
+        {toolUse === "agent" && (
+          <Flex mb="2">
+            <ApplyPatchSwitch />
+          </Flex>
+        )}
         <Form
-          disabled={isStreaming || !isOnline}
+          disabled={disableSend}
           className={className}
-          onSubmit={() => handleSubmit()}
+          onSubmit={handleSubmit}
         >
           <FilesPreview files={previewFiles} />
 
@@ -248,10 +323,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               <TextArea
                 data-testid="chat-form-textarea"
                 required={true}
-                disabled={isStreaming}
+                // disabled={isStreaming}
                 {...props}
                 autoFocus={true}
                 style={{ boxShadow: "none", outline: "none" }}
+                onPaste={handlePastingFile}
               />
             )}
           />
@@ -264,10 +340,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 onClick={onClose}
               />
             )}
-            {config.features?.images !== false && <AttachFileButton />}
+            {config.features?.images !== false &&
+              isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
             {/* TODO: Reserved space for microphone button coming later on */}
             <PaperPlaneButton
-              disabled={isStreaming || !isOnline}
+              disabled={disableSend || disableInput}
               title="send"
               size="1"
               type="submit"
@@ -276,21 +353,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         </Form>
       </Flex>
       <FileList />
+
       <ChatControls
         host={config.host}
         checkboxes={checkboxes}
-        showControls={showControls}
         onCheckedChange={onToggleCheckbox}
-        selectProps={{
-          value: model || caps.default_cap,
-          onChange: onSetChatModel,
-          options: Object.keys(caps.available_caps),
-        }}
-        promptsProps={{
-          value: selectedSystemPrompt,
-          prompts: prompts,
-          onChange: onSetSystemPrompt,
-        }}
       />
     </Card>
   );

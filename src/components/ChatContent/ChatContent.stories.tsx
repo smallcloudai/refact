@@ -6,7 +6,7 @@ import { setUpStore } from "../../app/store";
 import { Theme } from "../Theme";
 import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import { MarkdownMessage } from "../../__fixtures__/markdown";
-import { ChatMessages } from "../../events";
+import { ChatMessages, ChatThread } from "../../events";
 import {
   CHAT_FUNCTIONS_MESSAGES,
   CHAT_WITH_DIFF_ACTIONS,
@@ -14,26 +14,33 @@ import {
   FROG_CHAT,
   LARGE_DIFF,
   CHAT_WITH_MULTI_MODAL,
+  CHAT_CONFIG_THREAD,
+  STUB_LINKS_FOR_CHAT_RESPONSE,
 } from "../../__fixtures__";
+import { http, HttpResponse } from "msw";
+import { CHAT_LINKS_URL } from "../../services/refact/consts";
 
 const MockedStore: React.FC<{
-  messages: ChatMessages;
-}> = ({ messages }) => {
+  messages?: ChatMessages;
+  thread?: ChatThread;
+}> = ({ messages, thread }) => {
+  const threadData = thread ?? {
+    id: "test",
+    model: "test",
+    messages: messages ?? [],
+  };
   const store = setUpStore({
     chat: {
       streaming: false,
       prevent_send: false,
       waiting_for_response: false,
+      max_new_tokens: 4096,
       tool_use: "quick",
       send_immediately: false,
       error: null,
       cache: {},
       system_prompt: {},
-      thread: {
-        id: "test",
-        model: "test",
-        messages,
-      },
+      thread: threadData,
     },
   });
 
@@ -117,5 +124,20 @@ export const ToolImages: Story = {
 export const MultiModal: Story = {
   args: {
     messages: CHAT_WITH_MULTI_MODAL.messages,
+  },
+};
+
+export const IntegrationChat: Story = {
+  args: {
+    thread: CHAT_CONFIG_THREAD.thread,
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        http.post(`http://127.0.0.1:8001${CHAT_LINKS_URL}`, () => {
+          return HttpResponse.json(STUB_LINKS_FOR_CHAT_RESPONSE);
+        }),
+      ],
+    },
   },
 };

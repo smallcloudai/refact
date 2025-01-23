@@ -18,7 +18,6 @@ export const StatisticView: React.FC<{
   if (error ?? !statisticData) {
     return <ErrorCallout>{error}</ErrorCallout>;
   }
-
   return (
     <Box
       style={{
@@ -37,9 +36,13 @@ export const StatisticView: React.FC<{
         <Flex align="center" justify="center" direction="column">
           <Table refactImpactTable={statisticData.table_refact_impact.data} />
           <Chart
-            refactImpactDatesWeekly={
-              statisticData.refact_impact_dates.data.weekly
-            }
+            refactImpactDatesWeekly={Object.fromEntries(
+              Object.entries(
+                statisticData.refact_impact_dates.data.weekly,
+              ).sort(
+                ([a], [b]) => new Date(a).getTime() - new Date(b).getTime(),
+              ),
+            )}
           />
         </Flex>
       </Flex>

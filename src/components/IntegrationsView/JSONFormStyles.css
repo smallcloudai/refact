@@ -1,0 +1,29 @@
+fieldset {
+  border: unset;
+  padding: 0;
+  margin: 0;
+}
+
+.form-group {
+  &:not(:last-child) {
+    margin-bottom: 1.5rem;
+  }
+  &.field-array {
+    padding: 1.25rem;
+    border: 1px solid var(--mauve-6);
+    border-radius: 4px;
+  }
+  .control-label {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .field-description {
+    display: block;
+    opacity: 0.85;
+  }
+}
+
+.btn-group {
+  justify-content: space-between !important;
+  margin-bottom: 1.5rem;
+}

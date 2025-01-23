@@ -1,5 +1,7 @@
 import type { Preview } from "@storybook/react";
 import "@radix-ui/themes/styles.css";
+import "../src/lib/render/web.css";
+
 import { initialize, mswLoader } from "msw-storybook-addon";
 
 initialize();

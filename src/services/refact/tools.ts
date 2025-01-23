@@ -1,7 +1,8 @@
 import { RootState } from "../../app/store";
 import { AT_TOOLS_AVAILABLE_URL, TOOLS_CHECK_CONFIRMATION } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { ToolCall } from "./types";
+import { ChatMessage, ToolCall } from "./types";
+import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 export const toolsApi = createApi({
   reducerPath: "tools",
@@ -46,18 +47,23 @@ export const toolsApi = createApi({
     }),
     checkForConfirmation: builder.mutation<
       ToolConfirmationResponse,
-      ToolCall[]
+      ToolConfirmationRequest
     >({
-      queryFn: async (tool_calls, api, _extraOptions, baseQuery) => {
+      queryFn: async (args, api, _extraOptions, baseQuery) => {
         const getState = api.getState as () => RootState;
         const state = getState();
         const port = state.config.lspPort;
+
+        const { messages, tool_calls } = args;
+        const messagesForLsp = formatMessagesForLsp(messages);
+
         const url = `http://127.0.0.1:${port}${TOOLS_CHECK_CONFIRMATION}`;
         const result = await baseQuery({
           url,
           method: "POST",
           body: {
             tool_calls: tool_calls,
+            messages: messagesForLsp,
           },
           credentials: "same-origin",
           redirect: "follow",
@@ -90,8 +96,9 @@ export type ToolFunction = {
   agentic?: boolean;
   name: string;
   description: string;
-  parameters: ToolParams[];
-  parameters_required: string[];
+  // parameters: ToolParams[];
+  parameters: Record<string, unknown>;
+  parameters_required?: string[];
 };
 
 export type ToolCommand = {
@@ -99,14 +106,22 @@ export type ToolCommand = {
   type: "function";
 };
 
+export type ToolConfirmationPauseReason = {
+  type: "confirmation" | "denial";
+  command: string;
+  rule: string;
+  tool_call_id: string;
+  integr_config_path: string | null;
+};
+
 export type ToolConfirmationResponse = {
   pause: boolean;
-  pause_reasons: {
-    type: "confirmation" | "denial";
-    command: string;
-    rule: string;
-    tool_call_id: string;
-  }[];
+  pause_reasons: ToolConfirmationPauseReason[];
+};
+
+export type ToolConfirmationRequest = {
+  tool_calls: ToolCall[];
+  messages: ChatMessage[];
 };
 
 function isToolCommand(tool: unknown): tool is ToolCommand {

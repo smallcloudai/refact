@@ -1,3 +1,4 @@
+import React from "react";
 import { Flex, SegmentedControl, Text, HoverCard } from "@radix-ui/themes";
 import { ToolUse } from "../../features/Chat/Thread";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
@@ -7,9 +8,12 @@ type ToolUseSwitchProps = {
   setToolUse: (toolUse: ToolUse) => void;
 };
 
-export const ToolUseSwitch = ({ toolUse, setToolUse }: ToolUseSwitchProps) => {
+export const ToolUseSwitch = React.forwardRef<
+  HTMLDivElement,
+  ToolUseSwitchProps
+>(({ toolUse, setToolUse }, ref) => {
   return (
-    <Flex direction="column" gap="3" mb="2" align="start">
+    <Flex direction="column" gap="3" mb="2" align="start" ref={ref}>
       <Text size="2">How fast do you want the answer:</Text>
       <Flex direction="row" gap="1" align="center">
         <SegmentedControl.Root
@@ -54,4 +58,6 @@ export const ToolUseSwitch = ({ toolUse, setToolUse }: ToolUseSwitchProps) => {
       </Flex>
     </Flex>
   );
-};
+});
+
+ToolUseSwitch.displayName = "ToolUseSwitch";

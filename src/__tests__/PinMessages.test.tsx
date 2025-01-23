@@ -9,6 +9,7 @@ import {
   noCompletions,
   goodUser,
   goodPing,
+  chatLinks,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
@@ -21,6 +22,7 @@ describe("Pin messages", () => {
     noCommandPreview,
     noCompletions,
     goodUser,
+    chatLinks,
   );
 
   test("it should replace 📍PARTIAL_EDIT 000 /Users/refact/code/refact-lsp/src/ast/ast_db.rs", () => {
@@ -39,6 +41,7 @@ describe("Pin messages", () => {
           streaming: false,
           error: null,
           waiting_for_response: false,
+          max_new_tokens: 4096,
           cache: {},
           system_prompt: {},
           tool_use: "explore",

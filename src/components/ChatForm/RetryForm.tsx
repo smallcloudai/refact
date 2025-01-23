@@ -5,7 +5,7 @@ import { TextArea } from "../TextArea";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { Form } from "./Form";
 
-import { useAppSelector } from "../../hooks";
+import { useAgentUsage, useAppSelector, useCapsForToolUse } from "../../hooks";
 import { selectSubmitOption } from "../../features/Config/configSlice";
 import {
   ProcessedUserMessageContentWithImages,
@@ -58,6 +58,8 @@ export const RetryForm: React.FC<{
   onClose: () => void;
 }> = (props) => {
   const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
+  const { disableInput } = useAgentUsage();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const inputText = getTextFromUserMessage(props.value);
   const inputImages = getImageFromUserMessage(props.value);
   const [textValue, onChangeTextValue] = useState(inputText);
@@ -76,6 +78,7 @@ export const RetryForm: React.FC<{
   };
 
   const handleRetry = () => {
+    if (disableInput) return;
     const trimmedText = textValue.trim();
     if (imageValue.length === 0 && trimmedText.length > 0) {
       props.onSubmit(trimmedText);
@@ -155,7 +158,18 @@ export const RetryForm: React.FC<{
           backgroundColor: "var(--color-surface)",
         }}
       >
-        <Button color="grass" variant="surface" size="1" type="submit">
+        <Button
+          color="grass"
+          variant="surface"
+          size="1"
+          type="submit"
+          disabled={disableInput}
+          title={
+            disableInput
+              ? "You have reached your usage limit of 20 messages a day. You can use agent again tomorrow, or upgrade to PRO."
+              : ""
+          }
+        >
           Submit
         </Button>
         <Button
@@ -167,7 +181,9 @@ export const RetryForm: React.FC<{
           Cancel
         </Button>
 
-        <MyDropzone addImage={addImage} />
+        {isMultimodalitySupportedForCurrentModel && (
+          <MyDropzone addImage={addImage} />
+        )}
       </Flex>
     </Form>
   );

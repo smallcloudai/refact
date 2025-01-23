@@ -1,12 +1,20 @@
 function iter(lines: string[], processed: string[] = []): string[] {
-  if (lines.length === 0) return processed;
-  const [head, ...tail] = lines;
+  let remainingLines = lines;
+  let currentProcessed = processed;
 
-  if (!head.startsWith("```")) return iter(tail, [...processed, head]);
+  while (remainingLines.length > 0) {
+    const [head, ...tail] = remainingLines;
 
-  const escapedHead = ["````", head];
+    if (!head.startsWith("```")) {
+      currentProcessed = [...currentProcessed, head];
+    } else {
+      const escapedHead = ["````", head];
+      currentProcessed = [...currentProcessed, ...escapedHead];
+    }
 
-  return iter(tail, [...processed, ...escapedHead]);
+    remainingLines = tail;
+  }
+  return currentProcessed;
 }
 
 export function fenceBackTicks(text: string) {

@@ -22,7 +22,7 @@ export const Markdown: React.FC<{
   return (
     <ReactMarkDown
       components={{
-        code({ style: _style, ...codeProps }) {
+        code({ style: _style, color: _color, ...codeProps }) {
           return (
             <MarkdownCodeBlock
               {...codeProps}
@@ -112,7 +112,9 @@ const ContextFilesContent: React.FC<{
         <Flex wrap="nowrap" direction="column">
           {files.map((file, index) => {
             const lineText =
-              file.line1 && file.line2 ? `:${file.line1}-${file.line2}` : "";
+              file.line1 && file.line2 && file.line1 !== 0 && file.line2 !== 0
+                ? `:${file.line1}-${file.line2}`
+                : "";
             const key = file.file_name + lineText + index;
             return (
               <ContextFile
@@ -147,7 +149,7 @@ export const ContextFiles: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Flex gap="2" align="start" py="2">
+          <Flex gap="2" align="start" py="2" style={{ cursor: "pointer" }}>
             <Text weight="light" size="1">
               📎 {fileNames.join(", ")}
             </Text>

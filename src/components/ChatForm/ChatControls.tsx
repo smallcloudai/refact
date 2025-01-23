@@ -1,50 +1,118 @@
-import React, { useCallback } from "react";
-import { Text, Flex, HoverCard, Link } from "@radix-ui/themes";
+import React, { useCallback, useMemo } from "react";
+import {
+  Text,
+  Flex,
+  HoverCard,
+  Link,
+  Skeleton,
+  Box,
+  Switch,
+} from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
-import { PromptSelect, PromptSelectProps } from "./PromptSelect";
+import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
-import { ToolUse, selectToolUse, setToolUse } from "../../features/Chat/Thread";
-import { useCanUseTools } from "../../hooks/useCanUseTools";
-import { useAppSelector, useAppDispatch } from "../../hooks";
+import {
+  ToolUse,
+  selectAutomaticPatch,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+  selectToolUse,
+  setAutomaticPatch,
+  setToolUse,
+} from "../../features/Chat/Thread";
+import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 
-type CapsSelectProps = {
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  disabled?: boolean;
-};
+export const ApplyPatchSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
 
-const CapsSelect: React.FC<CapsSelectProps> = ({
-  options,
-  value,
-  onChange,
-  disabled,
-}) => {
-  const refs = useTourRefs();
+  const handleAutomaticPatchChange = (checked: boolean) => {
+    dispatch(setAutomaticPatch(checked));
+  };
 
   return (
     <Flex
       gap="2"
       align="center"
       wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+    >
+      <Text size="2">Auto apply patches</Text>
+      <Switch
+        size="1"
+        title="Enable/disable automatic patch calls by Agent"
+        checked={isPatchAutomatic}
+        onCheckedChange={handleAutomaticPatchChange}
+      />
+      <HoverCard.Root>
+        <HoverCard.Trigger>
+          <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+        </HoverCard.Trigger>
+        <HoverCard.Content size="2" maxWidth="280px">
+          <Text weight="bold">Enabled</Text>
+          <Text as="p" size="2">
+            When enabled, Refact Agent will automatically apply changes to files
+            without asking for your confirmation.
+          </Text>
+          <Text as="div" mt="2" weight="bold">
+            Disabled
+          </Text>
+          <Text as="p" size="2">
+            When disabled, Refact Agent will ask for your confirmation before
+            applying any unsaved changes.
+          </Text>
+        </HoverCard.Content>
+      </HoverCard.Root>
+    </Flex>
+  );
+};
+
+const CapsSelect: React.FC = () => {
+  const refs = useTourRefs();
+  const caps = useCapsForToolUse();
+
+  const allDisabled = caps.usableModelsForPlan.every((option) => {
+    if (typeof option === "string") return false;
+    return option.disabled;
+  });
+
+  return (
+    <Flex
+      gap="2"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
       ref={(x) => refs.setUseModel(x)}
-      style={{ alignSelf: "flex-start" }}
     >
       <Text size="2">Use model:</Text>
-      <Select
-        disabled={disabled}
-        title="chat model"
-        options={options}
-        value={value}
-        onChange={onChange}
-      ></Select>
+      <Skeleton loading={caps.loading}>
+        <Box>
+          {allDisabled ? (
+            <Text size="1" color="gray">
+              No models available
+            </Text>
+          ) : (
+            <Select
+              title="chat model"
+              options={caps.usableModelsForPlan}
+              value={caps.currentModel}
+              onChange={caps.setCapModel}
+            />
+          )}
+        </Box>
+      </Skeleton>
     </Flex>
   );
 };
@@ -72,10 +140,8 @@ export type ChatControlsProps = {
     name: keyof ChatControlsProps["checkboxes"],
     checked: boolean | string,
   ) => void;
-  selectProps: CapsSelectProps;
-  promptsProps: PromptSelectProps;
+
   host: Config["host"];
-  showControls: boolean;
 };
 
 const ChatControlCheckBox: React.FC<{
@@ -146,18 +212,22 @@ const ChatControlCheckBox: React.FC<{
 export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
-  selectProps,
-  promptsProps,
   host,
-  showControls,
 }) => {
   const refs = useTourRefs();
-  const canUseTools = useCanUseTools();
   const dispatch = useAppDispatch();
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const messages = useAppSelector(selectMessages);
   const toolUse = useAppSelector(selectToolUse);
   const onSetToolUse = useCallback(
     (value: ToolUse) => dispatch(setToolUse(value)),
     [dispatch],
+  );
+
+  const showControls = useMemo(
+    () => messages.length === 0 && !isStreaming && !isWaiting,
+    [isStreaming, isWaiting, messages],
   );
 
   return (
@@ -166,6 +236,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
       pb="2"
       gap="2"
       direction="column"
+      align="start"
       className={classNames(styles.controls)}
     >
       {Object.entries(checkboxes).map(([key, checkbox]) => {
@@ -176,44 +247,30 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           return null;
         }
         return (
-          <Flex
-            style={{
-              // TODO: lots of `align` self
-              alignSelf: "flex-start",
-            }}
+          <ChatControlCheckBox
             key={key}
-          >
-            <ChatControlCheckBox
-              name={checkbox.name}
-              label={checkbox.label}
-              checked={checkbox.checked}
-              disabled={checkbox.disabled}
-              onCheckChange={(value) => onCheckedChange(key, value)}
-              infoText={checkbox.info?.text}
-              href={checkbox.info?.link}
-              linkText={checkbox.info?.linkText}
-              fileName={checkbox.fileName}
-            />
-          </Flex>
+            name={checkbox.name}
+            label={checkbox.label}
+            checked={checkbox.checked}
+            disabled={checkbox.disabled}
+            onCheckChange={(value) => onCheckedChange(key, value)}
+            infoText={checkbox.info?.text}
+            href={checkbox.info?.link}
+            linkText={checkbox.info?.linkText}
+            fileName={checkbox.fileName}
+          />
         );
       })}
-      {canUseTools && showControls && (
-        <Flex
-          ref={(x) => refs.setUseTools(x)}
-          style={{ alignSelf: "flex-start" }}
-        >
-          <ToolUseSwitch toolUse={toolUse} setToolUse={onSetToolUse} />
-        </Flex>
-      )}
 
       {showControls && (
-        <Flex style={{ alignSelf: "flex-start" }}>
-          <CapsSelect {...selectProps} />
-        </Flex>
-      )}
-      {showControls && (
-        <Flex style={{ alignSelf: "flex-start" }}>
-          <PromptSelect {...promptsProps} />
+        <Flex gap="2" direction="column">
+          <ToolUseSwitch
+            ref={(x) => refs.setUseTools(x)}
+            toolUse={toolUse}
+            setToolUse={onSetToolUse}
+          />
+          <CapsSelect />
+          <PromptSelect />
         </Flex>
       )}
     </Flex>

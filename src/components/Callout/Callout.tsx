@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Flex, Callout as RadixCallout } from "@radix-ui/themes";
+import {
+  Flex,
+  Callout as RadixCallout,
+  Card,
+  Text,
+  Button,
+} from "@radix-ui/themes";
 import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
@@ -7,6 +13,8 @@ import {
 import { useTimeout } from "usehooks-ts";
 import styles from "./Callout.module.css";
 import classNames from "classnames";
+import { useAppSelector, useLogout } from "../../hooks";
+import { getIsAuthError } from "../../features/Errors/errorsSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
 
@@ -14,6 +22,7 @@ export type CalloutProps = Omit<RadixCalloutProps, "onClick"> & {
   type: "info" | "error" | "warning";
   onClick?: () => void;
   timeout?: number | null;
+  preventRetry?: boolean;
   hex?: string;
   message?: string | string[];
 };
@@ -23,6 +32,7 @@ export const Callout: React.FC<CalloutProps> = ({
   type = "info",
   timeout = null,
   onClick = () => void 0,
+  preventRetry,
   ...props
 }) => {
   const [isOpened, setIsOpened] = useState(false);
@@ -38,6 +48,7 @@ export const Callout: React.FC<CalloutProps> = ({
   }, []);
 
   const handleRetryClick = () => {
+    if (preventRetry) return;
     setIsOpened(false);
     const timeoutId = setTimeout(() => {
       onClick();
@@ -81,6 +92,9 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   children,
   ...props
 }) => {
+  const logout = useLogout();
+  const isAuthError = useAppSelector(getIsAuthError);
+
   return (
     <Callout
       type="error"
@@ -88,9 +102,31 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
       onClick={onClick}
       timeout={timeout}
       itemType={props.itemType}
+      preventRetry={isAuthError}
       {...props}
     >
       Error: {children}
+      {!isAuthError && (
+        <Text size="1" as="p">
+          Click to retry
+        </Text>
+      )}
+      {isAuthError && (
+        <Flex as="span" gap="2" mt="3">
+          <Button variant="surface" onClick={() => logout()}>
+            Logout
+          </Button>
+          <Button asChild variant="surface" color="brown">
+            <a
+              href="https://discord.gg/Kts7CYg99R"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Get help
+            </a>
+          </Button>
+        </Flex>
+      )}
     </Callout>
   );
 };
@@ -143,5 +179,25 @@ export const DiffWarningCallout: React.FC<Omit<CalloutProps, "type">> = ({
         {children}
       </Flex>
     </Callout>
+  );
+};
+
+export const CalloutFromTop: React.FC<
+  RadixCalloutProps & {
+    children?: React.ReactNode;
+  }
+> = ({ children }) => {
+  return (
+    <Card asChild>
+      <RadixCallout.Root color="amber" className={styles.changes_warning}>
+        <Flex direction="row" align="center" gap="4" position="relative">
+          <RadixCallout.Icon>
+            <InfoCircledIcon />
+          </RadixCallout.Icon>
+
+          {children}
+        </Flex>
+      </RadixCallout.Root>
+    </Card>
   );
 };

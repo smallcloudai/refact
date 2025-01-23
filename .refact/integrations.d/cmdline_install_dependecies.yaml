@@ -1,0 +1,21 @@
+command: npm i
+command_workdir: ''
+description: Install Node dependencies defined in package.json
+parameters: []
+timeout: '1000'
+output_filter:
+  limit_lines: 100
+  limit_chars: 10000
+  valuable_top_or_bottom: top
+  grep: (?i)error
+  grep_context_lines: 5
+  remove_from_output: ''
+startup_wait_port: ''
+startup_wait: '10'
+startup_wait_keyword: null
+available:
+  on_your_laptop: true
+  when_isolated: true
+confirmation:
+  ask_user: []
+  deny: []

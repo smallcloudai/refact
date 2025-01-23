@@ -1,6 +1,6 @@
 import React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import { Container, Flex, Text, Box, Spinner, Avatar } from "@radix-ui/themes";
+import { Container, Flex, Text, Box, Spinner } from "@radix-ui/themes";
 import {
   isMultiModalToolResult,
   MultiModalToolResult,
@@ -19,6 +19,7 @@ import {
 } from "../../features/Chat/Thread/selectors";
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile, fenceBackTicks } from "../../utils";
+import { DialogImage } from "../DialogImage";
 
 type ResultProps = {
   children: string;
@@ -31,7 +32,7 @@ const Result: React.FC<ResultProps> = ({
 }) => {
   const lines = children.split("\n");
   return (
-    <Reveal defaultOpen={lines.length < 9}>
+    <Reveal defaultOpen={lines.length < 9} isRevealingCode>
       <ResultMarkdown
         className={styles.tool_result}
         isInsideScrollArea={isInsideScrollArea}
@@ -167,44 +168,14 @@ export const SingleModelToolContent: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          {/**TODO: reuse this */}
-          <Flex gap="2" align="end">
-            <Flex gap="1" align="start" direction="column">
-              <Text weight="light" size="1">
-                🔨{" "}
-                {toolUsageAmount.map(
-                  ({ functionName, amountOfCalls }, index) => (
-                    <span key={functionName}>
-                      <ToolUsageDisplay
-                        functionName={functionName}
-                        amountOfCalls={amountOfCalls}
-                      />
-                      {index === toolUsageAmount.length - 1 ? "" : ", "}
-                    </span>
-                  ),
-                )}
-              </Text>
-              {hiddenFiles > 0 && (
-                <Text weight="light" size="1" ml="4">
-                  {`🔎 <${hiddenFiles} files hidden>`}
-                </Text>
-              )}
-              {shownAttachedFiles.map((file, index) => (
-                <Text weight="light" size="1" key={index} ml="4">
-                  🔎 {file}
-                </Text>
-              ))}
-              {subchat && (
-                <Flex ml="4">
-                  <Spinner />
-                  <Text weight="light" size="1" ml="4px">
-                    {subchat}
-                  </Text>
-                </Flex>
-              )}
-            </Flex>
-            <Chevron open={open} />
-          </Flex>
+          <ToolUsageSummary
+            toolUsageAmount={toolUsageAmount}
+            hiddenFiles={hiddenFiles}
+            shownAttachedFiles={shownAttachedFiles}
+            subchat={subchat}
+            open={open}
+            onClick={() => setOpen((prev) => !prev)}
+          />
         </Collapsible.Trigger>
         <Collapsible.Content>
           {toolCalls.map((toolCall) => {
@@ -332,26 +303,11 @@ const MultiModalToolContent: React.FC<{
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          {/**TODO: duplicated */}
-          <Flex gap="2" align="end">
-            <Flex gap="1" align="start" direction="column">
-              <Text weight="light" size="1">
-                🔨{" "}
-                {toolUsageAmount.map(
-                  ({ functionName, amountOfCalls }, index) => (
-                    <span key={`${functionName}-${index}`}>
-                      <ToolUsageDisplay
-                        functionName={functionName}
-                        amountOfCalls={amountOfCalls}
-                      />
-                      {index === toolUsageAmount.length - 1 ? "" : ", "}
-                    </span>
-                  ),
-                )}
-              </Text>
-            </Flex>
-            <Chevron open={open} />
-          </Flex>
+          <ToolUsageSummary
+            toolUsageAmount={toolUsageAmount}
+            open={open}
+            onClick={() => setOpen((prev) => !prev)}
+          />
         </Collapsible.Trigger>
         <Collapsible.Content>
           {/** TODO: tool call name and text result */}
@@ -422,11 +378,76 @@ const MultiModalToolContent: React.FC<{
             return images.map((image, idx) => {
               const dataUrl = `data:${image.m_type};base64,${image.m_content}`;
               const key = `tool-image-${toolResult.tool_call_id}-${index}-${idx}`;
-              return <Avatar key={key} size="8" src={dataUrl} fallback="" />;
+              return (
+                <DialogImage key={key} size="8" src={dataUrl} fallback="" />
+              );
             });
           })}
         </Flex>
       )}
     </Container>
+  );
+};
+
+const ToolUsageSummary: React.FC<{
+  toolUsageAmount: ToolUsage[];
+  hiddenFiles?: number;
+  shownAttachedFiles?: (string | undefined)[];
+  subchat?: string;
+  open: boolean;
+  onClick?: () => void;
+}> = ({
+  toolUsageAmount,
+  hiddenFiles,
+  shownAttachedFiles,
+  subchat,
+  open,
+  onClick,
+}) => {
+  return (
+    <Flex gap="2" align="end" onClick={onClick}>
+      <Flex
+        gap="1"
+        align="start"
+        direction="column"
+        style={{ cursor: "pointer" }}
+      >
+        <Text weight="light" size="1">
+          🔨{" "}
+          {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
+            <span key={functionName}>
+              <ToolUsageDisplay
+                functionName={functionName}
+                amountOfCalls={amountOfCalls}
+              />
+              {index === toolUsageAmount.length - 1 ? "" : ", "}
+            </span>
+          ))}
+        </Text>
+        {hiddenFiles && hiddenFiles > 0 && (
+          <Text weight="light" size="1" ml="4">
+            {`🔎 <${hiddenFiles} files hidden>`}
+          </Text>
+        )}
+        {shownAttachedFiles?.map((file, index) => {
+          if (!file) return null;
+
+          return (
+            <Text weight="light" size="1" key={index} ml="4">
+              🔎 {file}
+            </Text>
+          );
+        })}
+        {subchat && (
+          <Flex ml="4">
+            <Spinner />
+            <Text weight="light" size="1" ml="4px">
+              {subchat}
+            </Text>
+          </Flex>
+        )}
+      </Flex>
+      <Chevron open={open} />
+    </Flex>
   );
 };

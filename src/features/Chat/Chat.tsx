@@ -2,7 +2,6 @@ import React from "react";
 import type { Config } from "../Config/configSlice";
 import { Chat as ChatComponent } from "../../components/Chat";
 import { useAppSelector } from "../../hooks";
-import { useGetCapsQuery } from "../../hooks/useGetCapsQuery";
 import { selectMessages } from "./Thread";
 
 export type ChatProps = {
@@ -18,8 +17,6 @@ export const Chat: React.FC<ChatProps> = ({
   host,
   tabbed,
 }) => {
-  const capsRequest = useGetCapsQuery();
-
   const messages = useAppSelector(selectMessages);
 
   const sendToSideBar = () => {
@@ -46,16 +43,7 @@ export const Chat: React.FC<ChatProps> = ({
       tabbed={tabbed}
       backFromChat={backFromChat}
       unCalledTools={unCalledTools}
-      // TODO: This could be moved lower in the component tree
-      caps={{
-        error: capsRequest.error ? "error fetching caps" : null,
-        fetching: capsRequest.isFetching,
-        default_cap: capsRequest.data?.code_chat_default_model ?? "",
-        available_caps: capsRequest.data?.code_chat_models ?? {},
-      }}
       maybeSendToSidebar={maybeSendToSideBar}
-      // TODO: This can be removed
-      // requestPreviewFiles={() => ({})}
     />
   );
 };

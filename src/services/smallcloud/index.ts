@@ -8,6 +8,8 @@ export type User = {
   inference: string;
   metering_balance: number;
   questionnaire: false | Record<string, string>;
+  refact_agent_max_request_num: number;
+  refact_agent_request_available: null | number; // null for PRO or ROBOT
 };
 
 function isUser(json: unknown): json is User {
@@ -21,7 +23,12 @@ function isUser(json: unknown): json is User {
     "inference_url" in json &&
     typeof json.inference_url === "string" &&
     "inference" in json &&
-    typeof json.inference === "string"
+    typeof json.inference === "string" &&
+    "refact_agent_max_request_num" in json &&
+    typeof json.refact_agent_max_request_num === "number" &&
+    "refact_agent_request_available" in json &&
+    (json.refact_agent_request_available === null ||
+      typeof json.refact_agent_max_request_num === "number")
   );
 }
 
@@ -160,8 +167,15 @@ export const smallCloudApi = createApi({
         });
       },
     }),
-    getUser: builder.query<User, string>({
-      query: (apiKey: string) => {
+    getUser: builder.query<
+      User,
+      {
+        apiKey: string;
+        addressURL?: string;
+      }
+    >({
+      query: (args) => {
+        const { apiKey } = args;
         return {
           url: "login",
           method: "GET",

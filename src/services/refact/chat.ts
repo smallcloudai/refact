@@ -1,17 +1,35 @@
+import { IntegrationMeta, LspChatMode } from "../../features/Chat";
 import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
 import { ChatRole, ToolCall, ToolResult, UserMessage } from "./types";
+
+export const DEFAULT_MAX_NEW_TOKENS = 4096;
+export const INCREASED_MAX_NEW_TOKENS = 16384;
 
 export type LspChatMessage =
   | {
       role: ChatRole;
       // TODO make this a union type for user message
       content: string | null;
-      tool_calls?: Omit<ToolCall, "index">[];
+      finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+      // TBD: why was index omitted ?
+      // tool_calls?: Omit<ToolCall, "index">[];
+      tool_calls?: ToolCall[];
       tool_call_id?: string;
     }
   | UserMessage
   | { role: "tool"; content: ToolResult["content"]; tool_call_id: string };
+
+// could be more narrow.
+export function isLspChatMessage(json: unknown): json is LspChatMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  if (typeof json.role !== "string") return false;
+  if (!("content" in json)) return false;
+  if (json.content !== null && typeof json.content !== "string") return false;
+  return true;
+}
 
 type StreamArgs =
   | {
@@ -22,7 +40,9 @@ type StreamArgs =
 
 type SendChatArgs = {
   messages: LspChatMessage[];
+  last_user_message_id?: string; // used for `refact-message-id` header
   model: string;
+  max_new_tokens?: number;
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
@@ -30,6 +50,10 @@ type SendChatArgs = {
   tools: ToolCommand[] | null;
   port?: number;
   apiKey?: string | null;
+  // isConfig?: boolean;
+  toolsConfirmed?: boolean;
+  integration?: IntegrationMeta | null;
+  mode?: LspChatMode; // used for chat actions
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -83,12 +107,13 @@ export type Usage = {
   prompt_tokens: number;
   total_tokens: number;
 };
-
+// TODO: add config url
 export async function sendChat({
   messages,
   model,
   abortSignal,
   stream,
+  max_new_tokens,
   // lspUrl,
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
@@ -96,6 +121,11 @@ export async function sendChat({
   tools,
   port = 8001,
   apiKey,
+  toolsConfirmed = true,
+  // isConfig = false,
+  integration,
+  last_user_message_id = "",
+  mode,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -110,14 +140,22 @@ export async function sendChat({
   const body = JSON.stringify({
     messages,
     model: model,
-    parameters: {
-      max_new_tokens: 2048,
-    },
     stream,
     tools,
-    max_tokens: 2048,
+    max_tokens: max_new_tokens,
     only_deterministic_messages,
-    chat_id,
+    tools_confirmation: toolsConfirmed,
+    // chat_id,
+    meta: {
+      chat_id,
+      request_attempt_id: last_user_message_id,
+      // chat_remote,
+      // TODO: pass this through
+      chat_mode: mode ?? "EXPLORE",
+      // chat_mode: "EXPLORE", // NOTOOLS, EXPLORE, AGENT, CONFIGURE, PROJECTSUMMARY,
+      // TODO: not clear, that if we set integration.path it's going to be set also in meta as current_config_file
+      ...(integration?.path ? { current_config_file: integration.path } : {}),
+    },
   });
 
   //   const apiKey = getApiKey();
@@ -153,9 +191,6 @@ export async function generateChatTitle({
   const body = JSON.stringify({
     messages,
     model: model,
-    parameters: {
-      max_new_tokens: 2048,
-    },
     stream,
     max_tokens: 300,
     only_deterministic_messages,

@@ -26,6 +26,8 @@ function makeConfig(library: "browser" | "node") {
           semver: process.env.npm_package_version,
           commit: commitHash,
         }),
+        "process.env.DEBUG": JSON.stringify(process.env.DEBUG),
+        __REFACT_LSP_PORT__: process.env.REFACT_LSP_PORT,
       },
       mode,
       build: {
