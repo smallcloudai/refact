@@ -61,17 +61,14 @@ impl IntegrationSession for SessionMCP {
     fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
         Box::new(async {
             tracing::info!("MCP STOP {}", self.launched_cfg.mcp_name);
-            format!("hello world stop")
-            // let t0 = tokio::time::Instant::now();
-            // match Box::into_pin(self.cmdline_process.kill()).await {
-            //     Ok(_) => {
-            //         format!("Success, it took {:.3}s to stop it.\n\n", t0.elapsed().as_secs_f64())
-            //     },
-            //     Err(e) => {
-            //         tracing::warn!("Failed to kill service '{}'. Error: {}. Assuming process died on its own.", self.service_name, e);
-            //         format!("Failed to kill service. Error: {}.\nAssuming process died on its own, let's continue.\n\n", e)
-            //     }
-            // }
+            let mcp_client_locked = self.mcp_client.lock().await;
+            let maybe_err = mcp_client_locked.shutdown().await;
+            if let Err(e) = maybe_err {
+                tracing::error!("Failed to stop MCP {}:\n{:?}", self.launched_cfg.mcp_name, e);
+                format!("{} failed to stop", self.launched_cfg.mcp_name)
+            } else {
+                format!("{} stopped", self.launched_cfg.mcp_name)
+            }
         })
     }
 }
