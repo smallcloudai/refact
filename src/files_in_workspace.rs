@@ -11,7 +11,7 @@ use ropey::Rope;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use walkdir::WalkDir;
 use which::which;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
@@ -19,7 +19,9 @@ use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
-use crate::blocklist::{is_this_inside_blocklisted_dir, is_blocklisted, load_indexing_yaml, load_global_indexing_settings_if_needed, GlobalIndexingSettings, IndexingSettings};
+use crate::blocklist::{is_this_inside_blocklisted_dir, is_blocklisted, load_global_indexing_yaml,
+                       load_indexing_yaml, load_global_indexing_settings_if_needed,
+                       GlobalIndexingSettings, IndexingSettings};
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -353,6 +355,7 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 async fn _ls_files_under_version_control_recursive(
     all_files: &mut Vec<PathBuf>,
     vcs_folders: &mut Vec<PathBuf>,
+    global_indexing_settings: IndexingSettings,
     path: PathBuf,
     allow_files_in_hidden_folders: bool,
     ignore_size_thresholds: bool,
@@ -393,8 +396,7 @@ async fn _ls_files_under_version_control_recursive(
                     }
                 }
             } else {
-                let indexing_settings = IndexingSettings::default();
-                if check_blocklist && is_blocklisted(&indexing_settings, &local_path) {
+                if check_blocklist && is_blocklisted(&global_indexing_settings, &local_path) {
                     blocklisted_dirs_cnt += 1;
                     continue;
                 }
@@ -420,6 +422,7 @@ async fn _ls_files_under_version_control_recursive(
 
 pub async fn retrieve_files_in_workspace_folders(
     proj_folders: Vec<PathBuf>,
+    global_indexing_settings: IndexingSettings,
     allow_files_in_hidden_folders: bool,   // true when syncing to remote container
     ignore_size_thresholds: bool,
 ) -> (Vec<PathBuf>, Vec<PathBuf>) {
@@ -429,25 +432,34 @@ pub async fn retrieve_files_in_workspace_folders(
         _ls_files_under_version_control_recursive(
             &mut all_files,
             &mut vcs_folders,
+            global_indexing_settings.clone(),
             proj_folder.clone(),
             allow_files_in_hidden_folders,
             ignore_size_thresholds,
             true,
         ).await;
     }
-    for vcs_folder in vcs_folders.iter() {
-        let indexing_settings = load_indexing_yaml(&vcs_folder).await;
-        for additional_indexing_dirs in indexing_settings.additional_indexing_dirs {
-            info!("retrieve files from additional indexing dir: {}", additional_indexing_dirs);
-            let mut _vcs_folders = vec![];
-            _ls_files_under_version_control_recursive(
-                &mut all_files,
-                &mut _vcs_folders,
-                PathBuf::from(additional_indexing_dirs.clone()),
-                allow_files_in_hidden_folders,
-                ignore_size_thresholds,
-                false,
-            ).await;
+    for indexing_root in vcs_folders.iter() {
+        let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
+        match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
+            Ok(indexing_settings) => {
+                for additional_indexing_dirs in &indexing_settings.additional_indexing_dirs {
+                    info!("retrieve files from additional indexing dir: {}", additional_indexing_dirs);
+                    let mut _vcs_folders = vec![];
+                    _ls_files_under_version_control_recursive(
+                        &mut all_files,
+                        &mut _vcs_folders,
+                        indexing_settings.clone(),
+                        PathBuf::from(additional_indexing_dirs.clone()),
+                        allow_files_in_hidden_folders,
+                        ignore_size_thresholds,
+                        false,
+                    ).await;
+                }
+            },
+            Err(e) => {
+                error!("{}, skip", e)
+            }
         }
     }
     info!("in all workspace folders, VCS roots found:");
@@ -517,8 +529,10 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
+    let global_indexing_settings = load_global_indexing_yaml(gcx.clone()).await;
     let (all_files, vcs_folders) = retrieve_files_in_workspace_folders(
         folders,
+        global_indexing_settings,
         false,
         false
     ).await;

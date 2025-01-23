@@ -1,0 +1,32 @@
+# This config file determines if Refact is allowed to index or should add to the index.
+#
+# If you have a syntax error in this file, the refact-lsp will revert to the default blocklist and empty additional_indexing_dirs.
+#
+# You can additionally extend this config for vcs in <vcs_root>/.refact/indexing.yaml
+
+# list of glob patterns you want to skip in indexing, see here: https://en.wikipedia.org/wiki/Glob_(programming)
+blocklist:
+  - "target"
+  - "node_modules"
+  - "vendor"
+  - "build"
+  - "dist"
+  - "bin"
+  - "pkg"
+  - "lib"
+  - "lib64"
+  - "obj"
+  - "out"
+  - "venv"
+  - "env"
+  - "tmp"
+  - "temp"
+  - "logs"
+  - "coverage"
+  - "backup"
+  - "__pycache__"
+  - "_trajectories"
+  - ".gradle"
+
+# absolute or relative dirs you want to add into the index
+additional_indexing_dirs:
