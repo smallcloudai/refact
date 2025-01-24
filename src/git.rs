@@ -472,7 +472,7 @@ pub async fn create_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>,
     prev_checkpoint: Option<&Checkpoint>,
     chat_id: &str,
-) -> Result<(Checkpoint, Vec<FileChange>, Repository, DateTime<Utc>), String> {
+) -> Result<(Checkpoint, Vec<FileChange>, Repository), String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
@@ -497,18 +497,18 @@ pub async fn create_workspace_checkpoint(
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
         (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, file_changes)
     };
-    let commit_datetime = get_datetime_from_commit(&repo, &checkpoint.commit_hash)?;
 
-    Ok((checkpoint, file_changes, repo, commit_datetime))
+    Ok((checkpoint, file_changes, repo))
 }
 
 pub async fn restore_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>, checkpoint_to_restore: &Checkpoint, chat_id: &str
 ) -> Result<(Checkpoint, Vec<FileChange>, DateTime<Utc>), String> {
-
-    let (checkpoint_for_undo, _, repo, reverted_to) = 
-        create_workspace_checkpoint(gcx.clone(), Some(checkpoint_to_restore), chat_id).await?;
     
+    let (checkpoint_for_undo, _, repo) = 
+    create_workspace_checkpoint(gcx.clone(), Some(checkpoint_to_restore), chat_id).await?;
+    
+    let reverted_to = get_datetime_from_commit(&repo, &checkpoint_to_restore.commit_hash)?;
     let files_changed = get_file_changes(&repo, true, 
         Some(&checkpoint_to_restore.commit_hash), Some(&checkpoint_for_undo.commit_hash))?;
 
