@@ -11,6 +11,7 @@ import {
 } from "../../services/refact";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
+import { CheckpointButton } from "../../features/Checkpoints";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -84,19 +85,25 @@ export const UserInput: React.FC<UserInputProps> = ({
           >
             <div>{elements}</div>
           </Button>
-          <IconButton
-            title="Edit message"
-            variant="soft"
-            size={"2"}
-            onClick={() => handleShowTextArea(true)}
+          <Flex
+            direction={linesLength <= 3 ? "row" : "column"}
+            gap="1"
             style={{
               opacity: isEditButtonVisible ? 1 : 0,
               visibility: isEditButtonVisible ? "visible" : "hidden",
               transition: "opacity 0.15s, visibility 0.15s",
             }}
           >
-            <Pencil2Icon width={15} height={15} />
-          </IconButton>
+            <CheckpointButton />
+            <IconButton
+              title="Edit message"
+              variant="soft"
+              size={"2"}
+              onClick={() => handleShowTextArea(true)}
+            >
+              <Pencil2Icon width={15} height={15} />
+            </IconButton>
+          </Flex>
         </Flex>
       )}
     </Container>

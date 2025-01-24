@@ -47,6 +47,7 @@ import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
 import { integrationsSlice } from "../features/Integrations";
 import { agentUsageSlice } from "../features/AgentUsage/agentUsageSlice";
+import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -104,6 +105,7 @@ const rootReducer = combineSlices(
   attachedImagesSlice,
   userSurveySlice,
   integrationsSlice,
+  checkpointsSlice,
 );
 
 const rootPersistConfig = {
