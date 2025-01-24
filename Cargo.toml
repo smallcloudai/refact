@@ -112,10 +112,8 @@ git2 = "0.19.0"
 process-wrap = { version = "8.0.2", features = ["tokio1"] }
 rust-embed = "8.5.0"
 jsonrpc_client = { version = "0.7.1", features = ["reqwest"] }
-#mcp_client_rs = "0.1.5"
-#mcp-client-rs = { git = "https://github.com/tim-schultz/mcp-client-rs.git" }
-#anyhow = "1.0.95"
-#mcp_rust_sdk = "0.1.0"
-#mcp_client_rust = { git = "https://github.com/darinkishore/mcp_client_rust" }
-mcp_client_rs = { path = "../mcp_client_rust" }
+mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
 
+# To debug MCP on local laptop, uncomment this (breaks CI)
+#[patch.crates-io]
+#mcp_client_rs = { path = "../mcp_client_rust" }

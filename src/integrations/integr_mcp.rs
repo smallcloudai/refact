@@ -116,6 +116,7 @@ impl IntegrationTrait for IntegrationMCP {
             //     "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
             //     std::env::var("GITHUB_PERSONAL_ACCESS_TOKEN").unwrap_or_default(),
             // );
+
             let client = match client_builder.spawn_and_initialize().await {
                 Ok(client) => client,
                 Err(client_error) => {
@@ -123,7 +124,21 @@ impl IntegrationTrait for IntegrationMCP {
                     return Err(client_error.to_string());
                 }
             };
-            tracing::info!("MCP START SESSION (2) {:?}", session_key);
+
+            // let set_result = client.request(
+            //     "logging/setLevel",
+            //     Some(serde_json::json!({ "level": "debug" })),
+            // ).await;
+            // match set_result {
+            //     Ok(_) => {
+            //         tracing::info!("MCP START SESSION (2) set log level success");
+            //     }
+            //     Err(e) => {
+            //         tracing::info!("MCP START SESSION (2) failed to set log level: {:?}", e);
+            //     }
+            // }
+
+            tracing::info!("MCP START SESSION (3) {:?}", session_key);
             let tools_result = match client.list_tools().await {
                 Ok(result) => result,
                 Err(tools_error) => {
@@ -131,7 +146,7 @@ impl IntegrationTrait for IntegrationMCP {
                     return Err(tools_error.to_string());
                 }
             };
-            tracing::info!("MCP START SESSION (3) {:?}", session_key);
+            tracing::info!("MCP START SESSION (4) {:?}", session_key);
             let mcp_client = Arc::new(AMutex::new(client));
             session_option = Some(Arc::new(AMutex::new(Box::new(SessionMCP {
                 debug_name: session_key.clone(),
