@@ -440,32 +440,21 @@ pub fn open_or_initialize_repo(workdir: &PathBuf, git_dir_path: &PathBuf) -> Res
     }
 }
 
-pub fn clean_and_hard_reset(repo: &Repository, commit_hash: &str) -> Result<(), String> {
-    // Clean untracked files and directories
-    let statuses = repo.statuses(None)
-        .map_err(|e| format!("Failed to get statuses: {}", e))?;
-    let workspace_dir = repo.workdir()
-        .ok_or("Failed to get workdir from repository".to_string())?;
-    for entry in statuses.iter() {
-        let status = entry.status();
-        if status.contains(git2::Status::WT_NEW) {
-            let path = String::from_utf8_lossy(entry.path_bytes()).to_string();
-            let full_path = workspace_dir.join(path);
-            if full_path.is_dir() {
-                std::fs::remove_dir_all(&full_path).map_err(|e| format!("Failed to remove directory: {}", e))?;
-            } else {
-                std::fs::remove_file(&full_path).map_err(|e| format!("Failed to remove file: {}", e))?;
-            }
-        }
-    }
+pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, commit_hash: &str) -> Result<(), String> {
+    let commit = Oid::from_str(commit_hash)
+        .and_then(|oid| repo.find_commit(oid))
+        .map_err_with_prefix("Failed to find commit:")?;
+    let tree = commit.tree().map_err_to_string()?;
 
-    // Perform a hard reset to the specified commit
-    let oid = Oid::from_str(commit_hash)
-        .map_err(|e| format!("Invalid commit hash: {}", e))?;
-    let obj = repo.find_object(oid, None)
-        .map_err(|e| format!("Failed to find object: {}", e))?;
-    repo.reset(&obj, git2::ResetType::Hard, None)
-        .map_err(|e| format!("Failed to perform hard reset: {}", e))?;
+    let mut branch_ref = create_or_checkout_to_branch(repo, branch_name)?.into_reference();
+    branch_ref.set_target(commit.id(),"Restoring checkpoint")
+        .map_err_with_prefix("Failed to update branch reference:")?;
+
+    repo.checkout_tree(&tree.into_object(), None)
+        .map_err_with_prefix("Failed  to checkout tree:")?;
+
+    repo.set_head(&format!("refs/heads/{}", branch_name))
+        .map_err_with_prefix("Failed to set HEAD:")?;
 
     Ok(())
 }
@@ -503,42 +492,16 @@ pub async fn create_workspace_checkpoint(
     Ok((checkpoint, file_changes, repo))
 }
 
-pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &Checkpoint) -> Result<(), String> {
-    let cache_dir = gcx.read().await.cache_dir.clone();
-    let workspace_folder = get_active_workspace_folder(gcx.clone()).await
-       .ok_or_else(|| "No active workspace folder".to_string())?;
-    let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
+pub async fn restore_workspace_checkpoint(
+    gcx: Arc<ARwLock<GlobalContext>>, checkpoint_to_restore: &Checkpoint, chat_id: &str
+) -> Result<(Checkpoint, Vec<FileChange>), String> {
+    let (checkpoint_for_undo, _, repo) = 
+        create_workspace_checkpoint(gcx.clone(), Some(checkpoint_to_restore), chat_id).await?;
+    
+    let files_changed = get_file_changes(&repo, true, 
+        Some(&checkpoint_to_restore.commit_hash), Some(&checkpoint_for_undo.commit_hash))?;
 
-    if !checkpoint.workspace_hash.is_empty() && checkpoint.workspace_hash != workspace_folder_hash {
-        return Err("Can not restore checkpoint for different workspace folder".to_string());
-    }
+    checkout_head_and_branch_to_commit(&repo, &format!("refact-{chat_id}"), &checkpoint_to_restore.commit_hash)?;
 
-    let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
-
-    let repo = git2::Repository::open(&shadow_repo_path)
-        .map_err(|e| format!("Failed to open repository: {}", e))?;
-    repo.set_workdir(&workspace_folder, false)
-        .map_err(|e| format!("Failed to set workdir: {}", e))?;
-
-    clean_and_hard_reset(&repo, &checkpoint.commit_hash)?;
-    Ok(())
+    Ok((checkpoint_for_undo, files_changed))
 }
-
-// pub async fn restore_workspace_checkpoint(gcx: Arc<ARwLock<GlobalContext>>, checkpoint: &Checkpoint, chat_id: &str) -> Result<(String, Vec<FileChange>), String> {
-//     let cache_dir = gcx.read().await.cache_dir.clone();
-//     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
-//        .ok_or_else(|| "No active workspace folder".to_string())?;
-//     let (new_checkpoint, _) = create_workspace_checkpoint(gcx.clone(), checkpoint, chat_id).await?;
-
-//     let commit_to_restore = Oid::from_str(&checkpoint.commit_hash)
-//         .and_then(|oid| repo.find_commit(oid))
-//         .map_err_with_prefix("Can't get commit to restore:")?;
-//     repo.checkout_tree(&commit_to_restore.as_object(), None)
-//         .map_err_with_prefix("Failed to checkout commit")?;
-//     repo.reference(&branch_ref, commit_to_restore.id(), true, "restore checkpoint")
-//         .map_err_with_prefix("Failed to update branch reference")?;
-//     repo.set_head(&branch_ref).map_err_with_prefix("Failed to set HEAD to branch:")?;
-
-//     let checkpoint = Checkpoint {workspace_hash: workspace_folder_hash, commit_hash: new_commit_oid.to_string()};
-//     Ok((checkpoint, file_changes))
-// }
