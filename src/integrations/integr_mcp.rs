@@ -24,6 +24,8 @@ pub struct SettingsMCP {
     pub mcp_command: String,
     #[serde(rename = "args")]
     pub mcp_args: Vec<String>,
+    #[serde(default, rename = "env")]
+    pub mcp_env: HashMap<String, String>,
 }
 
 // #[derive(PartialEq)]
@@ -111,11 +113,9 @@ impl IntegrationTrait for IntegrationMCP {
             for arg in &cfg.mcp_args {
                 client_builder = client_builder.arg(arg);
             }
-            // let mut envs = HashMap::new();
-            // envs.insert(
-            //     "GITHUB_PERSONAL_ACCESS_TOKEN".to_string(),
-            //     std::env::var("GITHUB_PERSONAL_ACCESS_TOKEN").unwrap_or_default(),
-            // );
+            for (key, value) in &cfg.mcp_env {
+                client_builder = client_builder.env(key, value);
+            }
 
             let client = match client_builder.spawn_and_initialize().await {
                 Ok(client) => client,
@@ -281,7 +281,7 @@ impl Tool for ToolMCP {
             }
         }
 
-        tracing::info!("\nCALL tool '{}' with arguments: {:?}\n", self.mcp_tool.name, json_arguments);
+        tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_arguments);
 
         let tool_output = {
             let mcp_client_locked = self.mcp_client.lock().await;
@@ -289,8 +289,8 @@ impl Tool for ToolMCP {
 
             match result_probably {
                 Ok(result) => {
-                    tracing::info!("BBBBB result.is_error={:?}", result.is_error);
-                    tracing::info!("BBBBB result.content={:?}", result.content);
+                    // tracing::info!("BBBBB result.is_error={:?}", result.is_error);
+                    // tracing::info!("BBBBB result.content={:?}", result.content);
                     if result.is_error {
                         return Err(format!("Tool execution error: {:?}", result.content));
                     }
@@ -386,7 +386,9 @@ impl Tool for ToolMCP {
         &self,
         _args: &HashMap<String, serde_json::Value>,
     ) -> Result<String, String> {
-        Ok(self.mcp_tool.name.clone())
+        let command = self.mcp_tool.name.clone();
+        tracing::info!("MCP command_to_match_against_confirm_deny() returns {:?}", command);
+        Ok(command)
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
