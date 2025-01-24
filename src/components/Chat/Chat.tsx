@@ -118,7 +118,11 @@ export const Chat: React.FC<ChatProps> = ({
           <Checkpoints
             hash="bc31sds"
             files={[
-              { absolute_path: "test.ts", status: "A", relative_path: "" },
+              {
+                absolute_path: "tests/emergency_frog_situation/frog.py",
+                status: "A",
+                relative_path: "",
+              },
               { absolute_path: "main.rs", status: "M", relative_path: "" },
               { absolute_path: "test.ts", status: "D", relative_path: "" },
             ]}

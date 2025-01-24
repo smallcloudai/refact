@@ -1,0 +1,4 @@
+.CheckpointsDialog {
+  width: calc(100vw - var(--space-8));
+  max-width: 500px;
+}

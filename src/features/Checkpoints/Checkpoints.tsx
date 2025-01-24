@@ -1,22 +1,15 @@
-import { Dialog, Flex, Text, Button, ScrollArea } from "@radix-ui/themes";
+import { Dialog, Flex, Text, Button } from "@radix-ui/themes";
 import { useCallback, useState } from "react";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
-import { useAppDispatch } from "../../hooks";
+import { useAppDispatch, useEventsBusForIDE } from "../../hooks";
 import { setIsCheckpointsPopupIsVisible } from "./checkpointsSlice";
 import { Markdown } from "../../components/Markdown";
-import {
-  FileChanged,
-  FileChangedStatus,
-  RestoreCheckpointsResponse,
-  RevertedCheckpointData,
-} from "./types";
+import { FileChanged, FileChangedStatus } from "./types";
 import { TruncateLeft } from "../../components/Text";
 import { Link } from "../../components/Link";
+import { ScrollArea } from "../../components/ScrollArea";
 
-interface CheckpointFile {
-  absolute_ppath: string;
-  status: "success" | "warning" | "error";
-}
+import styles from "./Checkpoints.module.css";
 
 interface CheckpointProps {
   hash: string;
@@ -37,7 +30,6 @@ const StatusIndicator = ({ status }: { status: FileChangedStatus }) => {
       size="1"
       style={{
         color: colors[status],
-        flexGrow: 1,
       }}
     >
       {status}
@@ -52,6 +44,7 @@ export const Checkpoints = ({
   onUndo,
 }: CheckpointProps) => {
   const dispatch = useAppDispatch();
+  const { openFile } = useEventsBusForIDE();
   const { shouldCheckpointsPopupBeShown } = useCheckpoints();
   const [open, setOpen] = useState(shouldCheckpointsPopupBeShown);
 
@@ -65,47 +58,39 @@ export const Checkpoints = ({
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
-      <Dialog.Content style={{ maxWidth: "500px" }}>
+      <Dialog.Content className={styles.CheckpointsDialog}>
         <Dialog.Title as="h3" mb="3">
           <Markdown color="indigo">
             {"Checkpoint " + "```" + hash + "```"}
           </Markdown>
         </Dialog.Title>
 
-        <ScrollArea style={{ maxHeight: "300px" }}>
+        <ScrollArea scrollbars="vertical" style={{ maxHeight: "300px" }}>
           <Flex direction="column" gap="2">
             {files.map((file, index) => (
               <Flex
                 key={index}
-                align="center"
+                gap="2"
+                py="2"
+                px="2"
                 justify="between"
+                align="center"
                 style={{
-                  padding: "8px",
                   backgroundColor: "var(--gray-3)",
                   borderRadius: "var(--radius-3)",
                 }}
-                width="100%"
               >
-                {/* <TruncateLeft size="1">
-                  <Text
-                    size="2"
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      flex: 1,
-                      textDecoration:
-                        file.status === "D" ? "line-through" : undefined,
+                <TruncateLeft size="2">
+                  <Link
+                    title="Open file"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      openFile({ file_name: file.absolute_path });
                     }}
                   >
                     {file.absolute_path}
-                  </Text>
-                </TruncateLeft> */}
-                <TruncateLeft>
-                  <Link size="2" color="gray">
-                    tests/emergency_frog_situation/frog.py
                   </Link>
-                </TruncateLeft>
+                </TruncateLeft>{" "}
                 <StatusIndicator status={file.status} />
               </Flex>
             ))}
