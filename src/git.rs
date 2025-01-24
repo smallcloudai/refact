@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex as StdMutex};
 use tokio::sync::RwLock as ARwLock;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use url::Url;
 use serde::{Serialize, Deserialize};
 use tracing::error;
@@ -61,8 +61,15 @@ impl FileChangeStatus {
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct Checkpoint {
-    pub workspace_hash: String,
+    #[serde(serialize_with = "serialize_path", deserialize_with = "deserialize_path")]
+    pub workspace_folder: PathBuf,
     pub commit_hash: String,
+}
+
+impl Checkpoint {
+    pub fn workspace_hash(&self) -> String {
+        official_text_hashing_function(&self.workspace_folder.to_string_lossy().to_string())
+    }
 }
 
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
@@ -137,17 +144,26 @@ fn get_tree<'repo>(repository: &'repo Repository, commit_id: Option<&str>) -> Re
     }
 }
 
-pub fn get_file_changes(repository: &Repository, include_untracked: bool, commit_id: Option<&str>) -> Result<Vec<FileChange>, String> {
+pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_commit: Option<&str>, to_commit: Option<&str>) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
-    let tree = get_tree(repository, commit_id).map_err_with_prefix("Failed to get tree:")?;
+    let old_tree = get_tree(repository, from_commit).map_err_with_prefix("Failed to get old tree:")?;
+    let new_tree = if to_commit.is_some() {
+        Some(get_tree(repository, to_commit).map_err_with_prefix("Failed to get new tree:")?)
+    } else {
+        None
+    };
 
     let mut diff_options = git2::DiffOptions::new();
     diff_options.include_untracked(include_untracked).recurse_untracked_dirs(include_untracked);
 
-    let diff = repository.diff_tree_to_workdir(Some(&tree), Some(&mut diff_options))
-        .map_err_with_prefix("Failed to get diff:")?;
+    let diff = match new_tree { 
+        Some(new_tree) => repository
+            .diff_tree_to_tree(Some(&old_tree), Some(&new_tree), Some(&mut diff_options)),
+        None => repository
+            .diff_tree_to_workdir(Some(&old_tree), Some(&mut diff_options)),
+    }.map_err_with_prefix("Failed to get diff:")?;
 
     let mut file_changes = Vec::new();
     for delta in diff.deltas() {
@@ -348,7 +364,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { tracing::warn!("{}", e); continue; }
         };
 
-        let file_changes = match get_file_changes(&repository, true, None) {
+        let file_changes = match get_file_changes(&repository, true, None, None) {
             Ok(changes) if changes.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { tracing::warn!("{}", e); continue; }
@@ -465,7 +481,7 @@ pub async fn create_workspace_checkpoint(
     let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
 
     if let Some(prev_checkpoint) = prev_checkpoint {
-        if prev_checkpoint.workspace_hash != workspace_folder_hash {
+        if prev_checkpoint.workspace_hash() != workspace_folder_hash {
             return Err("Can not create checkpoint for different workspace folder".to_string());
         }
     }
@@ -477,11 +493,11 @@ pub async fn create_workspace_checkpoint(
     let (checkpoint, file_changes) = {
         let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
         let commit_oid_from_branch = branch.get().target().map(|oid| oid.to_string());
-        let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref())?;
+        let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref(), None)?;
         stage_changes(&repo, &file_changes)?;
 
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
-        (Checkpoint {workspace_hash: workspace_folder_hash, commit_hash: commit_oid.to_string()}, file_changes)
+        (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, file_changes)
     };
 
     Ok((checkpoint, file_changes, repo))
