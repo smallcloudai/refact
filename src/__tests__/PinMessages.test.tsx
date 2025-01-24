@@ -64,6 +64,7 @@ describe("Pin messages", () => {
                 role: "user",
                 content:
                   "\n```rust\n        doc_add(\n            ast_index.clone(),\n            &library_file_path.to_string(),\n            &library_text,\n            &mut errstats,\n        )\n\n```\n\nmake it one line\n",
+                checkpoints: [],
               },
               {
                 role: "assistant",

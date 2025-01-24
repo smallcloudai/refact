@@ -8,8 +8,10 @@ export type CheckpointsMeta = {
 
 const initialState: CheckpointsMeta = {
   latestCheckpointResult: {
+    reverted_to: "",
     checkpoints_for_undo: [],
     reverted_changes: [],
+    error_log: [],
   },
   isVisible: false,
 };

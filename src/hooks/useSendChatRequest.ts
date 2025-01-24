@@ -197,7 +197,7 @@ export const useSendChatRequest = () => {
   const maybeAddImagesToQuestion = useCallback(
     (question: string): UserMessage => {
       if (attachedImages.length === 0)
-        return { role: "user" as const, content: question };
+        return { role: "user" as const, content: question, checkpoints: [] };
 
       const images = attachedImages.reduce<UserMessageContentWithImage[]>(
         (acc, image) => {
@@ -210,11 +210,13 @@ export const useSendChatRequest = () => {
         [],
       );
 
-      if (images.length === 0) return { role: "user", content: question };
+      if (images.length === 0)
+        return { role: "user", content: question, checkpoints: [] };
 
       return {
         role: "user",
         content: [...images, { type: "text", text: question }],
+        checkpoints: [],
       };
     },
     [attachedImages],
@@ -312,7 +314,7 @@ export const useSendChatRequest = () => {
     (index: number, question: UserMessage["content"]) => {
       const messagesToKeep = currentMessages.slice(0, index);
       const messagesToSend = messagesToKeep.concat([
-        { role: "user", content: question },
+        { role: "user", content: question, checkpoints: [] },
       ]);
       retry(messagesToSend);
     },
