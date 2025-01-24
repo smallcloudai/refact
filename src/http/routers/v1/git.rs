@@ -1,3 +1,4 @@
+use chrono::{Utc, DateTime};
 use std::path::PathBuf;
 use std::sync::Arc;
 use axum::Extension;
@@ -36,7 +37,13 @@ pub struct RestoreCheckpointsPost {
 pub struct RestoreCheckpointsResponse {
     pub checkpoints_for_undo: Vec<Checkpoint>,
     pub reverted_changes: Vec<WorkspaceChanges>,
+    #[serde(serialize_with = "serialize_datetime_utc")]
+    pub reverted_to: DateTime<Utc>,
     pub error_log: Vec<String>,
+}
+
+fn serialize_datetime_utc<S: serde::Serializer>(dt: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&dt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -132,13 +139,14 @@ pub async fn handle_v1_restore_checkpoints(
     }
 
     let response = match restore_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.meta.chat_id).await {
-        Ok((checkpoint_for_undo, files_changed)) => {
+        Ok((checkpoint_for_undo, files_changed, reverted_to)) => {
             RestoreCheckpointsResponse {
                 checkpoints_for_undo: vec![checkpoint_for_undo.clone()],
                 reverted_changes: vec![WorkspaceChanges {
                     workspace_folder: checkpoint_for_undo.workspace_folder.clone(),
                     files_changed,
                 }],
+                reverted_to,
                 error_log: vec![],
             }
         },

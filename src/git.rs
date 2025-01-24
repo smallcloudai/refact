@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex as StdMutex};
+use chrono::{DateTime, TimeZone, Utc};
 use tokio::sync::RwLock as ARwLock;
 use std::path::PathBuf;
 use url::Url;
@@ -287,6 +288,14 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
     ).map_err(|e| format!("Failed to create commit: {}", e))
 }
 
+pub fn get_datetime_from_commit(repository: &Repository, commit_id: &str) -> Result<DateTime<Utc>, String> {
+    let commit = repository.find_commit(Oid::from_str(commit_id).map_err_to_string()?)
+        .map_err_to_string()?;
+
+    Utc.timestamp_opt(commit.time().seconds(), 0).single()
+        .ok_or_else(|| "Failed to get commit datetime".to_string())
+}
+
 fn git_diff<'repo>(repository: &'repo Repository, file_changes: &Vec<FileChange>) -> Result<git2::Diff<'repo>, String> {
     let mut diff_options = DiffOptions::new();
     diff_options.include_untracked(true);
@@ -463,7 +472,7 @@ pub async fn create_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>,
     prev_checkpoint: Option<&Checkpoint>,
     chat_id: &str,
-) -> Result<(Checkpoint, Vec<FileChange>, Repository), String> {
+) -> Result<(Checkpoint, Vec<FileChange>, Repository, DateTime<Utc>), String> {
     let cache_dir = gcx.read().await.cache_dir.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
@@ -488,14 +497,16 @@ pub async fn create_workspace_checkpoint(
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
         (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, file_changes)
     };
+    let commit_datetime = get_datetime_from_commit(&repo, &checkpoint.commit_hash)?;
 
-    Ok((checkpoint, file_changes, repo))
+    Ok((checkpoint, file_changes, repo, commit_datetime))
 }
 
 pub async fn restore_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>, checkpoint_to_restore: &Checkpoint, chat_id: &str
-) -> Result<(Checkpoint, Vec<FileChange>), String> {
-    let (checkpoint_for_undo, _, repo) = 
+) -> Result<(Checkpoint, Vec<FileChange>, DateTime<Utc>), String> {
+
+    let (checkpoint_for_undo, _, repo, reverted_to) = 
         create_workspace_checkpoint(gcx.clone(), Some(checkpoint_to_restore), chat_id).await?;
     
     let files_changed = get_file_changes(&repo, true, 
@@ -503,5 +514,5 @@ pub async fn restore_workspace_checkpoint(
 
     checkout_head_and_branch_to_commit(&repo, &format!("refact-{chat_id}"), &checkpoint_to_restore.commit_hash)?;
 
-    Ok((checkpoint_for_undo, files_changed))
+    Ok((checkpoint_for_undo, files_changed, reverted_to))
 }

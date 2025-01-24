@@ -221,16 +221,15 @@ async fn _chat(
         }
     };
     
-    let latest_checkpoints = messages.iter().rev()
+    let latest_checkpoint = messages.iter().rev()
         .find(|msg| msg.role == "user" && !msg.checkpoints.is_empty())
-        .map(|msg| msg.checkpoints.clone());
+        .and_then(|msg| msg.checkpoints.first().cloned());
     let latest_user_msg = messages.iter_mut().rev().find(|msg| msg.role == "user");
 
     if let Some(latest_user_msg) = latest_user_msg {
         if latest_user_msg.checkpoints.is_empty() {
-            let latest_checkpoint = latest_checkpoints.and_then(|checkpoints| checkpoints.first().cloned());
             match create_workspace_checkpoint(gcx.clone(), latest_checkpoint.as_ref(), &chat_post.meta.chat_id).await {
-                Ok((checkpoint, _, _)) => {
+                Ok((checkpoint, _, _, _)) => {
                     tracing::info!("Checkpoint created: {:?}", checkpoint);
                     latest_user_msg.checkpoints = vec![checkpoint];
                 },
