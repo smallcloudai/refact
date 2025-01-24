@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Text, Container, Button, Flex, IconButton } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import { RetryForm } from "../ChatForm";
 import styles from "./ChatContent.module.css";
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import {
+  isUserMessage,
   ProcessedUserMessageContentWithImages,
   UserMessageContentWithImage,
   type UserMessage,
@@ -12,6 +13,8 @@ import {
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
 import { CheckpointButton } from "../../features/Checkpoints";
+import { useAppSelector } from "../../hooks";
+import { selectMessages } from "../../features/Chat";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -26,6 +29,8 @@ export const UserInput: React.FC<UserInputProps> = ({
   children,
   onRetry,
 }) => {
+  const messages = useAppSelector(selectMessages);
+
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
   // const ref = React.useRef<HTMLButtonElement>(null);
@@ -52,6 +57,12 @@ export const UserInput: React.FC<UserInputProps> = ({
   const elements = process(children);
   const isString = typeof children === "string";
   const linesLength = isString ? children.split("\n").length : Infinity;
+
+  const checkpointsFromMessage = useMemo(() => {
+    const maybeUserMessage = messages[messageIndex];
+    if (!isUserMessage(maybeUserMessage)) return null;
+    return maybeUserMessage.checkpoints;
+  }, [messageIndex, messages]);
 
   return (
     <Container position="relative" pt="1">
@@ -94,7 +105,7 @@ export const UserInput: React.FC<UserInputProps> = ({
               transition: "opacity 0.15s, visibility 0.15s",
             }}
           >
-            <CheckpointButton />
+            <CheckpointButton checkpoints={checkpointsFromMessage} />
             <IconButton
               title="Edit message"
               variant="soft"

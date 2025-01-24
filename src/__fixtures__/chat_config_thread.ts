@@ -10,6 +10,7 @@ export const CHAT_CONFIG_THREAD: Chat = {
         role: "user",
         content:
           "🔧 The postgres tool should be visible now. To test the tool, list the tables available, briefly desctibe the tables and express\nsatisfaction and relief if it works, and change nothing. If it doesn't work or the tool isn't available, go through the usual plan in the system prompt.\nThe current config file is .\n",
+        checkpoints: [],
       },
       {
         role: "assistant",

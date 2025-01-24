@@ -6,6 +6,7 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
     {
       role: "user",
       content: "make a desktop and mobile screenshots of the index.html\n",
+      checkpoints: [],
     },
     {
       role: "assistant",
@@ -78,6 +79,7 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       role: "user",
       content:
         "fantastic, now call two chrome() in parallel each running its own tab\n",
+      checkpoints: [],
     },
     {
       role: "assistant",
@@ -140,6 +142,7 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
     {
       role: "user",
       content: "you forgot the screenshots\n",
+      checkpoints: [],
     },
     {
       role: "assistant",

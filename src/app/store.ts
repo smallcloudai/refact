@@ -48,6 +48,7 @@ import { linksApi } from "../services/refact/links";
 import { integrationsSlice } from "../features/Integrations";
 import { agentUsageSlice } from "../features/AgentUsage/agentUsageSlice";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
+import { checkpointsApi } from "../services/refact/checkpoints";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -93,6 +94,7 @@ const rootReducer = combineSlices(
     [pathApi.reducerPath]: pathApi.reducer,
     [pingApi.reducerPath]: pingApi.reducer,
     [linksApi.reducerPath]: linksApi.reducer,
+    [checkpointsApi.reducerPath]: checkpointsApi.reducer,
     [telemetryApi.reducerPath]: telemetryApi.reducer,
   },
   historySlice,
@@ -175,6 +177,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             linksApi.middleware,
             integrationsApi.middleware,
             dockerApi.middleware,
+            checkpointsApi.middleware,
             telemetryApi.middleware,
           )
           .prepend(historyMiddleware.middleware)

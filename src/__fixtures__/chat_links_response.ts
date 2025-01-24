@@ -46,6 +46,7 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
             role: "user",
             content:
               "Make recommended_integrations an empty list, follow the system prompt.",
+            checkpoints: [],
           },
         ],
       },
