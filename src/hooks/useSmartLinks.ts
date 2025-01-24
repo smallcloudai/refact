@@ -9,7 +9,7 @@ import {
 import { newIntegrationChat } from "../features/Chat/Thread/actions";
 import { push } from "../features/Pages/pagesSlice";
 import { useGoToLink } from "./useGoToLink";
-import { useAgentUsage } from "./useAgentUsage";
+import { USAGE_LIMIT_EXHAUSTED_MESSAGE, useAgentUsage } from "./useAgentUsage";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();
@@ -24,9 +24,7 @@ export function useSmartLinks() {
     ) => {
       const messages = formatMessagesForChat(sl_chat);
       if (aboveUsageLimit) {
-        const action = setInformation(
-          "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
-        );
+        const action = setInformation(USAGE_LIMIT_EXHAUSTED_MESSAGE);
         dispatch(action);
         return;
       }

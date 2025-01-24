@@ -13,6 +13,7 @@ import {
   useAgentUsage,
   useSendChatRequest,
   useCapsForToolUse,
+  USAGE_LIMIT_EXHAUSTED_MESSAGE,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -144,9 +145,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (disableInput) {
-      const action = setInformation(
-        "You have exceeded the FREE usage limit, upgrade to PRO or switch to EXPLORE mode.",
-      );
+      const action = setInformation(USAGE_LIMIT_EXHAUSTED_MESSAGE);
       dispatch(action);
     } else if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(

@@ -9,6 +9,9 @@ import { useAppSelector } from "./useAppSelector";
 import { selectIsStreaming, selectIsWaiting } from "../features/Chat";
 import { useAppDispatch } from "./useAppDispatch";
 
+export const USAGE_LIMIT_EXHAUSTED_MESSAGE =
+  "You have exceeded the FREE usage limit, please, upgrade to PRO.";
+
 export function useAgentUsage() {
   const dispatch = useAppDispatch();
   const user = useGetUser();
