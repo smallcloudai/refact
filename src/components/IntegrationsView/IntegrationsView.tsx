@@ -58,6 +58,7 @@ import isEqual from "lodash.isequal";
 import { convertRawIntegrationFormValues } from "../../features/Integrations/convertRawIntegrationFormValues";
 import { validateSnakeCase } from "../../utils/validateSnakeCase";
 import { setIntegrationData } from "../../features/Chat";
+import { formatPathName } from "../../utils/formatPathName";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -997,12 +998,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             {groupedProjectIntegrations &&
               Object.entries(groupedProjectIntegrations).map(
                 ([projectPath, integrations], index) => {
-                  const formattedProjectName =
-                    "```.../" +
-                    projectPath.split(/[/\\]/)[
-                      projectPath.split(/[/\\]/).length - 1
-                    ] +
-                    "/```";
+                  const formattedProjectName = formatPathName(
+                    projectPath,
+                    "```.../",
+                    "/```",
+                  );
 
                   return (
                     <Flex

@@ -3,7 +3,7 @@ export type Checkpoint = {
   commit_hash: string;
 };
 
-export type FileChangedStatus = "A" | "M" | "D";
+export type FileChangedStatus = "ADDED" | "MODIFIED" | "DELETED";
 
 export type FileChanged = {
   absolute_path: string;
@@ -32,9 +32,8 @@ export function isRestoreCheckpointsResponse(
 ): json is RestoreCheckpointsResponse {
   if (!json || typeof json !== "object") return false;
 
-  // Uncomment when ready on the server
-  // if (!("reverted_to" in json) || typeof json.reverted_to !== "string")
-  //   return false;
+  if (!("reverted_to" in json) || typeof json.reverted_to !== "string")
+    return false;
 
   // Check if it has the required properties
   if (!("checkpoints_for_undo" in json) || !("reverted_changes" in json))
@@ -73,7 +72,7 @@ function isFileChanged(value: unknown): value is FileChanged {
     typeof value.relative_path === "string" &&
     "status" in value &&
     typeof value.status === "string" &&
-    ["A", "M", "D"].includes(value.status)
+    ["ADDED", "MODIFIED", "DELETED"].includes(value.status)
   );
 }
 

@@ -27,7 +27,6 @@ import { DropzoneProvider } from "../Dropzone";
 import { AgentUsage } from "../../features/AgentUsage";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
-import { setIsCheckpointsPopupIsVisible } from "../../features/Checkpoints/checkpointsSlice";
 
 export type ChatProps = {
   host: Config["host"];
@@ -114,27 +113,7 @@ export const Chat: React.FC<ChatProps> = ({
           onStopStreaming={abort}
         />
 
-        {shouldCheckpointsPopupBeShown && (
-          <Checkpoints
-            hash="bc31sds"
-            files={[
-              {
-                absolute_path: "tests/emergency_frog_situation/frog.py",
-                status: "A",
-                relative_path: "",
-              },
-              { absolute_path: "main.rs", status: "M", relative_path: "" },
-              { absolute_path: "test.ts", status: "D", relative_path: "" },
-            ]}
-            onFix={() => {
-              // Handle fix action
-              dispatch(setIsCheckpointsPopupIsVisible(false));
-            }}
-            onUndo={() => {
-              // Handle undo action
-            }}
-          />
-        )}
+        {shouldCheckpointsPopupBeShown && <Checkpoints />}
 
         <AgentUsage />
         {!isStreaming && preventSend && unCalledTools && (
