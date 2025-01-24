@@ -87,6 +87,10 @@ export const Checkpoints = ({
                       event.preventDefault();
                       openFile({ file_name: file.absolute_path });
                     }}
+                    style={{
+                      textDecoration:
+                        file.status === "D" ? "line-through" : undefined,
+                    }}
                   >
                     {file.absolute_path}
                   </Link>

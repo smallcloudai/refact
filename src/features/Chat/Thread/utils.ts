@@ -20,6 +20,7 @@ import {
   isDiffChunk,
   isDiffMessage,
   isDiffResponse,
+  isLspUserMessage,
   isPlainTextResponse,
   isSubchatContextFileResponse,
   isSubchatResponse,
@@ -150,6 +151,7 @@ export function formatChatResponse(
     return replaceLastUserMessage(messages, {
       role: response.role,
       content: response.content,
+      checkpoints: response.checkpoints,
     });
   }
 
@@ -438,10 +440,11 @@ export function formatMessagesForChat(
   messages: LspChatMessage[],
 ): ChatMessages {
   return messages.reduce<ChatMessages>((acc, message) => {
-    if (message.role === "user" && typeof message.content === "string") {
+    if (isLspUserMessage(message) && typeof message.content === "string") {
       const userMessage: UserMessage = {
         role: message.role,
         content: message.content,
+        checkpoints: message.checkpoints,
       };
       return acc.concat(userMessage);
     }

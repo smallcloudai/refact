@@ -31,6 +31,12 @@ export function isLspChatMessage(json: unknown): json is LspChatMessage {
   return true;
 }
 
+export function isLspUserMessage(
+  message: LspChatMessage,
+): message is UserMessage {
+  return message.role === "user" && "checkpoints" in message;
+}
+
 type StreamArgs =
   | {
       stream: true;
