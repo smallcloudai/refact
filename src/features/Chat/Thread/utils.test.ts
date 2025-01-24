@@ -84,7 +84,7 @@ describe("formatChatResponse", () => {
     const expected = [
       ...messages.slice(0, 5),
       ...messages.slice(6),
-      { role: message.role, content: message.content },
+      { role: message.role, content: message.content, checkpoints: [] },
     ];
 
     expect(result).toEqual(expected);
