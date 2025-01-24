@@ -58,8 +58,7 @@ pub async fn run_at_commands_locally(
     // This is useful to give prefix and suffix of the same file precisely the position necessary for FIM-like operation of a chat model
     let mut rebuilt_messages: Vec<ChatMessage> = original_messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
     for msg_idx in user_msg_starts..original_messages.len() {
-        let msg = original_messages[msg_idx].clone();
-        let role = msg.role.clone();
+        let mut msg = original_messages[msg_idx].clone();
         // todo: make multimodal messages support @commands
         if let ChatContent::Multimodal(_) = &msg.content {
             rebuilt_messages.push(msg.clone());
@@ -154,7 +153,7 @@ pub async fn run_at_commands_locally(
 
         if content.trim().len() > 0 {
             // stream back to the user, with at-commands replaced
-            let msg = ChatMessage::new(role.clone(), content);
+            msg.content = ChatContent::SimpleText(content);
             rebuilt_messages.push(msg.clone());
             stream_back_to_user.push_in_json(json!(msg));
         }
@@ -162,7 +161,7 @@ pub async fn run_at_commands_locally(
 
     ccx.lock().await.pp_skeleton = false;
 
-    return (rebuilt_messages.clone(), user_msg_starts, any_context_produced)
+    return (rebuilt_messages, user_msg_starts, any_context_produced)
 }
 
 pub async fn run_at_commands_remotely(
