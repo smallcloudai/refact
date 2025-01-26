@@ -4,6 +4,7 @@ import { RestoreCheckpointsResponse } from "./types";
 export type CheckpointsMeta = {
   latestCheckpointResult: RestoreCheckpointsResponse;
   isVisible: boolean;
+  isUndoing: boolean;
 };
 
 const initialState: CheckpointsMeta = {
@@ -14,6 +15,7 @@ const initialState: CheckpointsMeta = {
     error_log: [],
   },
   isVisible: false,
+  isUndoing: false,
 };
 
 export const checkpointsSlice = createSlice({
@@ -29,17 +31,25 @@ export const checkpointsSlice = createSlice({
     setIsCheckpointsPopupIsVisible: (state, action: PayloadAction<boolean>) => {
       state.isVisible = action.payload;
     },
+    setIsUndoingCheckpoints: (state, action: PayloadAction<boolean>) => {
+      state.isUndoing = action.payload;
+    },
   },
 
   selectors: {
     selectLatestCheckpointResult: (state) => state.latestCheckpointResult,
     selectIsCheckpointsPopupIsVisible: (state) => state.isVisible,
+    selectIsUndoingCheckpoints: (state) => state.isUndoing,
   },
 });
 
-export const { setLatestCheckpointResult, setIsCheckpointsPopupIsVisible } =
-  checkpointsSlice.actions;
+export const {
+  setLatestCheckpointResult,
+  setIsCheckpointsPopupIsVisible,
+  setIsUndoingCheckpoints,
+} = checkpointsSlice.actions;
 export const {
   selectLatestCheckpointResult,
   selectIsCheckpointsPopupIsVisible,
+  selectIsUndoingCheckpoints,
 } = checkpointsSlice.selectors;

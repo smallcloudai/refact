@@ -45,13 +45,12 @@ export const Checkpoints = () => {
   const [shouldMockBeUsed, setShouldMockBeUsed] = useState(false);
   const dispatch = useAppDispatch();
   const { openFile } = useEventsBusForIDE();
-  const { shouldCheckpointsPopupBeShown } = useCheckpoints();
-  const [open, setOpen] = useState(shouldCheckpointsPopupBeShown);
+  const { shouldCheckpointsPopupBeShown, handleUndo, isLoading } =
+    useCheckpoints();
 
   const latestRestoredCheckpointsResult = useAppSelector(
     selectLatestCheckpointResult,
   );
-
   const { reverted_changes, reverted_to } = shouldMockBeUsed
     ? STUB_RESTORED_CHECKPOINT_DATA
     : latestRestoredCheckpointsResult;
@@ -68,6 +67,8 @@ export const Checkpoints = () => {
 
   const wereFilesChanged = allChangedFiles.length > 0;
 
+  const [open, setOpen] = useState(shouldCheckpointsPopupBeShown);
+
   const handleOpenChange = useCallback(
     (value: boolean) => {
       setOpen(value);
@@ -75,11 +76,6 @@ export const Checkpoints = () => {
     },
     [dispatch],
   );
-
-  const handleUndo = useCallback(() => {
-    // eslint-disable-next-line no-console
-    console.log("undoing checkpoint, not implemented yet");
-  }, []);
 
   const handleFix = useCallback(() => {
     dispatch(setIsCheckpointsPopupIsVisible(false));
@@ -163,7 +159,16 @@ export const Checkpoints = () => {
           </Button>
           <Flex gap="3">
             {wereFilesChanged && (
-              <Button variant="soft" color="gray" onClick={handleUndo}>
+              <Button
+                variant="soft"
+                color="gray"
+                loading={isLoading}
+                onClick={() =>
+                  void handleUndo(
+                    latestRestoredCheckpointsResult.checkpoints_for_undo,
+                  )
+                }
+              >
                 Undo
               </Button>
             )}
