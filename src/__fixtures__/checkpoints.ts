@@ -27,12 +27,14 @@ export const STUB_RESTORED_CHECKPOINT_DATA: RestoreCheckpointsResponse = {
 
 export const STUB_RESTORED_CHECKPOINTS_STATE: CheckpointsMeta = {
   isVisible: true,
+  isUndoing: false,
   latestCheckpointResult: STUB_RESTORED_CHECKPOINT_DATA,
 };
 
 export const STUB_RESTORED_CHECKPOINTS_STATE_WITH_NO_CHANGES: CheckpointsMeta =
   {
     isVisible: true,
+    isUndoing: false,
     latestCheckpointResult: {
       reverted_to: "2024-01-20T15:30:00Z",
       checkpoints_for_undo: [],
