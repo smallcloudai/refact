@@ -56,7 +56,7 @@ export const checkpointsApi = createApi({
           return {
             error: {
               status: "CUSTOM_ERROR",
-              error: "Failed to parse patch response",
+              error: "Failed to parse restored checkpoints response",
               data: result.data,
             },
           };
