@@ -1,16 +1,6 @@
 import { Dialog, Flex, Text, Button } from "@radix-ui/themes";
-import { useCallback, useState } from "react";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
-import {
-  useAppDispatch,
-  useAppSelector,
-  useEventsBusForIDE,
-} from "../../hooks";
-import {
-  selectLatestCheckpointResult,
-  setIsCheckpointsPopupIsVisible,
-} from "./checkpointsSlice";
-import { FileChanged, FileChangedStatus } from "./types";
+import { useEventsBusForIDE } from "../../hooks";
 import { TruncateLeft } from "../../components/Text";
 import { Link } from "../../components/Link";
 import { ScrollArea } from "../../components/ScrollArea";
@@ -18,74 +8,27 @@ import { ScrollArea } from "../../components/ScrollArea";
 import styles from "./Checkpoints.module.css";
 import { formatDateToHumanReadable } from "../../utils/formatDateToHumanReadable";
 import { formatPathName } from "../../utils/formatPathName";
-import { STUB_RESTORED_CHECKPOINT_DATA } from "../../__fixtures__/checkpoints";
-
-const StatusIndicator = ({ status }: { status: FileChangedStatus }) => {
-  const colors = {
-    ADDED: "#22C55E",
-    MODIFIED: "#F59E0B",
-    DELETED: "#EF4444",
-  };
-
-  const shortenedStatus = status.split("")[0];
-
-  return (
-    <Text
-      size="1"
-      style={{
-        color: colors[status],
-      }}
-    >
-      {shortenedStatus}
-    </Text>
-  );
-};
+import { CheckpointsStatusIndicator } from "./CheckpointsStatusIndicator";
 
 export const Checkpoints = () => {
-  const [shouldMockBeUsed, setShouldMockBeUsed] = useState(false);
-  const dispatch = useAppDispatch();
   const { openFile } = useEventsBusForIDE();
-  const { shouldCheckpointsPopupBeShown, handleUndo, isLoading } =
-    useCheckpoints();
-
-  const latestRestoredCheckpointsResult = useAppSelector(
-    selectLatestCheckpointResult,
-  );
-  const { reverted_changes, reverted_to } = shouldMockBeUsed
-    ? STUB_RESTORED_CHECKPOINT_DATA
-    : latestRestoredCheckpointsResult;
-
-  const allChangedFiles = reverted_changes.reduce<
-    (FileChanged & { workspace_folder: string })[]
-  >((acc, change) => {
-    const filesWithWorkspace = change.files_changed.map((file) => ({
-      ...file,
-      workspace_folder: change.workspace_folder,
-    }));
-    return [...acc, ...filesWithWorkspace];
-  }, []);
-
-  const wereFilesChanged = allChangedFiles.length > 0;
-
-  const [open, setOpen] = useState(shouldCheckpointsPopupBeShown);
-
-  const handleOpenChange = useCallback(
-    (value: boolean) => {
-      setOpen(value);
-      dispatch(setIsCheckpointsPopupIsVisible(value));
-    },
-    [dispatch],
-  );
-
-  const handleFix = useCallback(() => {
-    dispatch(setIsCheckpointsPopupIsVisible(false));
-  }, [dispatch]);
+  const {
+    shouldCheckpointsPopupBeShown,
+    handleFix,
+    handleUndo,
+    handleShouldMockBeUsedChange,
+    reverted_to,
+    isLoading,
+    allChangedFiles,
+    wereFilesChanged,
+    shouldMockBeUsed,
+  } = useCheckpoints();
 
   const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const formattedDate = formatDateToHumanReadable(reverted_to, clientTimezone);
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+    <Dialog.Root open={shouldCheckpointsPopupBeShown}>
       <Dialog.Content className={styles.CheckpointsDialog}>
         <Text size="1" color="gray" className={styles.CheckpointsRevertedDate}>
           Reverted to date: {formattedDate}
@@ -135,7 +78,7 @@ export const Checkpoints = () => {
                         {formattedWorkspaceFolder}
                       </Text>
                     </Flex>
-                    <StatusIndicator status={file.status} />
+                    <CheckpointsStatusIndicator status={file.status} />
                   </Flex>
                 );
               })
@@ -153,7 +96,7 @@ export const Checkpoints = () => {
           <Button
             variant="soft"
             color="purple"
-            onClick={() => setShouldMockBeUsed((prev) => !prev)}
+            onClick={handleShouldMockBeUsedChange}
           >
             {shouldMockBeUsed ? "Use real data" : "Use mock data"}
           </Button>
@@ -163,11 +106,7 @@ export const Checkpoints = () => {
                 variant="soft"
                 color="gray"
                 loading={isLoading}
-                onClick={() =>
-                  void handleUndo(
-                    latestRestoredCheckpointsResult.checkpoints_for_undo,
-                  )
-                }
+                onClick={() => void handleUndo()}
               >
                 Undo
               </Button>
