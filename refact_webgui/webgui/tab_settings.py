@@ -26,6 +26,7 @@ class TabSettingsRouter(APIRouter):
         cerebras_api_key: Optional[str] = None
         gemini_api_key: Optional[str] = None
         xai_api_key: Optional[str] = None
+        deepseek_api_key: Optional[str] = None
 
         huggingface_api_key: Optional[str] = None
 

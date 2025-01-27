@@ -72,6 +72,8 @@ class InferenceQueue:
                 _add_models_for_passthrough_provider('gemini')
             if j.get("xai_api_enable"):
                 _add_models_for_passthrough_provider('xai')
+            if j.get("deepseek_api_enable"):
+                _add_models_for_passthrough_provider('deepseek')
 
         return self._models_available
 
