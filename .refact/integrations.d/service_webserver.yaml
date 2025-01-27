@@ -1,0 +1,24 @@
+command: npm run dev
+command_workdir: ''
+description: Runs chat-js webserver, Working on URL localhost:5173
+parameters:
+- name: ''
+  type: string
+  description: ''
+timeout: ''
+output_filter:
+  limit_lines: 100
+  limit_chars: 10000
+  valuable_top_or_bottom: top
+  grep: (?i)error
+  grep_context_lines: 5
+  remove_from_output: ''
+startup_wait_port: '6006'
+startup_wait: '10'
+startup_wait_keyword: http://localhost:5173/
+available:
+  on_your_laptop: true
+  when_isolated: true
+confirmation:
+  ask_user: []
+  deny: []
