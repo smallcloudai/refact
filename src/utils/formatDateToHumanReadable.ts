@@ -1,7 +1,7 @@
 export function formatDateToHumanReadable(
   date: string,
   timeZone: string,
-  locale = "en-GB",
+  locale?: string,
 ): string {
   const utcDate = new Date(date);
   return new Intl.DateTimeFormat(locale, {
