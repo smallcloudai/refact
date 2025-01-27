@@ -135,6 +135,9 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
     if data.get('xai_api_enable'):
         _add_results_for_passthrough_provider('xai')
 
+    if data.get('deepseek_api_enable'):
+        _add_results_for_passthrough_provider('deepseek')
+
     return result
 
 

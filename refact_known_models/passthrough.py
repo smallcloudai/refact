@@ -295,5 +295,29 @@ passthrough_mini_db = {
         "pp1000t_prompt": 2_000,
         "pp1000t_generated": 10_000,  # $10.00 / 1M tokens
         "filter_caps": ["chat", "completion"],
-    }
+    },
+
+    # DeepSeek Models
+    "deepseek-chat": {
+        "backend": "litellm",
+        "provider": "deepseek",
+        "tokenizer_path": "deepseek-ai/DeepSeek-V3",
+        "resolve_as": "deepseek/deepseek-chat",
+        "T": 64_000,
+        "T_out": 8_000,
+        "pp1000t_prompt": 270,
+        "pp1000t_generated": 1_100,
+        "filter_caps": ["chat", "completion"],
+    },
+    "deepseek-reasoner": {
+        "backend": "litellm",
+        "provider": "deepseek",
+        "tokenizer_path": "deepseek-ai/DeepSeek-R1",
+        "resolve_as": "deepseek/deepseek-reasoner",
+        "T": 64_000,
+        "T_out": 8_000,
+        "pp1000t_prompt": 550,
+        "pp1000t_generated": 2_190,
+        "filter_caps": ["chat", "completion"],
+    },
 }

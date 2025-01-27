@@ -46,6 +46,7 @@ class TabHostModelsAssign(BaseModel):
     cerebras_api_enable: bool = False
     gemini_api_enable: bool = False
     xai_api_enable: bool = False
+    deepseek_api_enable: bool = False
 
     model_config = ConfigDict(protected_namespaces=())  # avoiding model_ namespace protection
 

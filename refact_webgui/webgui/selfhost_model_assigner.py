@@ -245,6 +245,7 @@ class ModelAssigner:
             "cerebras_api_enable": False,
             "gemini_api_enable": False,
             "xai_api_enable": False,
+            "deepseek_api_enable": False,
         }
         self.models_to_watchdog_configs(default_config)
 
@@ -328,6 +329,7 @@ class ModelAssigner:
             j["cerebras_api_enable"] = j.get("cerebras_api_enable", False)
             j["gemini_api_enable"] = j.get("gemini_api_enable", False)
             j["xai_api_enable"] = j.get("xai_api_enable", False)
+            j["deepseek_api_enable"] = j.get("deepseek_api_enable", False)
         else:
             j = {"model_assign": {}}
 
