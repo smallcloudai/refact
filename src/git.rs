@@ -155,6 +155,12 @@ pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_c
             .diff_tree_to_workdir(Some(&old_tree), Some(&mut diff_options)),
     }.map_err_with_prefix("Failed to get diff:")?;
 
+    fn filtered_push(file_changes: &mut Vec<FileChange>, change: FileChange) {
+        if !crate::file_filter::is_this_inside_blacklisted_dir(&change.relative_path) {
+            file_changes.push(change);
+        }
+    }
+
     let mut file_changes = Vec::new();
     for delta in diff.deltas() {
         let old_paths_maybe = delta.old_file().path()
@@ -166,7 +172,7 @@ pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_c
             git2::Delta::Added | git2::Delta::Copied | git2::Delta::Untracked => {
                 let (relative_path, absolute_path) = new_paths_maybe
                     .ok_or("Failed to get new file path for file added")?;
-                file_changes.push(FileChange {
+                filtered_push(&mut file_changes, FileChange {
                     relative_path,
                     absolute_path,
                     status: FileChangeStatus::ADDED,
@@ -175,7 +181,7 @@ pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_c
             git2::Delta::Modified | git2::Delta::Conflicted => {
                 let (relative_path, absolute_path) = new_paths_maybe
                     .ok_or("Failed to get new file path for file added")?;
-                file_changes.push(FileChange {
+                filtered_push(&mut file_changes, FileChange {
                     relative_path,
                     absolute_path,
                     status: FileChangeStatus::MODIFIED,
@@ -184,7 +190,7 @@ pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_c
             git2::Delta::Deleted => {
                 let (relative_path, absolute_path) = old_paths_maybe
                     .ok_or("Failed to get old file path for file deleted")?;
-                file_changes.push(FileChange {
+                filtered_push(&mut file_changes, FileChange {
                     relative_path,
                     absolute_path,
                     status: FileChangeStatus::DELETED,
@@ -192,14 +198,14 @@ pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_c
             },
             git2::Delta::Typechange | git2::Delta::Renamed => {
                 if let Some((old_rel_path, old_abs_path)) = old_paths_maybe {
-                    file_changes.push(FileChange {
+                    filtered_push(&mut file_changes, FileChange {
                         relative_path: old_rel_path,
                         absolute_path: old_abs_path,
                         status: FileChangeStatus::DELETED,
                     });
                 }
                 if let Some((new_rel_path, new_abs_path)) = new_paths_maybe {
-                    file_changes.push(FileChange {
+                    filtered_push(&mut file_changes, FileChange {
                         relative_path: new_rel_path,
                         absolute_path: new_abs_path,
                         status: FileChangeStatus::ADDED,
@@ -456,7 +462,7 @@ pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, 
         .map_err_with_prefix("Failed to set HEAD:")?;
 
     let mut checkout_opts = git2::build::CheckoutBuilder::new();
-    checkout_opts.force().update_index(true).remove_untracked(true);
+    checkout_opts.force().update_index(true);
     repo.checkout_head(Some(&mut checkout_opts)).map_err_with_prefix("Failed to checkout HEAD:")?;
 
     Ok(())
