@@ -15,11 +15,10 @@ describe("formatChatResponse", () => {
       id: "test",
       content: " what is this for?\n",
       role: "user",
-      checkpoints: [],
     };
 
     const messages: ChatMessages = [
-      { role: "user", content: "Hello", checkpoints: [] },
+      { role: "user", content: "Hello" },
       {
         role: "assistant",
         content: "Hi",
@@ -63,7 +62,6 @@ describe("formatChatResponse", () => {
         role: "user",
         content:
           "@file /Users/marc/Projects/refact-chat-js/src/__fixtures__/chat_diff.ts what is this for?\n",
-        checkpoints: [],
       },
       {
         role: "context_file",
@@ -84,7 +82,7 @@ describe("formatChatResponse", () => {
     const expected = [
       ...messages.slice(0, 5),
       ...messages.slice(6),
-      { role: message.role, content: message.content, checkpoints: [] },
+      { role: message.role, content: message.content },
     ];
 
     expect(result).toEqual(expected);
@@ -94,7 +92,6 @@ describe("formatChatResponse", () => {
     const userMessage: UserMessage = {
       role: "user",
       content: "Hello",
-      checkpoints: [],
     };
 
     const sentMessages = [userMessage];
@@ -102,7 +99,6 @@ describe("formatChatResponse", () => {
     const updatedUserMessage: UserMessage = {
       role: "user",
       content: "hi",
-      checkpoints: [],
     };
 
     const userMessageResponse: UserMessageResponse = {

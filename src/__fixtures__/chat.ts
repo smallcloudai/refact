@@ -13,7 +13,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
     //   "system",
     //   "Use backquotes for code blocks. Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.",
     // ],
-    { role: "user", content: "mars rover kata", checkpoints: [] },
+    { role: "user", content: "mars rover kata" },
     {
       role: "context_file",
       content: [
@@ -31,7 +31,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
       content:
         "The Mars Rover Kata is a coding exercise that simulates the movement of a rover on the surface of Mars. The goal is to write a program that takes in a series of commands and outputs the final position of the rover.\n\nHere is a link to the official Mars Rover Kata documentation: https://kata-log.rocks/mars-rover-kata\n\nYou can find various implementations and solutions to the Mars Rover Kata on platforms like GitHub or coding challenge websites.",
     },
-    { role: "user", content: "solve in ocaml", checkpoints: [] },
+    { role: "user", content: "solve in ocaml" },
     {
       role: "assistant",
       content:
@@ -39,7 +39,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
     },
 
     // remark rehype-katex works with this
-    { role: "user", content: "the quadratic formula.", checkpoints: [] },
+    { role: "user", content: "the quadratic formula." },
     {
       role: "assistant",
 
@@ -48,7 +48,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
       content:
         "The quadratic formula is given by:$$[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} ] $$You can find more information about the quadratic formula in the following link: [Quadratic Formula - Wikipedia](https://en.wikipedia.org/wiki/Quadratic_formula)",
     },
-    { role: "user", content: "formalla with new lines", checkpoints: [] },
+    { role: "user", content: "formalla with new lines" },
     {
       role: "assistant",
       content:
@@ -56,7 +56,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
         // "The quadratic formula is given by:\n\n\\[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} \\]\n\nYou can find more information about the quadratic formula in the following link: [Quadratic Formula - Wikipedia](https://en.wikipedia.org/wiki/Quadratic_formula)",
         "The quadratic formula is given by:\n$$\nx = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}}\n$$\nYou can find more information about the quadratic formula in the following link: [Quadratic Formula - Wikipedia](https://en.wikipedia.org/wiki/Quadratic_formula)",
     },
-    { role: "user", content: "other math", checkpoints: [] },
+    { role: "user", content: "other math" },
     {
       role: "assistant",
       // "$$ \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a} $$",
@@ -66,7 +66,6 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
     {
       role: "user",
       content: "long message\n" + "a".repeat(10000),
-      checkpoints: [],
     },
   ],
   title: "mars rover kata",
@@ -83,7 +82,7 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages = [
     content:
       '\nYou are a search agent. You need to actively search for the answer yourself, don\'t ask the user to do anything. The answer is most likely in the files and databases accessible using tool calls, not on the internet.\n\nWhen responding to a query, first provide a very brief explanation of your plan to use tools in parallel to answer the question, and then make several tool calls to gather more details.\n\nMinimize the number of steps, call up to 15 tools in parallel when exploring.\n\nIT IS FORBIDDEN TO JUST CALL TOOLS WITHOUT EXPLAINING. EXPLAIN FIRST!\n\nWhen user corrects you, acknowledge the correction, write "I will make a note to remember this" and use note_to_self call.\n\n\nExample 1\n\nUser: "What is the weather like today in Paris and London?"\nAssistant: "Must be sunny in Paris and foggy in London."\nUser: "don\'t hallucinate, use the tools"\nAssistant: "Sorry for the confusion, you are right, weather is real-time, and my best shot is to use the weather tool. I will make a note to remember this. My original instruction was to fetch weather for Paris and London. I will use 2 calls in parallel."\n[Call note_to_self "Weather" "For weather, use tools to get real-time information"]\n[Call weather "London"]\n[Call weather "Paris"]\n\n\nExample 2\n\nUser: "What is MyClass"\nAssistant: "Let me find it first."\n[Call ls "."]\nTool: subdir1, subdir2, subdir3\nAssistant: "I see 3 subdirs, will make 3 calls in parallel to check what\'s inside."\n[Call ls "subdir1"]\n[Call ls "subdir2"]\n[Call ls "subdir3"]\nTool: ...\nTool: ...\nTool: ...\nAssistant: "I give up, I can\'t find a file relevant for MyClass 😕"\nUser: "Look, it\'s my_class.cpp"\nAssistant: "Sorry for the confusion, there is in fact a file named `my_class.cpp` in `subdir2` that must be relevant for MyClass. I will make a note to remember this. My original instruction was to describe MyClass."\n[Call note_to_self "searching, browsing filesystem, MyClass" "Try to lowercase the name user asked about, convert to snake case, and guess the right file this way."]\n[Call cat "subdir2/my_class.cpp"]\nTool: ...\nAssistant: "MyClass does this and this"\n\n\n',
   },
-  { role: "user", content: "Explain what Frog is", checkpoints: [] },
+  { role: "user", content: "Explain what Frog is" },
   {
     role: "assistant",
     content:
@@ -150,7 +149,6 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages = [
   {
     role: "user",
     content: "continue searching for the Frog in tests",
-    checkpoints: [],
   },
   {
     role: "tool",
@@ -202,7 +200,7 @@ export const CHAT_FUNCTIONS_MESSAGES: ChatMessages = [
     content:
       "I couldn't retrieve specific information about Frog in the tests directory. If there are any other locations or specific files you suspect might contain details about Frog, please let me know.",
   },
-  { role: "user", content: "use ls, don't be stupid", checkpoints: [] },
+  { role: "user", content: "use ls, don't be stupid" },
   {
     role: "tool",
     content: {
@@ -256,7 +254,6 @@ export const FROG_CHAT: ChatThread = {
     {
       role: "user",
       content: "\nWhat is the difference between a frog and a toad?\n",
-      checkpoints: [],
     },
     {
       role: "assistant",
@@ -450,7 +447,7 @@ export const CHAT_WITH_DIFFS: ChatMessages = [
     ],
     tool_call_id: "test_tool_call_id",
   },
-  { role: "user", content: "A longer diff", checkpoints: [] },
+  { role: "user", content: "A longer diff" },
   { role: "assistant", content: "here you go" },
   {
     role: "diff",
@@ -474,7 +471,6 @@ export const CHAT_WITH_DIFF_ACTIONS: ChatThread = {
     {
       role: "user",
       content: "In the project add an edible property to the frog class\n",
-      checkpoints: [],
     },
     {
       role: "assistant",
@@ -592,7 +588,6 @@ export const LARGE_DIFF: ChatThread = {
     {
       role: "user",
       content: "rename the frog class to bird.",
-      checkpoints: [],
     },
     {
       role: "assistant",

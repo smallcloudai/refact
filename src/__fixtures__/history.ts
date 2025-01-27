@@ -9,7 +9,6 @@ export const HISTORY: ChatHistoryItem[] = [
         role: "user",
         content:
           "Write a program that solves word-chain puzzles.\n\nThere’s a type of puzzle where the challenge is to build a chain of words, starting with one particular word and ending with another. Successive entries in the chain must all be real words, and each can differ from the previous word by just one letter. For example, you can get from “cat” to “dog” using the following chain.\n\nThe objective of this kata is to write a program that accepts start and end words and, using words from the dictionary, builds a word chain between them. For added programming fun, return the shortest word chain that solves each puzzle. For example, you can turn “lead” into “gold” in four steps (lead, load, goad, gold), and “ruby” into “code” in six steps (ruby, rubs, robs, rods, rode, code).\n\nOnce your code works, try timing it. Does it take less than a second for the above examples given a decent-sized word list? And is the timing the same forwards and backwards (so “lead” into “gold” takes the same time as “gold” into “lead”)?",
-        checkpoints: [],
       },
       {
         role: "assistant",
@@ -17,7 +16,7 @@ export const HISTORY: ChatHistoryItem[] = [
           "To solve word-chain puzzles, we can use a breadth-first search algorithm to find the shortest path between the start and end words, where each word in the path differs by only one letter from the previous word.\n\nHere is a high-level plan to implement the program:\n1. Load a dictionary of words.\n2. Implement a function to find all valid words that differ by one letter from a given word.\n3. Implement a function to find the shortest word chain between the start and end words using breadth-first search.\n4. Test the program with the provided examples and measure the execution time.\n\nLet's start by searching for relevant resources and definitions to help us implement the necessary functions for the word-chain puzzle program. I will search for algorithms for finding word chains and data structures for efficient word manipulation. Let's proceed with the search.",
         tool_calls: null,
       },
-      { role: "user", content: "solve in scala\n", checkpoints: [] },
+      { role: "user", content: "solve in scala\n" },
       {
         role: "assistant",
         content:
@@ -40,7 +39,6 @@ export const HISTORY: ChatHistoryItem[] = [
         role: "user",
         content:
           "In this project, what is the difference between a toad and a frog?\n",
-        checkpoints: [],
       },
       {
         role: "assistant",

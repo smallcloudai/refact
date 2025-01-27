@@ -133,7 +133,7 @@ export interface UserMessage extends BaseMessage {
   content:
     | string
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
-  checkpoints: Checkpoint[];
+  checkpoints?: Checkpoint[];
 }
 
 export type ProcessedUserMessageContentWithImages = {
@@ -339,7 +339,7 @@ export type ChatUserMessageResponse =
       id: string;
       role: "user" | "context_file" | "context_memory";
       content: string;
-      checkpoints: Checkpoint[];
+      checkpoints?: Checkpoint[];
     }
   | {
       id: string;
@@ -350,7 +350,7 @@ export type ChatUserMessageResponse =
             | UserMessageContentWithImage
             | ProcessedUserMessageContentWithImages
           )[];
-      checkpoints: Checkpoint[];
+      checkpoints?: Checkpoint[];
     };
 
 export type ToolResponse = {

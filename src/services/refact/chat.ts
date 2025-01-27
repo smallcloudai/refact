@@ -34,7 +34,7 @@ export function isLspChatMessage(json: unknown): json is LspChatMessage {
 export function isLspUserMessage(
   message: LspChatMessage,
 ): message is UserMessage {
-  return message.role === "user" && "checkpoints" in message;
+  return message.role === "user";
 }
 
 type StreamArgs =

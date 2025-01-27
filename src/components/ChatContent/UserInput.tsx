@@ -105,7 +105,9 @@ export const UserInput: React.FC<UserInputProps> = ({
               transition: "opacity 0.15s, visibility 0.15s",
             }}
           >
-            <CheckpointButton checkpoints={checkpointsFromMessage} />
+            {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
+              <CheckpointButton checkpoints={checkpointsFromMessage} />
+            )}
             <IconButton
               title="Edit message"
               variant="soft"
