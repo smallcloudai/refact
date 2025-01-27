@@ -28,7 +28,12 @@ export const Checkpoints = () => {
   const formattedDate = formatDateToHumanReadable(reverted_to, clientTimezone);
 
   return (
-    <Dialog.Root open={shouldCheckpointsPopupBeShown}>
+    <Dialog.Root
+      open={shouldCheckpointsPopupBeShown}
+      onOpenChange={(state) => {
+        if (!state) handleFix();
+      }}
+    >
       <Dialog.Content className={styles.CheckpointsDialog}>
         <Text size="1" color="gray" className={styles.CheckpointsRevertedDate}>
           Reverted to date: {formattedDate}
