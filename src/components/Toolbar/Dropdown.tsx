@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
@@ -79,6 +79,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
     openUrl("https://refact.smallcloud.ai/pro");
   }, [openUrl, startPollingForUser]);
 
+  const refactProductType = useMemo(() => {
+    if (host === "jetbrains") return "Plugin";
+    return "Extension";
+  }, [host]);
+
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
@@ -151,7 +156,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
-          Extension Settings
+          {refactProductType} Settings
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
