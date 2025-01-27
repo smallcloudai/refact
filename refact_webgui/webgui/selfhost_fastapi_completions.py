@@ -39,22 +39,29 @@ def red_time(base_ts):
 
 
 class NlpSamplingParams(BaseModel):
-    max_tokens: int = 500
+    max_tokens: Optional[int] = None
+    max_completion_tokens: Optional[int] = 500
     temperature: float = 0.2
     top_p: float = 1.0
     top_n: int = 0
     stop: Union[List[str], str] = []
 
+    @property
+    def actual_max_tokens(self):
+        if self.max_tokens is not None:
+            return max(1, self.max_tokens)
+        else:
+            return max(1, self.max_completion_tokens)
+
     def clamp(self):
         self.temperature = clamp(0, 4, self.temperature)
         self.top_p = clamp(0.0, 1.0, self.top_p)
         self.top_n = clamp(0, 1000, self.top_n)
-        self.max_tokens = clamp(0, 8192, self.max_tokens)
         return {
             "temperature": self.temperature,
             "top_p": self.top_p,
             "top_n": self.top_n,
-            "max_tokens": self.max_tokens,
+            "max_tokens": self.actual_max_tokens,
             "created": time.time(),
             "stop_tokens": self.stop,
         }
@@ -542,7 +549,7 @@ class BaseCompletionsRouter(APIRouter):
                 response = await litellm.acompletion(
                     model=model_name, messages=messages, stream=True,
                     temperature=post.temperature, top_p=post.top_p,
-                    max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
+                    max_tokens=min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens),
                     tools=post.tools,
                     tool_choice=post.tool_choice,
                     stop=post.stop if post.stop else None,
@@ -581,7 +588,7 @@ class BaseCompletionsRouter(APIRouter):
                 model_response = await litellm.acompletion(
                     model=model_name, messages=messages, stream=False,
                     temperature=post.temperature, top_p=post.top_p,
-                    max_tokens=min(model_dict.get('T_out', post.max_tokens), post.max_tokens),
+                    max_tokens=min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens),
                     tools=post.tools,
                     tool_choice=post.tool_choice,
                     stop=post.stop if post.stop else None,
@@ -612,7 +619,7 @@ class BaseCompletionsRouter(APIRouter):
                 "model": post.model,
                 "parameters": {
                     "temperature": post.temperature,
-                    "max_new_tokens": post.max_tokens,
+                    "max_new_tokens": post.actual_max_tokens,
                 }
             }
             async with aiohttp.ClientSession() as session:
