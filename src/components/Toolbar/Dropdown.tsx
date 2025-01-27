@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
@@ -8,9 +8,10 @@ import {
   useLogout,
   useAppSelector,
   useAppDispatch,
+  useAgentUsage,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import { DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
+import { Button, DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
 //import { Coin } from "../../images";
@@ -60,6 +61,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const dispatch = useAppDispatch();
   const logout = useLogout();
   const { addressURL } = useConfig();
+  const { startPollingForUser } = useAgentUsage();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
@@ -71,6 +73,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
   };
+
+  const handleProUpgradeClick = useCallback(() => {
+    startPollingForUser();
+    openUrl("https://refact.smallcloud.ai/pro");
+  }, [openUrl, startPollingForUser]);
 
   return (
     <DropdownMenu.Root>
@@ -108,23 +115,39 @@ export const Dropdown: React.FC<DropdownProps> = ({
             </Flex>
           </DropdownMenu.Label>
         )}
+        <Flex direction="column" gap="2" mt="1" mx="2">
+          {user.data && user.data.inference === "FREE" && (
+            <Button
+              color="red"
+              variant="outline"
+              onClick={handleProUpgradeClick}
+            >
+              Upgrade to PRO
+            </Button>
+          )}
 
-        <DropdownMenu.Item
-          onSelect={(event) => {
-            event.preventDefault();
-            openUrl(discordUrl);
-          }}
-        >
-          <Flex align="center" gap="3">
-            Discord Community{" "}
-            <DiscordLogoIcon width="20" height="20" color="var(--accent-11)" />
-          </Flex>
-        </DropdownMenu.Item>
+          <Button
+            onClick={(event) => {
+              event.preventDefault();
+              openUrl(discordUrl);
+            }}
+            variant="outline"
+          >
+            <Flex align="center" gap="3">
+              Discord Community{" "}
+              <DiscordLogoIcon
+                width="20"
+                height="20"
+                color="var(--accent-11)"
+              />
+            </Flex>
+          </Button>
+        </Flex>
 
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
-          Setup Agent Integrations
+          Set up Agent Integrations
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
