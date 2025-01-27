@@ -277,7 +277,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   return (
     <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
-      {!isOnline && <Callout type="info" message="Offline" />}
+      {!isOnline && (
+        <Callout type="info" mb="2">
+          Oops, seems that connection was lost... Check your internet connection
+        </Callout>
+      )}
 
       <Flex
         ref={(x) => refs.setChat(x)}
