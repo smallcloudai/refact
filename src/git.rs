@@ -97,28 +97,17 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     if !files.is_empty() { Some(files) } else { None }
 }
 
-/// Similar to git checkout -b <branch_name>
-pub fn create_or_checkout_to_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {
-    let branch = match repository.find_branch(branch_name, git2::BranchType::Local) {
-        Ok(branch) => branch,
+pub fn get_or_create_branch<'repo>(repository: &'repo Repository, branch_name: &str) -> Result<Branch<'repo>, String> {
+    match repository.find_branch(branch_name, git2::BranchType::Local) {
+        Ok(branch) => Ok(branch),
         Err(_) => {
             let head_commit = repository.head()
                 .and_then(|h| h.peel_to_commit())
-                .map_err(|e| format!("Failed to get HEAD commit: {}", e))?;
+                .map_err_with_prefix("Failed to get HEAD commit:")?;
             repository.branch(branch_name, &head_commit, false)
-                .map_err(|e| format!("Failed to create branch: {}", e))?
+                .map_err_with_prefix("Failed to create branch:")
         }
-    };
-
-    // Checkout to the branch
-    let object = repository.revparse_single(&("refs/heads/".to_owned() + branch_name))
-        .map_err(|e| format!("Failed to revparse single: {}", e))?;
-    repository.checkout_tree(&object, None)
-        .map_err(|e| format!("Failed to checkout tree: {}", e))?;
-    repository.set_head(&format!("refs/heads/{}", branch_name))
-      .map_err(|e| format!("Failed to set head: {}", e))?;
-
-    Ok(branch)
+    }
 }
 
 /// Tries to get tree in given repository, from commit_id if given, otherwise HEAD tree, 
@@ -283,9 +272,13 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
         return Err("No parent commits found".to_string());
     };
 
-    repository.commit(
+    let commit = repository.commit(
         Some(branch_ref_name), &signature, &signature, message, &tree, &[&parent_commit]
-    ).map_err(|e| format!("Failed to create commit: {}", e))
+    ).map_err(|e| format!("Failed to create commit: {}", e))?;
+
+    repository.set_head(branch_ref_name).map_err_with_prefix("Failed to set branch as head:")?;
+
+    Ok(commit)
 }
 
 pub fn get_datetime_from_commit(repository: &Repository, commit_id: &str) -> Result<DateTime<Utc>, String> {
@@ -453,17 +446,18 @@ pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, 
     let commit = Oid::from_str(commit_hash)
         .and_then(|oid| repo.find_commit(oid))
         .map_err_with_prefix("Failed to find commit:")?;
-    let tree = commit.tree().map_err_to_string()?;
 
-    let mut branch_ref = create_or_checkout_to_branch(repo, branch_name)?.into_reference();
+    let mut branch_ref = repo.find_branch(branch_name, git2::BranchType::Local)
+        .map_err_with_prefix("Failed to get branch:")?.into_reference();
     branch_ref.set_target(commit.id(),"Restoring checkpoint")
         .map_err_with_prefix("Failed to update branch reference:")?;
 
-    repo.checkout_tree(&tree.into_object(), None)
-        .map_err_with_prefix("Failed  to checkout tree:")?;
-
     repo.set_head(&format!("refs/heads/{}", branch_name))
         .map_err_with_prefix("Failed to set HEAD:")?;
+
+    let mut checkout_opts = git2::build::CheckoutBuilder::new();
+    checkout_opts.force().update_index(true).remove_untracked(true);
+    repo.checkout_head(Some(&mut checkout_opts)).map_err_with_prefix("Failed to checkout HEAD:")?;
 
     Ok(())
 }
@@ -489,12 +483,13 @@ pub async fn create_workspace_checkpoint(
         .map_err_with_prefix("Failed to open or init repo:")?;
 
     let (checkpoint, file_changes) = {
-        let branch = create_or_checkout_to_branch(&repo, &format!("refact-{chat_id}"))?;
+        let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
         let commit_oid_from_branch = branch.get().target().map(|oid| oid.to_string());
         let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref(), None)?;
         stage_changes(&repo, &file_changes)?;
 
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
+
         (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, file_changes)
     };
 
@@ -510,7 +505,7 @@ pub async fn restore_workspace_checkpoint(
     
     let reverted_to = get_datetime_from_commit(&repo, &checkpoint_to_restore.commit_hash)?;
     let files_changed = get_file_changes(&repo, true, 
-        Some(&checkpoint_to_restore.commit_hash), Some(&checkpoint_for_undo.commit_hash))?;
+        Some(&checkpoint_for_undo.commit_hash), Some(&checkpoint_to_restore.commit_hash))?;
 
     checkout_head_and_branch_to_commit(&repo, &format!("refact-{chat_id}"), &checkpoint_to_restore.commit_hash)?;
 
