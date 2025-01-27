@@ -12,7 +12,7 @@ output_filter:
   remove_from_output: ''
 startup_wait_port: ''
 startup_wait: '10'
-startup_wait_keyword: null
+startup_wait_keyword: ''
 available:
   on_your_laptop: true
   when_isolated: true
