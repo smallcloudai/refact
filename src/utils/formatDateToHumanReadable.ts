@@ -1,10 +1,3 @@
-export function convertUTCToLocalTime(date: string): Date {
-  const utcDate = new Date(date);
-  const timezoneOffset = utcDate.getTimezoneOffset() * 60000; // Convert to milliseconds
-  const localDate = new Date(utcDate.getTime() - timezoneOffset);
-  return localDate;
-}
-
 export function formatDateToHumanReadable(
   date: string,
   timeZone: string,
