@@ -43,6 +43,8 @@ import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { telemetryApi } from "../../services/refact/telemetry";
 
+import styles from "./Toolbar.module.css";
+
 export type DashboardTab = {
   type: "dashboard";
 };
@@ -283,9 +285,10 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                   onKeyUp={handleKeyUpOnRename}
                   onBlur={() => setIsRenaming(false)}
                   autoFocus
-                  size="1"
+                  size="2"
                   defaultValue={isTitleGenerated ? chat.title : ""}
                   onChange={handleChatTitleChange}
+                  className={styles.RenameInput}
                 />
               );
             }
