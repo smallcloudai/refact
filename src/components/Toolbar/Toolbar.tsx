@@ -91,6 +91,10 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState<string | null>(null);
 
+  const shouldChatTabLinkBeNotClickable = useMemo(() => {
+    return isOnlyOneChatTab && !isDashboardTab(activeTab);
+  }, [isOnlyOneChatTab, activeTab]);
+
   const handleNavigation = useCallback(
     (to: DropdownNavigationOptions | "chat") => {
       if (to === "settings") {
@@ -168,7 +172,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         dispatch(popBackTo({ name: "history" }));
         dispatch(newChatAction());
       } else {
-        if (isOnlyOneChatTab) return;
+        if (shouldChatTabLinkBeNotClickable) return;
         const chat = history.find((chat) => chat.id === tab.id);
         if (chat != undefined) {
           dispatch(restoreChat(chat));
@@ -182,7 +186,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         error_message: "",
       });
     },
-    [dispatch, history, isOnlyOneChatTab, sendTelemetryEvent],
+    [dispatch, history, shouldChatTabLinkBeNotClickable, sendTelemetryEvent],
   );
 
   useEffect(() => {
@@ -297,7 +301,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 active={isActive}
                 key={chat.id}
                 onClick={() => {
-                  if (isOnlyOneChatTab) return;
+                  if (shouldChatTabLinkBeNotClickable) return;
                   goToTab({ type: "chat", id: chat.id });
                 }}
                 style={{ minWidth: 0, maxWidth: "150px", cursor: "pointer" }}
