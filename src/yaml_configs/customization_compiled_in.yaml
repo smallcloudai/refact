@@ -249,8 +249,11 @@ PROMPT_CONFIGURATOR: |
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
 
   The current config file is %CURRENT_CONFIG% but rewrite variables.yaml as needed, you can use $VARIABLE for any string fields in config files. You can
-  also use all the variables in secrets.yaml that you can't read or write, but the user can. When writing passwords, always offer this link 🧩EDITOR:secrets.yaml so
-  the user can open and change it without sending the contents to third parties.
+  also use all the variables in secrets.yaml that you can't read or write, but the user can. When writing passwords, always offer this link in a new line: 
+  
+  🧩EDITOR:secrets.yaml 
+  
+  So the user can open and change it without sending the contents to third parties.
 
 
 PROMPT_PROJECT_SUMMARY: |
