@@ -318,6 +318,6 @@ passthrough_mini_db = {
         "T_out": 8_000,
         "pp1000t_prompt": 550,
         "pp1000t_generated": 2_190,
-        "filter_caps": ["chat", "completion"],
+        "filter_caps": ["chat"],
     },
 }
