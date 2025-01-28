@@ -1,4 +1,4 @@
-import { Flex, Link } from "@radix-ui/themes";
+import { Flex, Link, Text } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch, useAppearance } from "../../hooks";
 import { RootState } from "../../app/store";
 import { close, next } from "../../features/Tour";
@@ -8,6 +8,7 @@ import { TourTitle } from "./TourTitle";
 import { CSSProperties, ReactNode, useEffect, useState } from "react";
 
 export type TourBubbleProps = {
+  title?: string;
   text: string;
   step: number;
   down: boolean;
@@ -23,6 +24,7 @@ export type TourBubbleProps = {
 };
 
 export function TourBubble({
+  title,
   text,
   step,
   target,
@@ -133,7 +135,17 @@ export function TourBubble({
             />
           )}
           <TourBox style={bubbleContainerStyles}>
-            <TourTitle title={text} />
+            {title && <TourTitle title={title} />}
+            <Text
+              style={{
+                color: appearance === "light" ? "white" : "black",
+                whiteSpace: "pre-line",
+              }}
+              mt="2"
+              mb={children ? "1" : "5"}
+            >
+              {text}
+            </Text>
             {children}
             <Link
               style={{

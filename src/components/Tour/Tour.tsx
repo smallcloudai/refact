@@ -5,6 +5,8 @@ import { useAppSelector, useAppDispatch } from "../../hooks";
 import { RootState } from "../../app/store";
 import { push } from "../../features/Pages/pagesSlice";
 import completionGif from "../../../public/completion.gif";
+import commandsGif from "../../../public/commands.gif";
+import agentGif from "../../../public/agent.gif";
 import { newChatAction } from "../../events";
 
 export type TourProps = {
@@ -28,15 +30,15 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
   const step = state.type === "in_progress" ? state.step : 0;
 
   useEffect(() => {
-    if (state.type === "in_progress" && step === 2 && page === "chat") {
+    if (state.type === "in_progress" && step === 1 && page === "chat") {
+      dispatch(next());
+    }
+
+    if (state.type === "in_progress" && step === 4 && page === "history") {
       dispatch(next());
     }
 
     if (state.type === "in_progress" && step === 6 && page === "history") {
-      dispatch(next());
-    }
-
-    if (state.type === "in_progress" && step === 8 && page === "history") {
       dispatch(push({ name: "tour end" }));
     }
 
@@ -51,8 +53,73 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
   return (
     <>
       <TourBubble
-        text="When you write code, Refact can predict what comes next. Accept code suggestions with Tab. Refact uses RAG, not just the current file for code completion, check out how it works in Fill-in-the-middle Context in the menu."
+        title="Agent can accomplish tasks end to end"
+        text={`Write anything you want to do and Refact.ai Agent will\n- inspect your files\n- write the code\n- run shell commands if needed\n- apply the code in your files\n- open borwser to check if changes are correct in case of UI`}
         step={1}
+        target={refs.newChat}
+        down={true}
+        isPointing={false}
+        onPage={"history"}
+        onNext={openChat}
+        page={page}
+        deltaY={-40}
+      >
+        <img
+          style={{ marginTop: "10px", marginBottom: "30px" }}
+          src={agentGif}
+        />
+      </TourBubble>
+      <TourBubble
+        title="Integrations"
+        text={
+          "In order for agent to work properly you need to set up integrations. Just click on this button and follow the instructions."
+        }
+        step={2}
+        down={false}
+        target={refs.setupIntegrations}
+        containerWidth={chatWidth}
+        onPage={"chat"}
+        page={page}
+        bubbleContainerStyles={{
+          alignSelf: "flex-end",
+        }}
+      />
+      <TourBubble
+        title="Chat modes / models"
+        text={`Our chat allows you to\n- use images to give more context\n- specify context use @commands, write @help to view`}
+        step={3}
+        target={refs.chat}
+        onPage={"chat"}
+        page={page}
+        down={false}
+      >
+        <img
+          style={{
+            marginTop: "10px",
+            marginBottom: "30px",
+          }}
+          src={commandsGif}
+        />
+      </TourBubble>
+      <TourBubble
+        title="Difference in Quick / Explore / Agent"
+        text={`Switch inside of the chat let you to choose the chat mode:\n- Quick for immediate answers, no tools and context access\n- Explore for ideating and learning, chat can access the context but all changes are performed manually\n- Agent for tasks where you expect chat to make changes autonomously`}
+        step={4}
+        down={false}
+        target={refs.useTools}
+        containerWidth={chatWidth}
+        onPage={"chat"}
+        onNext={openHistory}
+        page={page}
+        bubbleContainerStyles={{
+          maxWidth: 550,
+          alignSelf: "center",
+        }}
+      />
+      <TourBubble
+        title="Code completion"
+        text={`- we use context from your entire repository\n- you can adjust the number of output tokens in Plugin settings`}
+        step={5}
         target={refs.newChat}
         down={true}
         isPointing={false}
@@ -61,95 +128,13 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         deltaY={-40}
       >
         <img
-          style={{ marginTop: "10px", marginBottom: "30px" }}
+          style={{
+            marginTop: "10px",
+            marginBottom: "30px",
+          }}
           src={completionGif}
         />
       </TourBubble>
-      <TourBubble
-        text="Open a new chat using this button. Refact can stream several chats at the same time, this is most useful for agent functions that can run a long time. Chat that have unread responses will be marked with a small circle."
-        step={2}
-        target={refs.newChat}
-        down={true}
-        onPage={"history"}
-        page={page}
-        onNext={openChat}
-        containerWidth={chatWidth}
-        bubbleContainerStyles={{
-          alignSelf: "flex-end",
-        }}
-      />
-      <TourBubble
-        text={
-          "The Big Switch allows you to choose between immediate answers (Quick), automatic exploration tools that the model can use to collect the necessary context from your project (Explore), or slow agentic functions that can convert a lot of GPU cycles to useful work (Agent)."
-        }
-        step={3}
-        down={false}
-        target={refs.useTools}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-        bubbleContainerStyles={{
-          alignSelf: "flex-start",
-        }}
-      />
-      <TourBubble
-        text={
-          "In order for agent to work properly you need to set up integrations. Just click on this button and follow the instructions."
-        }
-        step={4}
-        down={false}
-        target={refs.setupIntegrations}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-        bubbleContainerStyles={{
-          alignSelf: "flex-start",
-        }}
-      />
-      <TourBubble
-        text={
-          "Sometimes you want to tell the model exactly what to take in as context, and not rely on automatic context collection. There are @-commands for you to do just that, for details type @help."
-        }
-        step={5}
-        down={false}
-        target={refs.chat}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-        bubbleContainerStyles={{
-          maxWidth: 550,
-          alignSelf: "center",
-        }}
-      />
-      <TourBubble
-        text={
-          "Here under Home button you will see your chat history and some agentic functions soon."
-        }
-        step={6}
-        down={true}
-        target={refs.back}
-        containerWidth={chatWidth}
-        onPage={"chat"}
-        page={page}
-        onNext={openHistory}
-        bubbleContainerStyles={{
-          alignSelf: "flex-start",
-        }}
-      />
-      <TourBubble
-        text={
-          "Click here for settings, keyboard shortcuts, customization, integrations, etc. There's a link to discord, too, for you to complain something isn't working or to happily report that it is!"
-        }
-        step={7}
-        down={true}
-        containerWidth={chatWidth}
-        target={refs.more}
-        onPage={"history"}
-        page={page}
-        bubbleContainerStyles={{
-          alignSelf: "flex-end",
-        }}
-      />
     </>
   );
 };
