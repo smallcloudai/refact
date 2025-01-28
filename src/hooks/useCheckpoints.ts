@@ -80,6 +80,7 @@ export const useCheckpoints = () => {
     async (checkpoints: Checkpoint[] | null, messageIndex: number) => {
       if (!checkpoints) return;
       const amountOfUserMessages = messages.filter(isUserMessage);
+      const firstUserMessage = amountOfUserMessages[0];
 
       const restoredChanges =
         await restoreChangesFromCheckpoints(checkpoints).unwrap();
@@ -88,7 +89,9 @@ export const useCheckpoints = () => {
         dispatch(setIsUndoingCheckpoints(false)),
         setLatestCheckpointResult({ ...restoredChanges, messageIndex }),
         setIsCheckpointsPopupIsVisible(true),
-        setShouldNewChatBeStarted(amountOfUserMessages.length === 1),
+        setShouldNewChatBeStarted(
+          messageIndex === messages.indexOf(firstUserMessage),
+        ),
       ];
       actions.forEach((action) => dispatch(action));
     },
