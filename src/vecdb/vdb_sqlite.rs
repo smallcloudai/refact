@@ -104,9 +104,9 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32, emb_table_name: 
         conn.execute(&format!(
             "CREATE VIRTUAL TABLE IF NOT EXISTS {emb_table_name} using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
-              scope text partition key,
-              +start_line integer,
-              +end_line integer
+              scope TEXT PARTITION KEY,
+              +start_line INTEGER,
+              +end_line INTEGER
             );"), [])?;
         Ok(())
     }).await
