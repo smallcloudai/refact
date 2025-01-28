@@ -48,7 +48,7 @@ export const Checkpoints = () => {
         </Dialog.Description>
         <Dialog.Title as="h2" size="3" mt="4" mb="3">
           {wereFilesChanged ? "Files changed" : "No files were changed"} from
-          checkpoint by {formattedDate}
+          checkpoint at {formattedDate}
         </Dialog.Title>
         <ScrollArea scrollbars="vertical" style={{ maxHeight: "300px" }}>
           <Flex direction="column" gap="2">
