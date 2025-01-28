@@ -1,8 +1,6 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use log::warn;
 use std::hash::{DefaultHasher, Hasher};
-use std::sync::Arc;
-use tokio::sync::Mutex as AMutex;
 use tokio_rusqlite::Connection;
 
 struct TableInfo {
@@ -10,7 +8,7 @@ struct TableInfo {
     creation_time: DateTime<Utc>,
 }
 
-pub fn create_embeddings_table_name(workspace_folders: &Vec<String>) -> String {
+pub fn create_emb_table_name(workspace_folders: &Vec<String>) -> String {
     fn _make_hash(msg: String) -> String {
         let mut hasher = DefaultHasher::new();
         hasher.write(msg.as_bytes());
@@ -44,11 +42,10 @@ fn parse_table_timestamp(table_name: &str) -> Option<DateTime<Utc>> {
     None
 }
 
-async fn cleanup_old_tables(conn: Arc<AMutex<Connection>>, days: i64) -> Result<(), String> {
+pub async fn cleanup_old_emb_tables(conn: &Connection, days: usize, max_count: usize) -> Result<(), String> {
     async fn get_all_emb_tables(
-        conn: Arc<AMutex<Connection>>,
+        conn: &Connection,
     ) -> rusqlite::Result<Vec<TableInfo>, String> {
-        let conn = conn.lock().await;
         Ok(conn.call(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'emb_%'",
@@ -73,12 +70,19 @@ async fn cleanup_old_tables(conn: Arc<AMutex<Connection>>, days: i64) -> Result<
         .map_err(|e| e.to_string())?)
     }
 
-    let tables = get_all_emb_tables(conn.clone()).await?;
-    let cutoff = Utc::now() - chrono::Duration::days(days);
+    let mut tables = get_all_emb_tables(conn).await?;
+    tables.sort_by_key(|t| t.creation_time);
+    let cutoff = Utc::now() - chrono::Duration::days(days as i64);
     if !tables.is_empty() {
-        let conn = conn.lock().await;
         conn.call(move |conn| {
-            for table in tables {
+            for table in tables.iter().take(tables.len().saturating_sub(max_count)) {
+                warn!(
+                    "dropping emb table: {} (created at {})",
+                    table.name, table.creation_time
+                );
+                conn.execute(&format!("DROP TABLE {}", table.name), [])?;
+            }       
+            for table in tables.iter().skip(tables.len().saturating_sub(max_count)) {
                 if table.creation_time < cutoff {
                     warn!(
                         "dropping emb table: {} (created at {})",

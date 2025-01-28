@@ -20,6 +20,7 @@ use crate::vecdb::vdb_structs::{MemoRecord, SimpleTextHashVector, VecDbStatus, V
 
 pub struct MemoriesDatabase {
     pub conn: Arc<AMutex<Connection>>,
+    pub emb_table_name: String,
     pub vecdb_constants: VecdbConstants,
     pub dirty_memids: Vec<String>,
     pub dirty_everything: bool,
@@ -93,7 +94,7 @@ async fn setup_db(conn: &Connection, pubsub_notifier: Arc<Notify>) -> Result<(),
     }).await.map_err(|err| err.to_string())
 }
 
-async fn migrate_202501(conn: &Connection, embedding_size: i32, reset_memory: bool) -> rusqlite::Result<(), String> {
+async fn migrate_202501(conn: &Connection, embedding_size: i32, emb_table_name: String, reset_memory: bool) -> rusqlite::Result<(), String> {
     conn.call(move |conn| {
         if reset_memory {
             conn.execute("DROP TABLE IF EXISTS memories", [])?;
@@ -197,9 +198,8 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32, reset_memory: bo
         )?;
 
         // Embeddings
-        // let emb_table_name = create_embeddings_table_name();
         conn.execute(&format!(
-            "CREATE VIRTUAL TABLE IF NOT EXISTS embeddings using vec0(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS {emb_table_name} using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
               +memid text
             );"),
@@ -207,12 +207,12 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32, reset_memory: bo
         )?;
 
         // Trigger to delete linked memids
-        conn.execute(
+        conn.execute(&format!(
             "CREATE TRIGGER IF NOT EXISTS embeddings_delete_old
             AFTER DELETE ON memories
             BEGIN
-                DELETE FROM embeddings WHERE memid = OLD.memid;
-            END;",
+                DELETE FROM {emb_table_name} WHERE memid = OLD.memid;
+            END;"),
             [],
         )?;
 
@@ -224,6 +224,7 @@ impl MemoriesDatabase {
     pub async fn init(
         config_dir: &PathBuf,
         constants: &VecdbConstants,
+        emb_table_name: &String,
         reset_memory: bool,
     ) -> rusqlite::Result<MemoriesDatabase, String> {
         let dbpath = config_dir.join("memories.sqlite");
@@ -236,10 +237,12 @@ impl MemoriesDatabase {
                 | rusqlite::OpenFlags::SQLITE_OPEN_URI,
         ).await.map_err(|err| format!("Failed to open database: {}", err))?;
         setup_db(&conn, pubsub_notifier.clone()).await?;
-        migrate_202501(&conn, constants.embedding_size, reset_memory).await?;
+        migrate_202501(&conn, constants.embedding_size, emb_table_name.clone(), reset_memory).await?;
+        crate::vecdb::vdb_emb_aux::cleanup_old_emb_tables(&conn, 7, 10).await?;
 
         let db = MemoriesDatabase {
             conn: Arc::new(AMutex::new(conn)),
+            emb_table_name: emb_table_name.clone(),
             vecdb_constants: constants.clone(),
             dirty_memids: Vec::new(),
             dirty_everything: true,
@@ -377,19 +380,21 @@ impl MemoriesDatabase {
         let conn = self.conn.lock().await;
 
         let embedding_owned = embedding.clone();
+        let emb_table_name = self.emb_table_name.clone();
         conn.call(move |conn| {
             let fields = fields_ordered().split(',').map(|x| format!("memories.{x}")).join(",");
             let query = format!(
                 "WITH knn_matches AS (
                     SELECT memid, distance
-                    FROM embeddings
+                    FROM {}
                     WHERE embedding MATCH ?1
                         AND k = ?2
                 )
                 SELECT {fields},knn_matches.distance
                 FROM knn_matches
                 LEFT JOIN memories ON memories.memid = knn_matches.memid
-                ORDER BY knn_matches.distance"
+                ORDER BY knn_matches.distance",
+                emb_table_name
             );
             let mut stmt = conn.prepare(&query)?;
             let rows = stmt.query_map(params![embedding_owned.as_bytes(), top_n as i64], |row| {
@@ -536,9 +541,10 @@ pub async fn vectorize_dirty_memories(
     }
 
     let conn = memdb.lock().await.conn.clone();
+    let emb_table_name = memdb.lock().await.emb_table_name.clone();
     conn.lock().await.call(move |connection| {
         let mut stmt = connection.prepare(
-            "INSERT INTO embeddings(embedding, memid) VALUES (?, ?)"
+            &format!("INSERT INTO {}(embedding, memid) VALUES (?, ?)", emb_table_name)
         )?;
         for (item, memid) in todo.into_iter().zip(memids) {
             stmt.execute(rusqlite::params![

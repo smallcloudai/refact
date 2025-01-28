@@ -238,9 +238,10 @@ impl VecDb {
         constants: VecdbConstants,
         api_key: &String
     ) -> Result<VecDb, String> {
-        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size).await?;
+        let emb_table_name = crate::vecdb::vdb_emb_aux::create_emb_table_name(&vec![cmdline.workspace_folder]);
+        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size, &emb_table_name).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
-        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, cmdline.reset_memory).await?));
+        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, &emb_table_name, cmdline.reset_memory).await?));
 
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),

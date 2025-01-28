@@ -19,6 +19,7 @@ impl Debug for VecDBSqlite {
 
 pub struct VecDBSqlite {
     conn: Connection,
+    emb_table_name: String
 }
 
 
@@ -95,14 +96,13 @@ async fn migrate_202406(conn: &Connection) -> tokio_rusqlite::Result<()> {
 }
 
 
-async fn migrate_202501(conn: &Connection, embedding_size: i32) -> tokio_rusqlite::Result<()> {
+async fn migrate_202501(conn: &Connection, embedding_size: i32, emb_table_name: String) -> tokio_rusqlite::Result<()> {
     conn.call(move |conn| {
         match conn.execute(&format!("ALTER TABLE embeddings RENAME TO embeddings_cache;"), []) {
             _ => {}
         };
-        conn.execute("DROP TABLE IF EXISTS embeddings", [])?;
         conn.execute(&format!(
-            "CREATE VIRTUAL TABLE IF NOT EXISTS embeddings using vec0(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS {emb_table_name} using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
               scope text partition key,
               +start_line integer,
@@ -113,7 +113,7 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32) -> tokio_rusqlit
 }
 
 impl VecDBSqlite {
-    pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<VecDBSqlite, String> {
+    pub async fn init(cache_dir: &PathBuf, model_name: &String, embedding_size: i32, emb_table_name: &String) -> Result<VecDBSqlite, String> {
         let db_path = get_db_path(cache_dir, model_name, embedding_size).await?;
         let conn = match Connection::open_with_flags(
             db_path, OpenFlags::SQLITE_OPEN_READ_WRITE
@@ -128,9 +128,11 @@ impl VecDBSqlite {
             Ok(())
         }).await.map_err(|e| e.to_string())?;
         migrate_202406(&conn).await.map_err(|e| e.to_string())?;
-        migrate_202501(&conn, embedding_size).await.map_err(|e| e.to_string())?;
+        migrate_202501(&conn, embedding_size, emb_table_name.clone()).await.map_err(|e| e.to_string())?;
+        crate::vecdb::vdb_emb_aux::cleanup_old_emb_tables(&conn, 7, 10).await?;
+
         info!("vecdb initialized");
-        Ok(VecDBSqlite { conn })
+        Ok(VecDBSqlite { conn, emb_table_name: emb_table_name.clone() })
     }
 
     pub async fn process_simple_hash_text_vector(
@@ -252,9 +254,10 @@ impl VecDBSqlite {
     }
 
     pub async fn size(&self) -> Result<usize, String> {
+        let emb_table_name = self.emb_table_name.clone();
         self.conn.call(move |connection| {
             let mut stmt = connection.prepare(
-                &format!("SELECT COUNT(1) FROM embeddings")
+                &format!("SELECT COUNT(1) FROM {}", emb_table_name)
             )?;
             let count: usize = stmt.query_row([], |row| row.get(0))?;
             Ok(count)
@@ -263,10 +266,11 @@ impl VecDBSqlite {
 
     pub async fn vecdb_records_add(&mut self, records: &Vec<VecdbRecord>) -> Result<(), String> {
         let records_owned = records.clone();
+        let emb_table_name = self.emb_table_name.clone();
         self.conn.call(move |connection| {
-            let mut stmt = connection.prepare(
-                "INSERT INTO embeddings(embedding, scope, start_line, end_line) VALUES (?, ?, ?, ?)"
-            )?;
+            let mut stmt = connection.prepare(&format!(
+                "INSERT INTO {}(embedding, scope, start_line, end_line) VALUES (?, ?, ?, ?)", emb_table_name
+            ))?;
             for item in records_owned.iter() {
                 stmt.execute(rusqlite::params![
                     item.vector.clone().expect("No embedding is provided").as_bytes(), 
@@ -290,6 +294,7 @@ impl VecDBSqlite {
             .map(|_| format!("AND scope = ?"))
             .unwrap_or_else(String::new);
         let embedding_owned = embedding.clone();
+        let emb_table_name = self.emb_table_name.clone();
         self.conn.call(move |connection| {
             let mut stmt = connection.prepare(&format!(
                 r#"
@@ -299,13 +304,13 @@ impl VecDBSqlite {
                     end_line,
                     embedding,
                     distance
-                FROM embeddings
+                FROM {}
                 WHERE embedding MATCH ?
                     AND k = ?
                     {}
                 ORDER BY distance
                 "#,
-                scope_condition
+                emb_table_name, scope_condition
             ))?;
 
             let embedding_bytes = embedding_owned.as_bytes();
@@ -354,10 +359,10 @@ impl VecDBSqlite {
             .map(|_| "?")
             .collect::<Vec<&str>>()
             .join(",");
-
+        let emb_table_name = self.emb_table_name.clone();
         self.conn.call(move |connection| {
             let mut stmt = connection.prepare(
-                &format!("DELETE FROM embeddings WHERE scope IN ({})", placeholders)
+                &format!("DELETE FROM {} WHERE scope IN ({})", emb_table_name, placeholders)
             )?;
 
             stmt.execute(rusqlite::params_from_iter(scopes_to_remove.iter()))?;
