@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { Text, Container, Button, Flex, IconButton } from "@radix-ui/themes";
-import { Markdown } from "../Markdown";
-import { RetryForm } from "../ChatForm";
-import styles from "./ChatContent.module.css";
 import { Pencil2Icon } from "@radix-ui/react-icons";
+import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
+import React, { useCallback, useMemo, useState } from "react";
+import { selectMessages } from "../../features/Chat";
+import { CheckpointButton } from "../../features/Checkpoints";
+import { useAppSelector } from "../../hooks";
 import {
   isUserMessage,
   ProcessedUserMessageContentWithImages,
@@ -11,10 +11,10 @@ import {
   type UserMessage,
 } from "../../services/refact";
 import { takeWhile } from "../../utils";
+import { RetryForm } from "../ChatForm";
 import { DialogImage } from "../DialogImage";
-import { CheckpointButton } from "../../features/Checkpoints";
-import { useAppSelector } from "../../hooks";
-import { selectMessages } from "../../features/Chat";
+import { Markdown } from "../Markdown";
+import styles from "./ChatContent.module.css";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -106,7 +106,10 @@ export const UserInput: React.FC<UserInputProps> = ({
             }}
           >
             {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
-              <CheckpointButton checkpoints={checkpointsFromMessage} />
+              <CheckpointButton
+                checkpoints={checkpointsFromMessage}
+                messageIndex={messageIndex}
+              />
             )}
             <IconButton
               title="Edit message"

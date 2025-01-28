@@ -1,21 +1,33 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAppSelector } from "./useAppSelector";
 import {
+  selectCheckpointsMessageIndex,
   selectIsCheckpointsPopupIsVisible,
   selectIsUndoingCheckpoints,
   selectLatestCheckpointResult,
+  selectShouldNewChatBeStarted,
   setIsCheckpointsPopupIsVisible,
   setIsUndoingCheckpoints,
   setLatestCheckpointResult,
+  setShouldNewChatBeStarted,
 } from "../features/Checkpoints/checkpointsSlice";
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import { debugRefact } from "../debugConfig";
 import { STUB_RESTORED_CHECKPOINT_DATA } from "../__fixtures__/checkpoints";
+import {
+  backUpMessages,
+  newChatAction,
+  selectChatId,
+  selectMessages,
+} from "../features/Chat";
+import { isUserMessage } from "../events";
+import { deleteChatById } from "../features/History/historySlice";
 
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
+  const messages = useAppSelector(selectMessages);
+  const chatId = useAppSelector(selectChatId);
   const { restoreChangesFromCheckpoints, isLoading } = useRestoreCheckpoints();
   const isCheckpointsPopupVisible = useAppSelector(
     selectIsCheckpointsPopupIsVisible,
@@ -31,6 +43,9 @@ export const useCheckpoints = () => {
   const { reverted_changes, reverted_to } = shouldMockBeUsed
     ? STUB_RESTORED_CHECKPOINT_DATA
     : latestRestoredCheckpointsResult;
+
+  const shouldNewChatBeStarted = useAppSelector(selectShouldNewChatBeStarted);
+  const maybeMessageIndex = useAppSelector(selectCheckpointsMessageIndex);
 
   const allChangedFiles = reverted_changes.reduce<
     (FileChanged & { workspace_folder: string })[]
@@ -62,24 +77,39 @@ export const useCheckpoints = () => {
   ]);
 
   const handleRestore = useCallback(
-    async (checkpoints: Checkpoint[] | null) => {
+    async (checkpoints: Checkpoint[] | null, messageIndex: number) => {
       if (!checkpoints) return;
+      const amountOfUserMessages = messages.filter(isUserMessage);
+
       const restoredChanges =
         await restoreChangesFromCheckpoints(checkpoints).unwrap();
-      debugRefact(`[DEBUG]: restoredChanges received: `, restoredChanges);
+
       const actions = [
         dispatch(setIsUndoingCheckpoints(false)),
-        setLatestCheckpointResult(restoredChanges),
+        setLatestCheckpointResult({ ...restoredChanges, messageIndex }),
         setIsCheckpointsPopupIsVisible(true),
+        setShouldNewChatBeStarted(amountOfUserMessages.length === 1),
       ];
       actions.forEach((action) => dispatch(action));
     },
-    [dispatch, restoreChangesFromCheckpoints],
+    [dispatch, restoreChangesFromCheckpoints, messages],
   );
 
   const handleFix = useCallback(() => {
     dispatch(setIsCheckpointsPopupIsVisible(false));
-  }, [dispatch]);
+    if (shouldNewChatBeStarted || !maybeMessageIndex) {
+      const actions = [newChatAction(), deleteChatById(chatId)];
+      actions.forEach((action) => dispatch(action));
+    } else {
+      const usefulMessages = messages.slice(0, maybeMessageIndex);
+      dispatch(
+        backUpMessages({
+          id: chatId,
+          messages: usefulMessages,
+        }),
+      );
+    }
+  }, [dispatch, shouldNewChatBeStarted, maybeMessageIndex, chatId, messages]);
 
   // TODO: remove when fully tested
   const handleShouldMockBeUsedChange = useCallback(() => {

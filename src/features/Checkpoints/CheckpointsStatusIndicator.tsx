@@ -17,6 +17,7 @@ export const CheckpointsStatusIndicator = ({
   return (
     <Text
       size="1"
+      weight="medium"
       style={{
         color: colors[status],
       }}

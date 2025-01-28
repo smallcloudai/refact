@@ -6,7 +6,7 @@ import { Link } from "../../components/Link";
 import { ScrollArea } from "../../components/ScrollArea";
 
 import styles from "./Checkpoints.module.css";
-import { formatDateToHumanReadable } from "../../utils/formatDateToHumanReadable";
+import { formatDateOrTimeBasedOnToday } from "../../utils/formatDateToHumanReadable";
 import { formatPathName } from "../../utils/formatPathName";
 import { CheckpointsStatusIndicator } from "./CheckpointsStatusIndicator";
 
@@ -25,25 +25,34 @@ export const Checkpoints = () => {
   } = useCheckpoints();
 
   const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const formattedDate = formatDateToHumanReadable(reverted_to, clientTimezone);
+  const formattedDate = formatDateOrTimeBasedOnToday(
+    reverted_to,
+    clientTimezone,
+  );
 
   return (
     <Dialog.Root
       open={shouldCheckpointsPopupBeShown}
       onOpenChange={(state) => {
-        if (!state) handleFix();
+        if (!state) {
+          void handleUndo();
+        } else {
+          handleFix();
+        }
       }}
     >
       <Dialog.Content className={styles.CheckpointsDialog}>
-        <Text size="1" color="gray" className={styles.CheckpointsRevertedDate}>
-          Reverted to date: {formattedDate}
-        </Text>
-        <Dialog.Title as="h3" size="3" mb="3">
-          Reverted files from checkpoints
+        <Dialog.Description size="1" color="gray">
+          Restores chat and your project&apos;s files back to a snapshot taken
+          at this point
+        </Dialog.Description>
+        <Dialog.Title as="h2" size="3" mt="4" mb="3">
+          {wereFilesChanged ? "Files changed" : "No files were changed"} from
+          checkpoint by {formattedDate}
         </Dialog.Title>
         <ScrollArea scrollbars="vertical" style={{ maxHeight: "300px" }}>
           <Flex direction="column" gap="2">
-            {allChangedFiles.length > 0 ? (
+            {wereFilesChanged &&
               allChangedFiles.map((file, index) => {
                 const formattedWorkspaceFolder = formatPathName(
                   file.workspace_folder,
@@ -86,40 +95,36 @@ export const Checkpoints = () => {
                     <CheckpointsStatusIndicator status={file.status} />
                   </Flex>
                 );
-              })
-            ) : (
-              <Flex>
-                <Text as="p" size="2">
-                  No files changed
-                </Text>
-              </Flex>
-            )}
+              })}
           </Flex>
         </ScrollArea>
 
-        <Flex gap="3" mt="4" justify="between">
+        <Flex
+          gap="3"
+          mt={wereFilesChanged ? "4" : "2"}
+          justify="between"
+          wrap="wrap"
+        >
+          <Flex gap="3" wrap="wrap" justify="start">
+            <Button
+              type="button"
+              variant="soft"
+              color="gray"
+              loading={isLoading}
+              onClick={() => void handleUndo()}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleFix}>Roll back to checkpoint</Button>
+          </Flex>
           <Button
+            type="button"
             variant="soft"
             color="purple"
             onClick={handleShouldMockBeUsedChange}
           >
             {shouldMockBeUsed ? "Use real data" : "Use mock data"}
           </Button>
-          <Flex gap="3">
-            {wereFilesChanged && (
-              <Button
-                variant="soft"
-                color="gray"
-                loading={isLoading}
-                onClick={() => void handleUndo()}
-              >
-                Undo
-              </Button>
-            )}
-            <Button onClick={handleFix}>
-              {wereFilesChanged ? "Fix" : "Close"}
-            </Button>
-          </Flex>
         </Flex>
       </Dialog.Content>
     </Dialog.Root>

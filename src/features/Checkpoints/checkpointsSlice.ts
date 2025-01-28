@@ -5,6 +5,8 @@ export type CheckpointsMeta = {
   latestCheckpointResult: RestoreCheckpointsResponse;
   isVisible: boolean;
   isUndoing: boolean;
+  restoringUserMessageIndex: number | null;
+  shouldNewChatBeStarted: boolean;
 };
 
 const initialState: CheckpointsMeta = {
@@ -16,6 +18,8 @@ const initialState: CheckpointsMeta = {
   },
   isVisible: false,
   isUndoing: false,
+  restoringUserMessageIndex: null,
+  shouldNewChatBeStarted: false,
 };
 
 export const checkpointsSlice = createSlice({
@@ -24,9 +28,12 @@ export const checkpointsSlice = createSlice({
   reducers: {
     setLatestCheckpointResult: (
       state,
-      action: PayloadAction<RestoreCheckpointsResponse>,
+      action: PayloadAction<
+        RestoreCheckpointsResponse & { messageIndex: number }
+      >,
     ) => {
       state.latestCheckpointResult = action.payload;
+      state.restoringUserMessageIndex = action.payload.messageIndex;
     },
     setIsCheckpointsPopupIsVisible: (state, action: PayloadAction<boolean>) => {
       state.isVisible = action.payload;
@@ -34,12 +41,17 @@ export const checkpointsSlice = createSlice({
     setIsUndoingCheckpoints: (state, action: PayloadAction<boolean>) => {
       state.isUndoing = action.payload;
     },
+    setShouldNewChatBeStarted: (state, action: PayloadAction<boolean>) => {
+      state.shouldNewChatBeStarted = action.payload;
+    },
   },
 
   selectors: {
     selectLatestCheckpointResult: (state) => state.latestCheckpointResult,
     selectIsCheckpointsPopupIsVisible: (state) => state.isVisible,
     selectIsUndoingCheckpoints: (state) => state.isUndoing,
+    selectShouldNewChatBeStarted: (state) => state.shouldNewChatBeStarted,
+    selectCheckpointsMessageIndex: (state) => state.restoringUserMessageIndex,
   },
 });
 
@@ -47,9 +59,12 @@ export const {
   setLatestCheckpointResult,
   setIsCheckpointsPopupIsVisible,
   setIsUndoingCheckpoints,
+  setShouldNewChatBeStarted,
 } = checkpointsSlice.actions;
 export const {
   selectLatestCheckpointResult,
   selectIsCheckpointsPopupIsVisible,
   selectIsUndoingCheckpoints,
+  selectShouldNewChatBeStarted,
+  selectCheckpointsMessageIndex,
 } = checkpointsSlice.selectors;

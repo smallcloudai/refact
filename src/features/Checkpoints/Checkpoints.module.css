@@ -1,7 +1,7 @@
 .CheckpointsDialog {
   width: calc(100vw - var(--space-8));
   max-width: 500px;
-  padding-top: var(--space-7);
+  /* padding: var(--space-4) var(--space-4); */
   position: relative;
 }
 
