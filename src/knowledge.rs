@@ -197,7 +197,7 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32, reset_memory: bo
         )?;
 
         // Embeddings
-        conn.execute("DROP TABLE IF EXISTS embeddings", [])?;
+        // let emb_table_name = create_embeddings_table_name();
         conn.execute(&format!(
             "CREATE VIRTUAL TABLE IF NOT EXISTS embeddings using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
