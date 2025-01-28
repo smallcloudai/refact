@@ -2,6 +2,7 @@ use std::sync::Arc;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
@@ -67,11 +68,65 @@ fn last_message_stripped_assistant(messages: &Vec<ChatMessage>) -> bool {
     }
 }
 
-fn last_message_have_pinned_messages(messages: &Vec<ChatMessage>) -> bool {
+async fn trunc_pinned_message_link(
+    gcx: Arc<ARwLock<GlobalContext>>, 
+    messages: &Vec<ChatMessage>,
+    chat_mode: &ChatMode,
+) -> Option<String> {
     if let Some(m) = messages.last() {
-        m.role == "assistant" && m.content.content_text_only().contains("📍")
+        let tickets = crate::tools::tool_patch_aux::tickets_parsing::parse_tickets(
+            gcx.clone(), &m.content.content_text_only(), messages.len() - 1,
+        ).await;
+        
+        let truncated_ids = tickets
+            .iter()
+            .filter(|t| t.is_truncated)
+            .map(|x| x.id.to_string())
+            .join(", ");
+        
+        match chat_mode {
+            ChatMode::AGENT => {
+                if !truncated_ids.is_empty() {
+                    Some(format!("Regenerate truncated {truncated_ids} 📍-tickets and continue to generate others (if needed). Then use patch() to apply them"))
+                } else {
+                    None
+                }
+            }
+            _ => {
+                if !truncated_ids.is_empty() {
+                    Some(format!("Regenerate truncated {truncated_ids} 📍-tickets and continue to generate others (if needed)"))
+                } else {
+                    None
+                }
+            }
+        }
     } else {
-        false
+        None
+    }
+}
+
+async fn apply_patch_promptly_link(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    messages: &Vec<ChatMessage>,
+) -> Option<String> {
+    if let Some(m) = messages.last() {
+        let tickets = crate::tools::tool_patch_aux::tickets_parsing::parse_tickets(
+            gcx.clone(), &m.content.content_text_only(), messages.len() - 1,
+        ).await;
+
+        let has_truncated_tickets = tickets.iter().filter(|t| t.is_truncated).count() > 0;
+        let ids_to_apply = tickets
+            .iter()
+            .filter(|t| !t.is_truncated)
+            .map(|x| x.id.to_string())
+            .join(", ");
+        if !has_truncated_tickets && !ids_to_apply.is_empty() {
+            Some(format!("Use patch() to apply tickets: {ids_to_apply}"))
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
@@ -103,7 +158,7 @@ pub async fn handle_v1_links(
     // }
 
     if post.meta.chat_mode == ChatMode::PROJECT_SUMMARY {
-        if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
+        if !get_tickets_from_messages(gcx.clone(), &post.messages, None).await.is_empty() {
             links.push(Link {
                 link_action: LinkAction::PatchAll,
                 link_text: "Save and return".to_string(),
@@ -196,24 +251,39 @@ pub async fn handle_v1_links(
     if last_message_stripped_assistant(&post.messages) {
         links.push(Link {
             link_action: LinkAction::RegenerateWithIncreasedContextSize,
-            link_text: format!("Regenerate last with increased token limit"),
+            link_text: format!("Increase tokens limit and regenerate last message"),
             link_goto: None,
             link_summary_path: None,
             link_tooltip: format!(""),
             ..Default::default()
         });
-        links.push(Link {
-            link_action: LinkAction::FollowUp,
-            link_text: "Continue the last message".to_string(),
-            link_goto: None,
-            link_summary_path: None,
-            link_tooltip: format!(""),
-            ..Default::default()
-        });
-        if last_message_have_pinned_messages(&post.messages) {
+        if let Some(msg) = trunc_pinned_message_link(gcx.clone(), &post.messages, &post.meta.chat_mode).await {
             links.push(Link {
                 link_action: LinkAction::FollowUp,
-                link_text: "Split 📍 tickets into smaller parts ".to_string(),
+                link_text: msg,
+                link_goto: None,
+                link_summary_path: None,
+                link_tooltip: format!(""),
+                ..Default::default()
+            });
+        } else {
+            links.push(Link {
+                link_action: LinkAction::FollowUp,
+                link_text: "Complete the previous message from where it was left off".to_string(),
+                link_goto: None,
+                link_summary_path: None,
+                link_tooltip: format!(""),
+                ..Default::default()
+            });
+        }
+    }
+    
+    // Link to apply 📍 tickets promptly
+    if post.meta.chat_mode == ChatMode::AGENT {
+        if let Some(msg) = apply_patch_promptly_link(gcx.clone(), &post.messages).await {
+            links.push(Link {
+                link_action: LinkAction::FollowUp,
+                link_text: msg,
                 link_goto: None,
                 link_summary_path: None,
                 link_tooltip: format!(""),

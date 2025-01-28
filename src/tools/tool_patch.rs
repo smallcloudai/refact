@@ -123,7 +123,7 @@ fn return_cd_instruction_or_error(
     }
 }
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, String), String> {
+fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, String, Option<String>), String> {
     let tickets = match args.get("tickets") {
         Some(Value::String(s)) => s.split(",").map(|s| s.trim().to_string()).collect::<Vec<_>>(),
         Some(v) => { return Err(format!("argument 'ticket' should be a string: {:?}", v)) }
@@ -134,10 +134,15 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, String), St
         Some(v) => { return Err(format!("argument 'path' should be a string: {:?}", v)) }
         None => { return Err("argument 'path' is required".to_string()) }
     };
+    let explanation = match args.get("explanation") {
+        Some(Value::String(s)) => Some(s.trim().to_string()),
+        Some(v) => { return Err(format!("argument 'explanation' should be a string: {:?}", v)) }
+        None => None
+    };
     if tickets.is_empty() {
         return Err("`tickets` shouldn't be empty".to_string());
     }
-    Ok((tickets, path))
+    Ok((tickets, path, explanation))
 }
 
 async fn create_ccx(ccx: Arc<AMutex<AtCommandsContext>>, params: &SubchatParameters) -> Result<Arc<AMutex<AtCommandsContext>>, String> {
@@ -157,7 +162,7 @@ async fn can_execute_patch(
     ccx: Arc<AMutex<AtCommandsContext>>,
     args: &HashMap<String, Value>,
 ) -> Result<(), String> {
-    let (tickets, path) = parse_args(args)?;
+    let (tickets, path, explanation_mb) = parse_args(args)?;
     let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
     let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
 
@@ -166,7 +171,7 @@ async fn can_execute_patch(
         (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
     };
 
-    let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages).await;
+    let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages, explanation_mb).await;
 
     let active_tickets = get_and_correct_active_tickets(
         gcx.clone(),
@@ -195,7 +200,7 @@ impl Tool for ToolPatch {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let (tickets, path) = parse_args(args)?;
+        let (tickets, path, explanation_mb) = parse_args(args)?;
         let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
         let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
 
@@ -205,7 +210,7 @@ impl Tool for ToolPatch {
             let ccx_lock = ccx_subchat.lock().await;
             (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
         };
-        let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages).await;
+        let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages, explanation_mb).await;
         let mut active_tickets = match get_and_correct_active_tickets(
             gcx.clone(),
             tickets.clone(),

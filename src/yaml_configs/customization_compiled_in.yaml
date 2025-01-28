@@ -44,10 +44,12 @@ PROMPT_PINS: |
      4. 📍OTHER
         - For anything that isn’t a file edit (e.g., explanations, command-line instructions).
   4. Tips
+     - Use only absolute file paths.
+     - Always use a language specifier for the triple backticks (i.e. ```python, ```schema, ```code_block).
      - For multiple symbol changes, use `📍PARTIAL_EDIT`.
      - Include context lines above and below your changes for clarity.
      - Avoid rewriting the entire file if only a few edits are needed.
-     - If the `patch` tool is available, only call it after creating the code block.
+     - If the `patch` tool is available, call it AFTER creating the code block to apply changes.
      - Avoid being lazy when creating the edit blocks - copy all necessary unchanged lines as they are
   5. 📍-notation format examples
   - Rewriting a single symbol:
@@ -154,8 +156,8 @@ PROMPT_AGENTIC_TOOLS: |
   2. If the user’s question is related to the project
     - First, call knowledge() for relevant information and best practices.
   3. Making Changes
-    - If a solution requires file changes, write the changes using 📍-notation.
-    - Then call patch() for each 📍-notation ticket.
+    - If a solution requires file changes, write each change using 📍-notation and then call patch() to apply it.
+    - Avoid writing many 📍-notations in a single message (due to the limited context size). Call patch() after each 📍-notation.
     - Separate multiple tickets (changes) with commas if they are related to a single file.
 
   Important Notes
@@ -294,9 +296,9 @@ system_prompts:
 subchat_tool_parameters:
   patch:
     subchat_model: "gpt-4o-mini"
-    subchat_n_ctx: 64000
+    subchat_n_ctx: 128000
     subchat_temperature: 0.2
-    subchat_max_new_tokens: 8192
+    subchat_max_new_tokens: 16000
   locate:
     subchat_model: "gpt-4o-mini"
     subchat_tokens_for_rag: 30000

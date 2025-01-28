@@ -22,6 +22,10 @@ pub fn limit_messages_history(
         if i==0 && msg.role == "system" {
             message_take[i] = true;
             tokens_used += tcnt;
+        } else if i==1 && msg.role == "user" {
+            // we cannot drop the user message which comes right after the system message according to Antropic API
+            message_take[i] = true;
+            tokens_used += tcnt;
         } else if i >= last_user_msg_starts {
             message_take[i] = true;
             tokens_used += tcnt;

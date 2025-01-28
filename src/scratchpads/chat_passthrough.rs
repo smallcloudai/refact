@@ -127,6 +127,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             vec![]
         });
 
+        assert_eq!(limited_msgs.first().unwrap().role, "system");
         let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
 
         let mut big_json = serde_json::json!({

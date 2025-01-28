@@ -275,6 +275,9 @@ tools:
       - name: "tickets"
         type: "string"
         description: "Use 3-digit tickets comma separated to refer to the changes within a single file"
+      - name: "explanation"
+        type: "string"
+        description: "Location within the file where changes should be applied, any necessary code removals, and whether additional imports are required"
     parameters_required:
       - "tickets"
       - "path"

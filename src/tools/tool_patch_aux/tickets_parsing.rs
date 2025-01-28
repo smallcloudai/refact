@@ -69,6 +69,7 @@ pub struct TicketToApply {
     pub all_symbols: Vec<Arc<AstDefinition>>,
     pub code: String,
     pub hint_message: String,
+    pub is_truncated: bool
 }
 
 pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
@@ -174,7 +175,7 @@ fn split_preserving_quotes(s: &str) -> Vec<String> {
     result
 }
 
-async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_idx: usize) -> Vec<TicketToApply> {
+pub async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_idx: usize) -> Vec<TicketToApply> {
     async fn process_ticket(gcx: Arc<ARwLock<GlobalContext>>, lines: &[&str], line_num: usize, message_idx: usize) -> Result<(usize, TicketToApply), String> {
         let mut ticket = TicketToApply::default();
         let header = if let Some(idx) = lines[line_num].find("📍") {
@@ -248,9 +249,14 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_
                     }
                 }
             }
-            Err("failed to parse ticket, no ending fence for the code block".to_string())
+            warn!("produced a truncated ticket, no ending fence for the code block");
+            ticket.is_truncated = true;
+            ticket.code = stripped_lines[line_num + 2..].iter().join("\n").trim_end().to_string();
+            Ok((line_num + 2, ticket))
         } else {
-            Err("failed to parse ticket, no code block".to_string())
+            warn!("produced a truncated ticket, no code block");
+            ticket.is_truncated = true;
+            Ok((line_num + 2, ticket))
         }
     }
 
@@ -292,11 +298,17 @@ async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, message_
 pub async fn get_tickets_from_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ChatMessage>,
+    explanation_mb: Option<String>
 ) -> HashMap<String, TicketToApply> {
     let mut tickets: HashMap<String, TicketToApply> = HashMap::new();
     for (idx, message) in messages.iter().enumerate().filter(|(_, x)| x.role == "assistant") {
-        for ticket in parse_tickets(gcx.clone(), &message.content.content_text_only(), idx).await.into_iter() {
-            tickets.insert(ticket.id.clone(), ticket);
+        for mut ticket in parse_tickets(gcx.clone(), &message.content.content_text_only(), idx).await.into_iter() {
+            if let Some(explanation) = &explanation_mb {
+                ticket.hint_message = explanation.clone();
+            }
+            if !ticket.is_truncated {
+                tickets.insert(ticket.id.clone(), ticket);
+            }
         }
     }
     tickets

@@ -149,11 +149,11 @@ pub async fn postprocess_diff_chunks(
             }
         };
         if before_error_symbols.len() < after_error_symbols.len() {
-            let message = format!(
+            // TODO: return those warnings from the patch along the changed file 
+            warn!(
                 "AST assessment has failed: the generated diff had introduced errors into the file `{:?}`: {} before errs < {} after errs",
                 path, before_error_symbols.len(), after_error_symbols.len()
             );
-            return Err(message);
         }
 
         let before_lint_errors = lint_and_get_error_messages(
@@ -165,11 +165,11 @@ pub async fn postprocess_diff_chunks(
             &text_after,
         );
         if before_lint_errors.len() < after_lint_errors.len() {
-            let message = format!(
+            // TODO: return those warnings from the patch along the changed file 
+            warn!(
                 "Linting has failed: the generated diff had introduced lint issues into the file `{:?}`: {} before errs < {} after errs",
                 path, before_lint_errors.len(), after_lint_errors.len()
             );
-            return Err(message);
         }
     }
     Ok(chunks.to_vec())

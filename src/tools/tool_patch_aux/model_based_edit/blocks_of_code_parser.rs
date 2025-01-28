@@ -49,8 +49,8 @@ fn get_edit_sections(content: &str) -> Vec<EditSection> {
     let lines: Vec<&str> = content.lines().collect();
     let mut line_num = 0;
     let mut sections: Vec<EditSection> = vec![];
-    while line_num < lines.len() {
-        while line_num < lines.len() {
+    while line_num < lines.len() - 1 {
+        while line_num < lines.len() - 1 {
             let line = lines[line_num];
             if line.contains("Original Section") {
                 let (new_line_num, section) = process_fenced_block(&lines, line_num + 2, true);
