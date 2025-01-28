@@ -336,6 +336,15 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4o-mini-2024-07-18"
             ]
         },
+        "o1": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            }
+        },
         "o1-mini": {
             "n_ctx": 128000,
             "supports_tools": true,
@@ -660,6 +669,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4o-2024-08-06":      "Xenova/gpt-4o",
         "gpt-4o-mini":            "Xenova/gpt-4o",
         "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
+        "o1":                     "Xenova/gpt-4o",
         "o1-mini":                "Xenova/gpt-4o",
         "openai/gpt-4o":          "Xenova/gpt-4o",
 
