@@ -68,6 +68,7 @@ export type TourRefs = {
   back: null | HTMLAnchorElement;
   f1: null | HTMLButtonElement;
   more: null | HTMLButtonElement;
+  setupIntegrations: null | HTMLButtonElement;
   setNewChat: (x: HTMLButtonElement | null) => void;
   setUseTools: (x: HTMLDivElement | null) => void;
   setUseModel: (x: HTMLDivElement | null) => void;
@@ -76,6 +77,7 @@ export type TourRefs = {
   setBack: (x: HTMLAnchorElement | null) => void;
   setF1: (x: HTMLButtonElement | null) => void;
   setMore: (x: HTMLButtonElement | null) => void;
+  setSetupIntegrations: (x: HTMLButtonElement | null) => void;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -96,6 +98,8 @@ export const TourProvider = ({ children }: TourContextProps) => {
   const [back, setBack] = useState<null | HTMLAnchorElement>(null);
   const [f1, setF1] = useState<null | HTMLButtonElement>(null);
   const [more, setMore] = useState<null | HTMLButtonElement>(null);
+  const [setupIntegrations, setSetupIntegrations] =
+    useState<null | HTMLButtonElement>(null);
 
   return (
     <TourContext.Provider
@@ -108,6 +112,7 @@ export const TourProvider = ({ children }: TourContextProps) => {
         back,
         f1,
         more,
+        setupIntegrations,
         setNewChat,
         setUseTools,
         setUseModel,
@@ -116,6 +121,7 @@ export const TourProvider = ({ children }: TourContextProps) => {
         setBack,
         setF1,
         setMore,
+        setSetupIntegrations,
       }}
     >
       {children}

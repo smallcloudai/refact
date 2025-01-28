@@ -1,10 +1,11 @@
-import React, { useCallback } from "react";
+import React, { forwardRef, useCallback } from "react";
 import { IconButton, Button, Flex } from "@radix-ui/themes";
 import {
   PaperPlaneIcon,
   ExitIcon,
   Cross1Icon,
   FileTextIcon,
+  MagicWandIcon,
 } from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./button.module.css";
@@ -18,6 +19,16 @@ export const PaperPlaneButton: React.FC<IconButtonProps> = (props) => (
     <PaperPlaneIcon />
   </IconButton>
 );
+export const AgentIntegrationsButton = forwardRef<
+  HTMLButtonElement,
+  IconButtonProps
+>((props, ref) => (
+  <IconButton variant="ghost" {...props} ref={ref}>
+    <MagicWandIcon />
+  </IconButton>
+));
+
+AgentIntegrationsButton.displayName = "AgentIntegrationsButton";
 
 export const ThreadHistoryButton: React.FC<IconButtonProps> = (props) => (
   <IconButton variant="ghost" {...props}>

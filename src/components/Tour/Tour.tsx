@@ -94,11 +94,11 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
       />
       <TourBubble
         text={
-          "Choose the language model you like more, for example Anthropic-3-5-sonnet clearly works better for Rust. With the Refact PRO plan, you will see more models in the list: the largest models from OpenAI, Anthropic for a fixed price. But FREE is great too, well, it's free!"
+          "In order for agent to work properly you need to set up integrations. Just click on this button and follow the instructions."
         }
         step={4}
         down={false}
-        target={refs.useModel}
+        target={refs.setupIntegrations}
         containerWidth={chatWidth}
         onPage={"chat"}
         page={page}

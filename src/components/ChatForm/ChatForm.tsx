@@ -3,7 +3,11 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
-import { PaperPlaneButton, BackToSideBarButton } from "../Buttons/Buttons";
+import {
+  PaperPlaneButton,
+  BackToSideBarButton,
+  AgentIntegrationsButton,
+} from "../Buttons/Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import {
@@ -45,7 +49,8 @@ import {
   selectPreventSend,
   selectToolUse,
 } from "../../features/Chat";
-import { isUserMessage } from "../../services/refact";
+import { isUserMessage, telemetryApi } from "../../services/refact";
+import { push } from "../../features/Pages/pagesSlice";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -128,6 +133,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setFileInteracted,
     setLineSelectionInteracted,
   } = useCheckboxes();
+
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   const [value, setValue, isSendImmediately, setIsSendImmediately] =
     useInputValue(() => unCheckAll());
@@ -218,6 +226,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     },
     [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
   );
+
+  const handleAgentIntegrationsClick = useCallback(() => {
+    dispatch(push({ name: "integrations page" }));
+    void sendTelemetryEvent({
+      scope: `openIntegrations`,
+      success: true,
+      error_message: "",
+    });
+  }, [dispatch, sendTelemetryEvent]);
 
   useEffect(() => {
     // this use effect is required to reset preventSend when chat was restored
@@ -335,6 +352,16 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="2" className={styles.buttonGroup}>
+            {toolUse === "agent" && (
+              <AgentIntegrationsButton
+                disabled={disableSend || disableInput}
+                title="Set up Agent Integrations"
+                size="1"
+                type="button"
+                onClick={handleAgentIntegrationsClick}
+                ref={(x) => refs.setSetupIntegrations(x)}
+              />
+            )}
             {onClose && (
               <BackToSideBarButton
                 disabled={isStreaming}
