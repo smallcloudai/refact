@@ -46,6 +46,28 @@ passthrough_mini_db = {
         "pp1000t_generated": 600,  # $0.60 / 1M tokens
         "filter_caps": ["chat", "tools", "completion"],
     },
+    "o1": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "o1-2024-12-17",
+        "T": 200_000,
+        "T_out": 32_000,
+        "pp1000t_prompt": 15_000,      # $15.00 / 1M tokens (2025 january)
+        "pp1000t_generated": 60_000,   # $60.00 / 1M tokens (2025 january)
+        "filter_caps": ["chat", "tools"],
+    },
+    "o1-mini": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "o1-mini-2024-09-12",
+        "T": 128_000,
+        "T_out": 64_000,
+        "pp1000t_prompt": 3_000,       # $3.00 / 1M tokens (2025 january)
+        "pp1000t_generated": 12_000,   # $12.00 / 1M tokens (2025 january)
+        "filter_caps": ["chat", "tools"],
+    },
 
     # Anthropic models
     "claude-3-5-sonnet": {
