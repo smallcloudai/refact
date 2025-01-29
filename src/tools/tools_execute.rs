@@ -63,7 +63,7 @@ pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
     maxgen: usize,
-    original_messages: &Vec<ChatMessage>,
+    original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
     tools_confirmation: bool,
@@ -80,7 +80,7 @@ pub async fn run_tools_remotely(
     };
 
     let tools_execute_post = ToolsExecutePost {
-        messages: original_messages.clone(),
+        messages: original_messages.to_vec(),
         n_ctx,
         maxgen,
         subchat_tool_parameters,
