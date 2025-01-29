@@ -402,23 +402,23 @@ impl Tool for ToolMCP {
 
 pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:
-  description:
-    f_type: string_long
-    f_desc: "Description of the MCP (Model Control Protocol) integration"
-  parameters:
-    f_type: "tool_parameters"
-    f_desc: "Parameters that the model should provide when making MCP calls"
-  parameters_required:
-    f_type: "string_array"
-    f_desc: "List of required parameters"
-    f_extra: true
+  command:
+    f_type: string
+    f_desc: "The MCP command to execute, typically `npx` or `/my/path/venv/python`"
+  args:
+    f_type: string_array
+    f_desc: "Command line arguments for the MCP command"
+  env:
+    f_type: string_to_string_map
+    f_desc: "Environment variables to set for the MCP command"
 description: |
-  MCP (Model Control Protocol) integration for JSON-RPC based communication with the model.
-  This integration handles initialization, method calls, and notifications according to the protocol.
+  You can add almost any MCP (Model Context Protocol) server here! This supports local MCP servers,
+  with remote servers coming up as the specificion gets updated. You can read more
+  here https://www.anthropic.com/news/model-context-protocol
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 confirmation:
-  ask_user_default: []
+  ask_user_default: ["*"]
   deny_default: []
 "#;
