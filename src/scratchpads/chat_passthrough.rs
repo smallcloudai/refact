@@ -207,10 +207,8 @@ impl ScratchpadAbstract for ChatPassthrough {
             if DEBUG {
                 info!("PASSTHROUGH TOOLS ENABLED CNT: {:?}", tools.unwrap_or(vec![]).len());
             }
-        } else {
-            if DEBUG {
-                info!("PASSTHROUGH TOOLS NOT SUPPORTED");
-            }
+        } else if DEBUG {
+            info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         Ok(prompt.to_string())
