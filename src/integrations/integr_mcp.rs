@@ -371,7 +371,7 @@ impl Tool for ToolMCP {
         ToolDesc {
             name: self.mcp_tool.name.clone(),
             agentic: true,
-            experimental: false,
+            experimental: true,
             description: self.mcp_tool.description.clone(),
             parameters,
             parameters_required,
