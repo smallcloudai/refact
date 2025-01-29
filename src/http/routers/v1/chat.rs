@@ -285,7 +285,7 @@ async fn _chat(
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
-    if chat_post.stream.is_some() && !chat_post.stream.unwrap() {
+    if chat_post.stream == Some(false) {
         crate::restream::scratchpad_interaction_not_stream(
             ccx_arc.clone(),
             &mut scratchpad,
