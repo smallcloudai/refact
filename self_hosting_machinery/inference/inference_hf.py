@@ -7,7 +7,6 @@ import torch
 import traceback
 import termcolor
 
-from auto_gptq import AutoGPTQForCausalLM
 from transformers import AutoModelForCausalLM
 from transformers import AutoTokenizer
 from transformers import StoppingCriteria
@@ -22,7 +21,7 @@ from self_hosting_machinery.inference.stream_results import UploadProxy
 
 from refact_utils.scripts import env
 
-from typing import Dict, Any, Union, Optional
+from typing import Dict, Any, Optional
 
 from self_hosting_machinery.inference.inference_base import find_param_by_name
 from self_hosting_machinery.inference.lora_loader_mixin import LoraLoaderMixin
@@ -101,35 +100,6 @@ class SMCStream(TextStreamer):
             )
 
 
-# NOTE: original class AutoGPTQForCausalLM do not handle cache_dir, so we customized it
-class CustomAutoGPTQForCausalLM(AutoGPTQForCausalLM):
-
-    @classmethod
-    def from_quantized(
-            cls,
-            model_name_or_path: str,
-            device: Optional[Union[str, int]] = None,
-            model_basename: Optional[str] = None,
-            use_safetensors: bool = True,
-            trust_remote_code: bool = True,
-            use_triton=False,
-            quantize_config=None,
-            **kwargs):
-        from auto_gptq.modeling.auto import check_and_get_model_type
-        from auto_gptq.modeling.auto import GPTQ_CAUSAL_LM_MODEL_MAP
-        model_type = check_and_get_model_type(model_name_or_path, trust_remote_code)
-        quant_func = GPTQ_CAUSAL_LM_MODEL_MAP[model_type].from_quantized
-        return quant_func(
-            model_name_or_path=model_name_or_path,
-            device=device,
-            model_basename=model_basename,
-            use_safetensors=use_safetensors,
-            trust_remote_code=trust_remote_code,
-            use_triton=use_triton,
-            quantize_config=quantize_config,
-            **kwargs)
-
-
 class InferenceHF(InferenceBase, LoraLoaderMixin):
 
     def __init__(self,
@@ -166,13 +136,6 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
                 self._model_dict["model_path"], cache_dir=self.cache_dir,
                 device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
                 token=token, **self._model_dict["model_class_kwargs"]
-            )
-        elif model_dict["backend"] == "autogptq":
-            # TODO: remove this code later, we have no atogptq models for now
-            self._model = CustomAutoGPTQForCausalLM.from_quantized(
-                self._model_dict["model_path"], cache_dir=self.cache_dir, device=self._device,
-                trust_remote_code=True, token=token,
-                **self._model_dict["model_class_kwargs"]
             )
         else:
             raise RuntimeError(f"unknown model backend {model_dict['backend']}")
