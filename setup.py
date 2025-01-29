@@ -38,7 +38,8 @@ all_refact_packages = {
                   "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.55.3"],
         requires_packages=["refact_known_models", "refact_utils"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
-              "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",]),
+              "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
+              "webgui/static/assets/fonts/*"]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
                   "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
