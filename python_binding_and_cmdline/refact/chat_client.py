@@ -307,7 +307,7 @@ async def ask_using_http(
                         print("unrecognized streaming data (2):", j)
                     if callback is not None:
                         callback(j, deltas_collector)
-                end_str = buffer.decode('utf-8').strip()
+                end_str = line_str
                 if end_str.startswith("{"):  # server whats to tell us something!
                     something_from_server = json.loads(end_str)
                     if "detail" in something_from_server:
