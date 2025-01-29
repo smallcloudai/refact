@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Dict, Optional, List
 
 from refact_utils.scripts import env
+from refact_utils.huggingface.utils import is_hf_available
 
 FIRST_RUN_CMDLINE = [sys.executable, "-m", "self_hosting_machinery.scripts.first_run"]
 
@@ -117,6 +118,8 @@ class TrackedJob:
         self.set_status("starting")
         CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
+        if "HF_HUB_OFFLINE" not in alt_env and not is_hf_available():
+            alt_env["HF_HUB_OFFLINE"] = "1"
         self.start_ts = time.time()
         try:
             self.p = subprocess.Popen(
