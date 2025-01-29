@@ -222,12 +222,12 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
 
 pub async fn prepend_system_prompt_and_maybe_more_initial_messages_from_remote(
     gcx: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<call_validation::ChatMessage>,
+    messages: &[call_validation::ChatMessage],
     chat_meta: &call_validation::ChatMeta,
     stream_back_to_user: &mut HasRagResults,
 ) -> Result<Vec<call_validation::ChatMessage>, String> {
     let post = PrependSystemPromptPost {
-        messages: messages.clone(),
+        messages: messages.to_vec(),
         chat_meta: chat_meta.clone(),
     };
 
