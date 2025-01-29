@@ -79,6 +79,9 @@ pub async fn run_tools_remotely(
         )
     };
 
+    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
+    info!("run_tools_remotely: connecting to port {}", port);
+
     let tools_execute_post = ToolsExecutePost {
         messages: original_messages.to_vec(),
         n_ctx,
@@ -86,13 +89,10 @@ pub async fn run_tools_remotely(
         subchat_tool_parameters,
         postprocess_parameters,
         model_name: model_name.to_string(),
-        chat_id: chat_id.clone(),
+        chat_id,
         style: style.clone(),
-        tools_confirmation: tools_confirmation.clone(),
+        tools_confirmation,
     };
-
-    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
-    info!("run_tools_remotely: connecting to port {}", port);
 
     let url = format!("http://localhost:{port}/v1/tools-execute");
     let response: ToolExecuteResponse = http_post_json(&url, &tools_execute_post).await?;
