@@ -130,7 +130,7 @@ pub async fn tools_merged_and_filtered(
         ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
-        ("patch".to_string(), Box::new(crate::tools::tool_patch::ToolPatch::new()) as Box<dyn Tool + Send>),
+        ("apply_tickets".to_string(), Box::new(crate::tools::tool_apply_tickets::ToolPatch::new()) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
@@ -262,12 +262,11 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "patch"
+  - name: "apply_tickets"
     agentic: true
     description: |
-      The function to apply changes from the existing 📍-notation edit blocks.
-      Do not call the function unless you have a generated 📍-notation edit blocks, you need an existing 📍-notation edit block ticket number!
-      Multiple tickets is allowed only for 📍PARTIAL_EDIT, otherwise only one ticket must be provided.
+      The function to apply changes from the existing 📍-notation edit blocks in the provided order.
+      Outputs a diff which represents the changes applied. You must assess the resulting diff.
     parameters:
       - name: "path"
         type: "string"
@@ -275,12 +274,11 @@ tools:
       - name: "tickets"
         type: "string"
         description: "Use 3-digit tickets comma separated to refer to the changes within a single file"
-      - name: "explanation"
+      - name: "location_hints"
         type: "string"
         description: "Location within the file where changes should be applied, any necessary code removals, and whether additional imports are required"
     parameters_required:
       - "tickets"
-      - "path"
 
   - name: "github"
     agentic: true
@@ -353,7 +351,7 @@ tools:
     parameters:
       - name: "im_going_to_use_tools"
         type: "string"
-        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, patch"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, apply_tickets"
       - name: "im_going_to_apply_to"
         type: "string"
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"

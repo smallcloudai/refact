@@ -4,16 +4,16 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::DiffChunk;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_patch_aux::diff_structs::chunks_from_diffs;
-use crate::tools::tool_patch_aux::fs_utils::read_file;
-use crate::tools::tool_patch_aux::postprocessing_utils::{minimal_common_indent, place_indent};
-use crate::tools::tool_patch_aux::tickets_parsing::TicketToApply;
+use crate::tools::tool_apply_tickets_aux::diff_structs::chunks_from_diffs;
+use crate::tools::tool_apply_tickets_aux::fs_utils::read_file;
+use crate::tools::tool_apply_tickets_aux::postprocessing_utils::{minimal_common_indent, place_indent};
+use crate::tools::tool_apply_tickets_aux::tickets_parsing::TicketToApply;
 
 pub async fn full_rewrite_diff(
     gcx: Arc<ARwLock<GlobalContext>>,
     ticket: &TicketToApply,
 ) -> Result<Vec<DiffChunk>, String> {
-    match read_file(gcx.clone(), ticket.filename_before.clone()).await {
+    match read_file(gcx.clone(), ticket.filename.clone()).await {
         Ok(context_file) => {
             let file_path = PathBuf::from(&context_file.file_name);
             let diffs = diff::lines(&context_file.file_content, &ticket.code);
@@ -22,7 +22,7 @@ pub async fn full_rewrite_diff(
         Err(_) => {
             Ok(vec![
                 DiffChunk {
-                    file_name: ticket.filename_before.clone(),
+                    file_name: ticket.filename.clone(),
                     file_name_rename: None,
                     file_action: "add".to_string(),
                     line1: 1,
@@ -40,8 +40,8 @@ pub async fn rewrite_symbol_diff(
     gcx: Arc<ARwLock<GlobalContext>>,
     ticket: &TicketToApply,
 ) -> Result<Vec<DiffChunk>, String> {
-    let context_file = read_file(gcx.clone(), ticket.filename_before.clone()).await
-        .map_err(|e| format!("cannot read file to modify: {}.\nError: {e}", ticket.filename_before))?;
+    let context_file = read_file(gcx.clone(), ticket.filename.clone()).await
+        .map_err(|e| format!("cannot read file to modify: {}.\nError: {e}", ticket.filename))?;
     let context_file_path = PathBuf::from(&context_file.file_name);
     let symbol = ticket.locate_symbol.clone().ok_or("symbol is absent")?;
 

@@ -6,16 +6,14 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
-use crate::files_correction::to_pathbuf_normalize;
-use crate::tools::tool_patch_aux::diff_apply::diff_apply;
-use crate::tools::tool_patch_aux::model_based_edit::partial_edit::partial_edit_tickets_to_chunks;
-use crate::tools::tool_patch_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
-use crate::tools::tool_patch_aux::postprocessing_utils::postprocess_diff_chunks;
-use crate::tools::tool_patch_aux::tickets_parsing::{get_and_correct_active_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
+use crate::tools::tool_apply_tickets_aux::diff_apply::diff_apply;
+use crate::tools::tool_apply_tickets_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
+use crate::tools::tool_apply_tickets_aux::postprocessing_utils::postprocess_diff_chunks;
+use crate::tools::tool_apply_tickets_aux::tickets_parsing::{validate_and_correct_tickets, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use crate::tools::tools_execute::unwrap_subchat_params;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-
+use crate::tools::tool_apply_tickets_aux::model_based_edit::model_execution::section_edit_tickets_to_chunks;
 
 pub struct ToolPatch {
     pub usage: Option<ChatUsage>,
@@ -43,7 +41,7 @@ pub async fn process_tickets(
     let gcx = ccx_subchat.lock().await.global_context.clone();
     let action = active_tickets[0].action.clone();
     let res = match action {
-        PatchAction::RewriteSymbol => {
+        PatchAction::ReplaceSymbol => {
             match rewrite_symbol_diff(gcx.clone(), &active_tickets[0]).await {
                 Ok(mut chunks) => {
                     postprocess_diff_chunks(gcx.clone(), &mut chunks)
@@ -55,12 +53,12 @@ pub async fn process_tickets(
                 }
             }
         }
-        PatchAction::PartialEdit => {
-            partial_edit_tickets_to_chunks(
+        PatchAction::SectionEdit => {
+            section_edit_tickets_to_chunks(
                 ccx_subchat.clone(), active_tickets.clone(), params, tool_call_id, usage,
             ).await
         }
-        PatchAction::RewriteWholeFile => {
+        PatchAction::ReplaceFile => {
             match full_rewrite_diff(gcx.clone(), &active_tickets[0]).await {
                 Ok(mut chunks) => {
                     postprocess_diff_chunks(gcx.clone(), &mut chunks)
@@ -76,11 +74,11 @@ pub async fn process_tickets(
             Err(good_error_text(&format!("unknown action provided: '{:?}'.", action), &ticket_ids, None))
         }
     };
-    // todo: add multiple attempts for PartialEdit tickets (3)
+    // todo: add multiple attempts for SectionEdit tickets (3)
     match res {
         Ok(_) => active_tickets.clear(),
         Err(_) => {
-            // if AddToFile or RewriteSymbol failed => reassign them to PartialEdit
+            // if AddToFile or ReplaceSymbol failed => reassign them to SectionEdit
             active_tickets.retain(|x| x.fallback_action.is_some() && x.fallback_action != Some(x.action.clone()));
             active_tickets.iter_mut().for_each(|x| {
                 if let Some(fallback_action) = x.fallback_action.clone() {
@@ -123,16 +121,11 @@ fn return_cd_instruction_or_error(
     }
 }
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, String, Option<String>), String> {
+fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, Option<String>), String> {
     let tickets = match args.get("tickets") {
         Some(Value::String(s)) => s.split(",").map(|s| s.trim().to_string()).collect::<Vec<_>>(),
         Some(v) => { return Err(format!("argument 'ticket' should be a string: {:?}", v)) }
         None => { vec![] }
-    };
-    let path = match args.get("path") {
-        Some(Value::String(s)) => s.trim().to_string(),
-        Some(v) => { return Err(format!("argument 'path' should be a string: {:?}", v)) }
-        None => { return Err("argument 'path' is required".to_string()) }
     };
     let explanation = match args.get("explanation") {
         Some(Value::String(s)) => Some(s.trim().to_string()),
@@ -142,7 +135,7 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, String, Opt
     if tickets.is_empty() {
         return Err("`tickets` shouldn't be empty".to_string());
     }
-    Ok((tickets, path, explanation))
+    Ok((tickets, explanation))
 }
 
 async fn create_ccx(ccx: Arc<AMutex<AtCommandsContext>>, params: &SubchatParameters) -> Result<Arc<AMutex<AtCommandsContext>>, String> {
@@ -162,8 +155,8 @@ async fn can_execute_patch(
     ccx: Arc<AMutex<AtCommandsContext>>,
     args: &HashMap<String, Value>,
 ) -> Result<(), String> {
-    let (tickets, path, explanation_mb) = parse_args(args)?;
-    let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
+    let (tickets, explanation_mb) = parse_args(args)?;
+    let params = unwrap_subchat_params(ccx.clone(), "apply_tickets").await?;
     let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
 
     let (gcx, messages) = {
@@ -173,7 +166,7 @@ async fn can_execute_patch(
 
     let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages, explanation_mb).await;
 
-    let active_tickets = get_and_correct_active_tickets(
+    let active_tickets = validate_and_correct_tickets(
         gcx.clone(),
         tickets.clone(),
         all_tickets_from_above.clone()
@@ -182,11 +175,7 @@ async fn can_execute_patch(
     if active_tickets.is_empty() {
         return Err("no active tickets found".to_string());
     }
-
-    if to_pathbuf_normalize(&active_tickets[0].filename_before) != to_pathbuf_normalize(&path) {
-        return Err("the filename of the ticket(s) you provided doesn't match the filename of the file you provided".to_string());
-    }
-
+    
     Ok(())
 }
 
@@ -200,8 +189,8 @@ impl Tool for ToolPatch {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let (tickets, path, explanation_mb) = parse_args(args)?;
-        let params = unwrap_subchat_params(ccx.clone(), "patch").await?;
+        let (tickets, explanation_mb) = parse_args(args)?;
+        let params = unwrap_subchat_params(ccx.clone(), "apply_tickets").await?;
         let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
 
         let mut usage = ChatUsage { ..Default::default() };
@@ -211,7 +200,7 @@ impl Tool for ToolPatch {
             (ccx_lock.global_context.clone(), ccx_lock.messages.clone())
         };
         let all_tickets_from_above = get_tickets_from_messages(gcx.clone(), &messages, explanation_mb).await;
-        let mut active_tickets = match get_and_correct_active_tickets(
+        let mut active_tickets = match validate_and_correct_tickets(
             gcx.clone(),
             tickets.clone(),
             all_tickets_from_above.clone()
@@ -223,14 +212,6 @@ impl Tool for ToolPatch {
         };
         assert!(!active_tickets.is_empty());
 
-        if to_pathbuf_normalize(&active_tickets[0].filename_before) != to_pathbuf_normalize(&path) {
-            let (err, cd_instruction) = good_error_text(
-                &format!("ticket(s) have different filename from what you provided: '{}'!='{}'.", active_tickets[0].filename_before, path),
-                &tickets,
-                Some("recreate the ticket with correct filename in 📍-notation or change path argument".to_string()),
-            );
-            return return_cd_instruction_or_error(&err, &cd_instruction, &tool_call_id, &usage);
-        }
         let mut res;
         loop {
             let diff_chunks = process_tickets(
@@ -276,18 +257,18 @@ impl Tool for ToolPatch {
 
         // workaround: if messages weren't passed by ToolsPermissionCheckPost, legacy
         if msgs_len != 0 {
-            // if we cannot execute patch, there's no need for confirmation
+            // if we cannot execute apply_tickets, there's no need for confirmation
             if let Err(_) = can_execute_patch(ccx.clone(), args).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
-                    command: "patch".to_string(),
+                    command: "apply_tickets".to_string(),
                     rule: "".to_string(),
                 });
             }
         }
         Ok(MatchConfirmDeny {
             result: MatchConfirmDenyResult::CONFIRMATION,
-            command: "patch".to_string(),
+            command: "apply_tickets".to_string(),
             rule: "default".to_string(),
         })
     }
@@ -296,12 +277,12 @@ impl Tool for ToolPatch {
         &self,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        Ok("patch".to_string())
+        Ok("apply_tickets".to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         return Some(IntegrationConfirmation {
-            ask_user: vec!["patch*".to_string()],
+            ask_user: vec!["apply_tickets*".to_string()],
             deny: vec![],
         });
     }

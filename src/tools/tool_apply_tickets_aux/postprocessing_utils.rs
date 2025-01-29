@@ -3,14 +3,14 @@ use crate::ast::ast_structs::AstDefinition;
 use crate::call_validation::DiffChunk;
 use crate::diffs::{apply_diff_chunks_to_text, correct_and_validate_chunks, unwrap_diff_apply_outputs, ApplyDiffResult};
 use crate::global_context::GlobalContext;
-use crate::tools::tool_patch_aux::ast_lint::{lint_and_get_error_messages, parse_and_get_error_symbols};
+use crate::tools::tool_apply_tickets_aux::ast_lint::{lint_and_get_error_messages, parse_and_get_error_symbols};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 use crate::ast::ast_indexer_thread::{ast_indexer_block_until_finished, ast_indexer_enqueue_files};
-use crate::tools::tool_patch_aux::fs_utils::read_file;
+use crate::tools::tool_apply_tickets_aux::fs_utils::read_file;
 
 
 pub fn minimal_common_indent(symbol_lines: &[&str]) -> (usize, usize) {

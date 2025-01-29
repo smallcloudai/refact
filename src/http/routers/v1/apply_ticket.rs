@@ -13,10 +13,10 @@ use crate::custom_error::ScratchError;
 use crate::diffs::{ApplyDiffResult, correct_and_validate_chunks, read_files_n_apply_diff_chunks, unwrap_diff_apply_outputs, ApplyDiffOutput, ApplyDiffUnwrapped};
 use crate::global_context::GlobalContext;
 use crate::http::routers::v1::chat::deserialize_messages_from_post;
-use crate::tools::tool_patch_aux::tickets_parsing::{correct_and_validate_active_ticket, get_and_correct_active_tickets, get_tickets_from_messages, TicketToApply};
-use crate::tools::tool_patch::process_tickets;
-use crate::tools::tool_patch_aux::diff_apply::diff_apply;
-use crate::tools::tool_patch_aux::postprocessing_utils::fill_out_already_applied_status;
+use crate::tools::tool_apply_tickets_aux::tickets_parsing::{correct_and_validate_active_ticket, validate_and_correct_tickets, get_tickets_from_messages, TicketToApply};
+use crate::tools::tool_apply_tickets::process_tickets;
+use crate::tools::tool_apply_tickets_aux::diff_apply::diff_apply;
+use crate::tools::tool_apply_tickets_aux::postprocessing_utils::fill_out_already_applied_status;
 use crate::tools::tools_execute::unwrap_subchat_params;
 
 
@@ -66,7 +66,7 @@ pub fn resolve_diff_apply_outputs(
     }
 }
 
-pub async fn handle_v1_patch_single_file_from_ticket(
+pub async fn handle_v1_apply_selected_ticket(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
@@ -86,7 +86,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
         "".to_string(),
         false,
     ).await));
-    let params = unwrap_subchat_params(ccx.clone(), "patch").await.map_err(|e| {
+    let params = unwrap_subchat_params(ccx.clone(), "apply_tickets").await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))
     })?;
     {
@@ -94,27 +94,26 @@ pub async fn handle_v1_patch_single_file_from_ticket(
         ccx_lock.n_ctx = params.subchat_n_ctx;
     }
 
-    let all_tickets_from_above = get_tickets_from_messages(global_context.clone(), &messages, None).await;
-    let mut active_tickets = get_and_correct_active_tickets(
-        global_context.clone(), post.ticket_ids.clone(), all_tickets_from_above.clone(),
+    let tickets = get_tickets_from_messages(global_context.clone(), &messages, None).await;
+    let mut correct_tickets = validate_and_correct_tickets(
+        global_context.clone(), post.ticket_ids.clone(), tickets.clone(),
     ).await.map_err(|(e, _)| {
         ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
     })?;
 
     let mut usage = ChatUsage { ..Default::default() };
-
     let mut res;
     loop {
         let diff_chunks = process_tickets(
             ccx.clone(),
-            &mut active_tickets,
+            &mut correct_tickets,
             post.ticket_ids.clone(),
             &params,
             &"patch_123".to_string(),
             &mut usage,
         ).await;
         res = diff_chunks;
-        if active_tickets.is_empty() {
+        if correct_tickets.is_empty() {
             break;
         }
     }
@@ -146,7 +145,7 @@ pub async fn handle_v1_patch_single_file_from_ticket(
         .unwrap())
 }
 
-pub async fn handle_v1_patch_apply_all(
+pub async fn handle_v1_apply_all_tickets(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
@@ -163,7 +162,7 @@ pub async fn handle_v1_patch_apply_all(
         "".to_string(),
         false,
     ).await));
-    let params = unwrap_subchat_params(ccx.clone(), "patch").await.map_err(|e| {
+    let params = unwrap_subchat_params(ccx.clone(), "apply_tickets").await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))
     })?;
     {
@@ -175,18 +174,18 @@ pub async fn handle_v1_patch_apply_all(
     let all_tickets = get_tickets_from_messages(global_context.clone(), &messages, None).await;
     let mut filename_by_ticket: HashMap<String, TicketToApply> = HashMap::new();
     for ticket in all_tickets.values() {
-        if let Some(el) = filename_by_ticket.get(&ticket.filename_before) {
+        if let Some(el) = filename_by_ticket.get(&ticket.filename) {
             if ticket.message_idx <= el.message_idx {
                 continue
             } else {
-                filename_by_ticket.remove(&ticket.filename_before);
+                filename_by_ticket.remove(&ticket.filename);
             }
         }
         let mut ticket = ticket.clone();
         correct_and_validate_active_ticket(global_context.clone(), &mut ticket).await.map_err(|e|
             ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Invalid ticket: {e}"))
         )?;
-        filename_by_ticket.insert(ticket.filename_before.clone(), ticket);
+        filename_by_ticket.insert(ticket.filename.clone(), ticket);
     }
 
     let mut usage = ChatUsage { ..Default::default() };

@@ -42,21 +42,6 @@ pub struct DiffBlock {
     pub file_lines: Arc<Vec<String>>,
 }
 
-impl DiffBlock {
-    #[allow(dead_code)]
-    pub fn display(&self) -> String {
-        let mut output = format!(
-            "--- {:?}\n+++ {:?}\n@@ ... @@\n",
-            &self.file_name_before,
-            &self.file_name_after
-        );
-        for line in self.diff_lines.iter() {
-            output.push_str(&format!("{}{}", line.line_type, line.line));
-        }
-        output
-    }
-}
-
 
 pub fn diff_blocks_to_diff_chunks(diff_blocks: &Vec<DiffBlock>) -> Vec<DiffChunk> {
     diff_blocks

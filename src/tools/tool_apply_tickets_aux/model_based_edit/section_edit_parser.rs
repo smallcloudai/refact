@@ -2,15 +2,18 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::call_validation::DiffChunk;
-use crate::tools::tool_patch_aux::diff_structs::{diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType};
+use crate::tools::tool_apply_tickets_aux::diff_structs::{
+    diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType,
+};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use tracing::{error, warn};
 
 use crate::global_context::GlobalContext;
-use crate::tools::tool_patch_aux::fs_utils::read_file;
-use crate::tools::tool_patch_aux::postprocessing_utils::{minimal_common_indent, place_indent};
+use crate::tools::tool_apply_tickets_aux::fs_utils::read_file;
+use crate::tools::tool_apply_tickets_aux::postprocessing_utils::{minimal_common_indent, place_indent};
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum SectionType {
@@ -39,9 +42,16 @@ fn process_fenced_block(
     (
         line_num + 1,
         EditSection {
-            hunk: lines[start_line_num..line_num].iter().map(|x| x.to_string()).collect(),
-            type_: if is_original { SectionType::Original } else { SectionType::Modified },
-        }
+            hunk: lines[start_line_num..line_num]
+                .iter()
+                .map(|x| x.to_string())
+                .collect(),
+            type_: if is_original {
+                SectionType::Original
+            } else {
+                SectionType::Modified
+            },
+        },
     )
 }
 
@@ -70,7 +80,10 @@ fn get_edit_sections(content: &str) -> Vec<EditSection> {
     sections
 }
 
-fn search_block_line_by_line(file_text: &Vec<String>, block_to_find: &Vec<String>) -> Result<Vec<(usize, usize, Vec<String>)>, String> {
+fn search_block_line_by_line(
+    file_text: &Vec<String>,
+    block_to_find: &Vec<String>,
+) -> Result<Vec<(usize, usize, Vec<String>)>, String> {
     let mut found: Vec<(usize, usize, Vec<String>)> = vec![];
     let mut block_index = 0;
     let mut current_start = None;
@@ -108,7 +121,10 @@ fn search_block_line_by_line(file_text: &Vec<String>, block_to_find: &Vec<String
     }
 
     if found.is_empty() {
-        Err(format!("Block not found in the file text: {:?}", block_to_find))
+        Err(format!(
+            "Block not found in the file text: {:?}",
+            block_to_find
+        ))
     } else {
         Ok(found)
     }
@@ -122,32 +138,45 @@ async fn sections_to_diff_blocks(
     let mut diff_blocks = vec![];
     let file_lines = read_file(gcx.clone(), filename.to_string_lossy().to_string())
         .await
-        .map(|x| x.file_content.lines().into_iter()
-            .map(|x| {
-                if let Some(stripped_row) = x.to_string()
-                    .replace("\r\n", "\n")
-                    .strip_suffix("\n") {
-                    stripped_row.to_string()
-                } else {
-                    x.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-        )?;
+        .map(|x| {
+            x.file_content
+                .lines()
+                .into_iter()
+                .map(|x| {
+                    if let Some(stripped_row) =
+                        x.to_string().replace("\r\n", "\n").strip_suffix("\n")
+                    {
+                        stripped_row.to_string()
+                    } else {
+                        x.to_string()
+                    }
+                })
+                .collect::<Vec<_>>()
+        })?;
     let mut errors: Vec<String> = vec![];
-    for (idx, sections) in sections.iter().chunks(2).into_iter()
-        .map(|x| x.collect::<Vec<_>>()).enumerate() {
+    for (idx, sections) in sections
+        .iter()
+        .chunks(2)
+        .into_iter()
+        .map(|x| x.collect::<Vec<_>>())
+        .enumerate()
+    {
         let orig_section = sections.get(0).ok_or("No original section found")?;
         let modified_section = sections.get(1).ok_or("No modified section found")?;
-        if orig_section.type_ != SectionType::Original || modified_section.type_ != SectionType::Modified {
+        if orig_section.type_ != SectionType::Original
+            || modified_section.type_ != SectionType::Modified
+        {
             return Err("section types are messed up, try to regenerate the diff".to_string());
         }
-        let orig_section_span = orig_section.hunk.iter()
+        let orig_section_span = orig_section
+            .hunk
+            .iter()
             .map(|x| x.trim_start().to_string())
             .collect::<Vec<_>>();
         let mut start_offset = None;
         for file_line_idx in 0..=file_lines.len().saturating_sub(orig_section.hunk.len()) {
-            let file_lines_span = file_lines[file_line_idx..(file_line_idx + orig_section.hunk.len()).min(file_lines.len())]
+            let file_lines_span = file_lines
+                [file_line_idx..(file_line_idx + orig_section.hunk.len()).min(file_lines.len())]
                 .iter()
                 .map(|x| x.trim_start().to_string())
                 .collect::<Vec<_>>();
@@ -157,15 +186,24 @@ async fn sections_to_diff_blocks(
             }
         }
         if let Some(start_offset) = start_offset {
-            let file_section = file_lines[start_offset..start_offset + orig_section.hunk.len()].to_vec();
-            let (indent_spaces, indent_tabs) = minimal_common_indent(&file_section.iter().map(|x| x.as_str()).collect::<Vec<_>>());
-            let modified_section_hunk = place_indent(&modified_section.hunk.iter().map(|x| x.as_str()).collect::<Vec<_>>(), indent_spaces, indent_tabs);
+            let file_section =
+                file_lines[start_offset..start_offset + orig_section.hunk.len()].to_vec();
+            let (indent_spaces, indent_tabs) =
+                minimal_common_indent(&file_section.iter().map(|x| x.as_str()).collect::<Vec<_>>());
+            let modified_section_hunk = place_indent(
+                &modified_section
+                    .hunk
+                    .iter()
+                    .map(|x| x.as_str())
+                    .collect::<Vec<_>>(),
+                indent_spaces,
+                indent_tabs,
+            );
             diff_blocks.push(DiffBlock {
                 file_name_before: filename.clone(),
                 file_name_after: filename.clone(),
                 action: "edit".to_string(),
-                diff_lines: file_lines
-                    [start_offset..start_offset + orig_section.hunk.len()]
+                diff_lines: file_lines[start_offset..start_offset + orig_section.hunk.len()]
                     .iter()
                     .enumerate()
                     .map(|(idx, x)| DiffLine {
@@ -174,14 +212,12 @@ async fn sections_to_diff_blocks(
                         file_line_num_idx: Some(start_offset + idx),
                         correct_spaces_offset: None,
                     })
-                    .chain(modified_section_hunk
-                        .iter()
-                        .map(|x| DiffLine {
-                            line: x.clone(),
-                            line_type: LineType::Plus,
-                            file_line_num_idx: Some(start_offset),
-                            correct_spaces_offset: None,
-                        }))
+                    .chain(modified_section_hunk.iter().map(|x| DiffLine {
+                        line: x.clone(),
+                        line_type: LineType::Plus,
+                        file_line_num_idx: Some(start_offset),
+                        correct_spaces_offset: None,
+                    }))
                     .collect::<Vec<_>>(),
                 hunk_idx: idx,
                 file_lines: Arc::new(vec![]),
@@ -189,10 +225,16 @@ async fn sections_to_diff_blocks(
         } else {
             match search_block_line_by_line(&file_lines, &orig_section.hunk) {
                 Ok(res) => {
-                    let mut err = format!("This section wasn't found in the original file content:\n```\n{}\n```\n", orig_section.hunk.iter().join("\n"));
+                    let mut err = format!(
+                        "This section wasn't found in the original file content:\n```\n{}\n```\n",
+                        orig_section.hunk.iter().join("\n")
+                    );
                     err += "Split it into multiple sections like this:\n";
                     for (_, _, found_block) in res {
-                        err += &format!("### Original Section (to be replaced)\n```\n{}\n```\n", found_block.join("\n"));
+                        err += &format!(
+                            "### Original Section (to be replaced)\n```\n{}\n```\n",
+                            found_block.join("\n")
+                        );
                         err += &"### Modified Section (to replace with)\n```\n[Modified code section]\n```\n".to_string();
                     }
                     errors.push(err.clone());
@@ -200,7 +242,10 @@ async fn sections_to_diff_blocks(
                     continue;
                 }
                 Err(_) => {
-                    let err = format!("This section wasn't found in the original file content:\n```\n{}\n```\n", orig_section.hunk.iter().join("\n"));
+                    let err = format!(
+                        "This section wasn't found in the original file content:\n```\n{}\n```\n",
+                        orig_section.hunk.iter().join("\n")
+                    );
                     errors.push(err.clone());
                     error!("{}", err);
                     continue;
@@ -215,6 +260,59 @@ async fn sections_to_diff_blocks(
     }
 }
 
+pub fn section_edit_choose_correct_chunk(
+    chunks: Vec<Result<Vec<DiffChunk>, String>>,
+) -> Result<Vec<DiffChunk>, String> {
+    let errors = chunks
+        .iter()
+        .filter(|res| res.is_err())
+        .map(|res| res.clone().unwrap_err())
+        .collect::<Vec<_>>();
+    if !errors.is_empty() {
+        warn!("There is a list of errors for some generated diffs");
+        for err in errors.iter() {
+            warn!("{err}");
+        }
+    }
+    if chunks.iter().all(|res| res.is_err()) {
+        let mut err_message = "No valid chunks were generated, reasons are:\n".to_string();
+        for err in errors.iter().unique() {
+            err_message.push_str(format!("- {err}\n").as_str());
+        }
+        err_message
+            .push_str("Try to call `apply_tickets` one more time to generate a correct diff");
+        return Err(err_message);
+    }
+
+    let non_error_chunks = chunks
+        .iter()
+        .filter_map(|res| res.as_ref().ok())
+        .cloned()
+        .collect::<Vec<_>>();
+    warn!("{} diff were parsed successfully", non_error_chunks.len());
+
+    // return the most common chunk
+    let mut chunks_freq = HashMap::new();
+    for chunk in non_error_chunks.iter() {
+        *chunks_freq.entry(chunk).or_insert(0) += 1;
+    }
+    let max_repeats = chunks_freq
+        .iter()
+        .max_by_key(|(_, k)| *k)
+        .unwrap()
+        .1
+        .clone();
+    let chunks_max_repeats = chunks_freq
+        .iter()
+        .filter(|(_, v)| **v == max_repeats)
+        .map(|x| *x.0)
+        .collect::<Vec<_>>();
+    Ok((*chunks_max_repeats
+        .iter()
+        .max()
+        .expect("There is no max repeats"))
+    .clone())
+}
 pub struct BlocksOfCodeParser {}
 
 impl BlocksOfCodeParser {
@@ -265,11 +363,13 @@ For **each** modification, use the exact structure shown below.
 
 ## Notes
 
+- Sometimes modified sections may contain lines like "Previous content remains the same". Do not consider it as real changes but consider it as hints. Do not copy these lines to the original file.
 - **Entire Functions vs. Small Changes:** Whenever possible, replace or show changes for the entire function, method, or logical block rather than multiple small snippets.
 - **Multiple Changes in a Single Section:** If multiple modifications occur in different parts of the same original section, create separate "Original/Modified" pairs for each.
 - **Preserve Indentation and Formatting:** Do not change or normalize spacing, tabs, newlines, etc.
 - **Do Not Skip Any Modifications:** Include every single changed section, even if it appears trivial, invalid, or incomplete.
-- **New Code Additions:** If you must insert code that was not previously present in the original file, pair the old section with the expanded new content (see above format on inserting new text).
+- **New Code Additions:** If you must insert code that was not previously present in the original file, pair the old section with the expanded new content.
+- **Removals:** If you must remove some code, pair the removed section with the expanded content.
 
 Failure to follow these instructions or use the specified format will result in an incorrect response!"#.to_string();
         prompt

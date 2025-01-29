@@ -34,7 +34,7 @@ def make_messages(ticket_text: str):
 def test01_rewrite_whole_file():
     text_expected = "# FROG"
     ticket_text = \
-f"""📍REWRITE_WHOLE_FILE 001 {FROG_PY}
+f"""📍REPLACE_FILE 001 {FROG_PY}
 ```python
 {text_expected}
 ```
@@ -69,7 +69,7 @@ f"""📍NEW_FILE 001 {FN}
 def test01_partial_edit():
     text_expected = (TEST11_DATA / "toad_partial_edit_01.py").read_text()
     ticket_text = \
-f"""📍PARTIAL_EDIT 001 {TOAD_ORIG}
+f"""📍SECTION_EDIT 001 {TOAD_ORIG}
 ```python
 DT = 0.1
 ```
@@ -86,7 +86,7 @@ DT = 0.1
 def test02_partial_edit():
     text_expected = (TEST11_DATA / "toad_partial_edit_02.py").read_text()
     ticket_text = \
-f"""📍PARTIAL_EDIT 001 {TOAD_ORIG}
+f"""📍SECTION_EDIT 001 {TOAD_ORIG}
 ```python
     def croak(self, x, y, n_times):
         for _ in range(n_times):
@@ -108,7 +108,7 @@ f"""📍PARTIAL_EDIT 001 {TOAD_ORIG}
 def test01_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_01.py").read_text()
     ticket_text = \
-f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME standalone_jumping_function
+f"""📍REPLACE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME standalone_jumping_function
 ```python
 def brand_new_function():
     print("I am really a brand new function!")
@@ -125,7 +125,7 @@ def brand_new_function():
 def test02_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_02.py").read_text()
     ticket_text = \
-        f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME Toad::bounce_off_banks
+        f"""📍REPLACE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME Toad::bounce_off_banks
 ```python
     def bounce_off_banks(self, pond_width, pond_height):
         pass
@@ -142,7 +142,7 @@ def test02_rewrite_symbol():
 def test03_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_03.py").read_text()
     ticket_text = \
-        f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME DT
+        f"""📍REPLACE_SYMBOL 001 {TOAD_ORIG} SYMBOL_NAME DT
 ```python
 DT = 10.
 ```
@@ -159,7 +159,7 @@ def test04_rewrite_symbol():
     orig_path = (TEST11_DATA / "toad_rewrite_symbol_04_orig.rs").resolve()
     text_expected = (TEST11_DATA / "toad_rewrite_symbol_04_patched.rs").read_text()
     ticket_text = \
-        """📍REWRITE_ONE_SYMBOL 000 {orig_path} SYMBOL_NAME partition
+        """📍REPLACE_SYMBOL 000 {orig_path} SYMBOL_NAME partition
 ```rust
 fn partition(arr: &mut [i32]) -> usize {
     arr.swap(i, pivot_index);
@@ -179,7 +179,7 @@ fn partition(arr: &mut [i32]) -> usize {
 def test01_already_applied_rewrite_symbol():
     test_file = TEST11_DATA / "already_applied_rewrite_symbol_01.py"
     ticket_text = \
-        f"""📍REWRITE_ONE_SYMBOL 001 {test_file} SYMBOL_NAME standalone_jumping_function
+        f"""📍REPLACE_SYMBOL 001 {test_file} SYMBOL_NAME standalone_jumping_function
 ```python
 def brand_new_function():
     print("I am really a brand new function!")
@@ -194,7 +194,7 @@ def brand_new_function():
 def test02_already_applied_rewrite_symbol():
     test_file = TEST11_DATA / "already_applied_rewrite_symbol_02.py"
     ticket_text = \
-f"""📍REWRITE_ONE_SYMBOL 001 {test_file} SYMBOL_NAME Toad::bounce_off_banks
+f"""📍REPLACE_SYMBOL 001 {test_file} SYMBOL_NAME Toad::bounce_off_banks
 ```python
     def bounce_off_banks(self, pond_width, pond_height):
         pass
@@ -209,7 +209,7 @@ f"""📍REWRITE_ONE_SYMBOL 001 {test_file} SYMBOL_NAME Toad::bounce_off_banks
 def test01_already_applied_rewrite_whole_file():
     text_expected = TOAD_ORIG.read_text()
     ticket_text = \
-        f"""📍REWRITE_WHOLE_FILE 001 {TOAD_ORIG}
+        f"""📍REPLACE_FILE 001 {TOAD_ORIG}
 ```python
 {text_expected}
 ```
@@ -237,7 +237,7 @@ def test01_already_applied_new_file():
 def test01_already_fallback_rewrite_symbol():
     text_expected = (TEST11_DATA / "toad_partial_edit_01.py").read_text()
     ticket_text = \
-        f"""📍REWRITE_ONE_SYMBOL 001 {TOAD_ORIG}
+        f"""📍REPLACE_SYMBOL 001 {TOAD_ORIG}
 ```python
 DT = 0.1
 ```

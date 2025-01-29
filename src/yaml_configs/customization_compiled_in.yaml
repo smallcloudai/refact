@@ -17,44 +17,55 @@ PROMPT_DEFAULT: |
   identical to the input indent, ready to paste back into the file.
 
 
+CD_INSTRUCTIONS: |
+  You might receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
+  well and they are always in English. Answer in the language the user has asked the question.
+
+
 PROMPT_PINS: |
   Instructions of how to generate 📍-notation edit blocks:
-  1. Edit Blocks
-     - Wrap edit block content in triple backticks:
-       \```
-       (code or file content here)
-       \```
-     - Keep the original indentation exactly.
-  2. Pre-Edit Instruction
+    1. Pre-Edit Instruction
      - Before each edit block, include exactly one of these lines:
-       1. 📍REWRITE_ONE_SYMBOL <ticket> "<absolute_path>" SYMBOL_NAME <symbol_path>
-       2. 📍REWRITE_WHOLE_FILE <ticket> "<absolute_path>"
-       3. 📍PARTIAL_EDIT <ticket> "<absolute_path>"
-       4. 📍OTHER <ticket>
-     - `<ticket>`: 3-digit number (e.g., 000, 001, 002, …).
+       1. 📍REPLACE_SYMBOL <ticket> "<absolute_path>" SYMBOL_NAME <symbol_path>
+       2. 📍REPLACE_FILE <ticket> "<absolute_path>"
+       3. 📍SECTION_EDIT <ticket> "<absolute_path>"
+       4. 📍DELETE_FILE <ticket> "<absolute_path>"
+       5. 📍OTHER <ticket>
+     - `<ticket>`: 3-digit number (e.g., 001, 002, 003, …).
      - `<absolute_path>`: full path to the file.
+  2. Edit Blocks
+     - Wrap edit block content in triple backticks:
+       ```edit
+       (code or file content here)
+       ```
+     - Keep the original indentation exactly.
   3. When to Use Each Command
-     1. 📍REWRITE_ONE_SYMBOL
+     1. 📍REPLACE_SYMBOL
         - Use for updating a single function, class, or method. Use it only for java, python, js, c++, rust and typescript.
-     2. 📍REWRITE_WHOLE_FILE
-        - Use when replacing or creating the entire file content. Prefer it if there are many small changes.
-     3. 📍PARTIAL_EDIT
-        - Use for editing or inserting code in the middle of a file.
+     2. 📍REPLACE_FILE
+        - Use when creating or replacing the entire file content. Prefer it if there are many small changes and the file is small.
+        - It's really important to provide the whole editing file if you're using the command.
+     3. 📍SECTION_EDIT
+        - Use for edits inside large files which are too big to copy.
+        - Use for single and separate edits inside a file.
         - Provide a few original lines above and below the edited section. This ensures clarity and reduces the risk of merging conflicts.
+     4. 📍DELETE_FILE
+        - Use to remove a file.
+        - Leave the edit block empty.
      4. 📍OTHER
         - For anything that isn’t a file edit (e.g., explanations, command-line instructions).
   4. Tips
      - Use only absolute file paths.
      - Always use a language specifier for the triple backticks (i.e. ```python, ```schema, ```code_block).
-     - For multiple symbol changes, use `📍PARTIAL_EDIT`.
+     - For multiple symbol changes, use `📍SECTION_EDIT`.
      - Include context lines above and below your changes for clarity.
      - Avoid rewriting the entire file if only a few edits are needed.
-     - If the `patch` tool is available, call it AFTER creating the code block to apply changes.
+     - If the `apply_tickets` tool is available, call it AFTER creating the code block to apply changes and then assess the resulting diff.
      - Avoid being lazy when creating the edit blocks - copy all necessary unchanged lines as they are
   5. 📍-notation format examples
   - Rewriting a single symbol:
-  📍REWRITE_ONE_SYMBOL 001 "C:\Users\username\sales\OrderCalculator.java" calculateTotal OrderCalculator::calculateTotal
-  ```
+  📍REPLACE_SYMBOL 001 "C:\Users\username\sales\OrderCalculator.java" calculateTotal OrderCalculator::calculateTotal
+  ```edit
       public double calculateTotal(Order order) {
           double sum = 0;
           for (LineItem item : order.getItems()) {
@@ -65,8 +76,8 @@ PROMPT_PINS: |
   ```
 
   - Rewriting (or creating) the whole file:
-  📍REWRITE_WHOLE_FILE 002 "/home/username/scripts/data_processing.py"
-  ```
+  📍REPLACE_FILE 002 "/home/username/scripts/data_processing.py"
+  ```edit
   #!/usr/bin/env python3
 
   import sys
@@ -79,8 +90,8 @@ PROMPT_PINS: |
   ```
 
   - Partial edit inside a file:
-  📍PARTIAL_EDIT 003 "/Users/username/app.js"
-  ```
+  📍SECTION_EDIT 003 "/Users/username/app.js"
+  ```edit
       router.post('/api/items', async (req, res) => {
           try {
               const validatedData = await validateInput(req.body);
@@ -91,11 +102,11 @@ PROMPT_PINS: |
           }
       });
   ```
-
-CD_INSTRUCTIONS: |
-  You might receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
-  well and they are always in English. Answer in the language the user has asked the question.
-
+  
+  - Deleting a file:
+  📍DELETE_FILE 004 "/Users/username/app.js"
+  ```edit
+  ```
 
 SHELL_INSTRUCTIONS: |
   When running on user's laptop, you most likely have the shell() tool. It's for one-time dependency installations, or doing whatever
@@ -156,8 +167,8 @@ PROMPT_AGENTIC_TOOLS: |
   2. If the user’s question is related to the project
     - First, call knowledge() for relevant information and best practices.
   3. Making Changes
-    - If a solution requires file changes, write each change using 📍-notation and then call patch() to apply it.
-    - Avoid writing many 📍-notations in a single message (due to the limited context size). Call patch() after each 📍-notation.
+    - If a solution requires file changes, write each change using 📍-notation and then call apply_tickets() to apply it.
+    - Avoid writing many 📍-notations in a single message (due to the limited context size). Call apply_tickets() after each 📍-notation.
     - Separate multiple tickets (changes) with commas if they are related to a single file.
 
   Important Notes
@@ -243,7 +254,7 @@ PROMPT_CONFIGURATOR: |
   - Write a markdown table that has 2 columns, key parameters on lhs, and values you were able to derive from the project (or just reasonable defaults) on rhs
   - Write 1 paragraph explanation of what you are about to do
   - Ask the user if they want to change anything, make sure you ask a question explicitly, and end with a question mark
-  - Write updated configs using 📍REWRITE_WHOLE_FILE and patch() don't do it unless you have permission from the user!
+  - Write updated configs using 📍REPLACE_FILE and apply_tickets() don't do it unless you have permission from the user!
   - When changing configuration for a tool, finally test the tool and report if it's working
 
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
@@ -304,7 +315,7 @@ PROMPT_PROJECT_SUMMARY: |
     - If the user approves, create the project configuration file containing the summary and integrations, without making further tool calls.
 
   The project summary must be saved using a pinned code block format like this:
-  📍REWRITE_WHOLE_FILE 000 "%CONFIG_PATH%"
+  📍REPLACE_FILE 000 "%CONFIG_PATH%"
   ```
   project_summary: >
     Natural language summary of the
@@ -341,11 +352,11 @@ system_prompts:
 
 
 subchat_tool_parameters:
-  patch:
+  apply_tickets:
     subchat_model: "gpt-4o-mini"
-    subchat_n_ctx: 128000
+    subchat_n_ctx: 64000
     subchat_temperature: 0.0
-    subchat_max_new_tokens: 16000
+    subchat_max_new_tokens: 8000
   locate:
     subchat_model: "gpt-4o-mini"
     subchat_tokens_for_rag: 30000

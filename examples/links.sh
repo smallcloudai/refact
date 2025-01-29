@@ -157,7 +157,7 @@ curl -X POST http://localhost:8001/v1/links \
             },
             {
                 "role": "assistant",
-                "content": "📍REWRITE_WHOLE_FILE 000 \"/app/hello_world.py\"\n```python\nprint(\"Hello, World!\")\n```",
+                "content": "📍REPLACE_FILE 000 \"/app/hello_world.py\"\n```python\nprint(\"Hello, World!\")\n```",
                 "tool_calls": null,
                 "finish_reason": "",
                 "tool_call_id": "",

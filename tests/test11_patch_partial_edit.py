@@ -120,7 +120,7 @@ async def entrypoint(ds):
             project_path, filename = materialize_file_temporary(text_before, suffix=Path(repo['filename']).suffix)
             refact_lsp = make_refact_lsp(project_path.name)
             await refact_lsp.start()
-            messages = make_messages(f"📍PARTIAL_EDIT 001 {filename}\n```\n{text_after_changed_only}\n```")
+            messages = make_messages(f"📍SECTION_EDIT 001 {filename}\n```\n{text_after_changed_only}\n```")
             resp = patch_request(messages, ["001"], base_url=refact_lsp.base_url())
             await refact_lsp.stop()
             text_after = text_after.strip()

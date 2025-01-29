@@ -11,41 +11,26 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::call_validation::ChatMessage;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_patch_aux::postprocessing_utils::does_doc_have_symbol;
+use crate::tools::tool_apply_tickets_aux::postprocessing_utils::does_doc_have_symbol;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PatchAction {
-    RewriteSymbol,
+    ReplaceSymbol,
     #[default]
-    PartialEdit,
-    RewriteWholeFile,
+    SectionEdit,
+    ReplaceFile,
+    DeleteFile,
     Other,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
-pub enum PatchLocateAs {
-    BEFORE,
-    AFTER,
-    SYMBOLNAME,
-}
-
-impl PatchLocateAs {
-    pub fn from_string(s: &str) -> Result<PatchLocateAs, String> {
-        match s {
-            "BEFORE" => Ok(PatchLocateAs::BEFORE),
-            "AFTER" => Ok(PatchLocateAs::AFTER),
-            "SYMBOL_NAME" => Ok(PatchLocateAs::SYMBOLNAME),
-            _ => Err(format!("invalid locate_as: {}", s)),
-        }
-    }
-}
 
 impl PatchAction {
     pub fn from_string(action: &str) -> Result<PatchAction, String> {
         match action {
-            "📍REWRITE_ONE_SYMBOL" => Ok(PatchAction::RewriteSymbol),
-            "📍REWRITE_WHOLE_FILE" => Ok(PatchAction::RewriteWholeFile),
-            "📍PARTIAL_EDIT" => Ok(PatchAction::PartialEdit),
+            "📍REPLACE_SYMBOL" => Ok(PatchAction::ReplaceSymbol),
+            "📍REPLACE_FILE" => Ok(PatchAction::ReplaceFile),
+            "📍SECTION_EDIT" => Ok(PatchAction::SectionEdit),
+            "📍DELETE_FILE" => Ok(PatchAction::DeleteFile),
             "📍OTHER" => Ok(PatchAction::Other),
             _ => Err(format!("invalid action: {}", action)),
         }
@@ -60,9 +45,7 @@ pub struct TicketToApply {
     pub fallback_action: Option<PatchAction>,
     pub message_idx: usize,
     pub id: String,
-    pub filename_before: String,
-    #[serde(default)]
-    pub locate_as: Option<PatchLocateAs>,
+    pub filename: String,
     #[serde(default)]
     pub locate_symbol: Option<Arc<AstDefinition>>,
     #[serde(default)]
@@ -73,7 +56,7 @@ pub struct TicketToApply {
 }
 
 pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
-    let text = format!("Couldn't create patch for tickets: '{}'.\nReason: {reason}", tickets.join(", "));
+    let text = format!("Couldn't apply tickets: '{}'.\nReason: {reason}", tickets.join(", "));
     if let Some(resolution) = resolution {
         let cd_format = format!("💿 {resolution}");
         return (text, Some(cd_format))
@@ -90,45 +73,43 @@ pub async fn correct_and_validate_active_ticket(gcx: Arc<ARwLock<GlobalContext>>
         return_one_candidate_or_a_good_error(gcx.clone(), path_str, &candidates, &get_project_dirs(gcx.clone()).await, false).await
     }
 
-    let path_before = PathBuf::from(ticket.filename_before.as_str());
+    let path_before = PathBuf::from(ticket.filename.as_str());
     match ticket.action {
-        PatchAction::RewriteSymbol => {
-            ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
+        PatchAction::ReplaceSymbol => {
+            ticket.filename = resolve_path(gcx.clone(), &ticket.filename).await
                 .map_err(|e| _error_text(
-                    &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e),
+                    &format!("failed to resolve '{}'. Error:\n{}. If you wanted to create a new file, use REPLACE_FILE ticket type", ticket.filename, e),
                     ticket))?;
-            ticket.fallback_action = Some(PatchAction::PartialEdit);
-
-            if ticket.locate_as != Some(PatchLocateAs::SYMBOLNAME) {
-                ticket.action = PatchAction::PartialEdit;
-                if let Some(s) = &ticket.locate_symbol {
-                    let extra_prompt = format!(
-                        "Replace the whole `{}` symbol by the following code:\n",
-                        s.official_path.last().unwrap_or(&"".to_string())
-                    );
-                    ticket.code = format!("{}{}", extra_prompt, ticket.code);
-                }
-            }
+            ticket.fallback_action = Some(PatchAction::SectionEdit);
         }
-        PatchAction::PartialEdit => {
-            ticket.filename_before = resolve_path(gcx.clone(), &ticket.filename_before).await
+        PatchAction::SectionEdit => {
+            ticket.filename = resolve_path(gcx.clone(), &ticket.filename).await
                 .map_err(|e| _error_text(
-                    &format!("failed to resolve filename_before: '{}'. Error:\n{}. If you wanted to create a new file, use REWRITE_WHOLE_FILE ticket type", ticket.filename_before, e),
+                    &format!("failed to resolve '{}'. Error:\n{}. If you wanted to create a new file, use REPLACE_FILE ticket type", ticket.filename, e),
                     ticket))?;
         }
-        PatchAction::RewriteWholeFile => {
-            ticket.filename_before = match resolve_path(gcx.clone(), &ticket.filename_before).await {
+        PatchAction::ReplaceFile => {
+            ticket.filename = match resolve_path(gcx.clone(), &ticket.filename).await {
                 Ok(filename) => filename,
                 Err(_) => {
                     // consider that as a new file
                     if path_before.is_relative() {
-                        return Err(_error_text(&format!("filename_before: '{}' must be absolute.", ticket.filename_before), ticket));
+                        return Err(_error_text(&format!("'{}' must be absolute.", ticket.filename), ticket));
                     } else {
-                        let path_before = crate::files_correction::to_pathbuf_normalize(&ticket.filename_before);
+                        let path_before = crate::files_correction::to_pathbuf_normalize(&ticket.filename);
                         path_before.to_string_lossy().to_string()
                     }
                 }
             }
+        }
+        PatchAction::DeleteFile => {
+            ticket.filename = match resolve_path(gcx.clone(), &ticket.filename).await {
+                Ok(filename) => filename,
+                Err(_) => {
+                    return Err(_error_text(&format!("'{}' doesn't exist", ticket.filename), ticket));
+                }
+            }
+
         }
         PatchAction::Other => {}
     }
@@ -201,20 +182,14 @@ pub async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, mess
             None => return Err("failed to parse ticket, TICKED ID is missing".to_string()),
         };
 
-        ticket.filename_before = match header.get(2) {
+        ticket.filename = match header.get(2) {
             Some(filename) => filename.to_string(),
             None => return Err("failed to parse ticket, TICKED FILENAME is missing".to_string()),
         };
 
-        if let Some(el3) = header.get(3) {
-            if let Ok(locate_as) = PatchLocateAs::from_string(el3) {
-                ticket.locate_as = Some(locate_as);
-            }
-        }
-
         if let Some(el4) = header.get(4) {
             let locate_symbol_str = el4.to_string();
-            match does_doc_have_symbol(gcx.clone(), &locate_symbol_str, &ticket.filename_before).await {
+            match does_doc_have_symbol(gcx.clone(), &locate_symbol_str, &ticket.filename).await {
                 Ok((symbol, all_symbols)) => {
                     ticket.locate_symbol = Some(symbol);
                     ticket.all_symbols = all_symbols;
@@ -314,42 +289,19 @@ pub async fn get_tickets_from_messages(
     tickets
 }
 
-pub async fn get_and_correct_active_tickets(
+pub async fn validate_and_correct_tickets(
     gcx: Arc<ARwLock<GlobalContext>>,
     ticket_ids: Vec<String>,
     all_tickets_from_above: HashMap<String, TicketToApply>,
 ) -> Result<Vec<TicketToApply>, (String, Option<String>)> {
-    // XXX: this is a useless message the model doesn't listen to anyway. We need cd_instruction and a better text.
     let mut active_tickets = ticket_ids.iter().map(|t| all_tickets_from_above.get(t).cloned()
         .ok_or(good_error_text(
             &format!("No code block found for the ticket {:?}, did you forget to write it using 📍-notation?", t),
             &ticket_ids,
             Some("Write the code you want to apply using 📍-notation. Do not prompt user. Follow the system prompt.".to_string()),
         ))).collect::<Result<Vec<_>, _>>()?;
-
-    if active_tickets.iter().map(|x| x.filename_before.clone()).unique().count() > 1 {
-        return Err(good_error_text(
-            "all tickets must have the same filename_before.",
-            &ticket_ids, Some("split the tickets into multiple patch calls".to_string()),
-        ));
-    }
-    if active_tickets.len() > 1 && !active_tickets.iter().all(|s| PatchAction::PartialEdit == s.action) {
-        return Err(good_error_text(
-            "multiple tickets is allowed only for action==PARTIAL_EDIT.",
-            &ticket_ids, Some("split the tickets into multiple patch calls".to_string()),
-        ));
-    }
-    if active_tickets.iter().map(|s| s.action.clone()).unique().count() > 1 {
-        return Err(good_error_text(
-            "tickets must have the same action.",
-            &ticket_ids, Some("split the tickets into multiple patch calls".to_string()),
-        ));
-    }
     for ticket in active_tickets.iter_mut() {
         correct_and_validate_active_ticket(gcx.clone(), ticket).await.map_err(|e| good_error_text(&e, &ticket_ids, None))?;
-    }
-    if active_tickets.is_empty() {
-        return Err(good_error_text("no tickets that are referred by IDs were found.", &ticket_ids, None));
     }
     Ok(active_tickets)
 }
