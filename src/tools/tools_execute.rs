@@ -100,8 +100,8 @@ pub async fn run_tools_remotely(
 
     let mut all_messages = original_messages.to_vec();
     for msg in response.messages {
-        all_messages.push(msg.clone());
-        stream_back_to_user.push_in_json(json!(msg));
+        stream_back_to_user.push_in_json(json!(&msg));
+        all_messages.push(msg);
     }
 
     Ok((all_messages, response.tools_ran))
@@ -123,8 +123,8 @@ pub async fn run_tools_locally(
 
     let mut all_messages = original_messages.to_vec();
     for msg in new_messages {
-        all_messages.push(msg.clone());
-        stream_back_to_user.push_in_json(json!(msg));
+        stream_back_to_user.push_in_json(json!(&msg));
+        all_messages.push(msg);
     }
 
     Ok((all_messages, tools_ran))
