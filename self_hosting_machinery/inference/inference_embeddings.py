@@ -35,28 +35,13 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
         assert torch.cuda.is_available(), "model is only supported on GPU"
 
         self._device = "cuda:0"
-        for local_files_only in [True, False]:
-            try:
-                # WARNING: this may not work if you have no access to the web as it may try to download tokenizer
-                log("loading model local_files_only=%i" % local_files_only)
-                if local_files_only:
-                    self._model = SentenceTransformer(
-                        os.path.join(self.cache_dir, self._model_dir),
-                        device=self._device,
-                        cache_folder=self.cache_dir,
-                    )
-                    break
-                else:
-                    self._model = SentenceTransformer(
-                        self._model_dict["model_path"],
-                        device=self._device,
-                        cache_folder=self.cache_dir,
-                        use_auth_token=huggingface_hub_token(),
-                    )
-                    self._model.save(os.path.join(self.cache_dir, self._model_dir))
-            except Exception as e: # noqa
-                if not local_files_only:
-                    raise
+        log("loading model")
+        self._model = SentenceTransformer(
+            self._model_dict["model_path"],
+            device=self._device,
+            cache_folder=self.cache_dir,
+            use_auth_token=huggingface_hub_token(),
+        )
 
     @property
     def model(self) -> torch.nn.Module:
