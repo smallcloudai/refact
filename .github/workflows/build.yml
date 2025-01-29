@@ -126,8 +126,8 @@ jobs:
       - name: build linux-like artifacts
         if: matrix.cross
         run: |
-          cross test --release --target ${{ matrix.target }} || exit 1
-          cross build --release --target ${{ matrix.target }} || exit 1
+          CROSS_NO_WARNINGS=0 cross test --release --target ${{ matrix.target }} || exit 1
+          CROSS_NO_WARNINGS=0 cross build --release --target ${{ matrix.target }} || exit 1
           mkdir python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
           cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} .
