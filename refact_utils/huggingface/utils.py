@@ -1,5 +1,5 @@
-import os
 import json
+import requests
 
 from enum import Enum
 from typing import Optional
@@ -51,11 +51,10 @@ def get_repo_status(repo_id: str) -> RepoStatus:
 
 def is_hf_available(repo_id: str) -> True:
     try:
-        repo_info(repo_id=repo_id)
-    except ConnectionError:
-        return False
+        token = huggingface_hub_token()
+        repo_info(repo_id=repo_id, token=token)
     except:
-        pass
+        return False
     return True
 
 
