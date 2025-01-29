@@ -41,7 +41,7 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
-                  "termcolor", "torch", "transformers>=4.46.0",
+                  "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
                   "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
                   "sentence-transformers", "huggingface-hub>=0.26.2",
