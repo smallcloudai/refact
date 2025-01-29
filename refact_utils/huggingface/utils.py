@@ -1,5 +1,6 @@
 import json
-import requests
+import subprocess
+from urllib.parse import urlparse
 
 from enum import Enum
 from typing import Optional
@@ -7,6 +8,7 @@ from typing import Optional
 from huggingface_hub import repo_info
 from huggingface_hub.utils import GatedRepoError
 from huggingface_hub.utils import RepositoryNotFoundError
+from huggingface_hub.constants import ENDPOINT
 from refact_utils.scripts import env
 
 
@@ -49,13 +51,17 @@ def get_repo_status(repo_id: str) -> RepoStatus:
         return RepoStatus.UNKNOWN
 
 
-def is_hf_available(repo_id: str) -> True:
+def is_hf_available():
     try:
-        token = huggingface_hub_token()
-        repo_info(repo_id=repo_id, token=token)
+        retval = subprocess.call(
+            ["ping", "-c", "1", urlparse(ENDPOINT).hostname],
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            timeout=1,
+        )
+        return retval == 0
     except:
         return False
-    return True
 
 
 if __name__ == "__main__":
