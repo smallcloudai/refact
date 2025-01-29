@@ -51,13 +51,13 @@ def get_repo_status(repo_id: str) -> RepoStatus:
         return RepoStatus.UNKNOWN
 
 
-def is_hf_available():
+def is_hf_available(timeout: float) -> bool:
     try:
         retval = subprocess.call(
             ["ping", "-c", "1", urlparse(ENDPOINT).hostname],
             stderr=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
-            timeout=1,
+            timeout=timeout,
         )
         return retval == 0
     except:
