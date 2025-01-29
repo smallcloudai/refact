@@ -58,7 +58,7 @@ class ModelWatchdogDConfig:
 
     def dump(self, model_cfg_j: Dict) -> str:
         model_cfg_j["command_line"].extend(["--model", self.model_name])
-        if self.backend not in ["transformers", "autogptq"]:
+        if self.backend not in ["transformers"]:
             if self.n_ctx is not None:
                 model_cfg_j["command_line"].extend(["--n-ctx", self.n_ctx])
             if not self.has_loras:
@@ -96,7 +96,7 @@ class ModelAssigner:
 
     @property
     def share_gpu_backends(self) -> Set[str]:
-        return {"transformers", "autogptq"}
+        return {"transformers"}
 
     @property
     def models_db(self) -> Dict[str, Any]:
