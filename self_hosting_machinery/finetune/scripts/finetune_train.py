@@ -17,6 +17,7 @@ import torch as th
 import torch.distributed as dist
 
 from refact_utils.scripts import env
+from refact_utils.huggingface.utils import is_hf_available
 # TODO: there is a bug with large zip files and path joining so we need to investigate it
 # from refact_utils.scripts.env import safe_paths_join
 from refact_utils.finetune.utils import finetune_train_defaults
@@ -353,6 +354,10 @@ def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
         model_config = supported_models[args.model_name]
         model_info = models_db[args.model_name]
         assert "finetune" in model_info.get("filter_caps", []), f"model {args.model_name} does not support finetune"
+
+        if not is_hf_available(model_info.get("model_path", None)):
+            _log_everywhere("Hf is not available, switch to offline mode")
+            os.environ['HF_HUB_OFFLINE'] = "1"
 
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)

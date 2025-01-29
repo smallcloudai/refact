@@ -8,6 +8,7 @@ from transformers import AutoTokenizer
 from transformers import AutoModelForCausalLM
 
 from refact_utils.scripts import env
+from refact_utils.huggingface.utils import is_hf_available
 from refact_utils.finetune.utils import is_checkpoint_deprecated
 from self_hosting_machinery.finetune.modelling.lora import LoraMixin
 
@@ -88,6 +89,9 @@ if __name__ == "__main__":
     parser.add_argument("checkpoint_path", type=Path, help="Path to checkpoint")
     parser.add_argument("output_filename", type=Path, help="Output filename")
     args = parser.parse_args()
+
+    if not is_hf_available(args.model_path):
+        os.environ['HF_HUB_OFFLINE'] = "1"
 
     merger = LoraMerger(args.model_path)
     merger.lora_patch_save(args.checkpoint_path, args.output_filename)
