@@ -11,6 +11,7 @@ from self_hosting_machinery.inference.stream_results import validate_description
 from self_hosting_machinery.inference.stream_results import UploadProxy
 from self_hosting_machinery.inference.stream_results import completions_wait_batch
 
+from refact_utils.huggingface.utils import is_hf_available
 from self_hosting_machinery.inference import InferenceHF, InferenceEmbeddings
 
 from typing import Dict, Any
@@ -33,7 +34,9 @@ def worker_loop(model_name: str, models_db: Dict[str, Any], supported_models: Di
     log("STATUS loading model")
 
     model_dict = models_db[model_name]
-    assert model_dict["backend"] != "legacy"
+    if not is_hf_available(model_dict.get("model_path", None)):
+        log("hf hub is not available, using offline mode")
+        os.environ['HF_HUB_OFFLINE'] = "1"
 
     if "embeddings" in model_dict["filter_caps"]:
         inference_model = InferenceEmbeddings(

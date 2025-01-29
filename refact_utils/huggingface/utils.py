@@ -1,3 +1,4 @@
+import os
 import json
 
 from enum import Enum
@@ -46,6 +47,16 @@ def get_repo_status(repo_id: str) -> RepoStatus:
         return RepoStatus.NOT_FOUND
     except:
         return RepoStatus.UNKNOWN
+
+
+def is_hf_available(repo_id: str) -> True:
+    try:
+        repo_info(repo_id=repo_id)
+    except ConnectionError:
+        return False
+    except:
+        pass
+    return True
 
 
 if __name__ == "__main__":
