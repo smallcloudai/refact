@@ -14,23 +14,6 @@ export const TourEnd = () => {
     dispatch(finish());
   };
 
-  const handleLinkOpen = (type: "enterprise" | "instructions") => {
-    switch (type) {
-      case "enterprise": {
-        openUrl(
-          "https://docs.refact.ai/guides/version-specific/enterprise/getting-started/",
-        );
-        break;
-      }
-      case "instructions": {
-        openUrl(
-          "https://docs.refact.ai/guides/version-specific/enterprise/instructions/",
-        );
-        break;
-      }
-    }
-  };
-
   return (
     <Flex
       direction="column"
@@ -49,23 +32,14 @@ export const TourEnd = () => {
       >
         <TourTitle title="Your Refact product tour is finished!" />
         <Flex direction="column">
-          <Text>There are more things in Refact:</Text>
+          <Text mb="1">There are more things to explore in Refact!</Text>
           <Text>
             -{" "}
             <Link
               style={{ color: "black", textDecoration: "underline" }}
-              onClick={() => handleLinkOpen("enterprise")}
+              onClick={() => openUrl("https://docs.refact.ai")}
             >
-              our on-prem version
-            </Link>
-          </Text>
-          <Text>
-            -{" "}
-            <Link
-              style={{ color: "black", textDecoration: "underline" }}
-              onClick={() => handleLinkOpen("instructions")}
-            >
-              custom instructions
+              Check out our documentation
             </Link>
           </Text>
         </Flex>
