@@ -285,9 +285,8 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
     Ok(commit)
 }
 
-pub fn get_datetime_from_commit(repository: &Repository, commit_id: &str) -> Result<DateTime<Utc>, String> {
-    let commit = repository.find_commit(Oid::from_str(commit_id).map_err_to_string()?)
-        .map_err_to_string()?;
+pub fn get_datetime_from_commit(repository: &Repository, commit_oid: &Oid) -> Result<DateTime<Utc>, String> {
+    let commit = repository.find_commit(commit_oid.clone()).map_err_to_string()?;
 
     Utc.timestamp_opt(commit.time().seconds(), 0).single()
         .ok_or_else(|| "Failed to get commit datetime".to_string())
@@ -446,10 +445,8 @@ pub fn open_or_initialize_repo(workdir: &PathBuf, git_dir_path: &PathBuf) -> Res
     }
 }
 
-pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, commit_hash: &str) -> Result<(), String> {
-    let commit = Oid::from_str(commit_hash)
-        .and_then(|oid| repo.find_commit(oid))
-        .map_err_with_prefix("Failed to find commit:")?;
+pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, commit_oid: &Oid) -> Result<(), String> {
+    let commit = repo.find_commit(commit_oid.clone()).map_err_with_prefix("Failed to find commit:")?;
 
     let mut branch_ref = repo.find_branch(branch_name, git2::BranchType::Local)
         .map_err_with_prefix("Failed to get branch:")?.into_reference();
@@ -488,8 +485,9 @@ pub async fn create_workspace_checkpoint(
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
-        let commit_oid_from_branch = branch.get().target().map(|oid| oid.to_string());
-        let file_changes = get_file_changes(&repo, true, commit_oid_from_branch.as_deref(), None)?;
+        let branch_commit = branch.get().peel_to_commit().map_err_to_string()?;
+        repo.reset(&branch_commit.as_object(), git2::ResetType::Mixed, None)
+            .map_err_with_prefix("Failed to reset index:")?;
         stage_changes(&repo, &file_changes)?;
 
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
