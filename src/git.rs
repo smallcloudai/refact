@@ -73,20 +73,26 @@ impl Checkpoint {
     }
 }
 
+fn status_options(include_untracked: bool) -> git2::StatusOptions {
+    let mut options = git2::StatusOptions::new();
+    options
+        .disable_pathspec_match(true)
+        .include_ignored(false)
+        .include_unmodified(false)
+        .include_unreadable(false)
+        .include_untracked(include_untracked)
+        .recurse_ignored_dirs(false)
+        .recurse_untracked_dirs(include_untracked)
+        .rename_threshold(100)
+        .update_index(true);
+    options
+}
+
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let repository = Repository::open(repository_path)
         .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;
 
-    let mut status_options = StatusOptions::new();
-    status_options
-        .include_untracked(true)
-        .recurse_untracked_dirs(true)
-        .include_unmodified(true)
-        .exclude_submodules(false)
-        .include_ignored(false)
-        .recurse_ignored_dirs(false);
-
-    let statuses = repository.statuses(Some(&mut status_options))
+    let statuses = repository.statuses(Some(&mut status_options(true)))
         .map_err(|e| error!("Failed to get statuses: {}", e)).ok()?;
 
     let mut files = Vec::new();
@@ -225,51 +231,43 @@ pub fn get_file_changes(repository: &Repository, include_untracked: bool, from_c
 }
 
 pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<(), String> {
-    let mut index = repository.index()
-        .map_err(|e| format!("Failed to get index: {}", e))?;
+    let mut index = repository.index().map_err_with_prefix("Failed to get index:")?;
 
     for file_change in file_changes {
         match file_change.status {
             FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
                 index.add_path(&file_change.relative_path)
-                    .map_err(|e| format!("Failed to add file to index: {}", e))?;
+                    .map_err_with_prefix("Failed to add file to index:")?;
             },
             FileChangeStatus::DELETED => {
                 index.remove_path(&file_change.relative_path)
-                    .map_err(|e| format!("Failed to remove file from index: {}", e))?;
+                    .map_err_with_prefix("Failed to remove file from index:")?;
             },
         }
     }
 
-    index.write()
-        .map_err(|e| format!("Failed to write index: {}", e))?;
-
+    index.write().map_err_with_prefix("Failed to write index:")?;
     Ok(())
 }
 
 pub fn get_configured_author_email_and_name(repository: &Repository) -> Result<(String, String), String> {
-    let config = repository.config().map_err(|e| format!("Failed to get repository config: {}", e))?;
+    let config = repository.config()
+        .map_err_with_prefix("Failed to get repository config:")?;
     let author_email = config.get_string("user.email")
-       .map_err(|e| format!("Failed to get author email: {}", e))?;
+        .map_err_with_prefix("Failed to get author email:")?;
     let author_name = config.get_string("user.name")
-        .map_err(|e| format!("Failed to get author name: {}", e))?;
+        .map_err_with_prefix("Failed to get author name:")?;
     Ok((author_email, author_name))
 }
 
 pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_name: &str, author_email: &str) -> Result<Oid, String> {
+    let mut index = repository.index().map_err_with_prefix("Failed to get index:")?;
+    let tree_id = index.write_tree().map_err_with_prefix("Failed to write tree:")?;
+    let tree = repository.find_tree(tree_id).map_err_with_prefix("Failed to find tree:")?;
 
-    let mut index = repository.index()
-        .map_err(|e| format!("Failed to get index: {}", e))?;
-    let tree_id = index.write_tree()
-        .map_err(|e| format!("Failed to write tree: {}", e))?;
-    let tree = repository.find_tree(tree_id)
-        .map_err(|e| format!("Failed to find tree: {}", e))?;
-
-    let signature = Signature::now(author_name, author_email)
-        .map_err(|e| format!("Failed to create signature: {}", e))?;
-
-    let branch_ref_name = branch.get().name()
-        .ok_or_else(|| "Invalid branch name".to_string())?;
+    let signature = git2::Signature::now(author_name, author_email)
+        .map_err_with_prefix("Failed to create signature:")?;
+    let branch_ref_name = branch.get().name().ok_or("Invalid branch name".to_string())?;
 
     let parent_commit = if let Some(target) = branch.get().target() {
         repository.find_commit(target)
