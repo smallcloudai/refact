@@ -1,33 +1,23 @@
-# This config file determines if Refact is allowed to index or should add to the index.
 #
-# If you have a syntax error in this file, the refact-lsp will revert to the default blocklist and empty additional_indexing_dirs.
+# Here you can block indexing of directories or files by Refact Agent, similar to .gitignore file.
+# You can also add external paths for indexing, useful for outside libraries.
 #
-# You can additionally extend this config for vcs in <vcs_root>/.refact/indexing.yaml
+# "Indexing" means adding them to Vecdb and AST, and also keeping track of the fact that they exist (try @file in chat).
+# It's a good idea to block build/ dist/ and similar folders, because indexing might interfere with compilation, especially
+# on Windows.
+#
+# You can use relative paths, that's even preferred if you are going to commit this file into your repo. Paths are relative
+# to the project root, where you have your .git directory.
+#
+# This file can exist at:
+# ~/.config/refact/indexing.yaml
+# ~/path/to/your/project/.refact/indexing.yaml
+#
 
-# list of glob patterns you want to skip in indexing, see here: https://en.wikipedia.org/wiki/Glob_(programming)
-blocklist:
-  - "*\\.*"
-  - "*/.*"
-  - "*target*"
-  - "*node_modules*"
-  - "*vendor*"
-  - "*build*"
-  - "*dist*"
-  - "*bin*"
-  - "*pkg*"
-  - "*lib*"
-  - "*obj*"
-  - "*out*"
-  - "*venv*"
-  - "*env*"
-  - "*tmp*"
-  - "*temp*"
-  - "*logs*"
-  - "*coverage*"
-  - "*backup*"
-  - "*__pycache__*"
-  - "*_trajectories*"
-  - "*.gradle*"
+use_gitignore: true
 
-# absolute or relative dirs you want to add into the index
-additional_indexing_dirs:
+#blocklist:
+#  - "lib/"
+
+#additional_indexing_dirs:
+#  - "~/my_favorite_library/"

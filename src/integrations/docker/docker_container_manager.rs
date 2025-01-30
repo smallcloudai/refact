@@ -8,7 +8,6 @@ use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 use tracing::{error, info, warn};
 use url::Url;
 use walkdir::WalkDir;
-use crate::blocklist::load_global_indexing_yaml;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
 use crate::http::http_post;
@@ -231,8 +230,8 @@ async fn docker_container_create(
         "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr --inside-container \
         --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental",
     );
-    if !integrations_yaml.is_empty() { 
-        lsp_command.push_str(" --integrations-yaml ~/.config/refact/integrations.yaml"); 
+    if !integrations_yaml.is_empty() {
+        lsp_command.push_str(" --integrations-yaml ~/.config/refact/integrations.yaml");
     }
 
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
@@ -378,10 +377,10 @@ async fn docker_container_sync_workspace(
     tar_builder.follow_symlinks(true);
     tar_builder.mode(async_tar::HeaderMode::Complete);
 
-    let global_indexing_settings = load_global_indexing_yaml(gcx.clone()).await;
+    let indexing_everywhere_arc = crate::files_blocklist::load_global_indexing_settings_if_needed(gcx.clone()).await;
     let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
         vec![workspace_folder.clone()],
-        global_indexing_settings.clone(),
+        indexing_everywhere_arc.as_ref(),
         false,
         false,
     ).await;

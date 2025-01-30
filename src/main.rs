@@ -32,6 +32,7 @@ mod yaml_configs;
 mod file_filter;
 mod files_in_workspace;
 mod files_in_jsonl;
+mod files_blocklist;
 mod fuzzy_search;
 mod files_correction;
 
@@ -71,7 +72,6 @@ mod git;
 mod agentic;
 mod trajectories;
 
-mod blocklist;
 
 #[tokio::main]
 async fn main() {
