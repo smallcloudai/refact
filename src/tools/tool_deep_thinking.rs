@@ -4,13 +4,91 @@ use std::sync::Arc;
 use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
+use axum::http::StatusCode;
 use crate::subchat::subchat_single;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ReasoningEffort};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ReasoningEffort, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
-
+use crate::cached_tokenizers;
+use crate::custom_error::ScratchError;
+use crate::global_context::try_load_caps_quickly_if_not_present;
+use crate::postprocessing::pp_context_files::postprocess_context_files;
+use crate::scratchpads::scratchpad_utils::count_tokens;
 
 pub struct ToolDeepThinking;
+
+
+async fn _make_prompt(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    subchat_params: &SubchatParameters,
+    problem_statement: &String, 
+    previous_messages: &Vec<ChatMessage>
+) -> Result<String, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), subchat_params.subchat_model.to_string()).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
+    let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag) as i64;
+    let final_message = format!("***Problem:***\n{problem_statement}\n\n***Problem context:***\n");
+    tokens_budget -= count_tokens(&tokenizer.read().unwrap(), &final_message) as i64;
+    let mut context = "".to_string(); 
+    let mut context_files: Vec<ContextFile> = vec![];
+    for message in previous_messages.iter().rev() {
+        let message_row = match message.role.as_str() {
+            "system" => {
+                // just skipping it
+                continue;
+            }
+            "user" => {
+                format!("👤:\n{}\n\n", &message.content.content_text_only())
+            }
+            "assistant" => {
+                format!("🤖:\n{}\n\n", &message.content.content_text_only())
+            }
+            "context_file" => {
+                context_files.extend(serde_json::from_str::<Vec<ContextFile>>(&message.content.content_text_only())
+                    .map_err(|e| format!("Failed to decode context_files JSON: {:?}", e))?);
+                continue;
+            }
+            "tool" => {
+                format!("📎:\n{}\n\n", &message.content.content_text_only())
+            }
+            _ => {
+                tracing::error!("unknown role in message: {:?}, skipped", message);
+                continue;
+            }
+        };
+        let left_tokens = tokens_budget - count_tokens(&tokenizer.read().unwrap(), &message_row) as i64;
+        if left_tokens < 0 {
+            // do not break here, maybe there are smaller useful messages at the beginning
+            continue;
+        } else {
+            tokens_budget = left_tokens;
+            context.insert_str(0, &message_row);
+        }
+    }
+    
+    let mut pp_settings = PostprocessSettings::new();
+    pp_settings.max_files_n = context_files.len();
+    let mut files_context = "".to_string();
+    for context_file in postprocess_context_files(
+        gcx.clone(),
+        &mut context_files,
+        tokenizer.clone(),
+        subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
+        false,
+        &pp_settings,
+    ).await {
+        files_context.push_str(
+    &format!("📎 {}:{}-{}\n```\n{}```\n\n",
+            context_file.file_name,
+            context_file.line1,
+            context_file.line2,
+            context_file.file_content)
+        );
+    }
+    Ok(format!("{final_message}{context}\n***Files context:***\n{files_context}"))
+}
 
 
 #[async_trait]
@@ -34,50 +112,12 @@ impl Tool for ToolDeepThinking {
 
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_thinking").await?;
 
-        let add_those_up = {
+        let external_messages = {
             let ccx_lock = ccx.lock().await;
             ccx_lock.messages.clone()
         };
-        let mut previous_stuff = String::new();
-        for message in add_those_up {
-            match message.role.as_str() {
-                "system" => { 
-                    // just skipping it
-                }            
-                "user" => {
-                    previous_stuff.push_str("👤:\n");
-                    previous_stuff.push_str(&message.content.content_text_only());
-                    previous_stuff.push_str("\n\n");
-                }
-                "assistant" => {
-                    previous_stuff.push_str("🤖:\n");
-                    previous_stuff.push_str(&message.content.content_text_only());
-                    previous_stuff.push_str("\n\n");
-                }
-                "context_file" => {
-                    let context_files: Vec<ContextFile> = serde_json::from_str(&message.content.content_text_only())
-                        .map_err(|e| format!("Failed to decode context_files JSON: {:?}", e))?;
-                    for context_file in context_files {
-                        previous_stuff.push_str("📎");
-                        previous_stuff.push_str(&context_file.file_name);
-                        previous_stuff.push_str("\n```\n");
-                        previous_stuff.push_str(&context_file.file_content);
-                        previous_stuff.push_str("\n```\n\n");
-                    }
-                }
-                "tool" => {
-                    previous_stuff.push_str("📎:\n");
-                    previous_stuff.push_str(&message.content.content_text_only());
-                    previous_stuff.push_str("\n\n");
-                }
-                _ => {
-                    tracing::error!("unknown role in message: {:?}, skipped", message);
-                }
-            }
-        }
-        
-        let msg = format!("Problem:\n{problem_statement}\n\nContext:\n{previous_stuff}");
-        tracing::info!("thinking request:\n{}", msg);
+        let prompt = _make_prompt(ccx.clone(), &subchat_params, &problem_statement, &external_messages).await?;
+        tracing::info!("thinking prompt:\n{}", prompt);
 
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
@@ -98,7 +138,7 @@ impl Tool for ToolDeepThinking {
         let model_says: Vec<ChatMessage> = subchat_single(
             ccx_subchat.clone(),
             subchat_params.subchat_model.as_str(),
-            vec![ChatMessage::new("user".to_string(), msg)],
+            vec![ChatMessage::new("user".to_string(), prompt)],
             vec![],
             None,
             false,

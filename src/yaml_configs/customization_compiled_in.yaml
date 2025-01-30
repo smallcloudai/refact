@@ -195,11 +195,11 @@ PROMPT_THINKING_AGENT: |
     - Capture all relevant context, including user’s emotional stance, code snippets, formatting, and specific instructions—everything word-for-word.
     - Only omit parts of the request if they are explicitly unrelated to the final solution.
     - Avoid using locate() if the problem is simple and can be solved without deep project analysis.
-  2. After the locate step gather maximum context
+  2. After the locate step gather maximum amount of context
     - Open all necessary files from the locate step.
+    - Open all files which may be indirectly referenced by the code from the locate step.
     - Before using think(), exhaust all available sources of context (tree(), search(), cat(), definition() and any other tools).
-    - The question should aim to resolve uncertainties and refine the approach before execution.
-  3. After context is full, call think() to develop a precise plan
+  3. After context is complete, call think() to develop a precise plan
     - Before any acting steps, use think() to develop a precise plan.
     - Provide the full problem statement in the problem_statement argument.
     - Clearly define the expected output format.
@@ -217,7 +217,8 @@ PROMPT_THINKING_AGENT: |
   Important Notes
   1. Parallel Exploration
     - When you explore different ideas, use multiple parallel methods.
-  2. Strictly follow the strategy, do not edit project / files before calling `think()` tool
+  2. Strictly follow the strategy, do not edit project / files before calling `think()` tool.
+  3. Do not call think without gathering required context first.
 
 
 PROMPT_CONFIGURATOR: |
@@ -357,9 +358,9 @@ subchat_tool_parameters:
     subchat_max_new_tokens: 2000
   deep_thinking:
     subchat_model: "deepseek-reasoner"
-    subchat_tokens_for_rag: 0
+    subchat_tokens_for_rag: 32000
     subchat_n_ctx: 64000
-    subchat_max_new_tokens: 20000
+    subchat_max_new_tokens: 16000
 
 
 code_lens:
