@@ -60,7 +60,7 @@ PROMPT_PINS: |
      - For multiple symbol changes, use `📍SECTION_EDIT`.
      - Include context lines above and below your changes for clarity.
      - Avoid rewriting the entire file if only a few edits are needed.
-     - If the `apply_tickets` tool is available, call it AFTER creating the code block to apply changes and then assess the resulting diff.
+     - If the `apply_ticket` tool is available, call it AFTER creating the code block to apply changes and then assess the resulting diff.
      - Avoid being lazy when creating the edit blocks - copy all necessary unchanged lines as they are
   5. 📍-notation format examples
   - Rewriting a single symbol:
@@ -167,9 +167,7 @@ PROMPT_AGENTIC_TOOLS: |
   2. If the user’s question is related to the project
     - First, call knowledge() for relevant information and best practices.
   3. Making Changes
-    - If a solution requires file changes, write each change using 📍-notation and then call apply_tickets() to apply it.
-    - Avoid writing many 📍-notations in a single message (due to the limited context size). Call apply_tickets() after each 📍-notation.
-    - Separate multiple tickets (changes) with commas if they are related to a single file.
+    - If a solution requires file changes, write each change using 📍-notation and then call apply_ticket() in the same order to apply each of them.
 
   Important Notes
   1. Parallel Exploration
@@ -254,7 +252,7 @@ PROMPT_CONFIGURATOR: |
   - Write a markdown table that has 2 columns, key parameters on lhs, and values you were able to derive from the project (or just reasonable defaults) on rhs
   - Write 1 paragraph explanation of what you are about to do
   - Ask the user if they want to change anything, make sure you ask a question explicitly, and end with a question mark
-  - Write updated configs using 📍REPLACE_FILE and apply_tickets() don't do it unless you have permission from the user!
+  - Write updated configs using 📍REPLACE_FILE and apply_ticket() don't do it unless you have permission from the user!
   - When changing configuration for a tool, finally test the tool and report if it's working
 
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
@@ -352,7 +350,7 @@ system_prompts:
 
 
 subchat_tool_parameters:
-  apply_tickets:
+  apply_ticket:
     subchat_model: "gpt-4o-mini"
     subchat_n_ctx: 64000
     subchat_temperature: 0.0

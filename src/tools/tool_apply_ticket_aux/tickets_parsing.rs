@@ -11,7 +11,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::call_validation::ChatMessage;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_apply_tickets_aux::postprocessing_utils::does_doc_have_symbol;
+use crate::tools::tool_apply_ticket_aux::postprocessing_utils::does_doc_have_symbol;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PatchAction {
@@ -55,8 +55,8 @@ pub struct TicketToApply {
     pub is_truncated: bool
 }
 
-pub fn good_error_text(reason: &str, tickets: &Vec<String>, resolution: Option<String>) -> (String, Option<String>) {
-    let text = format!("Couldn't apply tickets: '{}'.\nReason: {reason}", tickets.join(", "));
+pub fn good_error_text(reason: &str, ticket: &String, resolution: Option<String>) -> (String, Option<String>) {
+    let text = format!("Couldn't apply the ticket: '{}'.\nReason: {reason}", ticket);
     if let Some(resolution) = resolution {
         let cd_format = format!("💿 {resolution}");
         return (text, Some(cd_format))
@@ -273,12 +273,12 @@ pub async fn parse_tickets(gcx: Arc<ARwLock<GlobalContext>>, content: &str, mess
 pub async fn get_tickets_from_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ChatMessage>,
-    explanation_mb: Option<String>
+    location_hints_mb: Option<String>
 ) -> HashMap<String, TicketToApply> {
     let mut tickets: HashMap<String, TicketToApply> = HashMap::new();
     for (idx, message) in messages.iter().enumerate().filter(|(_, x)| x.role == "assistant") {
         for mut ticket in parse_tickets(gcx.clone(), &message.content.content_text_only(), idx).await.into_iter() {
-            if let Some(explanation) = &explanation_mb {
+            if let Some(explanation) = &location_hints_mb {
                 ticket.hint_message = explanation.clone();
             }
             if !ticket.is_truncated {
@@ -289,19 +289,17 @@ pub async fn get_tickets_from_messages(
     tickets
 }
 
-pub async fn validate_and_correct_tickets(
+pub async fn validate_and_correct_ticket(
     gcx: Arc<ARwLock<GlobalContext>>,
-    ticket_ids: Vec<String>,
-    all_tickets_from_above: HashMap<String, TicketToApply>,
-) -> Result<Vec<TicketToApply>, (String, Option<String>)> {
-    let mut active_tickets = ticket_ids.iter().map(|t| all_tickets_from_above.get(t).cloned()
+    ticket_id: String,
+    all_tickets_from_above: &HashMap<String, TicketToApply>,
+) -> Result<TicketToApply, (String, Option<String>)> {
+    let mut ticket = all_tickets_from_above.get(&ticket_id).cloned()
         .ok_or(good_error_text(
-            &format!("No code block found for the ticket {:?}, did you forget to write it using 📍-notation?", t),
-            &ticket_ids,
+            "No code block found, did you forget to write it using 📍-notation?",
+            &ticket_id,
             Some("Write the code you want to apply using 📍-notation. Do not prompt user. Follow the system prompt.".to_string()),
-        ))).collect::<Result<Vec<_>, _>>()?;
-    for ticket in active_tickets.iter_mut() {
-        correct_and_validate_active_ticket(gcx.clone(), ticket).await.map_err(|e| good_error_text(&e, &ticket_ids, None))?;
-    }
-    Ok(active_tickets)
+        ))?;
+    correct_and_validate_active_ticket(gcx.clone(), &mut ticket).await.map_err(|e| good_error_text(&e, &ticket_id, None))?;
+    Ok(ticket)
 }

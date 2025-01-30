@@ -4,10 +4,10 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::DiffChunk;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_apply_tickets_aux::diff_structs::chunks_from_diffs;
-use crate::tools::tool_apply_tickets_aux::fs_utils::read_file;
-use crate::tools::tool_apply_tickets_aux::postprocessing_utils::{minimal_common_indent, place_indent};
-use crate::tools::tool_apply_tickets_aux::tickets_parsing::TicketToApply;
+use crate::tools::tool_apply_ticket_aux::diff_structs::chunks_from_diffs;
+use crate::tools::tool_apply_ticket_aux::fs_utils::read_file;
+use crate::tools::tool_apply_ticket_aux::postprocessing_utils::{minimal_common_indent, place_indent};
+use crate::tools::tool_apply_ticket_aux::tickets_parsing::TicketToApply;
 
 pub async fn full_rewrite_diff(
     gcx: Arc<ARwLock<GlobalContext>>,

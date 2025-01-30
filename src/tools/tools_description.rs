@@ -130,7 +130,7 @@ pub async fn tools_merged_and_filtered(
         ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
-        ("apply_tickets".to_string(), Box::new(crate::tools::tool_apply_tickets::ToolPatch::new()) as Box<dyn Tool + Send>),
+        ("apply_ticket".to_string(), Box::new(crate::tools::tool_apply_ticket::ToolPatch::new()) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
@@ -262,7 +262,7 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "apply_tickets"
+  - name: "apply_ticket"
     agentic: true
     description: |
       The function to apply changes from the existing 📍-notation edit blocks in the provided order.
@@ -271,9 +271,9 @@ tools:
       - name: "path"
         type: "string"
         description: "Absolute path to the file to change."
-      - name: "tickets"
+      - name: "ticket"
         type: "string"
-        description: "Use 3-digit tickets comma separated to refer to the changes within a single file"
+        description: "3-digit ticket"
       - name: "location_hints"
         type: "string"
         description: "Location within the file where changes should be applied, any necessary code removals, and whether additional imports are required"
@@ -351,7 +351,7 @@ tools:
     parameters:
       - name: "im_going_to_use_tools"
         type: "string"
-        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, apply_tickets"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, apply_ticket"
       - name: "im_going_to_apply_to"
         type: "string"
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"

@@ -11,13 +11,13 @@ use crate::cached_tokenizers::cached_tokenizer;
 use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk, SubchatParameters};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::subchat::subchat_single;
-use crate::tools::tool_apply_tickets_aux::fs_utils::read_file;
-use crate::tools::tool_apply_tickets_aux::model_based_edit::replace_file_parser::WholeFileParser;
-use crate::tools::tool_apply_tickets_aux::model_based_edit::section_edit_parser::{
+use crate::tools::tool_apply_ticket_aux::fs_utils::read_file;
+use crate::tools::tool_apply_ticket_aux::model_based_edit::replace_file_parser::WholeFileParser;
+use crate::tools::tool_apply_ticket_aux::model_based_edit::section_edit_parser::{
     section_edit_choose_correct_chunk, BlocksOfCodeParser,
 };
-use crate::tools::tool_apply_tickets_aux::postprocessing_utils::postprocess_diff_chunks;
-use crate::tools::tool_apply_tickets_aux::tickets_parsing::TicketToApply;
+use crate::tools::tool_apply_ticket_aux::postprocessing_utils::postprocess_diff_chunks;
+use crate::tools::tool_apply_ticket_aux::tickets_parsing::TicketToApply;
 
 const DEBUG: bool = true;
 
@@ -39,21 +39,19 @@ async fn make_chat_history(
     model: &str,
     max_tokens: usize,
     max_new_tokens: usize,
-    tickets: Vec<TicketToApply>,
+    ticket: &TicketToApply,
     use_whole_file_parser: bool,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let tokenizer_arc = load_tokenizer(gcx.clone(), model).await?;
 
     let max_tokens = max_tokens.saturating_sub(max_new_tokens);
-
-    let ticket0 = tickets.get(0).expect("no tickets provided");
-    let context_file = read_file(gcx.clone(), ticket0.filename.clone())
+    let context_file = read_file(gcx.clone(), ticket.filename.clone())
         .await
         .map_err(|e| {
             format!(
                 "Cannot read file to modify: {}.\nERROR: {}",
-                ticket0.filename, e
+                ticket.filename, e
             )
         })?;
 
@@ -72,20 +70,18 @@ async fn make_chat_history(
         )
         .to_string(),
     ));
-    for ticket in tickets {
-        messages.push(ChatMessage::new("user".to_string(), if ticket.hint_message.is_empty() {
-            format!(
-                "Modified section:\n```\n{}\n```",
-                ticket.code
-            )
-        } else {
-            format!(
-                "The hints (FOLLOW them to produce correct changes!):\n```\n{}\n```\nModified section:\n```\n{}\n```",
-                ticket.hint_message,
-                ticket.code
-            )
-        }));
-    }
+    messages.push(ChatMessage::new("user".to_string(), if ticket.hint_message.is_empty() {
+        format!(
+            "Modified section:\n```\n{}\n```",
+            ticket.code
+        )
+    } else {
+        format!(
+            "The hints (FOLLOW them to produce correct changes!):\n```\n{}\n```\nModified section:\n```\n{}\n```",
+            ticket.hint_message,
+            ticket.code
+        )
+    }));
 
     let tokens = messages
         .iter()
@@ -98,7 +94,7 @@ async fn make_chat_history(
         .sum::<usize>();
     if tokens > max_tokens {
         return Err(format!(
-            "the provided file {} is too large for the apply_tickets tool: {tokens} > {max_tokens}",
+            "the provided file {} is too large for the apply_ticket tool: {tokens} > {max_tokens}",
             context_file.file_name,
         ));
     }
@@ -210,7 +206,7 @@ pub async fn get_valid_chunks_from_messages(
 }
 pub async fn execute_blocks_of_code_patch(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tickets: Vec<TicketToApply>,
+    ticket: &TicketToApply,
     model: &str,
     max_tokens: usize,
     temperature: Option<f32>,
@@ -218,19 +214,13 @@ pub async fn execute_blocks_of_code_patch(
     tool_call_id: &String,
     usage: &mut ChatUsage,
 ) -> Result<Vec<Vec<DiffChunk>>, (String, Option<String>)> {
-    let filename = PathBuf::from(
-        tickets
-            .get(0)
-            .expect("no tickets provided")
-            .filename
-            .clone(),
-    );
+    let filename = PathBuf::from(&ticket.filename);
     let mut messages = make_chat_history(
         ccx.clone(),
         model,
         max_tokens,
         max_new_tokens,
-        tickets,
+        ticket,
         false,
     )
     .await
@@ -250,7 +240,7 @@ pub async fn execute_blocks_of_code_patch(
         true,
         Some(usage),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-apply_tickets")),
+        Some(format!("{log_prefix}-apply_ticket")),
     )
     .await
     .map_err(|e| (e, None))?;
@@ -262,7 +252,7 @@ pub async fn execute_blocks_of_code_patch(
         .cloned()
         .collect::<Vec<_>>();
     if DEBUG {
-        info!("apply_tickets responses: ");
+        info!("apply_ticket responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
             info!("choice {idx}:\n{}", m.content.content_text_only());
         }
@@ -319,7 +309,7 @@ pub async fn execute_blocks_of_code_patch(
         true,
         Some(usage),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-apply_tickets")),
+        Some(format!("{log_prefix}-apply_ticket")),
     )
     .await
     .map_err(|e| (e, None))?;
@@ -330,7 +320,7 @@ pub async fn execute_blocks_of_code_patch(
         .cloned()
         .collect::<Vec<_>>();
     if DEBUG {
-        info!("follow-up apply_tickets responses: ");
+        info!("follow-up apply_ticket responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
             info!("choice {idx}:\n{}", m.content.content_text_only());
         }
@@ -353,26 +343,20 @@ pub async fn execute_blocks_of_code_patch(
 
 pub async fn execute_whole_file_patch(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tickets: Vec<TicketToApply>,
+    ticket: &TicketToApply,
     model: &str,
     max_tokens: usize,
     max_new_tokens: usize,
     tool_call_id: &String,
     usage: &mut ChatUsage,
 ) -> Result<Vec<Vec<DiffChunk>>, (String, Option<String>)> {
-    let filename = PathBuf::from(
-        tickets
-            .get(0)
-            .expect("no tickets provided")
-            .filename
-            .clone(),
-    );
+    let filename = PathBuf::from(&ticket.filename);
     let messages = make_chat_history(
         ccx.clone(),
         model,
         max_tokens,
         max_new_tokens,
-        tickets,
+        ticket,
         true,
     )
     .await
@@ -392,7 +376,7 @@ pub async fn execute_whole_file_patch(
         true,
         Some(usage),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-apply_tickets")),
+        Some(format!("{log_prefix}-apply_ticket")),
     )
     .await
     .map_err(|e| (e, None))?;
@@ -403,7 +387,7 @@ pub async fn execute_whole_file_patch(
         .cloned()
         .collect::<Vec<_>>();
     if DEBUG {
-        info!("apply_tickets responses: ");
+        info!("apply_ticket responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
             info!("choice {idx}:\n{}", m.content.content_text_only());
         }
@@ -425,7 +409,7 @@ pub async fn execute_whole_file_patch(
 
 pub async fn section_edit_tickets_to_chunks(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
-    tickets: Vec<TicketToApply>,
+    ticket: &TicketToApply,
     params: &SubchatParameters,
     tool_call_id: &String,
     usage: &mut ChatUsage,
@@ -433,7 +417,7 @@ pub async fn section_edit_tickets_to_chunks(
     let gcx = ccx_subchat.lock().await.global_context.clone();
     let mut all_chunks = match execute_blocks_of_code_patch(
         ccx_subchat.clone(),
-        tickets.clone(),
+        ticket,
         &params.subchat_model,
         params.subchat_n_ctx,
         params.subchat_temperature,
@@ -449,7 +433,7 @@ pub async fn section_edit_tickets_to_chunks(
             warn!("trying a fallback `whole_file_rewrite` prompt");
             execute_whole_file_patch(
                 ccx_subchat.clone(),
-                tickets,
+                ticket,
                 &params.subchat_model,
                 params.subchat_n_ctx,
                 params.subchat_max_new_tokens,

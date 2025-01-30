@@ -10,7 +10,7 @@ use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tool_apply_tickets_aux::tickets_parsing::get_tickets_from_messages;
+use crate::tools::tool_apply_ticket_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
@@ -74,7 +74,7 @@ async fn trunc_pinned_message_link(
     chat_mode: &ChatMode,
 ) -> Option<String> {
     if let Some(m) = messages.last() {
-        let tickets = crate::tools::tool_apply_tickets_aux::tickets_parsing::parse_tickets(
+        let tickets = crate::tools::tool_apply_ticket_aux::tickets_parsing::parse_tickets(
             gcx.clone(), &m.content.content_text_only(), messages.len() - 1,
         ).await;
         
@@ -87,7 +87,7 @@ async fn trunc_pinned_message_link(
         match chat_mode {
             ChatMode::AGENT => {
                 if !truncated_ids.is_empty() {
-                    Some(format!("Regenerate truncated {truncated_ids} 📍-tickets and continue to generate others (if needed). Then use apply_tickets() to apply them"))
+                    Some(format!("Regenerate truncated {truncated_ids} 📍-tickets and continue to generate others (if needed). Then use apply_ticket() to apply them"))
                 } else {
                     None
                 }
@@ -110,7 +110,7 @@ async fn apply_patch_promptly_link(
     messages: &Vec<ChatMessage>,
 ) -> Option<String> {
     if let Some(m) = messages.last() {
-        let tickets = crate::tools::tool_apply_tickets_aux::tickets_parsing::parse_tickets(
+        let tickets = crate::tools::tool_apply_ticket_aux::tickets_parsing::parse_tickets(
             gcx.clone(), &m.content.content_text_only(), messages.len() - 1,
         ).await;
 
@@ -121,7 +121,7 @@ async fn apply_patch_promptly_link(
             .map(|x| x.id.to_string())
             .join(", ");
         if !has_truncated_tickets && !ids_to_apply.is_empty() {
-            Some(format!("Use apply_tickets() to apply tickets: {ids_to_apply}"))
+            Some(format!("Use apply_ticket() to apply tickets: {ids_to_apply}"))
         } else {
             None
         }

@@ -4,7 +4,6 @@ use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hashbrown::HashMap;
 use hyper::Body;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -13,17 +12,17 @@ use crate::custom_error::ScratchError;
 use crate::diffs::{ApplyDiffResult, correct_and_validate_chunks, read_files_n_apply_diff_chunks, unwrap_diff_apply_outputs, ApplyDiffOutput, ApplyDiffUnwrapped};
 use crate::global_context::GlobalContext;
 use crate::http::routers::v1::chat::deserialize_messages_from_post;
-use crate::tools::tool_apply_tickets_aux::tickets_parsing::{correct_and_validate_active_ticket, validate_and_correct_tickets, get_tickets_from_messages, TicketToApply};
-use crate::tools::tool_apply_tickets::process_tickets;
-use crate::tools::tool_apply_tickets_aux::diff_apply::diff_apply;
-use crate::tools::tool_apply_tickets_aux::postprocessing_utils::fill_out_already_applied_status;
+use crate::tools::tool_apply_ticket_aux::tickets_parsing::{correct_and_validate_active_ticket, validate_and_correct_ticket, get_tickets_from_messages, TicketToApply};
+use crate::tools::tool_apply_ticket::process_ticket;
+use crate::tools::tool_apply_ticket_aux::diff_apply::diff_apply;
+use crate::tools::tool_apply_ticket_aux::postprocessing_utils::fill_out_already_applied_status;
 use crate::tools::tools_execute::unwrap_subchat_params;
 
 
 #[derive(Deserialize)]
 pub struct PatchPost {
     pub messages: Vec<serde_json::Value>,
-    pub ticket_ids: Vec<String>,
+    pub ticket_id: String,
 }
 
 #[derive(Deserialize)]
@@ -72,11 +71,7 @@ pub async fn handle_v1_apply_selected_ticket(
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<PatchPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    if post.ticket_ids.is_empty() {
-        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "'ticket_ids' shouldn't be empty".to_string()));
-    }
     let messages = deserialize_messages_from_post(&post.messages)?;
-
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
         8096,
@@ -86,7 +81,7 @@ pub async fn handle_v1_apply_selected_ticket(
         "".to_string(),
         false,
     ).await));
-    let params = unwrap_subchat_params(ccx.clone(), "apply_tickets").await.map_err(|e| {
+    let params = unwrap_subchat_params(ccx.clone(), "apply_ticket").await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))
     })?;
     {
@@ -94,32 +89,19 @@ pub async fn handle_v1_apply_selected_ticket(
         ccx_lock.n_ctx = params.subchat_n_ctx;
     }
 
-    let tickets = get_tickets_from_messages(global_context.clone(), &messages, None).await;
-    let mut correct_tickets = validate_and_correct_tickets(
-        global_context.clone(), post.ticket_ids.clone(), tickets.clone(),
-    ).await.map_err(|(e, _)| {
-        ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
-    })?;
+    let all_tickets = get_tickets_from_messages(global_context.clone(), &messages, None).await;
+    let mut ticket = validate_and_correct_ticket(
+        global_context.clone(), post.ticket_id, &all_tickets
+    ).await.map_err(|(e, _)| { ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e) })?;
 
     let mut usage = ChatUsage { ..Default::default() };
-    let mut res;
-    loop {
-        let diff_chunks = process_tickets(
-            ccx.clone(),
-            &mut correct_tickets,
-            post.ticket_ids.clone(),
-            &params,
-            &"patch_123".to_string(),
-            &mut usage,
-        ).await;
-        res = diff_chunks;
-        if correct_tickets.is_empty() {
-            break;
-        }
-    }
-    let mut diff_chunks = res.map_err(|(e, _)|
-        ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
-    )?;
+    let mut diff_chunks = process_ticket(
+        ccx.clone(),
+        &mut ticket,
+        &params,
+        &"apply_ticket".to_string(),
+        &mut usage,
+    ).await.map_err(|(e, _)| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
     correct_and_validate_chunks(global_context.clone(), &mut diff_chunks).await
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
     let (mut results, outputs) = read_files_n_apply_diff_chunks(
@@ -162,7 +144,7 @@ pub async fn handle_v1_apply_all_tickets(
         "".to_string(),
         false,
     ).await));
-    let params = unwrap_subchat_params(ccx.clone(), "apply_tickets").await.map_err(|e| {
+    let params = unwrap_subchat_params(ccx.clone(), "apply_ticket").await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))
     })?;
     {
@@ -190,24 +172,14 @@ pub async fn handle_v1_apply_all_tickets(
 
     let mut usage = ChatUsage { ..Default::default() };
     let mut all_diff_chunks = vec![];
-    for ticket in filename_by_ticket.into_values() {
-        let mut tickets = vec![ticket];
-        let indices = tickets.iter().map(|ticket| ticket.id.clone()).collect::<Vec<_>>();
-
-        let diff_chunks_maybe = process_tickets(
+    for mut ticket in filename_by_ticket.into_values() {
+        let diff_chunks_maybe = process_ticket(
             ccx.clone(),
-            &mut tickets,
-            indices,
+            &mut ticket,
             &params,
-            &"patch_123".to_string(),
+            &"apply_ticket".to_string(),
             &mut usage,
         ).await;
-        if !tickets.is_empty() {
-            let bad_ticket_ids = tickets.iter().map(|ticket| ticket.id.clone()).join(", ");
-            return Err(ScratchError::new(
-                StatusCode::UNPROCESSABLE_ENTITY, format!("Couldn't process some of the tickets: {bad_ticket_ids}"
-                )))
-        }
         let mut diff_chunks = diff_chunks_maybe.map_err(|(e, _)|
             ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)
         )?;
@@ -216,7 +188,6 @@ pub async fn handle_v1_apply_all_tickets(
         )?;
         all_diff_chunks.extend(diff_chunks);
     }
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
