@@ -54,6 +54,7 @@ pub struct ChatPassthrough {
     pub t: HasTokenizerAndEot,
     pub post: ChatPost,
     pub messages: Vec<ChatMessage>,
+    pub prepend_system_prompt: bool,
     pub has_rag_results: HasRagResults,
     pub delta_sender: DeltaSender,
     pub allow_at: bool,
@@ -66,6 +67,7 @@ impl ChatPassthrough {
         tokenizer: Arc<StdRwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
+        prepend_system_prompt: bool,
         allow_at: bool,
         supports_tools: bool,
         supports_clicks: bool,
@@ -74,6 +76,7 @@ impl ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
             messages: messages.clone(),
+            prepend_system_prompt,
             has_rag_results: HasRagResults::new(),
             delta_sender: DeltaSender::new(),
             allow_at,
@@ -106,7 +109,11 @@ impl ScratchpadAbstract for ChatPassthrough {
         let style = self.post.style.clone();
         let mut at_tools = tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?;
 
-        let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await;
+        let messages = if self.prepend_system_prompt {
+            prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
+        } else {
+            self.messages.clone()
+        };
         let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
             run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else if self.allow_at {
@@ -127,7 +134,9 @@ impl ScratchpadAbstract for ChatPassthrough {
             vec![]
         });
 
-        assert_eq!(limited_msgs.first().unwrap().role, "system");
+        if self.prepend_system_prompt {
+            assert_eq!(limited_msgs.first().unwrap().role, "system");
+        }
         let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
 
         let mut big_json = serde_json::json!({

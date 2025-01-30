@@ -234,6 +234,8 @@ pub async fn generate_commit_message_by_diff(
         None,
         1,
         None,
+        true,
+        None,
         None,
         None,
     )

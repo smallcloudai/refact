@@ -32,6 +32,7 @@ pub async fn get_default_system_prompt(
         ChatMode::EXPLORE => "exploration_tools",
         ChatMode::AGENT => "agentic_tools",
         ChatMode::CONFIGURE => "configurator",
+        ChatMode::THINKING_AGENT => "thinking_agent",
         ChatMode::PROJECT_SUMMARY => "project_summary",
     };
     let system_prompt = tconfig.system_prompts.get(prompt_key).map_or_else(|| {
@@ -187,7 +188,7 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
     }
 
     match chat_meta.chat_mode {
-        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
+        ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::THINKING_AGENT | ChatMode::NO_TOOLS => {
             let system_message_content = system_prompt_add_workspace_info(gcx.clone(),
                 &get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await
             ).await;

@@ -24,15 +24,30 @@ pub struct CodeCompletionInputs {
     pub multiline: bool,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReasoningEffort {
+    Low,
+    Medium,
+    High,
+}
+
+impl Default for ReasoningEffort {
+    fn default() -> Self {
+        ReasoningEffort::Medium
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SamplingParameters {
     #[serde(default)]
-    pub max_new_tokens: usize,
+    pub max_new_tokens: usize,  // TODO: rename it to `max_completion_tokens` everywhere, including chat-js
     pub temperature: Option<f32>,
     pub top_p: Option<f32>,
     #[serde(default)]
     pub stop: Vec<String>,
     pub n: Option<usize>,
+    pub reasoning_effort: Option<ReasoningEffort>
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -222,6 +237,7 @@ pub enum ChatMode {
     AGENT,
     CONFIGURE,
     PROJECT_SUMMARY,
+    THINKING_AGENT,
 }
 
 impl Default for ChatMode {
@@ -308,7 +324,8 @@ mod tests {
                 temperature: Some(0.1),
                 top_p: None,
                 stop: vec![],
-                n: None
+                n: None,
+                reasoning_effort: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -339,6 +356,7 @@ mod tests {
                 top_p: None,
                 stop: vec![],
                 n: None,
+                reasoning_effort: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -369,6 +387,7 @@ mod tests {
                 top_p: None,
                 stop: vec![],
                 n: None,
+                reasoning_effort: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -399,6 +418,7 @@ mod tests {
                 top_p: None,
                 stop: vec![],
                 n: None,
+                reasoning_effort: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),

@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use crate::subchat::subchat_single;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ReasoningEffort};
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
@@ -26,10 +26,10 @@ impl Tool for ToolDeepThinking {
         let mut usage_collector = ChatUsage { ..Default::default() };
         let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
-        let what_to_think_about = match args.get("what_to_think_about") {
+        let problem_statement = match args.get("problem_statement") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `what_to_think_about` is not a string: {:?}", v)),
-            None => return Err("Missing argument `what_to_think_about`".to_string())
+            Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
+            None => return Err("Missing argument `problem_statement`".to_string())
         };
 
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_thinking").await?;
@@ -41,13 +41,16 @@ impl Tool for ToolDeepThinking {
         let mut previous_stuff = String::new();
         for message in add_those_up {
             match message.role.as_str() {
+                "system" => { 
+                    // just skipping it
+                }            
                 "user" => {
-                    previous_stuff.push_str("👤 says:\n");
+                    previous_stuff.push_str("👤:\n");
                     previous_stuff.push_str(&message.content.content_text_only());
                     previous_stuff.push_str("\n\n");
                 }
                 "assistant" => {
-                    previous_stuff.push_str("🤖 says:\n");
+                    previous_stuff.push_str("🤖:\n");
                     previous_stuff.push_str(&message.content.content_text_only());
                     previous_stuff.push_str("\n\n");
                 }
@@ -55,23 +58,26 @@ impl Tool for ToolDeepThinking {
                     let context_files: Vec<ContextFile> = serde_json::from_str(&message.content.content_text_only())
                         .map_err(|e| format!("Failed to decode context_files JSON: {:?}", e))?;
                     for context_file in context_files {
-                        previous_stuff.push_str("📎 ");
+                        previous_stuff.push_str("📎");
                         previous_stuff.push_str(&context_file.file_name);
                         previous_stuff.push_str("\n```\n");
                         previous_stuff.push_str(&context_file.file_content);
                         previous_stuff.push_str("\n```\n\n");
                     }
                 }
+                "tool" => {
+                    previous_stuff.push_str("📎:\n");
+                    previous_stuff.push_str(&message.content.content_text_only());
+                    previous_stuff.push_str("\n\n");
+                }
                 _ => {
                     tracing::error!("unknown role in message: {:?}, skipped", message);
                 }
             }
         }
-        tracing::info!("previous_stuff:\n{}", previous_stuff);
-
-        let mut msgs = vec![];
-        msgs.push(ChatMessage::new("user".to_string(), previous_stuff));
-        msgs.push(ChatMessage::new("user".to_string(), what_to_think_about));
+        
+        let msg = format!("Problem:\n{problem_statement}\n\nContext:\n{previous_stuff}");
+        tracing::info!("thinking request:\n{}", msg);
 
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
@@ -92,13 +98,15 @@ impl Tool for ToolDeepThinking {
         let model_says: Vec<ChatMessage> = subchat_single(
             ccx_subchat.clone(),
             subchat_params.subchat_model.as_str(),
-            msgs,
+            vec![ChatMessage::new("user".to_string(), msg)],
             vec![],
             None,
             false,
-            None,
+            Some(1.0),
             Some(subchat_params.subchat_max_new_tokens),
             1,
+            None,  // TODO: pass ReasoningEffort when is supported in litellm
+            false,
             Some(&mut usage_collector),
             Some(tool_call_id.clone()),
             Some(format!("{log_prefix}-deep-thinking")),
@@ -108,8 +116,7 @@ impl Tool for ToolDeepThinking {
             .ok_or("No messages from model")?
             .content
             .content_text_only();
-        tracing::info!("deep thinking response1:\n{:?}", model_says.last());
-        tracing::info!("deep thinking response2:\n{}", final_message);
+        tracing::info!("deep thinking response:\n{}", final_message);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
@@ -120,15 +127,6 @@ impl Tool for ToolDeepThinking {
             usage: Some(usage_collector),
             ..Default::default()
         }));
-
-        // results.push(ContextEnum::ChatMessage(ChatMessage {
-        //     role: "cd_instruction".to_string(),
-        //     content: ChatContent::SimpleText(cd_instruction),
-        //     tool_calls: None,
-        //     tool_call_id: "".to_string(),
-        //     usage: None,
-        //     ..Default::default()
-        // }));
 
         Ok((false, results))
     }

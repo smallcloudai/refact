@@ -17,39 +17,40 @@ use crate::integrations::docker::docker_container_manager::docker_container_chec
 
 
 pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
+    fn filter_out_tools(current_tools: &Vec<Value>, blacklist: &Vec<&str>) -> Vec<Value> {
+        current_tools
+            .into_iter()
+            .filter(|x| {
+                x.get("function")
+                    .and_then(|x| x.get("name"))
+                    .and_then(|tool_name| tool_name.as_str())
+                    .map(|tool_name_str| !blacklist.contains(&tool_name_str))
+                    .unwrap_or(true)
+            })
+            .cloned()
+            .collect()
+    }
+    fn keep_tools(current_tools: &Vec<Value>, whitelist: &Vec<&str>) -> Vec<Value> {
+        current_tools
+            .into_iter()
+            .filter(|x| {
+                x.get("function")
+                    .and_then(|x| x.get("name"))
+                    .and_then(|tool_name| tool_name.as_str())
+                    .map(|tool_name_str| whitelist.contains(&tool_name_str))
+                    .unwrap_or(false)
+            })
+            .cloned()
+            .collect()
+    }
     match chat_mode {
         ChatMode::NO_TOOLS => {
             vec![]
         },
-        ChatMode::EXPLORE | ChatMode::AGENT => {
-            current_tools
-        },
-        ChatMode::CONFIGURE => {
-            let blacklist = vec!["tree", "locate", "knowledge", "search"];
-            current_tools
-                .into_iter()
-                .filter(|x| {
-                    x.get("function")
-                        .and_then(|x| x.get("name"))
-                        .and_then(|tool_name| tool_name.as_str())
-                        .map(|tool_name_str| !blacklist.contains(&tool_name_str))
-                        .unwrap_or(true)
-                })
-                .collect()
-        },
-        ChatMode::PROJECT_SUMMARY => {
-            let whitelist = vec!["cat", "tree", "bash"];
-            current_tools
-                .into_iter()
-                .filter(|x| {
-                    x.get("function")
-                        .and_then(|x| x.get("name"))
-                        .and_then(|tool_name| tool_name.as_str())
-                        .map(|tool_name_str| whitelist.contains(&tool_name_str))
-                        .unwrap_or(false)
-                })
-                .collect()
-        },
+        ChatMode::EXPLORE | ChatMode::AGENT => filter_out_tools(&current_tools, &vec!["think"]),
+        ChatMode::THINKING_AGENT => filter_out_tools(&current_tools, &vec!["knowledge"]),
+        ChatMode::CONFIGURE => filter_out_tools(&current_tools, &vec!["tree", "locate", "knowledge", "search"]),
+        ChatMode::PROJECT_SUMMARY => keep_tools(&current_tools, &vec!["cat", "tree", "bash"]),
     }
 }
 
@@ -230,6 +231,7 @@ async fn _chat(
         model_name.clone(),
         &mut chat_post,
         &messages,
+        true,
         &scratchpad_name,
         &scratchpad_patch,
         allow_at,

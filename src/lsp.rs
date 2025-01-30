@@ -143,6 +143,7 @@ impl LspBackend {
                 top_p: None,
                 stop: vec![],
                 n: None,
+                reasoning_effort: None
             },
             model: "".to_string(),
             scratchpad: "".to_string(),

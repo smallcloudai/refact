@@ -67,6 +67,8 @@ pub async fn generate_follow_up_message(
         None,
         1,
         None,
+        true,
+        None,
         None,
         None,
     ).await?;

@@ -74,6 +74,7 @@ pub async fn create_chat_scratchpad(
     model_name_for_tokenizer: String,
     post: &mut ChatPost,
     messages: &Vec<ChatMessage>,
+    prepend_system_prompt: bool,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
     allow_at: bool,
@@ -92,7 +93,7 @@ pub async fn create_chat_scratchpad(
         ));
     } else if scratchpad_name == "PASSTHROUGH" {
         result = Box::new(chat_passthrough::ChatPassthrough::new(
-            tokenizer_arc.clone(), post, messages, allow_at, supports_tools, supports_clicks
+            tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at, supports_tools, supports_clicks
         ));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));

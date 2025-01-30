@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::tools::tools_description::{tools_merged_and_filtered, tool_description_list_from_yaml};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall};
+use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall, ReasoningEffort};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present, is_metadata_supported};
 use crate::http::routers::v1::chat::lookup_chat_scratchpad;
 use crate::scratchpad_abstract::ScratchpadAbstract;
@@ -27,6 +27,8 @@ async fn create_chat_post_and_scratchpad(
     temperature: Option<f32>,
     max_new_tokens: usize,
     n: usize,
+    reasoning_effort: Option<ReasoningEffort>,
+    prepend_system_prompt: bool,
     tools: Option<Vec<Value>>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
@@ -57,6 +59,7 @@ async fn create_chat_post_and_scratchpad(
             top_p: None,
             stop: vec![],
             n: Some(n),
+            reasoning_effort,
         },
         model: model_name.to_string(),
         scratchpad: "".to_string(),
@@ -95,6 +98,7 @@ async fn create_chat_post_and_scratchpad(
         model_name.to_string(),
         &mut chat_post,
         &messages.into_iter().cloned().collect::<Vec<_>>(),
+        prepend_system_prompt,
         &scratchpad_name,
         &scratchpad_patch,
         false,
@@ -269,6 +273,8 @@ pub async fn subchat_single(
     temperature: Option<f32>,
     max_new_tokens: Option<usize>,
     n: usize,
+    reasoning_effort: Option<ReasoningEffort>,
+    prepend_system_prompt: bool,
     usage_collector_mb: Option<&mut ChatUsage>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
@@ -302,6 +308,8 @@ pub async fn subchat_single(
         temperature,
         max_new_tokens,
         n,
+        reasoning_effort,
+        prepend_system_prompt,
         Some(tools),
         tool_choice.clone(),
         only_deterministic_messages,
@@ -390,6 +398,8 @@ pub async fn subchat(
                 temperature,
                 None,
                 1,
+                None,
+                true,
                 Some(&mut usage_collector),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
@@ -411,6 +421,8 @@ pub async fn subchat(
                 temperature,
                 None,
                 1,
+                None,
+                true,
                 Some(&mut usage_collector),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
@@ -428,6 +440,8 @@ pub async fn subchat(
         temperature,
         None,
         wrap_up_n,
+        None,
+        true,
         Some(&mut usage_collector),
         tx_toolid_mb.clone(),
         tx_chatid_mb.clone(),
