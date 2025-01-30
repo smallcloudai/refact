@@ -98,8 +98,6 @@ pub async fn run_tools_remotely(
     let response: ToolExecuteResponse = http_post_json(&url, &tools_execute_post).await?;
     info!("run_tools_remotely: got response: {:?}", response);
 
-    // This is equivalento to original_messages.to_vec(), we are simply reusing it
-    // to avoid cloning, since this might be big.
     let mut all_messages = tools_execute_post.messages;
     all_messages.reserve(response.messages.len());
     for msg in response.messages {
