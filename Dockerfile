@@ -41,6 +41,9 @@ RUN cd /tmp/refact-lsp \
     && cargo install --path . \
     && rm -rf /tmp/refact-lsp
 
+# to ping hf
+RUN apt-get install -y iputils-ping
+
 COPY . /tmp/app
 RUN echo "refact $(git -C /tmp/app rev-parse HEAD)" >> /refact-build-info.txt
 RUN pip install ninja
