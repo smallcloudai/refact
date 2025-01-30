@@ -64,7 +64,7 @@ impl Tool for ToolTree {
                     return Err(format!("Cannot execute tree(), '{path}' is not within the project directories."));
                 }
 
-                let indexing_everywhere = crate::files_blocklist::load_indexing_everywhere_if_needed(gcx.clone()).await;
+                let indexing_everywhere = crate::files_blocklist::reload_indexing_everywhere_if_needed(gcx.clone()).await;
                 let paths_in_dir = ls_files(&indexing_everywhere, &true_path, true).unwrap_or(vec![]);
                 construct_tree_out_of_flat_list_of_paths(&paths_in_dir)
             },

@@ -23,8 +23,32 @@ use crate::files_blocklist::{
     IndexingEverywhere,
     is_this_inside_blocklisted_dir,
     is_blocklisted,
-    load_indexing_everywhere_if_needed,
+    reload_indexing_everywhere_if_needed,
 };
+
+
+// How this works
+// --------------
+//
+// IDE Window communicates workspace folders via LSP:
+//    workspace_folder1:
+//       some_dir/
+//          vcs_root1/
+//       vcs_root2/
+//    workspace_folder2:
+//       dir_without_version/
+//          maybe_because_its_new/
+//
+// We use version control (git, hg, svn) to list files, whenever we can find it.
+// If we can't, just use built-in blocklist and recursive directory walk.
+// When a file event arrives (such as file created, file modified) we just add the file into index, because it
+// might be new (not yet in version control), but apply blocklists to avoid indexing all kinds of binary
+// files.
+// So blocklist is mainly useful to deal with file events, but sometimes you want to ignore part of your project,
+// for example some outdated code.
+// You can customize blocklist using:
+//   ~/.config/refact/indexing.yaml
+//   ~/path/to/your/project/.refact/indexing.yaml
 
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
@@ -358,6 +382,7 @@ pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf,
 async fn _ls_files_under_version_control_recursive(
     all_files: &mut Vec<PathBuf>,
     vcs_folders: &mut Vec<PathBuf>,
+    avoid_dups: &mut Vec<PathBuf>,
     indexing_everywhere: &IndexingEverywhere,
     path: PathBuf,
     allow_files_in_hidden_folders: bool,
@@ -400,6 +425,7 @@ async fn _ls_files_under_version_control_recursive(
                     }
                 }
             } else {
+                // XXX this sucks
                 let indexing_settings = indexing_everywhere.indexing_for_path(local_path.clone());
                 if check_blocklist && is_blocklisted(&indexing_settings, &local_path) {
                     blocklisted_dirs_cnt += 1;
@@ -425,6 +451,7 @@ async fn _ls_files_under_version_control_recursive(
     info!("also the loop bumped into {} blocklisted dirs", blocklisted_dirs_cnt);
 }
 
+
 pub async fn retrieve_files_in_workspace_folders(
     proj_folders: Vec<PathBuf>,
     indexing_everywhere: &IndexingEverywhere,
@@ -433,10 +460,12 @@ pub async fn retrieve_files_in_workspace_folders(
 ) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut all_files: Vec<PathBuf> = Vec::new();
     let mut vcs_folders: Vec<PathBuf> = Vec::new();
+    let mut avoid_dups: Vec<PathBuf> = Vec::new();
     for proj_folder in proj_folders {
         _ls_files_under_version_control_recursive(
             &mut all_files,
             &mut vcs_folders,
+            &mut avoid_dups,
             indexing_everywhere,
             proj_folder.clone(),
             allow_files_in_hidden_folders,
@@ -535,7 +564,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let indexing_everywhere_arc = load_indexing_everywhere_if_needed(gcx.clone()).await;
+    let indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
     let (all_files, vcs_folders) = retrieve_files_in_workspace_folders(
         folders,
         &indexing_everywhere_arc.as_ref(),
@@ -737,7 +766,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         let mut docs = vec![];
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            indexing_everywhere_arc = load_indexing_everywhere_if_needed(gcx.clone()).await;
+            indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
         } else {
             // the program is shutting down
             return;
@@ -775,7 +804,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         let mut never_mind = true;
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            indexing_everywhere_arc = load_indexing_everywhere_if_needed(gcx.clone()).await;
+            indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
         } else {
             // the program is shutting down
             return;

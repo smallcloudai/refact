@@ -114,15 +114,16 @@ pub async fn load_indexing_yaml(
     }
 }
 
-pub async fn load_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<IndexingEverywhere>
+pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<IndexingEverywhere>
 {
-    let config_dir = {
+    // Initially this is loaded in _ls_files_under_version_control_recursive()
+    let (config_dir, workspace_vcs_roots) = {
         let gcx_locked = gcx.read().await;
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         if gcx_locked.indexing_everywhere.loaded_ts + INDEXING_TOO_OLD.as_secs() > current_time {
             return gcx_locked.indexing_everywhere.clone();
         }
-        gcx_locked.config_dir.clone()
+        (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_vcs_roots.clone())
     };
 
     let indexing_everywhere = {
@@ -133,7 +134,8 @@ pub async fn load_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext>>
                 IndexingSettings::default()
             })
         };
-        let vcs_dirs = _get_vcs_dirs_copy(gcx.clone()).await;
+
+        let vcs_dirs: Vec<PathBuf> = workspace_vcs_roots.lock().unwrap().iter().cloned().collect();
         let mut vcs_indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
         for indexing_root in vcs_dirs {
             let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
@@ -185,22 +187,6 @@ pub fn is_this_inside_blocklisted_dir(indexing_settings: &IndexingSettings, path
 
 pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
     return any_glob_matches_path(&indexing_settings.blocklist, &path)
-}
-
-async fn _get_vcs_dirs_copy(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
-    let mut vcs_dirs = vec![];
-
-    let workspace_vcs_roots = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.documents_state.workspace_vcs_roots.clone()
-    };
-
-    let vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
-    for project_path in vcs_roots_locked.iter() {
-        vcs_dirs.push(project_path.clone());
-    }
-
-    vcs_dirs
 }
 
 fn _load_indexing_yaml_str(
