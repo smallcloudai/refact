@@ -126,9 +126,9 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           error_message: "",
         });
       } else if (to === "restart tour") {
-        dispatch(restart());
         dispatch(popBackTo({ name: "initial setup" }));
         dispatch(push({ name: "welcome" }));
+        dispatch(restart());
         void sendTelemetryEvent({
           scope: `restartTour`,
           success: true,

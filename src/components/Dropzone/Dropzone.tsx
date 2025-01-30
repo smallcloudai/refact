@@ -106,7 +106,7 @@ export const AttachFileButton = () => {
             <IconButton
               variant="ghost"
               size="1"
-              title="add image"
+              title="Attach images"
               disabled={inputProps.disabled}
               onClick={(event) => {
                 attachFileOnClick(event, open);

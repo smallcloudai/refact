@@ -250,7 +250,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
           />
         )}
       </PageWrapper>
-      <Tour page={pages[pages.length - 1].name} />
+      {page.name !== "welcome" && <Tour page={pages[pages.length - 1].name} />}
     </Flex>
   );
 };

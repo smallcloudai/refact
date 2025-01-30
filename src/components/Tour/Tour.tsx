@@ -54,7 +54,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
     <>
       <TourBubble
         title="Agent can accomplish tasks end to end"
-        text={`Write anything you want to do and Refact.ai Agent will\n- inspect your files\n- write the code\n- run shell commands if needed\n- apply the code in your files\n- open borwser to check if changes are correct in case of UI`}
+        text={`Write anything you want to do and Refact.ai Agent will\n- inspect your files\n- write the code\n- run shell commands if needed\n- apply the code in your files\n- open browser to check if changes are correct in case of UI`}
         step={1}
         target={refs.newChat}
         down={true}
@@ -113,7 +113,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         page={page}
         bubbleContainerStyles={{
           maxWidth: 550,
-          alignSelf: "center",
+          alignSelf: "start",
         }}
       />
       <TourBubble
