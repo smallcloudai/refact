@@ -26,7 +26,7 @@ export function extractLinkFromPuzzle(inputString: string): ChatLink | null {
   return {
     link_action: "goto",
     link_text: linkLabel,
-    link_goto: puzzleLinkGoto,
+    link_goto: puzzleLinkGoto.trim(),
     link_tooltip: linkLabel,
   };
 }
