@@ -199,7 +199,7 @@ PROMPT_THINKING_AGENT: |
     - Open all necessary files from the locate step.
     - Before using think(), exhaust all available sources of context (tree(), search(), cat(), definition() and any other tools).
     - The question should aim to resolve uncertainties and refine the approach before execution.
-  3. After context is full, use think() to develop a precise plan
+  3. After context is full, call think() to develop a precise plan
     - Before any acting steps, use think() to develop a precise plan.
     - Provide the full problem statement in the problem_statement argument.
     - Clearly define the expected output format.
@@ -217,6 +217,7 @@ PROMPT_THINKING_AGENT: |
   Important Notes
   1. Parallel Exploration
     - When you explore different ideas, use multiple parallel methods.
+  2. Strictly follow the strategy, do not edit project / files before calling `think()` tool
 
 
 PROMPT_CONFIGURATOR: |
