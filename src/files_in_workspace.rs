@@ -23,8 +23,7 @@ use crate::files_blocklist::{
     IndexingEverywhere,
     is_this_inside_blocklisted_dir,
     is_blocklisted,
-    load_indexing_yaml,
-    load_global_indexing_settings_if_needed,
+    load_indexing_everywhere_if_needed,
 };
 
 
@@ -536,7 +535,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let folders: Vec<PathBuf> = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
 
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
-    let indexing_everywhere_arc = load_global_indexing_settings_if_needed(gcx.clone()).await;
+    let indexing_everywhere_arc = load_indexing_everywhere_if_needed(gcx.clone()).await;
     let (all_files, vcs_folders) = retrieve_files_in_workspace_folders(
         folders,
         &indexing_everywhere_arc.as_ref(),
@@ -738,7 +737,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         let mut docs = vec![];
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            indexing_everywhere_arc = load_global_indexing_settings_if_needed(gcx.clone()).await;
+            indexing_everywhere_arc = load_indexing_everywhere_if_needed(gcx.clone()).await;
         } else {
             // the program is shutting down
             return;
@@ -776,7 +775,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         let mut never_mind = true;
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            indexing_everywhere_arc = load_global_indexing_settings_if_needed(gcx.clone()).await;
+            indexing_everywhere_arc = load_indexing_everywhere_if_needed(gcx.clone()).await;
         } else {
             // the program is shutting down
             return;

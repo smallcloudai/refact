@@ -212,8 +212,8 @@ pub async fn paths_and_symbols_to_cat(
                 Err(e) => { not_found_messages.push(e); continue;}
             };
             let path = PathBuf::from(candidate);
-            let global_indexing_settings = crate::files_blocklist::load_global_indexing_settings_if_needed(gcx.clone()).await;
-            let files_in_dir = ls_files(&global_indexing_settings, &path, false).unwrap_or(vec![]);
+            let indexing_everywhere = crate::files_blocklist::load_indexing_everywhere_if_needed(gcx.clone()).await;
+            let files_in_dir = ls_files(&indexing_everywhere, &path, false).unwrap_or(vec![]);
             corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
         }
     }

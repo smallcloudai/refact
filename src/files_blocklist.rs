@@ -114,62 +114,55 @@ pub async fn load_indexing_yaml(
     }
 }
 
-pub async fn load_global_indexing_yaml(gcx: Arc<ARwLock<GlobalContext>>) -> IndexingSettings {
-    let config_dir = {
-        let gcx_locked = gcx.read().await;
-        gcx_locked.config_dir.clone()
-    };
-    let global_indexing_path = PathBuf::from(config_dir).join("indexing.yaml");
-    load_indexing_yaml(&global_indexing_path, None).await.unwrap_or_else(|e| {
-        error!("{}, fallback to defaults", e);
-        IndexingSettings::default()
-    })
-}
-
-async fn _load_global_indexing_settings(gcx: Arc<ARwLock<GlobalContext>>) -> IndexingEverywhere {
-    let global = load_global_indexing_yaml(gcx.clone()).await;
-    let vcs_dirs = _get_vcs_dirs_copy(gcx.clone()).await;
-    let mut vcs_indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
-    for indexing_root in vcs_dirs {
-        let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
-        match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
-            Ok(indexing_settings) => {
-                vcs_indexing_settings_map.insert(
-                    indexing_root.to_str().unwrap().to_string(),
-                    IndexingSettings {
-                        blocklist: global.blocklist.iter().chain(indexing_settings.blocklist.iter()).cloned().collect(),
-                        additional_indexing_dirs: global.additional_indexing_dirs.iter().chain(indexing_settings.additional_indexing_dirs.iter()).cloned().collect(),
-                    },
-                );
-            },
-            Err(e) => {
-                error!("{}, skip", e)
-            }
-        }
-    }
-
-    let loaded_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-    IndexingEverywhere {
-        global,
-        vcs_indexing_settings_map,
-        loaded_ts,
-    }
-}
-
-pub async fn load_global_indexing_settings_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<IndexingEverywhere>
+pub async fn load_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<IndexingEverywhere>
 {
-    {
+    let config_dir = {
         let gcx_locked = gcx.read().await;
         let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         if gcx_locked.indexing_everywhere.loaded_ts + INDEXING_TOO_OLD.as_secs() > current_time {
             return gcx_locked.indexing_everywhere.clone();
         }
-    }
+        gcx_locked.config_dir.clone()
+    };
 
-    let global_indexing_settings = _load_global_indexing_settings(gcx.clone()).await;
+    let indexing_everywhere = {
+        let global = {
+            let global_indexing_path = config_dir.join("indexing.yaml");
+            load_indexing_yaml(&global_indexing_path, None).await.unwrap_or_else(|e| {
+                tracing::error!("cannot load {:?}: {}, fallback to defaults", config_dir, e);
+                IndexingSettings::default()
+            })
+        };
+        let vcs_dirs = _get_vcs_dirs_copy(gcx.clone()).await;
+        let mut vcs_indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
+        for indexing_root in vcs_dirs {
+            let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
+            match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
+                Ok(indexing_settings) => {
+                    vcs_indexing_settings_map.insert(
+                        indexing_root.to_str().unwrap().to_string(),
+                        IndexingSettings {
+                            blocklist: global.blocklist.iter().chain(indexing_settings.blocklist.iter()).cloned().collect(),
+                            additional_indexing_dirs: global.additional_indexing_dirs.iter().chain(indexing_settings.additional_indexing_dirs.iter()).cloned().collect(),
+                        },
+                    );
+                },
+                Err(e) => {
+                    error!("{}, skip", e)
+                }
+            }
+        }
+        let loaded_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
+        IndexingEverywhere {
+            global,
+            vcs_indexing_settings_map,
+            loaded_ts,
+        }
+    };
+
     {
         let mut gcx_locked = gcx.write().await;
-        gcx_locked.indexing_everywhere = Arc::new(global_indexing_settings);
+        gcx_locked.indexing_everywhere = Arc::new(indexing_everywhere);
         gcx_locked.indexing_everywhere.clone()
     }
 }
