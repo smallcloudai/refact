@@ -277,6 +277,7 @@ async def ask_using_http(
                 deltas_collector = ChoiceDeltaCollector(n_answers)
                 buffer = b""
                 have_usage = None
+                line_str = ""
                 async for data, end_of_http_chunk in response.content.iter_chunks():
                     buffer += data
                     if not end_of_http_chunk:
