@@ -221,20 +221,22 @@ async fn _chat(
         }
     };
     
-    let latest_checkpoint = messages.iter().rev()
-        .find(|msg| msg.role == "user" && !msg.checkpoints.is_empty())
-        .and_then(|msg| msg.checkpoints.first().cloned());
+    if chat_post.checkpoints_enabled {
+        let latest_checkpoint = messages.iter().rev()
+            .find(|msg| msg.role == "user" && !msg.checkpoints.is_empty())
+            .and_then(|msg| msg.checkpoints.first().cloned());
 
-    if let Some(latest_user_msg) = messages.last_mut().filter(|m| m.role == "user") {
-        if [ChatMode::AGENT, ChatMode::CONFIGURE, ChatMode::PROJECT_SUMMARY].contains(&chat_post.meta.chat_mode) 
-            && latest_user_msg.checkpoints.is_empty() {
-            match create_workspace_checkpoint(gcx.clone(), latest_checkpoint.as_ref(), &chat_post.meta.chat_id).await {
-                Ok((checkpoint, _, _)) => {
-                    tracing::info!("Checkpoint created: {:?}", checkpoint);
-                    latest_user_msg.checkpoints = vec![checkpoint];
-                },
-                Err(e) => tracing::error!("Failed to create checkpoint: {}", e),
-            };
+        if let Some(latest_user_msg) = messages.last_mut().filter(|m| m.role == "user") {
+            if [ChatMode::AGENT, ChatMode::CONFIGURE, ChatMode::PROJECT_SUMMARY].contains(&chat_post.meta.chat_mode) 
+                && latest_user_msg.checkpoints.is_empty() {
+                match create_workspace_checkpoint(gcx.clone(), latest_checkpoint.as_ref(), &chat_post.meta.chat_id).await {
+                    Ok((checkpoint, _, _)) => {
+                        tracing::info!("Checkpoint created: {:?}", checkpoint);
+                        latest_user_msg.checkpoints = vec![checkpoint];
+                    },
+                    Err(e) => tracing::error!("Failed to create checkpoint: {}", e),
+                };
+            }
         }
     }
 
