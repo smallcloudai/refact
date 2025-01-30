@@ -439,9 +439,6 @@ pub async fn create_workspace_checkpoint(
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
-        let branch_commit = branch.get().peel_to_commit().map_err_to_string()?;
-        repo.reset(&branch_commit.as_object(), git2::ResetType::Mixed, None)
-            .map_err_with_prefix("Failed to reset index:")?;
         let file_changes = get_diff_statuses_worktree_to_head(&repo, true)?;
         stage_changes(&repo, &file_changes)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
