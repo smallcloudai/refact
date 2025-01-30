@@ -4,9 +4,9 @@
 #
 # "Indexing" means adding them to Vecdb and AST, and also keeping track of the fact that they exist (try @file in chat).
 # It's a good idea to block build/ dist/ and similar folders, because indexing might interfere with compilation, especially
-# on Windows.
+# on Windows. But you likely don't have to do anything because blocklist has a reasonable default.
 #
-# You can use relative paths, that's even preferred if you are going to commit this file into your repo. Paths are relative
+# You can use relative paths, that's even desirable if you are going to commit this file into your repo. Paths are relative
 # to the project root, where you have your .git directory.
 #
 # This file can exist at:

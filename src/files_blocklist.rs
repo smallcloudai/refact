@@ -41,7 +41,9 @@ pub const DEFAULT_BLOCKLIST_DIRS: &[&str] = &[
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct IndexingSettings {
+    #[serde(default)]
     pub blocklist: Vec<String>,
+    #[serde(default)]
     pub additional_indexing_dirs: Vec<String>,
 }
 
@@ -73,54 +75,68 @@ impl Default for IndexingEverywhere {
 impl IndexingEverywhere {
     pub fn indexing_for_path(&self, path: PathBuf) -> IndexingSettings {
         assert!(path.is_absolute());
-        let mut best_workspace: Option<PathBuf> = None;
+        let mut result: IndexingSettings = self.global.clone();
 
-        // XXX derive path from global
-        for (workspace, _) in &self.vcs_indexing_settings_map {
-            let workspace_path = PathBuf::from(workspace);
-            if path.starts_with(&workspace_path) {
-                if best_workspace.is_none() || workspace_path.components().count() > best_workspace.clone().unwrap().components().count() {
-                    best_workspace = Some(workspace_path);
+        let mut best_vcs: Option<IndexingSettings> = None;
+        let mut best_pathbuf: Option<PathBuf> = None;
+        for (vcs, vcs_settings) in &self.vcs_indexing_settings_map {
+            let vcs_pathbuf = PathBuf::from(vcs);
+            if path.starts_with(&vcs) {
+                if best_vcs.is_none() || vcs_pathbuf.components().count() > best_pathbuf.clone().unwrap().components().count() {
+                    best_vcs = Some(vcs_settings.clone());
+                    best_pathbuf = Some(vcs_pathbuf);
                 }
             }
         }
 
-        if let Some(workspace) = best_workspace {
-            self.vcs_indexing_settings_map.get(&workspace.to_str().unwrap().to_string()).cloned().unwrap_or_default()
-        } else {
-            self.global.clone()
+        if let Some(t) = best_vcs {
+            result.blocklist.extend(t.blocklist);
+            result.additional_indexing_dirs.extend(t.additional_indexing_dirs);
         }
+
+        result
     }
 }
 
 pub async fn load_indexing_yaml(
-    indexing_path: &PathBuf,
-    indexing_root: Option<&PathBuf>,
+    indexing_yaml_path: &PathBuf,
+    relative_path_base: Option<&PathBuf>,
 ) -> Result<IndexingSettings, String> {
-    match fs::read_to_string(&indexing_path.as_path()).await.map_err(|e| e.to_string()) {
+    match fs::read_to_string(&indexing_yaml_path.as_path()).await.map_err(|e| e.to_string()) {
         Ok(content) => {
-            match _load_indexing_yaml_str(&content.as_str(), indexing_root) {
+            match _load_indexing_yaml_str(&content.as_str(), relative_path_base) {
                 Ok(indexing_settings) => {
                     return Ok(indexing_settings)
                 }
                 Err(e) => {
-                    return Err(format!("load {} failed\n{}", indexing_path.display(), e));
+                    return Err(format!("load {} failed\n{}", indexing_yaml_path.display(), e));
                 }
             }
         }
         Err(e) => {
-            return Err(format!("load {} failed\n{}", indexing_path.display(), e));
+            return Err(format!("load {} failed\n{}", indexing_yaml_path.display(), e));
         }
+    }
+}
+
+pub async fn reload_global_indexing_only(gcx: Arc<ARwLock<GlobalContext>>) -> IndexingEverywhere
+{
+    let gcx_locked = gcx.read().await;
+    let global_indexing_path = gcx_locked.config_dir.join("indexing.yaml");
+    IndexingEverywhere {
+        global: load_indexing_yaml(&global_indexing_path, None).await.unwrap_or_default(),
+        vcs_indexing_settings_map: HashMap::new(),
+        loaded_ts: 0,
     }
 }
 
 pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<IndexingEverywhere>
 {
+    let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     // Initially this is loaded in _ls_files_under_version_control_recursive()
     let (config_dir, workspace_vcs_roots) = {
         let gcx_locked = gcx.read().await;
-        let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-        if gcx_locked.indexing_everywhere.loaded_ts + INDEXING_TOO_OLD.as_secs() > current_time {
+        if gcx_locked.indexing_everywhere.loaded_ts + INDEXING_TOO_OLD.as_secs() > now {
             return gcx_locked.indexing_everywhere.clone();
         }
         (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_vcs_roots.clone())
@@ -141,24 +157,17 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
             let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
             match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
                 Ok(indexing_settings) => {
-                    vcs_indexing_settings_map.insert(
-                        indexing_root.to_str().unwrap().to_string(),
-                        IndexingSettings {
-                            blocklist: global.blocklist.iter().chain(indexing_settings.blocklist.iter()).cloned().collect(),
-                            additional_indexing_dirs: global.additional_indexing_dirs.iter().chain(indexing_settings.additional_indexing_dirs.iter()).cloned().collect(),
-                        },
-                    );
+                    vcs_indexing_settings_map.insert(indexing_root.to_str().unwrap().to_string(), indexing_settings);
                 },
                 Err(e) => {
                     error!("{}, skip", e)
                 }
             }
         }
-        let loaded_ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
         IndexingEverywhere {
             global,
             vcs_indexing_settings_map,
-            loaded_ts,
+            loaded_ts: now,
         }
     };
 
@@ -169,29 +178,18 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
     }
 }
 
-fn _is_path_in_additional_indexing_dirs(indexing_settings: &IndexingSettings, path: &str) -> bool {
-    for dir in indexing_settings.additional_indexing_dirs.iter() {
-        if !dir.is_empty() && path.starts_with(dir.as_str()) {
-            return true;
-        }
-    }
-    false
-}
-
-pub fn is_this_inside_blocklisted_dir(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
-    if _is_path_in_additional_indexing_dirs(indexing_settings, path.to_str().unwrap()) {
-        return false;
-    }
-    is_blocklisted(&indexing_settings, &path)
-}
+// pub fn is_this_inside_blocklisted_dir(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
+//     is_blocklisted(&indexing_settings, &path)
+// }
 
 pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
+    tracing::info!("is_blocklisted {:?} {:?}", indexing_settings, path);
     return any_glob_matches_path(&indexing_settings.blocklist, &path)
 }
 
 fn _load_indexing_yaml_str(
     indexing_yaml_str: &str,
-    indexing_root: Option<&PathBuf>,
+    relative_path_base: Option<&PathBuf>,
 ) -> Result<IndexingSettings, String> {
     match serde_yaml::from_str::<IndexingSettings>(&indexing_yaml_str) {
         Ok(indexing_settings) => {
@@ -205,8 +203,8 @@ fn _load_indexing_yaml_str(
                     // TODO: complicated case
                     additional_indexing_dirs.push(indexing_dir.clone());
                 } else {
-                    if let Some(root) = indexing_root {
-                        additional_indexing_dirs.push(root.join(indexing_dir).to_str().unwrap().to_string());
+                    if let Some(b) = relative_path_base {
+                        additional_indexing_dirs.push(b.join(indexing_dir).to_str().unwrap().to_string());
                     } else {
                         warn!("skip relative additional indexing dir {} from global indexing.yaml", indexing_dir)
                     }

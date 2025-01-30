@@ -26,7 +26,7 @@ pub fn is_valid_file(path: &PathBuf, allow_hidden_folders: bool, ignore_size_thr
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false)
     }) {
-        return Err("Parent dir stars with a dot".into());
+        return Err("Parent dir starts with a dot".into());
     }
 
     if let Ok(metadata) = fs::metadata(path) {

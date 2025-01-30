@@ -377,10 +377,10 @@ async fn docker_container_sync_workspace(
     tar_builder.follow_symlinks(true);
     tar_builder.mode(async_tar::HeaderMode::Complete);
 
-    let indexing_everywhere_arc = crate::files_blocklist::reload_indexing_everywhere_if_needed(gcx.clone()).await;
+    let mut indexing_everywhere = crate::files_blocklist::reload_global_indexing_only(gcx.clone()).await;
     let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
         vec![workspace_folder.clone()],
-        indexing_everywhere_arc.as_ref(),
+        &mut indexing_everywhere,
         false,
         false,
     ).await;
