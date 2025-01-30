@@ -356,7 +356,7 @@ subchat_tool_parameters:
     subchat_n_ctx: 16000
     subchat_max_new_tokens: 2000
   deep_thinking:
-    subchat_model: "o1-mini"
+    subchat_model: "deepseek-reasoner"
     subchat_tokens_for_rag: 0
     subchat_n_ctx: 64000
     subchat_max_new_tokens: 20000
