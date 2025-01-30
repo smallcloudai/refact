@@ -533,7 +533,14 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
     watcher_init(gcx.clone()).await;
-    enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await
+    let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
+
+    let gcx_clone = gcx.clone();
+    tokio::spawn(async move {
+        crate::git::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
+    });
+
+    files_enqueued
 }
 
 pub async fn on_did_open(

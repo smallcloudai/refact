@@ -164,6 +164,11 @@ async fn main() {
     files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
     files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
 
+    let gcx_clone = gcx.clone();
+    tokio::spawn(async move {
+        crate::git::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
+    });
+
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 

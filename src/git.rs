@@ -1,7 +1,8 @@
 use std::sync::{Arc, Mutex as StdMutex};
 use chrono::{DateTime, TimeZone, Utc};
+use git2::build::RepoBuilder;
 use tokio::sync::RwLock as ARwLock;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use url::Url;
 use serde::{Serialize, Deserialize};
 use tracing::error;
@@ -9,7 +10,7 @@ use git2::{DiffOptions, Oid, Repository, Branch};
 
 use crate::ast::chunk_utils::official_text_hashing_function;
 use crate::custom_error::MapErrToString;
-use crate::files_correction::{get_active_workspace_folder, to_pathbuf_normalize};
+use crate::files_correction::{get_active_workspace_folder, get_project_dirs, to_pathbuf_normalize};
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::files_correction::{serialize_path, deserialize_path};
@@ -366,32 +367,18 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
     commits_with_messages
 }
 
-pub fn open_or_initialize_repo(workdir: &PathBuf, git_dir_path: &PathBuf) -> Result<Repository, String> {
-    match git2::Repository::open(&git_dir_path) {
-        Ok(repo) => {
-            repo.set_workdir(&workdir, false).map_err_to_string()?;
-            Ok(repo)
-        },
-        Err(not_found_err) if not_found_err.code() == git2::ErrorCode::NotFound => {
-            let repo = git2::Repository::init(&git_dir_path).map_err_to_string()?;
-            repo.set_workdir(&workdir, false).map_err_to_string()?;
+pub fn shallow_clone_local_repo_without_checkout(source_dir: &Path, target_dir: &Path) -> Result<(), String> {
+    let mut checkout_builder = git2::build::CheckoutBuilder::new();
+    checkout_builder.allow_conflicts(true).dry_run();
+    let mut repo_builder = RepoBuilder::new();
+    repo_builder.bare(false).with_checkout(checkout_builder).clone_local(git2::build::CloneLocal::NoLinks);
 
-            {
-                let tree_id = {
-                    let mut index = repo.index().map_err_to_string()?;
-                    index.write_tree().map_err_to_string()?
-                };
-                let tree = repo.find_tree(tree_id).map_err_to_string()?;
-                let signature = git2::Signature::now("Refact Agent", "agent@refact.ai")
-                    .map_err_to_string()?;
-                repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[])
-                    .map_err_to_string()?;
-            }
+    let source_dir_url = Url::from_file_path(source_dir)
+        .map_err(|_| format!("Failed to convert {} to url.", source_dir.to_string_lossy()))?;
+    repo_builder.clone(source_dir_url.as_str(), target_dir)
+        .map_err_with_prefix(format!("Failed to clone repository {}:", source_dir.to_string_lossy()))?;
 
-            Ok(repo)
-        },
-        Err(e) => Err(e.to_string()),
-    }
+    Ok(())
 }
 
 pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, commit_oid: &Oid) -> Result<(), String> {
@@ -434,8 +421,8 @@ pub async fn create_workspace_checkpoint(
     //     .as_millis();
 
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
-    let repo = open_or_initialize_repo(&workspace_folder, &shadow_repo_path)
-        .map_err_with_prefix("Failed to open or init repo:")?;
+    let repo = Repository::open(&shadow_repo_path).map_err_with_prefix("Failed to open repo:")?;
+    repo.set_workdir(&workspace_folder, false).map_err_with_prefix("Failed to set workdir:")?;
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
@@ -481,4 +468,68 @@ pub async fn restore_workspace_checkpoint(
     checkout_head_and_branch_to_commit(&repo, &format!("refact-{chat_id}"), &commit_to_restore_oid)?;
 
     Ok((checkpoint_for_undo, files_changed, reverted_to))
+}
+
+pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> () {
+    let workspace_folders = get_project_dirs(gcx.clone()).await;
+    let cache_dir = gcx.read().await.cache_dir.clone();
+
+    for workspace_folder in workspace_folders {
+        let workspace_folder_str = workspace_folder.to_string_lossy().to_string();
+        let workspace_folder_hash = official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
+        let shadow_git_dir_path = cache_dir.join("shadow_git").join(&workspace_folder_hash);
+        
+        match Repository::open(&shadow_git_dir_path) {
+            Ok(_) => {
+                tracing::info!("Shadow git repo for {workspace_folder_str} already exists and can be opened.");
+                continue;
+            },
+            Err(e) if e.code() == git2::ErrorCode::NotFound => {
+                tracing::info!("Shadow git repo for {workspace_folder_str} does not exist, creating one.");
+            },
+            Err(e) => {
+                tracing::error!("Failed to open repository for {workspace_folder_str}: {e}");
+                continue;
+            },
+        };
+
+        match shallow_clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
+            Ok(_) => {
+                tracing::info!("Shadow git repo for {workspace_folder_str} cloned successfully from original repo.");
+                continue;
+            },
+            Err(e) => {
+                tracing::warn!("Failed to clone shadow git repo from {workspace_folder_str}, trying to create one.\nFail reason: {e}");
+            }
+        }
+
+        let repo = match git2::Repository::init(&shadow_git_dir_path) {
+            Ok(repo) => repo,
+            Err(e) => {
+                tracing::error!("Failed to initialize shadow git repo for {workspace_folder_str}: {e}");
+                continue;
+            },
+        };
+        if let Err(e) = repo.set_workdir(&workspace_folder, false) {
+            tracing::error!("Failed to set workdir for {workspace_folder_str}: {e}");
+            continue;
+        }
+
+        let initial_commit_result = (|| {
+            let file_changes = get_diff_statuses_worktree_to_head(&repo, true)?;
+            stage_changes(&repo, &file_changes)?;
+            let tree_id = repo.index().map_err_to_string()?.write_tree().map_err_to_string()?;
+            let tree = repo.find_tree(tree_id).map_err_to_string()?;
+            let signature = git2::Signature::now("Refact Agent", "agent@refact.ai").map_err_to_string()?;
+            repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[]).map_err_to_string()
+        })();
+
+        match initial_commit_result {
+            Ok(_) => tracing::info!("Shadow git repo for {workspace_folder_str} initialized."),
+            Err(e) => {
+                tracing::error!("Initial commit for {workspace_folder_str} failed: {e}");
+                continue;
+            }
+        }
+    }
 }
