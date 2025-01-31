@@ -64,6 +64,20 @@ pub async fn process_ticket(
                     }
                 }
             }
+            PatchAction::DeleteFile => {
+                Ok(vec![
+                    DiffChunk {
+                        file_name: ticket.filename.clone(),
+                        file_name_rename: None,
+                        file_action: "remove".to_string(),
+                        line1: 1,
+                        line2: 1,
+                        lines_remove: ticket.code.clone(),
+                        lines_add: "".to_string(),
+                        ..Default::default()
+                    }
+                ])
+            }
             _ => {
                 Err(good_error_text(&format!("unknown action provided: '{:?}'.", ticket.action), &ticket.id, None))
             }
