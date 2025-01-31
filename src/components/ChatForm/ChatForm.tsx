@@ -22,7 +22,7 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
 import { FilesPreview } from "./FilesPreview";
-import { ApplyPatchSwitch, ChatControls } from "./ChatControls";
+import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -51,6 +51,7 @@ import {
 } from "../../features/Chat";
 import { isUserMessage, telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
+import { AgentCapabilities } from "./AgentCapabilities";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -315,11 +316,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             {helpInfo}
           </Flex>
         )}
-        {toolUse === "agent" && (
-          <Flex mb="2">
-            <ApplyPatchSwitch />
-          </Flex>
-        )}
+        {toolUse === "agent" && <AgentCapabilities />}
         <Form
           disabled={disableSend}
           className={className}

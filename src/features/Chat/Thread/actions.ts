@@ -101,6 +101,10 @@ export const setAutomaticPatch = createAction<boolean>(
   "chat/setAutomaticPatch",
 );
 
+export const setEnabledCheckpoints = createAction<boolean>(
+  "chat/setEnabledCheckpoints",
+);
+
 export const saveTitle = createAction<PayloadWithIdAndTitle>(
   "chatThread/saveTitle",
 );
@@ -262,12 +266,16 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     chatId: string;
     tools: ToolCommand[] | null;
     toolsConfirmed?: boolean;
+    checkpointsEnabled?: boolean;
     mode?: LspChatMode; // used once for actions
     // TODO: make a separate function for this... and it'll need to be saved.
   }
 >(
   "chatThread/sendChat",
-  ({ messages, chatId, tools, mode, toolsConfirmed }, thunkAPI) => {
+  (
+    { messages, chatId, tools, mode, toolsConfirmed, checkpointsEnabled },
+    thunkAPI,
+  ) => {
     const state = thunkAPI.getState();
 
     const thread =
@@ -300,6 +308,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       port: state.config.lspPort,
       onlyDeterministicMessages,
       toolsConfirmed: toolsConfirmed,
+      checkpointsEnabled,
       integration: thread?.integration,
       mode: realMode,
     })

@@ -12,6 +12,9 @@ export const selectThreadToolUse = (state: RootState) =>
   state.chat.thread.tool_use;
 export const selectAutomaticPatch = (state: RootState) =>
   state.chat.automatic_patch;
+
+export const selectCheckpointsEnabled = (state: RootState) =>
+  state.chat.checkpoints_enabled;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;

@@ -6,6 +6,7 @@ import {
   selectAutomaticPatch,
   selectChatError,
   selectChatId,
+  selectCheckpointsEnabled,
   selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
@@ -97,6 +98,7 @@ export const useSendChatRequest = () => {
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
+  const checkpointsEnabled = useAppSelector(selectCheckpointsEnabled);
 
   const messagesWithSystemPrompt = useMemo(() => {
     const prompts = Object.entries(systemPrompt);
@@ -172,6 +174,7 @@ export const useSendChatRequest = () => {
         messages,
         tools,
         toolsConfirmed,
+        checkpointsEnabled,
         chatId,
         mode,
       });
@@ -188,6 +191,7 @@ export const useSendChatRequest = () => {
       threadMode,
       wasInteracted,
       areToolsConfirmed,
+      checkpointsEnabled,
       abortControllers,
       triggerCheckForConfirmation,
       isPatchAutomatic,
