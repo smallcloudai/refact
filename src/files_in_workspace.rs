@@ -13,7 +13,7 @@ use walkdir::WalkDir;
 use which::which;
 use tracing::info;
 
-use crate::git::git_ls_files;
+use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
 use crate::file_filter::{is_this_inside_blacklisted_dir, is_valid_file, BLACKLISTED_DIRS, SOURCE_FILE_EXTENSIONS};
@@ -537,7 +537,7 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 
     let gcx_clone = gcx.clone();
     tokio::spawn(async move {
-        crate::git::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
+        crate::git::checkpoints::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
     });
 
     files_enqueued

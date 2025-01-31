@@ -12,7 +12,9 @@ use url::Url;
 use crate::call_validation::ChatMeta;
 use crate::files_correction::{deserialize_path, serialize_path};
 use crate::custom_error::ScratchError;
-use crate::git::{get_configured_author_email_and_name, restore_workspace_checkpoint, stage_changes, Checkpoint, CommitInfo, FileChange};
+use crate::git::{CommitInfo, FileChange};
+use crate::git::operations::{get_configured_author_email_and_name, stage_changes};
+use crate::git::checkpoints::{restore_workspace_checkpoint, Checkpoint};
 use crate::global_context::GlobalContext;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -102,7 +104,7 @@ pub async fn handle_v1_git_commit(
             Err(e) => { error_log.push(git_error(format!("Failed to get current branch: {}", e))); continue; }
         };
         
-        let commit_oid = match crate::git::commit(&repository, &branch, &commit.commit_message, &author_name, &author_email) {
+        let commit_oid = match crate::git::operations::commit(&repository, &branch, &commit.commit_message, &author_name, &author_email) {
             Ok(oid) => oid,
             Err(e) => { error_log.push(git_error(e)); continue; }
         };

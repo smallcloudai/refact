@@ -12,7 +12,7 @@ use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tool_patch_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
-use crate::git::{get_commit_information_from_current_changes, generate_commit_messages};
+use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
 
 #[derive(Deserialize, Clone, Debug)]

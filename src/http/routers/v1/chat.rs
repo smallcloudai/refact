@@ -12,7 +12,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::git::create_workspace_checkpoint;
+use crate::git::checkpoints::create_workspace_checkpoint;
 use crate::global_context::{is_metadata_supported, GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 

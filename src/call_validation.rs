@@ -7,7 +7,7 @@ use ropey::Rope;
 
 
 use crate::custom_error::ScratchError;
-use crate::git::Checkpoint;
+use crate::git::checkpoints::Checkpoint;
 use crate::scratchpads::multimodality::MultimodalElement;
 
 

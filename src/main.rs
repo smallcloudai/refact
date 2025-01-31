@@ -166,7 +166,7 @@ async fn main() {
 
     let gcx_clone = gcx.clone();
     tokio::spawn(async move {
-        crate::git::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
+        crate::git::checkpoints::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
     });
 
     // not really needed, but it's nice to have an error message sooner if there's one
