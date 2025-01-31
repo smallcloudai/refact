@@ -118,7 +118,8 @@ class TrackedJob:
         self.set_status("starting")
         CUDA_VISIBLE_DEVICES = ",".join(["%d" % x for x in self.cfg["gpus"]])
         alt_env["CUDA_VISIBLE_DEVICES"] = CUDA_VISIBLE_DEVICES
-        if is_hf_hub_offline():
+        # NOTE: in case CUDA_VISIBLE_DEVICES we assume that process is working with models
+        if CUDA_VISIBLE_DEVICES and is_hf_hub_offline():
             alt_env["HF_HUB_OFFLINE"] = "1"
         self.start_ts = time.time()
         try:
