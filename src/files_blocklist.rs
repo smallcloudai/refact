@@ -13,28 +13,27 @@ use crate::privacy::any_glob_matches_path;
 const INDEXING_TOO_OLD: Duration = Duration::from_secs(3);
 
 pub const DEFAULT_BLOCKLIST_DIRS: &[&str] = &[
-    "*\\.*",
-    "*/.*",
-    "*target*",
-    "*node_modules*",
-    "*vendor*",
-    "*build*",
-    "*dist*",
-    "*bin*",
-    "*pkg*",
-    "*lib*",
-    "*obj*",
-    "*out*",
-    "*venv*",
-    "*env*",
-    "*tmp*",
-    "*temp*",
-    "*logs*",
-    "*coverage*",
-    "*backup*",
-    "*__pycache__*",
-    "*_trajectories*",
-    "*.gradle*",
+    "*/.*",     // hidden files start with dot
+    "*/target/*",
+    "*/node_modules/*",
+    "*/vendor/*",
+    "*/build/*",
+    "*/dist/*",
+    "*/bin/*",
+    "*/pkg/*",
+    "*/lib/*",
+    "*/obj/*",
+    "*/out/*",
+    "*/venv/*",
+    "*/env/*",
+    "*/tmp/*",
+    "*/temp/*",
+    "*/logs/*",
+    "*/coverage/*",
+    "*/backup/*",
+    "*/__pycache__/*",
+    "*/_trajectories/*",
+    "*/.gradle/*",
 ];
 
 
@@ -49,7 +48,7 @@ pub struct IndexingSettings {
 impl Default for IndexingSettings {
     fn default() -> Self {
         IndexingSettings {
-            blocklist: DEFAULT_BLOCKLIST_DIRS.iter().map(|s| s.to_string()).collect(),
+            blocklist: vec![],
             additional_indexing_dirs: vec![],
         }
     }
@@ -75,6 +74,7 @@ impl IndexingEverywhere {
     pub fn indexing_for_path(&self, path: PathBuf) -> IndexingSettings {
         assert!(path.is_absolute());
         let mut result: IndexingSettings = self.global.clone();
+        result.blocklist.extend(DEFAULT_BLOCKLIST_DIRS.iter().map(|s| s.to_string()));
 
         let mut best_vcs: Option<IndexingSettings> = None;
         let mut best_pathbuf: Option<PathBuf> = None;
