@@ -145,7 +145,7 @@ impl Tool for ToolDeepThinking {
             vec![],
             None,
             false,
-            Some(1.0),
+            Some(0.6),
             Some(subchat_params.subchat_max_new_tokens),
             1,
             None,  // TODO: pass ReasoningEffort when is supported in litellm
