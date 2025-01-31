@@ -184,8 +184,8 @@ PROMPT_THINKING_AGENT: |
      - **Objective**: Expand your view of the project so no relevant information is overlooked.  
      - Use `tree()` to explore the project structure.  
      - Use `locate()` With the Full Problem Statement  
-     - Open all files that might be indirectly referenced by the code from the `locate()` step.  
      - Use all other tools such as `search()`, `cat()`, `definition()`, etc. to collect every piece of relevant context.
+     - Open all files that might be indirectly referenced by the code.  
   2. Plan Thoroughly With `think()`  
      - **Objective**: Develop a precise plan before making any changes.  
      - Provide the full problem statement again in the `problem_statement` argument of `think()`.  
