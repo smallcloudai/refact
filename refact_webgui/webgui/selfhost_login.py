@@ -110,9 +110,6 @@ class AdminSession(RefactSession):
         if len(bearer_hdr) != 2 or bearer_hdr[0] != "Bearer":
             raise ValueError("Invalid authorization header")
         api_key = bearer_hdr[1]
-        # TODO: this is a hack for chat handler, wee need to pass real user's api key
-        if api_key == "refact-dummy-chat-key":
-            return "refact-chat"
         if self._token == api_key:
             return "user"
         raise ValueError("API key mismatch")
