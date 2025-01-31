@@ -206,6 +206,7 @@ PROMPT_THINKING_AGENT: |
   3. **No Premature `think()`**  
      - Only call `think()` after you have gathered the necessary context in Step 2.
   
+  **Comment each your step.**
   **Always follow these steps in exact order without skipping or rearranging them.**
 
   %PROMPT_PINS%
