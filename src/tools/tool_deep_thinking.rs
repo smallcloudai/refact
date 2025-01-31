@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::http::StatusCode;
 use crate::subchat::subchat_single;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ReasoningEffort, PostprocessSettings};
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::cached_tokenizers;
 use crate::custom_error::ScratchError;
