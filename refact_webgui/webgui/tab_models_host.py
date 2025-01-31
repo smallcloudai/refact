@@ -114,6 +114,10 @@ class TabHostRouter(APIRouter):
             else:
                 raise HTTPException(status_code=400, detail=f"model {model_name} not found")
             if model_name not in model_assign and not self._has_available_weights(model_name):
-                raise HTTPException(status_code=400, detail=f"no access to load weights for model {model_name}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unable to access model '{model_name}' from Hugging Face: "
+                           f"Please check your internet connection and ensure you have access rights to this model.",
+                )
         self._model_assigner.models_to_watchdog_configs(post.dict())
         return JSONResponse("OK")
