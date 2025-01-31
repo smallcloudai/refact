@@ -67,27 +67,30 @@ async fn _make_prompt(
             context.insert_str(0, &message_row);
         }
     }
-    
-    let mut pp_settings = PostprocessSettings::new();
-    pp_settings.max_files_n = context_files.len();
-    let mut files_context = "".to_string();
-    for context_file in postprocess_context_files(
-        gcx.clone(),
-        &mut context_files,
-        tokenizer.clone(),
-        subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
-        false,
-        &pp_settings,
-    ).await {
-        files_context.push_str(
-    &format!("📎 {}:{}-{}\n```\n{}```\n\n",
-            context_file.file_name,
-            context_file.line1,
-            context_file.line2,
-            context_file.file_content)
-        );
+    if !context_files.is_empty() {
+        let mut pp_settings = PostprocessSettings::new();
+        pp_settings.max_files_n = context_files.len();
+        let mut files_context = "".to_string();
+        for context_file in postprocess_context_files(
+            gcx.clone(),
+            &mut context_files,
+            tokenizer.clone(),
+            subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
+            false,
+            &pp_settings,
+        ).await {
+            files_context.push_str(
+                &format!("📎 {}:{}-{}\n```\n{}```\n\n",
+                         context_file.file_name,
+                         context_file.line1,
+                         context_file.line2,
+                         context_file.file_content)
+            );
+        }
+        Ok(format!("{final_message}{context}\n***Files context:***\n{files_context}"))
+    } else {
+        Ok(format!("{final_message}{context}"))
     }
-    Ok(format!("{final_message}{context}\n***Files context:***\n{files_context}"))
 }
 
 
