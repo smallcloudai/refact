@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::call_validation::DiffChunk;
-use crate::tools::tool_apply_ticket_aux::diff_structs::{
+use crate::tools::tool_apply_edit_aux::diff_structs::{
     diff_blocks_to_diff_chunks, DiffBlock, DiffLine, LineType,
 };
 use itertools::Itertools;
@@ -11,8 +11,8 @@ use tokio::sync::RwLock as ARwLock;
 use tracing::{error, warn};
 
 use crate::global_context::GlobalContext;
-use crate::tools::tool_apply_ticket_aux::fs_utils::read_file;
-use crate::tools::tool_apply_ticket_aux::postprocessing_utils::{minimal_common_indent, place_indent};
+use crate::tools::tool_apply_edit_aux::fs_utils::read_file;
+use crate::tools::tool_apply_edit_aux::postprocessing_utils::{minimal_common_indent, place_indent};
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
@@ -280,7 +280,7 @@ pub fn section_edit_choose_correct_chunk(
             err_message.push_str(format!("- {err}\n").as_str());
         }
         err_message
-            .push_str("Try to call `apply_ticket` one more time to generate a correct diff");
+            .push_str("Try to call `apply_edit` one more time to generate a correct diff");
         return Err(err_message);
     }
 

@@ -11,13 +11,13 @@ use crate::cached_tokenizers::cached_tokenizer;
 use crate::call_validation::{ChatMessage, ChatUsage, DiffChunk, SubchatParameters};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::subchat::subchat_single;
-use crate::tools::tool_apply_ticket_aux::fs_utils::read_file;
-use crate::tools::tool_apply_ticket_aux::model_based_edit::replace_file_parser::WholeFileParser;
-use crate::tools::tool_apply_ticket_aux::model_based_edit::section_edit_parser::{
+use crate::tools::tool_apply_edit_aux::fs_utils::read_file;
+use crate::tools::tool_apply_edit_aux::model_based_edit::replace_file_parser::WholeFileParser;
+use crate::tools::tool_apply_edit_aux::model_based_edit::section_edit_parser::{
     section_edit_choose_correct_chunk, BlocksOfCodeParser,
 };
-use crate::tools::tool_apply_ticket_aux::postprocessing_utils::postprocess_diff_chunks;
-use crate::tools::tool_apply_ticket_aux::tickets_parsing::TicketToApply;
+use crate::tools::tool_apply_edit_aux::postprocessing_utils::postprocess_diff_chunks;
+use crate::tools::tool_apply_edit_aux::tickets_parsing::TicketToApply;
 
 const DEBUG: bool = true;
 
@@ -94,7 +94,7 @@ async fn make_chat_history(
         .sum::<usize>();
     if tokens > max_tokens {
         return Err(format!(
-            "the provided file {} is too large for the apply_ticket tool: {tokens} > {max_tokens}",
+            "the provided file {} is too large for the apply_edit tool: {tokens} > {max_tokens}",
             context_file.file_name,
         ));
     }
@@ -240,7 +240,7 @@ pub async fn execute_blocks_of_code_patch(
         true,
         Some(usage),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-apply_ticket")),
+        Some(format!("{log_prefix}-apply_edit")),
     )
     .await
     .map_err(|e| (e, None))?;
@@ -252,7 +252,7 @@ pub async fn execute_blocks_of_code_patch(
         .cloned()
         .collect::<Vec<_>>();
     if DEBUG {
-        info!("apply_ticket responses: ");
+        info!("apply_edit responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
             info!("choice {idx}:\n{}", m.content.content_text_only());
         }
@@ -309,7 +309,7 @@ pub async fn execute_blocks_of_code_patch(
         true,
         Some(usage),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-apply_ticket")),
+        Some(format!("{log_prefix}-apply_edit")),
     )
     .await
     .map_err(|e| (e, None))?;
@@ -320,7 +320,7 @@ pub async fn execute_blocks_of_code_patch(
         .cloned()
         .collect::<Vec<_>>();
     if DEBUG {
-        info!("follow-up apply_ticket responses: ");
+        info!("follow-up apply_edit responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
             info!("choice {idx}:\n{}", m.content.content_text_only());
         }
@@ -376,7 +376,7 @@ pub async fn execute_whole_file_patch(
         true,
         Some(usage),
         Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-apply_ticket")),
+        Some(format!("{log_prefix}-apply_edit")),
     )
     .await
     .map_err(|e| (e, None))?;
@@ -387,7 +387,7 @@ pub async fn execute_whole_file_patch(
         .cloned()
         .collect::<Vec<_>>();
     if DEBUG {
-        info!("apply_ticket responses: ");
+        info!("apply_edit responses: ");
         for (idx, m) in last_messages.iter().enumerate() {
             info!("choice {idx}:\n{}", m.content.content_text_only());
         }

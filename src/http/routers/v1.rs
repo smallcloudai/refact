@@ -35,7 +35,7 @@ use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
 use crate::http::routers::v1::customization::handle_v1_config_path;
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
-use crate::http::routers::v1::apply_ticket::{handle_v1_apply_all_tickets, handle_v1_apply_selected_ticket};
+use crate::http::routers::v1::apply_edit::{handle_v1_apply_all_tickets, handle_v1_apply_selected_ticket};
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::system_prompt::handle_v1_prepend_system_prompt_and_maybe_more_initial_messages;
@@ -73,7 +73,7 @@ mod subchat;
 pub mod system_prompt;
 pub mod sync_files;
 mod gui_help_handlers;
-mod apply_ticket;
+mod apply_edit;
 pub mod chat_based_handlers;
 
 #[cfg(feature="vecdb")]

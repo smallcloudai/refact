@@ -6,14 +6,14 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, DiffChunk, SubchatParameters};
-use crate::tools::tool_apply_ticket_aux::diff_apply::diff_apply;
-use crate::tools::tool_apply_ticket_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
-use crate::tools::tool_apply_ticket_aux::postprocessing_utils::postprocess_diff_chunks;
-use crate::tools::tool_apply_ticket_aux::tickets_parsing::{validate_and_correct_ticket, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
+use crate::tools::tool_apply_edit_aux::diff_apply::diff_apply;
+use crate::tools::tool_apply_edit_aux::no_model_edit::{full_rewrite_diff, rewrite_symbol_diff};
+use crate::tools::tool_apply_edit_aux::postprocessing_utils::postprocess_diff_chunks;
+use crate::tools::tool_apply_edit_aux::tickets_parsing::{validate_and_correct_ticket, get_tickets_from_messages, good_error_text, PatchAction, TicketToApply};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use crate::tools::tools_execute::unwrap_subchat_params;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::tool_apply_ticket_aux::model_based_edit::model_execution::section_edit_tickets_to_chunks;
+use crate::tools::tool_apply_edit_aux::model_based_edit::model_execution::section_edit_tickets_to_chunks;
 
 pub struct ToolPatch {
     pub usage: Option<ChatUsage>,
@@ -147,7 +147,7 @@ async fn can_execute_patch(
     args: &HashMap<String, Value>,
 ) -> Result<(), String> {
     let (ticket_id, location_hints_mb) = parse_args(args)?;
-    let params = unwrap_subchat_params(ccx.clone(), "apply_ticket").await?;
+    let params = unwrap_subchat_params(ccx.clone(), "apply_edit").await?;
     let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
     let (gcx, messages) = {
         let ccx_lock = ccx_subchat.lock().await;
@@ -169,7 +169,7 @@ impl Tool for ToolPatch {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let (ticket_id, location_hints_mb) = parse_args(args)?;
-        let params = unwrap_subchat_params(ccx.clone(), "apply_ticket").await?;
+        let params = unwrap_subchat_params(ccx.clone(), "apply_edit").await?;
         let ccx_subchat = create_ccx(ccx.clone(), &params).await?;
 
         let mut usage = ChatUsage { ..Default::default() };
@@ -221,18 +221,18 @@ impl Tool for ToolPatch {
 
         // workaround: if messages weren't passed by ToolsPermissionCheckPost, legacy
         if msgs_len != 0 {
-            // if we cannot execute apply_ticket, there's no need for confirmation
+            // if we cannot execute apply_edit, there's no need for confirmation
             if let Err(_) = can_execute_patch(ccx.clone(), args).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
-                    command: "apply_ticket".to_string(),
+                    command: "apply_edit".to_string(),
                     rule: "".to_string(),
                 });
             }
         }
         Ok(MatchConfirmDeny {
             result: MatchConfirmDenyResult::CONFIRMATION,
-            command: "apply_ticket".to_string(),
+            command: "apply_edit".to_string(),
             rule: "default".to_string(),
         })
     }
@@ -241,12 +241,12 @@ impl Tool for ToolPatch {
         &self,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        Ok("apply_ticket".to_string())
+        Ok("apply_edit".to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["apply_ticket*".to_string()],
+            ask_user: vec!["apply_edit*".to_string()],
             deny: vec![],
         })
     }

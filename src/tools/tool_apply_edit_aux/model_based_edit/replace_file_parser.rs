@@ -4,8 +4,8 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::DiffChunk;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_apply_ticket_aux::diff_structs::chunks_from_diffs;
-use crate::tools::tool_apply_ticket_aux::fs_utils::read_file;
+use crate::tools::tool_apply_edit_aux::diff_structs::chunks_from_diffs;
+use crate::tools::tool_apply_edit_aux::fs_utils::read_file;
 use tracing::error;
 
 fn get_edit_sections(content: &str) -> Option<Vec<String>> {

@@ -12,10 +12,10 @@ use crate::custom_error::ScratchError;
 use crate::diffs::{ApplyDiffResult, correct_and_validate_chunks, read_files_n_apply_diff_chunks, unwrap_diff_apply_outputs, ApplyDiffOutput, ApplyDiffUnwrapped};
 use crate::global_context::GlobalContext;
 use crate::http::routers::v1::chat::deserialize_messages_from_post;
-use crate::tools::tool_apply_ticket_aux::tickets_parsing::{correct_and_validate_active_ticket, validate_and_correct_ticket, get_tickets_from_messages, TicketToApply};
-use crate::tools::tool_apply_ticket::process_ticket;
-use crate::tools::tool_apply_ticket_aux::diff_apply::diff_apply;
-use crate::tools::tool_apply_ticket_aux::postprocessing_utils::fill_out_already_applied_status;
+use crate::tools::tool_apply_edit_aux::tickets_parsing::{correct_and_validate_active_ticket, validate_and_correct_ticket, get_tickets_from_messages, TicketToApply};
+use crate::tools::tool_apply_edit::process_ticket;
+use crate::tools::tool_apply_edit_aux::diff_apply::diff_apply;
+use crate::tools::tool_apply_edit_aux::postprocessing_utils::fill_out_already_applied_status;
 use crate::tools::tools_execute::unwrap_subchat_params;
 
 
@@ -81,7 +81,7 @@ pub async fn handle_v1_apply_selected_ticket(
         "".to_string(),
         false,
     ).await));
-    let params = unwrap_subchat_params(ccx.clone(), "apply_ticket").await.map_err(|e| {
+    let params = unwrap_subchat_params(ccx.clone(), "apply_edit").await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))
     })?;
     {
@@ -99,7 +99,7 @@ pub async fn handle_v1_apply_selected_ticket(
         ccx.clone(),
         &mut ticket,
         &params,
-        &"apply_ticket".to_string(),
+        &"apply_edit".to_string(),
         &mut usage,
     ).await.map_err(|(e, _)| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
     correct_and_validate_chunks(global_context.clone(), &mut diff_chunks).await
@@ -144,7 +144,7 @@ pub async fn handle_v1_apply_all_tickets(
         "".to_string(),
         false,
     ).await));
-    let params = unwrap_subchat_params(ccx.clone(), "apply_ticket").await.map_err(|e| {
+    let params = unwrap_subchat_params(ccx.clone(), "apply_edit").await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to unwrap subchat params: {}", e))
     })?;
     {
@@ -177,7 +177,7 @@ pub async fn handle_v1_apply_all_tickets(
             ccx.clone(),
             &mut ticket,
             &params,
-            &"apply_ticket".to_string(),
+            &"apply_edit".to_string(),
             &mut usage,
         ).await;
         let mut diff_chunks = diff_chunks_maybe.map_err(|(e, _)|

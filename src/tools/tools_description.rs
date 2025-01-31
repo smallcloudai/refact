@@ -130,7 +130,7 @@ pub async fn tools_merged_and_filtered(
         ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
-        ("apply_ticket".to_string(), Box::new(crate::tools::tool_apply_ticket::ToolPatch::new()) as Box<dyn Tool + Send>),
+        ("apply_edit".to_string(), Box::new(crate::tools::tool_apply_edit::ToolPatch::new()) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
@@ -262,7 +262,7 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "apply_ticket"
+  - name: "apply_edit"
     agentic: true
     description: |
       The function to apply changes from the existing 📍-notation edit blocks in the provided order.
@@ -351,7 +351,7 @@ tools:
     parameters:
       - name: "im_going_to_use_tools"
         type: "string"
-        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, apply_ticket"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, apply_edit"
       - name: "im_going_to_apply_to"
         type: "string"
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"

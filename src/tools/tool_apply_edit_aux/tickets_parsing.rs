@@ -11,7 +11,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::call_validation::ChatMessage;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::tools::tool_apply_ticket_aux::postprocessing_utils::does_doc_have_symbol;
+use crate::tools::tool_apply_edit_aux::postprocessing_utils::does_doc_have_symbol;
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum PatchAction {
