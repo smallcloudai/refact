@@ -113,7 +113,7 @@ impl Tool for ToolDeepThinking {
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
-        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_thinking").await?;
+        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "think").await?;
 
         let external_messages = {
             let ccx_lock = ccx.lock().await;

@@ -354,7 +354,7 @@ subchat_tool_parameters:
     subchat_tokens_for_rag: 10000
     subchat_n_ctx: 16000
     subchat_max_new_tokens: 2000
-  deep_thinking:
+  think:
     subchat_model: "deepseek-reasoner"
     subchat_tokens_for_rag: 32000
     subchat_n_ctx: 64000
