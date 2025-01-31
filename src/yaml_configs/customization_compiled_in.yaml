@@ -132,7 +132,7 @@ PROMPT_EXPLORATION_TOOLS: |
        - Explain your plan briefly before calling any tools
        - Gather the necessary context using `tree()`, `cat()`, `search()`, `definition()`, `references()` and other tool calls, or follow the user’s instructions.
        - Ask clarifying questions if needed, making as many iterations as necessary to refine the context.
-       - After gathering context, propose any required project changes.
+       - After gathering context, propose required project changes.
    - **If no**:
        - Answer the question directly without calling any tools.
 
