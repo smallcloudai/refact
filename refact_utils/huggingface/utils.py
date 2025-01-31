@@ -11,8 +11,7 @@ from refact_utils.scripts import env
 
 
 def is_hf_hub_offline() -> bool:
-    if os.environ.get("HF_HUB_OFFLINE", "0") == "1":
-        return True
+    # NOTE: don't check HF_HUB_OFFLINE env variable here
     return os.path.exists(env.FLAG_HF_HUB_OFFLINE)
 
 
