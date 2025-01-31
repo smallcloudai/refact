@@ -21,7 +21,6 @@ from refact_webgui.webgui.selfhost_login import AdminRouter
 from refact_webgui.webgui.selfhost_login import AdminSession
 from refact_webgui.webgui.selfhost_login import DummySession
 from refact_webgui.webgui.selfhost_login import RefactSession
-from refact_webgui.webgui.selfhost_lsp_proxy import LspProxy
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_plugins import PluginsRouter
 from refact_webgui.webgui.selfhost_queue import InferenceQueue, Ticket
@@ -119,7 +118,6 @@ class WebGUI(FastAPI):
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
-            LspProxy(session=session),
             TabAboutRouter(),
             StaticRouter(),
         ]
