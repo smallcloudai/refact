@@ -92,7 +92,8 @@ pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<Pri
 pub fn any_glob_matches_path(globs: &Vec<String>, path: &Path) -> bool {
     globs.iter().any(|glob| {
         let pattern = Pattern::new(glob).unwrap();
-        let matches = pattern.matches_path(path);
+        let mut matches = pattern.matches_path(path);
+        matches |= path.to_str().map_or(false, |s: &str| s.ends_with(glob));
         matches
     })
 }
@@ -140,7 +141,8 @@ mod tests {
             (current_dir.join("secret.pem"), FilePrivacyLevel::Blocked),          // matches both
             (current_dir.join("somedir/secret.pem"), FilePrivacyLevel::Blocked),  // matches both
             (current_dir.join("secret.pub"), FilePrivacyLevel::AllowToSendAnywhere),
-            (current_dir.join("secret_passwords.txt"), FilePrivacyLevel::AllowToSendAnywhere),
+            (current_dir.join("secret_passwords.txt"), FilePrivacyLevel::Blocked),
+            (current_dir.join("3/2/1/secret_passwords.txt"), FilePrivacyLevel::Blocked),
             (current_dir.join("secret_passwords.jpeg"), FilePrivacyLevel::AllowToSendAnywhere),
             (current_dir.join("secret_dir/anything.jpg"), FilePrivacyLevel::Blocked),
             (current_dir.join("semi_private_dir/wow1.md"), FilePrivacyLevel::OnlySendToServersIControl),

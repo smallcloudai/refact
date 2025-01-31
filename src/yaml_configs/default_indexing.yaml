@@ -14,10 +14,8 @@
 # ~/path/to/your/project/.refact/indexing.yaml
 #
 
-use_gitignore: true
+blocklist:
+  - "*/dist/*"
 
-#blocklist:
-#  - "lib/"
-
-#additional_indexing_dirs:
-#  - "~/my_favorite_library/"
+additional_indexing_dirs:
+ - "~/my_favorite_library/"

@@ -4,7 +4,6 @@ use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Duration;
 use tokio::fs;
-use tracing::{warn, error};
 use std::time::SystemTime;
 use std::collections::HashMap;
 use crate::global_context::GlobalContext;
@@ -160,7 +159,7 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
                     vcs_indexing_settings_map.insert(indexing_root.to_str().unwrap().to_string(), indexing_settings);
                 },
                 Err(e) => {
-                    error!("{}, skip", e)
+                    tracing::error!("{}, skip", e)
                 }
             }
         }
@@ -183,8 +182,9 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
 // }
 
 pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
-    tracing::info!("is_blocklisted {:?} {:?}", indexing_settings, path);
-    return any_glob_matches_path(&indexing_settings.blocklist, &path)
+    let block = any_glob_matches_path(&indexing_settings.blocklist, &path);
+    tracing::info!("is_blocklisted {:?} {:?} block={}", indexing_settings, path, block);
+    block
 }
 
 fn _load_indexing_yaml_str(
@@ -198,22 +198,41 @@ fn _load_indexing_yaml_str(
                 if indexing_dir.is_empty() {
                     continue;
                 }
-                let indexing_dir_path = PathBuf::from(indexing_dir);
+                let expanded_dir = if indexing_dir.starts_with("~") {
+                    if let Some(without_tilde) = indexing_dir.strip_prefix("~") {
+                        let home_dir = PathBuf::from(&home::home_dir().ok_or(()).expect("failed to find home dir").to_string_lossy().to_string());
+                        home_dir.join(without_tilde.trim_start_matches('/')).to_string_lossy().into_owned()
+                    } else {
+                        indexing_dir.clone()
+                    }
+                } else {
+                    indexing_dir.clone()
+                };
+                let indexing_dir_path = PathBuf::from(&expanded_dir);
                 if indexing_dir_path.is_absolute() {
-                    // TODO: complicated case
-                    additional_indexing_dirs.push(indexing_dir.clone());
+                    let normalized = crate::files_correction::to_pathbuf_normalize(&expanded_dir)
+                        .to_string_lossy()
+                        .into_owned();
+                    additional_indexing_dirs.push(normalized);
                 } else {
                     if let Some(b) = relative_path_base {
-                        additional_indexing_dirs.push(b.join(indexing_dir).to_str().unwrap().to_string());
+                        let joined_path = b.join(&expanded_dir).to_str().unwrap().to_string();
+                        let normalized = crate::files_correction::to_pathbuf_normalize(&joined_path)
+                            .to_string_lossy()
+                            .into_owned();
+                        additional_indexing_dirs.push(normalized);
                     } else {
-                        warn!("skip relative additional indexing dir {} from global indexing.yaml", indexing_dir)
+                        tracing::error!("can't have relative path {} in the global indexing.yaml", indexing_dir)
                     }
                 }
             }
-            return Ok(IndexingSettings{blocklist: indexing_settings.blocklist, additional_indexing_dirs})
+            return Ok(IndexingSettings {
+                blocklist: indexing_settings.blocklist,
+                additional_indexing_dirs
+            })
         }
         Err(e) => {
-            return Err(format!("indexing.yaml parsing failed\n{}", e));
+            return Err(format!("{}", e));
         }
     }
 }

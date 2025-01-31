@@ -76,17 +76,16 @@ where I: IntoIterator<Item = String> {
 mod tests {
     use super::*;
     use std::path::PathBuf;
-    use crate::blocklist::IndexingSettings;
     use crate::files_in_workspace::retrieve_files_in_workspace_folders;
 
     async fn get_candidates_from_workspace_files() -> Vec<String> {
         let proj_folders = vec![PathBuf::from(".").canonicalize().unwrap()];
         let proj_folder = &proj_folders[0];
 
-        let indexing_settings = IndexingSettings::default();
+        let mut indexing_everywhere = crate::files_blocklist::IndexingEverywhere::default();
         let (workspace_files, _vcs_folders) = retrieve_files_in_workspace_folders(
             proj_folders.clone(),
-            indexing_settings.clone(),
+            &mut indexing_everywhere,
             false,
             false
         ).await;
