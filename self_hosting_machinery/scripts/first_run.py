@@ -2,6 +2,7 @@ import os
 
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from self_hosting_machinery.scripts import enum_gpus
+from self_hosting_machinery.scripts import hf_hub_available
 from refact_utils.scripts import env
 
 
@@ -23,6 +24,7 @@ def convert_old_configs():
 
 if __name__ == '__main__':
     convert_old_configs()
+    hf_hub_available.set_hf_hub_offline_flag()  # should be before ModelAssigner
     model_assigner = ModelAssigner()
     assign_gpus_if_first_run_detected(model_assigner)
     model_assigner.models_to_watchdog_configs()   # removes deprecated models
