@@ -367,7 +367,7 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
     commits_with_messages
 }
 
-pub fn shallow_clone_local_repo_without_checkout(source_dir: &Path, target_dir: &Path) -> Result<(), String> {
+pub fn clone_local_repo_without_checkout(source_dir: &Path, target_dir: &Path) -> Result<(), String> {
     let mut checkout_builder = git2::build::CheckoutBuilder::new();
     checkout_builder.allow_conflicts(true).dry_run();
     let mut repo_builder = RepoBuilder::new();
@@ -426,6 +426,8 @@ pub async fn create_workspace_checkpoint(
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
+        repo.set_head(branch.get().name().ok_or("Invalid branch name".to_string())?)
+            .map_err_with_prefix("Failed to set head:")?;
         let file_changes = get_diff_statuses_worktree_to_head(&repo, true)?;
         stage_changes(&repo, &file_changes)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
@@ -493,7 +495,7 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             },
         };
 
-        match shallow_clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
+        match clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
             Ok(_) => {
                 tracing::info!("Shadow git repo for {workspace_folder_str} cloned successfully from original repo.");
                 continue;
