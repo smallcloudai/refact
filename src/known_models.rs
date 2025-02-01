@@ -353,6 +353,16 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             }
         },
+        "o3-mini": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            }
+        },
         "claude-instant-1.2": {
             "n_ctx": 8096,
             "supports_scratchpads": {
@@ -671,6 +681,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
         "o1":                     "Xenova/gpt-4o",
         "o1-mini":                "Xenova/gpt-4o",
+        "o3-mini":                "Xenova/gpt-4o",
         "openai/gpt-4o":          "Xenova/gpt-4o",
 
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
