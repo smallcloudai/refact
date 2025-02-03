@@ -2,6 +2,7 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use git2::{Repository, Oid};
 use tokio::sync::RwLock as ARwLock;
+use tokio::time::Instant;
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 
@@ -10,8 +11,7 @@ use crate::custom_error::MapErrToString;
 use crate::files_correction::{deserialize_path, get_active_workspace_folder, get_project_dirs, serialize_path};
 use crate::global_context::GlobalContext;
 use crate::git::{FileChange, FileChangeStatus};
-use crate::git::operations::{get_or_create_branch, get_diff_statuses_worktree_to_head, stage_changes, commit, 
-                       get_diff_statuses_worktree_to_commit, checkout_head_and_branch_to_commit, get_commit_datetime};
+use crate::git::operations::{get_or_create_branch, commit, checkout_head_and_branch_to_commit, get_commit_datetime, get_diff_statuses_index_to_commit};
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct Checkpoint {
@@ -42,20 +42,34 @@ pub async fn create_workspace_checkpoint(
         }
     }
 
+    let t0 = Instant::now();
+
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
     let repo = Repository::open(&shadow_repo_path).map_err_with_prefix("Failed to open repo:")?;
     repo.set_workdir(&workspace_folder, false).map_err_with_prefix("Failed to set workdir:")?;
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
-        // repo.set_head(branch.get().name().ok_or("Invalid branch name".to_string())?)
-        //     .map_err_with_prefix("Failed to set head:")?;
-        let file_changes = get_diff_statuses_worktree_to_head(&repo, true)?;
-        stage_changes(&repo, &file_changes)?;
+        if repo.head().map_err_with_prefix("Failed to get HEAD:")?.name() != branch.get().name() {
+            let branch_commit = branch.get().peel_to_commit()
+                .map_err_with_prefix("Failed to get branch commit:")?;
+            repo.reset(branch_commit.as_object(), git2::ResetType::Mixed, None)
+                .map_err_with_prefix("Failed to reset index:")?;
+            repo.set_head(branch.get().name().ok_or("Branch name is not valid UTF-8")?)
+                .map_err_with_prefix("Failed to set HEAD to branch:")?;
+        }
+
+        let mut index = repo.index().map_err_with_prefix("Failed to get index:")?;
+        index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
+            .map_err_with_prefix("Failed to add files to index:")?;
+        index.write().map_err_with_prefix("Failed to write index:")?;
+
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
 
-        (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, file_changes)
+        (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, vec![])
     };
+
+    tracing::info!("Checkpoint created in {:.2}s", t0.elapsed().as_secs_f64());
 
     Ok((checkpoint, file_changes, repo))
 }
@@ -70,10 +84,9 @@ pub async fn restore_workspace_checkpoint(
     let commit_to_restore_oid = Oid::from_str(&checkpoint_to_restore.commit_hash).map_err_to_string()?;
     let reverted_to = get_commit_datetime(&repo, &commit_to_restore_oid)?;
     
-    let mut files_changed = get_diff_statuses_worktree_to_commit(
-            &repo, true, &commit_to_restore_oid)?;
+    let mut files_changed = get_diff_statuses_index_to_commit(&repo, true, &commit_to_restore_oid)?;
 
-    // Invert status since we got changes in reverse order so that if it fails it does not updates the workspace
+    // Invert status since we got changes in reverse order so that if it fails it does not update the workspace
     for change in &mut files_changed {
         change.status = match change.status {
             FileChangeStatus::ADDED => FileChangeStatus::DELETED,
@@ -120,6 +133,8 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             }
         }
 
+        let t0 = Instant::now();
+
         let repo = match git2::Repository::init(&shadow_git_dir_path) {
             Ok(repo) => repo,
             Err(e) => {
@@ -133,16 +148,18 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
         }
 
         let initial_commit_result = (|| {
-            let file_changes = get_diff_statuses_worktree_to_head(&repo, true)?;
-            super::operations::stage_changes(&repo, &file_changes)?;
-            let tree_id = repo.index().map_err_to_string()?.write_tree().map_err_to_string()?;
+            let mut index = repo.index().map_err_to_string()?;
+            index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
+                .map_err_to_string()?;
+            index.write().map_err_to_string()?;
+            let tree_id = index.write_tree().map_err_to_string()?;
             let tree = repo.find_tree(tree_id).map_err_to_string()?;
             let signature = git2::Signature::now("Refact Agent", "agent@refact.ai").map_err_to_string()?;
             repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[]).map_err_to_string()
         })();
 
         match initial_commit_result {
-            Ok(_) => tracing::info!("Shadow git repo for {workspace_folder_str} initialized."),
+            Ok(_) => tracing::info!("Shadow git repo for {} initialized in {:.2}s.", workspace_folder_str, t0.elapsed().as_secs_f64()),
             Err(e) => {
                 tracing::error!("Initial commit for {workspace_folder_str} failed: {e}");
                 continue;

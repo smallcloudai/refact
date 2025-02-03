@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, TimeZone, Utc};
 use git2::{Repository, Branch, DiffOptions, Oid};
 use git2::build::RepoBuilder;
+use tokio::time::{Instant, Duration};
 use tracing::error;
 
 use crate::custom_error::MapErrToString;
@@ -19,7 +20,8 @@ fn status_options(include_untracked: bool) -> git2::StatusOptions {
         .recurse_ignored_dirs(false)
         .recurse_untracked_dirs(include_untracked)
         .rename_threshold(100)
-        .update_index(true);
+        .update_index(true)
+        .show(git2::StatusShow::Index);
     options
 }
 
@@ -51,7 +53,7 @@ pub fn get_or_create_branch<'repo>(repository: &'repo Repository, branch_name: &
     }
 }
 
-pub fn get_diff_statuses_worktree_to_head(repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_index_to_head(repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
     
@@ -63,42 +65,46 @@ pub fn get_diff_statuses_worktree_to_head(repository: &Repository, include_untra
         let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
         let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
 
-        if status.is_wt_new() || status.is_index_new() {
-            result.push(FileChange {
+        match status {
+            s if s.is_ignored() || s.is_wt_renamed() || s.is_wt_renamed() || s.is_wt_deleted() || 
+                s.is_wt_modified() || s.is_wt_new() || s.is_wt_typechange() => {
+                tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path)
+            },
+            s if s.is_index_new() => result.push(FileChange {
                 status: FileChangeStatus::ADDED,
-                relative_path,
-                absolute_path,
-            });
-        } else if status.is_wt_modified() || status.is_index_modified() || 
-                    status.is_wt_typechange() || status.is_index_typechange() || 
-                    status.is_conflicted() {
-            result.push(FileChange {
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            }),
+            s if s.is_index_modified() || s.is_index_typechange() || s.is_conflicted() => result.push(FileChange {
                 status: FileChangeStatus::MODIFIED,
-                relative_path,
-                absolute_path,
-            });
-        } else if status.is_wt_deleted() || status.is_index_deleted() {
-            result.push(FileChange {
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            }),
+            s if s.is_index_deleted() => result.push(FileChange {
                 status: FileChangeStatus::DELETED,
-                relative_path,
-                absolute_path,
-            });
-        } else if status.is_ignored() || status.is_wt_renamed() || status.is_index_renamed() {
-            tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path);
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            }),
+            _ => (),
+        };
+    }
+
+    Ok(result)
+}
         }
     }
 
     Ok(result)
 }
 
-pub fn get_diff_statuses_worktree_to_commit(repository: &Repository, include_untracked: bool, commit_oid: &git2::Oid) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_index_to_commit(repository: &Repository, include_untracked: bool, commit_oid: &git2::Oid) -> Result<Vec<FileChange>, String> {
     let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
     let original_head_ref = head.is_branch().then(|| head.name().map(ToString::to_string)).flatten();
     let original_head_oid = head.target();
 
     repository.set_head_detached(commit_oid.clone()).map_err_with_prefix("Failed to set HEAD:")?;
 
-    let result = get_diff_statuses_worktree_to_head(repository, include_untracked);
+    let result = get_diff_statuses_index_to_head(repository, include_untracked);
 
     let restore_result = match (&original_head_ref, original_head_oid) {
         (Some(head_ref), _) => repository.set_head(head_ref),
