@@ -1,6 +1,9 @@
+import { useEffect } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
 import { smallCloudApi } from "../services/smallcloud";
+import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
+import { useAppDispatch } from "./useAppDispatch";
 
 const NOT_SKIPPABLE_ADDRESS_URLS = [
   "Refact",
@@ -8,6 +11,7 @@ const NOT_SKIPPABLE_ADDRESS_URLS = [
 ];
 
 export const useGetUser = () => {
+  const dispatch = useAppDispatch();
   const maybeAddressURL = useAppSelector(selectAddressURL);
   const addressURL = maybeAddressURL ? maybeAddressURL.trim() : "";
   const maybeApiKey = useAppSelector(selectApiKey);
@@ -15,7 +19,7 @@ export const useGetUser = () => {
   const isAddressURLALink =
     addressURL.startsWith("https://") || addressURL.startsWith("http://");
 
-  return smallCloudApi.useGetUserQuery(
+  const request = smallCloudApi.useGetUserQuery(
     { apiKey, addressURL: addressURL },
     {
       skip: !(
@@ -24,4 +28,16 @@ export const useGetUser = () => {
       refetchOnMountOrArgChange: true,
     },
   );
+
+  useEffect(() => {
+    if (request.data) {
+      const action = setInitialAgentUsage({
+        agent_usage: request.data.refact_agent_request_available,
+        agent_max_usage_amount: request.data.refact_agent_max_request_num,
+      });
+      dispatch(action);
+    }
+  }, [dispatch, request.data]);
+
+  return request;
 };

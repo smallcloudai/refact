@@ -12,8 +12,12 @@ import {
   chatLinks,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
+import { stubResizeObserver } from "../utils/test-utils";
 
 describe("Start a new chat", () => {
+  // TODO: this shouldn't need to be called here.
+  stubResizeObserver();
+
   server.use(
     goodPing,
     goodCaps,

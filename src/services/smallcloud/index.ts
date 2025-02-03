@@ -32,7 +32,7 @@ function isUser(json: unknown): json is User {
   );
 }
 
-type GoodResponse = User & {
+export type GoodPollingResponse = User & {
   secret_key: string;
   tooltip_message: string;
   login_message: string;
@@ -41,7 +41,7 @@ type GoodResponse = User & {
   "longthink-functions-today-v2": Record<string, LongThinkFunction>;
 };
 
-export function isGoodResponse(json: unknown): json is GoodResponse {
+export function isGoodResponse(json: unknown): json is GoodPollingResponse {
   if (!isUser(json)) return false;
   return "secret_key" in json && typeof json.secret_key === "string";
 }
@@ -51,7 +51,7 @@ type BadResponse = {
   retcode: "FAILED";
 };
 
-export type StreamedLoginResponse = GoodResponse | BadResponse;
+export type StreamedLoginResponse = GoodPollingResponse | BadResponse;
 
 export type LongThinkFunction = {
   label: string;
@@ -228,5 +228,61 @@ export const smallCloudApi = createApi({
       queryFn: () => ({ data: null }),
       invalidatesTags: ["User", "Polling"],
     }),
+
+    loginWithEmailLink: builder.mutation<
+      EmailLinkResponse,
+      { email: string; token: string }
+    >({
+      async queryFn(arg, api, extraOptions, baseQuery) {
+        // TODO: maybe use cookies?
+        const url = `https://www.smallcloud.ai/plugin-magic-link/${arg.token.trim()}/${arg.email.trim()}`;
+
+        const response = await baseQuery({
+          ...extraOptions,
+          url,
+          signal: api.signal,
+        });
+        if (response.error) return response;
+
+        if (!isEmailLinkResponse(response.data)) {
+          return {
+            error: {
+              error:
+                "Invalid response from https://www.smallcloud.ai/plugin-magic-link",
+              data: response.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: response.data };
+      },
+    }),
   }),
 });
+
+type EmailLinkResponse =
+  | {
+      retcode: "OK";
+      status: "sent";
+    }
+  | {
+      retcode: "OK";
+      status: "not_logged_in";
+    }
+  | {
+      retcode: "OK";
+      status: "user_logged_in";
+      key: string;
+    };
+
+function isEmailLinkResponse(json: unknown): json is EmailLinkResponse {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  return (
+    "retcode" in json &&
+    typeof json.retcode === "string" &&
+    "status" in json &&
+    typeof json.status === "string"
+  );
+}

@@ -22,7 +22,7 @@ export type DropdownNavigationOptions =
   | "settings"
   | "hot keys"
   | "restart tour"
-  | "cloud login"
+  | "login page"
   | "integrations"
   | "";
 
@@ -220,7 +220,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           onSelect={(event) => {
             event.preventDefault();
             logout();
-            handleNavigation("cloud login");
+            handleNavigation("login page");
           }}
         >
           Logout
