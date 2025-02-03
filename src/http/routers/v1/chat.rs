@@ -159,7 +159,7 @@ async fn _chat(
         chat_post.parameters.max_new_tokens = 1024;
     }
     chat_post.parameters.n = chat_post.n;
-    chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.2)));
+    chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.0)));
     chat_post.model = model_name.clone();
 
     // extra validation to catch {"query": "Frog", "scope": "workspace"}{"query": "Toad", "scope": "workspace"}

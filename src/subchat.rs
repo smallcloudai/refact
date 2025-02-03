@@ -15,7 +15,7 @@ use crate::scratchpads::multimodality::chat_content_raw_from_value;
 use crate::yaml_configs::customization_loader::load_customization;
 
 
-const TEMPERATURE: f32 = 0.2;
+const TEMPERATURE: f32 = 0.0;
 const MAX_NEW_TOKENS: usize = 4096;
 
 

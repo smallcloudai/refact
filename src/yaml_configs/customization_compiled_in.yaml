@@ -344,7 +344,7 @@ subchat_tool_parameters:
   patch:
     subchat_model: "gpt-4o-mini"
     subchat_n_ctx: 128000
-    subchat_temperature: 0.2
+    subchat_temperature: 0.0
     subchat_max_new_tokens: 16000
   locate:
     subchat_model: "gpt-4o-mini"
@@ -357,10 +357,11 @@ subchat_tool_parameters:
     subchat_n_ctx: 16000
     subchat_max_new_tokens: 2000
   think:
-    subchat_model: "deepseek-reasoner"
-    subchat_tokens_for_rag: 32000
-    subchat_n_ctx: 64000
-    subchat_max_new_tokens: 16000
+    subchat_model: "o3-mini"
+    subchat_tokens_for_rag: 70000
+    subchat_n_ctx: 128000
+    subchat_temperature: 0.6
+    subchat_max_new_tokens: 32000
 
 
 code_lens:

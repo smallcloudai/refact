@@ -60,7 +60,7 @@ async fn _make_prompt(
         };
         let left_tokens = tokens_budget - count_tokens(&tokenizer.read().unwrap(), &message_row) as i64;
         if left_tokens < 0 {
-            // do not break here, maybe there are smaller useful messages at the beginning
+            // we do not end here, maybe there are smaller useful messages at the beginning
             continue;
         } else {
             tokens_budget = left_tokens;
@@ -145,7 +145,7 @@ impl Tool for ToolDeepThinking {
             vec![],
             None,
             false,
-            Some(0.6),
+            subchat_params.subchat_temperature,
             Some(subchat_params.subchat_max_new_tokens),
             1,
             None,  // TODO: pass ReasoningEffort when is supported in litellm
