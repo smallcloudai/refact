@@ -74,8 +74,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     isPageInHistory("chat");
 
   useEffect(() => {
-    // TODO: note sure why but removing isLoggedIn works?
-    if (config.apiKey && config.addressURL /*&& !isLoggedIn*/) {
+    if (config.apiKey && config.addressURL && !isLoggedIn) {
       if (tourState.type === "in_progress" && tourState.step === 1) {
         dispatch(push({ name: "welcome" }));
       } else if (Object.keys(historyState).length === 0) {
