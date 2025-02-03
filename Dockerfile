@@ -32,6 +32,9 @@ RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
 RUN apt-get update
 RUN apt-get install cassandra -y
 
+# to ping hf
+RUN apt-get install -y iputils-ping
+
 COPY . /tmp/app
 RUN echo "refact $(git -C /tmp/app rev-parse HEAD)" >> /refact-build-info.txt
 RUN pip install ninja

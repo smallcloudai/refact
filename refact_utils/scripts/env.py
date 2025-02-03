@@ -12,6 +12,7 @@ def safe_paths_join(p1: str, p2: str) -> str:
 PERMDIR = os.environ.get("REFACT_PERM_DIR", "") or os.path.expanduser("~/.refact/perm-storage")
 TMPDIR = os.environ.get("REFACT_TMP_DIR", "") or os.path.expanduser("~/.refact/tmp")
 FLAG_FACTORY_RESET = os.path.join(PERMDIR, "_factory_reset.flag")
+FLAG_HF_HUB_OFFLINE = os.path.join(PERMDIR, "hf_hub_offline.flag")
 
 DIR_CONFIG     = os.path.join(PERMDIR, "cfg")
 DIR_WATCHDOG_D = os.path.join(PERMDIR, "cfg", "watchdog.d")
