@@ -32,15 +32,6 @@ RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
 RUN apt-get update
 RUN apt-get install cassandra -y
 
-# refact lsp requisites
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y
-ENV PATH="${PATH}:/root/.cargo/bin"
-RUN git clone https://github.com/smallcloudai/refact-lsp.git /tmp/refact-lsp
-RUN echo "refact-lsp $(git -C /tmp/refact-lsp rev-parse HEAD)" >> /refact-build-info.txt
-RUN cd /tmp/refact-lsp \
-    && cargo install --path . \
-    && rm -rf /tmp/refact-lsp
-
 # to ping hf
 RUN apt-get install -y iputils-ping
 
