@@ -111,8 +111,8 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
         };
 
         match super::operations::clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
-            Ok(_) => {
-                tracing::info!("Shadow git repo for {workspace_folder_str} cloned successfully from original repo.");
+            Ok(time_elapsed) => {
+                tracing::info!("Shadow git repo for {workspace_folder_str} cloned successfully from original repo in {:.2}s", time_elapsed.as_secs_f64());
                 continue;
             },
             Err(e) => {
