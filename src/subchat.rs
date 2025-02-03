@@ -15,7 +15,6 @@ use crate::scratchpads::multimodality::chat_content_raw_from_value;
 use crate::yaml_configs::customization_loader::load_customization;
 
 
-const TEMPERATURE: f32 = 0.0;
 const MAX_NEW_TOKENS: usize = 4096;
 
 
@@ -298,7 +297,6 @@ pub async fn subchat_single(
     info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
     info!("tools_on_intersection {:?}", tools_on_intersection);
 
-    let temperature = Some(temperature.unwrap_or(TEMPERATURE));
     let max_new_tokens = max_new_tokens.unwrap_or(MAX_NEW_TOKENS);
     let (mut chat_post, spad) = create_chat_post_and_scratchpad(
         gcx.clone(),

@@ -360,7 +360,6 @@ subchat_tool_parameters:
     subchat_model: "o3-mini"
     subchat_tokens_for_rag: 70000
     subchat_n_ctx: 128000
-    subchat_temperature: 0.6
     subchat_max_new_tokens: 32000
 
 

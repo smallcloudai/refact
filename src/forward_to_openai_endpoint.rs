@@ -55,7 +55,9 @@ pub async fn forward_to_openai_style_endpoint(
             data["n"] = serde_json::Value::from(n);
         }
     }
-    info!("NOT STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
+    info!("NOT STREAMING TEMP {}", sampling_parameters.temperature
+        .map(|x| x.to_string())
+        .unwrap_or("None".to_string()));
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
@@ -128,7 +130,9 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     if let Some(n) = sampling_parameters.n{
         data["n"] = serde_json::Value::from(n);
     }
-    info!("STREAMING TEMP {}", sampling_parameters.temperature.unwrap());
+    info!("STREAMING TEMP {}", sampling_parameters.temperature
+        .map(|x| x.to_string())
+        .unwrap_or("None".to_string()));
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt, model_name);
     } else {
