@@ -91,8 +91,66 @@ pub fn get_diff_statuses_index_to_head(repository: &Repository, include_untracke
 
     Ok(result)
 }
+
+pub fn get_diff_statuses_worktree_to_head_using_diff(repository: &Repository, include_untracked: bool, from_commit: Option<&git2::Oid>) -> Result<Vec<FileChange>, String> {
+    let repository_workdir = repository.workdir()
+        .ok_or("Failed to get workdir from repository".to_string())?;
+
+    let tree = match from_commit {
+        Some(commit_oid) => {
+            let commit = repository.find_commit(commit_oid.clone())
+                .map_err_with_prefix("Failed to find commit:")?;
+            commit.tree().map_err_with_prefix("Failed to get commit tree:")?
+        },
+        None => {
+            let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
+            head.peel_to_tree().map_err_with_prefix("Failed to get HEAD tree:")?
         }
-    }
+    };
+
+    let mut diff_opts = git2::DiffOptions::new();
+    diff_opts
+        .include_untracked(include_untracked)
+        .recurse_untracked_dirs(include_untracked)
+        .show_untracked_content(include_untracked)
+        .include_ignored(false)
+        .include_unmodified(false)
+        .update_index(true)
+        .include_unreadable(false)
+        .recurse_ignored_dirs(false)
+        .disable_pathspec_match(true)
+        .include_typechange(false)
+        .show_binary(false);
+
+    let diff = repository.diff_tree_to_workdir(Some(&tree), Some(&mut diff_opts))
+        .map_err_with_prefix("Failed to get diff:")?;
+
+    let mut result = Vec::new();
+    diff.print(git2::DiffFormat::NameStatus, |_delta, _hunk, line| {
+        // Format is "X\tpath" where X is status code
+        if let Some(line_content) = std::str::from_utf8(line.content()).ok() {
+            if let Some((status_str, path)) = line_content.split_once('\t') {
+                let status = match status_str {
+                    // TODO: handle properly all status codes
+                    "A" => Some(FileChangeStatus::ADDED),
+                    "D" => Some(FileChangeStatus::DELETED),
+                    "M" | "T" | "U" => Some(FileChangeStatus::MODIFIED),
+                    _ => None,
+                };
+
+                if let Some(status) = status {
+                    let relative_path = PathBuf::from(path.trim());
+                    let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
+                    result.push(FileChange {
+                        status,
+                        relative_path,
+                        absolute_path,
+                    });
+                }
+            }
+        }
+        true
+    }).map_err_with_prefix("Failed to process diff:")?;
 
     Ok(result)
 }

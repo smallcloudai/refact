@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::git::CommitInfo;
-use crate::git::operations::{get_diff_statuses_worktree_to_head, git_diff_as_string};
+use crate::git::operations::{get_diff_statuses_worktree_to_head_using_diff, git_diff_as_string};
 
 pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo>
 {
@@ -26,7 +26,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { warn!("{}", e); continue; }
         };
 
-        let file_changes = match get_diff_statuses_worktree_to_head(&repository, true) {
+        let file_changes = match get_diff_statuses_worktree_to_head_using_diff(&repository, true, None) {
             Ok(changes) if changes.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { warn!("{}", e); continue; }
