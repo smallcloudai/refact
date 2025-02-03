@@ -47,7 +47,7 @@ async fn download_tokenizer_file(
 
     info!("downloading tokenizer from {}", http_path);
     let mut req = http_client.get(http_path);
-    if !api_token.is_empty() {
+    if api_token.to_lowercase().starts_with("hf_") {
         req = req.header(AUTHORIZATION, format!("Bearer {api_token}"))
     }
     let res = req
