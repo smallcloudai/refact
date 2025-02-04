@@ -7,9 +7,9 @@ use tracing::error;
 
 use crate::custom_error::MapErrToString;
 use crate::files_correction::to_pathbuf_normalize;
-use super::{FileChange, FileChangeStatus};
+use crate::git::{FileChange, FileChangeStatus};
 
-fn status_options(include_untracked: bool, include_unmodified: bool, show_index_only: bool) -> git2::StatusOptions {
+fn status_options(include_untracked: bool, include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
     let mut options = git2::StatusOptions::new();
     options
         .disable_pathspec_match(true)
@@ -21,7 +21,7 @@ fn status_options(include_untracked: bool, include_unmodified: bool, show_index_
         .recurse_untracked_dirs(include_untracked)
         .rename_threshold(100)
         .update_index(true)
-        .show(if show_index_only { git2::StatusShow::Index } else { git2::StatusShow::IndexAndWorkdir });
+        .show(show);
     options
 }
 
@@ -29,7 +29,8 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let repository = Repository::open(repository_path)
         .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;
 
-    let statuses = repository.statuses(Some(&mut status_options(true, true, false)))
+    let statuses = repository.statuses(Some(
+        &mut status_options(true, true, git2::StatusShow::IndexAndWorkdir)))
         .map_err(|e| error!("Failed to get statuses: {}", e)).ok()?;
 
     let mut files = Vec::new();
@@ -58,12 +59,23 @@ pub fn get_diff_statuses_index_to_head(repository: &Repository, include_untracke
         .ok_or("Failed to get workdir from repository".to_string())?;
     
     let mut result = Vec::new();
-    let statuses = repository.statuses(Some(&mut status_options(include_untracked, false, true)))
+    let statuses = repository.statuses(Some(&mut status_options(include_untracked, false, git2::StatusShow::Index)))
         .map_err_with_prefix("Failed to get statuses:")?;
     for entry in statuses.iter() {
         let status = entry.status();
         let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
         let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
+
+        if absolute_path.join(".git").exists() {
+            let nested_repo = git2::Repository::open(&absolute_path)
+                .map_err_with_prefix("Failed to open sub-repo:")?;
+            let mut nested_repo_result = get_diff_statuses_index_to_head(&nested_repo, include_untracked)?;
+            for fc in nested_repo_result.iter_mut() {
+                fc.relative_path = relative_path.join(&fc.relative_path);
+            }
+            result.extend(nested_repo_result);
+            continue;
+        }
 
         match status {
             s if s.is_ignored() || s.is_wt_renamed() || s.is_wt_renamed() || s.is_wt_deleted() || 
@@ -81,6 +93,56 @@ pub fn get_diff_statuses_index_to_head(repository: &Repository, include_untracke
                 absolute_path: absolute_path.clone(),
             }),
             s if s.is_index_deleted() => result.push(FileChange {
+                status: FileChangeStatus::DELETED,
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            }),
+            _ => (),
+        };
+    }
+
+    Ok(result)
+}
+
+pub fn get_diff_statuses_workdir_to_index(repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
+    let repository_workdir = repository.workdir()
+        .ok_or("Failed to get workdir from repository".to_string())?;
+    
+    let mut result = Vec::new();
+    let statuses = repository.statuses(Some(&mut status_options(include_untracked, false, git2::StatusShow::Workdir)))
+        .map_err_with_prefix("Failed to get statuses:")?;
+    for entry in statuses.iter() {
+        let status = entry.status();
+        let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
+        let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
+
+        if absolute_path.join(".git").exists() {
+            let nested_repo = git2::Repository::open(&absolute_path)
+                .map_err_with_prefix("Failed to open sub-repo:")?;
+            let mut nested_repo_result = get_diff_statuses_workdir_to_index(&nested_repo, include_untracked)?;
+            for fc in nested_repo_result.iter_mut() {
+                fc.relative_path = relative_path.join(&fc.relative_path);
+            }
+            result.extend(nested_repo_result);
+            continue;
+        }
+
+        match status {
+            s if s.is_ignored() || s.is_index_renamed() || s.is_index_renamed() || s.is_index_deleted() || 
+                s.is_index_modified() || s.is_index_new() || s.is_index_typechange() => {
+                tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path)
+            },
+            s if s.is_wt_new() => result.push(FileChange {
+                status: FileChangeStatus::ADDED,
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            }),
+            s if s.is_wt_modified() || s.is_wt_typechange() || s.is_conflicted() => result.push(FileChange {
+                status: FileChangeStatus::MODIFIED,
+                relative_path: relative_path.clone(),
+                absolute_path: absolute_path.clone(),
+            }),
+            s if s.is_wt_deleted() => result.push(FileChange {
                 status: FileChangeStatus::DELETED,
                 relative_path: relative_path.clone(),
                 absolute_path: absolute_path.clone(),
@@ -320,7 +382,7 @@ pub fn clone_local_repo_without_checkout(source_dir: &Path, target_dir: &Path) -
 
     repo.reset(head_commit.as_object(), git2::ResetType::Mixed, None)
         .map_err_with_prefix("Failed to reset index to HEAD:")?;
-    repo.statuses(Some(&mut status_options(true, false, true)))
+    repo.statuses(Some(&mut status_options(true, false, git2::StatusShow::IndexAndWorkdir)))
         .map_err_with_prefix("Failed to get statuses:")?;
 
     Ok(t0.elapsed())

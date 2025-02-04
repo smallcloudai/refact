@@ -11,7 +11,8 @@ use crate::custom_error::MapErrToString;
 use crate::files_correction::{deserialize_path, get_active_workspace_folder, get_project_dirs, serialize_path};
 use crate::global_context::GlobalContext;
 use crate::git::{FileChange, FileChangeStatus};
-use crate::git::operations::{get_or_create_branch, commit, checkout_head_and_branch_to_commit, get_commit_datetime, get_diff_statuses_index_to_commit};
+use crate::git::operations::{get_or_create_branch, commit, checkout_head_and_branch_to_commit, stage_changes,
+    get_diff_statuses_workdir_to_index, get_commit_datetime, get_diff_statuses_index_to_commit};
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct Checkpoint {
@@ -47,6 +48,9 @@ pub async fn create_workspace_checkpoint(
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
     let repo = Repository::open(&shadow_repo_path).map_err_with_prefix("Failed to open repo:")?;
     repo.set_workdir(&workspace_folder, false).map_err_with_prefix("Failed to set workdir:")?;
+    if let Err(e) = repo.add_ignore_rule("**/.git/") {
+        tracing::warn!("Failed to add ignore rule: {e}");
+    }
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
@@ -59,11 +63,8 @@ pub async fn create_workspace_checkpoint(
                 .map_err_with_prefix("Failed to set HEAD to branch:")?;
         }
 
-        let mut index = repo.index().map_err_with_prefix("Failed to get index:")?;
-        index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
-            .map_err_with_prefix("Failed to add files to index:")?;
-        index.write().map_err_with_prefix("Failed to write index:")?;
-
+        let file_changes = get_diff_statuses_workdir_to_index(&repo, true)?;
+        stage_changes(&repo, &file_changes)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
 
         (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, vec![])
@@ -123,7 +124,7 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             },
         };
 
-        match super::operations::clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
+        match crate::git::operations::clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
             Ok(time_elapsed) => {
                 tracing::info!("Shadow git repo for {workspace_folder_str} cloned successfully from original repo in {:.2}s", time_elapsed.as_secs_f64());
                 continue;
@@ -146,12 +147,14 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             tracing::error!("Failed to set workdir for {workspace_folder_str}: {e}");
             continue;
         }
+        if let Err(e) = repo.add_ignore_rule("**/.git/") {
+            tracing::warn!("Failed to add ignore rule: {e}");
+        }
 
         let initial_commit_result = (|| {
+            let file_changes = get_diff_statuses_workdir_to_index(&repo, true)?;
+            stage_changes(&repo, &file_changes)?;
             let mut index = repo.index().map_err_to_string()?;
-            index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)
-                .map_err_to_string()?;
-            index.write().map_err_to_string()?;
             let tree_id = index.write_tree().map_err_to_string()?;
             let tree = repo.find_tree(tree_id).map_err_to_string()?;
             let signature = git2::Signature::now("Refact Agent", "agent@refact.ai").map_err_to_string()?;

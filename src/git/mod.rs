@@ -31,13 +31,6 @@ pub struct FileChange {
     pub status: FileChangeStatus,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FileDiff {
-    pub file_change: FileChange,
-    pub content_before: String,
-    pub content_after: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum FileChangeStatus {
     ADDED,
