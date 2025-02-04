@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use git2::{Repository, Oid};
+use itertools::Itertools;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Instant;
 use std::path::PathBuf;
@@ -11,8 +12,7 @@ use crate::custom_error::MapErrToString;
 use crate::files_correction::{deserialize_path, get_active_workspace_folder, get_project_dirs, serialize_path};
 use crate::global_context::GlobalContext;
 use crate::git::{FileChange, FileChangeStatus};
-use crate::git::operations::{get_or_create_branch, commit, checkout_head_and_branch_to_commit, stage_changes,
-    get_diff_statuses_workdir_to_index, get_commit_datetime, get_diff_statuses_index_to_commit};
+use crate::git::operations::{checkout_head_and_branch_to_commit, commit, get_commit_datetime, get_diff_statuses, get_diff_statuses_index_to_commit, get_or_create_branch, stage_changes, DiffStatusType};
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct Checkpoint {
@@ -48,9 +48,6 @@ pub async fn create_workspace_checkpoint(
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
     let repo = Repository::open(&shadow_repo_path).map_err_with_prefix("Failed to open repo:")?;
     repo.set_workdir(&workspace_folder, false).map_err_with_prefix("Failed to set workdir:")?;
-    if let Err(e) = repo.add_ignore_rule("**/.git/") {
-        tracing::warn!("Failed to add ignore rule: {e}");
-    }
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
@@ -63,7 +60,7 @@ pub async fn create_workspace_checkpoint(
                 .map_err_with_prefix("Failed to set HEAD to branch:")?;
         }
 
-        let file_changes = get_diff_statuses_workdir_to_index(&repo, true)?;
+        let file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, true)?;
         stage_changes(&repo, &file_changes)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
 
@@ -147,12 +144,10 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             tracing::error!("Failed to set workdir for {workspace_folder_str}: {e}");
             continue;
         }
-        if let Err(e) = repo.add_ignore_rule("**/.git/") {
-            tracing::warn!("Failed to add ignore rule: {e}");
-        }
 
         let initial_commit_result = (|| {
-            let file_changes = get_diff_statuses_workdir_to_index(&repo, true)?;
+            let file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, true)?;
+            tracing::info!("file changes: {:?}", file_changes);
             stage_changes(&repo, &file_changes)?;
             let mut index = repo.index().map_err_to_string()?;
             let tree_id = index.write_tree().map_err_to_string()?;
