@@ -32,9 +32,11 @@ class InferenceEmbeddings(InferenceBase, LoraLoaderMixin):
         self._model_dict = model_dict
         self._model_dir = f"models--{self._model_dict['model_path'].replace('/', '--')}"
 
-        assert torch.cuda.is_available(), "model is only supported on GPU"
+        if model_dict.get("cpu"):
+            self._device = "cpu"
+        else:
+            self._device = "cuda:0"
 
-        self._device = "cuda:0"
         log("loading model")
         self._model = SentenceTransformer(
             self._model_dict["model_path"],

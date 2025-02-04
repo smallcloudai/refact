@@ -9,4 +9,14 @@ refact_mini_db = {
         "required_memory_mb": 6000,
         "filter_caps": ["completion", "finetune"],
     },
+    "Refact/1.6B/cpu": {
+        "backend": "transformers",
+        "model_path": "smallcloudai/Refact-1_6B-fim",
+        "model_class_kwargs": {
+            "torch_dtype": "fp16",
+        },
+        "T": 4096,
+        "cpu": True,
+        "filter_caps": ["completion", "finetune"],
+    },
 }

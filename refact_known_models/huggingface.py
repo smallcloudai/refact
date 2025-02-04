@@ -40,6 +40,14 @@ huggingface_mini_db = {
         "T": 512,
         "filter_caps": ["embeddings"],
     },
+    "thenlper/gte-base/cpu": {
+        "backend": "transformers",
+        "model_path": "thenlper/gte-base",
+        "model_class_kwargs": {},
+        "cpu": True,
+        "T": 512,
+        "filter_caps": ["embeddings"],
+    },
     "stable/3b/code": {
         "backend": "transformers",
         "model_path": "stabilityai/stable-code-3b",
