@@ -166,3 +166,6 @@ dmypy.json
 
 # rust
 Cargo.lock
+
+# Misc
+zutils/

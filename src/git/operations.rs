@@ -9,19 +9,19 @@ use crate::custom_error::MapErrToString;
 use crate::files_correction::to_pathbuf_normalize;
 use super::{FileChange, FileChangeStatus};
 
-fn status_options(include_untracked: bool) -> git2::StatusOptions {
+fn status_options(include_untracked: bool, include_unmodified: bool, show_index_only: bool) -> git2::StatusOptions {
     let mut options = git2::StatusOptions::new();
     options
         .disable_pathspec_match(true)
         .include_ignored(false)
-        .include_unmodified(false)
+        .include_unmodified(include_unmodified)
         .include_unreadable(false)
         .include_untracked(include_untracked)
         .recurse_ignored_dirs(false)
         .recurse_untracked_dirs(include_untracked)
         .rename_threshold(100)
         .update_index(true)
-        .show(git2::StatusShow::Index);
+        .show(if show_index_only { git2::StatusShow::Index } else { git2::StatusShow::IndexAndWorkdir });
     options
 }
 
@@ -29,7 +29,7 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let repository = Repository::open(repository_path)
         .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;
 
-    let statuses = repository.statuses(Some(&mut status_options(true)))
+    let statuses = repository.statuses(Some(&mut status_options(true, true, false)))
         .map_err(|e| error!("Failed to get statuses: {}", e)).ok()?;
 
     let mut files = Vec::new();
@@ -58,7 +58,7 @@ pub fn get_diff_statuses_index_to_head(repository: &Repository, include_untracke
         .ok_or("Failed to get workdir from repository".to_string())?;
     
     let mut result = Vec::new();
-    let statuses = repository.statuses(Some(&mut status_options(include_untracked)))
+    let statuses = repository.statuses(Some(&mut status_options(include_untracked, false, true)))
         .map_err_with_prefix("Failed to get statuses:")?;
     for entry in statuses.iter() {
         let status = entry.status();
@@ -92,21 +92,12 @@ pub fn get_diff_statuses_index_to_head(repository: &Repository, include_untracke
     Ok(result)
 }
 
-pub fn get_diff_statuses_worktree_to_head_using_diff(repository: &Repository, include_untracked: bool, from_commit: Option<&git2::Oid>) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_workdir_to_head(repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
-    let tree = match from_commit {
-        Some(commit_oid) => {
-            let commit = repository.find_commit(commit_oid.clone())
-                .map_err_with_prefix("Failed to find commit:")?;
-            commit.tree().map_err_with_prefix("Failed to get commit tree:")?
-        },
-        None => {
-            let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
-            head.peel_to_tree().map_err_with_prefix("Failed to get HEAD tree:")?
-        }
-    };
+    let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
+    let tree = head.peel_to_tree().map_err_with_prefix("Failed to get HEAD tree:")?;
 
     let mut diff_opts = git2::DiffOptions::new();
     diff_opts
@@ -128,25 +119,30 @@ pub fn get_diff_statuses_worktree_to_head_using_diff(repository: &Repository, in
     let mut result = Vec::new();
     diff.print(git2::DiffFormat::NameStatus, |_delta, _hunk, line| {
         // Format is "X\tpath" where X is status code
-        if let Some(line_content) = std::str::from_utf8(line.content()).ok() {
-            if let Some((status_str, path)) = line_content.split_once('\t') {
-                let status = match status_str {
-                    // TODO: handle properly all status codes
-                    "A" => Some(FileChangeStatus::ADDED),
-                    "D" => Some(FileChangeStatus::DELETED),
-                    "M" | "T" | "U" => Some(FileChangeStatus::MODIFIED),
-                    _ => None,
-                };
-
-                if let Some(status) = status {
-                    let relative_path = PathBuf::from(path.trim());
-                    let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
-                    result.push(FileChange {
-                        status,
-                        relative_path,
-                        absolute_path,
-                    });
+        let line_content = String::from_utf8_lossy(line.content()).to_string();
+        if let Some((status_str, path)) = line_content.split_once('\t') {
+            let status = match status_str {
+                "A" | "?" => Some(FileChangeStatus::ADDED),
+                "D" => Some(FileChangeStatus::DELETED),
+                "M" | "T" | "U" => Some(FileChangeStatus::MODIFIED),
+                "R" | "C" | " " | "!" | "X" => {
+                    tracing::error!("Status {status_str} found for {path}, which should not be present due to status options.");
+                    None
+                },
+                _ => {
+                    tracing::error!("Unknown status {status_str} found for {path}.");
+                    None
                 }
+            };
+
+            if let Some(status) = status {
+                let relative_path = PathBuf::from(path.trim());
+                let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
+                result.push(FileChange {
+                    status,
+                    relative_path,
+                    absolute_path,
+                });
             }
         }
         true
@@ -324,7 +320,7 @@ pub fn clone_local_repo_without_checkout(source_dir: &Path, target_dir: &Path) -
 
     repo.reset(head_commit.as_object(), git2::ResetType::Mixed, None)
         .map_err_with_prefix("Failed to reset index to HEAD:")?;
-    repo.statuses(Some(&mut status_options(true)))
+    repo.statuses(Some(&mut status_options(true, false, true)))
         .map_err_with_prefix("Failed to get statuses:")?;
 
     Ok(t0.elapsed())
