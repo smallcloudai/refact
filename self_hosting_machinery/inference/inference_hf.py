@@ -136,7 +136,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             torch_dtype = torch_dtype_mapping[torch_dtype]
             self._model = AutoModelForCausalLM.from_pretrained(
                 self._model_dict["model_path"], cache_dir=self.cache_dir,
-                device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
+                device=self._device, torch_dtype=torch_dtype, trust_remote_code=True,
                 token=token, **self._model_dict["model_class_kwargs"]
             )
         else:
