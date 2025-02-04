@@ -130,7 +130,8 @@ pub async fn tools_merged_and_filtered(
         ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
-        ("apply_edit".to_string(), Box::new(crate::tools::tool_apply_edit::ToolPatch::new()) as Box<dyn Tool + Send>),
+        // ("apply_edit".to_string(), Box::new(crate::tools::tool_apply_edit::ToolApplyEdit::new()) as Box<dyn Tool + Send>),
+        ("text_edit".to_string(), Box::new(crate::tools::tool_text_edit::ToolTextEdit::new()) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
@@ -262,23 +263,32 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "apply_edit"
+  - name: "text_edit"
     agentic: true
     description: |
-      The function to apply changes from the existing 📍-notation edit blocks in the provided order.
-      Outputs a diff which represents the changes applied. You must assess the resulting diff.
+      An filesystem editor tool that allows the agent create and edit files.
     parameters:
       - name: "path"
         type: "string"
         description: "Absolute path to the file to change."
-      - name: "ticket"
+      - name: "command"
         type: "string"
-        description: "3-digit ticket"
-      - name: "location_hints"
+        description: "The commands to run. Allowed options are: `create` and `str_replace`."     
+      - name: "path"
         type: "string"
-        description: "Location within the file where changes should be applied, any necessary code removals, and whether additional imports are required"
+        description: "Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`."
+      - name: "file_text"
+        type: "string"
+        description: "Required parameter of `create` command, with the content of the file to be created."
+      - name: "new_str"
+        type: "string"
+        description: "Required parameter of `str_replace` command containing the new string."
+      - name: "old_str"
+        type: "string"
+        description: "Required parameter of `str_replace` command containing the string in `path` to replace."
     parameters_required:
-      - "tickets"
+      - "command"
+      - "path"
 
   - name: "github"
     agentic: true

@@ -15,13 +15,13 @@ use crate::tools::tools_execute::unwrap_subchat_params;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::tool_apply_edit_aux::model_based_edit::model_execution::section_edit_tickets_to_chunks;
 
-pub struct ToolPatch {
+pub struct ToolApplyEdit {
     pub usage: Option<ChatUsage>,
 }
 
-impl ToolPatch {
+impl ToolApplyEdit {
     pub fn new() -> Self {
-        ToolPatch {
+        ToolApplyEdit {
             usage: None
         }
     }
@@ -173,7 +173,7 @@ async fn can_execute_patch(
 }
 
 #[async_trait]
-impl Tool for ToolPatch {
+impl Tool for ToolApplyEdit {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
     async fn tool_execute(
