@@ -8,7 +8,7 @@ import {
   ApplyPatchSwitch,
   ReasoningModeSwitch,
 } from "./ChatControls";
-import { useLogin, useAppSelector } from "../../hooks";
+import { useAppSelector, useGetUser } from "../../hooks";
 import {
   selectAutomaticPatch,
   selectCheckpointsEnabled,
@@ -17,13 +17,13 @@ import {
 import { useMemo } from "react";
 
 export const AgentCapabilities = () => {
-  const { user } = useLogin();
+  const { data } = useGetUser();
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
   const currentMode = useAppSelector(selectThreadMode);
   const isReasoningEnabled = useMemo(() => {
-    return currentMode === "THINKING_AGENT" && user.data?.inference !== "FREE";
-  }, [currentMode, user.data?.inference]);
+    return currentMode === "THINKING_AGENT" && data?.inference !== "FREE";
+  }, [currentMode, data?.inference]);
 
   const agenticFeatures = useMemo(() => {
     return [
@@ -48,7 +48,7 @@ export const AgentCapabilities = () => {
           <Flex gap="2" direction="column">
             <ApplyPatchSwitch />
             <AgentRollbackSwitch />
-            {user.data?.inference !== "FREE" && <ReasoningModeSwitch />}
+            {data?.inference !== "FREE" && <ReasoningModeSwitch />}
           </Flex>
         </Popover.Content>
       </Popover.Root>
