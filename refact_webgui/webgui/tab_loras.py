@@ -33,7 +33,7 @@ async def unpack(file_path: Path) -> JSONResponse:
         return m.decode("utf-8").strip()
 
     upload_filename = str(file_path)
-    unpack_filename = str(file_path.parent)
+    unpack_dest = str(file_path.parent)
 
     if not file_path.is_file():
         return JSONResponse({"detail": f"Error while unpacking: File {file_path.name} does not exist"}, status_code=404)
@@ -41,22 +41,45 @@ async def unpack(file_path: Path) -> JSONResponse:
     try:
         mime_type = get_mimetype(upload_filename)
         if 'application/x-tar' in mime_type:
-            cmd = ["tar", "-xf", upload_filename, "-C", unpack_filename]
+            cmd = ["tar", "-xf", upload_filename, "-C", unpack_dest]
         elif 'application/x-bzip2' in mime_type:
-            cmd = ["tar", "-xjf", upload_filename, "-C", unpack_filename]
+            cmd = ["tar", "-xjf", upload_filename, "-C", unpack_dest]
         elif 'application/x-gzip' in mime_type:
-            cmd = ["tar", "-xzf", upload_filename, "-C", unpack_filename]
+            cmd = ["tar", "-xzf", upload_filename, "-C", unpack_dest]
         elif 'application/zip' in mime_type:
-            cmd = ["unzip", "-q", "-o", upload_filename, "-d", unpack_filename]
+            cmd = ["unzip", "-q", "-o", upload_filename, "-d", unpack_dest]
         else:
             return JSONResponse({"detail": f"Error while unpacking: Unknown archive type {mime_type}"}, status_code=400)
         subprocess.check_call(cmd)
-        rm(os.path.join(unpack_filename, file_path.name))
+        rm(os.path.join(unpack_dest, file_path.name))
         return JSONResponse("OK", status_code=200)
 
     except Exception as e:
         log(f"Error while unpacking: {e}")
         return JSONResponse({"detail": f"Error while unpacking: {e}"}, status_code=500)
+
+
+async def write_to_file(upload_dest: str, file: UploadFile) -> JSONResponse:
+    tmp_path = os.path.join(upload_dest, file.filename + ".tmp")
+    file_path = os.path.join(upload_dest, file.filename)
+    if os.path.exists(file_path):
+        return JSONResponse({"detail": f"File with this name already exists"}, status_code=409)
+    try:
+        with open(tmp_path, "wb") as f:
+            while True:
+                if not (contents := await file.read(1024 * 1024)):
+                    break
+                f.write(contents)
+        os.rename(tmp_path, file_path)
+        return JSONResponse("OK", status_code=200)
+    except OSError as e:
+        log("Error while uploading file: %s" % (e or str(type(e))))
+        return JSONResponse({"detail": "Cannot upload file, see logs for details"}, status_code=500)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except:
+            pass
 
 
 class TabLorasRouter(APIRouter):
@@ -70,32 +93,8 @@ class TabLorasRouter(APIRouter):
         self.add_api_route("/lora-merge-download", self._download_lora_merge, methods=["GET"])
 
     async def _upload_lora(self, file: UploadFile):
-        async def write_to_file() -> JSONResponse:
-            upload_dest = env.DIR_LORAS
-            tmp_path = os.path.join(upload_dest, file.filename + ".tmp")
-            file_path = os.path.join(upload_dest, file.filename)
-            if os.path.exists(file_path):
-                return JSONResponse({"detail": f"File with this name already exists"}, status_code=409)
-            try:
-                with open(tmp_path, "wb") as f:
-                    while True:
-                        if not (contents := await file.read(1024 * 1024)):
-                            break
-                        f.write(contents)
-                os.rename(tmp_path, file_path)
-                return JSONResponse("OK", status_code=200)
-            except OSError as e:
-                log("Error while uploading file: %s" % (e or str(type(e))))
-                return JSONResponse({"detail": "Cannot upload file, see logs for details"}, status_code=500)
-            finally:
-                try:
-                    os.remove(tmp_path)
-                except:
-                    pass
-
         f = Path(os.path.join(env.DIR_LORAS, file.filename))
-
-        if (resp := await write_to_file()).status_code != 200:
+        if (resp := await write_to_file(env.DIR_LORAS, file)).status_code != 200:
             rm(f)
             return resp
 
