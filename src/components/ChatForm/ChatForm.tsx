@@ -107,11 +107,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }, [dispatch, retryFromIndex, messages]);
 
+  const caps = useCapsForToolUse();
+
+  const allDisabled = caps.usableModelsForPlan.every((option) => {
+    if (typeof option === "string") return false;
+    return option.disabled;
+  });
+
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
+    if (allDisabled) return true;
     if (messages.length === 0) return false;
     return isWaiting || isStreaming || !isOnline || preventSend;
-  }, [isOnline, isStreaming, isWaiting, preventSend, messages]);
+  }, [isOnline, isStreaming, isWaiting, preventSend, messages, allDisabled]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
