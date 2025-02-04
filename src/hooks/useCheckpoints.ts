@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useAppSelector } from "./useAppSelector";
 import {
   selectCheckpointsMessageIndex,
@@ -14,7 +14,6 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import { STUB_RESTORED_CHECKPOINT_DATA } from "../__fixtures__/checkpoints";
 import {
   backUpMessages,
   newChatAction,
@@ -38,11 +37,7 @@ export const useCheckpoints = () => {
     selectLatestCheckpointResult,
   );
 
-  const [shouldMockBeUsed, setShouldMockBeUsed] = useState(false);
-
-  const { reverted_changes, reverted_to } = shouldMockBeUsed
-    ? STUB_RESTORED_CHECKPOINT_DATA
-    : latestRestoredCheckpointsResult;
+  const { reverted_changes, reverted_to } = latestRestoredCheckpointsResult;
 
   const shouldNewChatBeStarted = useAppSelector(selectShouldNewChatBeStarted);
   const maybeMessageIndex = useAppSelector(selectCheckpointsMessageIndex);
@@ -114,21 +109,11 @@ export const useCheckpoints = () => {
     }
   }, [dispatch, shouldNewChatBeStarted, maybeMessageIndex, chatId, messages]);
 
-  // TODO: remove when fully tested
-  const handleShouldMockBeUsedChange = useCallback(() => {
-    setShouldMockBeUsed((prev) => !prev);
-  }, []);
-  // end TODO
-
   return {
     shouldCheckpointsPopupBeShown,
     handleUndo,
     handleRestore,
     handleFix,
-    // TODO: remove when fully tested
-    handleShouldMockBeUsedChange,
-    shouldMockBeUsed,
-    // end TODO
     isLoading,
     reverted_changes,
     reverted_to,

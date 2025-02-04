@@ -16,12 +16,10 @@ export const Checkpoints = () => {
     shouldCheckpointsPopupBeShown,
     handleFix,
     handleUndo,
-    handleShouldMockBeUsedChange,
     reverted_to,
     isLoading,
     allChangedFiles,
     wereFilesChanged,
-    shouldMockBeUsed,
   } = useCheckpoints();
 
   const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -117,14 +115,6 @@ export const Checkpoints = () => {
             </Button>
             <Button onClick={handleFix}>Roll back to checkpoint</Button>
           </Flex>
-          <Button
-            type="button"
-            variant="soft"
-            color="purple"
-            onClick={handleShouldMockBeUsedChange}
-          >
-            {shouldMockBeUsed ? "Use real data" : "Use mock data"}
-          </Button>
         </Flex>
       </Dialog.Content>
     </Dialog.Root>
