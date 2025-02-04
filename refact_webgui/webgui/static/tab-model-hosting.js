@@ -585,6 +585,26 @@ function render_models(models) {
                 } else if (e.target.tagName.toLowerCase() === 'button') {
                     const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
                     document.getElementById('upload-weights-modal-instructions').innerHTML = `
+                        <code>
+                        def download_model_tar(repo_id: str) -> str:
+                            import tarfile, tempfile
+                            from os import path, getcwd, listdir
+                            from huggingface_hub import snapshot_download
+
+                            tar_filename = path.join(getcwd(), f"{repo_id.replace('/', '--')}.tar")
+                            with tempfile.TemporaryDirectory() as tmpdir:
+                                snapshot_download(repo_id=repo_id, cache_dir=tmpdir)
+                                model_dirs = [f for f in listdir(tmpdir) if f.startswith("models--")]
+                                assert model_dirs, f"No models downloaded for {repo_id}"
+                                with tarfile.open(tar_filename, "w") as tar:
+                                    for model_dir in model_dirs:
+                                        tar.add(path.join(tmpdir, model_dir), model_dir)
+                            return tar_filename
+
+                        model_path = "Qwen/Qwen2.5-Coder-0.5B"
+                        tar_filename = download_model_tar(model_path)
+                        print(f"Model {model_path} loaded and packed into {tar_filename}")
+                        </code>
                         Here should be code block how to download and pack ${e.target.dataset.model_path} model from huggingface.
                         Next provide the file here and click upload.
                     `;
