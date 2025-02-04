@@ -328,6 +328,7 @@ class ModelAssigner:
                 "repo_url": f"https://huggingface.co/{rec['model_path']}",
                 "is_hf_offline": is_hf_offline,
                 "has_weights_loaded": self.has_available_weights(rec['model_path']),
+                "model_path": rec['model_path'],
             })
         return {"models": info}
 

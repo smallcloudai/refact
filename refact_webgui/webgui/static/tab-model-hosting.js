@@ -1,6 +1,7 @@
 import {general_error} from './error.js';
 import {get_finetune_config_and_runs} from './tab-finetune.js';
 import {add_finetune_selectors_factory, update_checkpoints_list, set_finetune_info_into_state, finetune_switch_activate} from './utils/tab-model-hosting-utils.js';
+//import { init as init_upload_files_modal, switch_away as upload_files_modal_switch_away } from './components/modals/modal-upload-files.js'
 import {get_spinner} from "./utils/utils.js";
 
 
@@ -547,29 +548,24 @@ function render_models(models) {
             if(element.hasOwnProperty('has_chat')) {
                 has_chat.innerHTML = element.has_chat ? '<i class="bi bi-check"></i>' : '';
             }
-            // NOTE:
-            // 1. server has weights
-            // 2. load weights manually with instruction
-            // 3. remove weights?
-//            const model_weights_info_div = document.createElement('div');
-            // 1. has internet:
-            //   - on disk or empty text field
-            // 2. no internet:
-            //   - on disk or <red>upload required</red>
-            //   - link to upload window
-            if (Math.random() < 0.5) {
-                // has internet case
+            const has_weights_loaded = element.hasOwnProperty("has_weights_loaded") && element.has_weights_loaded;
+            if (element.hasOwnProperty("is_hf_offline") && element.is_hf_offline) {
                 const model_weights_info_div = document.createElement('div');
-                model_weights_info_div.innerHTML = 'On disk';
+                model_weights_info_div.innerHTML = has_weights_loaded ? 'On disk' : 'Upload required';
                 model_weights.appendChild(model_weights_info_div);
+                const model_weights_upload_button = document.createElement('button');
+//                model_weights_upload_button.classList.add('dropdown-item');
+                model_weights_upload_button.classList.add('main-tab-button');
+                model_weights_upload_button.value = 'Upload weights';
+                model_weights_upload_button.innerHTML = 'Upload weights';
+                model_weights_upload_button.dataset.model_path = element.model_path;
+                model_weights.appendChild(model_weights_upload_button);
             } else {
-                // no internet case
                 const model_weights_info_div = document.createElement('div');
-                model_weights_info_div.innerHTML = '<i>Upload required</i>';  // TODO
+                if (has_weights_loaded) {
+                    model_weights_info_div.innerHTML = 'On disk';
+                }
                 model_weights.appendChild(model_weights_info_div);
-                const model_weights_upload_div = document.createElement('div');
-                model_weights_upload_div.innerHTML = '<i>Upload weights</i>';
-                model_weights.appendChild(model_weights_upload_div);
             }
             row.appendChild(model_name);
             row.appendChild(has_completion);
@@ -586,8 +582,14 @@ function render_models(models) {
                     e.preventDefault();
                     const href = e.target.getAttribute('href');
                     window.open(href, '_blank');
-                }
-                else {
+                } else if (e.target.tagName.toLowerCase() === 'button') {
+                    const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
+                    document.getElementById('upload-weights-modal-instructions').innerHTML = `
+                        Here should be code block how to download and pack ${e.target.dataset.model_path} model from huggingface.
+                        Next provide the file here and click upload.
+                    `;
+                    upload_weights_modal.show();
+                } else {
                     const model_name = this.dataset.model;
                     models_data.model_assign[model_name] = {
                         gpus_shard: 1,
@@ -730,6 +732,10 @@ export async function init(general_error) {
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
     });
+    const upload_weights_modal = document.getElementById('upload-weights-modal');
+    upload_weights_modal.addEventListener('show.bs.modal', function () {
+//        render_models(models_data);
+    });
     const redirect2credentials = document.getElementById('redirect2credentials');
     redirect2credentials.addEventListener('click', function() {
         document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
@@ -737,13 +743,27 @@ export async function init(general_error) {
     // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
 
+// initialize modal for each model?
+
 export function tab_switched_here() {
     get_gpus();
     update_finetune_configs_and_runs();
     get_models();
+//    const upload_weights_modal = document.querySelector('#upload-weights-modal');
+//    init_upload_files_modal(
+//        upload_weights_modal,
+//        document.querySelector('#open-upload-files-modal'),
+//        'Upload Model Weights',
+//        'input',
+//        `tab-files-upload-url/${pname}`, `/tab-files-upload/${pname}`,
+//        "Wrapping up. Please wait...",
+//        "https://yourserver.com/file.zip",
+//        "You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as \"my_program.py\""
+//    );
 }
 
 export function tab_switched_away() {
+//    upload_files_modal_switch_away(document.querySelector('#upload-weights-modal'));
 }
 
 export function tab_update_each_couple_of_seconds() {
