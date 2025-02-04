@@ -28,6 +28,7 @@ struct ToolTextEditCommand {
     file_text: Option<String>,
     new_str: Option<String>,
     old_str: Option<String>,
+    replace_multiple: bool,
 }
 
 fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String), String> {
@@ -57,7 +58,7 @@ fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String), St
     Ok((before_text, file_text.to_string()))
 }
 
-fn str_replace(path: &PathBuf, old_str: &String, new_str: &String) -> Result<(String, String), String> {
+fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multiple: bool) -> Result<(String, String), String> {
     let file_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
     let occurrences = file_content.matches(old_str).count();
@@ -66,7 +67,8 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String) -> Result<(St
             "No replacement was performed, old_str `{}` did not appear verbatim in {:?}.",
             old_str, path
         ));
-    } else if occurrences > 1 {
+    }
+    if !replace_multiple && occurrences > 1 {
         let lines: Vec<usize> = file_content
             .lines()
             .enumerate()
@@ -74,7 +76,7 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String) -> Result<(St
             .map(|(idx, _)| idx + 1)
             .collect();
         return Err(format!(
-            "No replacement was performed. Multiple occurrences of old_str `{}` in lines {:?}. Please ensure it is unique",
+            "No replacement was performed. Multiple occurrences of old_str `{}` in lines {:?}. Please ensure it is unique or set `replace_multiple` to true.",
             old_str, lines
         ));
     }
@@ -96,7 +98,7 @@ fn process_command(command: &ToolTextEditCommand) -> Result<(String, String), St
         "str_replace" => {
             let old_str = command.old_str.clone().expect("old_str is checked before");
             let new_str = command.new_str.clone().expect("new_str is checked before");
-            str_replace(&command.path, &old_str, &new_str)
+            str_replace(&command.path, &old_str, &new_str, command.replace_multiple)
         }
         _ => Err("unknown command".to_string()),
     }
@@ -202,12 +204,19 @@ fn parse_args_to_command(args: &HashMap<String, Value>) -> Result<ToolTextEditCo
             None
         }
     };
+    let replace_multiple = match args.get("replace_multiple") {
+        Some(Value::Bool(b)) => b.clone(),
+        Some(v) => return Err(format!("argument 'replace_multiple' should be a boolean: {:?}", v)),
+        None => false,
+    };
+    
     Ok(ToolTextEditCommand {
         command,
         path,
         file_text: file_text_mb,
         new_str: new_str_mb,
         old_str: old_str_mb,
+        replace_multiple
     })
 }
 

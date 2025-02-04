@@ -264,9 +264,8 @@ tools:
       - "problem_statement"
 
   - name: "text_edit"
-    agentic: true
-    description: |
-      An filesystem editor tool that allows the agent create and edit files.
+    agentic: false
+    description: "An filesystem editor tool that allows the agent create and edit files."
     parameters:
       - name: "path"
         type: "string"
@@ -286,6 +285,9 @@ tools:
       - name: "old_str"
         type: "string"
         description: "Required parameter of `str_replace` command containing the string in `path` to replace."
+      - name: "replace_multiple"
+        type: "boolean"
+        description: "Allow to replace multiple `old_str` occurences all at once. False by default."
     parameters_required:
       - "command"
       - "path"
