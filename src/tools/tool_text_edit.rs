@@ -320,3 +320,152 @@ impl Tool for ToolTextEdit {
         &mut self.usage
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+    use std::io::Write;
+
+    fn setup_test_file(content: &str) -> (TempDir, PathBuf) {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test.txt");
+        let mut file = fs::File::create(&file_path).unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+        (temp_dir, file_path)
+    }
+
+    #[test]
+    fn test_normalize_line_endings() {
+        let input = "line1\r\nline2\nline3\r\nline4";
+        let expected = "line1\nline2\nline3\nline4";
+        assert_eq!(normalize_line_endings(input), expected);
+    }
+
+    #[test]
+    fn test_restore_line_endings() {
+        let input = "line1\nline2\nline3";
+        assert_eq!(restore_line_endings(input, true), "line1\r\nline2\r\nline3");
+        assert_eq!(restore_line_endings(input, false), input);
+    }
+
+    #[test]
+    fn test_write_file_create_new() {
+        let temp_dir = TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("new_file.txt");
+        let content = "Hello, World!";
+        
+        let result = write_file(&file_path, &content.to_string());
+        assert!(result.is_ok());
+        
+        let (before, after) = result.unwrap();
+        assert_eq!(before, "");
+        assert_eq!(after, content);
+        
+        let file_content = fs::read_to_string(&file_path).unwrap();
+        assert_eq!(file_content, content);
+    }
+
+    #[test]
+    fn test_write_file_replace_existing() {
+        let (_temp_dir, file_path) = setup_test_file("Old content");
+        let new_content = "New content";
+        
+        let result = write_file(&file_path, &new_content.to_string());
+        assert!(result.is_ok());
+        
+        let (before, after) = result.unwrap();
+        assert_eq!(before, "Old content");
+        assert_eq!(after, new_content);
+        
+        let file_content = fs::read_to_string(&file_path).unwrap();
+        assert_eq!(file_content, new_content);
+    }
+
+    #[test]
+    fn test_str_replace_single_occurrence() {
+        let (_temp_dir, file_path) = setup_test_file("Hello, World!");
+        let result = str_replace(&file_path, &"World".to_string(), &"Rust".to_string(), false);
+        assert!(result.is_ok());
+        
+        let (before, after) = result.unwrap();
+        assert_eq!(before, "Hello, World!");
+        assert_eq!(after, "Hello, Rust!");
+    }
+
+    #[test]
+    fn test_str_replace_multiple_occurrences() {
+        let (_temp_dir, file_path) = setup_test_file("test test test");
+        
+        // Should fail without replace_multiple
+        let result = str_replace(&file_path, &"test".to_string(), &"rust".to_string(), false);
+        assert!(result.is_err());
+        
+        // Should succeed with replace_multiple
+        let result = str_replace(&file_path, &"test".to_string(), &"rust".to_string(), true);
+        assert!(result.is_ok());
+        
+        let (before, after) = result.unwrap();
+        assert_eq!(before, "test test test");
+        assert_eq!(after, "rust rust rust");
+    }
+
+    #[test]
+    fn test_str_replace_with_line_endings() {
+        let (_temp_dir, file_path) = setup_test_file("line1\r\nold\r\nline3");
+        let result = str_replace(&file_path, &"old".to_string(), &"new".to_string(), false);
+        assert!(result.is_ok());
+        
+        let (before, after) = result.unwrap();
+        assert_eq!(before, "line1\r\nold\r\nline3");
+        assert_eq!(after, "line1\r\nnew\r\nline3");
+    }
+
+    #[test]
+    fn test_str_replace_no_match() {
+        let (_temp_dir, file_path) = setup_test_file("Hello, World!");
+        let result = str_replace(&file_path, &"Rust".to_string(), &"Go".to_string(), false);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("did not appear verbatim"));
+    }
+
+    #[test]
+    fn test_parse_args_to_command() {
+        let mut args = HashMap::new();
+        args.insert("command".to_string(), json!("create"));
+        args.insert("path".to_string(), json!("/absolute/path/file.txt"));
+        args.insert("file_text".to_string(), json!("content"));
+        
+        let result = parse_args_to_command(&args);
+        assert!(result.is_ok());
+        let command = result.unwrap();
+        assert_eq!(command.command, "create");
+        assert_eq!(command.path.to_str().unwrap(), "/absolute/path/file.txt");
+        assert_eq!(command.file_text.unwrap(), "content");
+    }
+
+    #[test]
+    fn test_parse_args_invalid_command() {
+        let mut args = HashMap::new();
+        args.insert("command".to_string(), json!("invalid"));
+        args.insert("path".to_string(), json!("/absolute/path/file.txt"));
+        
+        let result = parse_args_to_command(&args);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_args_missing_required() {
+        let mut args = HashMap::new();
+        args.insert("command".to_string(), json!("create"));
+        // Missing path
+        let result = parse_args_to_command(&args);
+        assert!(result.is_err());
+        
+        // Missing file_text for create command
+        args.insert("path".to_string(), json!("/absolute/path/file.txt"));
+        let result = parse_args_to_command(&args);
+        assert!(result.is_err());
+    }
+}
