@@ -12,6 +12,18 @@ use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 use crate::tools::tool_apply_edit_aux::diff_structs::chunks_from_diffs;
 
+fn normalize_line_endings(content: &str) -> String {
+    content.replace("\r\n", "\n")
+}
+
+fn restore_line_endings(content: &str, original_had_crlf: bool) -> String {
+    if original_had_crlf {
+        content.replace("\n", "\r\n")
+    } else {
+        content.to_string()
+    }
+}
+
 pub struct ToolTextEdit {
     pub usage: Option<ChatUsage>,
 }
@@ -61,7 +73,13 @@ fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String), St
 fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multiple: bool) -> Result<(String, String), String> {
     let file_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
-    let occurrences = file_content.matches(old_str).count();
+    
+    let has_crlf = file_content.contains("\r\n");
+    
+    let normalized_content = normalize_line_endings(&file_content);
+    let normalized_old_str = normalize_line_endings(old_str);
+    
+    let occurrences = normalized_content.matches(&normalized_old_str).count();
     if occurrences == 0 {
         return Err(format!(
             "No replacement was performed, old_str `{}` did not appear verbatim in {:?}.",
@@ -69,10 +87,10 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multi
         ));
     }
     if !replace_multiple && occurrences > 1 {
-        let lines: Vec<usize> = file_content
+        let lines: Vec<usize> = normalized_content
             .lines()
             .enumerate()
-            .filter(|(_, line)| line.contains(old_str))
+            .filter(|(_, line)| line.contains(&normalized_old_str))
             .map(|(idx, _)| idx + 1)
             .collect();
         return Err(format!(
@@ -81,7 +99,10 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multi
         ));
     }
 
-    let new_file_content = file_content.replace(old_str, new_str);
+    let normalized_new_str = normalize_line_endings(new_str);
+    let new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
+    
+    let new_file_content = restore_line_endings(&new_content, has_crlf);
     write_file(path, &new_file_content)?;
     Ok((file_content, new_file_content))
 }
