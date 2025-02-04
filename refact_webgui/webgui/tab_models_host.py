@@ -1,11 +1,15 @@
+import os
 import json
 
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, UploadFile
 from fastapi.responses import Response, JSONResponse
 
 from refact_utils.scripts import env
 from refact_utils.huggingface.utils import has_repo_access
 from refact_utils.finetune.utils import get_active_loras
+from refact_webgui.webgui.tab_loras import rm
+from refact_webgui.webgui.tab_loras import unpack
+from refact_webgui.webgui.tab_loras import write_to_file
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from pathlib import Path
@@ -59,6 +63,19 @@ class TabHostRouter(APIRouter):
         self.add_api_route("/tab-host-have-devices", self._tab_host_have_devices, methods=["GET"])
         self.add_api_route("/tab-host-models-get", self._tab_host_models_get, methods=["GET"])
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
+        self.add_api_route("/model-weights-upload", self._model_weights_upload, methods=["POST"])
+
+    async def _model_weights_upload(self, file: UploadFile):
+        f = Path(os.path.join(env.DIR_WEIGHTS, file.filename))
+        if (resp := await write_to_file(env.DIR_WEIGHTS, file)).status_code != 200:
+            rm(f)
+            return resp
+
+        if (resp := await unpack(f)).status_code != 200:
+            rm(f)
+            return resp
+
+        return JSONResponse("OK", status_code=200)
 
     async def _modify_loras(self, post: ModifyLorasPost):
         active_loras = get_active_loras(self._model_assigner.models_db)
