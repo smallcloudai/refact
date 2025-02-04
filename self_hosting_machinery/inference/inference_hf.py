@@ -116,6 +116,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         self._model_dir = f"models--{self._model_dict['model_path'].replace('/', '--')}"
 
         if model_dict.get("cpu"):
+            os.environ["CUDA_VISIBLE_DEVICES"] = ""
             self._device = "cpu"
         else:
             self._device = "cuda:0"
@@ -136,7 +137,7 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
             torch_dtype = torch_dtype_mapping[torch_dtype]
             self._model = AutoModelForCausalLM.from_pretrained(
                 self._model_dict["model_path"], cache_dir=self.cache_dir,
-                device=self._device, torch_dtype=torch_dtype, trust_remote_code=True,
+                device_map="auto", torch_dtype=torch_dtype, trust_remote_code=True,
                 token=token, **self._model_dict["model_class_kwargs"]
             )
         else:
