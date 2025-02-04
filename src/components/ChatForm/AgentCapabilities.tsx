@@ -3,17 +3,27 @@ import {
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 import { Flex, HoverCard, IconButton, Popover, Text } from "@radix-ui/themes";
-import { AgentRollbackSwitch, ApplyPatchSwitch } from "./ChatControls";
-import { useAppSelector } from "../../hooks";
+import {
+  AgentRollbackSwitch,
+  ApplyPatchSwitch,
+  ReasoningModeSwitch,
+} from "./ChatControls";
+import { useLogin, useAppSelector } from "../../hooks";
 import {
   selectAutomaticPatch,
   selectCheckpointsEnabled,
+  selectThreadMode,
 } from "../../features/Chat";
 import { useMemo } from "react";
 
 export const AgentCapabilities = () => {
+  const { user } = useLogin();
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
+  const currentMode = useAppSelector(selectThreadMode);
+  const isReasoningEnabled = useMemo(() => {
+    return currentMode === "THINKING_AGENT" && user.data?.inference !== "FREE";
+  }, [currentMode, user.data?.inference]);
 
   const agenticFeatures = useMemo(() => {
     return [
@@ -21,9 +31,11 @@ export const AgentCapabilities = () => {
         name: "Auto-patch",
         enabled: isPatchAutomatic,
       },
-      { name: "Agent rollback", enabled: isAgentRollbackEnabled },
+      { name: "Files rollback", enabled: isAgentRollbackEnabled },
+      { name: "Thinking tool", enabled: isReasoningEnabled },
     ];
-  }, [isPatchAutomatic, isAgentRollbackEnabled]);
+  }, [isPatchAutomatic, isAgentRollbackEnabled, isReasoningEnabled]);
+
   return (
     <Flex mb="2" gap="2" align="center">
       <Popover.Root>
@@ -36,11 +48,12 @@ export const AgentCapabilities = () => {
           <Flex gap="2" direction="column">
             <ApplyPatchSwitch />
             <AgentRollbackSwitch />
+            {user.data?.inference !== "FREE" && <ReasoningModeSwitch />}
           </Flex>
         </Popover.Content>
       </Popover.Root>
       <Text size="2">
-        Agent capabilities:
+        Enabled Features:
         <Text color="gray">
           {" "}
           {agenticFeatures
@@ -55,10 +68,7 @@ export const AgentCapabilities = () => {
         </HoverCard.Trigger>
         <HoverCard.Content size="2" maxWidth="280px">
           <Text as="p" size="2">
-            Here you can control special features that affect working flow of
-            Agent. Some features might lead to slower responses, some features
-            might speed up the process, but you will lose some control over
-            execution.
+            Here you can control special features affecting Agent behaviour
           </Text>
         </HoverCard.Content>
       </HoverCard.Root>

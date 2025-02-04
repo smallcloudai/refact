@@ -72,7 +72,8 @@ export type LspChatMode =
   | "EXPLORE"
   | "AGENT"
   | "CONFIGURE"
-  | "PROJECT_SUMMARY";
+  | "PROJECT_SUMMARY"
+  | "THINKING_AGENT";
 
 export function chatModeToLspMode(
   toolUse?: ToolUse,

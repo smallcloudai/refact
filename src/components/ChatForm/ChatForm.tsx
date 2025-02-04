@@ -47,6 +47,7 @@ import {
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
+  selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
 import { isUserMessage, telemetryApi } from "../../services/refact";
@@ -81,8 +82,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const isOnline = useIsOnline();
 
   const chatId = useAppSelector(selectChatId);
+  const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
+
+  const shouldAgentCapabilitiesBeShown = useMemo(() => {
+    return threadToolUse === "agent" && toolUse === "agent";
+  }, [toolUse, threadToolUse]);
 
   const onClearError = useCallback(() => {
     dispatch(clearError());
@@ -316,7 +322,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             {helpInfo}
           </Flex>
         )}
-        {toolUse === "agent" && <AgentCapabilities />}
+        {shouldAgentCapabilitiesBeShown && <AgentCapabilities />}
         <Form
           disabled={disableSend}
           className={className}
