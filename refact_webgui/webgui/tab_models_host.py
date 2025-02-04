@@ -113,7 +113,10 @@ class TabHostRouter(APIRouter):
                     break
             else:
                 raise HTTPException(status_code=400, detail=f"model {model_name} not found")
-            if model_name not in model_assign and not self._has_available_weights(model_name):
+            model_path = self._model_assigner.models_db[model_name]["model_path"]
+            if (model_name not in model_assign and
+                    not self._model_assigner.has_available_weights(model_path)
+                    and not has_repo_access(model_path)):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Unable to access model '{model_name}' from Hugging Face: "

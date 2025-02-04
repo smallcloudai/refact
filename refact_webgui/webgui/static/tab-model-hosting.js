@@ -482,6 +482,7 @@ function render_models(models) {
         const has_completion = document.createElement("td");
         const has_finetune = document.createElement("td");
         const has_chat = document.createElement("td");
+        const model_weights = document.createElement("td");
         model_span.textContent = key;
         model_span.classList.add('model-span');
         model_name.appendChild(model_span);
@@ -489,6 +490,7 @@ function render_models(models) {
         row.appendChild(has_completion);
         row.appendChild(has_finetune);
         row.appendChild(has_chat);
+        row.appendChild(model_weights);
         models_table.appendChild(row);
         value.forEach(element => {
             const row = document.createElement('tr');
@@ -499,6 +501,7 @@ function render_models(models) {
             const has_completion = document.createElement("td");
             const has_finetune = document.createElement("td");
             const has_chat = document.createElement("td");
+            const model_weights = document.createElement("td");
             model_name.innerHTML = element.name;
             if(element.repo_status == 'gated') {
                 model_name.innerHTML = '';
@@ -544,10 +547,35 @@ function render_models(models) {
             if(element.hasOwnProperty('has_chat')) {
                 has_chat.innerHTML = element.has_chat ? '<i class="bi bi-check"></i>' : '';
             }
+            // NOTE:
+            // 1. server has weights
+            // 2. load weights manually with instruction
+            // 3. remove weights?
+//            const model_weights_info_div = document.createElement('div');
+            // 1. has internet:
+            //   - on disk or empty text field
+            // 2. no internet:
+            //   - on disk or <red>upload required</red>
+            //   - link to upload window
+            if (Math.random() < 0.5) {
+                // has internet case
+                const model_weights_info_div = document.createElement('div');
+                model_weights_info_div.innerHTML = 'On disk';
+                model_weights.appendChild(model_weights_info_div);
+            } else {
+                // no internet case
+                const model_weights_info_div = document.createElement('div');
+                model_weights_info_div.innerHTML = '<i>Upload required</i>';  // TODO
+                model_weights.appendChild(model_weights_info_div);
+                const model_weights_upload_div = document.createElement('div');
+                model_weights_upload_div.innerHTML = '<i>Upload weights</i>';
+                model_weights.appendChild(model_weights_upload_div);
+            }
             row.appendChild(model_name);
             row.appendChild(has_completion);
             row.appendChild(has_finetune);
             row.appendChild(has_chat);
+            row.appendChild(model_weights);
             models_table.appendChild(row);
             row.addEventListener('click', function(e) {
                 if(e.target.classList.contains('modelinfo-settings')) {

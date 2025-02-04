@@ -5,10 +5,12 @@ from dataclasses import dataclass, field
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import get_active_loras
+from refact_utils.huggingface.utils import is_hf_hub_offline
 from refact_utils.huggingface.utils import get_repo_status
 from refact_webgui.webgui.selfhost_webutils import log
 from refact_known_models import models_mini_db, passthrough_mini_db
 
+from pathlib import Path
 from typing import List, Dict, Any, Set, Optional
 
 
@@ -165,6 +167,11 @@ class ModelAssigner:
             for model_name, model_cfg in model_assign.items()
         }
 
+    @staticmethod
+    def has_available_weights(model_path: str) -> bool:
+        weights_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
+        return weights_dir.exists()
+
     @property
     def _model_cfg_template(self) -> Dict:
         return json.load(open(os.path.join(env.DIR_WATCHDOG_TEMPLATES, "model.cfg")))
@@ -274,6 +281,7 @@ class ModelAssigner:
     def models_info(self):
         info = []
 
+        is_hf_offline = is_hf_hub_offline()
         active_loras = get_active_loras(self.models_db)
         for k, rec in self.models_db.items():
             if rec.get("hidden", False):
@@ -318,6 +326,8 @@ class ModelAssigner:
                 "is_deprecated": bool(rec.get("deprecated", False)),
                 "repo_status": self._models_repo_status[k],
                 "repo_url": f"https://huggingface.co/{rec['model_path']}",
+                "is_hf_offline": is_hf_offline,
+                "has_weights_loaded": self.has_available_weights(rec['model_path']),
             })
         return {"models": info}
 
