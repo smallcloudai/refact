@@ -1,17 +1,16 @@
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{
-    ChatContent, ChatMessage, ChatUsage, ContextEnum,
-};
+use crate::call_validation::{ChatContent, ChatMessage, ChatUsage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use async_trait::async_trait;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
+use crate::tools::tool_apply_edit_aux::diff_structs::chunks_from_diffs;
 
 pub struct ToolTextEdit {
     pub usage: Option<ChatUsage>,
@@ -31,7 +30,7 @@ struct ToolTextEditCommand {
     old_str: Option<String>,
 }
 
-fn write_file(path: &PathBuf, file_text: &String) -> Result<(), String> {
+fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String), String> {
     if !path.exists() {
         let parent = path.parent().ok_or(format!(
             "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
@@ -45,14 +44,20 @@ fn write_file(path: &PathBuf, file_text: &String) -> Result<(), String> {
             })?;
         }
     }
+    let before_text = if path.exists() {
+        fs::read_to_string(&path).map_err(|x| x.to_string())?
+    } else {
+        "".to_string()
+    };
     fs::write(&path, file_text).map_err(|e| {
         let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
         warn!("{err}");
         err
-    })
+    })?;
+    Ok((before_text, file_text.to_string()))
 }
 
-fn str_replace(path: &PathBuf, old_str: &String, new_str: &String) -> Result<(), String> {
+fn str_replace(path: &PathBuf, old_str: &String, new_str: &String) -> Result<(String, String), String> {
     let file_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
     let occurrences = file_content.matches(old_str).count();
@@ -75,12 +80,13 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String) -> Result<(),
     }
 
     let new_file_content = file_content.replace(old_str, new_str);
-    write_file(path, &new_file_content)
+    write_file(path, &new_file_content)?;
+    Ok((file_content, new_file_content))
 }
 
-fn process_command(command: &ToolTextEditCommand) -> Result<(), String> {
+fn process_command(command: &ToolTextEditCommand) -> Result<(String, String), String> {
     match command.command.as_str() {
-        "create" => {
+        "create" | "file_replace" => {
             let file_text = command
                 .file_text
                 .clone()
@@ -96,11 +102,16 @@ fn process_command(command: &ToolTextEditCommand) -> Result<(), String> {
     }
 }
 
+fn convert_edit_to_diffchunks(path: PathBuf, before: &String, after: &String) -> Result<Vec<DiffChunk>, String> {
+    let diffs = diff::lines(&before, &after);
+    chunks_from_diffs(path.clone(), diffs)
+}
+
 fn parse_args_to_command(args: &HashMap<String, Value>) -> Result<ToolTextEditCommand, String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             let command = s.trim().to_string();
-            if command != "create" && command != "str_replace" {
+            if command != "create" && command != "str_replace" && command != "file_replace" {
                 return Err(format!(
                     "argument 'command' should be either 'create' or 'str_replace': {:?}",
                     command
@@ -120,7 +131,7 @@ fn parse_args_to_command(args: &HashMap<String, Value>) -> Result<ToolTextEditCo
                     path
                 ));
             }
-            if !path.exists() {
+            if command != "create" && !path.exists() {
                 return Err(format!("argument 'path' doesn't exist: {:?}", path));
             }
             path
@@ -130,7 +141,7 @@ fn parse_args_to_command(args: &HashMap<String, Value>) -> Result<ToolTextEditCo
     };
     let file_text_mb = match args.get("file_text") {
         Some(Value::String(s)) => {
-            if command != "create" {
+            if command != "create" && command != "file_replace" {
                 return Err(format!(
                     "argument 'file_text' should be used only with a `create` command: {:?}",
                     path
@@ -218,19 +229,22 @@ impl Tool for ToolTextEdit {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let command = parse_args_to_command(args)?;
-        process_command(&command)?;
-
-        Ok((false, vec![
-            ContextEnum::ChatMessage(ChatMessage {
-                role: "tool".to_string(),
-                content: ChatContent::SimpleText(
-                    "Command execution successful. Use `cat()` to review changes and make sure they are as expected. Edit the file again if necessary.".to_string()
-                ),
+        let (before_text, after_text) = process_command(&command)?;
+        let diff_chunks = convert_edit_to_diffchunks(command.path.clone(), &before_text, &after_text)?;
+        let results = vec![
+            ChatMessage {
+                role: "diff".to_string(),
+                content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
+                usage: None,
                 ..Default::default()
-            })
-        ]))
+            }
+        ]
+            .into_iter()
+            .map(|x| ContextEnum::ChatMessage(x))
+            .collect::<Vec<_>>();
+        Ok((false, results))
     }
 
     async fn match_against_confirm_deny(
@@ -252,7 +266,7 @@ impl Tool for ToolTextEdit {
             }
         }
         Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::CONFIRMATION,
+            result: MatchConfirmDenyResult::PASS,
             command: "text_edit".to_string(),
             rule: "default".to_string(),
         })
