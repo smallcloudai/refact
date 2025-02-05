@@ -33,6 +33,7 @@ def get_default_n_ctx(model_name: str, model_info: Dict[str, Any]) -> int:
 
 @dataclass
 class ModelGroup:
+    is_cpu: bool = False
     model_assign: Dict[str, Dict] = field(default_factory=dict)
 
     def required_memory_mb(self, models_db: Dict[str, Any]) -> int:
@@ -42,7 +43,7 @@ class ModelGroup:
         )
 
     def gpus_shard(self) -> int:
-        if not self.model_assign:
+        if not self.model_assign or self.is_cpu:
             return 0
         return max([rec["gpus_shard"] for rec in self.model_assign.values()])
 
@@ -68,10 +69,14 @@ class ModelWatchdogDConfig:
         model_cfg_j["share_gpu"] = self.share_gpu
         del model_cfg_j["unfinished"]
 
+        if self.gpus:
+            devices_name_list = [f"{gpu:02d}" for gpu in self.gpus]
+        else:
+            devices_name_list = ["cpu"]
         cfg_fn = "-".join([
             "model",
             self.model_name.lower().replace('/', '-'),
-            *[f"{gpu:02d}" for gpu in self.gpus]
+            *devices_name_list
         ]) + ".cfg"
 
         fn = os.path.join(env.DIR_WATCHDOG_D, cfg_fn)
@@ -113,6 +118,7 @@ class ModelAssigner:
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
         shared_group = ModelGroup()
+        cpu_group = ModelGroup(is_cpu=True)
         for model_name, assignment in model_assign.items():
             if model_name not in self.models_db.keys():
                 log(f"unknown model '{model_name}', skipping")
@@ -126,13 +132,19 @@ class ModelAssigner:
                     model_dict["backend"] not in self.shard_gpu_backends):
                 log(f"sharding not supported for '{model_dict['backend']}' backend, skipping '{model_name}'")
                 continue
-            if (assignment.get("share_gpu", False)
+            if model_dict.get("cpu"):
+                cpu_group.model_assign[model_name] = assignment
+            elif (assignment.get("share_gpu", False)
                     and model_dict["backend"] in self.share_gpu_backends):
                 if not shared_group.model_assign:
                     model_groups.append(shared_group)
                 shared_group.model_assign[model_name] = assignment
+            elif model_dict.get("cpu"):
+                cpu_group.model_assign[model_name] = assignment
             else:
-                model_groups.append(ModelGroup({model_name: assignment}))
+                model_groups.append(ModelGroup(model_assign={model_name: assignment}))
+        if cpu_group.model_assign:
+            model_groups = [cpu_group, *model_groups]
         return model_groups
 
     def models_to_watchdog_configs(self, inference_config=None):
