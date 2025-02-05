@@ -56,7 +56,8 @@ def cfg_to_cmdline(cfg):
     This allows for tasks to move across GPUs, if gpu has changed, than command line changes for the purpose of
     restarting.
     """
-    return " ".join(cfg["command_line"]) + " @"+ "".join(":gpu%02d" % x for x in cfg["gpus"])
+    devices = "".join(":gpu%02d" % x for x in cfg["gpus"]) if cfg["gpus"] else "cpu"
+    return " ".join(cfg["command_line"]) + " @" + devices
 
 
 def cfg_to_compile_key(cfg):
@@ -378,6 +379,8 @@ def inform_about_device_status():
     gpu_status: Dict[int, List[Dict]] = {}
     for job in tracked.values():
         if job.p is None:
+            continue
+        if not job.cfg.get("inform_about_device_status"):
             continue
         if not job.cfg["gpus"]:
             t = job.cmdline_str
