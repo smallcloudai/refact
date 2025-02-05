@@ -107,13 +107,57 @@ pub const KNOWN_MODELS: &str = r####"
             "default_scratchpad": "REPLACE",
             "similar_models": [
                 "llama3/8b/instruct/neuron",
-                "llama3/8b/instruct/vllm",
                 "llama3.1/8b/instruct",
-                "llama3.1/8b/instruct/vllm",
                 "llama3.2/3b/instruct",
-                "llama3.2/3b/instruct/vllm",
-                "llama3.2/1b/instruct",
-                "llama3.2/1b/instruct/vllm"
+                "llama3.2/1b/instruct"
+            ]
+        },
+        "deepseek-coder/6.7b/instruct-finetune/vllm": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            }
+        },
+        "llama3/8b/instruct/vllm": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "llama3.1/8b/instruct/vllm"
+            ]
+        },
+        "llama3.2/1b/instruct/vllm": {
+            "n_ctx": 16384,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "llama3.2/3b/instruct/vllm"
+            ]
+        },
+        "qwen2.5/coder/1.5b/instruct/vllm": {
+            "n_ctx": 32768,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5
+                }
+            },
+            "similar_models": [
+                "qwen2.5/coder/3b/instruct/vllm",
+                "qwen2.5/coder/7b/instruct/vllm",
+                "qwen2.5/coder/14b/instruct/vllm",
+                "qwen2.5/coder/32b/instruct/vllm"
             ]
         },
         "gpt-4o": {
@@ -263,20 +307,14 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "default_scratchpad": "REPLACE",
             "similar_models": [
-                "qwen2.5/coder/0.5b/instruct/vllm",
                 "qwen2.5/coder/1.5b/instruct",
-                "qwen2.5/coder/1.5b/instruct/vllm",
                 "qwen2.5/coder/3b/instruct",
-                "qwen2.5/coder/3b/instruct/vllm",
                 "qwen2.5/coder/7b/instruct/gptq8bit",
                 "qwen2.5/coder/7b/instruct",
-                "qwen2.5/coder/7b/instruct/vllm",
                 "qwen2.5/coder/14b/instruct/gptq8bit",
                 "qwen2.5/coder/14b/instruct",
-                "qwen2.5/coder/14b/instruct/vllm",
                 "qwen2.5/coder/32b/instruct/gptq8bit",
-                "qwen2.5/coder/32b/instruct",
-                "qwen2.5/coder/32b/instruct/vllm"
+                "qwen2.5/coder/32b/instruct"
             ]
         },
         "qwen2.5/coder/0.5b/base": {
@@ -459,15 +497,47 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "similar_models": [
-                "llama3/8b/instruct/vllm",
                 "llama3/8b/instruct/neuron",
                 "meta-llama/llama-3.1-8b-instruct",
                 "llama3.1/8b/instruct",
-                "llama3.1/8b/instruct/vllm",
                 "llama3.2/3b/instruct",
-                "llama3.2/3b/instruct/vllm",
-                "llama3.2/1b/instruct",
-                "llama3.2/1b/instruct/vllm"
+                "llama3.2/1b/instruct"
+            ]
+        },
+        "deepseek-coder/6.7b/instruct-finetune/vllm": {
+            "n_ctx": 4096,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            }
+        },
+        "llama3/8b/instruct/vllm": {
+            "n_ctx": 8192,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "llama3.1/8b/instruct/vllm"
+            ]
+        },
+        "llama3.2/1b/instruct/vllm": {
+            "n_ctx": 16384,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "llama3.3/70b/instruct/vllm"
+            ]
+        },
+        "qwen2.5/coder/1.5b/instruct/vllm": {
+            "n_ctx": 32768,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "qwen2.5/coder/3b/instruct/vllm",
+                "qwen2.5/coder/7b/instruct/vllm",
+                "qwen2.5/coder/14b/instruct/vllm",
+                "qwen2.5/coder/32b/instruct/vllm"
             ]
         },
         "wizardlm/7b": {
@@ -548,8 +618,7 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "deepseek-coder/33b/instruct",
-                "deepseek-coder/6.7b/instruct-finetune",
-                "deepseek-coder/6.7b/instruct-finetune/vllm"
+                "deepseek-coder/6.7b/instruct-finetune"
             ]
         },
         "groq-llama-3.1-8b": {
@@ -654,18 +723,26 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "qwen2.5/coder/1.5b/instruct",
-                "qwen2.5/coder/1.5b/instruct/vllm",
                 "qwen2.5/coder/3b/instruct",
-                "qwen2.5/coder/3b/instruct/vllm",
                 "qwen2.5/coder/7b/instruct/gptq8bit",
                 "qwen2.5/coder/7b/instruct",
-                "qwen2.5/coder/7b/instruct/vllm",
                 "qwen2.5/coder/14b/instruct/gptq8bit",
                 "qwen2.5/coder/14b/instruct",
-                "qwen2.5/coder/14b/instruct/vllm",
                 "qwen2.5/coder/32b/instruct/gptq8bit",
-                "qwen2.5/coder/32b/instruct",
-                "qwen2.5/coder/32b/instruct/vllm"
+                "qwen2.5/coder/32b/instruct"
+            ]
+        },
+        "deepseek-r1-distill/1.5b/vllm": {
+            "n_ctx": 32768,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "deepseek-r1-distill/7b/vllm",
+                "deepseek-r1-distill/8b/vllm",
+                "deepseek-r1-distill/14b/vllm",
+                "deepseek-r1-distill/32b/vllm",
+                "deepseek-r1-distill/70b/vllm"
             ]
         }
     },
