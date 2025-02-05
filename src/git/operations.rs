@@ -1,7 +1,6 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use chrono::{DateTime, TimeZone, Utc};
 use git2::{Repository, Branch, DiffOptions, Oid};
-// use git2::build::RepoBuilder;
 use tracing::error;
 
 use crate::custom_error::MapErrToString;
@@ -84,8 +83,8 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Reposito
         let status = entry.status();
         let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
         let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
-
-        if absolute_path.join(".git").exists() {
+        
+        if entry.path_bytes().last() == Some(&b'/') && absolute_path.join(".git").exists() {
             continue;
         }
 
