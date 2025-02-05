@@ -19,6 +19,8 @@ import type {
   SmartLink as TSmartLink,
   ToolParameterEntity,
 } from "../../services/refact";
+import { ArgumentsTable } from "../../components/IntegrationsView/IntegrationsTable/ArgumentsTable";
+import { EnvironmentVariablesTable } from "../../components/IntegrationsView/IntegrationsTable/EnvironmentVariablesTable";
 
 type FieldType = "string" | "bool" | "int" | "tool" | "output";
 
@@ -67,6 +69,8 @@ type IntegrationFormFieldProps = {
   integrationProject: string;
   isFieldVisible?: boolean;
   onToolParameters: (data: ToolParameterEntity[]) => void;
+  onArguments: (updatedArgs: string[]) => void;
+  onEnvs: (updatedEnvs: Record<string, string>) => void;
 };
 
 type CommonFieldProps = {
@@ -84,7 +88,18 @@ const FieldContent: FC<{
   values: Integration["integr_values"];
   fieldKey: string;
   onToolParameters: (data: ToolParameterEntity[]) => void;
-}> = ({ f_type, commonProps, f_size, values, fieldKey, onToolParameters }) => {
+  onArguments: (updatedArgs: string[]) => void;
+  onEnvs: (updatedEnvs: Record<string, string>) => void;
+}> = ({
+  f_type,
+  commonProps,
+  f_size,
+  values,
+  fieldKey,
+  onToolParameters,
+  onArguments,
+  onEnvs,
+}) => {
   switch (f_type) {
     case "bool":
       return (
@@ -114,11 +129,38 @@ const FieldContent: FC<{
           </Markdown>
         </Box>
       );
+    case "string":
+      if (f_size === "array") {
+        return (
+          <ArgumentsTable
+            initialData={values ? (values[fieldKey] as string[]) : []}
+            onMCPArguments={onArguments}
+          />
+        );
+      }
+      if (f_size === "to_string_map") {
+        return (
+          <EnvironmentVariablesTable
+            initialData={
+              values ? (values[fieldKey] as Record<string, string>) : {}
+            }
+            onMCPEnvironmentVariables={onEnvs}
+          />
+        );
+      }
+      return (
+        <CustomInputField
+          {...commonProps}
+          type={"text"}
+          size={f_size}
+          defaultValue={commonProps.defaultValue?.toString()}
+        />
+      );
     default:
       return (
         <CustomInputField
           {...commonProps}
-          type={f_type === "int" ? "number" : "text"}
+          type="number"
           size={f_size}
           defaultValue={commonProps.defaultValue?.toString()}
         />
@@ -164,8 +206,12 @@ export const IntegrationFormField: FC<IntegrationFormFieldProps> = ({
   integrationProject,
   isFieldVisible = true,
   onToolParameters,
+  onArguments,
+  onEnvs,
 }) => {
-  const [f_type_raw, f_size] = field.f_type.toString().split("_");
+  const splittedType = field.f_type.toString().split("_");
+  const [f_type_raw, ...rest] = splittedType;
+  const f_size = rest.join("_");
   const f_type = isFieldType(f_type_raw) ? f_type_raw : "string";
 
   const defaultValue = getDefaultValue({ field, values, fieldKey, f_type });
@@ -207,6 +253,8 @@ export const IntegrationFormField: FC<IntegrationFormFieldProps> = ({
           values={values}
           fieldKey={fieldKey}
           onToolParameters={onToolParameters}
+          onArguments={onArguments}
+          onEnvs={onEnvs}
         />
 
         {field.f_desc && (

@@ -7,7 +7,7 @@ type DefaultCellProps<TData> = {
   updateRow: (index: number, field: keyof TData, value: string) => void;
   index: number;
   id: string;
-  data: TData[];
+  data: TData[] | Record<string, TData>;
   handleKeyPress: (
     e: React.KeyboardEvent<HTMLInputElement>,
     isLastRow: boolean,
@@ -36,8 +36,8 @@ export const DefaultCell = <TData,>({
   }, [initialValue]);
 
   const isLastRow = useMemo(
-    () => index === data.length - 1,
-    [index, data.length],
+    () => index === Object.keys(data).length - 1,
+    [index, data],
   );
 
   return (

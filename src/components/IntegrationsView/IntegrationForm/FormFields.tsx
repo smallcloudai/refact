@@ -22,6 +22,8 @@ type FormFieldsProps = {
   >;
   areExtraFieldsRevealed: boolean;
   onToolParameters: (data: ToolParameterEntity[]) => void;
+  onArguments: (updatedArgs: string[]) => void;
+  onEnvs: (updatedEnvs: Record<string, string>) => void;
 };
 
 export const FormFields: FC<FormFieldsProps> = ({
@@ -30,6 +32,8 @@ export const FormFields: FC<FormFieldsProps> = ({
   extraFields,
   areExtraFieldsRevealed,
   onToolParameters,
+  onArguments,
+  onEnvs,
 }) => {
   const {
     integr_config_path,
@@ -50,6 +54,8 @@ export const FormFields: FC<FormFieldsProps> = ({
           integrationPath={integr_config_path}
           integrationProject={project_path}
           onToolParameters={onToolParameters}
+          onArguments={onArguments}
+          onEnvs={onEnvs}
         />
       ))}
       {Object.keys(extraFields).map((fieldKey) => (
@@ -63,6 +69,8 @@ export const FormFields: FC<FormFieldsProps> = ({
           integrationProject={project_path}
           isFieldVisible={areExtraFieldsRevealed}
           onToolParameters={onToolParameters}
+          onArguments={onArguments}
+          onEnvs={onEnvs}
         />
       ))}
     </Grid>

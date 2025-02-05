@@ -36,6 +36,18 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
     }
   };
 
+  const isCmdline = integrationName.startsWith("cmdline");
+  const isService = integrationName.startsWith("service");
+  const isMCP = integrationName.startsWith("mcp");
+
+  const getIntegrationDisplayName = () => {
+    if (!integrationName.includes("TEMPLATE"))
+      return toPascalCase(integrationName);
+    if (isCmdline) return "Command Line Tool";
+    if (isService) return "Service";
+    if (isMCP) return "MCP Server";
+  };
+
   return (
     <Flex
       className={styles.IntegrationsHeader}
@@ -78,11 +90,7 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
               alt={integrationName}
             />
             <Heading as="h5" size="3">
-              {integrationName.includes("TEMPLATE")
-                ? integrationName.startsWith("cmdline")
-                  ? "Command Line Tool"
-                  : "Command Line Service"
-                : toPascalCase(integrationName)}
+              {getIntegrationDisplayName()}
             </Heading>
           </Flex>
         </Flex>

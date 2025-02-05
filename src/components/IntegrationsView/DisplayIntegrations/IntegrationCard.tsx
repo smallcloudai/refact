@@ -23,7 +23,7 @@ type IntegrationCardProps = {
   isNotConfigured?: boolean;
 };
 
-const INTEGRATIONS_WITH_TERMINAL_ICON = ["cmdline", "service"];
+const INTEGRATIONS_WITH_TERMINAL_ICON = ["cmdline", "service", "mcp"];
 
 export const IntegrationCard: FC<IntegrationCardProps> = ({
   integration,
@@ -40,6 +40,18 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
   )
     ? icons.cmdline
     : icons[integration.integr_name];
+
+  const isMCP = integration.integr_name.startsWith("mcp");
+  const isCmdline = integration.integr_name.startsWith("cmdline");
+  const isService = integration.integr_name.startsWith("service");
+
+  const getIntegrationDisplayName = () => {
+    if (!integration.integr_name.includes("TEMPLATE"))
+      return toPascalCase(integration.integr_name);
+    if (isCmdline) return "Command-line Tool";
+    if (isService) return "Command-line Service";
+    if (isMCP) return "MCP Server";
+  };
 
   return (
     <Card
@@ -69,11 +81,7 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
             weight="medium"
             align={isNotConfigured ? "center" : "left"}
           >
-            {integration.integr_name.includes("TEMPLATE")
-              ? integration.integr_name.startsWith("cmdline")
-                ? "Command-line Tool"
-                : "Command-line Service"
-              : toPascalCase(integration.integr_name)}
+            {getIntegrationDisplayName()}
           </Text>
           {!isNotConfigured && (
             <Badge

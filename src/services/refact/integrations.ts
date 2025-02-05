@@ -183,6 +183,8 @@ export type Integration = {
     | IntegrationPrimitive
     | Record<string, boolean>
     | Record<string, unknown>
+    | Record<string, string> // MCP envs
+    | string[] // MCP Args
     | ToolParameterEntity[]
     | ToolConfirmation
   > | null;

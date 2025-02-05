@@ -284,6 +284,11 @@ export const useIntegrations = ({
     deny: [],
   });
 
+  const [MCPArguments, setMCPArguments] = useState<string[]>([]);
+  const [MCPEnvironmentVariables, setMCPEnvironmentVariables] = useState<
+    Record<string, string>
+  >({});
+
   const [toolParameters, setToolParameters] = useState<
     ToolParameterEntity[] | null
   >(null);
@@ -881,6 +886,8 @@ export const useIntegrations = ({
     confirmationRules,
     toolParameters,
     availabilityValues,
+    MCPArguments,
+    MCPEnvironmentVariables,
     integrationLogo,
     handleFormReturn,
     handleIntegrationFormChange,
@@ -895,6 +902,8 @@ export const useIntegrations = ({
     setAvailabilityValues,
     setConfirmationRules,
     setToolParameters,
+    setMCPArguments,
+    setMCPEnvironmentVariables,
     isDisabledIntegrationForm,
     isApplyingIntegrationForm,
     isDeletingIntegration,

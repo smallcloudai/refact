@@ -29,6 +29,8 @@ type IntegrationFormProps = {
   isDeletingIntegration: boolean;
   availabilityValues: Record<string, boolean>;
   confirmationRules: ToolConfirmation;
+  MCPArguments: string[];
+  MCPEnvironmentVariables: Record<string, string>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
   handleDeleteIntegration: (path: string, name: string) => void;
   handleChange: (event: FormEvent<HTMLFormElement>) => void;
@@ -38,6 +40,10 @@ type IntegrationFormProps = {
     React.SetStateAction<Record<string, boolean>>
   >;
   setConfirmationRules: React.Dispatch<React.SetStateAction<ToolConfirmation>>;
+  setMCPArguments: React.Dispatch<React.SetStateAction<string[]>>;
+  setMCPEnvironmentVariables: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   setToolParameters: React.Dispatch<
     React.SetStateAction<ToolParameterEntity[] | null>
   >;
@@ -54,6 +60,9 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   isDeletingIntegration,
   availabilityValues,
   confirmationRules,
+  // TODO: make those params being sent to LSP
+  // MCPArguments,
+  // MCPEnvironmentVariables,
   handleSubmit,
   handleDeleteIntegration,
   handleChange,
@@ -61,6 +70,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   onValues,
   setAvailabilityValues,
   setConfirmationRules,
+  setMCPArguments,
+  setMCPEnvironmentVariables,
   setToolParameters,
   handleSwitchIntegration,
 }) => {
@@ -76,10 +87,14 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     handleAvailabilityChange,
     handleConfirmationChange,
     handleToolParameters,
+    handleMCPArguments,
+    handleMCPEnvironmentVariables,
   } = useFormAvailability({
     setAvailabilityValues,
     setConfirmationRules,
     setToolParameters,
+    setMCPArguments,
+    setMCPEnvironmentVariables,
   });
 
   // Set initial values from integration data
@@ -160,6 +175,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
               extraFields={extraFields}
               areExtraFieldsRevealed={areExtraFieldsRevealed}
               onToolParameters={handleToolParameters}
+              onArguments={handleMCPArguments}
+              onEnvs={handleMCPEnvironmentVariables}
             />
           </Grid>
 
