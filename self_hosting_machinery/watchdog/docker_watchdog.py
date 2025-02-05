@@ -369,14 +369,27 @@ def low_priority_can_start(job: TrackedJob):
     return can_start
 
 
-_inform_about_gpu_status = ""
+_inform_about_device_status = ""
 
 
-def inform_about_gpu_status():
-    global _inform_about_gpu_status
+def inform_about_device_status():
+    global _inform_about_device_status
+    cpu_status: List[Dict] = []
     gpu_status: Dict[int, List[Dict]] = {}
     for job in tracked.values():
         if job.p is None:
+            continue
+        if not job.cfg["gpus"]:
+            t = job.cmdline_str
+            if t.startswith("python -m"):
+                t = t[len("python -m"):]
+            status = []
+            if job.status_nickname:
+                status = [job.status_nickname]
+            cpu_status.append({
+                "command": t.strip(),
+                "status": " ".join(status + [job.status_from_stderr]),
+            })
             continue
         for gpu in map(int, job.cfg["gpus"]):
             if gpu >= 0:
@@ -390,12 +403,15 @@ def inform_about_gpu_status():
                     "command": t.strip(),
                     "status": " ".join(status + [job.status_from_stderr]),
                 })
-    s = json.dumps({"gpus": gpu_status}, indent=4) + "\n"
-    if s != _inform_about_gpu_status:
-        with open(env.CONFIG_BUSY_GPUS + ".tmp", "w") as f:
+    s = json.dumps({
+        "cpu": cpu_status,
+        "gpus": gpu_status,
+    }, indent=4) + "\n"
+    if s != _inform_about_device_status:
+        with open(env.CONFIG_BUSY_DEVICES + ".tmp", "w") as f:
             f.write(s)
-        os.rename(env.CONFIG_BUSY_GPUS + ".tmp", env.CONFIG_BUSY_GPUS)
-        _inform_about_gpu_status = s
+        os.rename(env.CONFIG_BUSY_DEVICES + ".tmp", env.CONFIG_BUSY_DEVICES)
+        _inform_about_device_status = s
 
 
 def main_loop_body():
@@ -413,7 +429,7 @@ def main_loop_body():
             log("%s cleanup %s" % (time.strftime("%Y%m%d %H:%M:%S"), fn))
             del tracked[fn]
             break
-    inform_about_gpu_status()
+    inform_about_device_status()
 
 
 def shutdown_all():
@@ -435,7 +451,7 @@ def shutdown_all():
 
 
 def factory_reset():
-    global _inform_about_gpu_status
+    global _inform_about_device_status
     for todel in [
         env.DIR_LOGS,
         env.DIR_CONFIG,
@@ -449,7 +465,7 @@ def factory_reset():
         except Exception as e:
             # not log, because no logs dir
             print("didn't delete %s: %s" % (todel, e))
-    _inform_about_gpu_status = ""
+    _inform_about_device_status = ""
 
 
 def first_run():

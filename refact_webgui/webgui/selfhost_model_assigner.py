@@ -275,16 +275,9 @@ class ModelAssigner:
     @property
     def devices(self):
         result = json.load(open(env.CONFIG_ENUM_DEVICES, "r"))
-        # TODO: statuses for cpu
-        result["cpu"]["statuses"] = []
-        if os.path.exists(env.CONFIG_BUSY_GPUS):
-            statuses = json.load(open(env.CONFIG_BUSY_GPUS, "r"))
-            if isinstance(statuses["gpus"], list):  # convert old format to new
-                statuses["gpus"] = {
-                    idx: [status]
-                    for idx, status in enumerate(statuses["gpus"])
-                    if status
-                }
+        if os.path.exists(env.CONFIG_BUSY_DEVICES):
+            statuses = json.load(open(env.CONFIG_BUSY_DEVICES, "r"))
+            result["cpu"]["statuses"] = statuses["cpu"]
             statuses["gpus"] = {
                 int(k): v for k, v in statuses["gpus"].items()
             }
