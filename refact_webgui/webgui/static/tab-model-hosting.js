@@ -8,7 +8,21 @@ let device_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
-const highlight_python = code => code.replace(/(def|class|return|import|from|if|else|elif|for|while|try|except|with|as|pass|lambda|yield|async|await)\b/g, '<span style="color: #d73a49; font-weight: bold;">$1</span>');
+const highlight_python = code => {
+    // Process each type of syntax in sequence to avoid overlaps
+    return code
+        // Comments first (whole line)
+        .replace(/(#.*)$/gm, '<span style="color: #6e7781;">$1</span>')
+        // Strings (both single and double quoted)
+        .replace(/(['"])(.*?)\1/g, '<span style="color: #0a3069;">$1$2$1</span>')
+        // Keywords
+        .replace(/\b(def|class|return|import|from|if|else|elif|for|while|try|except|with|as|pass|lambda|yield|async|await|raise|break|continue|in|is|not|and|or|None|True|False)\b/g, 
+            '<span style="color: #cf222e;">$1</span>')
+        // Numbers
+        .replace(/\b(\d+)\b/g, '<span style="color: #0550ae;">$1</span>')
+        // Decorators
+        .replace(/(@[\w.]+)/g, '<span style="color: #953800;">$1</span>');
+};
 
 
 
@@ -894,9 +908,10 @@ export async function init(general_error) {
             general_error('Please select a file to upload');
         }
     });
+    const code_snippet = document.querySelector('#weights-code');
+    code_snippet.innerHTML = highlight_python(code_snippet.innerHTML);
     const code_snippet_wrapper = document.querySelector('.weights-modal-code');
     code_snippet_wrapper.addEventListener("click", function () {
-        const code_snippet = document.querySelector('#weights-code');
         const text = code_snippet.innerText || code_snippet.textContent;
         navigator.clipboard.writeText(text);
     });
