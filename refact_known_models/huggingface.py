@@ -56,6 +56,7 @@ huggingface_mini_db = {
         },
         "required_memory_mb": 8000,
         "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
+        "deprecated": True,
         "filter_caps": ["completion"],
     },
     "starcoder2/3b/base": {
@@ -93,6 +94,7 @@ huggingface_mini_db = {
         },
         "required_memory_mb": 20000,
         "T": 8192,
+        "deprecated": True,
         "filter_caps": ["completion", "chat"],
     },
     "llama3.1/8b/instruct": {
