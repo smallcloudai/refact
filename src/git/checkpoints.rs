@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use git2::{IndexAddOption, Oid, Repository};
-use itertools::Itertools;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Instant;
 use std::path::{Path, PathBuf};
@@ -25,6 +24,44 @@ impl Checkpoint {
     pub fn workspace_hash(&self) -> String {
         official_text_hashing_function(&self.workspace_folder.to_string_lossy().to_string())
     }
+}
+
+fn open_or_init_nested_shadow_repos(nested_vcs_roots: &[PathBuf], cache_dir: &Path) -> Result<Vec<Repository>, String> {
+    let mut result = Vec::new();
+    for vcs_root in nested_vcs_roots {
+        let vcs_root_hash = official_text_hashing_function(&vcs_root.to_string_lossy().to_string());
+        let vcs_root_git_path = cache_dir.join("shadow_git").join("nested").join(&vcs_root_hash);
+        let nested_repo = open_or_init_repo(&vcs_root_git_path).map_err_to_string()?;
+        nested_repo.set_workdir(&vcs_root, false).map_err_to_string()?;
+        result.push(nested_repo);
+    }
+    Ok(result)
+}
+
+fn get_file_changes_from_nested_repos<'a>(
+    parent_repo: &'a Repository, nested_repos: &'a [Repository]
+) -> Result<(Vec<(&'a Repository, Vec<FileChange>)>, Vec<FileChange>), String> {
+    let repo_workdir = parent_repo.workdir().ok_or("Failed to get workdir.".to_string())?;
+    let mut file_changes_per_repo = Vec::new();
+    let mut file_changes_flatened = Vec::new();
+
+    for nested_repo in nested_repos {
+        let nested_repo_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, nested_repo, true)?;
+        let nested_repo_workdir = nested_repo.workdir()
+            .ok_or("Failed to get nested repo workdir".to_string())?;
+        let nested_repo_rel_path = nested_repo_workdir.strip_prefix(repo_workdir).map_err_to_string()?;
+
+        for change in &nested_repo_changes {
+            file_changes_flatened.push(FileChange {
+                relative_path: nested_repo_rel_path.join(&change.relative_path),
+                absolute_path: change.absolute_path.clone(),
+                status: change.status.clone(),
+            });
+        }
+        file_changes_per_repo.push((nested_repo, nested_repo_changes));
+    }
+
+    Ok((file_changes_per_repo, file_changes_flatened))
 }
 
 pub async fn create_workspace_checkpoint(
@@ -56,49 +93,23 @@ pub async fn create_workspace_checkpoint(
     let shadow_repo_path  = cache_dir.join("shadow_git").join(&workspace_folder_hash);
     let repo = Repository::open(&shadow_repo_path).map_err_with_prefix("Failed to open repo:")?;
     repo.set_workdir(&workspace_folder, false).map_err_with_prefix("Failed to set workdir:")?;
-    let repo_workdir = repo.workdir().ok_or("Failed to get workdir just set.".to_string())?;
-    let mut nested_repos = Vec::new();
-    for vcs_root in nested_vcs_roots {
-        let vcs_root_hash = official_text_hashing_function(&vcs_root.to_string_lossy().to_string());
-        let vcs_root_git_path = cache_dir.join("shadow_git").join("nested").join(&vcs_root_hash);
-        let nested_repo = open_or_init_repo(&vcs_root_git_path).map_err_with_prefix("Failed to open nested repo:")?;
-        nested_repo.set_workdir(&vcs_root, false).map_err_with_prefix("Failed to set nested workdir:")?;
-        nested_repos.push(nested_repo);
-    }
+    
+    let nested_repos = open_or_init_nested_shadow_repos(&nested_vcs_roots, &cache_dir)
+        .map_err_with_prefix("Failed to open or init nested shadow repos:")?;
 
     let has_commits = repo.head().map(|head| head.target().is_some()).unwrap_or(false);
     if !has_commits {
-        return Err("No commits in shadow git repo, most likely initialization failed.".to_string());
+        return Err("No commits in shadow git repo.".to_string());
     }
 
     let (checkpoint, file_changes) = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
-        // if repo.head().map_err_with_prefix("Failed to get HEAD:")?.name() != branch.get().name() {
-        //     let branch_commit = branch.get().peel_to_commit()
-        //         .map_err_with_prefix("Failed to get branch commit:")?;
-        //     repo.reset(branch_commit.as_object(), git2::ResetType::Mixed, None)
-        //         .map_err_with_prefix("Failed to reset index:")?;
-        //     repo.set_head(branch.get().name().ok_or("Branch name is not valid UTF-8")?)
-        //         .map_err_with_prefix("Failed to set HEAD to branch:")?;
-        // }
 
         let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, true)?;
 
-        let mut nested_file_changes = Vec::new();
-        for nested_repo in &nested_repos {
-            let nested_repo_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, nested_repo, true)?;
-            let nested_repo_workdir = nested_repo.workdir()
-                .ok_or("Failed to get nested repo workdir".to_string())?;
-            let nested_repo_rel_path = nested_repo_workdir.strip_prefix(repo_workdir).map_err_to_string()?;
-            for change in &nested_repo_changes {
-                file_changes.push(FileChange {
-                    relative_path: nested_repo_rel_path.join(&change.relative_path),
-                    absolute_path: change.absolute_path.clone(),
-                    status: change.status.clone(),
-                });
-            }
-            nested_file_changes.push((nested_repo, nested_repo_changes));
-        }
+        let (nested_file_changes, flatened_nested_file_changes) = 
+            get_file_changes_from_nested_repos(&repo, &nested_repos)?;
+        file_changes.extend(flatened_nested_file_changes);
 
         stage_changes(&repo, &file_changes)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
@@ -127,14 +138,6 @@ pub async fn restore_workspace_checkpoint(
 
     let mut files_changed = get_diff_statuses_index_to_commit(&repo, true, &commit_to_restore_oid)?;
 
-    // let repo_workdir = repo.workdir().ok_or("Failed to get workdir.".to_string())?;
-    // for nested_repo in &nested_repos {
-    //     let nested_repo_workdir = nested_repo.workdir()
-    //             .ok_or("Failed to get nested repo workdir".to_string())?;
-    //     let nested_repo_rel_path = nested_repo_workdir.strip_prefix(repo_workdir).map_err_to_string()?;
-    //     let mut nested_files_changed = get_diff_statuses(DiffStatusType::WorkdirToIndex, repository, include_untracked)
-    // }
-
     // Invert status since we got changes in reverse order so that if it fails it does not update the workspace
     for change in &mut files_changed {
         change.status = match change.status {
@@ -147,17 +150,20 @@ pub async fn restore_workspace_checkpoint(
     checkout_head_and_branch_to_commit(&repo, &format!("refact-{chat_id}"), &commit_to_restore_oid)?;
 
     for nested_repo in &nested_repos {
-        let reset_index_result = (|| {
-            let mut index = repo.index()?;
-            index.add_all(["*"].iter(), IndexAddOption::DEFAULT, Some(&mut |path, _matched_spec| {
-                if path.join(".git").exists() { 1 } else { 0 }
-            }))?;
-            index.write()
-        })();
+        let reset_index_result = nested_repo.index()
+            .and_then(|mut index| {
+                index.add_all(["*"], IndexAddOption::DEFAULT, Some(&mut |path, _| {
+                    if path.as_os_str().as_encoded_bytes().last() == Some(&b'/') && path.join(".git").exists() {
+                        1
+                    } else {
+                        0
+                    }
+                }))?;
+                index.write()
+            });
         if let Err(e) = reset_index_result {
             let workdir = nested_repo.workdir().unwrap_or(&PathBuf::new()).to_string_lossy().to_string();
             tracing::error!("Failed to reset index for {workdir}: {e}");
-            continue;
         }
     }
 
@@ -191,23 +197,13 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             continue;
         }
 
-        let mut nested_repos = Vec::new();
-        for nested_vcs in nested_vcs_roots {
-            let nested_vcs_hash = official_text_hashing_function(&nested_vcs.to_string_lossy().to_string());
-            let nested_vcs_git_path = cache_dir.join("shadow_git").join("nested").join(&nested_vcs_hash);
-            let nested_repo = match open_or_init_repo(&nested_vcs_git_path) {
-                Ok(repo) => repo,
-                Err(e) => {
-                    tracing::error!("Failed to open or init repo for {}: {}", nested_vcs.to_string_lossy(), e);
-                    continue;
-                },
-            };
-            if let Err(e) = nested_repo.set_workdir(&nested_vcs, false) {
-                tracing::error!("Failed to set workdir for {}: {}", nested_vcs.to_string_lossy(), e);
+        let nested_repos = match open_or_init_nested_shadow_repos(&nested_vcs_roots, &cache_dir) {
+            Ok(nested_repos) => nested_repos,
+            Err(e) => {
+                tracing::error!("Failed to open or init nested repos for {workspace_folder_str}: {e}");
                 continue;
             }
-            nested_repos.push(nested_repo);
-        }
+        };
 
         let has_commits = repo.head().map(|head| head.target().is_some()).unwrap_or(false);
         if has_commits {
@@ -216,31 +212,21 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
         }
 
         let t0 = Instant::now();
-        let repo_workdir = repo.workdir().unwrap_or(&workspace_folder);
 
         let initial_commit_result: Result<Oid, String> = (|| {
             let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, true)?;
-            let mut nested_file_changes = Vec::new();
-            for nested_repo in &nested_repos {
-                let nested_repo_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, nested_repo, true)?;
-                let nested_repo_workdir = nested_repo.workdir()
-                    .ok_or("Failed to get nested repo workdir".to_string())?;
-                let nested_repo_rel_path = nested_repo_workdir.strip_prefix(repo_workdir).map_err_to_string()?;
-                for change in &nested_repo_changes {
-                    file_changes.push(FileChange {
-                        relative_path: nested_repo_rel_path.join(&change.relative_path),
-                        absolute_path: change.absolute_path.clone(),
-                        status: change.status.clone(),
-                    });
-                }
-                nested_file_changes.push((nested_repo, nested_repo_changes));
-            }
+            let (nested_file_changes, all_nested_changes) = 
+                get_file_changes_from_nested_repos(&repo, &nested_repos)?;
+            file_changes.extend(all_nested_changes);
+
             stage_changes(&repo, &file_changes)?;
+            
             let mut index = repo.index().map_err_to_string()?;
             let tree_id = index.write_tree().map_err_to_string()?;
             let tree = repo.find_tree(tree_id).map_err_to_string()?;
             let signature = git2::Signature::now("Refact Agent", "agent@refact.ai").map_err_to_string()?;
             let commit = repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[]).map_err_to_string()?;
+            
             for (nested_repo, changes) in nested_file_changes {
                 stage_changes(&nested_repo, &changes)?;
             }
