@@ -24,7 +24,7 @@ DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 CONFIG_ENUM_DEVICES = os.path.join(DIR_CONFIG, "device_enum_result.out")
-CONFIG_BUSY_GPUS = os.path.join(DIR_CONFIG, "gpus_busy_result.out")
+CONFIG_BUSY_DEVICES = os.path.join(DIR_CONFIG, "devices_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
 CONFIG_ACTIVE_LORA = os.path.join(DIR_CONFIG, "inference_active_lora.cfg")
 
