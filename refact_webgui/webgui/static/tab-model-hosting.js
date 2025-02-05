@@ -8,6 +8,7 @@ let device_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
+let weights_code_editor;
 
 
 function update_finetune_configs_and_runs() {
@@ -500,6 +501,16 @@ function on_add_finetune_btn_click(el, event, models_info) {
 
 }
 
+function init_tooltips() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(tooltipTriggerEl => {
+        if (!tooltipTriggerEl.hasAttribute('data-tooltip-initialized')) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+            tooltipTriggerEl.setAttribute('data-tooltip-initialized', 'true');
+        }
+    });
+}
+
 function render_models(models) {
     const models_table = document.querySelector('.table-models tbody');
     models_table.innerHTML = '';
@@ -600,11 +611,14 @@ function render_models(models) {
                 const model_weights_info_div = document.createElement('div');
                 model_weights_info_div.classList.add('model-weights-info');
                 if (has_weights_loaded) {
-                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" class="bi bi-save"></i>';
+                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Weights are loaded" class="bi bi-save"></i>';
                 } else {
                     const model_weights_upload_button = document.createElement('button');
                     model_weights_upload_button.classList.add('badge','bg-primary','model-weights-button');
                     model_weights_upload_button.value = 'Upload weights';
+                    model_weights_upload_button.title = 'Upload weights manually';
+                    model_weights_upload_button.dataset.bsToggle = 'tooltip';
+                    model_weights_upload_button.dataset.bsPlacement = 'top';
                     model_weights_upload_button.innerHTML = '<i class="bi bi-cloud-plus"></i> Upload weights';
                     model_weights_upload_button.dataset.model_path = element.model_path;
                     model_weights_info_div.appendChild(model_weights_upload_button);
@@ -613,7 +627,7 @@ function render_models(models) {
             } else {
                 const model_weights_info_div = document.createElement('div');
                 if (has_weights_loaded) {
-                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" class="bi bi-save"></i>';
+                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Weights are loaded" class="bi bi-save"></i>';
                 }
                 model_weights.appendChild(model_weights_info_div);
             }
@@ -623,6 +637,7 @@ function render_models(models) {
             row.appendChild(has_chat);
             row.appendChild(model_weights);
             models_table.appendChild(row);
+            const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
             row.addEventListener('click', function(e) {
                 if(e.target.classList.contains('modelinfo-settings')) {
                     document.querySelector('button[data-tab="settings"]').click();
@@ -634,30 +649,33 @@ function render_models(models) {
                     window.open(href, '_blank');
                 } else if (e.target.tagName.toLowerCase() === 'button') {
                     const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
-                    document.getElementById('upload-weights-modal-instructions').innerHTML = `
-                        <code>
-                        def download_model_tar(repo_id: str) -> str:
-                            import tarfile, tempfile
-                            from os import path, getcwd, listdir
-                            from huggingface_hub import snapshot_download
-
-                            tar_filename = path.join(getcwd(), f"{repo_id.replace('/', '--')}.tar")
-                            with tempfile.TemporaryDirectory() as tmpdir:
-                                snapshot_download(repo_id=repo_id, cache_dir=tmpdir)
-                                model_dirs = [f for f in listdir(tmpdir) if f.startswith("models--")]
-                                assert model_dirs, f"No models downloaded for {repo_id}"
-                                with tarfile.open(tar_filename, "w") as tar:
-                                    for model_dir in model_dirs:
-                                        tar.add(path.join(tmpdir, model_dir), model_dir)
-                            return tar_filename
-
-                        model_path = "Qwen/Qwen2.5-Coder-0.5B"
-                        tar_filename = download_model_tar(model_path)
-                        print(f"Model {model_path} loaded and packed into {tar_filename}")
-                        </code>
+                    document.querySelector('.weights-modal-info').innerHTML = `
                         Here should be code block how to download and pack ${e.target.dataset.model_path} model from huggingface.
                         Next provide the file here and click upload.
                     `;
+                    document.querySelector('label[for="model_weights"] span').innerHTML = e.target.dataset.model_path;
+                    weights_code_editor.setValue(`def download_model_tar(repo_id: str) -> str:
+    import tarfile, tempfile
+    from os import path, getcwd, listdir
+    from huggingface_hub import snapshot_download
+
+    tar_filename = path.join(getcwd(), f"{repo_id.replace('/', '--')}.tar")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        snapshot_download(repo_id=repo_id, cache_dir=tmpdir)
+        model_dirs = [f for f in listdir(tmpdir) if f.startswith("models--")]
+        assert model_dirs, f"No models downloaded for {repo_id}"
+        with tarfile.open(tar_filename, "w") as tar:
+            for model_dir in model_dirs:
+                tar.add(path.join(tmpdir, model_dir), model_dir)
+    return tar_filename
+
+model_path = "Qwen/Qwen2.5-Coder-0.5B"
+tar_filename = download_model_tar(model_path)
+print(f"Model {model_path} loaded and packed into {tar_filename}")`);
+                    setTimeout(function() {
+                        weights_code_editor.refresh();
+                    },200);
+                    add_model_modal.hide();
                     upload_weights_modal.show();
                 } else {
                     const model_name = this.dataset.model;
@@ -667,7 +685,6 @@ function render_models(models) {
                         n_ctx: element.default_n_ctx,
                     };
                     save_model_assigned();
-                    const add_model_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('add-model-modal'));
                     add_model_modal.hide();
                 }
             });
@@ -681,6 +698,7 @@ function render_models(models) {
             });
         });
     }
+    init_tooltips();
 }
 
 function finetune_info_factory(index, models_info, finetune_info, finetune_runs, multiple_loras) {
@@ -726,6 +744,45 @@ function finetune_info_factory(index, models_info, finetune_info, finetune_runs,
             });
         }
     }
+}
+
+function upload_weights() {
+    const file = document.querySelector('#model_weights').files[0];
+    
+    if (!file) {
+        general_error({ detail: "Please select a file first" });
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);  // Make sure to use 'file' as the field name
+
+    const spinner = get_spinner();
+    const weights_modal_submit = document.querySelector('.weights-modal-submit');
+    weights_modal_submit.replaceWith(spinner);
+
+    fetch('/model-weights-upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(error => { throw error });
+        }
+        return response.json();
+    })
+    .then(data => {
+        const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
+        upload_weights_modal.hide();
+        get_models();
+    })
+    .catch(error => {
+        console.log('model-weights-upload', error);
+        general_error(error);
+    })
+    .finally(() => {
+        spinner.replaceWith(weights_modal_submit);
+    });
 }
 
 function enabled_finetune_factory(enabled_finetune, model) {
@@ -807,9 +864,25 @@ export async function init(general_error) {
     upload_weights_modal.addEventListener('show.bs.modal', function () {
 //        render_models(models_data);
     });
+    weights_code_editor = CodeMirror.fromTextArea(document.querySelector('#weights-editor'), {
+        lineNumbers: false,
+    });
+    weights_code_editor.setSize(null, 350);
+    upload_weights_modal.addEventListener('hide.bs.modal', function () {
+        weights_code_editor.setValue('');
+    });
     const redirect2credentials = document.getElementById('redirect2credentials');
     redirect2credentials.addEventListener('click', function() {
         document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
+    });
+    const weights_modal_submit = document.querySelector('.weights-modal-submit');
+    weights_modal_submit.addEventListener('click', function() {
+        const fileInput = document.querySelector('#model_weights');
+        if (fileInput.files.length > 0) {
+            upload_weights(null, fileInput.files[0]);
+        } else {
+            general_error('Please select a file to upload');
+        }
     });
     // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
