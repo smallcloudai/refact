@@ -7,8 +7,10 @@ from refact_utils.scripts import env
 
 
 def assign_gpus_if_first_run_detected(model_assigner: ModelAssigner):
-    enum_devices.enum_gpus()
-    model_assigner.first_run()
+    if not os.path.exists(env.CONFIG_ENUM_DEVICES):
+        enum_devices.enum_gpus()
+    if not os.path.exists(env.CONFIG_INFERENCE):
+        model_assigner.first_run()
 
 
 def convert_old_configs():

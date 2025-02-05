@@ -284,6 +284,10 @@ class ModelAssigner:
             }
             for idx, gpu_info in enumerate(result["gpus"]):
                 gpu_info["statuses"] = statuses["gpus"].get(idx, [])
+        else:
+            result["cpu"]["statuses"] = []
+            for idx, gpu_info in enumerate(result["gpus"]):
+                gpu_info["statuses"] = []
         return result
 
     @property
