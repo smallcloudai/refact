@@ -384,6 +384,9 @@ export const useIntegrations = ({
 
   // TODO: make this one in better way, too much of code
   useEffect(() => {
+    if (!currentIntegrationValues) {
+      setIsDisabledIntegrationForm(false);
+    }
     if (
       currentIntegration &&
       currentIntegrationSchema &&
