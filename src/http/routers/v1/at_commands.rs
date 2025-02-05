@@ -144,7 +144,7 @@ pub async fn handle_v1_command_preview(
             Ok(x) => (x.0, x.1.clone()),
             Err(e) => {
                 tracing::warn!("can't find model: {}", e);
-                return Err(ScratchError::new(StatusCode::EXPECTATION_FAILED, format!("can't find model: {}", e)))?;
+                return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("can't find model: {}", e)))?;
             }
         }
     };
@@ -152,7 +152,7 @@ pub async fn handle_v1_command_preview(
         Ok(x) => x,
         Err(e) => {
             tracing::warn!("can't load tokenizer for preview: {}", e);
-            return Err(ScratchError::new(StatusCode::EXPECTATION_FAILED, format!("can't load tokenizer for preview: {}", e)))?;
+            return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("can't load tokenizer for preview: {}", e)))?;
         }
     };
 
@@ -237,7 +237,7 @@ pub async fn handle_v1_at_command_execute(
     let caps = try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let tokenizer = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), post.model_name.clone()).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
-    
+
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         post.n_ctx,
@@ -256,7 +256,7 @@ pub async fn handle_v1_at_command_execute(
         ccx_arc.clone(), tokenizer.clone(), post.maxgen, &post.messages, &mut has_rag_results).await;
     let messages_to_stream_back = has_rag_results.in_json;
 
-    let response = CommandExecuteResponse { 
+    let response = CommandExecuteResponse {
         messages, messages_to_stream_back, undroppable_msg_number, any_context_produced };
 
     Ok(Response::builder()

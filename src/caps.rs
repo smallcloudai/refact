@@ -471,7 +471,10 @@ pub fn which_model_to_use<'a>(
     if user_wants_model != "" {
         take_this_one = user_wants_model;
     }
-    if let Some(model_rec) = models.get(&strip_model_from_finetune(&take_this_one.to_string())) {
+    let no_finetune = strip_model_from_finetune(&take_this_one.to_string());
+    if let Some(model_rec) = models.get(&take_this_one.to_string()) {
+        return Ok((take_this_one.to_string(), model_rec));
+    } else if let Some(model_rec) = models.get(&no_finetune) {
         return Ok((take_this_one.to_string(), model_rec));
     } else {
         return Err(format!(
