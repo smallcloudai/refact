@@ -1271,10 +1271,15 @@ h3 {
 }
 .model-weights-button {
     border: 0;
-    border-radius: 2px !important;
+    border-radius: 3px !important;
     display: flex;
     align-items: center;
 }
 .model-weights-button i {
     margin-right: 3px !important;
+}
+.weights-modal-code {
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    padding: 5px;
 }
