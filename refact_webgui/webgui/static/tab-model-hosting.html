@@ -98,17 +98,27 @@
 </div>
 
 <div class="modal fade" id="upload-weights-modal" tabindex="-1" aria-labelledby="upload-weights-modal" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered upload-weights-modal-dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered upload-weights-modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="urlModalLabel">Upload Model Weights</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body" id="upload-weights-modal-instructions">
+      <div class="modal-body">
+        <div class="weights-modal-code">
+            <textarea id="weights-editor"></textarea>
+        </div>
+        <div class="weights-modal-info mt-3">
+
+        </div>
+        <div class="mt-4">
+          <label for="model_weights" class="form-label fw-bold">Model Weights for <span></span></label>
+          <input class="form-control" type="file" accept=".tar,.tar.gz,.tgz,.zip" name="model_weights" id="model_weights">
+        </div>
       </div>
       <div class="modal-footer">
-<!--        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Upload</button>-->
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary weights-modal-submit">Upload</button>
       </div>
     </div>
   </div>
