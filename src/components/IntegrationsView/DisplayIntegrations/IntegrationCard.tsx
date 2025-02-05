@@ -1,15 +1,15 @@
 import { Badge, Card, Flex, Text } from "@radix-ui/themes";
-import { toPascalCase } from "../../utils/toPascalCase";
+import { toPascalCase } from "../../../utils/toPascalCase";
 import styles from "./IntegrationCard.module.css";
 import {
   IntegrationWithIconRecord,
   NotConfiguredIntegrationWithIconRecord,
-} from "../../services/refact";
+} from "../../../services/refact";
 import { FC } from "react";
 import classNames from "classnames";
-import { iconMap } from "./icons/iconMap";
-import { useAppSelector } from "../../hooks";
-import { selectThemeMode } from "../../features/Config/configSlice";
+import { iconMap } from "../icons/iconMap";
+import { useAppSelector } from "../../../hooks";
+import { selectThemeMode } from "../../../features/Config/configSlice";
 
 type IntegrationCardProps = {
   integration:
