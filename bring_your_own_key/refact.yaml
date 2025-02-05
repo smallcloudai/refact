@@ -1,0 +1,12 @@
+
+cloud_name: Refact API
+
+# Under development
+#chat_endpoint: "http://localhost:8008/v1/chat/completions"
+#chat_model: "qwen2.5/coder/1.5b/instruct"
+
+embedding_endpoint: "http://localhost:8008/v1/embeddings"
+embedding_model: "thenlper/gte-base"
+
+completion_endpoint: "http://localhost:8008/v1/completions"
+completion_model: "Refact/1.6B"
