@@ -199,14 +199,22 @@ class ModelAssigner:
                 break
 
             for model_name, assignment in model_group.model_assign.items():
-                for model_cursor in range(cursor, next_cursor, assignment["gpus_shard"]):
-                    cuda_devices = []
-                    if assignment["gpus_shard"] > 0:
-                        cuda_devices = list(range(model_cursor, model_cursor + assignment["gpus_shard"])),
+                if assignment["gpus_shard"] == 0:
+                    # NOTE: CPU case
                     model_configs.append(ModelWatchdogDConfig(
                         backend=self.models_db.get(model_name, {}).get("backend", ""),
                         model_name=model_name,
-                        gpus=cuda_devices,
+                        gpus=[],
+                        share_gpu=assignment.get("share_gpu", False),
+                        n_ctx=assignment.get("n_ctx", None),
+                        has_loras=self._has_loras(model_name),
+                    ))
+                    continue
+                for model_cursor in range(cursor, next_cursor, assignment["gpus_shard"]):
+                    model_configs.append(ModelWatchdogDConfig(
+                        backend=self.models_db.get(model_name, {}).get("backend", ""),
+                        model_name=model_name,
+                        gpus=list(range(model_cursor, model_cursor + assignment["gpus_shard"])),
                         share_gpu=assignment.get("share_gpu", False),
                         n_ctx=assignment.get("n_ctx", None),
                         has_loras=self._has_loras(model_name),
@@ -249,9 +257,9 @@ class ModelAssigner:
                     'gpus_shard': 1,
                     'share_gpu': True,
                 },
-                "thenlper/gte-base": {
-                    'gpus_shard': 1,
-                    'share_gpu': True,
+                "thenlper/gte-base/cpu": {
+                    'gpus_shard': 0,
+                    'share_gpu': False,
                 },
             },
             "openai_api_enable": False,
@@ -309,8 +317,10 @@ class ModelAssigner:
                 available_n_ctx = list(filter(lambda n_ctx: n_ctx <= default_n_ctx, ALLOWED_N_CTX))
                 assert default_n_ctx in available_n_ctx, \
                     f"default n_ctx {default_n_ctx} not in {available_n_ctx}"
+            has_share_gpu = rec["backend"] in self.share_gpu_backends
             available_shards = [1]
             if rec.get("cpu"):
+                has_share_gpu = False
                 available_shards = [0]
             elif rec["backend"] in self.shard_gpu_backends:
                 max_gpus = len(self.gpus["gpus"])
@@ -328,7 +338,7 @@ class ModelAssigner:
                 "has_finetune": has_finetune,
                 "has_embeddings": bool("embeddings" in rec["filter_caps"]),
                 "has_chat": bool("chat" in rec["filter_caps"]),
-                "has_share_gpu": rec["backend"] in self.share_gpu_backends,
+                "has_share_gpu": has_share_gpu,
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
                 "available_shards": available_shards,
