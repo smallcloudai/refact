@@ -44,6 +44,8 @@ import {
   goodUser,
   goodPing,
   chatLinks,
+  telemetryChat,
+  telemetryNetwork,
 } from "../../utils/mockServer";
 
 const handlers = [
@@ -55,6 +57,8 @@ const handlers = [
   goodUser,
   goodPing,
   chatLinks,
+  telemetryChat,
+  telemetryNetwork,
 ];
 
 // const handlers = [
@@ -216,7 +220,7 @@ describe("Chat", () => {
       ),
     );
 
-    const { user } = render(
+    const { user, ...app } = render(
       <Chat host="vscode" tabbed={false} backFromChat={() => ({})} />,
       { preloadedState: { pages: [{ name: "chat" }] } },
     );
@@ -225,7 +229,15 @@ describe("Chat", () => {
 
     expect(textarea).not.toBeNull();
 
+    const quickButtons = app.getAllByText(/quick/i);
+
+    await user.click(quickButtons[0]);
+
     await user.type(textarea, "hello");
+
+    await waitFor(() =>
+      app.queryByText(STUB_CAPS_RESPONSE.code_chat_default_model),
+    );
 
     await user.keyboard("{Enter}");
 

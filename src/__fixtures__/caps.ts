@@ -339,3 +339,20 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
   ],
   caps_version: 0,
 };
+
+export const EMPTY_CAPS_RESPONSE: CapsResponse = {
+  caps_version: 0,
+  cloud_name: "",
+  code_chat_default_model: "",
+  code_chat_models: {},
+  code_completion_default_model: "",
+  code_completion_models: {},
+  code_completion_n_ctx: 0,
+  endpoint_chat_passthrough: "",
+  endpoint_style: "",
+  endpoint_template: "",
+  running_models: [],
+  telemetry_basic_dest: "",
+  tokenizer_path_template: "",
+  tokenizer_rewrite_path: {},
+};

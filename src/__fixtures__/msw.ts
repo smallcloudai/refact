@@ -1,5 +1,5 @@
 import { http, HttpResponse, type HttpHandler } from "msw";
-import { STUB_CAPS_RESPONSE } from "./caps";
+import { EMPTY_CAPS_RESPONSE, STUB_CAPS_RESPONSE } from "./caps";
 import { SYSTEM_PROMPTS } from "./prompts";
 import { STUB_LINKS_FOR_CHAT_RESPONSE } from "./chat_links_response";
 import {
@@ -20,6 +20,13 @@ export const goodCaps: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/caps",
   () => {
     return HttpResponse.json(STUB_CAPS_RESPONSE);
+  },
+);
+
+export const emptyCaps: HttpHandler = http.get(
+  `http://127.0.0.1:8001/v1/caps`,
+  () => {
+    return HttpResponse.json(EMPTY_CAPS_RESPONSE);
   },
 );
 
@@ -157,6 +164,26 @@ export const emailLogin: HttpHandler = http.get(
       retcode: "OK",
       status: "user_logged_in",
       key: "1234567890",
+    });
+  },
+);
+
+export const telemetryChat = http.post(
+  `http://127.0.0.1:8001/v1/telemetry-chat`,
+  () => {
+    return HttpResponse.json({
+      retcode: "OK",
+      status: "sent",
+    });
+  },
+);
+
+export const telemetryNetwork = http.post(
+  `http://127.0.0.1:8001/v1/telemetry-network`,
+  () => {
+    return HttpResponse.json({
+      retcode: "OK",
+      status: "sent",
     });
   },
 );
