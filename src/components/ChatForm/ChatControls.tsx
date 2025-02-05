@@ -7,6 +7,7 @@ import {
   Skeleton,
   Box,
   Switch,
+  Badge,
 } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -15,7 +16,10 @@ import styles from "./ChatForm.module.css";
 import classNames from "classnames";
 import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
-import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import {
+  ExclamationTriangleIcon,
+  QuestionMarkCircledIcon,
+} from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
 import {
@@ -55,7 +59,7 @@ export const ApplyPatchSwitch: React.FC = () => {
       justify="between"
     >
       <Text size="2" mr="auto">
-        Auto-patch (file changes)
+        Patch files without confirmation
       </Text>
       <Flex gap="2" align="center">
         <Switch
@@ -106,7 +110,7 @@ export const AgentRollbackSwitch: React.FC = () => {
       justify="between"
     >
       <Text size="2" mr="auto">
-        Track file changes and support files rollback
+        Changes rollback
       </Text>
       <Flex gap="2" align="center">
         <Switch
@@ -129,6 +133,25 @@ export const AgentRollbackSwitch: React.FC = () => {
                 You can rollback file changes to checkpoints taken when you sent
                 messages to Agent
               </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may slow down performance of Agent in large
+                    projects
+                  </Text>
+                </Flex>
+              </Badge>
             </Flex>
           </HoverCard.Content>
         </HoverCard.Root>
@@ -181,7 +204,7 @@ export const ReasoningModeSwitch: React.FC = () => {
       justify="between"
       width="100%"
     >
-      <Text size="2">Use o3-mini reasoning model for planning</Text>
+      <Text size="2">Use a reasoning model for planning</Text>
       <Flex gap="2" align="center">
         <Switch
           size="1"
