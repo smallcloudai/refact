@@ -4,7 +4,7 @@ import {add_finetune_selectors_factory, update_checkpoints_list, set_finetune_in
 import {get_spinner} from "./utils/utils.js";
 
 
-let gpus_popup = false;
+let device_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
@@ -19,82 +19,125 @@ function update_finetune_configs_and_runs() {
     })
 }
 
-// TODO: devices
-function get_gpus() {
+function get_devices() {
     fetch("/tab-host-have-devices")
     .then(function(response) {
         return response.json();
     })
     .then(function(data) {
-        render_gpus(data);
+        render_devices(data);
     })
    .catch(function(error) {
-        console.log('tab-host-have-gpus',error);
+        console.log('tab-host-have-devices',error);
         general_error(error);
     });
 }
 
-function render_devices(gpus) {
-    if(gpus_popup) { return; }
-    if(gpus.gpus.length == 0) {
+function render_device(device_id, name, mem_used_mb, mem_total_mb, temp_celsius, statuses) {
+    const device_div = document.createElement('div');
+    device_div.classList.add('device-item');
+    device_div.setAttribute('device', device_id);
+
+    const device_image = document.createElement("div");
+    device_image.classList.add('gpus-card');  // TODO
+
+    const device_content = document.createElement('div');
+    device_content.classList.add('device-content');
+
+    const device_name = document.createElement("h3");
+    device_name.classList.add('device-title');
+    device_name.innerHTML = name;
+
+    const device_mem = document.createElement("div");
+    device_mem.classList.add('device-mem');
+    const used_gb = format_memory(mem_used_mb);
+    const total_gb = format_memory(mem_total_mb);
+    const used_mem = Math.round(mem_used_mb / (mem_total_mb / 100));
+    device_mem.innerHTML = `
+        <b>Mem</b>
+        <div class="device-mem-wrap">
+            <div class="device-mem-bar">
+                <span style="width: ${used_mem}%"></span>
+            </div>
+            ${used_gb}/${total_gb} GB
+        </div>
+    `;
+
+    const device_temp = document.createElement("div");
+    device_temp.classList.add('device-temp');
+    if (temp_celsius < 0) {
+        device_temp.innerHTML = `<b>Temp</b> N/A`;
+    } else {
+        device_temp.innerHTML = `<b>Temp</b>` + temp_celsius + '°C';
+    }
+
+    device_content.appendChild(device_name);
+    device_content.appendChild(device_mem);
+    device_content.appendChild(device_temp);
+    statuses.forEach(status => {
+        const device_status = document.createElement("div");
+        device_status.classList.add('device-status');
+        device_status.innerHTML += `<div><b>Command</b>${status.command}</div>`;
+        device_status.innerHTML += `<div><b>Status</b>${status.status}</div>`;
+
+        const device_command = document.createElement("div");
+        device_command.classList.add('device-command');
+        device_command.innerHTML = `<span class="device-current-status">${status.status}</span>`;
+        device_command.appendChild(device_status);
+        device_command.addEventListener('mouseover',function(e) {
+            device_popup = true;
+            this.querySelector('.device-status').classList.add('device-status-visible');
+        });
+        device_command.addEventListener('mouseout',function(e) {
+            device_popup = false;
+            this.querySelector('.device-status').classList.remove('device-status-visible');
+        });
+        if(!status.status || status.status === '') {
+            device_command.classList.add('device-status-invisible');
+        }
+        device_content.appendChild(device_command);
+    });
+
+    device_div.appendChild(device_image);
+    device_div.appendChild(device_content);
+
+    return device_div;
+}
+
+function render_devices(data) {
+    if(device_popup) {
+        return;
+    }
+
+    const cpu_div = render_device(
+        data.cpu.id,
+        data.cpu.name,
+        data.cpu.mem_used_mb,
+        data.cpu.mem_total_mb,
+        data.cpu.temp_celsius,
+        data.cpu.statuses,
+    );
+    const cpu_pane = document.querySelector('.cpu-pane');
+    cpu_pane.innerHTML = '';
+    cpu_pane.appendChild(cpu_div);
+
+    if(data.gpus.length == 0) {
         document.querySelector('.gpus-pane').style.display = 'none';
     } else {
         document.querySelector('.gpus-pane').style.display = 'div';
     }
     const gpus_list = document.querySelector('.gpus-list');
     gpus_list.innerHTML = '';
-    gpus.gpus.forEach(element => {
-        const row = document.createElement('div');
-        row.classList.add('gpus-item');
-        row.setAttribute('gpu',element.id);
-        const gpu_wrapper = document.createElement('div');
-        gpu_wrapper.classList.add('gpus-content');
-        const gpu_name = document.createElement("h3");
-        gpu_name.classList.add('gpus-title');
-        const gpu_image = document.createElement("div");
-        gpu_image.classList.add('gpus-card');
-        const gpu_mem = document.createElement("div");
-        gpu_mem.classList.add('gpus-mem');
-        const gpu_temp = document.createElement("div");
-        gpu_temp.classList.add('gpus-temp');
-        const used_gb = format_memory(element.mem_used_mb);
-        const total_gb = format_memory(element.mem_total_mb);
-        const used_mem = Math.round(element.mem_used_mb / (element.mem_total_mb / 100));
-        gpu_name.innerHTML = element.name;
-        gpu_mem.innerHTML = `<b>Mem</b><div class="gpus-mem-wrap"><div class="gpus-mem-bar"><span style="width: ${used_mem}%"></span></div>${used_gb}/${total_gb} GB</div>`;
-        if (element.temp_celsius < 0) {
-            gpu_temp.innerHTML = `<b>Temp</b> N/A`;
-        } else {
-            gpu_temp.innerHTML = `<b>Temp</b>` + element.temp_celsius + '°C';
-        }
-        row.appendChild(gpu_image);
-        gpu_wrapper.appendChild(gpu_name);
-        gpu_wrapper.appendChild(gpu_mem);
-        gpu_wrapper.appendChild(gpu_temp);
-        element.statuses.forEach(status => {
-            const gpu_command = document.createElement("div");
-            gpu_command.classList.add('gpus-command');
-            const gpu_status = document.createElement("div");
-            gpu_status.classList.add('gpus-status');
-            gpu_command.innerHTML = `<span class="gpus-current-status">${status.status}</span>`;
-            gpu_status.innerHTML += `<div><b>Command</b>${status.command}</div>`;
-            gpu_status.innerHTML += `<div><b>Status</b>${status.status}</div>`;
-            gpu_command.appendChild(gpu_status);
-            gpu_command.addEventListener('mouseover',function(e) {
-                gpus_popup = true;
-                this.querySelector('.gpus-status').classList.add('gpus-status-visible');
-            });
-            gpu_command.addEventListener('mouseout',function(e) {
-                gpus_popup = false;
-                this.querySelector('.gpus-status').classList.remove('gpus-status-visible');
-            });
-            if(!status.status || status.status === '') {
-                gpu_command.classList.add('gpus-status-invisible');
-            }
-            gpu_wrapper.appendChild(gpu_command);
-        });
-
-        row.appendChild(gpu_wrapper);
+    console.log(data)
+    data.gpus.forEach(element => {
+        const row = render_device(
+            element.id,
+            element.name,
+            element.mem_used_mb,
+            element.mem_total_mb,
+            element.temp_celsius,
+            element.statuses,
+        );
         gpus_list.appendChild(row);
     });
 }
@@ -697,7 +740,7 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
 export async function init(general_error) {
     let req = await fetch('/tab-model-hosting.html');
     document.querySelector('#model-hosting').innerHTML = await req.text();
-    get_gpus();
+    get_devices();
     update_finetune_configs_and_runs();
     get_models();
     const add_model_modal = document.getElementById('add-model-modal');
@@ -712,7 +755,7 @@ export async function init(general_error) {
 }
 
 export function tab_switched_here() {
-    get_gpus();
+    get_devices();
     update_finetune_configs_and_runs();
     get_models();
 }
@@ -721,7 +764,7 @@ export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
-    get_gpus();
+    get_devices();
     update_finetune_configs_and_runs();
     if (force_render_models_assigned) {
         get_models();

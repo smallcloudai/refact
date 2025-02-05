@@ -12,7 +12,7 @@ from refact_utils.scripts import env
 
 def query_nvidia_smi():
     nvidia_smi_output = "- no output -"
-    descriptions = []
+    gpu_infos = []
     try:
         nvidia_smi_output = subprocess.check_output([
             "nvidia-smi",
@@ -26,7 +26,7 @@ def query_nvidia_smi():
                 gpu_temp_celsius = int(gpu_temp.split()[0])
             except ValueError:
                 gpu_temp_celsius = -1
-            descriptions.append({
+            gpu_infos.append({
                 "id": gpu_bus_id,
                 "name": gpu_name,
                 "mem_used_mb": gpu_mem_used_mb,
@@ -38,14 +38,25 @@ def query_nvidia_smi():
         logging.warning(traceback.format_exc())
         logging.warning(f"output was:\n{nvidia_smi_output}")
 
-    return {"gpus": descriptions}
+    # TODO
+    cpu_info = {
+        "id": "cpu",  # gpu_bus_id,
+        "name": "CPU",  # gpu_name,
+        "mem_used_mb": 1024,  # gpu_mem_used_mb,
+        "mem_total_mb": 1024 * 10,  # gpu_mem_total_mb,
+        "temp_celsius": 50,  # gpu_temp_celsius,
+    }
+    return {
+        "cpu": cpu_info,
+        "gpus": gpu_infos,
+    }
 
 
 def enum_gpus():
     result = query_nvidia_smi()
-    with open(env.CONFIG_ENUM_GPUS + ".tmp", 'w') as f:
+    with open(env.CONFIG_ENUM_DEVICES + ".tmp", 'w') as f:
         json.dump(result, f, indent=4)
-    os.rename(env.CONFIG_ENUM_GPUS + ".tmp", env.CONFIG_ENUM_GPUS)
+    os.rename(env.CONFIG_ENUM_DEVICES + ".tmp", env.CONFIG_ENUM_DEVICES)
 
 
 if __name__ == '__main__':
