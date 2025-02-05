@@ -117,6 +117,11 @@ function render_devices(data) {
         data.cpu.temp_celsius,
         data.cpu.statuses,
     );
+
+    // CPU image
+    // const device_image = document.createElement("div");
+    // device_image.classList.add('gpus-cpu');
+
     const cpu_pane = document.querySelector('.cpu-pane');
     cpu_pane.innerHTML = '';
     cpu_pane.appendChild(cpu_div);
