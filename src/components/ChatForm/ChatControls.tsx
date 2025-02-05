@@ -138,20 +138,27 @@ export const AgentRollbackSwitch: React.FC = () => {
 };
 
 export const ReasoningModeSwitch: React.FC = () => {
+  const DEFAULT_MODE = "AGENT";
+  const ALLOWED_MODES_TO_DISPLAY_SWITCH = ["AGENT", "THINKING_AGENT"];
   const dispatch = useAppDispatch();
   const chatId = useAppSelector(selectChatId);
   const currentMode = useAppSelector(selectThreadMode);
-  const modeFromHistory =
-    useAppSelector((state) => getChatById(state, chatId), {
-      devModeChecks: { stabilityCheck: "never" },
-    })?.mode ?? "AGENT";
+  const modeFromHistory = useAppSelector(
+    (state) => getChatById(state, chatId)?.mode ?? DEFAULT_MODE,
+    { devModeChecks: { stabilityCheck: "never" } },
+  );
 
-  const isReasoningEnabled = useMemo(() => {
-    return currentMode === "THINKING_AGENT";
-  }, [currentMode]);
+  const isReasoningEnabled = currentMode === "THINKING_AGENT";
 
-  const handleDeepseekReasoningChange = (checked: boolean) => {
-    dispatch(setChatMode(checked ? "THINKING_AGENT" : modeFromHistory));
+  const handleReasoningModeChange = (checked: boolean) => {
+    // TODO: if default mode wasn't agent, but configure or project summary, what should we do?
+    const newMode = checked
+      ? "THINKING_AGENT"
+      : modeFromHistory === "THINKING_AGENT"
+        ? DEFAULT_MODE
+        : modeFromHistory;
+
+    dispatch(setChatMode(newMode));
   };
 
   const tooltipStyles: CSSProperties = {
@@ -159,6 +166,10 @@ export const ReasoningModeSwitch: React.FC = () => {
     visibility: "hidden",
     opacity: 0,
   };
+
+  if (currentMode && !ALLOWED_MODES_TO_DISPLAY_SWITCH.includes(currentMode)) {
+    return null;
+  }
 
   return (
     <Flex
@@ -176,7 +187,7 @@ export const ReasoningModeSwitch: React.FC = () => {
           size="1"
           title="Enable/disable deepseek-reasoner for Agent"
           checked={isReasoningEnabled}
-          onCheckedChange={handleDeepseekReasoningChange}
+          onCheckedChange={handleReasoningModeChange}
         />
         <QuestionMarkCircledIcon style={tooltipStyles} />
       </Flex>

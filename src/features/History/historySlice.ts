@@ -11,6 +11,7 @@ import {
   doneStreaming,
   removeChatFromCache,
   restoreChat,
+  setChatMode,
 } from "../Chat/Thread";
 import {
   isAssistantMessage,
@@ -270,6 +271,18 @@ startHistoryListening({
     if (chat.thread.id == action.payload.id && chat.streaming) return;
     if (action.payload.id in chat.cache) return;
     listenerApi.dispatch(markChatAsRead(action.payload.id));
+  },
+});
+
+startHistoryListening({
+  actionCreator: setChatMode,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    const thread = state.chat.thread;
+    if (!(thread.id in state.history)) return;
+
+    const toSave = { ...thread, mode: action.payload };
+    listenerApi.dispatch(saveChat(toSave));
   },
 });
 

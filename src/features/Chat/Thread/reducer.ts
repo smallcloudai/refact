@@ -60,13 +60,28 @@ type createInitialStateArgs = {
   maybeMode?: LspChatMode;
 };
 
+const getThreadMode = ({
+  tool_use,
+  integration,
+  maybeMode,
+}: createInitialStateArgs) => {
+  if (maybeMode) {
+    return maybeMode === "CONFIGURE" ? "AGENT" : maybeMode;
+  }
+  if (integration) {
+    return "CONFIGURE";
+  }
+
+  return chatModeToLspMode(tool_use);
+};
+
 const createInitialState = ({
   tool_use = "agent",
   integration,
   maybeMode,
 }: createInitialStateArgs): Chat => {
-  const mode =
-    maybeMode ?? integration ? "CONFIGURE" : chatModeToLspMode(tool_use);
+  const mode = getThreadMode({ tool_use, integration, maybeMode });
+
   return {
     streaming: false,
     thread: createChatThread(tool_use, integration, mode),
@@ -124,7 +139,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
     next.thread.model = state.thread.model;
-    next.thread.mode = state.thread.mode;
     next.system_prompt = state.system_prompt;
     next.automatic_patch = state.automatic_patch;
     next.checkpoints_enabled = state.checkpoints_enabled;
