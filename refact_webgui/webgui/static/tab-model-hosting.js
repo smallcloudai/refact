@@ -609,11 +609,10 @@ function render_models(models) {
             }
             const has_weights_loaded = element.hasOwnProperty("has_weights_loaded") && element.has_weights_loaded;
             if (element.hasOwnProperty("is_hf_offline") && element.is_hf_offline) {
-                const model_weights_info_div = document.createElement('div');
-                model_weights_info_div.classList.add('model-weights-info');
-                if (has_weights_loaded) {
-                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Weights are loaded" class="bi bi-save"></i>';
-                }
+                const model_weights_are_loaded = document.createElement('div');
+                model_weights_are_loaded.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Weights are loaded" class="bi bi-save"></i>';
+                model_weights_are_loaded.style.visibility = has_weights_loaded ? "visible" : "hidden";
+
                 const model_weights_upload_button = document.createElement('button');
                 model_weights_upload_button.classList.add('badge','bg-primary','model-weights-button');
                 model_weights_upload_button.value = 'Upload weights';
@@ -621,7 +620,11 @@ function render_models(models) {
                 model_weights_upload_button.dataset.bsToggle = 'tooltip';
                 model_weights_upload_button.dataset.bsPlacement = 'top';
                 model_weights_upload_button.innerHTML = '<i class="bi bi-cloud-plus"></i> Upload weights';
-                model_weights_upload_button.dataset.model_path = element.model_path;
+                model_weights_upload_button.dataset.model_path = element.model_path
+
+                const model_weights_info_div = document.createElement('div');
+                model_weights_info_div.classList.add('model-weights-info');;
+                model_weights_info_div.appendChild(model_weights_are_loaded);
                 model_weights_info_div.appendChild(model_weights_upload_button);
                 model_weights.appendChild(model_weights_info_div);
             } else {
