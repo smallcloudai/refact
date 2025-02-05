@@ -157,6 +157,11 @@ function plugins_to_top_nav_bar(plugins) {
     const tab_panes = document.querySelectorAll('.main-tab-pane');
     const nav_container = document.querySelector('#nav-container');
 
+    let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    let tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+
     nav_container.addEventListener('click', (event) => {
         const tab_button = event.target.closest('.main-tab-button');
 
