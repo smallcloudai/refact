@@ -1277,6 +1277,10 @@ h3 {
     align-items: center;
     gap: 8px;
 }
+.model-weights-info i {
+    display: inline-flex;
+    margin: 0;  
+}
 
 .model-weights-status {
     display: inline-flex;
@@ -1295,4 +1299,19 @@ h3 {
     border: 1px solid #ccc;
     border-radius: 0.375rem;
     padding: 5px;
+}
+.weights-modal-code  {
+    position: relative;
+    background: #f5f5f5;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+.weights-modal-code code {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+.weights-modal-code pre {
+    margin: 0;
+    padding: 0;
 }
