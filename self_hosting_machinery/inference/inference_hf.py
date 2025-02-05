@@ -115,12 +115,9 @@ class InferenceHF(InferenceBase, LoraLoaderMixin):
         self._model_cfg = model_cfg
         self._model_dir = f"models--{self._model_dict['model_path'].replace('/', '--')}"
 
-        if model_dict.get("cpu"):
-            os.environ["CUDA_VISIBLE_DEVICES"] = ""
-            self._device = "cpu"
-        else:
-            self._device = "cuda:0"
+        assert torch.cuda.is_available(), "model is only supported on GPU"
 
+        self._device = "cuda:0"
         token = huggingface_hub_token()
         logging.getLogger("MODEL").info("loading model")
         self._tokenizer = AutoTokenizer.from_pretrained(
