@@ -200,10 +200,13 @@ class ModelAssigner:
 
             for model_name, assignment in model_group.model_assign.items():
                 for model_cursor in range(cursor, next_cursor, assignment["gpus_shard"]):
+                    cuda_devices = []
+                    if assignment["gpus_shard"] > 0:
+                        cuda_devices = list(range(model_cursor, model_cursor + assignment["gpus_shard"])),
                     model_configs.append(ModelWatchdogDConfig(
                         backend=self.models_db.get(model_name, {}).get("backend", ""),
                         model_name=model_name,
-                        gpus=list(range(model_cursor, model_cursor + assignment["gpus_shard"])),
+                        gpus=cuda_devices,
                         share_gpu=assignment.get("share_gpu", False),
                         n_ctx=assignment.get("n_ctx", None),
                         has_loras=self._has_loras(model_name),
@@ -309,7 +312,7 @@ class ModelAssigner:
             available_shards = [1]
             if rec.get("cpu"):
                 available_shards = [0]
-            if rec["backend"] in self.shard_gpu_backends:
+            elif rec["backend"] in self.shard_gpu_backends:
                 max_gpus = len(self.gpus["gpus"])
                 max_available_shards = min(max_gpus, rec.get("max_gpus_shard", max_gpus))
                 available_shards = [
