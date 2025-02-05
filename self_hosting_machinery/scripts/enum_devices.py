@@ -24,7 +24,7 @@ def get_cpu_info():
         temps = [t.current for t in psutil.sensors_temperatures().get("coretemp", [])]
         cpu_info["mem_used_mb"] = mem.used // (1 << 20)
         cpu_info["mem_total_mb"] = mem.total // (1 << 20)
-        cpu_info["temp_celsius"] = sum(temps) / len(temps) if temps else -1
+        cpu_info["temp_celsius"] = int(sum(temps) / len(temps)) if temps else -1
     except Exception:
         logging.warning("psutil can't get info about CPU")
         logging.warning(traceback.format_exc())
