@@ -24,7 +24,29 @@ const highlight_python = code => {
         .replace(/(@[\w.]+)/g, '<span style="color: #953800;">$1</span>');
 };
 
+function upload_weights_code_snippet(model_path) {
+    const code_snippet = `def download_model_tar(repo_id: str) -> str:
+    import tarfile, tempfile
+    from os import path, getcwd, listdir
+    from huggingface_hub import snapshot_download
 
+    tar_filename = path.join(getcwd(), f"{repo_id.replace('/', '--')}.tar")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        snapshot_download(repo_id=repo_id, cache_dir=tmpdir)
+        model_dirs = [f for f in listdir(tmpdir) if f.startswith("models--")]
+        assert model_dirs, f"No models downloaded for {repo_id}"
+        with tarfile.open(tar_filename, "w") as tar:
+            for model_dir in model_dirs:
+                tar.add(path.join(tmpdir, model_dir), model_dir)
+    return tar_filename
+
+model_path = "${model_path}"
+tar_filename = download_model_tar(model_path)
+print(f"Model {model_path} loaded and packed into {tar_filename}")
+`;
+    const highlighted_code_snippet = highlight_python(code_snippet);
+    return `<pre><code id="weights-code">${highlighted_code_snippet}</code></pre>`;
+}
 
 function update_finetune_configs_and_runs() {
     get_finetune_config_and_runs().then((data) => {
@@ -146,7 +168,6 @@ function render_devices(data) {
     }
     const gpus_list = document.querySelector('.gpus-list');
     gpus_list.innerHTML = '';
-    console.log(data)
     data.gpus.forEach(element => {
         const row = render_device(
             'devices-card',
@@ -226,7 +247,7 @@ function save_model_assigned() {
         xai_api_enable: xai_enable.checked,
         deepseek_api_enable: deepseek_enable.checked,
     };
-    console.log(data);
+
     fetch("/tab-host-models-assign", {
         method: "POST",
         headers: {
@@ -634,7 +655,7 @@ function render_models(models) {
                 model_weights_upload_button.dataset.bsToggle = 'tooltip';
                 model_weights_upload_button.dataset.bsPlacement = 'top';
                 model_weights_upload_button.innerHTML = '<i class="bi bi-cloud-plus"></i> Upload weights';
-                model_weights_upload_button.dataset.model_path = element.model_path
+                model_weights_upload_button.dataset.model_path = element.model_path;
 
                 const model_weights_info_div = document.createElement('div');
                 model_weights_info_div.classList.add('model-weights-info');;
@@ -666,9 +687,11 @@ function render_models(models) {
                     window.open(href, '_blank');
                 } else if (e.target.tagName.toLowerCase() === 'button') {
                     const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
+                    const code_snippet_wrapper = document.querySelector('.weights-modal-code');
+                    code_snippet_wrapper.innerHTML = upload_weights_code_snippet(e.target.dataset.model_path);
                     document.querySelector('.weights-modal-info').innerHTML = `
-                        Here should be code block how to download and pack ${e.target.dataset.model_path} model from huggingface.
-                        Next provide the file here and click upload.
+                        <p>Download model weights using given code example.</p>
+                        <p>Next upload obtained archive to the server.</p>
                     `;
                     document.querySelector('label[for="model_weights"] span').innerHTML = e.target.dataset.model_path;
                     document.querySelector('#weights-code').addEventListener('click', (help_text) => {
@@ -745,6 +768,7 @@ function finetune_info_factory(index, models_info, finetune_info, finetune_runs,
     }
 }
 
+// TODO: doesn't work well after one upload
 function upload_weights() {
     const file = document.querySelector('#model_weights').files[0];
     
@@ -890,10 +914,6 @@ export async function init(general_error) {
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
     });
-    const upload_weights_modal = document.getElementById('upload-weights-modal');
-    upload_weights_modal.addEventListener('show.bs.modal', function () {
-//        render_models(models_data);
-    });
     const redirect2credentials = document.getElementById('redirect2credentials');
     redirect2credentials.addEventListener('click', function() {
         document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
@@ -908,8 +928,6 @@ export async function init(general_error) {
             general_error('Please select a file to upload');
         }
     });
-    const code_snippet = document.querySelector('#weights-code');
-    code_snippet.innerHTML = highlight_python(code_snippet.innerHTML);
     const code_snippet_wrapper = document.querySelector('.weights-modal-code');
     code_snippet_wrapper.addEventListener("click", function () {
         const text = code_snippet.innerText || code_snippet.textContent;
@@ -918,27 +936,13 @@ export async function init(general_error) {
     // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
 
-// initialize modal for each model?
-
 export function tab_switched_here() {
     get_devices();
     update_finetune_configs_and_runs();
     get_models();
-//    const upload_weights_modal = document.querySelector('#upload-weights-modal');
-//    init_upload_files_modal(
-//        upload_weights_modal,
-//        document.querySelector('#open-upload-files-modal'),
-//        'Upload Model Weights',
-//        'input',
-//        `tab-files-upload-url/${pname}`, `/tab-files-upload/${pname}`,
-//        "Wrapping up. Please wait...",
-//        "https://yourserver.com/file.zip",
-//        "You can upload .zip, .tar.gz, .tar.bz2 archives, or an individual file such as \"my_program.py\""
-//    );
 }
 
 export function tab_switched_away() {
-//    upload_files_modal_switch_away(document.querySelector('#upload-weights-modal'));
 }
 
 export function tab_update_each_couple_of_seconds() {
