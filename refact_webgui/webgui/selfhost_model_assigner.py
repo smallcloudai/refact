@@ -186,7 +186,7 @@ class ModelAssigner:
         return bool(active_loras.get(model_name, {}).get("loras", []))
 
     def _model_inference_setup(self, inference_config: Dict[str, Any]) -> Dict[str, Any]:
-        gpus = self.gpus["gpus"]
+        gpus = self.devices["gpus"]
         model_groups = self._model_assign_to_groups(inference_config["model_assign"])
         cursor = 0
         required_memory_exceed_available = False
@@ -273,7 +273,7 @@ class ModelAssigner:
         self.models_to_watchdog_configs(default_config)
 
     @property
-    def gpus(self):
+    def devices(self):
         if os.path.exists(env.CONFIG_ENUM_GPUS):
             result = json.load(open(env.CONFIG_ENUM_GPUS, "r"))
         else:
@@ -291,6 +291,9 @@ class ModelAssigner:
             }
             for idx, gpu_info in enumerate(result["gpus"]):
                 gpu_info["statuses"] = statuses["gpus"].get(idx, [])
+        result["cpu"] = {
+            "mem": 10,
+        }
         return result
 
     @property
@@ -323,7 +326,7 @@ class ModelAssigner:
                 has_share_gpu = False
                 available_shards = [0]
             elif rec["backend"] in self.shard_gpu_backends:
-                max_gpus = len(self.gpus["gpus"])
+                max_gpus = len(self.devices["gpus"])
                 max_available_shards = min(max_gpus, rec.get("max_gpus_shard", max_gpus))
                 available_shards = [
                     gpus_shard for gpus_shard in ALLOWED_GPUS_SHARD

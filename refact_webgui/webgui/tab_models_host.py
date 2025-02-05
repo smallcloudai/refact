@@ -56,7 +56,7 @@ class TabHostRouter(APIRouter):
         super().__init__(*args, **kwargs)
         self._model_assigner = model_assigner
         self.add_api_route("/tab-host-modify-loras", self._modify_loras, methods=["POST"])
-        self.add_api_route("/tab-host-have-gpus", self._tab_host_have_gpus, methods=["GET"])
+        self.add_api_route("/tab-host-have-devices", self._tab_host_have_devices, methods=["GET"])
         self.add_api_route("/tab-host-models-get", self._tab_host_models_get, methods=["GET"])
         self.add_api_route("/tab-host-models-assign", self._tab_host_models_assign, methods=["POST"])
 
@@ -86,8 +86,8 @@ class TabHostRouter(APIRouter):
 
         return JSONResponse("OK")
 
-    async def _tab_host_have_gpus(self):
-        return Response(json.dumps(self._model_assigner.gpus, indent=4) + "\n")
+    async def _tab_host_have_devices(self):
+        return Response(json.dumps(self._model_assigner.devices, indent=4) + "\n")
 
     async def _tab_host_models_get(self):
         return Response(json.dumps({

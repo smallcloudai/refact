@@ -958,8 +958,9 @@ function render_finetune_options(settings_data,defaults = false) {
     })
 }
 
+// TODO: devices
 function get_gpus_count() {
-    fetch("/tab-host-have-gpus")
+    fetch("/tab-host-have-devices")
     .then(function(response) {
         return response.json();
     })
