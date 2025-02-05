@@ -66,6 +66,7 @@ class ModelWatchdogDConfig:
 
         model_cfg_j["gpus"] = self.gpus
         model_cfg_j["share_gpu"] = self.share_gpu
+        model_cfg_j["inform_about_device_status"] = True
         del model_cfg_j["unfinished"]
 
         if self.gpus:
