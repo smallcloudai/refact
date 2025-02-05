@@ -493,6 +493,7 @@ function render_models(models) {
         value.forEach(element => {
             const row = document.createElement('tr');
             row.setAttribute('data-model',element.name);
+            row.setAttribute('data-default-gpus-shard', element.available_shards.length > 0 ? element.available_shards[0] : 1);
             row.setAttribute('data-parent',key);
             row.classList.add('modelsub-row');
             const model_name = document.createElement("td");
@@ -558,11 +559,11 @@ function render_models(models) {
                     e.preventDefault();
                     const href = e.target.getAttribute('href');
                     window.open(href, '_blank');
-                }
-                else {
+                } else {
                     const model_name = this.dataset.model;
+                    const default_gpus_shard = this.dataset.default_gpus_shard;
                     models_data.model_assign[model_name] = {
-                        gpus_shard: 1,
+                        gpus_shard: default_gpus_shard,
                         n_ctx: element.default_n_ctx,
                     };
                     save_model_assigned();

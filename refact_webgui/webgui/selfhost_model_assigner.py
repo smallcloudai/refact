@@ -33,7 +33,6 @@ def get_default_n_ctx(model_name: str, model_info: Dict[str, Any]) -> int:
 
 @dataclass
 class ModelGroup:
-    is_cpu: bool = False
     model_assign: Dict[str, Dict] = field(default_factory=dict)
 
     def required_memory_mb(self, models_db: Dict[str, Any]) -> int:
@@ -43,7 +42,7 @@ class ModelGroup:
         )
 
     def gpus_shard(self) -> int:
-        if not self.model_assign or self.is_cpu:
+        if not self.model_assign:
             return 0
         return max([rec["gpus_shard"] for rec in self.model_assign.values()])
 
@@ -118,14 +117,15 @@ class ModelAssigner:
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
         shared_group = ModelGroup()
-        cpu_group = ModelGroup(is_cpu=True)
+        cpu_group = ModelGroup()
         for model_name, assignment in model_assign.items():
             if model_name not in self.models_db.keys():
                 log(f"unknown model '{model_name}', skipping")
                 continue
             model_dict = self.models_db[model_name]
-            if (assignment["gpus_shard"] not in ALLOWED_GPUS_SHARD or
-                    assignment["gpus_shard"] > model_dict.get("max_gpus_shard", assignment["gpus_shard"])):
+            if (assignment["gpus_shard"] > 0
+                    and assignment["gpus_shard"] not in ALLOWED_GPUS_SHARD
+                    or assignment["gpus_shard"] > model_dict.get("max_gpus_shard", assignment["gpus_shard"])):
                 log(f"invalid shard count {assignment['gpus_shard']}, skipping '{model_name}'")
                 continue
             if (assignment["gpus_shard"] > 1 and
@@ -142,7 +142,7 @@ class ModelAssigner:
             elif model_dict.get("cpu"):
                 cpu_group.model_assign[model_name] = assignment
             else:
-                model_groups.append(ModelGroup(model_assign={model_name: assignment}))
+                model_groups.append(ModelGroup({model_name: assignment}))
         if cpu_group.model_assign:
             model_groups = [cpu_group, *model_groups]
         return model_groups
@@ -307,6 +307,8 @@ class ModelAssigner:
                 assert default_n_ctx in available_n_ctx, \
                     f"default n_ctx {default_n_ctx} not in {available_n_ctx}"
             available_shards = [1]
+            if rec.get("cpu"):
+                available_shards = [0]
             if rec["backend"] in self.shard_gpu_backends:
                 max_gpus = len(self.gpus["gpus"])
                 max_available_shards = min(max_gpus, rec.get("max_gpus_shard", max_gpus))

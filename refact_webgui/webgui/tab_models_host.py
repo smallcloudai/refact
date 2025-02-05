@@ -31,7 +31,7 @@ class ModifyLorasPost(BaseModel):
 
 
 class TabHostModelRec(BaseModel):
-    gpus_shard: int = Query(default=1, ge=1, le=1024)
+    gpus_shard: int = Query(default=1, ge=0, le=1024)
     share_gpu: bool = False
     n_ctx: Optional[int] = None
 
