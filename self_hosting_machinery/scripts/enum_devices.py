@@ -3,11 +3,32 @@ import os
 import time
 import signal
 import sys
+import psutil
 import traceback
 import logging
 import subprocess
 
 from refact_utils.scripts import env
+
+
+def get_cpu_info():
+    cpu_info = {
+        "id": "cpu",
+        "name": "CPU",  # NOTE: do we really need the actual name of processor?
+        "mem_used_mb": 0,
+        "mem_total_mb": 1,
+        "temp_celsius": -1,
+    }
+    try:
+        mem = psutil.virtual_memory()
+        temps = [t.current for t in psutil.sensors_temperatures().get("coretemp", [])]
+        cpu_info["mem_used_mb"] = mem.used // (1 << 20)
+        cpu_info["mem_total_mb"] = mem.total // (1 << 20)
+        cpu_info["temp_celsius"] = sum(temps) / len(temps) if temps else -1
+    except Exception:
+        logging.warning("psutil can't get info about CPU")
+        logging.warning(traceback.format_exc())
+    return cpu_info
 
 
 def query_nvidia_smi():
@@ -38,22 +59,14 @@ def query_nvidia_smi():
         logging.warning(traceback.format_exc())
         logging.warning(f"output was:\n{nvidia_smi_output}")
 
-    # TODO
-    cpu_info = {
-        "id": "cpu",  # gpu_bus_id,
-        "name": "CPU",  # gpu_name,
-        "mem_used_mb": 1024,  # gpu_mem_used_mb,
-        "mem_total_mb": 1024 * 10,  # gpu_mem_total_mb,
-        "temp_celsius": 50,  # gpu_temp_celsius,
-    }
-    return {
-        "cpu": cpu_info,
-        "gpus": gpu_infos,
-    }
+    return gpu_infos
 
 
 def enum_gpus():
-    result = query_nvidia_smi()
+    result = {
+        "cpu": get_cpu_info(),
+        "gpus": query_nvidia_smi(),
+    }
     with open(env.CONFIG_ENUM_DEVICES + ".tmp", 'w') as f:
         json.dump(result, f, indent=4)
     os.rename(env.CONFIG_ENUM_DEVICES + ".tmp", env.CONFIG_ENUM_DEVICES)
@@ -76,5 +89,3 @@ if __name__ == '__main__':
             break
         enum_gpus()
         time.sleep(max(0, next_wakeup - time.time()))
-        # from datetime import datetime
-        # print(datetime.utcnow().strftime("%H:%M:%S.%f"))
