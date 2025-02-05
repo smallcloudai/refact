@@ -65,11 +65,11 @@ const getThreadMode = ({
   integration,
   maybeMode,
 }: createInitialStateArgs) => {
-  if (maybeMode) {
-    return maybeMode === "CONFIGURE" ? "AGENT" : maybeMode;
-  }
   if (integration) {
     return "CONFIGURE";
+  }
+  if (maybeMode) {
+    return maybeMode === "CONFIGURE" ? "AGENT" : maybeMode;
   }
 
   return chatModeToLspMode(tool_use);
