@@ -1257,3 +1257,24 @@ h3 {
     font-size: 13px;
     max-width: 600px;
 }
+
+/* Model Weights */
+.model-weights-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.model-weights-status {
+    display: inline-flex;
+    align-items: center;
+}
+.model-weights-button {
+    border: 0;
+    border-radius: 2px !important;
+    display: flex;
+    align-items: center;
+}
+.model-weights-button i {
+    margin-right: 3px !important;
+}

@@ -551,19 +551,22 @@ function render_models(models) {
             const has_weights_loaded = element.hasOwnProperty("has_weights_loaded") && element.has_weights_loaded;
             if (element.hasOwnProperty("is_hf_offline") && element.is_hf_offline) {
                 const model_weights_info_div = document.createElement('div');
-                model_weights_info_div.innerHTML = has_weights_loaded ? 'On disk' : 'Upload required';
+                model_weights_info_div.classList.add('model-weights-info');
+                if (has_weights_loaded) {
+                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" class="bi bi-save"></i>';
+                } else {
+                    const model_weights_upload_button = document.createElement('button');
+                    model_weights_upload_button.classList.add('badge','bg-primary','model-weights-button');
+                    model_weights_upload_button.value = 'Upload weights';
+                    model_weights_upload_button.innerHTML = '<i class="bi bi-cloud-plus"></i> Upload weights';
+                    model_weights_upload_button.dataset.model_path = element.model_path;
+                    model_weights_info_div.appendChild(model_weights_upload_button);
+                }
                 model_weights.appendChild(model_weights_info_div);
-                const model_weights_upload_button = document.createElement('button');
-//                model_weights_upload_button.classList.add('dropdown-item');
-                model_weights_upload_button.classList.add('main-tab-button');
-                model_weights_upload_button.value = 'Upload weights';
-                model_weights_upload_button.innerHTML = 'Upload weights';
-                model_weights_upload_button.dataset.model_path = element.model_path;
-                model_weights.appendChild(model_weights_upload_button);
             } else {
                 const model_weights_info_div = document.createElement('div');
                 if (has_weights_loaded) {
-                    model_weights_info_div.innerHTML = 'On disk';
+                    model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top" class="bi bi-save"></i>';
                 }
                 model_weights.appendChild(model_weights_info_div);
             }
