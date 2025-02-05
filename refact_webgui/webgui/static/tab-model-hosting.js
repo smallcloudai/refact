@@ -33,13 +33,13 @@ function get_devices() {
     });
 }
 
-function render_device(device_id, name, mem_used_mb, mem_total_mb, temp_celsius, statuses) {
+function render_device(device_image_class, device_id, name, mem_used_mb, mem_total_mb, temp_celsius, statuses) {
     const device_div = document.createElement('div');
     device_div.classList.add('device-item');
     device_div.setAttribute('device', device_id);
 
     const device_image = document.createElement("div");
-    device_image.classList.add('gpus-card');  // TODO
+    device_image.classList.add(device_image_class);
 
     const device_content = document.createElement('div');
     device_content.classList.add('device-content');
@@ -110,6 +110,7 @@ function render_devices(data) {
     }
 
     const cpu_div = render_device(
+        'devices-cpu',
         data.cpu.id,
         data.cpu.name,
         data.cpu.mem_used_mb,
@@ -117,10 +118,6 @@ function render_devices(data) {
         data.cpu.temp_celsius,
         data.cpu.statuses,
     );
-
-    // CPU image
-    // const device_image = document.createElement("div");
-    // device_image.classList.add('gpus-cpu');
 
     const cpu_pane = document.querySelector('.cpu-pane');
     cpu_pane.innerHTML = '';
@@ -136,6 +133,7 @@ function render_devices(data) {
     console.log(data)
     data.gpus.forEach(element => {
         const row = render_device(
+            'devices-card',
             element.id,
             element.name,
             element.mem_used_mb,
