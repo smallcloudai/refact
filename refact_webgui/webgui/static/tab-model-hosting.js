@@ -19,8 +19,9 @@ function update_finetune_configs_and_runs() {
     })
 }
 
+// TODO: devices
 function get_gpus() {
-    fetch("/tab-host-have-gpus")
+    fetch("/tab-host-have-devices")
     .then(function(response) {
         return response.json();
     })
@@ -33,7 +34,7 @@ function get_gpus() {
     });
 }
 
-function render_gpus(gpus) {
+function render_devices(gpus) {
     if(gpus_popup) { return; }
     if(gpus.gpus.length == 0) {
         document.querySelector('.gpus-pane').style.display = 'none';
