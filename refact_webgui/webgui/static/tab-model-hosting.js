@@ -883,7 +883,7 @@ function format_memory(memory_in_mb, decimalPlaces = 2) {
 export async function init(general_error) {
     let req = await fetch('/tab-model-hosting.html');
     document.querySelector('#model-hosting').innerHTML = await req.text();
-    get_gpus();
+    get_devices();
     update_finetune_configs_and_runs();
     get_models();
     const add_model_modal = document.getElementById('add-model-modal');
@@ -921,7 +921,7 @@ export async function init(general_error) {
 // initialize modal for each model?
 
 export function tab_switched_here() {
-    get_gpus();
+    get_devices();
     update_finetune_configs_and_runs();
     get_models();
 //    const upload_weights_modal = document.querySelector('#upload-weights-modal');
@@ -942,7 +942,7 @@ export function tab_switched_away() {
 }
 
 export function tab_update_each_couple_of_seconds() {
-    get_gpus();
+    get_devices();
     update_finetune_configs_and_runs();
     if (force_render_models_assigned) {
         get_models();
