@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use git2::{Repository, Oid};
-use itertools::Itertools;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Instant;
 use std::path::PathBuf;
@@ -75,13 +74,13 @@ pub async fn create_workspace_checkpoint(
 pub async fn restore_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>, checkpoint_to_restore: &Checkpoint, chat_id: &str
 ) -> Result<(Checkpoint, Vec<FileChange>, DateTime<Utc>), String> {
-    
-    let (checkpoint_for_undo, _, repo) = 
+
+    let (checkpoint_for_undo, _, repo) =
         create_workspace_checkpoint(gcx.clone(), Some(checkpoint_to_restore), chat_id).await?;
-    
+
     let commit_to_restore_oid = Oid::from_str(&checkpoint_to_restore.commit_hash).map_err_to_string()?;
     let reverted_to = get_commit_datetime(&repo, &commit_to_restore_oid)?;
-    
+
     let mut files_changed = get_diff_statuses_index_to_commit(&repo, true, &commit_to_restore_oid)?;
 
     // Invert status since we got changes in reverse order so that if it fails it does not update the workspace
@@ -106,7 +105,7 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
         let workspace_folder_str = workspace_folder.to_string_lossy().to_string();
         let workspace_folder_hash = crate::ast::chunk_utils::official_text_hashing_function(&workspace_folder.to_string_lossy().to_string());
         let shadow_git_dir_path = cache_dir.join("shadow_git").join(&workspace_folder_hash);
-        
+
         match Repository::open(&shadow_git_dir_path) {
             Ok(_) => {
                 tracing::info!("Shadow git repo for {workspace_folder_str} already exists and can be opened.");

@@ -1,8 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use chrono::{DateTime, TimeZone, Utc};
 use git2::{Repository, Branch, DiffOptions, Oid};
-use git2::build::RepoBuilder;
-use tokio::time::{Instant, Duration};
+// use git2::build::RepoBuilder;
 use tracing::error;
 
 use crate::custom_error::MapErrToString;
@@ -61,19 +60,19 @@ pub enum DiffStatusType {
 }
 
 fn is_changed_in_wt(status: git2::Status) -> bool {
-    status.is_wt_renamed() || status.is_wt_renamed() || status.is_wt_deleted() || 
+    status.is_wt_renamed() || status.is_wt_renamed() || status.is_wt_deleted() ||
     status.is_wt_modified() || status.is_wt_new() || status.is_wt_typechange()
 }
 
 fn is_changed_in_index(status: git2::Status) -> bool {
-    status.is_index_renamed() || status.is_index_renamed() || status.is_index_deleted() || 
+    status.is_index_renamed() || status.is_index_renamed() || status.is_index_deleted() ||
     status.is_index_modified() || status.is_index_new() || status.is_index_typechange()
 }
 
 pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
-    
+
     let mut result = Vec::new();
     let show_opt = match diff_status_type {
         DiffStatusType::IndexToHead => git2::StatusShow::Index,
@@ -213,7 +212,7 @@ pub fn get_diff_statuses_index_to_commit(repository: &Repository, include_untrac
         (None, Some(oid)) => repository.set_head_detached(oid),
         (None, None) => Ok(()),
     };
-    
+
     if let Err(restore_err) = restore_result {
         let prev_err = result.as_ref().err().cloned().unwrap_or_default();
         return Err(format!("{}\nFailed to restore head: {}", prev_err, restore_err));
