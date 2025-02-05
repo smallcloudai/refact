@@ -86,13 +86,6 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Reposito
         let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
 
         if absolute_path.join(".git").exists() {
-            let nested_repo = git2::Repository::open(&absolute_path)
-                .map_err_with_prefix("Failed to open sub-repo:")?;
-            let mut nested_repo_result = get_diff_statuses(diff_status_type, &nested_repo, include_untracked)?;
-            for fc in nested_repo_result.iter_mut() {
-                fc.relative_path = relative_path.join(&fc.relative_path);
-            }
-            result.extend(nested_repo_result);
             continue;
         }
 
@@ -120,8 +113,8 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Reposito
                 } else if is_changed_in_wt(status) {
                     Some(FileChange {
                         status: match status {
-                            s if s.is_index_new() => FileChangeStatus::ADDED,
-                            s if s.is_index_deleted() => FileChangeStatus::DELETED,
+                            s if s.is_wt_new() => FileChangeStatus::ADDED,
+                            s if s.is_wt_deleted() => FileChangeStatus::DELETED,
                             _ => FileChangeStatus::MODIFIED,
                         },
                         relative_path,
@@ -274,6 +267,16 @@ pub fn commit(repository: &Repository, branch: &Branch, message: &str, author_na
     repository.set_head(branch_ref_name).map_err_with_prefix("Failed to set branch as head:")?;
 
     Ok(commit)
+}
+
+pub fn open_or_init_repo(path: &Path) -> Result<Repository, String> {
+    match Repository::open(path) {
+        Ok(repo) => Ok(repo),
+        Err(e) if e.code() == git2::ErrorCode::NotFound => {
+            Repository::init(path).map_err_to_string()
+        },
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 pub fn get_commit_datetime(repository: &Repository, commit_oid: &Oid) -> Result<DateTime<Utc>, String> {
