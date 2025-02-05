@@ -10,6 +10,8 @@ import {
   goodUser,
   goodPing,
   chatLinks,
+  telemetryChat,
+  telemetryNetwork,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
@@ -24,6 +26,8 @@ describe("Restore Chat from history", () => {
       noCompletions,
       goodUser,
       chatLinks,
+      telemetryChat,
+      telemetryNetwork,
     );
 
     const { user, ...app } = render(<InnerApp />, {

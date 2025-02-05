@@ -10,6 +10,8 @@ import {
   goodUser,
   goodPing,
   chatLinks,
+  telemetryChat,
+  telemetryNetwork,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
@@ -23,6 +25,8 @@ describe("Pin messages", () => {
     noCompletions,
     goodUser,
     chatLinks,
+    telemetryChat,
+    telemetryNetwork,
   );
 
   test("it should replace 📍PARTIAL_EDIT 000 /Users/refact/code/refact-lsp/src/ast/ast_db.rs", () => {

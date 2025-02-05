@@ -12,6 +12,8 @@ import {
   goodPing,
   goodUser,
   chatLinks,
+  telemetryChat,
+  telemetryNetwork,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 
@@ -61,6 +63,8 @@ describe("Start a new chat", () => {
       questionnaireMock,
       saveQuestionnaireMock,
       chatLinks,
+      telemetryChat,
+      telemetryNetwork,
     );
 
     const { user, ...app } = render(<InnerApp />, {
