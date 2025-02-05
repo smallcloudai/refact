@@ -121,16 +121,6 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
             },
         };
 
-        match crate::git::operations::clone_local_repo_without_checkout(&workspace_folder, &shadow_git_dir_path) {
-            Ok(time_elapsed) => {
-                tracing::info!("Shadow git repo for {workspace_folder_str} cloned successfully from original repo in {:.2}s", time_elapsed.as_secs_f64());
-                continue;
-            },
-            Err(e) => {
-                tracing::warn!("Failed to clone shadow git repo from {workspace_folder_str}, trying to create one.\nFail reason: {e}");
-            }
-        }
-
         let t0 = Instant::now();
 
         let repo = match git2::Repository::init(&shadow_git_dir_path) {
@@ -147,7 +137,6 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
 
         let initial_commit_result = (|| {
             let file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, true)?;
-            tracing::info!("file changes: {:?}", file_changes);
             stage_changes(&repo, &file_changes)?;
             let mut index = repo.index().map_err_to_string()?;
             let tree_id = index.write_tree().map_err_to_string()?;

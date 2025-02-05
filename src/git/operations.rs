@@ -343,37 +343,6 @@ pub fn git_diff_as_string(repository: &Repository, file_changes: &Vec<FileChange
     Ok(diff_str)
 }
 
-pub fn clone_local_repo_without_checkout(source_dir: &Path, target_dir: &Path) -> Result<Duration, String> {
-    let t0 = Instant::now();
-    let mut checkout_builder = git2::build::CheckoutBuilder::new();
-    checkout_builder.allow_conflicts(true).dry_run();
-    let mut repo_builder = RepoBuilder::new();
-    repo_builder.bare(false).with_checkout(checkout_builder).clone_local(git2::build::CloneLocal::NoLinks);
-
-    let source_dir_url = url::Url::from_file_path(source_dir)
-        .map_err(|_| format!("Failed to convert {} to url.", source_dir.to_string_lossy()))?;
-    let repo = repo_builder.clone(source_dir_url.as_str(), target_dir)
-        .map_err_with_prefix(format!("Failed to clone repository {}:", source_dir.to_string_lossy()))?;
-
-    repo.set_workdir(&source_dir, false).map_err_with_prefix("Failed to set workdir:")?;
-
-    let head_commit = repo.head()
-        .and_then(|head| head.peel_to_commit())
-        .or_else(|_| {
-            repo.find_branch("master", git2::BranchType::Local)
-                .or_else(|_| repo.find_branch("main", git2::BranchType::Local))
-                .and_then(|branch| branch.get().peel_to_commit())
-                .map_err_to_string()
-        }).map_err_with_prefix("Failed to get HEAD commit:")?;
-
-    repo.reset(head_commit.as_object(), git2::ResetType::Mixed, None)
-        .map_err_with_prefix("Failed to reset index to HEAD:")?;
-    repo.statuses(Some(&mut status_options(true, false, git2::StatusShow::IndexAndWorkdir)))
-        .map_err_with_prefix("Failed to get statuses:")?;
-
-    Ok(t0.elapsed())
-}
-
 pub fn checkout_head_and_branch_to_commit(repo: &Repository, branch_name: &str, commit_oid: &Oid) -> Result<(), String> {
     let commit = repo.find_commit(commit_oid.clone()).map_err_with_prefix("Failed to find commit:")?;
 
