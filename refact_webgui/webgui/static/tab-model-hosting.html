@@ -106,7 +106,25 @@
       </div>
       <div class="modal-body">
         <div class="weights-modal-code">
-            <textarea id="weights-editor"></textarea>
+            <pre>
+<code id="weights-code">def download_model_tar(repo_id: str) -> str:
+import tarfile, tempfile
+from os import path, getcwd, listdir
+from huggingface_hub import snapshot_download
+
+tar_filename = path.join(getcwd(), f"{repo_id.replace('/', '--')}.tar")
+with tempfile.TemporaryDirectory() as tmpdir:
+    snapshot_download(repo_id=repo_id, cache_dir=tmpdir)
+    model_dirs = [f for f in listdir(tmpdir) if f.startswith("models--")]
+    assert model_dirs, f"No models downloaded for {repo_id}"
+    with tarfile.open(tar_filename, "w") as tar:
+        for model_dir in model_dirs:
+            tar.add(path.join(tmpdir, model_dir), model_dir)
+return tar_filename
+
+model_path = "Qwen/Qwen2.5-Coder-0.5B"
+tar_filename = download_model_tar(model_path)
+print(f"Model {model_path} loaded and packed into {tar_filename}</code></pre>
         </div>
         <div class="weights-modal-info mt-3">
 
@@ -115,6 +133,7 @@
           <label for="model_weights" class="form-label fw-bold">Model Weights for <span></span></label>
           <input class="form-control" type="file" accept=".tar,.tar.gz,.tgz,.zip" name="model_weights" id="model_weights">
         </div>
+        <div class="weights-progress"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

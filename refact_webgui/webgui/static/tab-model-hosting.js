@@ -8,7 +8,8 @@ let device_popup = false;
 let models_data = null;
 let finetune_configs_and_runs;
 let force_render_models_assigned = false;
-let weights_code_editor;
+const highlight_python = code => code.replace(/(def|class|return|import|from|if|else|elif|for|while|try|except|with|as|pass|lambda|yield|async|await)\b/g, '<span style="color: #d73a49; font-weight: bold;">$1</span>');
+
 
 
 function update_finetune_configs_and_runs() {
@@ -612,17 +613,16 @@ function render_models(models) {
                 model_weights_info_div.classList.add('model-weights-info');
                 if (has_weights_loaded) {
                     model_weights_info_div.innerHTML = '<i data-bs-toggle="tooltip" data-bs-placement="top" title="Weights are loaded" class="bi bi-save"></i>';
-                } else {
-                    const model_weights_upload_button = document.createElement('button');
-                    model_weights_upload_button.classList.add('badge','bg-primary','model-weights-button');
-                    model_weights_upload_button.value = 'Upload weights';
-                    model_weights_upload_button.title = 'Upload weights manually';
-                    model_weights_upload_button.dataset.bsToggle = 'tooltip';
-                    model_weights_upload_button.dataset.bsPlacement = 'top';
-                    model_weights_upload_button.innerHTML = '<i class="bi bi-cloud-plus"></i> Upload weights';
-                    model_weights_upload_button.dataset.model_path = element.model_path;
-                    model_weights_info_div.appendChild(model_weights_upload_button);
                 }
+                const model_weights_upload_button = document.createElement('button');
+                model_weights_upload_button.classList.add('badge','bg-primary','model-weights-button');
+                model_weights_upload_button.value = 'Upload weights';
+                model_weights_upload_button.title = 'Upload weights manually';
+                model_weights_upload_button.dataset.bsToggle = 'tooltip';
+                model_weights_upload_button.dataset.bsPlacement = 'top';
+                model_weights_upload_button.innerHTML = '<i class="bi bi-cloud-plus"></i> Upload weights';
+                model_weights_upload_button.dataset.model_path = element.model_path;
+                model_weights_info_div.appendChild(model_weights_upload_button);
                 model_weights.appendChild(model_weights_info_div);
             } else {
                 const model_weights_info_div = document.createElement('div');
@@ -654,27 +654,9 @@ function render_models(models) {
                         Next provide the file here and click upload.
                     `;
                     document.querySelector('label[for="model_weights"] span').innerHTML = e.target.dataset.model_path;
-                    weights_code_editor.setValue(`def download_model_tar(repo_id: str) -> str:
-    import tarfile, tempfile
-    from os import path, getcwd, listdir
-    from huggingface_hub import snapshot_download
-
-    tar_filename = path.join(getcwd(), f"{repo_id.replace('/', '--')}.tar")
-    with tempfile.TemporaryDirectory() as tmpdir:
-        snapshot_download(repo_id=repo_id, cache_dir=tmpdir)
-        model_dirs = [f for f in listdir(tmpdir) if f.startswith("models--")]
-        assert model_dirs, f"No models downloaded for {repo_id}"
-        with tarfile.open(tar_filename, "w") as tar:
-            for model_dir in model_dirs:
-                tar.add(path.join(tmpdir, model_dir), model_dir)
-    return tar_filename
-
-model_path = "Qwen/Qwen2.5-Coder-0.5B"
-tar_filename = download_model_tar(model_path)
-print(f"Model {model_path} loaded and packed into {tar_filename}")`);
-                    setTimeout(function() {
-                        weights_code_editor.refresh();
-                    },200);
+                    document.querySelector('#weights-code').addEventListener('click', (help_text) => {
+                        navigator.clipboard.writeText(help_text);
+                    });
                     add_model_modal.hide();
                     upload_weights_modal.show();
                 } else {
@@ -755,34 +737,65 @@ function upload_weights() {
     }
 
     const formData = new FormData();
-    formData.append('file', file);  // Make sure to use 'file' as the field name
+    formData.append('file', file);
+   
+    const progressContainer = document.createElement('div');
+    progressContainer.className = 'progress';
+    progressContainer.style.height = '20px';
+    progressContainer.style.marginTop = '20px';
 
-    const spinner = get_spinner();
-    const weights_modal_submit = document.querySelector('.weights-modal-submit');
-    weights_modal_submit.replaceWith(spinner);
+    const progressBar = document.createElement('div');
+    progressBar.className = 'progress-bar';
+    progressBar.role = 'progressbar';
+    progressBar.style.width = '0%';
+    progressBar.setAttribute('aria-valuenow', '0');
+    progressBar.setAttribute('aria-valuemin', '0');
+    progressBar.setAttribute('aria-valuemax', '100');
+    
+    progressContainer.appendChild(progressBar);
 
-    fetch('/model-weights-upload', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            return response.json().then(error => { throw error });
+    document.querySelector('.weights-progress').replaceWith(progressContainer);
+
+    const xhr = new XMLHttpRequest();
+    
+    xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            progressBar.style.width = percentComplete + '%';
+            progressBar.setAttribute('aria-valuenow', percentComplete);
+            progressBar.textContent = Math.round(percentComplete) + '%';
         }
-        return response.json();
-    })
-    .then(data => {
-        const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
-        upload_weights_modal.hide();
-        get_models();
-    })
-    .catch(error => {
-        console.log('model-weights-upload', error);
-        general_error(error);
-    })
-    .finally(() => {
-        spinner.replaceWith(weights_modal_submit);
     });
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            const data = JSON.parse(xhr.responseText);
+            const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
+            upload_weights_modal.hide();
+            get_models();
+        } else {
+            try {
+                const error = JSON.parse(xhr.responseText);
+                general_error(error);
+                weights_modal_submit.disabled = false;
+            } catch (e) {
+                general_error({ detail: "Upload failed" });
+                weights_modal_submit.disabled = false;
+            }
+            console.log('model-weights-upload error:', xhr.status, xhr.responseText);
+        }
+        progressContainer.replaceWith(weights_modal_submit);
+    };
+
+    xhr.onerror = function() {
+        console.log('model-weights-upload network error');
+        general_error({ detail: "Network error occurred" });
+        progressContainer.replaceWith(weights_modal_submit);
+        weights_modal_submit.disabled = false;
+    };
+
+    xhr.open('POST', '/model-weights-upload', true);
+    xhr.send(formData);
 }
 
 function enabled_finetune_factory(enabled_finetune, model) {
@@ -864,13 +877,6 @@ export async function init(general_error) {
     upload_weights_modal.addEventListener('show.bs.modal', function () {
 //        render_models(models_data);
     });
-    weights_code_editor = CodeMirror.fromTextArea(document.querySelector('#weights-editor'), {
-        lineNumbers: false,
-    });
-    weights_code_editor.setSize(null, 350);
-    upload_weights_modal.addEventListener('hide.bs.modal', function () {
-        weights_code_editor.setValue('');
-    });
     const redirect2credentials = document.getElementById('redirect2credentials');
     redirect2credentials.addEventListener('click', function() {
         document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
@@ -879,10 +885,17 @@ export async function init(general_error) {
     weights_modal_submit.addEventListener('click', function() {
         const fileInput = document.querySelector('#model_weights');
         if (fileInput.files.length > 0) {
+            weights_modal_submit.disabled = true;
             upload_weights(null, fileInput.files[0]);
         } else {
             general_error('Please select a file to upload');
         }
+    });
+    const code_snippet_wrapper = document.querySelector('.weights-modal-code');
+    code_snippet_wrapper.addEventListener("click", function () {
+        const code_snippet = document.querySelector('#weights-code');
+        const text = code_snippet.innerText || code_snippet.textContent;
+        navigator.clipboard.writeText(text);
     });
     // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
