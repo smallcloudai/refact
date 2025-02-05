@@ -246,6 +246,8 @@ describe("Chat", () => {
     });
   });
 
+  // TODO: when no caps it should not send
+
   // TODO: skip until history is added
   it.skip("when creating a new chat I can select which model to use", async () => {
     // Missing props in jsdom
@@ -378,6 +380,8 @@ describe("Chat", () => {
       noCompletions,
       noTools,
       chatLinks,
+      telemetryChat,
+      telemetryNetwork,
     );
     server.use(
       http.post(
@@ -409,6 +413,10 @@ describe("Chat", () => {
     const textarea = app.getByTestId("chat-form-textarea");
 
     expect(textarea).not.toBeNull();
+
+    const quickButtons = app.getAllByText(/quick/i);
+
+    await user.click(quickButtons[0]);
 
     await user.type(textarea, "hello");
 
