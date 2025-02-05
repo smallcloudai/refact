@@ -261,6 +261,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       supports_tools: true,
       supports_multimodality: true,
       supports_clicks: false,
+      supports_agent: true,
     },
     "gpt-4o-mini": {
       n_ctx: 32000,
@@ -283,6 +284,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       supports_tools: true,
       supports_multimodality: true,
       supports_clicks: false,
+      supports_agent: true,
     },
     "groq-llama-3.1-8b": {
       n_ctx: 32000,
