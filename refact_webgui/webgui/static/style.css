@@ -245,6 +245,11 @@ h3 {
     max-width:none;
     text-align: left;
 }
+.cpu-pane {
+    margin-bottom: 20px;
+    min-width: 207.66px;
+    max-width: 207.66px;
+}
 .gpus-pane {
     margin-bottom: 20px;
 }
@@ -269,7 +274,7 @@ h3 {
         grid-template-columns: 1fr 1fr 1fr 1fr;
     }
 }
-.gpus-item {
+.device-item {
     display: flex;
     justify-content: flex-start;
     text-align: center;
@@ -281,14 +286,14 @@ h3 {
     overflow: hidden;
     flex-direction: column;
 }
-.gpus-title {
+.device-title {
     font-size: 0.8rem;
     text-align: left;
     margin-bottom: 10px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     padding-bottom: 5px;
 }
-.gpus-current-status {
+.device-current-status {
     padding: 5px;
     background-color: #efefef;
     color: #000;
@@ -300,10 +305,9 @@ h3 {
     border-radius: 4px;
     margin-top: 10px;
 }
-.gpus-content {
-
+.device-content {
 }
-.gpus-mem {
+.device-mem {
     display: flex;
     justify-content: flex-start;
     align-items: center;
@@ -311,40 +315,40 @@ h3 {
     margin-bottom: 5px;
     margin-top: 5px;
 }
-.gpus-mem b {
+.device-mem b {
     margin-right: 5px;
     width: 60px;
     text-align: left;
     display: inline-flex;
     margin-top: 2px;
 }
-.gpus-mem-bar {
+.device-mem-bar {
     height: 10px;
     width: 100px;
     background-color: #efefef;
     position: relative;
     display: inline-flex;
 }
-.gpus-mem-bar span {
+.device-mem-bar span {
     background-color: rosybrown;
     position: absolute;
     left: 0;
     top: 0;
     height: 10px;
 }
-.gpus-mem-wrap {
+.device-mem-wrap {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
-.gpus-command {
+.device-command {
     text-align: left;
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.gpus-status {
+.device-status {
     display: none;
     position: absolute;
     padding: 10px;
@@ -356,25 +360,25 @@ h3 {
     margin-top: 10px;
     z-index: 999;
 }
-.gpus-status-visible {
+.device-status-visible {
     display: block;
 }
-.gpus-status-invisible {
+.device-status-invisible {
     opacity: 0;
 }
-.gpus-command b {
+.device-command b {
     margin-right: 5px;
     width: 60px;
     text-align: left;
     display: inline-flex;
 }
-.gpus-temp {
+.device-temp {
     text-align: left;
     font-size: 12px;
     align-items: center;
     display: flex;
 }
-.gpus-temp b {
+.device-temp b {
     margin-right: 5px;
     width: 60px;
     text-align: left;

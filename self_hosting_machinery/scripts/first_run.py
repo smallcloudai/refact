@@ -1,15 +1,14 @@
 import os
 
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
-from self_hosting_machinery.scripts import enum_gpus
+from self_hosting_machinery.scripts import enum_devices
 from self_hosting_machinery.scripts import hf_hub_available
 from refact_utils.scripts import env
 
 
 def assign_gpus_if_first_run_detected(model_assigner: ModelAssigner):
-    if not os.path.exists(env.CONFIG_ENUM_GPUS):
-        enum_gpus.enum_gpus()
-        model_assigner.first_run()   # has models_to_watchdog_configs() inside
+    enum_devices.enum_gpus()
+    model_assigner.first_run()
 
 
 def convert_old_configs():
