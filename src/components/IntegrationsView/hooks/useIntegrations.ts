@@ -3,7 +3,7 @@ import isEqual from "lodash.isequal";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { debugIntegrations } from "../../../debugConfig";
 import { setIntegrationData } from "../../../features/Chat";
-import { selectThemeMode } from "../../../features/Config/configSlice";
+import { selectConfig } from "../../../features/Config/configSlice";
 import {
   clearError,
   getErrorMessage,
@@ -50,7 +50,7 @@ import {
 } from "../../../services/refact";
 import { toPascalCase } from "../../../utils/toPascalCase";
 import { validateSnakeCase } from "../../../utils/validateSnakeCase";
-import { iconMap } from "../icons/iconMap";
+import { formatIntegrationIconPath } from "../../../utils/formatIntegrationIconPath";
 
 type useIntegrationsViewArgs = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -193,31 +193,24 @@ export const useIntegrations = ({
   const [currentNotConfiguredIntegration, setCurrentNotConfiguredIntegration] =
     useState<NotConfiguredIntegrationWithIconRecord | null>(null);
 
-  const theme = useAppSelector(selectThemeMode);
-  const icons = iconMap(
-    theme ? (theme === "inherit" ? "light" : theme) : "light",
-  );
+  const config = useAppSelector(selectConfig);
+  const port = config.lspPort;
 
   const integrationLogo = useMemo(() => {
     if (!currentIntegration && !currentNotConfiguredIntegration) {
       return "https://placehold.jp/150x150.png";
     }
-    return INTEGRATIONS_WITH_TERMINAL_ICON.includes(
-      currentIntegration
-        ? currentIntegration.integr_name.split("_")[0]
-        : currentNotConfiguredIntegration
-          ? currentNotConfiguredIntegration.integr_name.split("_")[0]
-          : "https://placehold.jp/150x150.png",
-    )
-      ? icons.cmdline
-      : icons[
-          currentIntegration
-            ? currentIntegration.integr_name
-            : currentNotConfiguredIntegration
-              ? currentNotConfiguredIntegration.integr_name
-              : ""
-        ];
-  }, [currentIntegration, currentNotConfiguredIntegration, icons]);
+
+    const iconPath = currentIntegration
+      ? formatIntegrationIconPath(currentIntegration.icon_path)
+      : currentNotConfiguredIntegration
+        ? formatIntegrationIconPath(currentNotConfiguredIntegration.icon_path)
+        : "";
+
+    return iconPath
+      ? `http://127.0.0.1:${port}/v1${iconPath}`
+      : "https://placehold.jp/150x150.png";
+  }, [currentIntegration, currentNotConfiguredIntegration, port]);
 
   // TODO: uncomment when ready
   useEffect(() => {
@@ -821,6 +814,7 @@ export const useIntegrations = ({
           on_your_laptop: false,
           integr_name: `${type}_${commandName}`,
           integr_config_path: configPath,
+          icon_path: currentNotConfiguredIntegration.icon_path,
           project_path: rawFormValues.integr_config_path
             .toString()
             .includes(".config")

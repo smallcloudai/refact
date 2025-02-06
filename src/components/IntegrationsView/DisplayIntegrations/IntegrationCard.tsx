@@ -6,13 +6,10 @@ import {
 } from "../../../services/refact";
 import { FC } from "react";
 import classNames from "classnames";
-import { iconMap } from "../icons/iconMap";
 import { useAppSelector } from "../../../hooks";
-import {
-  selectConfig,
-  selectThemeMode,
-} from "../../../features/Config/configSlice";
+import { selectConfig } from "../../../features/Config/configSlice";
 import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
+import { formatIntegrationIconPath } from "../../../utils/formatIntegrationIconPath";
 
 type IntegrationCardProps = {
   integration:
@@ -26,27 +23,16 @@ type IntegrationCardProps = {
   isNotConfigured?: boolean;
 };
 
-const INTEGRATIONS_WITH_TERMINAL_ICON = ["cmdline", "service", "mcp"];
-
 export const IntegrationCard: FC<IntegrationCardProps> = ({
   integration,
   handleIntegrationShowUp,
   isNotConfigured = false,
 }) => {
-  const theme = useAppSelector(selectThemeMode);
   const config = useAppSelector(selectConfig);
   const port = config.lspPort;
-  const icons = iconMap(
-    theme ? (theme === "inherit" ? "light" : theme) : "light",
-  );
 
-  const localIntegrationLogo = `http://127.0.0.1:${port}/v1${integration.icon_path}`;
-
-  const integrationLogo = INTEGRATIONS_WITH_TERMINAL_ICON.includes(
-    integration.integr_name.split("_")[0],
-  )
-    ? icons.cmdline
-    : icons[integration.integr_name];
+  const iconPath = formatIntegrationIconPath(integration.icon_path);
+  const integrationLogo = `http://127.0.0.1:${port}/v1${iconPath}`;
 
   const { displayName } = getIntegrationInfo(integration.integr_name);
 
@@ -63,7 +49,7 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
         align={"center"}
       >
         <img
-          src={localIntegrationLogo}
+          src={integrationLogo}
           className={styles.integrationIcon}
           alt={integration.integr_name}
         />

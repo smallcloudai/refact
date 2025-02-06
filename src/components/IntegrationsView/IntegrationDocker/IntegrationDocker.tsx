@@ -19,8 +19,7 @@ import { SmartLink } from "../../SmartLink";
 import { Link } from "../../Link";
 import styles from "./IntegrationDocker.module.css";
 import { toPascalCase } from "../../../utils/toPascalCase";
-import { selectThemeMode } from "../../../features/Config/configSlice";
-import { iconMap } from "../icons/iconMap";
+import { selectConfig } from "../../../features/Config/configSlice";
 
 type IntegrationDockerProps = {
   dockerData: SchemaDocker;
@@ -41,11 +40,8 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   handleSwitchIntegration,
 }) => {
   const dispatch = useAppDispatch();
-
-  const theme = useAppSelector(selectThemeMode);
-  const icons = iconMap(
-    theme ? (theme === "inherit" ? "light" : theme) : "light",
-  );
+  const config = useAppSelector(selectConfig);
+  const port = config.lspPort;
 
   const { dockerContainersResponse } = useGetDockerContainersByImageQuery(
     dockerData.filter_image,
@@ -61,6 +57,8 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   const [dockerContainersList, setDockerContainersList] = useState<
     DockerContainer[] | null
   >(null);
+
+  const dockerIcon = `http://127.0.0.1:${port}/v1/integration-icon/docker.png`;
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -90,7 +88,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
       <DockerErrorCard
         errorType="no-connection"
         integrationPath={integrationPath}
-        dockerIcon={icons.docker}
+        dockerIcon={dockerIcon}
         handleSwitchIntegration={handleSwitchIntegration}
       />
     );
@@ -102,7 +100,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
         <DockerErrorCard
           errorType="no-containers"
           integrationPath={integrationPath}
-          dockerIcon={icons.docker}
+          dockerIcon={dockerIcon}
           handleSwitchIntegration={handleSwitchIntegration}
         />
         {/* TODO: duplicative code */}
@@ -176,7 +174,7 @@ export const IntegrationDocker: FC<IntegrationDockerProps> = ({
   return (
     <Flex direction="column" gap="4" width="100%">
       <Flex gap="2" align="center" justify="center" width="100%">
-        <img src={icons.docker} className={styles.DockerIcon} alt={"Docker"} />
+        <img src={dockerIcon} className={styles.DockerIcon} alt={"Docker"} />
         <Heading as="h3" align="left">
           {toPascalCase(integrationName)} Containers
         </Heading>
