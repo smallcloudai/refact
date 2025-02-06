@@ -45,7 +45,7 @@ export const ParametersTable: FC<ParametersTableProps> = ({
         debugTables(
           `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
         );
-        setValidateError(`The field "${value}" must be written in snake case.`);
+        setValidateError(`The value "${value}" must be written in snake case.`);
       } else {
         setValidateError(null);
       }

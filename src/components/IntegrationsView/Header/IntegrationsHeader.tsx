@@ -4,9 +4,9 @@ import type { FC } from "react";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import styles from "./IntegrationsHeader.module.css";
 import { LeftRightPadding } from "../../../features/Integrations/Integrations.tsx";
-import { toPascalCase } from "../../../utils/toPascalCase.ts";
 import { useAppSelector } from "../../../hooks/index.ts";
 import { selectConfig } from "../../../features/Config/configSlice.ts";
+import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
 
 type IntegrationsHeaderProps = {
   handleFormReturn: () => void;
@@ -36,17 +36,7 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
     }
   };
 
-  const isCmdline = integrationName.startsWith("cmdline");
-  const isService = integrationName.startsWith("service");
-  const isMCP = integrationName.startsWith("mcp");
-
-  const getIntegrationDisplayName = () => {
-    if (!integrationName.includes("TEMPLATE"))
-      return toPascalCase(integrationName);
-    if (isCmdline) return "Command Line Tool";
-    if (isService) return "Service";
-    if (isMCP) return "MCP Server";
-  };
+  const { displayName } = getIntegrationInfo(integrationName);
 
   return (
     <Flex
@@ -90,7 +80,7 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
               alt={integrationName}
             />
             <Heading as="h5" size="3">
-              {getIntegrationDisplayName()}
+              {displayName}
             </Heading>
           </Flex>
         </Flex>

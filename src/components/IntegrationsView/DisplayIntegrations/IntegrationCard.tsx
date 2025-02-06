@@ -1,5 +1,4 @@
 import { Badge, Card, Flex, Text } from "@radix-ui/themes";
-import { toPascalCase } from "../../../utils/toPascalCase";
 import styles from "./IntegrationCard.module.css";
 import {
   IntegrationWithIconRecord,
@@ -10,6 +9,7 @@ import classNames from "classnames";
 import { iconMap } from "../icons/iconMap";
 import { useAppSelector } from "../../../hooks";
 import { selectThemeMode } from "../../../features/Config/configSlice";
+import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
 
 type IntegrationCardProps = {
   integration:
@@ -41,17 +41,7 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
     ? icons.cmdline
     : icons[integration.integr_name];
 
-  const isMCP = integration.integr_name.startsWith("mcp");
-  const isCmdline = integration.integr_name.startsWith("cmdline");
-  const isService = integration.integr_name.startsWith("service");
-
-  const getIntegrationDisplayName = () => {
-    if (!integration.integr_name.includes("TEMPLATE"))
-      return toPascalCase(integration.integr_name);
-    if (isCmdline) return "Command-line Tool";
-    if (isService) return "Command-line Service";
-    if (isMCP) return "MCP Server";
-  };
+  const { displayName } = getIntegrationInfo(integration.integr_name);
 
   return (
     <Card
@@ -81,18 +71,14 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
             weight="medium"
             align={isNotConfigured ? "center" : "left"}
           >
-            {getIntegrationDisplayName()}
+            {displayName}
           </Text>
           {!isNotConfigured && (
             <Badge
-              color={
-                // TODO: get it back later integration.on_your_laptop || integration.when_isolated
-                integration.on_your_laptop ? "jade" : "gray"
-              }
+              color={integration.on_your_laptop ? "jade" : "gray"}
               variant="soft"
               radius="medium"
             >
-              {/* TODO: get it back later {integration.on_your_laptop || integration.when_isolated */}
               {integration.on_your_laptop ? "On" : "Off"}
             </Badge>
           )}

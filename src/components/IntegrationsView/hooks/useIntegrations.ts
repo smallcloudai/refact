@@ -454,6 +454,10 @@ export const useIntegrations = ({
           ? toolParameters.every((param) => validateSnakeCase(param.name))
           : true;
 
+        debugIntegrations(
+          `[DEBUG MCP]: allToolParametersNamesInSnakeCase: `,
+          allToolParametersNamesInSnakeCase,
+        );
         if (!allToolParametersNamesInSnakeCase) {
           return true; // Disabling form if any of tool parameters names are written not in snake case
         }
@@ -752,9 +756,16 @@ export const useIntegrations = ({
 
       debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
 
+      const areAllCommandsWrittenInSnakeCase =
+        toolParameters?.every((param) => validateSnakeCase(param.name)) &&
+        MCPArguments.every((arg) => validateSnakeCase(arg)) &&
+        Object.entries(MCPEnvironmentVariables).every(([key]) =>
+          validateSnakeCase(key),
+        );
+
       setIsDisabledIntegrationForm(
-        toolParameters
-          ? toolParameters.every((param) => validateSnakeCase(param.name))
+        areAllCommandsWrittenInSnakeCase !== undefined
+          ? areAllCommandsWrittenInSnakeCase
             ? maybeDisabled
             : true
           : maybeDisabled,
