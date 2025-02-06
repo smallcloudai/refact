@@ -28,6 +28,7 @@ pub mod yaml_schema;
 pub mod setting_up_integrations;
 pub mod running_integrations;
 pub mod utils;
+pub mod json_schema;
 
 use integr_abstract::IntegrationTrait;
 

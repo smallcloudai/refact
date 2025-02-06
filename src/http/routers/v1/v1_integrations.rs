@@ -11,6 +11,7 @@ use axum::extract::Query;
 use rust_embed::RustEmbed;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+use crate::integrations::json_schema::INTEGRATION_JSON_SCHEMA;
 use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
 
 
@@ -181,5 +182,16 @@ pub async fn handle_v1_integration_delete(
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from("{}"))
+        .unwrap())
+}
+
+pub async fn handle_v1_integration_json_schema() -> axum::response::Result<Response<Body>, ScratchError> {
+    let schema_string = serde_json::to_string_pretty(&*INTEGRATION_JSON_SCHEMA).map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to serialize JSON schema: {}", e))
+    })?;
+
+    Ok(Response::builder()
+        .header("Content-Type", "application/json")
+        .body(Body::from(schema_string))
         .unwrap())
 }
