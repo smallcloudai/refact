@@ -8,7 +8,10 @@ import { FC } from "react";
 import classNames from "classnames";
 import { iconMap } from "../icons/iconMap";
 import { useAppSelector } from "../../../hooks";
-import { selectThemeMode } from "../../../features/Config/configSlice";
+import {
+  selectConfig,
+  selectThemeMode,
+} from "../../../features/Config/configSlice";
 import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
 
 type IntegrationCardProps = {
@@ -31,9 +34,13 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
   isNotConfigured = false,
 }) => {
   const theme = useAppSelector(selectThemeMode);
+  const config = useAppSelector(selectConfig);
+  const port = config.lspPort;
   const icons = iconMap(
     theme ? (theme === "inherit" ? "light" : theme) : "light",
   );
+
+  const localIntegrationLogo = `http://127.0.0.1:${port}/v1${integration.icon_path}`;
 
   const integrationLogo = INTEGRATIONS_WITH_TERMINAL_ICON.includes(
     integration.integr_name.split("_")[0],
@@ -56,7 +63,7 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
         align={"center"}
       >
         <img
-          src={integrationLogo}
+          src={localIntegrationLogo}
           className={styles.integrationIcon}
           alt={integration.integr_name}
         />

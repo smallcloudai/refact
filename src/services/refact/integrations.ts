@@ -511,6 +511,7 @@ function isSmartLink(json: unknown): json is SmartLink {
 export type IntegrationWithIconRecord = {
   project_path: string;
   integr_name: string;
+  icon_path: string;
   integr_config_path: string;
   integr_config_exists: boolean;
   on_your_laptop: boolean;
@@ -527,6 +528,7 @@ export type IntegrationWithIconRecordAndAddress = IntegrationWithIconRecord & {
 export type NotConfiguredIntegrationWithIconRecord = {
   project_path: string[];
   integr_name: string;
+  icon_path: string;
   integr_config_path: string[];
   integr_config_exists: false;
   on_your_laptop: boolean;
@@ -585,6 +587,8 @@ function isInterIntegrationWithIconRecord(
   if (typeof json.project_path !== "string") return false;
   if (!("integr_name" in json)) return false;
   if (typeof json.integr_name !== "string") return false;
+  if (!("icon_path" in json)) return false;
+  if (typeof json.icon_path !== "string") return false;
   if (!("integr_config_path" in json)) return false;
   if (typeof json.integr_config_path !== "string") return false;
   if (!("integr_config_exists" in json)) return false;
