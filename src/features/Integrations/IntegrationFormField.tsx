@@ -12,12 +12,15 @@ import { Markdown } from "../../components/Markdown";
 import { toPascalCase } from "../../utils/toPascalCase";
 import styles from "./IntegrationFormField.module.css";
 
-import type {
-  Integration,
-  IntegrationField,
-  IntegrationPrimitive,
-  SmartLink as TSmartLink,
-  ToolParameterEntity,
+import {
+  areToolParameters,
+  isMCPArgumentsArray,
+  isMCPEnvironmentsDict,
+  type Integration,
+  type IntegrationField,
+  type IntegrationPrimitive,
+  type SmartLink as TSmartLink,
+  type ToolParameterEntity,
 } from "../../services/refact";
 import { ArgumentsTable } from "../../components/IntegrationsView/IntegrationsTable/ArgumentsTable";
 import { EnvironmentVariablesTable } from "../../components/IntegrationsView/IntegrationsTable/EnvironmentVariablesTable";
@@ -111,14 +114,15 @@ const FieldContent: FC<{
         />
       );
     case "tool":
-      return (
-        <ParametersTable
-          initialData={
-            values ? (values[fieldKey] as ToolParameterEntity[]) : []
-          }
-          onToolParameters={onToolParameters}
-        />
-      );
+      if (values && areToolParameters(values[fieldKey])) {
+        return (
+          <ParametersTable
+            initialData={values[fieldKey]}
+            onToolParameters={onToolParameters}
+          />
+        );
+      }
+      break;
     case "output":
       return (
         <Box>
@@ -131,19 +135,29 @@ const FieldContent: FC<{
       );
     case "string":
       if (f_size === "array") {
+        const tableData =
+          values && fieldKey in values && isMCPArgumentsArray(values[fieldKey])
+            ? values[fieldKey]
+            : [];
+
         return (
           <ArgumentsTable
-            initialData={values ? (values[fieldKey] as string[]) : []}
+            initialData={tableData}
             onMCPArguments={onArguments}
           />
         );
       }
       if (f_size === "to_string_map") {
+        const tableData =
+          values &&
+          fieldKey in values &&
+          isMCPEnvironmentsDict(values[fieldKey])
+            ? values[fieldKey]
+            : {};
+
         return (
           <EnvironmentVariablesTable
-            initialData={
-              values ? (values[fieldKey] as Record<string, string>) : {}
-            }
+            initialData={tableData}
             onMCPEnvironmentVariables={onEnvs}
           />
         );
