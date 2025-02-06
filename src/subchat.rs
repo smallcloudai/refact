@@ -140,7 +140,7 @@ async fn chat_interaction_non_stream(
         meta
     ).await.map_err(|e| {
         warn!("network error communicating with the model (2): {:?}", e);
-        format!("network error communicating with the model (2): {}", e)
+        format!("network error communicating with the model (2): {:?}", e)
     })?;
     info!("non stream generation took {:?}ms", t1.elapsed().as_millis() as i32);
 

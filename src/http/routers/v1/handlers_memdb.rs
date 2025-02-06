@@ -7,7 +7,7 @@ use serde_json::json;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::warn;
+use tracing::{error, warn};
 use serde::Deserialize;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -232,9 +232,13 @@ pub async fn handle_mem_sub(
         }
         
         loop {
-            match crate::vecdb::vdb_highlev::memdb_pubsub_trigerred(vec_db.clone(), 5).await {
-                Ok(_) => {}
-                Err(_) => {
+            match crate::vecdb::vdb_highlev::memdb_pubsub_trigerred(gcx.clone(), vec_db.clone(), 5).await {
+                Ok(true) => {}
+                Ok(false) => {
+                    break;
+                }
+                Err(err) => {
+                    error!("Error while polling memdb: {}", err);
                     break;
                 }
             };

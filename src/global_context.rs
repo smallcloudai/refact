@@ -67,6 +67,7 @@ pub struct CommandLine {
     #[cfg(feature="vecdb")]
     #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
     pub vecdb: bool,
+    #[cfg(feature="vecdb")]
     #[structopt(long, help="Delete all memories, start with empty memory.")]
     pub reset_memory: bool,
     #[cfg(feature="vecdb")]
@@ -282,6 +283,7 @@ pub async fn block_until_signal(
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
     shutdown_flag: Arc<AtomicBool>,
     chore_sleeping_point: Arc<ANotify>,
+    memdb_sleeping_point_mb: Option<Arc<ANotify>>,
 ) {
     let ctrl_c = async {
         signal::ctrl_c()
@@ -330,6 +332,9 @@ pub async fn block_until_signal(
         }
     }
     chore_sleeping_point.notify_waiters();
+    if let Some(memdb_sleeping_point) = memdb_sleeping_point_mb {
+        memdb_sleeping_point.notify_waiters();
+    }
 }
 
 pub async fn create_global_context(

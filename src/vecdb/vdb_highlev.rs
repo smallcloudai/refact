@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::task::JoinHandle;
 use async_trait::async_trait;
@@ -532,9 +533,14 @@ pub async fn memdb_subscription_poll(
 
 
 pub async fn memdb_pubsub_trigerred(
+    gcx: Arc<ARwLock<GlobalContext>>,
     vec_db: Arc<AMutex<Option<VecDb>>>,
     sleep_seconds: u64
-) -> Result<(), String> {
+) -> Result<bool, String> {
+    let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
+    if shutdown_flag.load(std::sync::atomic::Ordering::Relaxed) {
+        return Ok(false);
+    }
     let memdb = {
         let vec_db_guard = vec_db.lock().await;
         let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
@@ -545,7 +551,8 @@ pub async fn memdb_pubsub_trigerred(
         Ok(_) => { },
         Err(_) => { }
     }
-    Ok(())
+    let should_continue = !shutdown_flag.load(std::sync::atomic::Ordering::Relaxed);
+    Ok(should_continue)
 }
 
 

@@ -96,6 +96,9 @@ async fn setup_db(conn: &Connection, pubsub_notifier: Arc<Notify>) -> Result<(),
 
 async fn migrate_202501(conn: &Connection, embedding_size: i32, emb_table_name: String, reset_memory: bool) -> rusqlite::Result<(), String> {
     conn.call(move |conn| {
+        conn.execute("DROP TRIGGER IF EXISTS pubsub_events_on_delete", [])?;
+        conn.execute("DROP TRIGGER IF EXISTS embeddings_delete_old", [])?;
+
         if reset_memory {
             conn.execute("DROP TABLE IF EXISTS memories", [])?;
         }

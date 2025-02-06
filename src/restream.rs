@@ -179,7 +179,6 @@ pub async fn scratchpad_interaction_not_stream_json(
             if let Ok(det_msgs) = scratchpad.response_spontaneous() {
                 model_says["deterministic_messages"] = json!(det_msgs);
             }
-            info!("{:?}", oai_choices);
             let choices = oai_choices.clone().as_array().unwrap().iter().map(|x| {
                 match (x.get("message"), x.get("message").and_then(|msg| msg.get("content")), x.get("message").and_then(|msg| msg.get("content")).and_then(|content| content.as_str())) {
                     (Some(_), Some(_), Some(content)) => content.to_string(),
