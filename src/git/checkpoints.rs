@@ -181,7 +181,7 @@ pub async fn restore_workspace_checkpoint(
     Ok((checkpoint_for_undo, files_changed, reverted_to))
 }
 
-pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> () {
+pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> () {
     let workspace_folders = get_project_dirs(gcx.clone()).await;
     let (cache_dir, workspace_vcs_roots_arc) = {
         let gcx_locked = gcx.read().await;
