@@ -22,22 +22,19 @@ type EnvVarRow = {
   key: string;
   value: string;
   originalKey: string;
-  order: number; // Add order to maintain stable row positions
+  order: number;
 };
 
 export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
   initialData,
   onMCPEnvironmentVariables,
 }) => {
-  // Keep track of the next order number
   const [nextOrder, setNextOrder] = useState(
     () => Object.keys(initialData).length,
   );
 
-  // Initialize data with order numbers
   const [data, setData] = useState<MCPEnvs>(() => initialData);
 
-  // Keep track of order for each key
   const [keyOrders, setKeyOrders] = useState<Record<string, number>>(() => {
     const orders: Record<string, number> = {};
     Object.keys(initialData).forEach((key, index) => {
@@ -123,7 +120,7 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
             order: keyOrders[key],
           }),
         )
-        .sort((a, b) => a.order - b.order), // Sort by order to maintain stable positions
+        .sort((a, b) => a.order - b.order),
     [data, keyOrders],
   );
 
