@@ -37,7 +37,7 @@ describe("trim indent from markdown", () => {
 
 describe("trim indent", () => {
   const tests = [
-    ["", ""],
+    ["", undefined],
     [`${spaces}hello\n${spaces}${spaces}world`, `hello\n${spaces}world`],
   ];
 
