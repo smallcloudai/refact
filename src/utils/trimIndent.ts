@@ -8,7 +8,8 @@ export function trimIndentFromMarkdown(str: string): string {
   return result;
 }
 
-export function trimIndent(str: string) {
+export function trimIndent(str: string | null | undefined): string | undefined {
+  if (!str || str.trim() === "") return void 0;
   const firstLine = str.match(/^[ \t]*/);
   if (!firstLine) return str;
   const [indent] = firstLine;
