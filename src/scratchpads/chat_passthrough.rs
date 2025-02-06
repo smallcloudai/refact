@@ -131,7 +131,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             }
         };
 
-        remove_unanswered_tool_call_messages(&mut messages);
+        _remove_unanswered_tool_call_messages(&mut messages);
         let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
@@ -232,7 +232,7 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 }
 
-fn remove_unanswered_tool_call_messages(messages: &mut Vec<ChatMessage>) {
+fn _remove_unanswered_tool_call_messages(messages: &mut Vec<ChatMessage>) {
     let tool_call_ids: HashSet<_> = messages.iter()
         .filter(|m| !m.tool_call_id.is_empty())
         .map(|m| &m.tool_call_id)
@@ -241,7 +241,11 @@ fn remove_unanswered_tool_call_messages(messages: &mut Vec<ChatMessage>) {
 
     messages.retain(|m| {
         if let Some(tool_calls) = &m.tool_calls {
-            tool_calls.iter().all(|tc| tool_call_ids.contains(&tc.id))
+            let should_retain = tool_calls.iter().all(|tc| tool_call_ids.contains(&tc.id));
+            if !should_retain {
+                tracing::error!("removing assistant message with unanswered tool tool_calls: {:?}", tool_calls);
+            }
+            should_retain
         } else {
             true
         }
