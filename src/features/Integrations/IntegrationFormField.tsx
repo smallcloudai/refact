@@ -104,7 +104,7 @@ const FieldContent: FC<{
   onEnvs,
 }) => {
   switch (f_type) {
-    case "bool":
+    case "bool": {
       return (
         <CustomBoolField
           {...commonProps}
@@ -113,17 +113,20 @@ const FieldContent: FC<{
           )}
         />
       );
-    case "tool":
-      if (values && areToolParameters(values[fieldKey])) {
+    }
+    case "tool": {
+      const valuesForTable = values?.[fieldKey];
+      if (values && areToolParameters(valuesForTable)) {
         return (
           <ParametersTable
-            initialData={values[fieldKey]}
+            initialData={valuesForTable}
             onToolParameters={onToolParameters}
           />
         );
       }
       break;
-    case "output":
+    }
+    case "output": {
       return (
         <Box>
           <Markdown>
@@ -133,12 +136,13 @@ const FieldContent: FC<{
           </Markdown>
         </Box>
       );
-    case "string":
+    }
+    case "string": {
       if (f_size === "array") {
-        const tableData =
-          values && fieldKey in values && isMCPArgumentsArray(values[fieldKey])
-            ? values[fieldKey]
-            : [];
+        const valuesForTable = values?.[fieldKey];
+        const tableData = isMCPArgumentsArray(valuesForTable)
+          ? valuesForTable
+          : [];
 
         return (
           <ArgumentsTable
@@ -148,12 +152,10 @@ const FieldContent: FC<{
         );
       }
       if (f_size === "to_string_map") {
-        const tableData =
-          values &&
-          fieldKey in values &&
-          isMCPEnvironmentsDict(values[fieldKey])
-            ? values[fieldKey]
-            : {};
+        const valuesForTable = values?.[fieldKey];
+        const tableData = isMCPEnvironmentsDict(valuesForTable)
+          ? valuesForTable
+          : {};
 
         return (
           <EnvironmentVariablesTable
@@ -170,7 +172,8 @@ const FieldContent: FC<{
           defaultValue={commonProps.defaultValue?.toString()}
         />
       );
-    default:
+    }
+    default: {
       return (
         <CustomInputField
           {...commonProps}
@@ -179,6 +182,7 @@ const FieldContent: FC<{
           defaultValue={commonProps.defaultValue?.toString()}
         />
       );
+    }
   }
 };
 
