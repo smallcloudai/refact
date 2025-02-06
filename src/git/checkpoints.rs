@@ -53,14 +53,14 @@ fn open_shadow_repos(paths: &[PathBuf], allow_init: bool, nested: bool, cache_di
 }
 
 fn get_file_changes_from_nested_repos<'a>(
-    parent_repo: &'a Repository, nested_repos: &'a [Repository]
+    parent_repo: &'a Repository, nested_repos: &'a [Repository], include_abs_paths: bool
 ) -> Result<(Vec<(&'a Repository, Vec<FileChange>)>, Vec<FileChange>), String> {
     let repo_workdir = parent_repo.workdir().ok_or("Failed to get workdir.".to_string())?;
     let mut file_changes_per_repo = Vec::new();
     let mut file_changes_flatened = Vec::new();
 
     for nested_repo in nested_repos {
-        let nested_repo_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, nested_repo)?;
+        let nested_repo_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, nested_repo, include_abs_paths)?;
         let nested_repo_workdir = nested_repo.workdir()
             .ok_or("Failed to get nested repo workdir".to_string())?;
         let nested_repo_rel_path = nested_repo_workdir.strip_prefix(repo_workdir).map_err_to_string()?;
@@ -82,7 +82,7 @@ pub async fn create_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>,
     prev_checkpoint: Option<&Checkpoint>,
     chat_id: &str,
-) -> Result<(Checkpoint, Vec<FileChange>, Repository, Vec<Repository>), String> {
+) -> Result<(Checkpoint, Repository, Vec<Repository>), String> {
     let (cache_dir, vcs_roots) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cache_dir.clone(), gcx_locked.documents_state.workspace_vcs_roots.clone())
@@ -113,13 +113,13 @@ pub async fn create_workspace_checkpoint(
         return Err("No commits in shadow git repo.".to_string());
     }
 
-    let (checkpoint, file_changes) = {
+    let checkpoint = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
 
-        let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo)?;
+        let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, false)?;
 
         let (nested_file_changes, flatened_nested_file_changes) = 
-            get_file_changes_from_nested_repos(&repo, &nested_repos)?;
+            get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
         file_changes.extend(flatened_nested_file_changes);
 
         stage_changes(&repo, &file_changes)?;
@@ -129,25 +129,25 @@ pub async fn create_workspace_checkpoint(
             stage_changes(&nested_repo, &changes)?;
         }
 
-        (Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}, vec![])
+        Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}
     };
 
     tracing::info!("Checkpoint created in {:.2}s", t0.elapsed().as_secs_f64());
 
-    Ok((checkpoint, file_changes, repo, nested_repos))
+    Ok((checkpoint, repo, nested_repos))
 }
 
 pub async fn restore_workspace_checkpoint(
     gcx: Arc<ARwLock<GlobalContext>>, checkpoint_to_restore: &Checkpoint, chat_id: &str
 ) -> Result<(Checkpoint, Vec<FileChange>, DateTime<Utc>), String> {
     
-    let (checkpoint_for_undo, _, repo, nested_repos) = 
+    let (checkpoint_for_undo, repo, nested_repos) = 
         create_workspace_checkpoint(gcx.clone(), Some(checkpoint_to_restore), chat_id).await?;
 
     let commit_to_restore_oid = Oid::from_str(&checkpoint_to_restore.commit_hash).map_err_to_string()?;
     let reverted_to = get_commit_datetime(&repo, &commit_to_restore_oid)?;
 
-    let mut files_changed = get_diff_statuses_index_to_commit(&repo, &commit_to_restore_oid)?;
+    let mut files_changed = get_diff_statuses_index_to_commit(&repo, &commit_to_restore_oid, true)?;
 
     // Invert status since we got changes in reverse order so that if it fails it does not update the workspace
     for change in &mut files_changed {
@@ -218,9 +218,9 @@ pub async fn initialize_shadow_git_repositories_if_needed(gcx: Arc<ARwLock<Globa
         let t0 = Instant::now();
 
         let initial_commit_result: Result<Oid, String> = (|| {
-            let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo)?;
+            let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, false)?;
             let (nested_file_changes, all_nested_changes) = 
-                get_file_changes_from_nested_repos(&repo, &nested_repos)?;
+                get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
             file_changes.extend(all_nested_changes);
 
             stage_changes(&repo, &file_changes)?;

@@ -230,7 +230,7 @@ async fn _chat(
             if [ChatMode::AGENT, ChatMode::CONFIGURE, ChatMode::PROJECT_SUMMARY].contains(&chat_post.meta.chat_mode) 
                 && latest_user_msg.checkpoints.is_empty() {
                 match create_workspace_checkpoint(gcx.clone(), latest_checkpoint.as_ref(), &chat_post.meta.chat_id).await {
-                    Ok((checkpoint, _, _, _)) => {
+                    Ok((checkpoint, _, _)) => {
                         tracing::info!("Checkpoint created: {:?}", checkpoint);
                         latest_user_msg.checkpoints = vec![checkpoint];
                     },
