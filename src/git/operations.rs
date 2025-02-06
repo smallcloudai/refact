@@ -5,18 +5,18 @@ use tracing::error;
 
 use crate::custom_error::MapErrToString;
 use crate::files_correction::to_pathbuf_normalize;
-use crate::git::{FileChange, FileChangeStatus};
+use crate::git::{FileChange, FileChangeStatus, DiffStatusType};
 
-fn status_options(include_untracked: bool, include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
+fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
     let mut options = git2::StatusOptions::new();
     options
         .disable_pathspec_match(true)
         .include_ignored(false)
         .include_unmodified(include_unmodified)
         .include_unreadable(false)
-        .include_untracked(include_untracked)
+        .include_untracked(true)
         .recurse_ignored_dirs(false)
-        .recurse_untracked_dirs(include_untracked)
+        .recurse_untracked_dirs(true)
         .rename_threshold(100)
         .update_index(true)
         .show(show);
@@ -28,7 +28,7 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
         .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;
 
     let statuses = repository.statuses(Some(
-        &mut status_options(true, true, git2::StatusShow::IndexAndWorkdir)))
+        &mut status_options(true, git2::StatusShow::IndexAndWorkdir)))
         .map_err(|e| error!("Failed to get statuses: {}", e)).ok()?;
 
     let mut files = Vec::new();
@@ -52,12 +52,6 @@ pub fn get_or_create_branch<'repo>(repository: &'repo Repository, branch_name: &
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum DiffStatusType {
-    IndexToHead,
-    WorkdirToIndex,
-}
-
 fn is_changed_in_wt(status: git2::Status) -> bool {
     status.is_wt_renamed() || status.is_wt_renamed() || status.is_wt_deleted() ||
     status.is_wt_modified() || status.is_wt_new() || status.is_wt_typechange()
@@ -68,7 +62,7 @@ fn is_changed_in_index(status: git2::Status) -> bool {
     status.is_index_modified() || status.is_index_new() || status.is_index_typechange()
 }
 
-pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Repository) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
@@ -77,7 +71,7 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Reposito
         DiffStatusType::IndexToHead => git2::StatusShow::Index,
         DiffStatusType::WorkdirToIndex => git2::StatusShow::Workdir,
     };
-    let statuses = repository.statuses(Some(&mut status_options(include_untracked, false, show_opt)))
+    let statuses = repository.statuses(Some(&mut status_options(false, show_opt)))
         .map_err_with_prefix("Failed to get statuses:")?;
     for entry in statuses.iter() {
         let status = entry.status();
@@ -131,7 +125,7 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Reposito
     Ok(result)
 }
 
-pub fn get_diff_statuses_workdir_to_head(repository: &Repository, include_untracked: bool) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_workdir_to_head(repository: &Repository) -> Result<Vec<FileChange>, String> {
     let repository_workdir = repository.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
@@ -140,9 +134,9 @@ pub fn get_diff_statuses_workdir_to_head(repository: &Repository, include_untrac
 
     let mut diff_opts = git2::DiffOptions::new();
     diff_opts
-        .include_untracked(include_untracked)
-        .recurse_untracked_dirs(include_untracked)
-        .show_untracked_content(include_untracked)
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .show_untracked_content(true)
         .include_ignored(false)
         .include_unmodified(false)
         .update_index(true)
@@ -190,14 +184,14 @@ pub fn get_diff_statuses_workdir_to_head(repository: &Repository, include_untrac
     Ok(result)
 }
 
-pub fn get_diff_statuses_index_to_commit(repository: &Repository, include_untracked: bool, commit_oid: &git2::Oid) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &git2::Oid) -> Result<Vec<FileChange>, String> {
     let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
     let original_head_ref = head.is_branch().then(|| head.name().map(ToString::to_string)).flatten();
     let original_head_oid = head.target();
 
     repository.set_head_detached(commit_oid.clone()).map_err_with_prefix("Failed to set HEAD:")?;
 
-    let result = get_diff_statuses(DiffStatusType::IndexToHead, repository, include_untracked);
+    let result = get_diff_statuses(DiffStatusType::IndexToHead, repository);
 
     let restore_result = match (&original_head_ref, original_head_oid) {
         (Some(head_ref), _) => repository.set_head(head_ref),

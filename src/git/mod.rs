@@ -47,3 +47,9 @@ impl FileChangeStatus {
         }
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum DiffStatusType {
+    IndexToHead,
+    WorkdirToIndex,
+}
