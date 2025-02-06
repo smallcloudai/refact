@@ -563,6 +563,5 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
   if (typeof json !== "object") return false;
   if (Array.isArray(json)) return false;
 
-  const record = json as Record<string, unknown>;
-  return Object.values(record).every((value) => typeof value === "string");
+  return Object.values(json).every((value) => typeof value === "string");
 }
