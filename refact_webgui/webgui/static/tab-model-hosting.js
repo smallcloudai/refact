@@ -771,6 +771,7 @@ function finetune_info_factory(index, models_info, finetune_info, finetune_runs,
 // TODO: doesn't work well after one upload
 function upload_weights() {
     const file = document.querySelector('#model_weights').files[0];
+    const weights_modal_submit = document.querySelector('.weights-modal-submit');
     
     if (!file) {
         general_error({ detail: "Please select a file first" });
@@ -808,31 +809,37 @@ function upload_weights() {
         }
     });
 
+    const cleanupForm = () => {
+        document.querySelector('#model_weights').value = '';
+        const emptyProgress = document.createElement('div');
+        emptyProgress.className = 'weights-progress';
+        progressContainer.replaceWith(emptyProgress);
+        weights_modal_submit.disabled = false;
+    };
+
     xhr.onload = function() {
         if (xhr.status === 200) {
             const data = JSON.parse(xhr.responseText);
             const upload_weights_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('upload-weights-modal'));
+            cleanupForm();
             upload_weights_modal.hide();
             get_models();
         } else {
             try {
                 const error = JSON.parse(xhr.responseText);
                 general_error(error);
-                weights_modal_submit.disabled = false;
             } catch (e) {
                 general_error({ detail: "Upload failed" });
-                weights_modal_submit.disabled = false;
             }
             console.log('model-weights-upload error:', xhr.status, xhr.responseText);
+            cleanupForm();
         }
-        progressContainer.replaceWith(weights_modal_submit);
     };
 
     xhr.onerror = function() {
         console.log('model-weights-upload network error');
         general_error({ detail: "Network error occurred" });
-        progressContainer.replaceWith(weights_modal_submit);
-        weights_modal_submit.disabled = false;
+        cleanupForm();
     };
 
     xhr.open('POST', '/model-weights-upload', true);
