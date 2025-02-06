@@ -212,6 +212,8 @@ async fn do_the_job(
         Some(cthread_rec.cthread_temperature as f32),
         Some(cthread_rec.cthread_max_new_tokens),
         cthread_rec.cthread_n,
+        None,
+        true,
         Some(&mut usage),
         Some(cthread_rec.cthread_id.clone()),
         Some(format!("{log_prefix}-chore-job")),

@@ -108,6 +108,8 @@ pub async fn compress_trajectory(
         Some(TEMPERATURE),
         None,
         1,
+        None, 
+        true,
         None,
         None,
         None,
