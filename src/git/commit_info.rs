@@ -26,7 +26,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { warn!("{}", e); continue; }
         };
 
-        let file_changes = match get_diff_statuses_workdir_to_head(&repository, true) {
+        let file_changes = match get_diff_statuses_workdir_to_head(&repository) {
             Ok(changes) if changes.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { warn!("{}", e); continue; }
