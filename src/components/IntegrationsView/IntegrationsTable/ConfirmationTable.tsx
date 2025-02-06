@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState, useMemo } from "react";
+import { FC, useEffect, useState, useMemo } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -18,6 +18,11 @@ type ConfirmationTableProps = {
   onToolConfirmation: (key: string, data: string[]) => void;
 };
 
+type ConfirmationRow = {
+  value: string;
+  index: number;
+};
+
 export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   tableName,
   initialData,
@@ -26,74 +31,60 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   const [data, setData] = useState<string[]>(initialData);
 
   const addRow = () => {
-    setData((prev) => {
-      return [...prev, ""];
-    });
+    setData((prev) => [...prev, ""]);
   };
 
   const removeRow = (index: number) => {
     setData((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateRow = (index: number, _field: keyof string, value: string) => {
-    setData((prev) => {
-      return prev.map((row, i) => {
-        if (i === index) {
-          return value;
-        }
-        return row;
-      });
-    });
-  };
-
-  const handleKeyPress = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    isLastRow: boolean,
-    rowIndex: number,
-    field: keyof string,
-    value: string,
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (isLastRow) {
-        updateRow(rowIndex, field, value);
-        addRow();
-      } else {
-        // TODO: since we cannot not listen for data.length change, reference is dropped and we cannot focus on the next input
-        const nextInput = document.querySelector<HTMLElement>(
-          `[data-row-index="${rowIndex + 1}"][data-field="${field as string}"]`,
-        );
-        nextInput?.focus();
-      }
-    }
+  const updateRow = (index: number, value: string) => {
+    setData((prev) => prev.map((row, i) => (i === index ? value : row)));
   };
 
   useEffect(() => {
     onToolConfirmation(tableName, data);
   }, [tableName, data, onToolConfirmation]);
 
-  const defaultColumn: Partial<ColumnDef<string>> = {
-    cell: ({ row: { index }, column: { id } }) => {
-      const initialValue = data[index];
+  const tableData = useMemo<ConfirmationRow[]>(
+    () => data.map((value, index) => ({ value, index })),
+    [data],
+  );
 
-      return (
-        <DefaultCell
-          initialValue={initialValue}
-          data={data}
-          index={index}
-          id={id}
-          updateRow={updateRow}
-          handleKeyPress={handleKeyPress}
-        />
-      );
-    },
-  };
-
-  const columns = useMemo<ColumnDef<string>[]>(
+  const columns = useMemo<ColumnDef<ConfirmationRow>[]>(
     () => [
       {
-        accessorKey: tableName,
+        id: tableName,
         header: toPascalCase(tableName),
+        cell: ({ row }) => {
+          const isLastRow = row.index === data.length - 1;
+
+          return (
+            <DefaultCell
+              initialValue={row.original.value}
+              data-row-index={row.index}
+              data-field={tableName}
+              data-next-row={row.index.toString()}
+              onChange={(value) => updateRow(row.index, value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (isLastRow) {
+                    updateRow(row.index, e.currentTarget.value);
+                    addRow();
+                  } else {
+                    const nextInput = document.querySelector<HTMLElement>(
+                      `[data-row-index="${
+                        row.index + 1
+                      }"][data-field="${tableName}"]`,
+                    );
+                    nextInput?.focus();
+                  }
+                }
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -113,15 +104,12 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
         ),
       },
     ],
-    // need to keep track of length of data array to be sure that it is always up to date
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tableName, data.length],
   );
 
   const table = useReactTable({
-    data,
+    data: tableData,
     columns,
-    defaultColumn,
     getCoreRowModel: getCoreRowModel(),
   });
 

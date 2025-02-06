@@ -38,8 +38,12 @@ import {
   IntegrationWithIconRecordAndAddress,
   IntegrationWithIconResponse,
   isDetailMessage,
+  isMCPArgumentsArray,
+  isMCPEnvironmentsDict,
   isNotConfiguredIntegrationWithIconRecord,
   isPrimitive,
+  MCPArgs,
+  MCPEnvs,
   NotConfiguredIntegrationWithIconRecord,
   ToolConfirmation,
   ToolParameterEntity,
@@ -284,10 +288,9 @@ export const useIntegrations = ({
     deny: [],
   });
 
-  const [MCPArguments, setMCPArguments] = useState<string[]>([]);
-  const [MCPEnvironmentVariables, setMCPEnvironmentVariables] = useState<
-    Record<string, string>
-  >({});
+  const [MCPArguments, setMCPArguments] = useState<MCPArgs>([]);
+  const [MCPEnvironmentVariables, setMCPEnvironmentVariables] =
+    useState<MCPEnvs>({});
 
   const [toolParameters, setToolParameters] = useState<
     ToolParameterEntity[] | null
@@ -516,6 +519,8 @@ export const useIntegrations = ({
       ask_user: [],
       deny: [],
     });
+    setMCPArguments([]);
+    setMCPEnvironmentVariables({});
     information && dispatch(clearInformation());
     globalError && dispatch(clearError());
     currentIntegrationValues && setCurrentIntegrationValues(null);
@@ -565,6 +570,10 @@ export const useIntegrations = ({
       ) {
         formValues.parameters = toolParameters;
       }
+      if (currentIntegration.integr_name.includes("mcp")) {
+        formValues.env = MCPEnvironmentVariables;
+        formValues.args = MCPArguments;
+      }
       if (!currentIntegrationSchema.confirmation.not_applicable) {
         formValues.confirmation = confirmationRules;
       }
@@ -603,6 +612,8 @@ export const useIntegrations = ({
       availabilityValues,
       confirmationRules,
       toolParameters,
+      MCPArguments,
+      MCPEnvironmentVariables,
     ],
   );
 
@@ -694,6 +705,18 @@ export const useIntegrations = ({
           ? isEqual(currentIntegrationValues.parameters, toolParameters)
           : true;
 
+      const eachMCPArgumentIsNotChanged =
+        currentIntegrationValues &&
+        isMCPArgumentsArray(currentIntegrationValues.args)
+          ? isEqual(currentIntegrationValues.args, MCPArguments)
+          : true;
+
+      const eachMCPEnvironmentVariableIsNotChanged =
+        currentIntegrationValues &&
+        isMCPEnvironmentsDict(currentIntegrationValues.env)
+          ? isEqual(currentIntegrationValues.env, MCPEnvironmentVariables)
+          : true;
+
       const eachToolConfirmationIsNotChanged =
         currentIntegrationValues &&
         areToolConfirmation(currentIntegrationValues.confirmation)
@@ -723,7 +746,9 @@ export const useIntegrations = ({
         eachFormValueIsNotChanged &&
         eachAvailabilityOptionIsNotChanged &&
         eachToolParameterIsNotChanged &&
-        eachToolConfirmationIsNotChanged;
+        eachToolConfirmationIsNotChanged &&
+        eachMCPArgumentIsNotChanged &&
+        eachMCPEnvironmentVariableIsNotChanged;
 
       debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
 
@@ -742,6 +767,8 @@ export const useIntegrations = ({
       availabilityValues,
       toolParameters,
       confirmationRules,
+      MCPArguments,
+      MCPEnvironmentVariables,
     ],
   );
 
@@ -877,6 +904,17 @@ export const useIntegrations = ({
     },
     [handleNotSetupIntegrationShowUp],
   );
+
+  useEffect(() => {
+    debugIntegrations(`[DEBUG MCP]: MCPArguments: `, MCPArguments);
+  }, [MCPArguments]);
+
+  useEffect(() => {
+    debugIntegrations(
+      `[DEBUG MCP]: MCPEnvironmentVariables: `,
+      MCPEnvironmentVariables,
+    );
+  }, [MCPEnvironmentVariables]);
 
   return {
     currentIntegration,

@@ -10,64 +10,72 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { DefaultCell } from "./DefaultCell";
 
 import styles from "./ConfirmationTable.module.css";
+import { debugIntegrations } from "../../../debugConfig";
+import { MCPEnvs } from "../../../events";
 
 type EnvironmentVariablesTableProps = {
-  initialData: Record<string, string>;
-  onMCPEnvironmentVariables: (data: Record<string, string>) => void;
+  initialData: MCPEnvs;
+  onMCPEnvironmentVariables: (data: MCPEnvs) => void;
+};
+
+type EnvVarRow = {
+  key: string;
+  value: string;
+  originalKey: string; // Keep track of original key for updates
 };
 
 export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
   initialData,
   onMCPEnvironmentVariables,
 }) => {
-  const [data, setData] = useState<Record<string, string>>(initialData);
+  const [data, setData] = useState<MCPEnvs>(initialData);
 
   const addRow = () => {
     setData((prev) => {
-      const newKey = `key${Object.keys(prev).length}`;
+      const newKey = `${Object.keys(prev).length}`;
       return { ...prev, [newKey]: "" };
     });
   };
 
-  const removeRow = (index: number) => {
+  const removeRow = (originalKey: string) => {
     setData((prev) => {
-      const keys = Object.keys(prev);
-      if (index >= 0 && index < keys.length) {
-        const keyToRemove = keys[index];
-        const { [keyToRemove]: _removed, ...rest } = prev;
-        return rest;
-      }
-      return prev;
+      const { [originalKey]: _removed, ...rest } = prev;
+      return rest;
     });
   };
 
-  const updateRow = (index: number, _field: keyof string, value: string) => {
+  const updateRow = (
+    originalKey: string,
+    field: "key" | "value",
+    newValue: string,
+  ) => {
     setData((prev) => {
-      const keys = Object.keys(prev);
-      if (index >= 0 && index < keys.length) {
-        const key = keys[index];
-        return { ...prev, [key]: value };
+      if (field === "key") {
+        // When updating key, we need to create a new entry and remove the old one
+        const { [originalKey]: value, ...rest } = prev;
+        return { ...rest, [newValue]: value };
+      } else {
+        // When updating value, just update the value for the existing key
+        return { ...prev, [originalKey]: newValue };
       }
-      return prev;
     });
   };
 
   const handleKeyPress = (
     e: React.KeyboardEvent<HTMLInputElement>,
     isLastRow: boolean,
-    rowIndex: number,
-    field: keyof string,
+    originalKey: string,
+    field: "key" | "value",
     value: string,
   ) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (isLastRow) {
-        updateRow(rowIndex, field, value);
+        updateRow(originalKey, field, value);
         addRow();
       } else {
-        // TODO: since we cannot not listen for data.length change, reference is dropped and we cannot focus on the next input
         const nextInput = document.querySelector<HTMLElement>(
-          `[data-row-index="${rowIndex + 1}"][data-field="${field as string}"]`,
+          `[data-next-row="${originalKey}"][data-field="${field}"]`,
         );
         nextInput?.focus();
       }
@@ -78,115 +86,81 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
     onMCPEnvironmentVariables(data);
   }, [data, onMCPEnvironmentVariables]);
 
-  // const defaultColumn: Partial<ColumnDef<string>> = {
-  //   cell: ({ row: { index }, column: { id } }) => {
-  //     const initialValue = data[index];
-
-  //     return (
-  //       <DefaultCell
-  //         initialValue={initialValue}
-  //         data={data}
-  //         index={index}
-  //         id={id}
-  //         updateRow={updateRow}
-  //         handleKeyPress={handleKeyPress}
-  //       />
-  //     );
-  //   },
-  // };
-
-  // const columns = useMemo<ColumnDef<string>[]>(
-  //   () => [
-  //     {
-  //       accessorKey: "args",
-  //       header: "MCP Arguments",
-  //     },
-  //     {
-  //       id: "actions",
-  //       header: "",
-  //       cell: ({ row }) => (
-  //         <Flex gap="3" width="100%">
-  //           <Button
-  //             size="1"
-  //             type="button"
-  //             onClick={() => removeRow(row.index)}
-  //             variant="outline"
-  //             color="red"
-  //           >
-  //             Remove
-  //           </Button>
-  //         </Flex>
-  //       ),
-  //     },
-  //   ],
-  //   // need to keep track of length of data array to be sure that it is always up to date
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  //   [data.length],
-  // );
-
-  // // const table = useReactTable({
-  // //   data,
-  // //   columns,
-  // //   defaultColumn,
-  // //   getCoreRowModel: getCoreRowModel(),
-  // // });
-
-  type EnvVarRow = {
-    key: string;
-    value: string;
-  };
-
-  // Add this before the table setup
   const tableData = useMemo(
     () =>
       Object.entries(data).map(
         ([key, value]): EnvVarRow => ({
           key,
           value,
+          originalKey: key,
         }),
       ),
     [data],
   );
+
+  useEffect(() => {
+    debugIntegrations(`[DEBUG MCP]: envs table data: `, tableData);
+  }, [tableData]);
 
   const columns = useMemo<ColumnDef<EnvVarRow>[]>(
     () => [
       {
         id: "key",
         header: "Environment Variable",
-        cell: ({ row: { id, index } }) => (
+        cell: ({ row }) => (
           <DefaultCell
-            initialValue={id}
-            data={data}
-            index={index}
-            id="key"
-            updateRow={updateRow}
-            handleKeyPress={handleKeyPress}
+            initialValue={row.original.key}
+            data-row-index={row.index}
+            data-field="key"
+            data-next-row={row.original.originalKey}
+            onChange={(value) =>
+              updateRow(row.original.originalKey, "key", value)
+            }
+            onKeyPress={(e) =>
+              handleKeyPress(
+                e,
+                row.index === tableData.length - 1,
+                row.original.originalKey,
+                "key",
+                e.currentTarget.value,
+              )
+            }
           />
         ),
       },
       {
         id: "value",
         header: "Value",
-        cell: ({ row: { id, index } }) => (
+        cell: ({ row }) => (
           <DefaultCell
-            initialValue={data[id]}
-            data={data}
-            index={index}
-            id="value"
-            updateRow={updateRow}
-            handleKeyPress={handleKeyPress}
+            initialValue={row.original.value}
+            data-row-index={row.index}
+            data-field="value"
+            data-next-row={row.original.originalKey}
+            onChange={(value) =>
+              updateRow(row.original.originalKey, "value", value)
+            }
+            onKeyPress={(e) =>
+              handleKeyPress(
+                e,
+                row.index === tableData.length - 1,
+                row.original.originalKey,
+                "value",
+                e.currentTarget.value,
+              )
+            }
           />
         ),
       },
       {
         id: "actions",
         header: "",
-        cell: ({ row: { index } }) => (
+        cell: ({ row }) => (
           <Flex gap="3" width="100%">
             <Button
               size="1"
               type="button"
-              onClick={() => removeRow(index)}
+              onClick={() => removeRow(row.original.originalKey)}
               variant="outline"
               color="red"
             >
@@ -196,9 +170,8 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
         ),
       },
     ],
-    // need to keep track of length of data array to be sure that it is always up to date
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.length],
+    [tableData.length],
   );
 
   const table = useReactTable({

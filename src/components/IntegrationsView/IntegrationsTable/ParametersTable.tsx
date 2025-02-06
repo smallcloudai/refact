@@ -1,6 +1,4 @@
-// TODO: a lot of duplicative code is here between ParametersTable and ConfirmationTable components
-
-import React, { FC, useEffect, useState, useMemo } from "react";
+import { FC, useEffect, useState, useMemo } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -19,6 +17,10 @@ type ParametersTableProps = {
   onToolParameters: (data: ToolParameterEntity[]) => void;
 };
 
+type ParameterRow = ToolParameterEntity & {
+  index: number;
+};
+
 export const ParametersTable: FC<ParametersTableProps> = ({
   initialData,
   onToolParameters,
@@ -34,77 +36,112 @@ export const ParametersTable: FC<ParametersTableProps> = ({
     setData((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const validateAndUpdateField = (
+    field: keyof ToolParameterEntity,
+    value: string,
+  ) => {
+    if (field === "name") {
+      if (!validateSnakeCase(value)) {
+        debugTables(
+          `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
+        );
+        setValidateError(`The field "${value}" must be written in snake case.`);
+      } else {
+        setValidateError(null);
+      }
+    }
+    return value;
+  };
+
   const updateRow = (
     index: number,
     field: keyof ToolParameterEntity,
     value: string,
   ) => {
     debugTables(`[DEBUG]: updating data of the table`);
-    if (field === "name" && !validateSnakeCase(value)) {
-      debugTables(
-        `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
-      );
-      setValidateError(`The field "${value}" must be written in snake case.`);
-    } else if (field === "name" && validateSnakeCase(value)) {
-      setValidateError(null);
-    }
+    const validatedValue = validateAndUpdateField(field, value);
 
     setData((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
+      prev.map((row, i) =>
+        i === index ? { ...row, [field]: validatedValue } : row,
+      ),
     );
-  };
-
-  const handleKeyPress = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    isLastRow: boolean,
-    rowIndex: number,
-    field: keyof ToolParameterEntity,
-    value: string,
-  ) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (isLastRow) {
-        updateRow(rowIndex, field, value);
-        addRow();
-      } else {
-        const nextInput = document.querySelector<HTMLElement>(
-          `[data-row-index="${rowIndex + 1}"][data-field="${field}"]`,
-        );
-        nextInput?.focus();
-      }
-    }
   };
 
   useEffect(() => {
     onToolParameters(data);
   }, [data, onToolParameters]);
 
-  const defaultColumn: Partial<ColumnDef<ToolParameterEntity>> = {
-    cell: ({ getValue, row: { index }, column: { id } }) => {
-      const initialValue = getValue() as string;
+  const tableData = useMemo<ParameterRow[]>(
+    () => data.map((row, index) => ({ ...row, index })),
+    [data],
+  );
 
-      return (
-        <DefaultCell
-          initialValue={initialValue}
-          data={data}
-          index={index}
-          id={id}
-          updateRow={updateRow}
-          handleKeyPress={handleKeyPress}
-        />
-      );
-    },
-  };
-
-  const columns = useMemo<ColumnDef<ToolParameterEntity>[]>(
+  const columns = useMemo<ColumnDef<ParameterRow>[]>(
     () => [
       {
-        accessorKey: "name",
+        id: "name",
         header: "Name",
+        cell: ({ row }) => {
+          const isLastRow = row.index === data.length - 1;
+
+          return (
+            <DefaultCell
+              initialValue={row.original.name}
+              data-row-index={row.index}
+              data-field="name"
+              data-next-row={row.index.toString()}
+              onChange={(value) => updateRow(row.index, "name", value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (isLastRow) {
+                    updateRow(row.index, "name", e.currentTarget.value);
+                    addRow();
+                  } else {
+                    const nextInput = document.querySelector<HTMLElement>(
+                      `[data-row-index="${row.index + 1}"][data-field="name"]`,
+                    );
+                    nextInput?.focus();
+                  }
+                }
+              }}
+            />
+          );
+        },
       },
       {
-        accessorKey: "description",
+        id: "description",
         header: "Description",
+        cell: ({ row }) => {
+          const isLastRow = row.index === data.length - 1;
+
+          return (
+            <DefaultCell
+              initialValue={row.original.description}
+              data-row-index={row.index}
+              data-field="description"
+              data-next-row={row.index.toString()}
+              onChange={(value) => updateRow(row.index, "description", value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (isLastRow) {
+                    updateRow(row.index, "description", e.currentTarget.value);
+                    addRow();
+                  } else {
+                    const nextInput = document.querySelector<HTMLElement>(
+                      `[data-row-index="${
+                        row.index + 1
+                      }"][data-field="description"]`,
+                    );
+                    nextInput?.focus();
+                  }
+                }
+              }}
+            />
+          );
+        },
       },
       {
         id: "actions",
@@ -122,15 +159,13 @@ export const ParametersTable: FC<ParametersTableProps> = ({
         ),
       },
     ],
-    // need to keep track of length of data array to be sure that it is always up to date
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [data.length],
   );
 
   const table = useReactTable({
-    data,
+    data: tableData,
     columns,
-    defaultColumn,
     getCoreRowModel: getCoreRowModel(),
   });
 

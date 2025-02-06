@@ -173,6 +173,9 @@ export type SchemaToolConfirmation = {
   not_applicable?: boolean;
 };
 
+export type MCPArgs = string[];
+export type MCPEnvs = Record<string, string>;
+
 export type Integration = {
   project_path: string;
   integr_name: string;
@@ -183,8 +186,8 @@ export type Integration = {
     | IntegrationPrimitive
     | Record<string, boolean>
     | Record<string, unknown>
-    | Record<string, string> // MCP envs
-    | string[] // MCP Args
+    | MCPEnvs
+    | MCPArgs
     | ToolParameterEntity[]
     | ToolConfirmation
   > | null;

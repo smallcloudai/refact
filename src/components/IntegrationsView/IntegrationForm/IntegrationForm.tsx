@@ -13,6 +13,8 @@ import type { ToolParameterEntity } from "../../../services/refact";
 import {
   areAllFieldsBoolean,
   areToolConfirmation,
+  isMCPArgumentsArray,
+  isMCPEnvironmentsDict,
   type Integration,
   type ToolConfirmation,
 } from "../../../services/refact";
@@ -121,6 +123,24 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
       );
     }
   }, [integration, handleAvailabilityChange]);
+
+  useEffect(() => {
+    if (
+      integration.data?.integr_values?.args &&
+      isMCPArgumentsArray(integration.data.integr_values.args)
+    ) {
+      handleMCPArguments(integration.data.integr_values.args);
+    }
+  }, [integration, handleMCPArguments]);
+
+  useEffect(() => {
+    if (
+      integration.data?.integr_values?.args &&
+      isMCPEnvironmentsDict(integration.data.integr_values.env)
+    ) {
+      handleMCPEnvironmentVariables(integration.data.integr_values.env);
+    }
+  }, [integration, handleMCPEnvironmentVariables]);
 
   if (integration.isLoading) {
     return <Spinner spinning />;
@@ -233,7 +253,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 className={classNames(styles.button, styles.applyButton, {
                   [styles.disabledButton]: isApplying || isDisabled,
                 })}
-                disabled={isDisabled}
+                disabled={isDisabled || isApplying}
               >
                 {isApplying ? "Applying..." : "Apply"}
               </Button>

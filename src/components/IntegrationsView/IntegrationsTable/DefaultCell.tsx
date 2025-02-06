@@ -1,56 +1,44 @@
-import { useState, useEffect, useMemo } from "react";
-import type { FocusEvent } from "react";
+import { useState, useEffect } from "react";
+import type { FocusEvent, KeyboardEvent } from "react";
 import { TextField } from "@radix-ui/themes";
 
-type DefaultCellProps<TData> = {
+type DefaultCellProps = {
   initialValue: string;
-  updateRow: (index: number, field: keyof TData, value: string) => void;
-  index: number;
-  id: string;
-  data: TData[] | Record<string, TData>;
-  handleKeyPress: (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    isLastRow: boolean,
-    rowIndex: number,
-    field: keyof TData,
-    value: string,
-  ) => void;
+  onChange: (value: string) => void;
+  onKeyPress: (e: KeyboardEvent<HTMLInputElement>) => void;
+  "data-row-index"?: number;
+  "data-field"?: string;
+  "data-next-row"?: string;
 };
 
-export const DefaultCell = <TData,>({
+export const DefaultCell = ({
   initialValue,
-  updateRow,
-  index,
-  id,
-  data,
-  handleKeyPress,
-}: DefaultCellProps<TData>) => {
+  onChange,
+  onKeyPress,
+  "data-row-index": dataRowIndex,
+  "data-field": dataField,
+  "data-next-row": dataNextRow,
+}: DefaultCellProps) => {
   const [value, setValue] = useState(initialValue);
 
   const onBlur = (_event: FocusEvent<HTMLInputElement>) => {
-    updateRow(index, id as keyof TData, value);
+    onChange(value);
   };
 
   useEffect(() => {
     setValue(initialValue);
   }, [initialValue]);
 
-  const isLastRow = useMemo(
-    () => index === Object.keys(data).length - 1,
-    [index, data],
-  );
-
   return (
     <TextField.Root
       value={value}
       size="1"
-      data-row-index={index}
-      data-field={id}
+      data-row-index={dataRowIndex}
+      data-field={dataField}
+      data-next-row={dataNextRow}
       onChange={(e) => setValue(e.target.value)}
-      onBlur={(e) => onBlur(e)}
-      onKeyDown={(e) =>
-        handleKeyPress(e, isLastRow, index, id as keyof TData, value)
-      }
+      onBlur={onBlur}
+      onKeyDown={onKeyPress}
     />
   );
 };

@@ -1,5 +1,6 @@
 import { Checkpoint } from "../../features/Checkpoints/types";
 import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
+import { MCPArgs, MCPEnvs } from "./integrations";
 
 export type ChatRole =
   | "user"
@@ -547,4 +548,21 @@ export function areAllFieldsBoolean(
     json !== null &&
     Object.values(json).every((value) => typeof value === "boolean")
   );
+}
+
+export function isMCPArgumentsArray(json: unknown): json is MCPArgs {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!Array.isArray(json)) return false;
+  if (!json.every((arg) => typeof arg === "string")) return false;
+  return true;
+}
+
+export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (Array.isArray(json)) return false;
+
+  const record = json as Record<string, unknown>;
+  return Object.values(record).every((value) => typeof value === "string");
 }
