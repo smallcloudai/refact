@@ -21,24 +21,44 @@ type EnvironmentVariablesTableProps = {
 type EnvVarRow = {
   key: string;
   value: string;
-  originalKey: string; // Keep track of original key for updates
+  originalKey: string;
+  order: number; // Add order to maintain stable row positions
 };
 
 export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
   initialData,
   onMCPEnvironmentVariables,
 }) => {
-  const [data, setData] = useState<MCPEnvs>(initialData);
+  // Keep track of the next order number
+  const [nextOrder, setNextOrder] = useState(
+    () => Object.keys(initialData).length,
+  );
+
+  // Initialize data with order numbers
+  const [data, setData] = useState<MCPEnvs>(() => initialData);
+
+  // Keep track of order for each key
+  const [keyOrders, setKeyOrders] = useState<Record<string, number>>(() => {
+    const orders: Record<string, number> = {};
+    Object.keys(initialData).forEach((key, index) => {
+      orders[key] = index;
+    });
+    return orders;
+  });
 
   const addRow = () => {
-    setData((prev) => {
-      const newKey = `${Object.keys(prev).length}`;
-      return { ...prev, [newKey]: "" };
-    });
+    const newKey = `${Object.keys(data).length}`;
+    setData((prev) => ({ ...prev, [newKey]: "" }));
+    setKeyOrders((prev) => ({ ...prev, [newKey]: nextOrder }));
+    setNextOrder((prev) => prev + 1);
   };
 
   const removeRow = (originalKey: string) => {
     setData((prev) => {
+      const { [originalKey]: _removed, ...rest } = prev;
+      return rest;
+    });
+    setKeyOrders((prev) => {
       const { [originalKey]: _removed, ...rest } = prev;
       return rest;
     });
@@ -51,14 +71,20 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
   ) => {
     setData((prev) => {
       if (field === "key") {
-        // When updating key, we need to create a new entry and remove the old one
         const { [originalKey]: value, ...rest } = prev;
         return { ...rest, [newValue]: value };
       } else {
-        // When updating value, just update the value for the existing key
         return { ...prev, [originalKey]: newValue };
       }
     });
+
+    if (field === "key") {
+      setKeyOrders((prev) => {
+        const order = prev[originalKey];
+        const { [originalKey]: _removed, ...rest } = prev;
+        return { ...rest, [newValue]: order };
+      });
+    }
   };
 
   const handleKeyPress = (
@@ -88,14 +114,17 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
 
   const tableData = useMemo(
     () =>
-      Object.entries(data).map(
-        ([key, value]): EnvVarRow => ({
-          key,
-          value,
-          originalKey: key,
-        }),
-      ),
-    [data],
+      Object.entries(data)
+        .map(
+          ([key, value]): EnvVarRow => ({
+            key,
+            value,
+            originalKey: key,
+            order: keyOrders[key],
+          }),
+        )
+        .sort((a, b) => a.order - b.order), // Sort by order to maintain stable positions
+    [data, keyOrders],
   );
 
   useEffect(() => {
