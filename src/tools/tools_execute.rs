@@ -99,7 +99,7 @@ pub async fn run_tools_remotely(
     info!("run_tools_remotely: got response: {:?}", response);
 
     let mut all_messages = tools_execute_post.messages;
-    all_messages.reserve(response.messages.len());
+
     for msg in response.messages {
         stream_back_to_user.push_in_json(json!(&msg));
         all_messages.push(msg);
