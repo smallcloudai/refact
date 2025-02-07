@@ -537,7 +537,7 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 
     let gcx_clone = gcx.clone();
     tokio::spawn(async move {
-        crate::git::checkpoints::initialize_shadow_git_repositories_if_needed(gcx_clone).await;
+        crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
     });
 
     files_enqueued

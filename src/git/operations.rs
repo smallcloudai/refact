@@ -53,17 +53,25 @@ pub fn get_or_create_branch<'repo>(repository: &'repo Repository, branch_name: &
 }
 
 fn is_changed_in_wt(status: git2::Status) -> bool {
-    status.is_wt_renamed() || status.is_wt_renamed() || status.is_wt_deleted() ||
-    status.is_wt_modified() || status.is_wt_new() || status.is_wt_typechange()
+    status.intersects(git2::Status::WT_NEW | 
+        git2::Status::WT_MODIFIED | 
+        git2::Status::WT_DELETED | 
+        git2::Status::WT_RENAMED | 
+        git2::Status::WT_TYPECHANGE)
 }
 
 fn is_changed_in_index(status: git2::Status) -> bool {
-    status.is_index_renamed() || status.is_index_renamed() || status.is_index_deleted() ||
-    status.is_index_modified() || status.is_index_new() || status.is_index_typechange()
+    status.intersects(git2::Status::INDEX_NEW | 
+        git2::Status::INDEX_MODIFIED | 
+        git2::Status::INDEX_DELETED | 
+        git2::Status::INDEX_RENAMED | 
+        git2::Status::INDEX_TYPECHANGE)
 }
 
-pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Repository) -> Result<Vec<FileChange>, String> {
-    let repository_workdir = repository.workdir()
+/// If include_abs_path is true, they are included in the FileChanges result, use it if they need to be 
+/// returned to the client or the absolute paths are needed
+pub fn get_diff_statuses(diff_status_type: DiffStatusType, repo: &Repository, include_abs_paths: bool) -> Result<Vec<FileChange>, String> {
+    let repo_workdir = repo.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
     let mut result = Vec::new();
@@ -71,54 +79,60 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repository: &Reposito
         DiffStatusType::IndexToHead => git2::StatusShow::Index,
         DiffStatusType::WorkdirToIndex => git2::StatusShow::Workdir,
     };
-    let statuses = repository.statuses(Some(&mut status_options(false, show_opt)))
+    let statuses = repo.statuses(Some(&mut status_options(false, show_opt)))
         .map_err_with_prefix("Failed to get statuses:")?;
     for entry in statuses.iter() {
         let status = entry.status();
         let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
-        let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
         
-        if entry.path_bytes().last() == Some(&b'/') && absolute_path.join(".git").exists() {
+        if entry.path_bytes().last() == Some(&b'/') && repo_workdir.join(&relative_path).join(".git").exists() {
             continue;
         }
 
-        let file_change = match diff_status_type {
+        let should_not_be_present = match diff_status_type {
+            DiffStatusType::IndexToHead => is_changed_in_wt(status) || status.is_index_renamed(),
+            DiffStatusType::WorkdirToIndex => is_changed_in_index(status) || status.is_wt_renamed(),
+        };
+        if should_not_be_present {
+            tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path);
+            continue;
+        }
+
+        let file_change_status = match diff_status_type {
             DiffStatusType::IndexToHead => {
-                if is_changed_in_wt(status) || status.is_index_renamed() {
-                    tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path);
+                if is_changed_in_index(status) {
+                    match status {
+                        s if s.is_index_new() => Some(FileChangeStatus::ADDED),
+                        s if s.is_index_deleted() => Some(FileChangeStatus::DELETED),
+                        _ => Some(FileChangeStatus::MODIFIED),
+                    }
+                } else {
                     None
-                } else if is_changed_in_index(status) {
-                    Some(FileChange {
-                        status: match status {
-                            s if s.is_index_new() => FileChangeStatus::ADDED,
-                            s if s.is_index_deleted() => FileChangeStatus::DELETED,
-                            _ => FileChangeStatus::MODIFIED,
-                        },
-                        relative_path,
-                        absolute_path,
-                    })
-                } else { None }
+                }
             },
             DiffStatusType::WorkdirToIndex => {
-                if is_changed_in_index(status) || status.is_wt_renamed() {
-                    tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path);
+                if is_changed_in_wt(status) {
+                    match status {
+                        s if s.is_wt_new() => Some(FileChangeStatus::ADDED),
+                        s if s.is_wt_deleted() => Some(FileChangeStatus::DELETED),
+                        _ => Some(FileChangeStatus::MODIFIED),
+                    }
+                } else {
                     None
-                } else if is_changed_in_wt(status) {
-                    Some(FileChange {
-                        status: match status {
-                            s if s.is_wt_new() => FileChangeStatus::ADDED,
-                            s if s.is_wt_deleted() => FileChangeStatus::DELETED,
-                            _ => FileChangeStatus::MODIFIED,
-                        },
-                        relative_path,
-                        absolute_path,
-                    })
-                } else { None }
+                }
             },
         };
 
-        if let Some(change) = file_change {
-            result.push(change);
+        if let Some(status) = file_change_status {
+            result.push(FileChange {
+                status,
+                absolute_path: if include_abs_paths { 
+                    to_pathbuf_normalize(&repo_workdir.join(&relative_path).to_string_lossy())
+                } else {
+                    PathBuf::new()
+                },
+                relative_path,
+            });
         }
     }
 
@@ -184,14 +198,14 @@ pub fn get_diff_statuses_workdir_to_head(repository: &Repository) -> Result<Vec<
     Ok(result)
 }
 
-pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &git2::Oid) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &git2::Oid, include_abs_paths: bool) -> Result<Vec<FileChange>, String> {
     let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
     let original_head_ref = head.is_branch().then(|| head.name().map(ToString::to_string)).flatten();
     let original_head_oid = head.target();
 
     repository.set_head_detached(commit_oid.clone()).map_err_with_prefix("Failed to set HEAD:")?;
 
-    let result = get_diff_statuses(DiffStatusType::IndexToHead, repository);
+    let result = get_diff_statuses(DiffStatusType::IndexToHead, repository, include_abs_paths);
 
     let restore_result = match (&original_head_ref, original_head_oid) {
         (Some(head_ref), _) => repository.set_head(head_ref),
