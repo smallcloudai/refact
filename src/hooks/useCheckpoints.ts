@@ -20,13 +20,17 @@ import {
   selectChatId,
   selectMessages,
 } from "../features/Chat";
-import { isUserMessage } from "../events";
+import { isUserMessage, telemetryApi } from "../services/refact";
 import { deleteChatById } from "../features/History/historySlice";
 
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
+
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
+
   const { restoreChangesFromCheckpoints, isLoading } = useRestoreCheckpoints();
   const isCheckpointsPopupVisible = useAppSelector(
     selectIsCheckpointsPopupIsVisible,
@@ -61,13 +65,29 @@ export const useCheckpoints = () => {
   }, [isCheckpointsPopupVisible, isUndoingCheckpoints]);
 
   const handleUndo = useCallback(async () => {
-    await restoreChangesFromCheckpoints(
-      latestRestoredCheckpointsResult.checkpoints_for_undo,
-    );
+    try {
+      await restoreChangesFromCheckpoints(
+        latestRestoredCheckpointsResult.checkpoints_for_undo,
+      );
+      void sendTelemetryEvent({
+        scope: `rollbackChanges/cancel`,
+        success: true,
+        error_message: "",
+      });
+    } catch (error) {
+      void sendTelemetryEvent({
+        scope: `rollbackChanges/failed`,
+        success: false,
+        error_message: `rollback: failed to undo reverted changes from checkpoints. checkpoints: ${JSON.stringify(
+          latestRestoredCheckpointsResult.checkpoints_for_undo,
+        )}`,
+      });
+    }
     dispatch(setIsUndoingCheckpoints(true));
   }, [
     dispatch,
     restoreChangesFromCheckpoints,
+    sendTelemetryEvent,
     latestRestoredCheckpointsResult.checkpoints_for_undo,
   ]);
 
@@ -76,25 +96,43 @@ export const useCheckpoints = () => {
       if (!checkpoints) return;
       const amountOfUserMessages = messages.filter(isUserMessage);
       const firstUserMessage = amountOfUserMessages[0];
-
-      const restoredChanges =
-        await restoreChangesFromCheckpoints(checkpoints).unwrap();
-
-      const actions = [
-        dispatch(setIsUndoingCheckpoints(false)),
-        setLatestCheckpointResult({ ...restoredChanges, messageIndex }),
-        setIsCheckpointsPopupIsVisible(true),
-        setShouldNewChatBeStarted(
-          messageIndex === messages.indexOf(firstUserMessage),
-        ),
-      ];
-      actions.forEach((action) => dispatch(action));
+      try {
+        const restoredChanges =
+          await restoreChangesFromCheckpoints(checkpoints).unwrap();
+        void sendTelemetryEvent({
+          scope: `rollbackChanges/initial`,
+          success: true,
+          error_message: "",
+        });
+        const actions = [
+          dispatch(setIsUndoingCheckpoints(false)),
+          setLatestCheckpointResult({ ...restoredChanges, messageIndex }),
+          setIsCheckpointsPopupIsVisible(true),
+          setShouldNewChatBeStarted(
+            messageIndex === messages.indexOf(firstUserMessage),
+          ),
+        ];
+        actions.forEach((action) => dispatch(action));
+      } catch (error) {
+        void sendTelemetryEvent({
+          scope: `rollbackChanges/failed`,
+          success: false,
+          error_message: `rollback: failed to restore from checkpoints. checkpoints ${JSON.stringify(
+            checkpoints,
+          )}`,
+        });
+      }
     },
-    [dispatch, restoreChangesFromCheckpoints, messages],
+    [dispatch, restoreChangesFromCheckpoints, sendTelemetryEvent, messages],
   );
 
   const handleFix = useCallback(() => {
     dispatch(setIsCheckpointsPopupIsVisible(false));
+    void sendTelemetryEvent({
+      scope: `rollbackChanges/confirmed`,
+      success: true,
+      error_message: "",
+    });
     if (shouldNewChatBeStarted || !maybeMessageIndex) {
       const actions = [newChatAction(), deleteChatById(chatId)];
       actions.forEach((action) => dispatch(action));
@@ -107,7 +145,14 @@ export const useCheckpoints = () => {
         }),
       );
     }
-  }, [dispatch, shouldNewChatBeStarted, maybeMessageIndex, chatId, messages]);
+  }, [
+    dispatch,
+    sendTelemetryEvent,
+    shouldNewChatBeStarted,
+    maybeMessageIndex,
+    chatId,
+    messages,
+  ]);
 
   return {
     shouldCheckpointsPopupBeShown,
