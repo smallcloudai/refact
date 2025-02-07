@@ -9,6 +9,8 @@ use serde::Serialize;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
+use std::borrow::Cow;
+use shell_escape::escape;
 
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -104,10 +106,18 @@ impl IntegrationTrait for ToolCmdline {
     }
 }
 
+
+fn powershell_escape(s: &str) -> String {
+    let escaped = s.replace("'", "''");
+    format!("'{}'", escaped)
+}
+
 pub fn replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
     let mut result = x.to_string();
     for (key, value) in args_str {
-        result = result.replace(&format!("%{}%", key), value);
+        let escaped_value = if cfg!(target_os = "windows") {powershell_escape(value)}
+                                    else {escape(Cow::from(value.as_str())).to_string()};
+        result = result.replace(&format!("%{}%", key), &escaped_value);
     }
     result
 }

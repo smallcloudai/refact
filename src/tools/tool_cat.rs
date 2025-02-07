@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use serde_json::Value;
+use itertools::Itertools; 
 
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
@@ -80,7 +81,7 @@ impl Tool for ToolCat {
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
-            content.push_str(&format!("Paths found:\n{}\n\n", filenames_present.join("\n")));
+            content.push_str(&format!("Paths found:\n{}\n\n", filenames_present.iter().unique().cloned().collect::<Vec<_>>().join("\n")));
             if !symbols_not_found.is_empty() {
                 content.push_str(&format!("Symbols not found in the {} files:\n{}\n\n", filenames_present.len(), symbols_not_found.join("\n")));
                 corrections = true;
