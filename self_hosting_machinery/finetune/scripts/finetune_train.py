@@ -167,6 +167,34 @@ def gpu_filter_and_build_config(
     return _build_finetune_config_by_heuristics(run_id, finetune_cfg, model_config, **kwargs)
 
 
+def no_filter_build_config(
+        pname: str,
+        run_id: str,
+        model_name: str,
+        model_info: Dict[str, Any],
+        model_config: Dict[str, Any],
+        model_ctx_size: int,
+        **kwargs) -> Dict[str, Any]:
+    if model_ctx_size > 0:
+        model_info["T"] = model_ctx_size
+    finetune_cfg = {
+        **base_config(model_name=model_name, model_info=model_info),
+        **kwargs,
+    }
+    traces.log("locking \"%s\" for filtering" % pname)
+    if dist.get_rank() == 0:
+        with filelock.FileLock(env.PP_PROJECT_LOCK(pname)):
+            traces.log("locked \"%s\" successfully" % pname)
+            traces.log("completed filtering, now copy files to run \"%s\"" % run_id)
+            _copy_source_files(
+                env.PP_TRAIN_FILTERED_FILEPATH(pname), env.PERRUN_TRAIN_FILTERED_FILEPATH(run_id), pname, run_id)
+            _copy_source_files(
+                env.PP_TEST_FILTERED_FILEPATH(pname), env.PERRUN_TEST_FILTERED_FILEPATH(run_id), pname, run_id)
+    dist.barrier()
+
+    return _build_finetune_config_by_heuristics(run_id, finetune_cfg, model_config, **kwargs)
+
+
 def _copy_source_files(jsonl_src, jsonl_dst, pname, run_id):
     for d in jsonlines.open(jsonl_src):
         try:
@@ -357,7 +385,8 @@ def main(supported_models: Dict[str, Any], models_db: Dict[str, Any]):
         status_tracker.update_status("working")
         _log_everywhere("Dest dir is %s" % traces.context().path)
 
-        finetune_cfg = gpu_filter_and_build_config(model_config=model_config, model_info=model_info, **vars(args))
+        # finetune_cfg = gpu_filter_and_build_config(model_config=model_config, model_info=model_info, **vars(args))
+        finetune_cfg = no_filter_build_config(model_config=model_config, model_info=model_info, **vars(args))
 
         _log_everywhere(f"Building the model {finetune_cfg['model_name']}")
         model_context = ModelContext(

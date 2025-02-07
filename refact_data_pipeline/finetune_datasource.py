@@ -131,7 +131,7 @@ class RefactDataset(torch.utils.data.IterableDataset):
     def set_epoch_callback(self, callback):
         assert len(self._pipeline) > 0
         file_reader = self._pipeline[0]
-        assert type(file_reader) is ReadFileByFile
+        assert isinstance(file_reader, ReadFileByFile)
         file_reader.set_epoch_callback(callback)
 
     def set_random_state(self, seed):
@@ -187,6 +187,108 @@ class CodeLLamaFIMDataset(RefactDataset):
     def _build_pipeline(self, files: List[Dict[str, Any]]):
         read_by_file = ReadFileByFile(self.basedir, files, self._ds_options)
         fim = FIMv2CodeLlama(read_by_file, self._ds_options)
+        dp = pp.DensePacker(fim, self._ds_options)
+        shf = pp.Shuffle(dp, self._ds_options)
+        return [read_by_file, fim, dp, shf]
+
+
+class ReadJSONLFileByFile(ReadFileByFile):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._samples_limit = self.dataopts.get("samples_limit", 0)
+
+    def __iter__(self):
+        sample_num = 0
+        file_num = 0
+        epoch = 0
+
+        quit_flag = False
+        while not quit_flag:
+            for j in self.inner_filter:
+                with jsonlines.open(os.path.join(self.basedir, j["path"])) as r:
+                    for data in r:
+                        if not data["middle"]:
+                            continue
+                        yield {
+                            **data,
+                            "path": j["path"],
+                            "stats": {
+                                "sample_num": sample_num,
+                                "file_num": file_num,
+                                "epoch": epoch,
+                            },
+                        }
+                        sample_num += 1
+                        if self._samples_limit and sample_num >= self._samples_limit:
+                            quit_flag = True
+                            break
+                file_num += 1
+                if quit_flag:
+                    break
+            epoch += 1
+            self.epoch_callback(epoch)
+            if epoch == self.quit_on_epoch:
+                quit_flag = True
+
+
+class RAGFIM(PipelineNode):
+    def __init__(
+            self,
+            inner_filter,
+            dataopts: DatasetOpts,
+    ):
+        self.enc = dataopts.encoding
+        super().__init__(dataopts)
+        self.inner_filter = inner_filter
+        self.n_ctx = dataopts.get("n_ctx", 2048)
+        self.debug = bool(dataopts.get("debug", 0))
+        self.special_tokens = [
+            self.enc.PREFIX,
+            self.enc.SUFFIX,
+            self.enc.INFILL,
+            self.enc.EOT,
+        ]
+        assert len(set(self.special_tokens)) == len(self.special_tokens)
+
+    def __iter__(self):
+        stats: Dict[str, Any] = {
+            "fim_out": 0,
+        }
+        for sample in self.inner_filter:
+            prompt_tokens = self.enc.encode(sample["prompt"])
+            context_tokens = []
+            fim_tokens = []
+            is_context_part = True
+            for t in prompt_tokens:
+                is_context_part &= (t not in self.special_tokens)
+                if is_context_part:
+                    context_tokens.append(t)
+                else:
+                    fim_tokens.append(t)
+
+            assert prompt_tokens == context_tokens + fim_tokens
+
+            context_mask = [0] * len(context_tokens)
+            fim_tokens = fim_tokens + self.enc.encode(sample["middle"])
+            fim_mask = [0 if t in self.special_tokens else 1 for t in fim_tokens]
+            tokens = context_tokens + fim_tokens + [self.enc.EOT]
+            mask = context_mask + fim_mask + [1]
+
+            if len(tokens) > self.n_ctx:
+                continue
+
+            stats["fim_out"] += 1
+            yield {
+                "tokens": tokens,
+                "mask": mask,
+                "stats": {**sample["stats"], **stats},
+            }
+
+
+class RefactRAGFIMDataset(RefactDataset):
+    def _build_pipeline(self, files: List[Dict[str, Any]]):
+        read_by_file = ReadJSONLFileByFile(self.basedir, files, self._ds_options)
+        fim = RAGFIM(read_by_file, self._ds_options)
         dp = pp.DensePacker(fim, self._ds_options)
         shf = pp.Shuffle(dp, self._ds_options)
         return [read_by_file, fim, dp, shf]
