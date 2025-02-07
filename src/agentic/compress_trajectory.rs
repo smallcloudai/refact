@@ -57,6 +57,22 @@ fn parse_goal(trajectory: &String) -> Result<String, String> {
     }
 }
 
+fn gather_used_tools(messages: &Vec<ChatMessage>) -> Vec<String> {
+    let mut tools: Vec<String> = Vec::new();
+    
+    for message in messages {
+        if let Some(tool_calls) = &message.tool_calls {
+            for tool_call in tool_calls {
+                if !tools.contains(&tool_call.function.name) {
+                    tools.push(tool_call.function.name.clone());
+                }
+            }
+        }
+    }
+    
+    tools
+}
+
 pub async fn compress_trajectory(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ChatMessage>,
@@ -98,11 +114,12 @@ pub async fn compress_trajectory(
             false,
         ).await,
     ));
+    let tools = gather_used_tools(&messages);
     let new_messages = subchat_single(
         ccx.clone(),
         model_name.as_str(),
         messages_compress,
-        Some(vec![]),
+        Some(tools),
         None,
         false,
         Some(TEMPERATURE),
