@@ -39,8 +39,12 @@ export const LoginPage: React.FC = () => {
   }, [polling, emailIsLoading]);
 
   const onCancel = useCallback(() => {
-    cancelLogin.current();
-    emailLoginAbort();
+    try {
+      cancelLogin.current();
+      emailLoginAbort();
+    } catch {
+      // no-op
+    }
   }, [cancelLogin, emailLoginAbort]);
 
   return (

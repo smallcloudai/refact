@@ -2,7 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
 import { isGoodResponse, smallCloudApi } from "../services/smallcloud";
-import { selectHost, setApiKey } from "../features/Config/configSlice";
+import {
+  selectHost,
+  setAddressURL,
+  setApiKey,
+} from "../features/Config/configSlice";
 import { useOpenUrl } from "./useOpenUrl";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 
@@ -48,6 +52,7 @@ export const useEmailLogin = () => {
       setTimeoutN(timer);
     } else if (args && emailLoginResult.data?.status === "user_logged_in") {
       dispatch(setApiKey(emailLoginResult.data.key));
+      dispatch(setAddressURL("Refact"));
       setupHost({
         type: "cloud",
         apiKey: emailLoginResult.data.key,
@@ -111,9 +116,12 @@ export const useLogin = () => {
 
   useEffect(() => {
     if (isGoodResponse(loginPollingResult.data)) {
-      const action = setApiKey(loginPollingResult.data.secret_key);
+      const actions = [
+        setApiKey(loginPollingResult.data.secret_key),
+        setAddressURL("Refact"),
+      ];
 
-      dispatch(action);
+      actions.forEach((action) => dispatch(action));
 
       setupHost({
         type: "cloud",

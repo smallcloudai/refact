@@ -46,6 +46,7 @@ export const setThemeMode = createAction<"light" | "dark" | "inherit">(
   "config/setThemeMode",
 );
 export const setApiKey = createAction<string | null>("config/setApiKey");
+export const setAddressURL = createAction<string>("config/setAddressURL");
 
 export const reducer = createReducer<Config>(initialState, (builder) => {
   // TODO: toggle darkmode for web host?
@@ -74,6 +75,10 @@ export const reducer = createReducer<Config>(initialState, (builder) => {
 
   builder.addCase(setApiKey, (state, action) => {
     state.apiKey = action.payload;
+  });
+
+  builder.addCase(setAddressURL, (state, action) => {
+    state.addressURL = action.payload;
   });
 });
 
