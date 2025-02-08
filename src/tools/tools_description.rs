@@ -272,7 +272,7 @@ tools:
         description: "Absolute path to the file to change."
       - name: "command"
         type: "string"
-        description: "The commands to run. Allowed options are: `create`, `file_replace` and `str_replace`."     
+        description: "The commands to run. Allowed options are: `create`, `file_replace` and `str_replace`. Prefer using `str_replace` if file has > 50 lines."     
       - name: "path"
         type: "string"
         description: "Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`."
