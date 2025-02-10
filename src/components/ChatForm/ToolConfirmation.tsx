@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import {
+  PATCH_LIKE_FUNCTIONS,
   useAppDispatch,
   useAppSelector,
   useSendChatRequest,
@@ -63,7 +64,9 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   const types = pauseReasons.map((reason) => reason.type);
   const toolCallIds = pauseReasons.map((reason) => reason.tool_call_id);
 
-  const isPatchConfirmation = commands.some((command) => command === "patch");
+  const isPatchConfirmation = commands.some((command) =>
+    PATCH_LIKE_FUNCTIONS.includes(command),
+  );
 
   const integrationPaths = pauseReasons.map(
     (reason) => reason.integr_config_path,

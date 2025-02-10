@@ -76,6 +76,14 @@ type SubmitHandlerParams =
 
 let recallCounter = 0;
 
+export const PATCH_LIKE_FUNCTIONS = [
+  "patch",
+  "create_textdoc",
+  "update_textdoc",
+  "replace_textdoc",
+  "update_textdoc_regex",
+];
+
 export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortControllers = useAbortControllers();
@@ -141,7 +149,13 @@ export const useSendChatRequest = () => {
         lastMessage.tool_calls
       ) {
         const toolCalls = lastMessage.tool_calls;
-        if (!(toolCalls[0].function.name === "patch" && isPatchAutomatic)) {
+        if (
+          !(
+            toolCalls[0].function.name &&
+            PATCH_LIKE_FUNCTIONS.includes(toolCalls[0].function.name) &&
+            isPatchAutomatic
+          )
+        ) {
           const confirmationResponse = await triggerCheckForConfirmation({
             tool_calls: toolCalls,
             messages: messages,
