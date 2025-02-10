@@ -24,7 +24,7 @@ use crate::http::routers::v1::chat_based_handlers::handle_v1_commit_message_from
 use crate::http::routers::v1::chat_based_handlers::handle_v1_trajectory_save;
 use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
-use crate::http::routers::v1::git::{handle_v1_git_commit, handle_v1_restore_checkpoints};
+use crate::http::routers::v1::git::{handle_v1_git_commit, handle_v1_checkpoints_preview, handle_v1_checkpoints_restore};
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
@@ -145,7 +145,8 @@ pub fn make_v1_router() -> Router {
         .route("/patch-single-file-from-ticket", telemetry_post!(handle_v1_patch_single_file_from_ticket))
         .route("/patch-apply-all", telemetry_post!(handle_v1_patch_apply_all))
 
-        .route("/restore-checkpoints", telemetry_post!(handle_v1_restore_checkpoints))
+        .route("/checkpoints-preview", telemetry_post!(handle_v1_checkpoints_preview))
+        .route("/checkpoints-restore", telemetry_post!(handle_v1_checkpoints_restore))
 
         .route("/links", telemetry_post!(handle_v1_links))
 
