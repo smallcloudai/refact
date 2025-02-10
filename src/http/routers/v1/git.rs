@@ -14,7 +14,7 @@ use crate::files_correction::{deserialize_path, serialize_path};
 use crate::custom_error::ScratchError;
 use crate::git::{CommitInfo, FileChange};
 use crate::git::operations::{get_configured_author_email_and_name, stage_changes};
-use crate::git::checkpoints::{restore_workspace_checkpoint, Checkpoint};
+use crate::git::checkpoints::{preview_changes_for_workspace_checkpoint, restore_workspace_checkpoint, Checkpoint};
 use crate::global_context::GlobalContext;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -30,17 +30,23 @@ pub struct GitError {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RestoreCheckpointsPost {
+pub struct CheckpointsPost {
     pub checkpoints: Vec<Checkpoint>,
     pub meta: ChatMeta,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct RestoreCheckpointsResponse {
-    pub checkpoints_for_undo: Vec<Checkpoint>,
+pub struct CheckpointsPreviewResponse {
     pub reverted_changes: Vec<WorkspaceChanges>,
+    pub checkpoints_for_undo: Vec<Checkpoint>,
     #[serde(serialize_with = "serialize_datetime_utc")]
     pub reverted_to: DateTime<Utc>,
+    pub error_log: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct CheckpointsRestoreResponse {
+    pub success: bool, 
     pub error_log: Vec<String>,
 }
 
@@ -126,11 +132,52 @@ pub async fn handle_v1_git_commit(
         .unwrap())
 }
 
-pub async fn handle_v1_restore_checkpoints(
+pub async fn handle_v1_checkpoints_preview(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<RestoreCheckpointsPost>(&body_bytes)
+    let post = serde_json::from_slice::<CheckpointsPost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    if post.checkpoints.is_empty() {
+        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "No checkpoints to restore".to_string()));
+    }
+    if post.checkpoints.len() > 1 {
+        return Err(ScratchError::new(StatusCode::NOT_IMPLEMENTED, "Multiple checkpoints to restore not implemented yet".to_string()));
+    }
+
+    let response = match preview_changes_for_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.meta.chat_id).await {
+        Ok((files_changed, reverted_to, checkpoint_for_undo)) => {
+            CheckpointsPreviewResponse {
+                reverted_changes: vec![WorkspaceChanges {
+                    workspace_folder: post.checkpoints.first().unwrap().workspace_folder.clone(),
+                    files_changed,
+                }],
+                checkpoints_for_undo: vec![checkpoint_for_undo],
+                reverted_to,
+                error_log: vec![],
+            }
+        },
+        Err(e) => {
+            CheckpointsPreviewResponse {
+                error_log: vec![e],
+                ..Default::default()
+            }
+        }
+    };
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&response).unwrap()))
+        .unwrap())
+}
+
+pub async fn handle_v1_checkpoints_restore(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<CheckpointsPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     if post.checkpoints.is_empty() {
@@ -141,19 +188,14 @@ pub async fn handle_v1_restore_checkpoints(
     }
 
     let response = match restore_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.meta.chat_id).await {
-        Ok((checkpoint_for_undo, files_changed, reverted_to)) => {
-            RestoreCheckpointsResponse {
-                checkpoints_for_undo: vec![checkpoint_for_undo.clone()],
-                reverted_changes: vec![WorkspaceChanges {
-                    workspace_folder: checkpoint_for_undo.workspace_folder.clone(),
-                    files_changed,
-                }],
-                reverted_to,
+        Ok(_) => {
+            CheckpointsRestoreResponse {
+                success: true,
                 error_log: vec![],
             }
         },
         Err(e) => {
-            RestoreCheckpointsResponse {
+            CheckpointsRestoreResponse {
                 error_log: vec![e],
                 ..Default::default()
             }
