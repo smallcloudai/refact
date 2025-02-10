@@ -318,7 +318,7 @@ fn _replace_broken_tool_call_messages(
                 ));
                 if message.finish_reason == Some("length".to_string()) {
                     message.content = ChatContent::SimpleText(format!(
-                        "{}\nThis message was stripped (finish_reason=`length`). Increasing `max_new_tokens` to {}. Consider using `str_replace` in the `text_edit()`",
+                        "{}\nThis message was stripped (finish_reason=`length`). Increasing `max_new_tokens` to {}. Consider using `update_textdoc()` step by step",
                         message.content.content_text_only(),
                         new_max_new_tokens
                     ));

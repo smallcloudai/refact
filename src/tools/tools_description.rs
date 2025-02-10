@@ -131,7 +131,9 @@ pub async fn tools_merged_and_filtered(
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
         // ("apply_edit".to_string(), Box::new(crate::tools::tool_apply_edit::ToolApplyEdit::new()) as Box<dyn Tool + Send>),
-        ("text_edit".to_string(), Box::new(crate::tools::tool_text_edit::ToolTextEdit::new()) as Box<dyn Tool + Send>),
+        ("create_textdoc".to_string(), Box::new(crate::tools::file::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
+        ("replace_textdoc".to_string(), Box::new(crate::tools::file::tool_replace_textdoc::ToolReplaceTextDoc{}) as Box<dyn Tool + Send>),
+        ("update_textdoc".to_string(), Box::new(crate::tools::file::tool_update_textdoc::ToolUpdateTextDoc{}) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
@@ -263,34 +265,55 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "text_edit"
+  - name: "create_textdoc"
     agentic: false
-    description: "An filesystem editor tool that allows the agent create and edit files."
+    description: "Creates a new text document or code"
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Absolute path to new file."
+      - name: "content"
+        type: "string"
+        description: "The initial text or code."
+    parameters_required:
+      - "path"
+      - "content"
+      
+  - name: "update_textdoc"
+    agentic: false
+    description: "Updates the existing document based on regex-based pattern replacements. Use it always for large files."
     parameters:
       - name: "path"
         type: "string"
         description: "Absolute path to the file to change."
-      - name: "command"
+      - name: "pattern"
         type: "string"
-        description: "The commands to run. Allowed options are: `create`, `file_replace` and `str_replace`. Prefer using `str_replace` if file has > 50 lines."     
+        description: "A regex pattern to match the text that needs to be updated. Prefer simple replacements and simple regexes."        
+      - name: "replacement"
+        type: "string"
+        description: "The new text that will replace the matched pattern."        
+      - name: "multiple"
+        type: "boolean"
+        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."        
+    parameters_required:
+      - "path"
+      - "pattern"
+      - "replacement"
+      - "multiple"
+      
+  - name: "replace_textdoc"
+    agentic: false
+    description: "[OPTIONAL] When the file is small, replaces an existing document or code with the content."
+    parameters:
       - name: "path"
         type: "string"
-        description: "Absolute path to file or directory, e.g. `/repo/file.py` or `/repo`."
-      - name: "file_text"
+        description: "Absolute path to new file."
+      - name: "content"
         type: "string"
-        description: "Required parameter of `create` and `file_replace` command, with the content of the file to be created."
-      - name: "new_str"
-        type: "string"
-        description: "Required parameter of `str_replace` command containing the new string."
-      - name: "old_str"
-        type: "string"
-        description: "Required parameter of `str_replace` command containing the string in `path` to replace."
-      - name: "replace_multiple"
-        type: "boolean"
-        description: "Allow to replace multiple `old_str` occurences all at once. False by default."
+        description: "The complete text or code."
     parameters_required:
-      - "command"
       - "path"
+      - "content"
 
   - name: "github"
     agentic: true

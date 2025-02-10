@@ -19,3 +19,4 @@ mod tool_knowledge;
 mod tool_locate_search;
 pub mod tool_apply_edit;
 mod tool_text_edit;
+mod file;

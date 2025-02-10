@@ -402,7 +402,7 @@ pub async fn scratchpad_interaction_stream(
                     prompt.as_str(),
                     &client,
                     &endpoint_template,
-                    &parameters,
+                    &my_parameters,
                     meta
                 ).await
             } else {
@@ -414,7 +414,7 @@ pub async fn scratchpad_interaction_stream(
                     &client,
                     &endpoint_template,
                     &endpoint_chat_passthrough,
-                    &parameters,
+                    &my_parameters,
                     meta
                 ).await
             };
