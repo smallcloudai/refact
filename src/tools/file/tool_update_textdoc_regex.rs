@@ -1,25 +1,26 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::file::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace, sync_documents_ast};
+use crate::tools::file::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace_regex, sync_documents_ast};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use regex::Regex;
 use tokio::sync::Mutex as AMutex;
 
-struct ToolUpdateTextDocArgs {
+struct ToolUpdateTextDocRegexArgs {
     path: PathBuf,
-    old_str: String,
+    pattern: Regex,
     replacement: String,
     multiple: bool,
 }
 
-pub struct ToolUpdateTextDoc;
+pub struct ToolUpdateTextDocRegex;
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocArgs, String> {
+fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocRegexArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = PathBuf::from(s.trim().to_string());
@@ -37,10 +38,17 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocArgs, St
         Some(v) => return Err(format!("argument 'path' should be a string: {:?}", v)),
         None => return Err("argument 'path' is required".to_string()),
     };
-    let old_str = match args.get("old_str") {
-        Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("argument 'old_str' should be a string: {:?}", v)),
-        None => return Err("argument 'old_str' is required".to_string())
+    let pattern = match args.get("pattern") {
+        Some(Value::String(s)) => {
+            match Regex::new(s) {
+                Ok(r) => r,
+                Err(err) => {
+                    return Err(format!("argument 'pattern' should be a correct regex: {:?}", err));
+                }
+            }
+        },
+        Some(v) => return Err(format!("argument 'pattern' should be a string: {:?}", v)),
+        None => return Err("argument 'pattern' is required:".to_string())
     };
     let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s.to_string(),
@@ -53,16 +61,16 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocArgs, St
         None => return Err("argument 'multiple' is required".to_string())
     };
 
-    Ok(ToolUpdateTextDocArgs {
+    Ok(ToolUpdateTextDocRegexArgs {
         path,
-        old_str,
+        pattern,
         replacement,
         multiple
     })
 }
 
 #[async_trait]
-impl Tool for ToolUpdateTextDoc {
+impl Tool for ToolUpdateTextDocRegex {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -76,7 +84,7 @@ impl Tool for ToolUpdateTextDoc {
         let gcx = ccx.lock().await.global_context.clone();
         let args = parse_args(args)?;
         await_ast_indexing(gcx.clone()).await?;
-        let (before_text, after_text) = str_replace(&args.path, &args.old_str, &args.replacement, args.multiple)?;
+        let (before_text, after_text) = str_replace_regex(&args.path, &args.pattern, &args.replacement, args.multiple)?;
         sync_documents_ast(gcx.clone(), &args.path).await?;
         let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
         let results = vec![ChatMessage {
@@ -111,14 +119,14 @@ impl Tool for ToolUpdateTextDoc {
             if let Err(_) = can_execute_tool_edit(args).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
-                    command: "update_textdoc".to_string(),
+                    command: "update_textdoc_regex".to_string(),
                     rule: "".to_string(),
                 });
             }
         }
         Ok(MatchConfirmDeny {
             result: MatchConfirmDenyResult::PASS,
-            command: "update_textdoc".to_string(),
+            command: "update_textdoc_regex".to_string(),
             rule: "default".to_string(),
         })
     }
@@ -127,12 +135,12 @@ impl Tool for ToolUpdateTextDoc {
         &self,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        Ok("update_textdoc".to_string())
+        Ok("update_textdoc_regex".to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["update_textdoc*".to_string()],
+            ask_user: vec!["update_textdoc_regex*".to_string()],
             deny: vec![],
         })
     }

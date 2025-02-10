@@ -133,7 +133,8 @@ pub async fn tools_merged_and_filtered(
         // ("apply_edit".to_string(), Box::new(crate::tools::tool_apply_edit::ToolApplyEdit::new()) as Box<dyn Tool + Send>),
         ("create_textdoc".to_string(), Box::new(crate::tools::file::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
         ("replace_textdoc".to_string(), Box::new(crate::tools::file::tool_replace_textdoc::ToolReplaceTextDoc{}) as Box<dyn Tool + Send>),
-        ("update_textdoc".to_string(), Box::new(crate::tools::file::tool_update_textdoc::ToolUpdateTextDoc{}) as Box<dyn Tool + Send>),
+        ("update_textdoc".to_string(), Box::new(crate::tools::file::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
+        ("update_textdoc_regex".to_string(), Box::new(crate::tools::file::tool_update_textdoc_regex::ToolUpdateTextDocRegex {}) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
@@ -243,8 +244,43 @@ tools:
     parameters_required:
       - "paths"
 
+  - name: "create_textdoc"
+    agentic: false
+    description: "Creates a new text document or code"
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Absolute path to new file."
+      - name: "content"
+        type: "string"
+        description: "The initial text or code."
+    parameters_required:
+      - "path"
+      - "content"
+      
+  - name: "update_textdoc"
+    agentic: false
+    description: "Updates the existing document by replacing `old_str` by `replacement`."
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Absolute path to the file to change."
+      - name: "old_str"
+        type: "string"
+        description: "The old text that needs to be updated."        
+      - name: "replacement"
+        type: "string"
+        description: "The new text that will replace the old text."        
+      - name: "multiple"
+        type: "boolean"
+        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."        
+    parameters_required:
+      - "path"
+      - "old_str"
+      - "replacement"
+      - "multiple"
+      
   # -- agentic tools below --
-
   - name: "locate"
     agentic: true
     description: "Get a list of files that are relevant to solve a particular task."
@@ -264,31 +300,17 @@ tools:
         description: "What's the topic and what kind of result do you want?"
     parameters_required:
       - "problem_statement"
-
-  - name: "create_textdoc"
-    agentic: false
-    description: "Creates a new text document or code"
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute path to new file."
-      - name: "content"
-        type: "string"
-        description: "The initial text or code."
-    parameters_required:
-      - "path"
-      - "content"
       
-  - name: "update_textdoc"
-    agentic: false
-    description: "Updates the existing document based on regex-based pattern replacements. Use it always for large files."
+  - name: "update_textdoc_regex"
+    agentic: true
+    description: "Updates the existing document based on regex-based pattern replacements."
     parameters:
       - name: "path"
         type: "string"
         description: "Absolute path to the file to change."
       - name: "pattern"
         type: "string"
-        description: "A regex pattern to match the text that needs to be updated. Prefer simple replacements and simple regexes."        
+        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes."        
       - name: "replacement"
         type: "string"
         description: "The new text that will replace the matched pattern."        
@@ -302,8 +324,8 @@ tools:
       - "multiple"
       
   - name: "replace_textdoc"
-    agentic: false
-    description: "[OPTIONAL] When the file is small, replaces an existing document or code with the content."
+    agentic: true
+    description: "When the file is small, replaces an existing document or code with the content."
     parameters:
       - name: "path"
         type: "string"

@@ -72,7 +72,44 @@ pub fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String)
     Ok((before_text, file_text.to_string()))
 }
 
-pub fn str_replace(
+pub fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multiple: bool) -> Result<(String, String), String> {
+    let file_content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
+
+    let has_crlf = file_content.contains("\r\n");
+
+    let normalized_content = normalize_line_endings(&file_content);
+    let normalized_old_str = normalize_line_endings(old_str);
+
+    let occurrences = normalized_content.matches(&normalized_old_str).count();
+    if occurrences == 0 {
+        return Err(format!(
+            "No replacement was performed, old_str \n```\n{}\n```\ndid not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            old_str, path
+        ));
+    }
+    if !replace_multiple && occurrences > 1 {
+        let lines: Vec<usize> = normalized_content
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| line.contains(&normalized_old_str))
+            .map(|(idx, _)| idx + 1)
+            .collect();
+        return Err(format!(
+            "No replacement was performed. Multiple occurrences of old_str `{}` in lines {:?}. Please ensure it is unique or set `replace_multiple` to true.",
+            old_str, lines
+        ));
+    }
+
+    let normalized_new_str = normalize_line_endings(new_str);
+    let new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
+
+    let new_file_content = restore_line_endings(&new_content, has_crlf);
+    write_file(path, &new_file_content)?;
+    Ok((file_content, new_file_content))
+}
+
+pub fn str_replace_regex(
     path: &PathBuf,
     pattern: &Regex,
     replacement: &String,
