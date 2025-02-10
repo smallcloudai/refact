@@ -8,10 +8,10 @@ use serde::{Serialize, Deserialize};
 
 use crate::ast::chunk_utils::official_text_hashing_function;
 use crate::custom_error::MapErrToString;
-use crate::file_filter::BLACKLISTED_DIRS;
+use crate::files_blocklist::reload_indexing_everywhere_if_needed;
 use crate::files_correction::{deserialize_path, get_active_workspace_folder, get_project_dirs, serialize_path};
 use crate::global_context::GlobalContext;
-use crate::git::{FileChange, FileChangeStatus, DiffStatusType};
+use crate::git::{FileChange, FileChangeStatus, DiffStatusType, from_unix_glob_pattern_to_gitignore};
 use crate::git::operations::{checkout_head_and_branch_to_commit, commit, get_commit_datetime, get_diff_statuses, get_diff_statuses_index_to_commit, get_or_create_branch, stage_changes, open_or_init_repo};
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
@@ -27,27 +27,34 @@ impl Checkpoint {
     }
 }
 
-fn open_shadow_repos(paths: &[PathBuf], allow_init: bool, nested: bool, cache_dir: &Path) -> Result<Vec<Repository>, String> {
+async fn open_shadow_repos(gcx: Arc<ARwLock<GlobalContext>>, paths: &[PathBuf], allow_init: bool, nested: bool, cache_dir: &Path) -> Result<Vec<Repository>, String> {
+    let indexing_everywhere = reload_indexing_everywhere_if_needed(gcx).await;
     let mut result = Vec::new();
     for path in paths {
+        let indexing_for_path = indexing_everywhere.indexing_for_path(path);
         let path_hash = official_text_hashing_function(&path.to_string_lossy().to_string());
         let git_dir_path = if nested {
             cache_dir.join("shadow_git").join("nested").join(&path_hash)
         } else {
             cache_dir.join("shadow_git").join(&path_hash)
         };
-        let nested_repo = if allow_init {
+        let repo = if allow_init {
             open_or_init_repo(&git_dir_path).map_err_to_string()
         } else {
             Repository::open(&git_dir_path).map_err_to_string()
         }?;
-        nested_repo.set_workdir(path, false).map_err_to_string()?;
-        for blacklisted_dir in  BLACKLISTED_DIRS {
-            if let Err(e) = nested_repo.add_ignore_rule(blacklisted_dir) {
-                tracing::warn!("Failed to add ignore rule for {blacklisted_dir}: {e}");
+        repo.set_workdir(path, false).map_err_to_string()?;
+        for blocklisted_rule in indexing_for_path.blocklist {
+            if let Err(e) = repo.add_ignore_rule(&from_unix_glob_pattern_to_gitignore(&blocklisted_rule)) {
+                tracing::warn!("Failed to add ignore rule for {}: {}", path.to_string_lossy(), e);
             }
         }
-        result.push(nested_repo);
+        for additional_indexing_rule in indexing_for_path.additional_indexing_dirs {
+            if let Err(e) = repo.add_ignore_rule(&format!("!{}", from_unix_glob_pattern_to_gitignore(&additional_indexing_rule))) {
+                tracing::warn!("Failed to add ignore rule for {}: {}", path.to_string_lossy(), e);
+            }
+        }
+        result.push(repo);
     }
     Ok(result)
 }
@@ -104,9 +111,9 @@ pub async fn create_workspace_checkpoint(
 
     let t0 = Instant::now();
 
-    let repo = open_shadow_repos(&[workspace_folder.clone()], false, false, &cache_dir)?
+    let repo = open_shadow_repos(gcx.clone(), &[workspace_folder.clone()], false, false, &cache_dir).await?
         .into_iter().next().unwrap();
-    let nested_repos = open_shadow_repos(&nested_vcs_roots, true, true, &cache_dir)?;
+    let nested_repos = open_shadow_repos(gcx.clone(), &nested_vcs_roots, true, true, &cache_dir).await?;
     
     let has_commits = repo.head().map(|head| head.target().is_some()).unwrap_or(false);
     if !has_commits {
@@ -194,14 +201,14 @@ pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> ()
         let nested_vcs_roots: Vec<PathBuf> = workspace_vcs_roots.iter()
             .filter(|r| r.starts_with(&workspace_folder) && **r != workspace_folder).cloned().collect();
 
-        let repo = match open_shadow_repos(&[workspace_folder], true, false, &cache_dir) {
+        let repo = match open_shadow_repos(gcx.clone(), &[workspace_folder], true, false, &cache_dir).await {
             Ok(repos) => repos.into_iter().next().unwrap(),
             Err(e) => {
                 tracing::error!("Failed to open or init shadow repo for {workspace_folder_str}: {e}");
                 continue;
             }
         };
-        let nested_repos = match open_shadow_repos(&nested_vcs_roots, true, true, &cache_dir) {
+        let nested_repos = match open_shadow_repos(gcx.clone(), &nested_vcs_roots, true, true, &cache_dir).await {
             Ok(nested_repos) => nested_repos,
             Err(e) => {
                 tracing::error!("Failed to open or init nested repos for {workspace_folder_str}: {e}");

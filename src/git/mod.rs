@@ -53,3 +53,18 @@ pub enum DiffStatusType {
     IndexToHead,
     WorkdirToIndex,
 }
+
+/// It's not equivalent or good match, just best effort so that it works in most cases.
+/// Making a 1-to-1 mapping would be very hard.
+pub fn from_unix_glob_pattern_to_gitignore(pattern: &str) -> String {
+    let parts = pattern.split('/')
+        .skip_while(|&p| p.is_empty())
+        .map(|part| if part == "*" { "**" } else { part })
+        .collect::<Vec<_>>();
+    
+    if parts.first() != Some(&"**") {
+        format!("**/{}", parts.join("/"))
+    } else {
+        parts.join("/")
+    }
+}
