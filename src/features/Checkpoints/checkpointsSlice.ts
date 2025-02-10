@@ -1,8 +1,10 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { RestoreCheckpointsResponse } from "./types";
+import { Checkpoint, PreviewCheckpointsResponse } from "./types";
 
 export type CheckpointsMeta = {
-  latestCheckpointResult: RestoreCheckpointsResponse;
+  latestCheckpointResult: PreviewCheckpointsResponse & {
+    current_checkpoints: Checkpoint[];
+  };
   isVisible: boolean;
   isUndoing: boolean;
   restoringUserMessageIndex: number | null;
@@ -13,6 +15,7 @@ const initialState: CheckpointsMeta = {
   latestCheckpointResult: {
     reverted_to: "",
     checkpoints_for_undo: [],
+    current_checkpoints: [],
     reverted_changes: [],
     error_log: [],
   },
@@ -29,7 +32,10 @@ export const checkpointsSlice = createSlice({
     setLatestCheckpointResult: (
       state,
       action: PayloadAction<
-        RestoreCheckpointsResponse & { messageIndex: number }
+        PreviewCheckpointsResponse & {
+          messageIndex: number;
+          current_checkpoints: Checkpoint[];
+        }
       >,
     ) => {
       state.latestCheckpointResult = action.payload;
@@ -43,6 +49,12 @@ export const checkpointsSlice = createSlice({
     },
     setShouldNewChatBeStarted: (state, action: PayloadAction<boolean>) => {
       state.shouldNewChatBeStarted = action.payload;
+    },
+    setCheckpointsErrorLog: (state, action: PayloadAction<string[]>) => {
+      state.latestCheckpointResult.error_log = action.payload;
+    },
+    clearCheckpointsErrorLog: (state) => {
+      state.latestCheckpointResult.error_log = [];
     },
   },
 
@@ -60,6 +72,8 @@ export const {
   setIsCheckpointsPopupIsVisible,
   setIsUndoingCheckpoints,
   setShouldNewChatBeStarted,
+  setCheckpointsErrorLog,
+  clearCheckpointsErrorLog,
 } = checkpointsSlice.actions;
 export const {
   selectLatestCheckpointResult,

@@ -16,20 +16,38 @@ export type RevertedCheckpointData = {
   files_changed: FileChanged[];
 };
 
+export type PreviewCheckpointsPayload = {
+  checkpoints: Checkpoint[];
+};
+
 export type RestoreCheckpointsPayload = {
   checkpoints: Checkpoint[];
 };
 
-export type RestoreCheckpointsResponse = {
+export type PreviewCheckpointsResponse = {
   reverted_to: string; // date-time in ISO format
   checkpoints_for_undo: Checkpoint[];
   reverted_changes: RevertedCheckpointData[];
   error_log: string[];
 };
 
+export type RestoreCheckpointsResponse = {
+  success: boolean;
+  error_log: string[];
+};
+
 export function isRestoreCheckpointsResponse(
   json: unknown,
 ): json is RestoreCheckpointsResponse {
+  if (!json || typeof json !== "object") return false;
+  if (!("success" in json) || typeof json.success !== "boolean") return false;
+  if (!("error_log" in json) || !Array.isArray(json.error_log)) return false;
+  return true;
+}
+
+export function isPreviewCheckpointsResponse(
+  json: unknown,
+): json is PreviewCheckpointsResponse {
   if (!json || typeof json !== "object") return false;
 
   if (!("reverted_to" in json) || typeof json.reverted_to !== "string")

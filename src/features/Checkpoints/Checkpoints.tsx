@@ -9,6 +9,7 @@ import styles from "./Checkpoints.module.css";
 import { formatDateOrTimeBasedOnToday } from "../../utils/formatDateToHumanReadable";
 import { formatPathName } from "../../utils/formatPathName";
 import { CheckpointsStatusIndicator } from "./CheckpointsStatusIndicator";
+import { ErrorCallout } from "../../components/Callout";
 
 export const Checkpoints = () => {
   const { openFile } = useEventsBusForIDE();
@@ -17,9 +18,10 @@ export const Checkpoints = () => {
     handleFix,
     handleUndo,
     reverted_to,
-    isLoading,
+    isRestoring,
     allChangedFiles,
     wereFilesChanged,
+    errorLog,
   } = useCheckpoints();
 
   const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -28,14 +30,18 @@ export const Checkpoints = () => {
     clientTimezone,
   );
 
+  const checkpointsTitle = `${
+    wereFilesChanged ? "Files changed" : "No files were changed"
+  } from checkpoint at ${formattedDate}`;
+
   return (
     <Dialog.Root
       open={shouldCheckpointsPopupBeShown}
       onOpenChange={(state) => {
         if (!state) {
-          void handleUndo();
+          handleUndo();
         } else {
-          handleFix();
+          void handleFix();
         }
       }}
     >
@@ -45,8 +51,9 @@ export const Checkpoints = () => {
           at this point
         </Dialog.Description>
         <Dialog.Title as="h2" size="3" mt="4" mb="3">
-          {wereFilesChanged ? "Files changed" : "No files were changed"} from
-          checkpoint at {formattedDate}
+          {errorLog.length >= 1
+            ? "Oops... Something went wrong"
+            : checkpointsTitle}
         </Dialog.Title>
         <ScrollArea scrollbars="vertical" style={{ maxHeight: "300px" }}>
           <Flex direction="column" gap="2">
@@ -96,7 +103,11 @@ export const Checkpoints = () => {
               })}
           </Flex>
         </ScrollArea>
-
+        {errorLog.length > 0 && (
+          <ErrorCallout mx="0" preventRetry>
+            {errorLog.join("\n")}
+          </ErrorCallout>
+        )}
         <Flex
           gap="3"
           mt={wereFilesChanged ? "4" : "2"}
@@ -108,12 +119,24 @@ export const Checkpoints = () => {
               type="button"
               variant="soft"
               color="gray"
-              loading={isLoading}
-              onClick={() => void handleUndo()}
+              onClick={handleUndo}
             >
               Cancel
             </Button>
-            <Button onClick={handleFix}>Roll back to checkpoint</Button>
+            <Button
+              loading={isRestoring}
+              disabled={errorLog.length > 0}
+              onClick={() => void handleFix()}
+              title={
+                isRestoring
+                  ? "Rolling back..."
+                  : errorLog.length > 0
+                    ? "There are some errors, you cannot roll back to this checkpoint"
+                    : "Roll back to checkpoint"
+              }
+            >
+              Roll back to checkpoint
+            </Button>
           </Flex>
         </Flex>
       </Dialog.Content>

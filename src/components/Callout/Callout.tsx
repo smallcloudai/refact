@@ -32,7 +32,7 @@ export const Callout: React.FC<CalloutProps> = ({
   type = "info",
   timeout = null,
   onClick = () => void 0,
-  preventRetry,
+  preventRetry = false,
   ...props
 }) => {
   const [isOpened, setIsOpened] = useState(false);
@@ -90,6 +90,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   timeout = null,
   onClick,
   children,
+  preventRetry,
   ...props
 }) => {
   const logout = useLogout();
@@ -102,11 +103,11 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
       onClick={onClick}
       timeout={timeout}
       itemType={props.itemType}
-      preventRetry={isAuthError}
+      preventRetry={isAuthError ?? preventRetry}
       {...props}
     >
       Error: {children}
-      {!isAuthError && (
+      {!isAuthError && !preventRetry && (
         <Text size="1" as="p">
           Click to retry
         </Text>

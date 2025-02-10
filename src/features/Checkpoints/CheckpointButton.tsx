@@ -18,15 +18,15 @@ export const CheckpointButton = ({
   const isWaiting = useAppSelector(selectIsWaiting);
   const isOnline = useIsOnline();
 
-  const { handleRestore, isLoading } = useCheckpoints();
+  const { handlePreview, isPreviewing } = useCheckpoints();
 
   return (
     <IconButton
       size="2"
       variant="soft"
-      title={isLoading ? "Reverting..." : "Revert agent changes"}
-      onClick={() => void handleRestore(checkpoints, messageIndex)}
-      loading={isLoading}
+      title={isPreviewing ? "Reverting..." : "Revert agent changes"}
+      onClick={() => void handlePreview(checkpoints, messageIndex)}
+      loading={isPreviewing}
       disabled={!isOnline || isStreaming || isWaiting}
     >
       <ResetIcon />
