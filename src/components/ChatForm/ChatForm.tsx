@@ -15,7 +15,6 @@ import {
   useIsOnline,
   useConfig,
   useAgentUsage,
-  useSendChatRequest,
   useCapsForToolUse,
   USAGE_LIMIT_EXHAUSTED_MESSAGE,
 } from "../../hooks";
@@ -50,7 +49,7 @@ import {
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
-import { isUserMessage, telemetryApi } from "../../services/refact";
+import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
 
@@ -70,7 +69,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const { retryFromIndex } = useSendChatRequest();
   const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
@@ -90,22 +88,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return threadToolUse === "agent" && toolUse === "agent";
   }, [toolUse, threadToolUse]);
 
-  const onClearError = useCallback(() => {
-    dispatch(clearError());
-    const userMessages = messages.filter(isUserMessage);
-
-    // getting second-to-last user message
-    const lastSuccessfulUserMessage =
-      userMessages.slice(-2, -1)[0] || userMessages[0];
-
-    const lastSuccessfulUserMessageIndex = messages.indexOf(
-      lastSuccessfulUserMessage,
-    );
-    retryFromIndex(
-      lastSuccessfulUserMessageIndex,
-      lastSuccessfulUserMessage.content,
-    );
-  }, [dispatch, retryFromIndex, messages]);
+  const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
 
   const caps = useCapsForToolUse();
 
