@@ -461,7 +461,7 @@ pub async fn scratchpad_interaction_stream(
                                 value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                                 // let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
-                                info!("yield: {:?}", value_str);
+                                // info!("yield: {:?}", last_60_chars);
                                 yield Result::<_, String>::Ok(value_str);
                             },
                             Err(err_str) => {

@@ -82,8 +82,8 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multi
     let occurrences = normalized_content.matches(&normalized_old_str).count();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, old_str `{}` did not appear verbatim in {:?}.",
-            old_str, path
+            "No replacement was performed, old_str `{}` did not appear verbatim in {:?}. Here is the current file content:\n```\n{}\n```",
+            old_str, path, file_content
         ));
     }
     if !replace_multiple && occurrences > 1 {

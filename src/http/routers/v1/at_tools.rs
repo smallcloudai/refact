@@ -103,6 +103,19 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    fn reply(pause: bool, pause_reasons: &Vec<PauseReason>) -> Response<Body> {
+        let body = serde_json::json!({
+            "pause": pause,
+            "pause_reasons": pause_reasons
+        }).to_string();
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Body::from(body))
+            .unwrap()
+    }
+    
+    
     let post = serde_json::from_slice::<ToolsPermissionCheckPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
@@ -148,7 +161,15 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         let args = match serde_json::from_str::<HashMap<String, Value>>(&tool_call.function.arguments) {
             Ok(args) => args,
             Err(e) => {
-                return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)));
+                return Ok(reply(false, &vec![
+                    PauseReason {
+                        reason_type: PauseReasonType::Denial,
+                        command: tool_call.function.name.clone(),
+                        rule: format!("tool parsing problem: {}", e),
+                        tool_call_id: tool_call.id.clone(),
+                        integr_config_path: tool.has_config_path(),
+                    }
+                ]));
             }
         };
 
@@ -177,17 +198,8 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             _ => {},
         }
     }
-
-    let body = serde_json::json!({
-        "pause": !result_messages.is_empty(),
-        "pause_reasons": result_messages,
-    }).to_string();
-
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .body(Body::from(body))
-        .unwrap())
+    
+    Ok(reply(!result_messages.is_empty(), &result_messages))
 }
 
 pub async fn handle_v1_tools_execute(

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use indexmap::IndexMap;
@@ -10,7 +10,7 @@ use tracing::{error, info};
 
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -138,7 +138,12 @@ impl ScratchpadAbstract for ChatPassthrough {
             }
         };
 
-        _remove_unanswered_tool_call_messages(&mut messages);
+        _replace_broken_tool_call_messages(
+            &mut messages,
+            sampling_parameters_to_patch,
+            16000
+        );
+        _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
         let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
@@ -248,13 +253,12 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 }
 
-fn _remove_unanswered_tool_call_messages(messages: &mut Vec<ChatMessage>) {
+fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessage>) {
     let tool_call_ids: HashSet<_> = messages.iter()
         .filter(|m| !m.tool_call_id.is_empty())
         .map(|m| &m.tool_call_id)
         .cloned()
         .collect();
-
     messages.retain(|m| {
         if let Some(tool_calls) = &m.tool_calls {
             let should_retain = tool_calls.iter().all(|tc| tool_call_ids.contains(&tc.id));
@@ -266,4 +270,61 @@ fn _remove_unanswered_tool_call_messages(messages: &mut Vec<ChatMessage>) {
             true
         }
     });
+
+    let tool_call_ids: HashSet<_> = messages.iter()
+        .filter_map(|x| x.tool_calls.clone())
+        .flatten()
+        .map(|x| x.id)
+        .collect();
+    messages.retain(|m| {
+        if !m.tool_call_id.is_empty() && !tool_call_ids.contains(&m.tool_call_id) {
+            tracing::error!("removing tool result with no tool_call: {:?}", m);
+            false
+        } else {
+            true
+        }
+    });
+}
+
+fn _replace_broken_tool_call_messages(
+    messages: &mut Vec<ChatMessage>,
+    sampling_parameters: &mut SamplingParameters,
+    new_max_new_tokens: usize
+) {
+    for message in messages.iter_mut() {
+        if let Some(tool_calls) = &mut message.tool_calls {
+            let incorrect_reasons = tool_calls.iter().map(|tc| {
+                match serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
+                    Ok(_) => None,
+                    Err(err) => { 
+                        Some(format!("broken {}({}): {}", tc.function.name, tc.function.arguments, err))
+                    }
+                }
+            }).filter_map(|x| x).collect::<Vec<_>>();
+            
+            if !incorrect_reasons.is_empty() {
+                if message.finish_reason == Some("length".to_string()) {
+                    tracing::warn!("increasing `max_new_tokens` from {} to {}", sampling_parameters.max_new_tokens, new_max_new_tokens);
+                    sampling_parameters.max_new_tokens = new_max_new_tokens;
+                }
+
+                tracing::error!("tool calls are broken: {:?}", incorrect_reasons);
+                tracing::error!("converting the tool call message to the `cd_instruction`: {:?}", incorrect_reasons);
+                let incorrect_reasons_concat = incorrect_reasons.join("\n");
+                message.role = "cd_instruction".to_string();
+                message.content = ChatContent::SimpleText(format!(
+                    "Previous tool calls are not valid: {}",
+                    incorrect_reasons_concat
+                ));
+                if message.finish_reason == Some("length".to_string()) {
+                    message.content = ChatContent::SimpleText(format!(
+                        "{}\nThis message was stripped (finish_reason=`length`). Increasing `max_new_tokens` to {}. Consider using `str_replace` in the `text_edit()`",
+                        message.content.content_text_only(),
+                        new_max_new_tokens
+                    ));
+                }
+                message.tool_calls = None;
+            }
+        }
+    }
 }
