@@ -6,7 +6,7 @@ import { Theme } from "../../components/Theme";
 import { Checkpoints } from "./Checkpoints";
 import { CheckpointsMeta } from "./checkpointsSlice";
 import {
-  STUB_RESTORED_CHECKPOINTS_STATE,
+  STUB_PREVIEWED_CHECKPOINTS_STATE,
   STUB_RESTORED_CHECKPOINTS_STATE_WITH_NO_CHANGES,
 } from "../../__fixtures__/checkpoints";
 
@@ -26,7 +26,7 @@ const Template: React.FC<{ initialState?: CheckpointsMeta }> = ({
         appearance: "dark",
       },
     },
-    checkpoints: initialState ?? STUB_RESTORED_CHECKPOINTS_STATE,
+    checkpoints: initialState ?? STUB_PREVIEWED_CHECKPOINTS_STATE,
   });
 
   return (
