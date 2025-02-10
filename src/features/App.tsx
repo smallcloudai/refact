@@ -34,6 +34,7 @@ import { LoginPage } from "./Login";
 
 import styles from "./App.module.css";
 import classNames from "classnames";
+import { usePatchesAndDiffsEventsForIDE } from "../hooks/usePatchesAndDiffEventsForIDE";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -59,6 +60,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const chatId = useAppSelector(selectChatId);
   useEventBusForWeb();
   useEventBusForApp();
+  usePatchesAndDiffsEventsForIDE();
 
   const [isPaddingApplied, setIsPaddingApplied] = useState<boolean>(false);
 
