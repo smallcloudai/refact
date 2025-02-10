@@ -1,6 +1,5 @@
-use std::sync::{Arc, Mutex as StdMutex};
+use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
-use std::path::PathBuf;
 use url::Url;
 use tracing::{error, info, warn};
 
@@ -13,15 +12,12 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
 {
     let mut commits = Vec::new();
 
-    let workspace_vcs_roots: Arc<StdMutex<Vec<PathBuf>>> = {
-        let cx_locked = gcx.write().await;
-        cx_locked.documents_state.workspace_vcs_roots.clone()
-    };
+    let workspace_vcs_roots_arc = gcx.read().await.documents_state.workspace_vcs_roots.clone();
+    let workspace_vcs_roots = workspace_vcs_roots_arc.lock().unwrap().clone();
 
-    let vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
-    info!("get_commit_information_from_current_changes() vcs_roots={:?}", vcs_roots_locked);
-    for project_path in vcs_roots_locked.iter() {
-        let repository = match git2::Repository::open(project_path) {
+    info!("get_commit_information_from_current_changes() vcs_roots={:?}", workspace_vcs_roots);
+    for project_path in workspace_vcs_roots {
+        let repository = match git2::Repository::open(&project_path) {
             Ok(repo) => repo,
             Err(e) => { warn!("{}", e); continue; }
         };
