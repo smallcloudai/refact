@@ -9,7 +9,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
+use crate::ast::ast_indexer_thread::{ast_indexer_block_until_finished, ast_indexer_enqueue_files};
+use crate::global_context::GlobalContext;
 use crate::tools::tool_apply_edit_aux::diff_structs::chunks_from_diffs;
 
 fn normalize_line_endings(content: &str) -> String {
@@ -22,6 +25,28 @@ fn restore_line_endings(content: &str, original_had_crlf: bool) -> String {
     } else {
         content.to_string()
     }
+}
+
+
+async fn await_ast_indexing(gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
+    let ast_service_mb = gcx.read().await.ast_service.clone();
+    if let Some(ast_service) = &ast_service_mb {
+        ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
+    }
+    Ok(())
+}
+
+
+async fn sync_documents_ast(gcx: Arc<ARwLock<GlobalContext>>, doc: &PathBuf) -> Result<(), String> {
+    let ast_service_mb = gcx.read().await.ast_service.clone();
+    if let Some(ast_service) = &ast_service_mb {
+        ast_indexer_enqueue_files(
+            ast_service.clone(),
+            &vec![doc.to_string_lossy().to_string()],
+            true,
+        ).await;
+    }
+    Ok(())
 }
 
 pub struct ToolTextEdit {
@@ -107,19 +132,24 @@ fn str_replace(path: &PathBuf, old_str: &String, new_str: &String, replace_multi
     Ok((file_content, new_file_content))
 }
 
-fn process_command(command: &ToolTextEditCommand) -> Result<(String, String), String> {
+async fn process_command(gcx: Arc<ARwLock<GlobalContext>>, command: &ToolTextEditCommand) -> Result<(String, String), String> {
+    await_ast_indexing(gcx.clone()).await?;
     match command.command.as_str() {
         "create" | "file_replace" => {
             let file_text = command
                 .file_text
                 .clone()
                 .expect("file_text is checked before");
-            write_file(&command.path, &file_text)
+            let res = write_file(&command.path, &file_text);
+            sync_documents_ast(gcx.clone(), &command.path).await?;
+            res
         }
         "str_replace" => {
             let old_str = command.old_str.clone().expect("old_str is checked before");
             let new_str = command.new_str.clone().expect("new_str is checked before");
-            str_replace(&command.path, &old_str, &new_str, command.replace_multiple)
+            let res = str_replace(&command.path, &old_str, &new_str, command.replace_multiple);
+            sync_documents_ast(gcx.clone(), &command.path).await?;
+            res
         }
         _ => Err("unknown command".to_string()),
     }
@@ -246,6 +276,7 @@ async fn can_execute_tool_edit(args: &HashMap<String, Value>) -> Result<(), Stri
     Ok(())
 }
 
+
 #[async_trait]
 impl Tool for ToolTextEdit {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -254,12 +285,14 @@ impl Tool for ToolTextEdit {
 
     async fn tool_execute(
         &mut self,
-        _: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let gcx = ccx.lock().await.global_context.clone();
         let command = parse_args_to_command(args)?;
-        let (before_text, after_text) = process_command(&command)?;
+        let (before_text, after_text) = process_command(gcx.clone(), &command).await?;
+        
         let diff_chunks = convert_edit_to_diffchunks(command.path.clone(), &before_text, &after_text)?;
         let results = vec![
             ChatMessage {
