@@ -294,7 +294,7 @@ pub fn _ls_files(
         entries.sort_by_key(|entry| entry.file_name());
         for entry in entries {
             let path = entry.path();
-            let indexing_settings = indexing_everywhere.indexing_for_path(path.clone());
+            let indexing_settings = indexing_everywhere.indexing_for_path(&path);
             if recursive && path.is_dir() {
                 if !blocklist_check || !is_blocklisted(&indexing_settings, &path) {
                     dirs_to_visit.push(path);
@@ -316,7 +316,7 @@ pub fn ls_files(
         return Err(format!("path '{}' is not a directory", path.display()));
     }
 
-    let indexing_settings = indexing_everywhere.indexing_for_path(path.clone());
+    let indexing_settings = indexing_everywhere.indexing_for_path(path);
     let mut paths = _ls_files(indexing_everywhere, path, recursive, true).unwrap();
     if recursive {
         for additional_indexing_dir in indexing_settings.additional_indexing_dirs.iter() {
@@ -444,7 +444,7 @@ async fn _ls_files_under_version_control_recursive(
 
             } else {
                 // Don't have version control
-                let indexing_settings = indexing_everywhere.indexing_for_path(checkme.clone());  // this effectively only uses global blocklist
+                let indexing_settings = indexing_everywhere.indexing_for_path(&checkme);  // this effectively only uses global blocklist
                 if check_blocklist && is_blocklisted(&indexing_settings, &checkme) {
                     blocklisted_dirs_cnt += 1;
                     continue;
@@ -767,7 +767,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
             return;
         }
         for p in &event.paths {
-            let indexing_settings = indexing_everywhere_arc.indexing_for_path(p.clone());
+            let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
             if is_blocklisted(&indexing_settings, &p) {  // important to filter BEFORE canonical_path
                 continue;
             }
@@ -805,13 +805,13 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
             return;
         }
         for p in &event.paths {
-            let indexing_settings = indexing_everywhere_arc.indexing_for_path(p.clone());
+            let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
             never_mind &= is_blocklisted(&indexing_settings, &p);
         }
         let mut docs = vec![];
         if !never_mind {
             for p in &event.paths {
-                let indexing_settings = indexing_everywhere_arc.indexing_for_path(p.clone());
+                let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
                 if is_blocklisted(&indexing_settings, &p) {
                     continue;
                 }

@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Duration;
@@ -71,7 +71,7 @@ impl Default for IndexingEverywhere {
 }
 
 impl IndexingEverywhere {
-    pub fn indexing_for_path(&self, path: PathBuf) -> IndexingSettings {
+    pub fn indexing_for_path(&self, path: &Path) -> IndexingSettings {
         assert!(path.is_absolute());
         let mut result: IndexingSettings = self.global.clone();
         result.blocklist.extend(DEFAULT_BLOCKLIST_DIRS.iter().map(|s| s.to_string()));
