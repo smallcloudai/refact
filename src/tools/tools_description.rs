@@ -130,7 +130,6 @@ pub async fn tools_merged_and_filtered(
         ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
-        // ("apply_edit".to_string(), Box::new(crate::tools::tool_apply_edit::ToolApplyEdit::new()) as Box<dyn Tool + Send>),
         ("create_textdoc".to_string(), Box::new(crate::tools::file::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
         ("replace_textdoc".to_string(), Box::new(crate::tools::file::tool_replace_textdoc::ToolReplaceTextDoc{}) as Box<dyn Tool + Send>),
         ("update_textdoc".to_string(), Box::new(crate::tools::file::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
@@ -408,7 +407,7 @@ tools:
     parameters:
       - name: "im_going_to_use_tools"
         type: "string"
-        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger, apply_edit"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger"
       - name: "im_going_to_apply_to"
         type: "string"
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"

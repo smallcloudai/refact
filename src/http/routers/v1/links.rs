@@ -2,7 +2,6 @@ use std::sync::Arc;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
@@ -10,7 +9,6 @@ use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tool_apply_edit_aux::tickets_parsing::get_tickets_from_messages;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
@@ -52,9 +50,11 @@ fn is_default_json_value(value: &serde_json::Value) -> bool {
     value == &serde_json::Value::Null
 }
 
-fn last_message_assistant_without_tools(messages: &Vec<ChatMessage>) -> bool {
+fn last_message_assistant_without_tools_with_code_blocks(messages: &Vec<ChatMessage>) -> bool {
     if let Some(m) = messages.last() {
-        m.role == "assistant" && m.tool_calls.as_ref().map(|x| x.is_empty()).unwrap_or(true)
+        m.role == "assistant" 
+            && m.tool_calls.as_ref().map(|x| x.is_empty()).unwrap_or(true)
+            && m.content.content_text_only().contains("```")
     } else {
         false
     }
@@ -67,69 +67,6 @@ fn last_message_stripped_assistant(messages: &Vec<ChatMessage>) -> bool {
         false
     }
 }
-
-async fn trunc_pinned_message_link(
-    gcx: Arc<ARwLock<GlobalContext>>, 
-    messages: &Vec<ChatMessage>,
-    chat_mode: &ChatMode,
-) -> Option<String> {
-    if let Some(m) = messages.last() {
-        let tickets = crate::tools::tool_apply_edit_aux::tickets_parsing::parse_tickets(
-            gcx.clone(), &m.content.content_text_only(), messages.len() - 1,
-        ).await;
-        
-        let truncated_ids = tickets
-            .iter()
-            .filter(|t| t.is_truncated)
-            .map(|x| x.id.to_string())
-            .join(", ");
-        
-        match chat_mode {
-            ChatMode::AGENT => {
-                if !truncated_ids.is_empty() {
-                    Some(format!("Regenerate truncated {truncated_ids} 📍-tickets and continue to generate others (if needed). Then use apply_edit() to apply them"))
-                } else {
-                    None
-                }
-            }
-            _ => {
-                if !truncated_ids.is_empty() {
-                    Some(format!("Regenerate truncated {truncated_ids} 📍-tickets and continue to generate others (if needed)"))
-                } else {
-                    None
-                }
-            }
-        }
-    } else {
-        None
-    }
-}
-
-async fn apply_patch_promptly_link(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    messages: &Vec<ChatMessage>,
-) -> Option<String> {
-    if let Some(m) = messages.last() {
-        let tickets = crate::tools::tool_apply_edit_aux::tickets_parsing::parse_tickets(
-            gcx.clone(), &m.content.content_text_only(), messages.len() - 1,
-        ).await;
-
-        let has_truncated_tickets = tickets.iter().filter(|t| t.is_truncated).count() > 0;
-        let ids_to_apply = tickets
-            .iter()
-            .filter(|t| !t.is_truncated)
-            .map(|x| x.id.to_string())
-            .join(", ");
-        if !has_truncated_tickets && !ids_to_apply.is_empty() {
-            Some(format!("Use apply_edit() to apply tickets: {ids_to_apply}"))
-        } else {
-            None
-        }
-    } else {
-        None
-    }
-}
-
 
 pub async fn handle_v1_links(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
@@ -144,33 +81,24 @@ pub async fn handle_v1_links(
     let experimental = gcx.read().await.cmdline.experimental;
     let (_integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), experimental).await;
 
-    // if post.meta.chat_mode == ChatMode::CONFIGURE {
-    //     if !get_tickets_from_messages(gcx.clone(), &post.messages).await.is_empty() {
-    //         links.push(Link {
-    //             link_action: LinkAction::PatchAll,
-    //             link_text: "Save and return".to_string(),
-    //             link_goto: Some("SETTINGS:DEFAULT".to_string()),
-    //             link_summary_path: None,
-    //             link_tooltip: format!(""),
-    //             link_payload: None,
-    //         });
-    //     }
-    // }
-
-    if post.meta.chat_mode == ChatMode::PROJECT_SUMMARY {
-        if !get_tickets_from_messages(gcx.clone(), &post.messages, None).await.is_empty() {
+    if post.meta.chat_mode == ChatMode::CONFIGURE {
+        if last_message_assistant_without_tools_with_code_blocks(&post.messages) {
             links.push(Link {
-                link_action: LinkAction::PatchAll,
-                link_text: "Save and return".to_string(),
-                link_goto: Some("NEWCHAT".to_string()),
+                link_action: LinkAction::FollowUp,
+                link_text: "Looks alright! Save the generated config.".to_string(),
+                link_goto: None,
                 link_summary_path: None,
                 link_tooltip: format!(""),
                 ..Default::default()
             });
-        } else if last_message_assistant_without_tools(&post.messages) {
+        }
+    }
+
+    if post.meta.chat_mode == ChatMode::PROJECT_SUMMARY {
+        if last_message_assistant_without_tools_with_code_blocks(&post.messages) {
             links.push(Link {
                 link_action: LinkAction::FollowUp,
-                link_text: "Looks alright! Please, save the generated summary!".to_string(),
+                link_text: "Looks alright! Save the generated summary.".to_string(),
                 link_goto: None,
                 link_summary_path: None,
                 link_tooltip: format!(""),
@@ -257,41 +185,16 @@ pub async fn handle_v1_links(
             link_tooltip: format!(""),
             ..Default::default()
         });
-        if let Some(msg) = trunc_pinned_message_link(gcx.clone(), &post.messages, &post.meta.chat_mode).await {
-            links.push(Link {
-                link_action: LinkAction::FollowUp,
-                link_text: msg,
-                link_goto: None,
-                link_summary_path: None,
-                link_tooltip: format!(""),
-                ..Default::default()
-            });
-        } else {
-            links.push(Link {
-                link_action: LinkAction::FollowUp,
-                link_text: "Complete the previous message from where it was left off".to_string(),
-                link_goto: None,
-                link_summary_path: None,
-                link_tooltip: format!(""),
-                ..Default::default()
-            });
-        }
+        links.push(Link {
+            link_action: LinkAction::FollowUp,
+            link_text: "Complete the previous message from where it was left off".to_string(),
+            link_goto: None,
+            link_summary_path: None,
+            link_tooltip: format!(""),
+            ..Default::default()
+        });
     }
     
-    // Link to apply 📍 tickets promptly
-    if post.meta.chat_mode == ChatMode::AGENT {
-        if let Some(msg) = apply_patch_promptly_link(gcx.clone(), &post.messages).await {
-            links.push(Link {
-                link_action: LinkAction::FollowUp,
-                link_text: msg,
-                link_goto: None,
-                link_summary_path: None,
-                link_tooltip: format!(""),
-                ..Default::default()
-            });
-        }
-    }
-
     // Tool recommendations
     /* temporary remove project summary and recomended integrations 
     if (post.meta.chat_mode == ChatMode::AGENT) {

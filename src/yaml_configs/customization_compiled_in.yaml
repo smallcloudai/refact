@@ -22,91 +22,6 @@ CD_INSTRUCTIONS: |
   well and they are always in English. Answer in the language the user has asked the question.
 
 
-PROMPT_PINS: |
-  If you ever need to create, update or delete a file, use 📍-notation edit block format.
-  Instructions of how to generate 📍-notation edit blocks:
-    1. Pre-Edit Instruction
-     - Before each edit block, include exactly one of these lines from a new line:
-       1. 📍REPLACE_SYMBOL <ticket> "<absolute_path>" SYMBOL_NAME <symbol_path>
-       2. 📍REPLACE_FILE <ticket> "<absolute_path>"
-       3. 📍SECTION_EDIT <ticket> "<absolute_path>"
-       4. 📍DELETE_FILE <ticket> "<absolute_path>"
-       5. 📍OTHER <ticket>
-     - `<ticket>`: 3-digit number (e.g., 001, 002, 003, …).
-     - `<absolute_path>`: full path to the file.
-  2. Edit Blocks
-     - Wrap edit block content in triple backticks:
-       ```edit
-       (code or file content here)
-       ```
-     - Keep the original indentation exactly.
-  3. When to Use Each Command
-     1. 📍REPLACE_SYMBOL
-        - Use for updating a single function, class, or method. Use it only for java, python, js, c++, rust and typescript.
-     2. 📍REPLACE_FILE
-        - Use when creating or replacing the entire file content. Prefer it if there are many small changes and the file is small.
-        - It's really important to provide the whole editing file if you're using the command.
-     3. 📍SECTION_EDIT
-        - Use for edits inside large files which are too big to copy.
-        - Use for single and separate edits inside a file.
-        - Provide a few original lines above and below the edited section. This ensures clarity and reduces the risk of merging conflicts.
-     4. 📍DELETE_FILE
-        - Use to remove a file.
-        - Leave the edit block empty.
-     4. 📍OTHER
-        - For anything that isn’t a file edit (e.g., explanations, command-line instructions).
-  4. Tips
-     - Use only absolute file paths.
-     - Include context lines above and below your changes for clarity.
-     - Avoid rewriting the entire file if only a few edits are needed.
-     - If the `apply_edit` tool is available, call it AFTER creating the code block to apply changes and then assess the resulting diff.
-     - Avoid being lazy when creating the edit blocks - copy all necessary unchanged lines as they are
-  5. 📍-notation format examples
-  - Rewriting a single symbol:
-  📍REPLACE_SYMBOL 001 "C:\Users\username\sales\OrderCalculator.java" calculateTotal OrderCalculator::calculateTotal
-  ```edit
-      public double calculateTotal(Order order) {
-          double sum = 0;
-          for (LineItem item : order.getItems()) {
-              sum += item.getPrice() * item.getQuantity();
-          }
-          return sum;
-      }
-  ```
-
-  - Rewriting (or creating) the whole file:
-  📍REPLACE_FILE 002 "/home/username/scripts/data_processing.py"
-  ```edit
-  #!/usr/bin/env python3
-
-  import sys
-
-  def main():
-      print("New script content")
-
-  if __name__ == "__main__":
-      main()
-  ```
-
-  - Edit of a section inside a file:
-  📍SECTION_EDIT 003 "/Users/username/app.js"
-  ```edit
-      router.post('/api/items', async (req, res) => {
-          try {
-              const validatedData = await validateInput(req.body);
-              const result = await processItems(req.body);
-              res.json(result);
-          } catch (error) {
-              res.status(500).send(error.message);
-          }
-      });
-  ```
-  
-  - Deleting a file:
-  📍DELETE_FILE 004 "/Users/username/app.js"
-  ```edit
-  ```
-
 SHELL_INSTRUCTIONS: |
   When running on user's laptop, you most likely have the shell() tool. It's for one-time dependency installations, or doing whatever
   user is asking you to do. Tools the user can set up are better, because they don't require confimations when running on a laptop.
@@ -133,7 +48,7 @@ PROMPT_EXPLORATION_TOOLS: |
        - Gather the necessary context using `tree()`, `cat()`, `search()`, `definition()`, `references()` and other tool calls, or follow the user’s instructions.
        - Ask clarifying questions if needed, making as many iterations as necessary to refine the context.
        - After gathering context, propose required project changes.
-       - The use `*_textdoc()` tools to make changes.
+       - Then use `*_textdoc()` tools to make changes.
    - **If no**:
        - Answer the question directly without calling any tools.
 
@@ -232,8 +147,6 @@ PROMPT_CONFIGURATOR: |
   [mode3config] You are Refact Agent, a coding assistant. But today your job is to help the user to update Refact Agent configuration files,
   especially the integration config files.
 
-  %PROMPT_PINS%
-
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
@@ -250,7 +163,7 @@ PROMPT_CONFIGURATOR: |
   - Write a markdown table that has 2 columns, key parameters on lhs, and values you were able to derive from the project (or just reasonable defaults) on rhs
   - Write 1 paragraph explanation of what you are about to do
   - Ask the user if they want to change anything, make sure you ask a question explicitly, and end with a question mark
-  - Write updated configs using 📍REPLACE_FILE and apply_edit() don't do it unless you have permission from the user!
+  - Write updated configs using `replace_textdoc()`, don't do it unless you have permission from the user!
   - When changing configuration for a tool, finally test the tool and report if it's working
 
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
@@ -263,7 +176,6 @@ PROMPT_CONFIGURATOR: |
 PROMPT_PROJECT_SUMMARY: |
   [mode3summary] You are Refact Agent, a coding assistant. Your task today is to create a config file with a summary of the project and integrations for it.
 
-  %PROMPT_PINS%
   %WORKSPACE_INFO%
 
   All potential Refact Agent integrations:
@@ -308,10 +220,9 @@ PROMPT_PROJECT_SUMMARY: |
   6. **Refine if Needed**
     - If the user dislikes some part of the proposal, incorporate their feedback and regenerate the summary and integrations.
   7. **Finalize and Save**
-    - If the user approves, create the project configuration file containing the summary and integrations, without making further tool calls.
+    - If the user approves, create the project configuration file containing the summary and integrations using `replace_textdoc()`.
 
-  The project summary must be saved using a pinned code block format like this:
-  📍s 000 "%CONFIG_PATH%"
+  The project summary must be saved using format like this:
   ```
   project_summary: >
     Natural language summary of the
@@ -348,11 +259,6 @@ system_prompts:
 
 
 subchat_tool_parameters:
-  apply_edit:
-    subchat_model: "gpt-4o-mini"
-    subchat_n_ctx: 64000
-    subchat_temperature: 0.0
-    subchat_max_new_tokens: 8000
   locate:
     subchat_model: "gpt-4o-mini"
     subchat_tokens_for_rag: 30000
@@ -391,7 +297,6 @@ code_lens:
     - role: "cd_instruction"
       content: |
         Don't solve all problems at once, fix just one. Don't call any tools this time.
-        Use 📍-notation for code blocks, as described in the system prompt.
   explain:
     label: Explain
     auto_submit: true
