@@ -46,6 +46,16 @@ function isToolCall(call: unknown): call is ToolCall {
   return true;
 }
 
+export const validateToolCall = (toolCall: ToolCall) => {
+  if (!isToolCall(toolCall)) return false;
+  try {
+    JSON.parse(toolCall.function.arguments);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 type ToolContent = string | MultiModalToolContent[];
 
 export function isToolContent(json: unknown): json is ToolContent {

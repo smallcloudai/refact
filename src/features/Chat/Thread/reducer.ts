@@ -31,9 +31,14 @@ import {
   setMaxNewTokens,
   setAutomaticPatch,
   setLastUserMessageId,
+  fixBrokenToolMessages,
 } from "./actions";
 import { formatChatResponse } from "./utils";
-import { DEFAULT_MAX_NEW_TOKENS } from "../../../services/refact";
+import {
+  DEFAULT_MAX_NEW_TOKENS,
+  isToolCallMessage,
+  validateToolCall,
+} from "../../../services/refact";
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -262,5 +267,17 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setMaxNewTokens, (state, action) => {
     state.max_new_tokens = action.payload;
+  });
+
+  builder.addCase(fixBrokenToolMessages, (state, action) => {
+    if (action.payload.id !== state.thread.id) return state;
+    if (state.thread.messages.length === 0) return state;
+    const lastMessage = state.thread.messages[state.thread.messages.length - 1];
+    if (!isToolCallMessage(lastMessage)) return state;
+    if (lastMessage.tool_calls.every(validateToolCall)) return state;
+    const validToolCalls = lastMessage.tool_calls.filter(validateToolCall);
+    const messages = state.thread.messages.slice(0, -1);
+    const newMessage = { ...lastMessage, tool_calls: validToolCalls };
+    state.thread.messages = [...messages, newMessage];
   });
 });
