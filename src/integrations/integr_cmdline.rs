@@ -10,6 +10,8 @@ use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
 use std::borrow::Cow;
+
+#[cfg(not(target_os = "windows"))]
 use shell_escape::escape;
 
 use crate::global_context::GlobalContext;
@@ -106,17 +108,50 @@ impl IntegrationTrait for ToolCmdline {
     }
 }
 
-
+#[cfg(target_os = "windows")]
 fn powershell_escape(s: &str) -> String {
-    let escaped = s.replace("'", "''");
-    format!("'{}'", escaped)
+    let mut needs_escape = s.is_empty();
+    for ch in s.chars() {
+        match ch {
+            ' ' | '"' | '\'' | '$' | '`' | '[' | ']' | '{' | '}' | '(' | ')' |
+            '@' | '&' | '#' | ',' | ';' | '.' | '\t' | '\n' | '|' | '<' | '>' | '\\' => {
+                needs_escape = true;
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    if !needs_escape {
+        return s.to_string();
+    }
+
+    let mut es = String::with_capacity(s.len() + 2);
+    es.push('"');
+
+    for ch in s.chars() {
+        match ch {
+            '"' => es.push_str("`\""),
+            '$' => es.push_str("`$"),
+            '`' => es.push_str("``"),
+            '\t' => es.push_str("`t"),
+            '\n' => es.push_str("`n"),
+            '\\' => es.push_str("\\"),
+            _ => es.push(ch),
+        }
+    }
+
+    es.push('"');
+    es
 }
 
 pub fn replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
     let mut result = x.to_string();
     for (key, value) in args_str {
-        let escaped_value = if cfg!(target_os = "windows") {powershell_escape(value)}
-                                    else {escape(Cow::from(value.as_str())).to_string()};
+        #[cfg(target_os = "windows")]
+        let escaped_value = powershell_escape(value);
+        #[cfg(not(target_os = "windows"))]
+        let escaped_value = escape(Cow::from(value.as_str())).to_string();
         result = result.replace(&format!("%{}%", key), &escaped_value);
     }
     result
