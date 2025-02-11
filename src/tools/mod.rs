@@ -7,6 +7,8 @@ mod tool_web;
 mod tool_tree;
 mod tool_relevant_files;
 mod tool_cat;
+mod tool_rm;
+mod tool_mv;
 
 mod tool_deep_thinking;
 

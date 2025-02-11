@@ -136,6 +136,8 @@ pub async fn tools_merged_and_filtered(
         ("update_textdoc_regex".to_string(), Box::new(crate::tools::file::tool_update_textdoc_regex::ToolUpdateTextDocRegex {}) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
+        ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
+        ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
@@ -242,6 +244,40 @@ tools:
         description: "if true, files will be skeletonized - mostly only AST symbols will be visible"
     parameters_required:
       - "paths"
+
+  - name: "rm"
+    description: "Deletes a file or directory. Use recursive=true for directories. Set dry_run=true to preview without deletion."
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Absolute or relative path of the file or directory to delete."
+      - name: "recursive"
+        type: "boolean"
+        description: "If true and target is a directory, delete recursively. Defaults to false."
+      - name: "dry_run"
+        type: "boolean"
+        description: "If true, only report what would be done without deleting."
+      - name: "max_depth"
+        type: "number"
+        description: "(Optional) Maximum depth (currently unused)."
+    parameters_required:
+      - "path"
+
+  - name: "mv"
+    description: "Moves or renames files and directories. If a simple rename fails due to a cross-device error and the source is a file, it falls back to copying and deleting. Use overwrite=true to replace an existing target."
+    parameters:
+      - name: "source"
+        type: "string"
+        description: "Path of the file or directory to move."
+      - name: "destination"
+        type: "string"
+        description: "Target path where the file or directory should be placed."
+      - name: "overwrite"
+        type: "boolean"
+        description: "If true and target exists, replace it. Defaults to false."
+    parameters_required:
+      - "source"
+      - "destination"
 
   - name: "create_textdoc"
     agentic: false
