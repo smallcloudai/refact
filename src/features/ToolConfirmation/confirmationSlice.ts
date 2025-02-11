@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { ToolConfirmationPauseReason } from "../../events";
+import type { ToolConfirmationPauseReason } from "../../services/refact";
 
 export type ConfirmationState = {
   pauseReasons: ToolConfirmationPauseReason[];

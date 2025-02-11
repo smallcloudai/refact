@@ -35,6 +35,17 @@ export {
   type CurrentProjectInfo,
 } from "../features/Chat/currentProject";
 
+export type {
+  ToolCommand,
+  CustomPromptsResponse,
+  DiffPreviewResponse,
+  PatchResult,
+  CapsResponse,
+  UserMessage,
+  ChatMessage,
+  ChatMessages,
+} from "../services/refact";
+
 export const showPatchTicket = createAction<string>("showPatchTicket");
 
 // TODO: re-exporting from redux seems to break things :/
@@ -102,7 +113,7 @@ export {
   isUserMessage,
 } from "../services/refact";
 
-export type * from "../services/refact";
+// export type * from "../services/refact";
 
 export * from "./setup";
 export type * from "./setup";

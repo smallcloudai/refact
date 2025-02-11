@@ -11,7 +11,7 @@ import { DefaultCell } from "./DefaultCell";
 
 import styles from "./ConfirmationTable.module.css";
 import { debugIntegrations } from "../../../debugConfig";
-import { MCPEnvs } from "../../../events";
+import { MCPEnvs } from "../../../services/refact";
 
 type EnvironmentVariablesTableProps = {
   initialData: MCPEnvs;

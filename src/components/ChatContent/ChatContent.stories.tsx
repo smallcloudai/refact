@@ -6,7 +6,8 @@ import { setUpStore } from "../../app/store";
 import { Theme } from "../Theme";
 import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import { MarkdownMessage } from "../../__fixtures__/markdown";
-import { ChatMessages, ChatThread } from "../../events";
+import type { ChatMessages } from "../../services/refact";
+import type { ChatThread } from "../../features/Chat/Thread";
 import {
   CHAT_FUNCTIONS_MESSAGES,
   CHAT_WITH_DIFF_ACTIONS,

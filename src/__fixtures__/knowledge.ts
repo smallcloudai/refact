@@ -1,4 +1,8 @@
-import { MemdbSubEvent, MemoRecord, VecDbStatus } from "../events";
+import type {
+  MemdbSubEvent,
+  MemoRecord,
+  VecDbStatus,
+} from "../services/refact";
 
 export const STUB_MEMORIES: MemoRecord[] = [
   {
