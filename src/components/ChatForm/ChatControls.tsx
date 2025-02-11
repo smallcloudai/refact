@@ -208,7 +208,7 @@ export const ReasoningModeSwitch: React.FC = () => {
       <Flex gap="2" align="center">
         <Switch
           size="1"
-          title="Enable/disable deepseek-reasoner for Agent"
+          title="Enable/disable reasoner for Agent"
           checked={isReasoningEnabled}
           onCheckedChange={handleReasoningModeChange}
         />
