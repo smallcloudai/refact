@@ -20,31 +20,27 @@ towards entities in the project. If something is junk according to the user, tha
 fluff, explanations for the user. Write one sentense: the evidence (specifics and facts), the thought process, motivated decision.
 4. Each tool call should be a separate record. Write all the parameters. Summarize facts about output of a tool, especially the facts
 useful for the goal, what the assistant learned, what was surprising to see?
-5. Each 📍-ticket should become a separate record, starts with "coding". Start with 📍REPLACE_SYMBOL, 📍REPLACE_FILE, 📍SECTION_EDIT, 📍OTHER and
-the three digit ticket number, summarize what the assistant wrote, give some stats, how is the new code different.
-6. Skip unsuccesful calls that are later corrected. Keep the corrected one.
-7. When writing paths to files, only output short relative paths from the project dir.
-8. The last line is the outcome, pick SUCCESS/FAIL/PROGRESS
+5. Skip unsuccesful calls that are later corrected. Keep the corrected one.
+6. When writing paths to files, only output short relative paths from the project dir.
+7. The last line is the outcome, pick SUCCESS/FAIL/PROGRESS
 
 Output format is list of tuples, each tuple is has:
 EITHER (1) call with all parameters, maybe shortened, but all parameters, (2) explanation of significance of tool output
 OR     (1) goal/thinking/coding/outcome (2) string according to the guidelines
 
 Example:
-
 [
 ["goal", "Rename my_function1 to my_function2"],
 ["thinking", "There are definition(), search() and locate() tools, all can be used to find my_function1, system prompt says I need to start with locate()."],
 ["locate(problem_statement=\"Rename my_function1 to my_function2\")", "The file my_script.py (1337 lines) has my_function1 on line 42."],
-["thinking", "I can rewrite my_function1 inside my_script.py using 📍-notation, so I'll do that."],
-["coding", "📍REPLACE_SYMBOL 000 wrote my_function1 replacement, in my new version the name is my_function2."],
-["patch(path=\"my_script\", tickets=\"000\")", "The output of patch() has 15 lines_add and 15 lines_remove, confirming the operation."],
+["thinking", "I can rewrite my_function1 inside my_script.py, so I'll do that."],
+["update_textdoc(path=\"my_script\", old_str=\"...\", replacement=\"...\", multiple=false)", "The output of update_textdoc() has 15 lines_add and 15 lines_remove, confirming the operation."],
 ["outcome", "SUCCESS"]
 ]
 
 Write only the json and nothing else.
 "#;
-const TEMPERATURE: f32 = 0.3;
+const TEMPERATURE: f32 = 0.0;
 
 fn parse_goal(trajectory: &String) -> Result<String, String> {
     let traj_message_parsed: Vec<(String, String)> = serde_json::from_str(trajectory.as_str())
