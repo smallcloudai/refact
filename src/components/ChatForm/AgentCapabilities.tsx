@@ -48,7 +48,7 @@ export const AgentCapabilities = () => {
           <Flex gap="2" direction="column">
             <ApplyPatchSwitch />
             <AgentRollbackSwitch />
-            {data?.inference !== "FREE" && <ReasoningModeSwitch />}
+            <ReasoningModeSwitch />
           </Flex>
         </Popover.Content>
       </Popover.Root>
