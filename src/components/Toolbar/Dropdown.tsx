@@ -170,10 +170,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Item>
         )}
 
-        <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
-          IDE Hotkeys Settings
-        </DropdownMenu.Item>
-
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           {refactProductType} Settings
         </DropdownMenu.Item>
