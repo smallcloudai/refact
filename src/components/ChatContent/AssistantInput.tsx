@@ -6,15 +6,18 @@ import { ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
+import { LikeButton } from "./LikeButton";
 
 type ChatInputProps = {
   message: string | null;
   toolCalls?: ToolCall[] | null;
+  isLast?: boolean;
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
   message,
   toolCalls,
+  isLast,
 }) => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
@@ -63,6 +66,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         </Box>
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
+      {isLast && <LikeButton />}
     </Container>
   );
 };

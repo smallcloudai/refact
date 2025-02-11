@@ -5,6 +5,7 @@ import { useConfig } from "./useConfig";
 import { updateConfig } from "../features/Config/configSlice";
 import { setFileInfo } from "../features/Chat/activeFile";
 import { setSelectedSnippet } from "../features/Chat/selectedSnippet";
+import { setCurrentProjectInfo } from "../features/Chat/currentProject";
 import { newChatAction } from "../features/Chat/Thread/actions";
 import {
   isPageInHistory,
@@ -49,6 +50,14 @@ export function useEventBusForApp() {
       if (showPatchTicket.match(event.data)) {
         handleShow(event.data.payload);
       }
+
+      if (setCurrentProjectInfo.match(event.data)) {
+        dispatch(setCurrentProjectInfo(event.data.payload));
+      }
+
+      // TODO: active project
+      // vscode workspace can be found with vscode.workspace.name
+      // JB: project.name
     };
 
     window.addEventListener("message", listener);

@@ -20,6 +20,7 @@ export type ChatThread = {
   isTitleGenerated?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode;
+  project_name?: string;
   last_user_message_id?: string;
 };
 

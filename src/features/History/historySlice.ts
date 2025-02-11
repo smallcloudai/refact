@@ -250,9 +250,14 @@ startHistoryListening({
 startHistoryListening({
   actionCreator: backUpMessages,
   effect: (action, listenerApi) => {
-    const thread = listenerApi.getState().chat.thread;
+    const state = listenerApi.getState();
+    const thread = state.chat.thread;
     if (thread.id !== action.payload.id) return;
-    const toSave = { ...thread, messages: action.payload.messages };
+    const toSave = {
+      ...thread,
+      messages: action.payload.messages,
+      project_name: thread.project_name ?? state.current_project.name,
+    };
     listenerApi.dispatch(saveChat(toSave));
   },
 });

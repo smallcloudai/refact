@@ -1,5 +1,9 @@
 import React, { useCallback, useMemo } from "react";
-import { selectHost, type Config } from "../../features/Config/configSlice";
+import {
+  selectHost,
+  selectKnowledgeFeature,
+  type Config,
+} from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
   useConfig,
@@ -14,6 +18,7 @@ import { useOpenUrl } from "../../hooks/useOpenUrl";
 import { Button, DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
+import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
 //import { Coin } from "../../images";
 
 export type DropdownNavigationOptions =
@@ -24,6 +29,7 @@ export type DropdownNavigationOptions =
   | "restart tour"
   | "login page"
   | "integrations"
+  | KnowledgeListPage["name"]
   | "";
 
 type DropdownProps = {
@@ -61,6 +67,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const dispatch = useAppDispatch();
   const logout = useLogout();
   const { addressURL } = useConfig();
+  const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
   const { startPollingForUser } = useAgentUsage();
 
   const bugUrl = linkForBugReports(host);
@@ -152,7 +159,19 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
-          Set up Agent Integrations
+          Setup Agent Integrations
+        </DropdownMenu.Item>
+
+        {knowledgeEnabled && (
+          <DropdownMenu.Item
+            onSelect={() => handleNavigation("knowledge list")}
+          >
+            Manage Knowledge
+          </DropdownMenu.Item>
+        )}
+
+        <DropdownMenu.Item onSelect={() => handleNavigation("hot keys")}>
+          IDE Hotkeys Settings
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>

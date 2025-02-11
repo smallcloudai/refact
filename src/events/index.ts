@@ -18,6 +18,7 @@ import type { PageSliceState } from "../features/Pages/pagesSlice";
 import type { TourState } from "../features/Tour";
 import type { FIMDebugState } from "../hooks";
 import { createAction } from "@reduxjs/toolkit";
+import { CurrentProjectInfo } from "../features/Chat/currentProject";
 
 export { updateConfig, type Config } from "../features/Config/configSlice";
 export { type FileInfo, setFileInfo } from "../features/Chat/activeFile";
@@ -29,6 +30,10 @@ export type { FimDebugData } from "../services/refact/fim";
 export type { ChatHistoryItem } from "../features/History/historySlice";
 export { addInputValue, setInputValue } from "../components/ChatForm/actions";
 export { resetDiffApi } from "../services/refact/diffs";
+export {
+  setCurrentProjectInfo,
+  type CurrentProjectInfo,
+} from "../features/Chat/currentProject";
 
 export const showPatchTicket = createAction<string>("showPatchTicket");
 
@@ -44,6 +49,7 @@ export type InitialState = {
   history: HistoryState;
   error: ErrorSliceState;
   pages: PageSliceState;
+  current_project: CurrentProjectInfo;
 };
 
 export {

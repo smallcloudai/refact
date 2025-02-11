@@ -180,6 +180,8 @@ export type DiffChunk = {
   line2: number;
   lines_remove: string;
   lines_add: string;
+  file_name_rename?: string | null;
+  application_details?: string;
   // apply?: boolean;
   // chunk_id?: number;
 };
@@ -560,6 +562,91 @@ export function areAllFieldsBoolean(
   );
 }
 
+export type MemoRecord = {
+  memid: string;
+  thevec?: number[]; // are options nullable?
+  distance?: number;
+  m_type: string;
+  m_goal: string;
+  m_project: string;
+  m_payload: string;
+  m_origin: string;
+  // mstat_correct: bigint,
+  // mstat_relevant: bigint,
+  mstat_correct: number;
+  mstat_relevant: number;
+  mstat_times_used: number;
+};
+export function isMemoRecord(obj: unknown): obj is MemoRecord {
+  if (!obj) return false;
+  if (typeof obj !== "object") return false;
+  if (!("memid" in obj) || typeof obj.memid !== "string") return false;
+  // TODO: other checks
+  return true;
+}
+
+export type VecDbStatus = {
+  files_unprocessed: number;
+  files_total: number; // only valid for status bar in the UI, resets to 0 when done
+  requests_made_since_start: number;
+  vectors_made_since_start: number;
+  db_size: number;
+  db_cache_size: number;
+  state: "starting" | "parsing" | "done" | "cooldown";
+  queue_additions: boolean;
+  vecdb_max_files_hit: boolean;
+  vecdb_errors: Record<string, number>;
+};
+
+export function isVecDbStatus(obj: unknown): obj is VecDbStatus {
+  if (!obj) return false;
+  if (typeof obj !== "object") return false;
+  if (
+    !("files_unprocessed" in obj) ||
+    typeof obj.files_unprocessed !== "number"
+  ) {
+    return false;
+  }
+  if (!("files_total" in obj) || typeof obj.files_total !== "number") {
+    return false;
+  }
+  if (
+    !("requests_made_since_start" in obj) ||
+    typeof obj.requests_made_since_start !== "number"
+  ) {
+    return false;
+  }
+  if (
+    !("vectors_made_since_start" in obj) ||
+    typeof obj.vectors_made_since_start !== "number"
+  ) {
+    return false;
+  }
+  if (!("db_size" in obj) || typeof obj.db_size !== "number") {
+    return false;
+  }
+  if (!("db_cache_size" in obj) || typeof obj.db_cache_size !== "number") {
+    return false;
+  }
+
+  if (!("state" in obj) || typeof obj.state !== "string") {
+    return false;
+  }
+  if (!("queue_additions" in obj) || typeof obj.queue_additions !== "boolean") {
+    return false;
+  }
+  if (
+    !("vecdb_max_files_hit" in obj) ||
+    typeof obj.vecdb_max_files_hit !== "boolean"
+  ) {
+    return false;
+  }
+  if (!("vecdb_errors" in obj) || typeof obj.vecdb_errors !== "object") {
+    return false;
+  }
+
+  return true;
+}
 export function isMCPArgumentsArray(json: unknown): json is MCPArgs {
   if (!json) return false;
   if (typeof json !== "object") return false;

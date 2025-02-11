@@ -5,7 +5,6 @@ import type { Checkboxes } from "./useCheckBoxes";
 export function addCheckboxValuesToInput(
   input: string,
   checkboxes: Checkboxes,
-  _vecdb: boolean,
 ) {
   // prompts go to start
   let result = input;

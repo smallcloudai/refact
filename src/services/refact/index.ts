@@ -13,3 +13,4 @@ export * from "./links";
 export * from "./integrations";
 export * from "./docker";
 export * from "./telemetry";
+export * from "./knowledge";

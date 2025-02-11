@@ -6,6 +6,7 @@ import { useAppSelector, useAppDispatch } from "../../hooks";
 import { deleteChatById } from "../../features/History/historySlice";
 import { push } from "../../features/Pages/pagesSlice";
 import { restoreChat, type ChatThread } from "../../features/Chat/Thread";
+import { FeatureMenu } from "../../features/Config/FeatureMenu";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -43,6 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
 
   return (
     <Flex style={style}>
+      <FeatureMenu />
       <Flex mt="4">
         <Box position="absolute" ml="5" mt="2">
           <Spinner loading={takingNotes} title="taking notes" />

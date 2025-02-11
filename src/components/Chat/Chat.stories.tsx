@@ -6,7 +6,10 @@ import { RootState, setUpStore } from "../../app/store";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
 import { AbortControllerProvider } from "../../contexts/AbortControllers";
-import { CHAT_CONFIG_THREAD } from "../../__fixtures__";
+import {
+  CHAT_CONFIG_THREAD,
+  CHAT_WITH_KNOWLEDGE_TOOL,
+} from "../../__fixtures__";
 
 import {
   goodCaps,
@@ -16,6 +19,8 @@ import {
   chatLinks,
   goodTools,
   noTools,
+  // noChatLinks,
+  makeKnowledgeFromChat,
 } from "../../__fixtures__/msw";
 import { TourProvider } from "../../features/Tour";
 import { Flex } from "@radix-ui/themes";
@@ -112,6 +117,35 @@ export const IDE: Story = {
   parameters: {
     msw: {
       handlers: [goodCaps, goodPing, goodPrompts, goodUser, chatLinks, noTools],
+    },
+  },
+};
+
+export const Knowledge: Story = {
+  args: {
+    thread: CHAT_WITH_KNOWLEDGE_TOOL,
+    config: {
+      host: "ide",
+      lspPort: 8001,
+      themeProps: {},
+      features: {
+        vecdb: true,
+        knowledge: true,
+      },
+    },
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        // noChatLinks,
+        chatLinks,
+        noTools,
+        makeKnowledgeFromChat,
+      ],
     },
   },
 };

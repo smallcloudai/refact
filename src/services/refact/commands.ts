@@ -83,7 +83,7 @@ export const commandsApi = createApi({
     getCommandPreview: builder.query<(ChatContextFile | string)[], string>({
       queryFn: async (query, api, _opts, baseQuery) => {
         const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
+        const port = state.config.lspPort;
         const url = `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`;
         const response = await baseQuery({
           url,

@@ -1,5 +1,4 @@
-import { createReducer } from "@reduxjs/toolkit";
-import { createAction } from "@reduxjs/toolkit";
+import { createReducer, createAction, createSelector } from "@reduxjs/toolkit";
 import { type ThemeProps } from "../../components/Theme";
 import { RootState } from "../../app/store";
 
@@ -16,6 +15,7 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
     images?: boolean;
+    knowledge?: boolean;
   };
   keyBindings?: {
     completeManual?: string;
@@ -34,6 +34,7 @@ const initialState: Config = {
     vecdb: true,
     ast: true,
     images: true,
+    knowledge: false,
   },
   themeProps: {
     appearance: "dark",
@@ -47,6 +48,11 @@ export const setThemeMode = createAction<"light" | "dark" | "inherit">(
 );
 export const setApiKey = createAction<string | null>("config/setApiKey");
 export const setAddressURL = createAction<string>("config/setAddressURL");
+
+export const changeFeature = createAction<{
+  feature: string;
+  value: boolean;
+}>("config/feature/change");
 
 export const reducer = createReducer<Config>(initialState, (builder) => {
   // TODO: toggle darkmode for web host?
@@ -77,6 +83,13 @@ export const reducer = createReducer<Config>(initialState, (builder) => {
     state.apiKey = action.payload;
   });
 
+  builder.addCase(changeFeature, (state, action) => {
+    state.features = {
+      ...(state.features ?? {}),
+      [action.payload.feature]: action.payload.value,
+    };
+  });
+
   builder.addCase(setAddressURL, (state, action) => {
     state.addressURL = action.payload;
   });
@@ -87,10 +100,20 @@ export const selectThemeMode = (state: RootState) =>
 
 export const selectConfig = (state: RootState) => state.config;
 export const selectLspPort = (state: RootState) => state.config.lspPort;
-export const selectVecdb = (state: RootState) =>
-  state.config.features?.vecdb ?? false;
-export const selectAst = (state: RootState) =>
-  state.config.features?.ast ?? false;
+
+export const selectFeatures = (state: RootState) => state.config.features;
+export const selectVecdb = createSelector(
+  selectFeatures,
+  (features) => features?.vecdb,
+);
+export const selectAst = createSelector(
+  selectFeatures,
+  (features) => features?.ast,
+);
+export const selectKnowledgeFeature = createSelector(
+  selectFeatures,
+  (features) => features?.knowledge,
+);
 
 export const selectApiKey = (state: RootState) => state.config.apiKey;
 export const selectAddressURL = (state: RootState) => state.config.addressURL;

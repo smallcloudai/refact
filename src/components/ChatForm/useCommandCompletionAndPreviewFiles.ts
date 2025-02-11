@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useHasCaps, useAppSelector } from "../../hooks";
+import { useHasCaps } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
-import { selectVecdb } from "../../features/Config/configSlice";
 import {
   type CommandCompletionResponse,
   commandsApi,
@@ -76,12 +75,10 @@ function useGetCommandPreviewQuery(
 }
 
 function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
-  const hasVecdb = useAppSelector(selectVecdb);
-
   const queryWithCheckboxes = useMemo(
-    () => addCheckboxValuesToInput(query, checkboxes, hasVecdb),
+    () => addCheckboxValuesToInput(query, checkboxes),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [checkboxes, query, hasVecdb, checkboxes.file_upload.value],
+    [checkboxes, query, checkboxes.file_upload.value],
   );
   const [previewQuery, setPreviewQuery] = useState<string>(queryWithCheckboxes);
 
