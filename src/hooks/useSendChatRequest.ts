@@ -78,6 +78,7 @@ let recallCounter = 0;
 
 export const PATCH_LIKE_FUNCTIONS = [
   "patch",
+  "text_edit",
   "create_textdoc",
   "update_textdoc",
   "replace_textdoc",
