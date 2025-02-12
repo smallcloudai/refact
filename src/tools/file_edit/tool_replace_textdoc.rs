@@ -1,7 +1,7 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::file::auxiliary::{
+use crate::tools::file_edit::auxiliary::{
     await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
 };
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
@@ -13,15 +13,14 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use crate::files_correction::to_pathbuf_normalize;
 
-struct ToolCreateTextDocArgs {
+struct ToolReplaceTextDocArgs {
     path: PathBuf,
     content: String,
 }
 
-pub struct ToolCreateTextDoc;
+pub struct ToolReplaceTextDoc;
 
-
-fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, String> {
+fn parse_args(args: &HashMap<String, Value>) -> Result<ToolReplaceTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = to_pathbuf_normalize(&s.trim().to_string());
@@ -31,8 +30,8 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, St
                     path
                 ));
             }
-            if path.exists() {
-                return Err(format!("argument 'path' already exists: {:?}", path));
+            if !path.exists() {
+                return Err(format!("argument 'path' doesn't exists: {:?}", path));
             }
             path
         }
@@ -50,14 +49,14 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, St
         }
     };
 
-    Ok(ToolCreateTextDocArgs {
+    Ok(ToolReplaceTextDocArgs {
         path,
         content: content.clone(),
     })
 }
 
 #[async_trait]
-impl Tool for ToolCreateTextDoc {
+impl Tool for ToolReplaceTextDoc {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -106,14 +105,14 @@ impl Tool for ToolCreateTextDoc {
             if let Err(_) = can_execute_tool_edit(args).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
-                    command: "create_textdoc".to_string(),
+                    command: "replace_textdoc".to_string(),
                     rule: "".to_string(),
                 });
             }
         }
         Ok(MatchConfirmDeny {
             result: MatchConfirmDenyResult::CONFIRMATION,
-            command: "create_textdoc".to_string(),
+            command: "replace_textdoc".to_string(),
             rule: "default".to_string(),
         })
     }
@@ -122,12 +121,12 @@ impl Tool for ToolCreateTextDoc {
         &self,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        Ok("create_textdoc".to_string())
+        Ok("replace_textdoc".to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["create_textdoc*".to_string()],
+            ask_user: vec!["replace_textdoc*".to_string()],
             deny: vec![],
         })
     }

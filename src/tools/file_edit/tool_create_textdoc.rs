@@ -1,27 +1,27 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::file::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace_regex, sync_documents_ast};
+use crate::tools::file_edit::auxiliary::{
+    await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
+};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use regex::Regex;
 use tokio::sync::Mutex as AMutex;
 use crate::files_correction::to_pathbuf_normalize;
 
-struct ToolUpdateTextDocRegexArgs {
+struct ToolCreateTextDocArgs {
     path: PathBuf,
-    pattern: Regex,
-    replacement: String,
-    multiple: bool,
+    content: String,
 }
 
-pub struct ToolUpdateTextDocRegex;
+pub struct ToolCreateTextDoc;
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocRegexArgs, String> {
+
+fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = to_pathbuf_normalize(&s.trim().to_string());
@@ -31,47 +31,33 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocRegexArg
                     path
                 ));
             }
-            if !path.exists() {
-                return Err(format!("argument 'path' doesn't exists: {:?}", path));
+            if path.exists() {
+                return Err(format!("argument 'path' already exists: {:?}", path));
             }
             path
         }
         Some(v) => return Err(format!("argument 'path' should be a string: {:?}", v)),
         None => return Err("argument 'path' is required".to_string()),
     };
-    let pattern = match args.get("pattern") {
-        Some(Value::String(s)) => {
-            match Regex::new(s) {
-                Ok(r) => r,
-                Err(err) => {
-                    return Err(format!("argument 'pattern' should be a correct regex: {:?}", err));
-                }
-            }
-        },
-        Some(v) => return Err(format!("argument 'pattern' should be a string: {:?}", v)),
-        None => return Err("argument 'pattern' is required:".to_string())
-    };
-    let replacement = match args.get("replacement") {
-        Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("argument 'replacement' should be a string: {:?}", v)),
-        None => return Err("argument 'replacement' is required".to_string())
-    };
-    let multiple = match args.get("multiple") {
-        Some(Value::Bool(b)) => b.clone(),
-        Some(v) => return Err(format!("argument 'multiple' should be a boolean: {:?}", v)),
-        None => return Err("argument 'multiple' is required".to_string())
+    let content = match args.get("content") {
+        Some(Value::String(s)) => s,
+        Some(v) => return Err(format!("argument 'content' should be a string: {:?}", v)),
+        None => {
+            return Err(format!(
+                "argument 'content' is required for the `create` command: {:?}",
+                path
+            ))
+        }
     };
 
-    Ok(ToolUpdateTextDocRegexArgs {
+    Ok(ToolCreateTextDocArgs {
         path,
-        pattern,
-        replacement,
-        multiple
+        content: content.clone(),
     })
 }
 
 #[async_trait]
-impl Tool for ToolUpdateTextDocRegex {
+impl Tool for ToolCreateTextDoc {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -85,7 +71,7 @@ impl Tool for ToolUpdateTextDocRegex {
         let gcx = ccx.lock().await.global_context.clone();
         let args = parse_args(args)?;
         await_ast_indexing(gcx.clone()).await?;
-        let (before_text, after_text) = str_replace_regex(&args.path, &args.pattern, &args.replacement, args.multiple)?;
+        let (before_text, after_text) = write_file(&args.path, &args.content)?;
         sync_documents_ast(gcx.clone(), &args.path).await?;
         let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
         let results = vec![ChatMessage {
@@ -120,14 +106,14 @@ impl Tool for ToolUpdateTextDocRegex {
             if let Err(_) = can_execute_tool_edit(args).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
-                    command: "update_textdoc_regex".to_string(),
+                    command: "create_textdoc".to_string(),
                     rule: "".to_string(),
                 });
             }
         }
         Ok(MatchConfirmDeny {
             result: MatchConfirmDenyResult::CONFIRMATION,
-            command: "update_textdoc_regex".to_string(),
+            command: "create_textdoc".to_string(),
             rule: "default".to_string(),
         })
     }
@@ -136,12 +122,12 @@ impl Tool for ToolUpdateTextDocRegex {
         &self,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        Ok("update_textdoc_regex".to_string())
+        Ok("create_textdoc".to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["update_textdoc_regex*".to_string()],
+            ask_user: vec!["create_textdoc*".to_string()],
             deny: vec![],
         })
     }

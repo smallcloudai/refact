@@ -308,14 +308,14 @@ fn _replace_broken_tool_call_messages(
                     tracing::warn!("increasing `max_new_tokens` from {} to {}", sampling_parameters.max_new_tokens, new_max_new_tokens);
                     let tokens_msg = if sampling_parameters.max_new_tokens < new_max_new_tokens {
                         sampling_parameters.max_new_tokens = new_max_new_tokens;
-                        format!("The message was stripped (finish_reason=`length`). Increasing `max_new_tokens` to {new_max_new_tokens}.")
+                        format!("The message was stripped (finish_reason=`length`), the tokens budget was too small for the tool calls. Increasing `max_new_tokens` to {new_max_new_tokens}.")
                     } else {
-                        "The message was stripped (finish_reason=`length`).".to_string()
+                        "The message was stripped (finish_reason=`length`), the tokens budget cannot fit those tool calls.".to_string()
                     };
                     if has_high_budget_tools {
-                        format!("{tokens_msg} The tokens budget is too small for the tool calls. Try to make changes one by one (ie using `update_textdoc()`).")
+                        format!("{tokens_msg} Try to make changes one by one (ie using `update_textdoc()`).")
                     } else {
-                        format!("{tokens_msg} The tokens budget is too small for the tool calls. Change your strategy.")
+                        format!("{tokens_msg} Change your strategy.")
                     }
                 } else {    
                     "".to_string()

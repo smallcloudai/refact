@@ -1,7 +1,7 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::file::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace, sync_documents_ast};
+use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace, sync_documents_ast};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use async_trait::async_trait;
 use serde_json::{json, Value};
