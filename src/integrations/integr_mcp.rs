@@ -90,8 +90,8 @@ impl IntegrationTrait for IntegrationMCP {
         let session_key = format!("{}", config_path);
         self.gcx_option = Some(Arc::downgrade(&gcx));
 
-        let cfg = match serde_json::from_value::<SettingsMCP>(value.clone()) {
-            Ok(x) => x,
+        match serde_json::from_value::<SettingsMCP>(value.clone()) {
+            Ok(x) => self.cfg = x,
             Err(e) => {
                 tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
                 return Err(e.to_string());
@@ -103,17 +103,17 @@ impl IntegrationTrait for IntegrationMCP {
         if let Some(ref session) = session_option {
             let mut session_locked = session.lock().await;
             let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-            if session_downcasted.launched_cfg != cfg {
+            if session_downcasted.launched_cfg != self.cfg {
                 wrong_cfg = true;
             }
         }
         if session_option.is_none() || wrong_cfg {
             tracing::info!("MCP START SESSION (1) {:?}", session_key);
-            let mut client_builder = ClientBuilder::new(cfg.mcp_command.as_str());
-            for arg in &cfg.mcp_args {
+            let mut client_builder = ClientBuilder::new(self.cfg.mcp_command.as_str());
+            for arg in &self.cfg.mcp_args {
                 client_builder = client_builder.arg(arg);
             }
-            for (key, value) in &cfg.mcp_env {
+            for (key, value) in &self.cfg.mcp_env {
                 client_builder = client_builder.env(key, value);
             }
 
@@ -150,7 +150,7 @@ impl IntegrationTrait for IntegrationMCP {
             let mcp_client = Arc::new(AMutex::new(client));
             session_option = Some(Arc::new(AMutex::new(Box::new(SessionMCP {
                 debug_name: session_key.clone(),
-                launched_cfg: cfg.clone(),
+                launched_cfg: self.cfg.clone(),
                 mcp_client,
                 mcp_tools: tools_result.tools.clone(),
             }))));
@@ -407,10 +407,8 @@ fields:
     f_desc: "The MCP command to execute, typically `npx` or `/my/path/venv/python`"
   args:
     f_type: string_array
-    f_desc: "Command line arguments for the MCP command"
   env:
     f_type: string_to_string_map
-    f_desc: "Environment variables to set for the MCP command"
 description: |
   You can add almost any MCP (Model Context Protocol) server here! This supports local MCP servers,
   with remote servers coming up as the specificion gets updated. You can read more
