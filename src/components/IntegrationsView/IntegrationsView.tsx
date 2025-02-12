@@ -200,6 +200,17 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       <Flex direction="column" style={{ width: "100%", height: "100%" }}>
         {renderHeader()}
         {renderContent()}
+        {globalError && (
+          <ErrorCallout
+            mx="0"
+            timeout={3000}
+            onClick={() => dispatch(clearError())}
+            className={styles.popup}
+            preventRetry
+          >
+            {globalError}
+          </ErrorCallout>
+        )}
       </Flex>
     </Box>
   );

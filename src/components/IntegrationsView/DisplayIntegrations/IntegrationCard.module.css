@@ -3,6 +3,7 @@
   width: 100%;
   cursor: pointer;
   user-select: none;
+  transition: opacity 0.15s ease-in-out;
 }
 
 .integrationCardInline {
@@ -17,6 +18,11 @@
   }
 }
 
+.disabledCard {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .integrationIcon {
   max-width: 30px;
   object-fit: cover;
@@ -24,4 +30,8 @@
 
 .availabilitySwitch {
   cursor: pointer;
+}
+
+.disabledAvailabilitySwitch {
+  cursor: not-allowed;
 }

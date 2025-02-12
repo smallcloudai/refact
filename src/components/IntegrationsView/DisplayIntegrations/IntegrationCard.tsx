@@ -40,22 +40,35 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
   const integrationLogo = `http://127.0.0.1:${port}/v1${iconPath}`;
 
   const { displayName } = getIntegrationInfo(integration.integr_name);
-  const { updateIntegrationAvailability, integrationAvailability } =
-    useUpdateIntegration({ integration });
+  const {
+    updateIntegrationAvailability,
+    integrationAvailability,
+    isUpdatingAvailability,
+  } = useUpdateIntegration({ integration });
 
   const handleAvailabilityClick: MouseEventHandler<HTMLDivElement> = (
     event,
   ) => {
+    if (isUpdatingAvailability) return;
     event.stopPropagation();
     void updateIntegrationAvailability();
   };
+
+  const switches = [
+    { label: "On", leftRadius: true },
+    { label: "Off", rightRadius: true },
+  ];
 
   return (
     <Card
       className={classNames(styles.integrationCard, {
         [styles.integrationCardInline]: isNotConfigured,
+        [styles.disabledCard]: isUpdatingAvailability,
       })}
-      onClick={() => handleIntegrationShowUp(integration)}
+      onClick={() => {
+        if (isUpdatingAvailability) return;
+        handleIntegrationShowUp(integration);
+      }}
     >
       <Flex
         gap="4"
@@ -82,28 +95,40 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
           </Text>
           {!isNotConfigured && (
             <Flex
-              className={styles.availabilitySwitch}
+              className={classNames(styles.availabilitySwitch, {
+                [styles.disabledAvailabilitySwitch]: isUpdatingAvailability,
+              })}
               onClick={handleAvailabilityClick}
             >
-              <Badge
-                color={integrationAvailability.on_your_laptop ? "jade" : "gray"}
-                variant="soft"
-                radius="medium"
-                style={{
-                  borderTopRightRadius: 0,
-                  borderBottomRightRadius: 0,
-                }}
-              >
-                On
-              </Badge>
-              <Badge
-                color={integrationAvailability.on_your_laptop ? "gray" : "jade"}
-                variant="soft"
-                radius="medium"
-                style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-              >
-                Off
-              </Badge>
+              {switches.map(({ label, leftRadius }) => {
+                const isOn = label === "On";
+                const isActive =
+                  isOn === integrationAvailability.on_your_laptop;
+
+                return (
+                  <Badge
+                    key={label}
+                    color={
+                      isActive && !isUpdatingAvailability ? "jade" : "gray"
+                    }
+                    variant="soft"
+                    radius="medium"
+                    style={{
+                      ...(leftRadius
+                        ? {
+                            borderTopRightRadius: 0,
+                            borderBottomRightRadius: 0,
+                          }
+                        : {
+                            borderTopLeftRadius: 0,
+                            borderBottomLeftRadius: 0,
+                          }),
+                    }}
+                  >
+                    {label}
+                  </Badge>
+                );
+              })}
             </Flex>
           )}
         </Flex>
