@@ -61,7 +61,9 @@ export function useCapsForToolUse() {
       },
       [],
     );
-    return items;
+    // TODO: remove filtering in future
+    const filteredItems = items.filter((item) => item !== "o3-mini");
+    return filteredItems;
   }, [caps.data?.code_chat_models, toolUse]);
 
   const usableModelsForPlan = useMemo(() => {
