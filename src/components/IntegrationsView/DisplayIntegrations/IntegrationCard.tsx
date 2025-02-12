@@ -1,15 +1,20 @@
+import { FC, MouseEventHandler } from "react";
+import classNames from "classnames";
+
 import { Badge, Card, Flex, Text } from "@radix-ui/themes";
-import styles from "./IntegrationCard.module.css";
+import { useAppSelector } from "../../../hooks";
+import { useUpdateIntegration } from "./useUpdateIntegration";
+
 import {
   IntegrationWithIconRecord,
   NotConfiguredIntegrationWithIconRecord,
 } from "../../../services/refact";
-import { FC } from "react";
-import classNames from "classnames";
-import { useAppSelector } from "../../../hooks";
+
 import { selectConfig } from "../../../features/Config/configSlice";
-import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
 import { formatIntegrationIconPath } from "../../../utils/formatIntegrationIconPath";
+import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
+
+import styles from "./IntegrationCard.module.css";
 
 type IntegrationCardProps = {
   integration:
@@ -35,6 +40,15 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
   const integrationLogo = `http://127.0.0.1:${port}/v1${iconPath}`;
 
   const { displayName } = getIntegrationInfo(integration.integr_name);
+  const { updateIntegrationAvailability, integrationAvailability } =
+    useUpdateIntegration({ integration });
+
+  const handleAvailabilityClick: MouseEventHandler<HTMLDivElement> = (
+    event,
+  ) => {
+    event.stopPropagation();
+    void updateIntegrationAvailability();
+  };
 
   return (
     <Card
@@ -67,13 +81,30 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
             {displayName}
           </Text>
           {!isNotConfigured && (
-            <Badge
-              color={integration.on_your_laptop ? "jade" : "gray"}
-              variant="soft"
-              radius="medium"
+            <Flex
+              className={styles.availabilitySwitch}
+              onClick={handleAvailabilityClick}
             >
-              {integration.on_your_laptop ? "On" : "Off"}
-            </Badge>
+              <Badge
+                color={integrationAvailability.on_your_laptop ? "jade" : "gray"}
+                variant="soft"
+                radius="medium"
+                style={{
+                  borderTopRightRadius: 0,
+                  borderBottomRightRadius: 0,
+                }}
+              >
+                On
+              </Badge>
+              <Badge
+                color={integrationAvailability.on_your_laptop ? "gray" : "jade"}
+                variant="soft"
+                radius="medium"
+                style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+              >
+                Off
+              </Badge>
+            </Flex>
           )}
         </Flex>
       </Flex>

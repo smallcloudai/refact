@@ -21,3 +21,7 @@
   max-width: 30px;
   object-fit: cover;
 }
+
+.availabilitySwitch {
+  cursor: pointer;
+}
