@@ -54,7 +54,7 @@ fn last_message_assistant_without_tools_with_code_blocks(messages: &Vec<ChatMess
     if let Some(m) = messages.last() {
         m.role == "assistant" 
             && m.tool_calls.as_ref().map(|x| x.is_empty()).unwrap_or(true)
-            && m.content.content_text_only().contains("```")
+            && (m.content.content_text_only().contains("```") || m.content.content_text_only().contains("|"))
     } else {
         false
     }
@@ -85,7 +85,7 @@ pub async fn handle_v1_links(
         if last_message_assistant_without_tools_with_code_blocks(&post.messages) {
             links.push(Link {
                 link_action: LinkAction::FollowUp,
-                link_text: "Looks alright! Save the generated config.".to_string(),
+                link_text: "Looks alright! Save the generated config".to_string(),
                 link_goto: None,
                 link_summary_path: None,
                 link_tooltip: format!(""),
@@ -98,7 +98,7 @@ pub async fn handle_v1_links(
         if last_message_assistant_without_tools_with_code_blocks(&post.messages) {
             links.push(Link {
                 link_action: LinkAction::FollowUp,
-                link_text: "Looks alright! Save the generated summary.".to_string(),
+                link_text: "Looks alright! Save the generated summary".to_string(),
                 link_goto: None,
                 link_summary_path: None,
                 link_tooltip: format!(""),

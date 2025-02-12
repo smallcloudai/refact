@@ -45,7 +45,6 @@ mod ast;
 mod subchat;
 mod at_commands;
 mod tools;
-mod diffs;
 mod postprocessing;
 mod completion_cache;
 mod cached_tokenizers;

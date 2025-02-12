@@ -291,6 +291,7 @@ fn _replace_broken_tool_call_messages(
     sampling_parameters: &mut SamplingParameters,
     new_max_new_tokens: usize
 ) {
+    let high_budget_tools = vec!["create_textdoc", "replace_textdoc"];
     for message in messages.iter_mut() {
         if let Some(tool_calls) = &mut message.tool_calls {
             let incorrect_reasons = tool_calls.iter().map(|tc| {
@@ -301,29 +302,33 @@ fn _replace_broken_tool_call_messages(
                     }
                 }
             }).filter_map(|x| x).collect::<Vec<_>>();
-            
+            let has_high_budget_tools = tool_calls.iter().any(|tc| high_budget_tools.contains(&tc.function.name.as_str()));
             if !incorrect_reasons.is_empty() {
-                if message.finish_reason == Some("length".to_string()) {
+                let extra_message = if message.finish_reason == Some("length".to_string()) {
                     tracing::warn!("increasing `max_new_tokens` from {} to {}", sampling_parameters.max_new_tokens, new_max_new_tokens);
-                    sampling_parameters.max_new_tokens = new_max_new_tokens;
-                }
+                    let tokens_msg = if sampling_parameters.max_new_tokens < new_max_new_tokens {
+                        sampling_parameters.max_new_tokens = new_max_new_tokens;
+                        format!("The message was stripped (finish_reason=`length`). Increasing `max_new_tokens` to {new_max_new_tokens}.")
+                    } else {
+                        "The message was stripped (finish_reason=`length`).".to_string()
+                    };
+                    if has_high_budget_tools {
+                        format!("{tokens_msg} The tokens budget is too small for the tool calls. Try to make changes one by one (ie using `update_textdoc()`).")
+                    } else {
+                        format!("{tokens_msg} The tokens budget is too small for the tool calls. Change your strategy.")
+                    }
+                } else {    
+                    "".to_string()
+                };
 
-                tracing::error!("tool calls are broken: {:?}", incorrect_reasons);
-                tracing::error!("converting the tool call message to the `cd_instruction`: {:?}", incorrect_reasons);
                 let incorrect_reasons_concat = incorrect_reasons.join("\n");
                 message.role = "cd_instruction".to_string();
-                message.content = ChatContent::SimpleText(format!(
-                    "Previous tool calls are not valid: {}",
-                    incorrect_reasons_concat
-                ));
-                if message.finish_reason == Some("length".to_string()) {
-                    message.content = ChatContent::SimpleText(format!(
-                        "{}\nThis message was stripped (finish_reason=`length`). Increasing `max_new_tokens` to {}. Consider using `update_textdoc()` step by step",
-                        message.content.content_text_only(),
-                        new_max_new_tokens
-                    ));
-                }
+                message.content = ChatContent::SimpleText(format!("Previous tool calls are not valid: {incorrect_reasons_concat}.\n{extra_message}"));
                 message.tool_calls = None;
+                tracing::error!(
+                    "tool calls are broken, converting the tool call message to the `cd_instruction`:\n{:?}", 
+                    message.content.content_text_only()
+                );
             }
         }
     }
