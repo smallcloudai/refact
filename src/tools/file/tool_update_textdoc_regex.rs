@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use regex::Regex;
 use tokio::sync::Mutex as AMutex;
+use crate::files_correction::to_pathbuf_normalize;
 
 struct ToolUpdateTextDocRegexArgs {
     path: PathBuf,
@@ -23,7 +24,7 @@ pub struct ToolUpdateTextDocRegex;
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocRegexArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = PathBuf::from(s.trim().to_string());
+            let path = to_pathbuf_normalize(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
                     "argument 'path' should be an absolute path: {:?}",
@@ -125,7 +126,7 @@ impl Tool for ToolUpdateTextDocRegex {
             }
         }
         Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::PASS,
+            result: MatchConfirmDenyResult::CONFIRMATION,
             command: "update_textdoc_regex".to_string(),
             rule: "default".to_string(),
         })

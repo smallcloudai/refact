@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
+use crate::files_correction::to_pathbuf_normalize;
 
 struct ToolUpdateTextDocArgs {
     path: PathBuf,
@@ -22,7 +23,7 @@ pub struct ToolUpdateTextDoc;
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = PathBuf::from(s.trim().to_string());
+            let path = to_pathbuf_normalize(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
                     "argument 'path' should be an absolute path: {:?}",
@@ -117,7 +118,7 @@ impl Tool for ToolUpdateTextDoc {
             }
         }
         Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::PASS,
+            result: MatchConfirmDenyResult::CONFIRMATION,
             command: "update_textdoc".to_string(),
             rule: "default".to_string(),
         })
