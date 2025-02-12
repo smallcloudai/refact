@@ -295,14 +295,14 @@ tools:
       
   - name: "update_textdoc"
     agentic: false
-    description: "Updates the existing document by replacing `old_str` by `replacement`."
+    description: "Updates an existing document by replacing specific text. Optimized for large files or small changes where simple string replacement is sufficient. Prefer this over replace_textdoc for large files."
     parameters:
       - name: "path"
         type: "string"
         description: "Absolute path to the file to change."
       - name: "old_str"
         type: "string"
-        description: "The old text that needs to be updated."        
+        description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching."        
       - name: "replacement"
         type: "string"
         description: "The new text that will replace the old text."        
@@ -338,14 +338,14 @@ tools:
       
   - name: "update_textdoc_regex"
     agentic: true
-    description: "Updates the existing document based on regex-based pattern replacements."
+    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. May be slower than update_textdoc for large files."
     parameters:
       - name: "path"
         type: "string"
         description: "Absolute path to the file to change."
       - name: "pattern"
         type: "string"
-        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes."        
+        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance."        
       - name: "replacement"
         type: "string"
         description: "The new text that will replace the matched pattern."        
@@ -360,17 +360,17 @@ tools:
       
   - name: "replace_textdoc"
     agentic: true
-    description: "When the file is small, replaces an existing document or code with the content."
+    description: "Completely replaces the content of an existing document. Use ONLY for small files, as it rewrites the entire file. For large files or small changes, use update_textdoc instead."
     parameters:
       - name: "path"
         type: "string"
-        description: "Absolute path to new file."
-      - name: "content"
+        description: "Absolute path to existing file. File must be small."
+      - name: "replacement"
         type: "string"
-        description: "The complete text or code."
+        description: "The complete replacement text or code that will overwrite the entire file."
     parameters_required:
       - "path"
-      - "content"
+      - "replacement"
 
   - name: "github"
     agentic: true

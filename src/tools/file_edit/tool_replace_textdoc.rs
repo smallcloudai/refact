@@ -15,7 +15,7 @@ use crate::files_correction::to_pathbuf_normalize;
 
 struct ToolReplaceTextDocArgs {
     path: PathBuf,
-    content: String,
+    replacement: String,
 }
 
 pub struct ToolReplaceTextDoc;
@@ -38,12 +38,12 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolReplaceTextDocArgs, S
         Some(v) => return Err(format!("argument 'path' should be a string: {:?}", v)),
         None => return Err("argument 'path' is required".to_string()),
     };
-    let content = match args.get("content") {
+    let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s,
-        Some(v) => return Err(format!("argument 'content' should be a string: {:?}", v)),
+        Some(v) => return Err(format!("argument 'replacement' should be a string: {:?}", v)),
         None => {
             return Err(format!(
-                "argument 'content' is required for the `create` command: {:?}",
+                "argument 'replacement' is required for the `create` command: {:?}",
                 path
             ))
         }
@@ -51,7 +51,7 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolReplaceTextDocArgs, S
 
     Ok(ToolReplaceTextDocArgs {
         path,
-        content: content.clone(),
+        replacement: replacement.clone(),
     })
 }
 
@@ -70,7 +70,7 @@ impl Tool for ToolReplaceTextDoc {
         let gcx = ccx.lock().await.global_context.clone();
         let args = parse_args(args)?;
         await_ast_indexing(gcx.clone()).await?;
-        let (before_text, after_text) = write_file(&args.path, &args.content)?;
+        let (before_text, after_text) = write_file(&args.path, &args.replacement)?;
         sync_documents_ast(gcx.clone(), &args.path).await?;
         let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
         let results = vec![ChatMessage {
