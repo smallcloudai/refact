@@ -503,6 +503,123 @@ mod tests {
 
         assert_eq!(result, expected_result, "The result should contain the expected paths, instead it found");
     }
+    
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_preprocess_windows_path_for_normalization() {
+        let test_cases = [
+            // Verbatim disk paths
+            (r"\\\\\\\\?\\\\C:\\\\Windows\\\\System32", r"C:\Windows\System32"),
+            (r"\?\C:\Model generates this kind of paths", r"C:\Model generates this kind of paths"),
+            (r"/?/C:/other\\horr.ible/path", r"C:\other\horr.ible\path"),
+
+            // Disk paths
+            (r"C:\\folder/..\\\\file", r"C:\folder\..\file"),
+            (r"/D:\\Users/John Doe\\\\.\myfolder/file.ext", r"D:\Users\John Doe\.\myfolder\file.ext"),
+
+            // Verbatim UNC paths
+            (r"\\?\UNC\server\share/folder//file.ext", r"\\server\share\folder\file.ext"),
+            (r"\\?\unc\server\share/folder//file.ext", r"\\server\share\folder\file.ext"),
+            (r"/?/unc/server/share/folder//file.ext", r"\\server\share\folder\file.ext"),
+
+            // Standard UNC paths
+            (r"\\server\share/folder//file.ext", r"\\server\share\folder\file.ext"),
+            (r"////server//share//folder//file.ext", r"\\server\share\folder\file.ext"),
+            (r"//wsl$/Ubuntu/home/yourusername/projects", r"\\wsl$\Ubuntu\home\yourusername\projects"),
+
+            // DeviceNS paths
+            (r"////./pipe/docker_engine", r"\\.\pipe\docker_engine"),
+            (r"\\.\pipe\docker_engine", r"\\.\pipe\docker_engine"),
+            (r"//./pipe/docker_engine", r"\\.\pipe\docker_engine"),
+
+            // Absolute paths without disk
+            (r"\Windows\System32", r"\Windows\System32"),
+            (r"/Program Files/Common Files", r"\Program Files\Common Files"),
+            (r"\Users\Public\Downloads", r"\Users\Public\Downloads"),
+            (r"\temp/path", r"\temp\path"),
+
+            // Relative paths
+            (r"folder/file.txt", r"folder\file.txt"),
+            (r"./current/./folder", r".\current\.\folder"),
+            (r"project/../src/main.rs", r"project\..\src\main.rs"),
+            (r"documents\\photos", r"documents\photos"),
+            (r"some folder/with spaces/file", r"some folder\with spaces\file"),
+            (r"bin/../lib/./include", r"bin\..\lib\.\include"),
+        ];
+
+        for (input, expected) in test_cases {
+            let result = preprocess_path_for_normalization(input.to_string());
+            assert_eq!(result, expected.to_string(), "The result for {} should be {}, got {}", input, expected, result);
+        }  
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_canonical_path() 
+    {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path();
+        let temp_dir_path_str = temp_dir_path.to_str().unwrap();
+
+        let long_str = String::from_utf8(vec![b'a'; 600].iter().map(|b| *b).collect()).unwrap();
+        let long_dir_path = PathBuf::from(format!("\\\\?\\{temp_dir_path_str}\\{long_str}"));
+
+        let create_dir_cmd = format!(
+            "powershell.exe -Command \"New-Item -Path '{}' -ItemType Directory -Force\"",
+            long_dir_path.to_string_lossy().replace("'", "''")
+        );
+        let create_file_cmd = format!(
+            "powershell.exe -Command \"New-Item -Path '{}' -ItemType File -Force\"",
+            long_dir_path.join("file.txt").to_string_lossy().replace("'", "''")
+        );
+        std::process::Command::new("cmd")
+            .args(["/C", &create_dir_cmd])
+            .output()
+            .expect("Failed to create directory");
+        std::process::Command::new("cmd")
+            .args(["/C", &create_file_cmd])
+            .output()
+            .expect("Failed to create file");
+
+        let long_dir_path_str = format!("{temp_dir_path_str}\\{long_str}\\..\\{long_str}");
+        let long_dir_file_str = format!("{temp_dir_path_str}\\{long_str}\\..\\{long_str}\\.\\..\\{long_str}\\file.txt");
+
+        let test_cases = vec![
+            // Disks
+            (r"C:\\Windows\\System32\\..\\..\\Temp\\conn", PathBuf::from(r"\\?\C:\Temp\conn")),
+            (r"D:/../..\NUL", PathBuf::from(r"\\.\NUL")),
+            (r"d:\\A\\B\\C\\D\\..\\..\\..\\..\\E\\F\\G\\..\\..\\H", PathBuf::from(r"\\?\D:\E\H")),
+            (r"c:\\../Windows", PathBuf::from(r"\\?\C:\Windows")),
+            (r"d:\\..\\..\\..\\..\\..", PathBuf::from(r"\\?\D:\")),
+
+            // Verbatim Disks
+            (r"\\\\?\\C:\Very\Long\Path\With\Lots\Of\Subdirectories\..\..\..\CON", PathBuf::from(r"\\?\C:\Very\Long\Path\With\CON")),
+            (r"//?/d:/Trailing/Dot./.", PathBuf::from(r"\\?\d:\Trailing\Dot")),
+            (r"\?\c:\Trailing\Space\\  ", PathBuf::from(r"\\?\c:\Trailing\Space\")),
+            (r"\?/C:/$MFT", PathBuf::from(r"\\?\C:\$MFT")),
+
+            // Devices
+            (r"\\.\COM1", PathBuf::from(r"\\.\COM1")),
+            (r"\.\PIPE\SomePipeName", PathBuf::from(r"\\.\PIPE\SomePipeName")),
+            (r"/?/UNC//./PIPE/AnotherPipe", PathBuf::from(r"\\.\PIPE\AnotherPipe")),
+            (r"D:\\PRN", PathBuf::from(r"\\?\D:\PRN")),
+
+            // Non-Standard Verbatim
+            (r"\\?\Volume{12345678-1234-1234-1234-1234567890AB}\Path\To\Some\File", PathBuf::from(r"\\?\Volume{12345678-1234-1234-1234-1234567890AB}\Path\To\Some\File")),
+
+            // UNC Verbatim
+            (r"\\?\UNC\localhost\C$/Windows/System32\..\System32", PathBuf::from(r"\\?\UNC\localhost\C$\Windows\System32")),
+
+            // Long paths
+            (&long_dir_path_str, PathBuf::from(format!("\\\\?\\{temp_dir_path_str}\\{long_str}"))),
+            (&long_dir_file_str, PathBuf::from(format!("\\\\?\\{temp_dir_path_str}\\{long_str}\\file.txt"))),
+        ];
+
+        for (input, expected) in test_cases {
+            let result = canonical_path(input);
+            assert_eq!(result, expected, "Expected canonical path for {} to be {}, but got {}", input, expected.to_string_lossy(), result.to_string_lossy());
+        }
+    }
 
     // cicd works with virtual machine, this test is slow
     #[cfg(not(all(target_arch = "aarch64", target_os = "linux")))]
