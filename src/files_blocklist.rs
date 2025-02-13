@@ -10,6 +10,19 @@ use crate::global_context::GlobalContext;
 use crate::privacy::any_glob_matches_path;
 
 
+// TODO:
+// remove debug prints
+// react on .git appearing / disappearing => reindex all
+// react on indexing.yaml additional_indexing_dirs change => reindex all
+// make sure "git ls" lists unstaged files
+
+// Testing:
+// ignored file initial indexing doesn't happen
+// ignored file add / remove file events don't do anything
+// a file in an ignored dir, same tests
+// changes in indexing.yaml loaded (almost) immediately
+
+
 const INDEXING_TOO_OLD: Duration = Duration::from_secs(3);
 
 pub const DEFAULT_BLOCKLIST_DIRS: &[&str] = &[
