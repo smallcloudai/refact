@@ -277,7 +277,7 @@ pub async fn get_vars_for_replacements(
     let variables_yaml_path = if variables_yaml.is_empty() {
         config_dir.join("variables.yaml")
     } else {
-        crate::files_correction::to_pathbuf_normalize(&variables_yaml)
+        crate::files_correction::canonical_path(&variables_yaml)
     };
     let mut variables = HashMap::new();
 

@@ -57,7 +57,7 @@ impl Tool for ToolTree {
                 let candidate = return_one_candidate_or_a_good_error(
                     gcx.clone(), &path, &dir_candidates, &project_dirs, true
                 ).await?;
-                let true_path = crate::files_correction::to_pathbuf_normalize(&candidate);
+                let true_path = crate::files_correction::canonical_path(candidate);
 
                 let is_within_project_dirs = project_dirs.iter().any(|p| true_path.starts_with(&p));
                 if !is_within_project_dirs && !gcx.read().await.cmdline.inside_container {

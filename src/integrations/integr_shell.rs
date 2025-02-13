@@ -256,7 +256,7 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>)
             if s.is_empty() {
                 None
             } else {
-                let workdir = crate::files_correction::to_pathbuf_normalize(s);
+                let workdir = crate::files_correction::canonical_path(s);
                 if !workdir.exists() {
                     return Err("Workdir doesn't exist".to_string());
                 } else {

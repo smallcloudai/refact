@@ -78,7 +78,7 @@ pub async fn pp_ast_markup_files(
         let path_as_presented = context_file.file_name.clone();
         let candidates = crate::files_correction::correct_to_nearest_filename(gcx.clone(), &path_as_presented, false, 5).await;
         let cpath = match candidates.first() {
-            Some(c) => crate::files_correction::canonical_path(&c),
+            Some(c) => crate::files_correction::canonical_path(c),
             None => crate::files_correction::canonical_path(&path_as_presented)
         };
         context_file.file_name = cpath.to_string_lossy().to_string();
@@ -151,7 +151,7 @@ pub async fn context_msgs_from_paths(
     // XXX: only used once in a test handler, maybe remove?
     let mut messages = vec![];
     for file_name in files_set {
-        let path = crate::files_correction::canonical_path(&file_name.clone());
+        let path = crate::files_correction::canonical_path(&file_name);
         let text = match get_file_text_from_memory_or_disk(global_context.clone(), &path).await {
             Ok(text) => text,
             Err(e) => {

@@ -4,7 +4,7 @@ use git2::{Repository, Branch, DiffOptions, Oid};
 use tracing::error;
 
 use crate::custom_error::MapErrToString;
-use crate::files_correction::to_pathbuf_normalize;
+use crate::files_correction::canonical_path;
 use crate::git::{FileChange, FileChangeStatus, DiffStatusType};
 
 fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
@@ -127,7 +127,7 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repo: &Repository, in
             result.push(FileChange {
                 status,
                 absolute_path: if include_abs_paths { 
-                    to_pathbuf_normalize(&repo_workdir.join(&relative_path).to_string_lossy())
+                    canonical_path(repo_workdir.join(&relative_path).to_string_lossy().to_string())
                 } else {
                     PathBuf::new()
                 },
@@ -184,7 +184,7 @@ pub fn get_diff_statuses_workdir_to_head(repository: &Repository) -> Result<Vec<
 
             if let Some(status) = status {
                 let relative_path = PathBuf::from(path.trim());
-                let absolute_path = to_pathbuf_normalize(&repository_workdir.join(&relative_path).to_string_lossy());
+                let absolute_path = canonical_path(repository_workdir.join(&relative_path).to_string_lossy().to_string());
                 result.push(FileChange {
                     status,
                     relative_path,

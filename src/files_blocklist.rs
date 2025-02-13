@@ -223,14 +223,14 @@ fn _load_indexing_yaml_str(
                 };
                 let indexing_dir_path = PathBuf::from(&expanded_dir);
                 if indexing_dir_path.is_absolute() {
-                    let normalized = crate::files_correction::to_pathbuf_normalize(&expanded_dir)
+                    let normalized = crate::files_correction::canonical_path(&expanded_dir)
                         .to_string_lossy()
                         .into_owned();
                     additional_indexing_dirs.push(normalized);
                 } else {
                     if let Some(b) = relative_path_base {
                         let joined_path = b.join(&expanded_dir).to_str().unwrap().to_string();
-                        let normalized = crate::files_correction::to_pathbuf_normalize(&joined_path)
+                        let normalized = crate::files_correction::canonical_path(&joined_path)
                             .to_string_lossy()
                             .into_owned();
                         additional_indexing_dirs.push(normalized);

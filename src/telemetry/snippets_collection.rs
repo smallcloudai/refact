@@ -7,7 +7,7 @@ use tracing::debug;
 
 use crate::call_validation::CodeCompletionPost;
 use crate::completion_cache;
-use crate::files_correction::to_pathbuf_normalize;
+use crate::files_correction::canonical_path;
 use crate::global_context;
 use crate::telemetry::basic_comp_counters;
 use crate::telemetry::basic_robot_human;
@@ -115,8 +115,8 @@ pub async fn sources_changed(
 
     let mut accepted_snippets = vec![];
     for snip in storage_locked.tele_snippets.iter_mut() {
-        let uri_path = to_pathbuf_normalize(uri).to_string_lossy().to_string();
-        let cursor_file_path = to_pathbuf_normalize(&snip.inputs.cursor.file).to_string_lossy().to_string();
+        let uri_path = canonical_path(uri).to_string_lossy().to_string();
+        let cursor_file_path = canonical_path(&snip.inputs.cursor.file).to_string_lossy().to_string();
         if snip.accepted_ts == 0 || !uri_path.ends_with(&cursor_file_path) {
             continue;
         }

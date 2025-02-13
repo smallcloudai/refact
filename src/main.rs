@@ -2,7 +2,7 @@ use std::io::Write;
 use std::env;
 use std::panic;
 
-use files_correction::to_pathbuf_normalize;
+use files_correction::canonical_path;
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
@@ -80,7 +80,7 @@ async fn main() {
 
     let cpu_num = std::thread::available_parallelism().unwrap().get();
     rayon::ThreadPoolBuilder::new().num_threads(cpu_num / 2).build_global().unwrap();
-    let home_dir = to_pathbuf_normalize(&home::home_dir().ok_or(()).expect("failed to find home dir").to_string_lossy().to_string());
+    let home_dir = canonical_path(home::home_dir().ok_or(()).expect("failed to find home dir").to_string_lossy().to_string());
     let cache_dir = home_dir.join(".cache").join("refact");
     let config_dir = home_dir.join(".config").join("refact");
     let (gcx, ask_shutdown_receiver, cmdline) = global_context::create_global_context(cache_dir.clone(), config_dir.clone()).await;

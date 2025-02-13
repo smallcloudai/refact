@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::fs;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::files_correction::{get_active_project_path, to_pathbuf_normalize};
+use crate::files_correction::{get_active_project_path, canonical_path};
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile, ChatMeta};
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -45,7 +45,7 @@ pub async fn mix_config_messages(
     }
 
     let global_config_dir = gcx.read().await.config_dir.clone();
-    let current_config_path = to_pathbuf_normalize(&chat_meta.current_config_file);
+    let current_config_path = canonical_path(&chat_meta.current_config_file);
     let mut active_project_path = if current_config_path.starts_with(&global_config_dir) {
         Some(PathBuf::new()) // If it's global config, it shouldn't use specific project info
     } else {

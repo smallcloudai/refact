@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
+use std::ffi::OsString;
 use std::sync::Arc;
 use std::time::Instant;
-use std::path::{Component, PathBuf};
+use std::path::{Component, PathBuf, Prefix};
+use itertools::Itertools;
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
@@ -119,35 +121,6 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     return (cache_correction_arc, cache_shortened_arc);
 }
 
-
-fn winpath_normalize(p: &str) -> PathBuf {
-    // horrible_path//..\project1\project1/1.cpp
-    // everything should become an absolute \\?\ path on windows
-    let parts = p
-        .to_string()
-        .replace(r"\\", r"\")
-        .replace(r"/", r"\")
-        .split(r"\")
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-    if parts.len() >= 2 && parts[0] == "?" {
-        canonical_path(&format!(r"\\?\{}", parts[1..].join(r"\")))
-    } else if parts.len() > 1 && parts[0].contains(":") {
-        canonical_path(&format!(r"\\?\{}", parts.join(r"\")))
-    } else {
-        canonical_path(&p.to_string())
-    }
-}
-
-pub fn to_pathbuf_normalize(path: &str) -> PathBuf {
-    if cfg!(target_os = "windows") {
-        PathBuf::from(winpath_normalize(path))
-    } else {
-        PathBuf::from(canonical_path(path))
-    }
-}
-
 async fn complete_path_with_project_dir(
     gcx: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
@@ -156,7 +129,7 @@ async fn complete_path_with_project_dir(
     fn path_exists(path: &PathBuf, is_dir: bool) -> bool {
         (is_dir && path.is_dir()) || (!is_dir && path.is_file())
     }
-    let candidate_path = to_pathbuf_normalize(&correction_candidate);
+    let candidate_path = canonical_path(correction_candidate);
     let project_dirs = get_project_dirs(gcx.clone()).await;
     for p in project_dirs {
         if path_exists(&candidate_path, is_dir) && candidate_path.starts_with(&p) {
@@ -362,52 +335,89 @@ fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<
     }).collect()
 }
 
-fn absolute(path: &std::path::Path) -> std::io::Result<PathBuf> {
-    let mut components = path.strip_prefix(".").unwrap_or(path).components();
-    let path_os = path.as_os_str().as_encoded_bytes();
-    let mut normalized = if path.is_absolute() {
-        if path_os.starts_with(b"//") && !path_os.starts_with(b"///") {
-            components.next();
-            PathBuf::from("//")
-        } else {
-            PathBuf::new()
+#[cfg(target_os = "windows")]
+/// In Windows, tries to fix the path, permissive about paths like \\?\C:\path, incorrect amount of \ and more.
+/// 
+/// Temporarily remove verbatim, to resolve ., .., symlinks if possible, it will be added again later.
+fn preprocess_path_for_normalization(p: String) -> String {
+    let p = p.replace(r"/", r"\");
+    let starting_slashes = p.chars().take_while(|c| *c == '\\').count();
+
+    let mut parts_iter = p.split(r"\").filter(|part| !part.is_empty()).peekable();
+
+    match parts_iter.peek() {
+        Some(&"?") => {
+            parts_iter.next();
+            match parts_iter.peek() {
+                Some(pref) if pref.contains(":") => parts_iter.join(r"\"), // \\?\C:\path...
+                Some(pref) if pref.to_lowercase() == "unc" => { // \\?\UNC\server\share\path...
+                    parts_iter.next();
+                    format!(r"\\{}", parts_iter.join(r"\"))
+                },
+                Some(_) => { // \\?\path...
+                    tracing::warn!("Found a verbatim path that is not UNC nor Disk path: {}, leaving it as-is", p);
+                    p
+                },
+                None => p, // \\?\
+            }
+        },
+        Some(&".") if starting_slashes > 0 => {
+            parts_iter.next();
+            format!(r"\\.\{}", parts_iter.join(r"\")) // \\.\path...
+        },
+        Some(pref) if pref.contains(":") => parts_iter.join(r"\"), // C:\path...
+        Some(_) => {
+            match starting_slashes {
+                0 => parts_iter.join(r"\"), // relative path: folder\file.ext
+                1 => format!(r"\{}", parts_iter.join(r"\")), // absolute path from cur disk: \folder\file.ext
+                _ => format!(r"\\{}", parts_iter.join(r"\")), // standard UNC path: \\server\share\folder\file.ext
+            }
         }
-    } else {
-        std::env::current_dir()?
-    };
-    normalized.extend(components);
-    if path_os.ends_with(b"/") {
-        normalized.push("");
+        None => p, // \
     }
-    Ok(normalized)
 }
 
-pub fn canonical_path(s: &str) -> PathBuf {
-    let mut res = match PathBuf::from(s).canonicalize() {
-        Ok(x) => x,
-        Err(_) => {
-            let a = absolute(std::path::Path::new(s)).unwrap_or(PathBuf::from(s));
-            // warn!("canonical_path: {:?} doesn't work: {}\n using absolute path instead {}", s, e, a.display());
-            a
-        }
-    };
-    let components: Vec<String> = res
-        .components()
-        .map(|x| match x {
-            Component::Normal(c) => c.to_string_lossy().to_string(),
-            Component::Prefix(c) => {
-                let lowercase_prefix = c.as_os_str().to_string_lossy().to_string().to_lowercase();
-                lowercase_prefix
+#[cfg(not(target_os = "windows"))]
+/// In Unix, do nothing
+fn preprocess_path_for_normalization(p: String) -> String {
+    p
+}
+
+#[cfg(target_os = "windows")]
+/// In Windows, add verbatim prefix to Disk or UNC paths, leave others as-is
+fn make_absolute(path: PathBuf) -> PathBuf {
+    if let Some(Component::Prefix(pref)) = path.components().next() {
+        match pref.kind() {
+            Prefix::Disk(_) => {
+                let mut path_os_str = OsString::from(r"\\?\");
+                path_os_str.push(path.as_os_str());
+                PathBuf::from(path_os_str)
             },
-            _ => x.as_os_str().to_string_lossy().to_string(),
-        })
-        .collect();
-    res = components.iter().fold(PathBuf::new(), |mut acc, x| {
-        acc.push(x);
-        acc
-    });
-    // info!("canonical_path:\n{:?}\n{:?}", s, res);
-    res
+            Prefix::UNC(_, _) => {
+                let mut path_os_str = OsString::from(r"\\?\UNC\");
+                path_os_str.push(path.strip_prefix(r"\\").unwrap_or(&path).as_os_str());
+                PathBuf::from(path_os_str)
+            },
+            _ => path
+        }
+    } else {
+        path
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+/// In Unix, do nothing
+fn make_absolute(path: PathBuf) -> PathBuf {
+    path
+}
+
+pub fn canonical_path<T: Into<String>>(p: T) -> PathBuf {
+    let p: String = p.into();
+    let path= PathBuf::from(preprocess_path_for_normalization(p));
+
+    path.canonicalize()
+        .or_else(|_| std::path::absolute(&path).map(make_absolute))
+        .unwrap_or(path)
 }
 
 pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Result<S::Ok, S::Error> {

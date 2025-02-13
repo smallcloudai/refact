@@ -11,7 +11,7 @@ use serde_json::Value;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
-use crate::files_correction::to_pathbuf_normalize;
+use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
@@ -98,7 +98,7 @@ impl Tool for ToolGitlab {
         }
         let output = Command::new(&glab_binary_path)
             .args(&command_args)
-            .current_dir(&to_pathbuf_normalize(&project_dir))
+            .current_dir(canonical_path(project_dir))
             .env("GITLAB_TOKEN", &self.settings_gitlab.glab_token)
             .stdin(std::process::Stdio::null())
             .output()

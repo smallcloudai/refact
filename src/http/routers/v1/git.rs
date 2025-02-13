@@ -72,7 +72,7 @@ pub async fn handle_v1_git_commit(
     let mut commits_applied = Vec::new();
 
     for commit in post.commits {
-        let repo_path = crate::files_correction::to_pathbuf_normalize(
+        let repo_path = crate::files_correction::canonical_path(
             &commit.project_path.to_file_path().unwrap_or_default().display().to_string());
 
         let project_name = commit.project_path.to_file_path().ok()
