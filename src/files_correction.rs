@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
 use std::sync::Arc;
 use std::time::Instant;
-use std::path::{Component, PathBuf, Prefix};
-use itertools::Itertools;
+use std::path::PathBuf;
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
+#[cfg(windows)]
+use itertools::Itertools;
+#[cfg(windows)]
+use std::path::{Component, Prefix};
+#[cfg(windows)]
+use std::ffi::OsString;
 
 use crate::files_in_workspace::detect_vcs_for_a_file_path;
 use crate::global_context::GlobalContext;
@@ -335,7 +339,7 @@ fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<
     }).collect()
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(windows)]
 /// In Windows, tries to fix the path, permissive about paths like \\?\C:\path, incorrect amount of \ and more.
 /// 
 /// Temporarily remove verbatim, to resolve ., .., symlinks if possible, it will be added again later.
@@ -377,13 +381,13 @@ fn preprocess_path_for_normalization(p: String) -> String {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(windows))]
 /// In Unix, do nothing
 fn preprocess_path_for_normalization(p: String) -> String {
     p
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(windows)]
 /// In Windows, add verbatim prefix to Disk or UNC paths, leave others as-is
 fn make_absolute(path: PathBuf) -> PathBuf {
     if let Some(Component::Prefix(pref)) = path.components().next() {
@@ -405,7 +409,7 @@ fn make_absolute(path: PathBuf) -> PathBuf {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(windows))]
 /// In Unix, do nothing
 fn make_absolute(path: PathBuf) -> PathBuf {
     path
