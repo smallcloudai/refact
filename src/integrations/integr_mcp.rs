@@ -47,9 +47,11 @@ pub struct IntegrationMCP {
 // #[derive(Default)]
 pub struct SessionMCP {
     pub debug_name: String,
+    pub config_path: String,        // to check if expired or not
     pub launched_cfg: SettingsMCP,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
-    pub mcp_client: Arc<AMutex<mcp_client_rs::client::Client>>,
+    pub mcp_client: Option<Arc<AMutex<mcp_client_rs::client::Client>>>,
     pub mcp_tools: Vec<mcp_client_rs::Tool>,
+    pub launched_coroutines: Vec<tokio::task::JoinHandle<()>>,
 }
 
 impl IntegrationSession for SessionMCP {
@@ -57,23 +59,153 @@ impl IntegrationSession for SessionMCP {
         self
     }
 
-    fn is_expired(&self) -> bool { false }
+    fn is_expired(&self) -> bool {
+        !std::path::Path::new(&self.config_path).exists()
+    }
 
-    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
-        Box::new(async {
-            tracing::info!("MCP STOP {}", self.debug_name);
-            let mcp_client_locked = self.mcp_client.lock().await;
-            let maybe_err = mcp_client_locked.shutdown().await;
-            if let Err(e) = maybe_err {
-                tracing::error!("Failed to stop MCP {}:\n{:?}", self.debug_name, e);
-                format!("{} failed to stop", self.debug_name)
-            } else {
-                format!("{} stopped", self.debug_name)
-            }
+    fn try_stop(&mut self, self_arc: Arc<AMutex<Box<dyn IntegrationSession>>>) -> Box<dyn Future<Output = String> + Send> {
+        Box::new(async move {
+            _session_wait_coroutines(self_arc.clone()).await;
+
+            let mut session_locked = self_arc.lock().await;
+            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            _session_kill_process(session_downcasted).await;
+
+            "".to_string()
         })
     }
 }
 
+async fn _session_kill_process(session: &SessionMCP) {
+    tracing::info!("MCP STOP {}", session.debug_name);
+    if let Some(mcp_client) = &session.mcp_client {
+        let mcp_client_locked = mcp_client.lock().await;
+        let maybe_err = mcp_client_locked.shutdown().await;
+        if let Err(e) = maybe_err {
+            tracing::error!("Failed to stop MCP {}:\n{:?}", session.debug_name, e);
+        } else {
+            tracing::info!("{} stopped", session.debug_name);
+        }
+    }
+}
+
+async fn _session_apply_settings(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    config_path: String,
+    new_cfg: SettingsMCP,
+) -> Result<(), String> {
+    let session_key = format!("{}", config_path);
+
+    let session_arc = {
+        let mut gcx_write = gcx.write().await;
+        let session = gcx_write.integration_sessions.get(&session_key).cloned();
+        if session.is_none() {
+            let new_session: Arc<AMutex<Box<dyn IntegrationSession>>> = Arc::new(AMutex::new(Box::new(SessionMCP {
+                debug_name: session_key.clone(),
+                config_path: config_path.clone(),
+                launched_cfg: new_cfg.clone(),
+                mcp_client: None,
+                mcp_tools: vec![],
+                launched_coroutines: vec![],
+            })));
+            gcx_write.integration_sessions.insert(session_key.clone(), new_session.clone());
+            new_session
+        } else {
+            session.unwrap()
+        }
+    };
+
+    let session_key_clone = session_key.clone();
+    let new_cfg_clone = new_cfg.clone();
+    let session_arc_clone = session_arc.clone();
+
+    let coroutine = tokio::spawn(async move {
+        tracing::info!("MCP START SESSION LOCK {:?}", session_key_clone);
+        let mut session_locked = session_arc_clone.lock().await;
+        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+        tracing::info!("MCP START SESSION /LOCK {:?}", session_key_clone);
+
+        if session_downcasted.mcp_client.is_some() && new_cfg == session_downcasted.launched_cfg {
+            tracing::info!("MCP NO UPDATE NEEDED {:?}", session_key);
+            return;
+        }
+
+        _session_kill_process(session_downcasted).await;
+
+        let mut client_builder = ClientBuilder::new(new_cfg_clone.mcp_command.as_str());
+        for arg in &new_cfg_clone.mcp_args {
+            client_builder = client_builder.arg(arg);
+        }
+        for (key, value) in &new_cfg_clone.mcp_env {
+            client_builder = client_builder.env(key, value);
+        }
+
+        let client = match client_builder.spawn_and_initialize().await {
+            Ok(client) => client,
+            Err(client_error) => {
+                let err_msg = format!("Failed to initialize {}: {:?}", session_key_clone, client_error);
+                tracing::error!("{}", err_msg);
+                return;
+            }
+        };
+
+        // let set_result = client.request(
+        //     "logging/setLevel",
+        //     Some(serde_json::json!({ "level": "debug" })),
+        // ).await;
+        // match set_result {
+        //     Ok(_) => {
+        //         tracing::info!("MCP START SESSION (2) set log level success");
+        //     }
+        //     Err(e) => {
+        //         tracing::info!("MCP START SESSION (2) failed to set log level: {:?}", e);
+        //     }
+        // }
+
+        tracing::info!("MCP START SESSION (2) {:?}", session_key_clone);
+        let tools_result = match client.list_tools().await {
+            Ok(result) => result,
+            Err(tools_error) => {
+                let err_msg = format!("Failed to list tools for {}: {:?}", session_key_clone, tools_error);
+                tracing::error!("{}", err_msg);
+                return;
+            }
+        };
+
+        tracing::info!("MCP START SESSION (3) {:?}", session_key_clone);
+        let mcp_client = Arc::new(AMutex::new(client));
+        session_downcasted.mcp_client = Some(mcp_client.clone());
+        session_downcasted.mcp_tools = tools_result.tools.clone();
+        session_downcasted.launched_cfg = new_cfg_clone.clone();
+    });
+
+    {
+        let mut session_locked = session_arc.lock().await;
+        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+        session_downcasted.launched_coroutines.push(coroutine);
+    }
+
+    Ok(())
+}
+
+async fn _session_wait_coroutines(
+    session_arc: Arc<AMutex<Box<dyn IntegrationSession>>>,
+) {
+    loop {
+        let handle = {
+            let mut session_locked = session_arc.lock().await;
+            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            if session_downcasted.launched_coroutines.is_empty() {
+                return;
+            }
+            session_downcasted.launched_coroutines.remove(0)
+        };
+        if let Err(e) = handle.await {
+            tracing::error!("Error waiting for coroutine: {:?}", e);
+            return;
+        }
+    }
+}
 
 #[async_trait]
 impl IntegrationTrait for IntegrationMCP {
@@ -87,7 +219,6 @@ impl IntegrationTrait for IntegrationMCP {
         config_path: String,
         value: &serde_json::Value
     ) -> Result<(), String> {
-        let session_key = format!("{}", config_path);
         self.gcx_option = Some(Arc::downgrade(&gcx));
 
         match serde_json::from_value::<SettingsMCP>(value.clone()) {
@@ -97,66 +228,6 @@ impl IntegrationTrait for IntegrationMCP {
                 return Err(e.to_string());
             }
         };
-
-        let mut session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
-        let mut wrong_cfg = false;
-        if let Some(ref session) = session_option {
-            let mut session_locked = session.lock().await;
-            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-            if session_downcasted.launched_cfg != self.cfg {
-                wrong_cfg = true;
-            }
-        }
-        if session_option.is_none() || wrong_cfg {
-            tracing::info!("MCP START SESSION (1) {:?}", session_key);
-            let mut client_builder = ClientBuilder::new(self.cfg.mcp_command.as_str());
-            for arg in &self.cfg.mcp_args {
-                client_builder = client_builder.arg(arg);
-            }
-            for (key, value) in &self.cfg.mcp_env {
-                client_builder = client_builder.env(key, value);
-            }
-
-            let client = match client_builder.spawn_and_initialize().await {
-                Ok(client) => client,
-                Err(client_error) => {
-                    tracing::error!("Failed to initialize {}: {:?}", session_key, client_error);
-                    return Err(client_error.to_string());
-                }
-            };
-
-            // let set_result = client.request(
-            //     "logging/setLevel",
-            //     Some(serde_json::json!({ "level": "debug" })),
-            // ).await;
-            // match set_result {
-            //     Ok(_) => {
-            //         tracing::info!("MCP START SESSION (2) set log level success");
-            //     }
-            //     Err(e) => {
-            //         tracing::info!("MCP START SESSION (2) failed to set log level: {:?}", e);
-            //     }
-            // }
-
-            tracing::info!("MCP START SESSION (3) {:?}", session_key);
-            let tools_result = match client.list_tools().await {
-                Ok(result) => result,
-                Err(tools_error) => {
-                    tracing::error!("Failed to list tools for {}: {:?}", session_key, tools_error);
-                    return Err(tools_error.to_string());
-                }
-            };
-            tracing::info!("MCP START SESSION (4) {:?}", session_key);
-            let mcp_client = Arc::new(AMutex::new(client));
-            session_option = Some(Arc::new(AMutex::new(Box::new(SessionMCP {
-                debug_name: session_key.clone(),
-                launched_cfg: self.cfg.clone(),
-                mcp_client,
-                mcp_tools: tools_result.tools.clone(),
-            }))));
-            gcx.write().await.integration_sessions.insert(session_key.clone(), session_option.clone().unwrap());
-        }
-
         match serde_json::from_value::<IntegrationCommon>(value.clone()) {
             Ok(x) => self.common = x,
             Err(e) => {
@@ -164,7 +235,9 @@ impl IntegrationTrait for IntegrationMCP {
                 return Err(e.to_string());
             }
         }
-        self.config_path = config_path;
+        self.config_path = config_path.clone();
+
+        _session_apply_settings(gcx.clone(), config_path.clone(), self.cfg.clone()).await?;  // possibly saves coroutine in session
 
         Ok(())
     }
@@ -197,18 +270,23 @@ impl IntegrationTrait for IntegrationMCP {
             tracing::error!("No session for {:?}, strange (1)", session_key);
             return vec![];
         }
+        let session = session_option.unwrap();
+
+        _session_wait_coroutines(session.clone()).await;
 
         let mut result: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> = vec![];
         {
-            let session = session_option.unwrap();
             let mut session_locked = session.lock().await;
             let session_downcasted: &mut SessionMCP = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-            // no long operations here
+            if session_downcasted.mcp_client.is_none() {
+                tracing::error!("No mcp_client for {:?}, strange (2)", session_key);
+                return vec![];
+            }
             for tool in session_downcasted.mcp_tools.iter() {
                 result.push(Box::new(ToolMCP {
                     common: self.common.clone(),
                     config_path: self.config_path.clone(),
-                    mcp_client: session_downcasted.mcp_client.clone(),
+                    mcp_client: session_downcasted.mcp_client.clone().unwrap(),
                     mcp_tool: tool.clone(),
                 }));
             }
@@ -230,17 +308,19 @@ impl Tool for ToolMCP {
 
     async fn tool_execute(
         &mut self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        // let session_key = format!("{}", self.config_path);
-        // let gcx = ccx.lock().await.global_context.clone();
-        // let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
-        // if session_option.is_none() {
-        //     tracing::error!("No session for {:?}, strange (2)", session_key);
-        //     return Err(format!("No session for {:?}", session_key));
-        // }
+        let session_key = format!("{}", self.config_path);
+        let gcx = ccx.lock().await.global_context.clone();
+        let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
+        if session_option.is_none() {
+            tracing::error!("No session for {:?}, strange (2)", session_key);
+            return Err(format!("No session for {:?}", session_key));
+        }
+        let session = session_option.unwrap();
+        _session_wait_coroutines(session.clone()).await;
 
         let mut json_arguments: serde_json::Value = serde_json::json!({});
         if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {

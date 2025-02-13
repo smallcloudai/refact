@@ -1,5 +1,6 @@
 use std::{any::Any, sync::Arc};
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use std::future::Future;
 
 use crate::global_context::GlobalContext;
@@ -9,7 +10,8 @@ pub trait IntegrationSession: Any + Send + Sync
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
     fn is_expired(&self) -> bool;
-    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_>;
+
+    fn try_stop(&mut self, self_arc: Arc<AMutex<Box<dyn IntegrationSession>>>) -> Box<dyn Future<Output = String> + Send>;
 }
 
 pub fn get_session_hashmap_key(integration_name: &str, base_key: &str) -> String {
@@ -33,7 +35,9 @@ async fn remove_expired_sessions(gcx: Arc<ARwLock<GlobalContext>>) {
         expired_sessions
     };
     for session in expired_sessions {
-        Box::into_pin(session.lock().await.try_stop()).await;
+        let future = Box::into_pin(session.lock().await.try_stop(session.clone()));
+        // no session lock
+        future.await;
     }
     // sessions still keeps a reference on all sessions, just in case a destructor is called in the block above
 }
@@ -57,6 +61,8 @@ pub async fn stop_sessions(gcx: Arc<ARwLock<GlobalContext>>) {
         sessions
     };
     for session in sessions {
-        Box::into_pin(session.lock().await.try_stop()).await;
+        let future = Box::into_pin(session.lock().await.try_stop(session.clone()));
+        // no session lock
+        future.await;
     }
 }

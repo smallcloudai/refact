@@ -64,7 +64,7 @@ impl IntegrationSession for PdbSession
         self.last_usage_ts + SESSION_TIMEOUT_AFTER_INACTIVITY.as_secs() < current_time
     }
 
-    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
+    fn try_stop(&mut self, _self_arc: Arc<AMutex<Box<dyn IntegrationSession>>>) -> Box<dyn Future<Output = String> + Send> {
         Box::new(async { "".to_string() })
     }
 }

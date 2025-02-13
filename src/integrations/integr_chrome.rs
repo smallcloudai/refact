@@ -143,7 +143,7 @@ impl IntegrationSession for ChromeSession
         self
     }
     fn is_expired(&self) -> bool { false }
-    fn try_stop(&mut self) -> Box<dyn Future<Output = String> + Send + '_> {
+    fn try_stop(&mut self, _self_arc: Arc<AMutex<Box<dyn IntegrationSession>>>) -> Box<dyn Future<Output = String> + Send> {
         Box::new(async { "".to_string() })
     }
 }
