@@ -1,19 +1,14 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
-use std::path::PathBuf;
+use std::path::{PathBuf, Component, Path};
 use serde::Deserialize;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
-#[cfg(windows)]
-use itertools::Itertools;
-#[cfg(windows)]
-use std::path::{Component, Prefix};
-#[cfg(windows)]
-use std::ffi::OsString;
 
-use crate::files_in_workspace::detect_vcs_for_a_file_path;
 use crate::global_context::GlobalContext;
+use crate::custom_error::MapErrToString;
+use crate::files_in_workspace::detect_vcs_for_a_file_path;
 use crate::fuzzy_search::fuzzy_search;
 
 
@@ -344,6 +339,8 @@ fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<
 /// 
 /// Temporarily remove verbatim, to resolve ., .., symlinks if possible, it will be added again later.
 fn preprocess_path_for_normalization(p: String) -> String {
+    use itertools::Itertools;
+
     let p = p.replace(r"/", r"\");
     let starting_slashes = p.chars().take_while(|c| *c == '\\').count();
 
@@ -388,40 +385,70 @@ fn preprocess_path_for_normalization(p: String) -> String {
 }
 
 #[cfg(windows)]
-/// In Windows, add verbatim prefix to Disk or UNC paths, leave others as-is
-fn make_absolute(path: PathBuf) -> PathBuf {
+/// In Windows, call std::path::absolute, then add verbatim prefix to standard Disk or UNC paths
+fn absolute(path: &Path) -> Result<PathBuf, String> {
+    use std::path::Prefix;
+    use std::ffi::OsString;
+
+    let path = std::path::absolute(path).map_err_to_string()?;
+
     if let Some(Component::Prefix(pref)) = path.components().next() {
         match pref.kind() {
             Prefix::Disk(_) => {
                 let mut path_os_str = OsString::from(r"\\?\");
                 path_os_str.push(path.as_os_str());
-                PathBuf::from(path_os_str)
+                Ok(PathBuf::from(path_os_str))
             },
             Prefix::UNC(_, _) => {
                 let mut path_os_str = OsString::from(r"\\?\UNC\");
                 path_os_str.push(path.strip_prefix(r"\\").unwrap_or(&path).as_os_str());
-                PathBuf::from(path_os_str)
+                Ok(PathBuf::from(path_os_str))
             },
-            _ => path
+            _ => Ok(path.to_path_buf())
         }
     } else {
-        path
+        Ok(path.to_path_buf())
     }
 }
 
 #[cfg(not(windows))]
-/// In Unix, do nothing
-fn make_absolute(path: PathBuf) -> PathBuf {
-    path
+/// In Unix, this method is similar to std::path::absolute, but also resolves ..
+fn absolute(path: &Path) -> Result<PathBuf, String> {
+    let mut components = path.components();
+    let path_os = path.as_os_str().as_encoded_bytes();
+    
+    let mut normalized = if path.is_absolute() {
+        if path_os.starts_with(b"//") && !path_os.starts_with(b"///") {
+            components.next();
+            PathBuf::from("//")
+        } else {
+            PathBuf::from("/")
+        }
+    } else {
+        std::env::current_dir().map_err_to_string()?
+    };
+    for component in components {
+        match component {
+            Component::Normal(c) => { normalized.push(c); }
+            Component::ParentDir => { normalized.pop(); }
+            Component::CurDir => (),
+            Component::RootDir => (),
+            Component::Prefix(_) => return Err("Prefix should not occur in Unix".to_string()),
+        }
+    }
+    
+    if path_os.ends_with(b"/") {
+        normalized.push("");
+    }
+    
+    Ok(normalized)
 }
 
 pub fn canonical_path<T: Into<String>>(p: T) -> PathBuf {
     let p: String = p.into();
     let path= PathBuf::from(preprocess_path_for_normalization(p));
 
-    path.canonicalize()
-        .or_else(|_| std::path::absolute(&path).map(make_absolute))
-        .unwrap_or(path)
+    path.canonicalize().unwrap_or_else(|_| absolute(&path).unwrap_or(path))
 }
 
 pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Result<S::Ok, S::Error> {
@@ -508,7 +535,7 @@ mod tests {
         assert_eq!(result, expected_result, "The result should contain the expected paths, instead it found");
     }
     
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     #[test]
     fn test_preprocess_windows_path_for_normalization() {
         let test_cases = [
@@ -557,9 +584,9 @@ mod tests {
         }  
     }
 
-    #[cfg(target_os = "windows")]
+    #[cfg(windows)]
     #[test]
-    fn test_canonical_path() 
+    fn test_canonical_path_windows() 
     {
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_dir_path = temp_dir.path();
@@ -597,7 +624,7 @@ mod tests {
             (r"d:\\..\\..\\..\\..\\..", PathBuf::from(r"\\?\D:\")),
 
             // Verbatim Disks
-            (r"\\\\?\\C:\Very\Long\Path\With\Lots\Of\Subdirectories\..\..\..\CON", PathBuf::from(r"\\?\C:\Very\Long\Path\With\CON")),
+            (r"\\\\?\\C:\Very\Long\Path\With\Lots\Of\Subdirectories\..\..\..\LongFile", PathBuf::from(r"\\?\C:\Very\Long\Path\With\LongFile")),
             (r"//?/d:/Trailing/Dot./.", PathBuf::from(r"\\?\d:\Trailing\Dot")),
             (r"\?\c:\Trailing\Space\\  ", PathBuf::from(r"\\?\c:\Trailing\Space\")),
             (r"\?/C:/$MFT", PathBuf::from(r"\\?\C:\$MFT")),
@@ -617,6 +644,36 @@ mod tests {
             // Long paths
             (&long_dir_path_str, PathBuf::from(format!("\\\\?\\{temp_dir_path_str}\\{long_str}"))),
             (&long_dir_file_str, PathBuf::from(format!("\\\\?\\{temp_dir_path_str}\\{long_str}\\file.txt"))),
+        ];
+
+        for (input, expected) in test_cases {
+            let result = canonical_path(input);
+            assert_eq!(result, expected, "Expected canonical path for {} to be {}, but got {}", input, expected.to_string_lossy(), result.to_string_lossy());
+        }
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn test_canonical_path_unix() 
+    {
+        let cur_dir = std::env::current_dir().unwrap();
+
+        let test_cases = vec![
+            // Absolute paths
+            (r"/home/.././etc/./../usr/bin", PathBuf::from(r"/usr/bin")),
+            (r"/var/run//.././run//docker.sock", PathBuf::from(r"/run/docker.sock")),
+            (r"/this_folder_does_not_exist/run/.././run/docker.sock", PathBuf::from(r"/this_folder_does_not_exist/run/docker.sock")),
+            (r"/../../var", PathBuf::from(r"/var")),
+            (r"/../../var_n/.", PathBuf::from(r"/var_n")),
+            (r"///var_n//foo_n/foo_n//./././../bar_n/", PathBuf::from(r"/var_n/foo_n/bar_n/")),
+
+            // Relative paths
+            (r".", cur_dir.clone()),
+            (r".//some_not_existing_folder/..", cur_dir.clone()),
+            (r"./some_not_existing_folder///..//", cur_dir.join("")),
+            (r"foo_n////var_n", cur_dir.join("foo_n").join("var_n")),
+            (r"foo_n/../var_n/../cat_n/", cur_dir.join("cat_n")),
+            (r"./foo_n/././..", cur_dir.clone()),
         ];
 
         for (input, expected) in test_cases {
