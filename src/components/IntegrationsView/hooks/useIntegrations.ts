@@ -394,11 +394,36 @@ export const useIntegrations = ({
       currentIntegrationValues
     ) {
       setIsDisabledIntegrationForm((isDisabled) => {
+        const isMCPIntegration = currentIntegration.integr_name.includes("mcp");
         const toolParametersChanged =
           toolParameters &&
-          areToolParameters(currentIntegrationValues.parameters)
+          areToolParameters(currentIntegrationValues.parameters) &&
+          !isMCPIntegration // if integration is MCP, then not checking toolParameters
             ? !isEqual(toolParameters, currentIntegrationValues.parameters)
             : false;
+
+        const MCPArgumentsChanged = isMCPArgumentsArray(
+          currentIntegrationValues.args,
+        )
+          ? !isEqual(currentIntegrationValues.args, MCPArguments)
+          : false;
+
+        const MCPEnvironmentVariablesChanged = isMCPEnvironmentsDict(
+          currentIntegrationValues.env,
+        )
+          ? !isEqual(currentIntegrationValues.env, MCPEnvironmentVariables)
+          : false;
+
+        const confirmationRulesChanged = !isEqual(
+          confirmationRules,
+          currentIntegrationValues.confirmation,
+        );
+
+        const someFieldsHaveBeenChanged =
+          confirmationRulesChanged ||
+          toolParametersChanged ||
+          MCPArgumentsChanged ||
+          MCPEnvironmentVariablesChanged;
 
         // Manually collecting data from the form
         const formElement = document.getElementById(
@@ -433,44 +458,22 @@ export const useIntegrations = ({
           },
         );
 
-        const confirmationRulesChanged = !isEqual(
-          confirmationRules,
-          currentIntegrationValues.confirmation,
+        const allToolParametersAreWrittenInSnakeCase = toolParameters?.every(
+          (param) => validateSnakeCase(param.name),
         );
-
-        debugIntegrations(
-          `[DEBUG confirmationRulesChanged]: confirmationRulesChanged: `,
-          confirmationRulesChanged,
-        );
-
-        const allToolParametersNamesInSnakeCase = toolParameters
-          ? toolParameters.every((param) => validateSnakeCase(param.name))
-          : true;
-
-        debugIntegrations(
-          `[DEBUG MCP]: allToolParametersNamesInSnakeCase: `,
-          allToolParametersNamesInSnakeCase,
-        );
-        if (!allToolParametersNamesInSnakeCase) {
-          return true; // Disabling form if any of tool parameters names are written not in snake case
-        }
-
-        if ((toolParametersChanged || confirmationRulesChanged) && isDisabled) {
-          return false; // Enable form if toolParameters changed and form was disabled
-        }
 
         if (
-          otherFieldsChanged &&
-          (toolParametersChanged || confirmationRulesChanged)
+          typeof allToolParametersAreWrittenInSnakeCase !== "undefined" &&
+          !allToolParametersAreWrittenInSnakeCase
         ) {
-          return isDisabled; // Keep the form in the same condition
+          return true; // Disabling form if any of toolParameters are defined and not written in snake case
         }
 
-        if (
-          !otherFieldsChanged &&
-          !toolParametersChanged &&
-          !confirmationRulesChanged
-        ) {
+        if (someFieldsHaveBeenChanged && isDisabled) {
+          return false;
+        }
+
+        if (!otherFieldsChanged && !someFieldsHaveBeenChanged) {
           return true; // Disable form if all fields are back to original state
         }
 
@@ -483,6 +486,8 @@ export const useIntegrations = ({
     currentIntegrationSchema,
     confirmationRules,
     currentIntegration,
+    MCPArguments,
+    MCPEnvironmentVariables,
   ]);
 
   const handleSetCurrentIntegrationSchema = (
@@ -678,7 +683,7 @@ export const useIntegrations = ({
         : false;
 
       debugIntegrations(
-        `[DEBUG]: eachFormValueIsNotChanged: `,
+        `[DEBUG MCP]: eachFormValueIsNotChanged: `,
         eachFormValueIsNotChanged,
       );
 
@@ -719,26 +724,29 @@ export const useIntegrations = ({
         areToolConfirmation(currentIntegrationValues.confirmation)
           ? isEqual(currentIntegrationValues.confirmation, confirmationRules)
           : true;
-      debugIntegrations(`[DEBUG]: formValues: `, formValues);
+      debugIntegrations(`[DEBUG MCP]: formValues: `, formValues);
       debugIntegrations(
-        `[DEBUG]: currentIntegrationValues: `,
+        `[DEBUG MCP]: currentIntegrationValues: `,
         currentIntegrationValues,
       );
       debugIntegrations(
-        `[DEBUG]: eachAvailabilityOptionIsNotChanged: `,
+        `[DEBUG MCP]: eachAvailabilityOptionIsNotChanged: `,
         eachAvailabilityOptionIsNotChanged,
       );
 
       debugIntegrations(
-        `[DEBUG]: eachToolParameterIsNotChanged: `,
+        `[DEBUG MCP]: eachToolParameterIsNotChanged: `,
         eachToolParameterIsNotChanged,
       );
 
       debugIntegrations(
-        `[DEBUG]: eachToolConfirmationIsNotChanged: `,
+        `[DEBUG MCP]: eachToolConfirmationIsNotChanged: `,
         eachToolConfirmationIsNotChanged,
       );
-      debugIntegrations(`[DEBUG]: availabilityValues: `, availabilityValues);
+      debugIntegrations(
+        `[DEBUG MCP]: availabilityValues: `,
+        availabilityValues,
+      );
       const maybeDisabled =
         eachFormValueIsNotChanged &&
         eachAvailabilityOptionIsNotChanged &&
@@ -747,22 +755,27 @@ export const useIntegrations = ({
         eachMCPArgumentIsNotChanged &&
         eachMCPEnvironmentVariableIsNotChanged;
 
-      debugIntegrations(`[DEBUG CHANGE]: maybeDisabled: `, maybeDisabled);
+      debugIntegrations(`[DEBUG MCP]: maybeDisabled: `, maybeDisabled);
 
-      const areAllCommandsWrittenInSnakeCase =
-        toolParameters?.every((param) => validateSnakeCase(param.name)) &&
-        MCPArguments.every((arg) => validateSnakeCase(arg)) &&
-        Object.entries(MCPEnvironmentVariables).every(([key]) =>
-          validateSnakeCase(key),
-        );
+      const areToolParametersWrittenInSnakeCase = toolParameters?.every(
+        (param) => validateSnakeCase(param.name),
+      );
 
-      setIsDisabledIntegrationForm(
-        areAllCommandsWrittenInSnakeCase !== undefined
-          ? areAllCommandsWrittenInSnakeCase
+      debugIntegrations(
+        `[DEBUG MCP]: areToolParametersWrittenInSnakeCase: `,
+        areToolParametersWrittenInSnakeCase,
+      );
+
+      const newDisabled =
+        areToolParametersWrittenInSnakeCase !== undefined
+          ? areToolParametersWrittenInSnakeCase
             ? maybeDisabled
             : true
-          : maybeDisabled,
-      );
+          : maybeDisabled;
+
+      debugIntegrations(`[DEBUG MCP]: newDisabled: `, newDisabled);
+
+      setIsDisabledIntegrationForm(newDisabled);
     },
     [
       currentIntegration,
