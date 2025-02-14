@@ -204,7 +204,7 @@ export const ReasoningModeSwitch: React.FC = () => {
       justify="between"
       width="100%"
     >
-      <Text size="2">Use a reasoning model for planning</Text>
+      <Text size="2">Use a o3-mini reasoning model for planning</Text>
       <Flex gap="2" align="center">
         <Switch
           size="1"
