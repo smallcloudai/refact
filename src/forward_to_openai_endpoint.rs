@@ -21,6 +21,7 @@ pub async fn forward_to_openai_style_endpoint(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    is_metadata_supported: bool,
     meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
@@ -31,7 +32,7 @@ pub async fn forward_to_openai_style_endpoint(
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
-    if meta.is_some() {
+    if is_metadata_supported {
         headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
     }
     let mut data = json!({
@@ -103,6 +104,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     endpoint_template: &String,
     endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
+    is_metadata_supported: bool,
     meta: Option<ChatMeta>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
@@ -113,7 +115,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     if !bearer.is_empty() {
         headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
     }
-    if meta.is_some() {
+    if is_metadata_supported {
         headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
     }
 

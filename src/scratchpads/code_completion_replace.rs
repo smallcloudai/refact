@@ -44,8 +44,8 @@ const MIN_ROWS_TO_SKIP_CARET: usize = 2;
 const SUBBLOCK_REQUIRED_TOKENS: usize = 128;
 const CURSORFILE_MIN_TOKENS: usize = 128;
 const MAX_NEW_TOKENS: usize = 1024;  // it's quite high since we want to avoid having a stripped message
-const TEMPERATURE_INITIAL: f32 = 0.2;
-const TEMPERATURE_NOCACHE: f32 = 0.6;
+const TEMPERATURE_INITIAL: f32 = 0.0;
+const TEMPERATURE_NOCACHE: f32 = 0.5;
 
 #[derive(Debug, Clone)]
 pub struct SubBlock {
@@ -64,7 +64,7 @@ impl SubBlock {
             .collect::<Vec<_>>()
             .join("");
 
-        code.push_str(format!("{}<CURSOR>\n", self.cursor_line).as_str());
+        code.push_str(format!("{}<CURSOR>\n", self.cursor_line.trim_end().to_string()).as_str());
         code.push_str(
             self.after_lines
                 .iter()
@@ -73,7 +73,7 @@ impl SubBlock {
                 .join("")
                 .as_str(),
         );
-        Ok(format!("<BLOCK_OF_CDDE>:\n```\n{code}\n```"))
+        Ok(format!("<BLOCK_OF_CODE>:\n```\n{code}\n```"))
     }
 
     fn before_lines_str(&self) -> String {
@@ -405,6 +405,7 @@ fn process_n_choices(
                 info!("unprocessed {i} response_n_choice\n{}", x);
             }
             if finish_reasons[i] == FinishReason::Stop && !x.contains("```") {
+                warn!("completion refused: no code block found in the model response");
                 return json!({
                     "index": i,
                     "code_completion": "",
@@ -674,9 +675,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
         sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
-        if !self.post.inputs.multiline {
-            sampling_parameters_to_patch.stop.push("\n".to_string());
-        }
         let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
         let source = self
             .post
@@ -901,10 +899,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         let use_rag = self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
-        sampling_parameters_to_patch.stop = vec![self.t.eot.clone()];
-        if !self.post.inputs.multiline {
-            sampling_parameters_to_patch.stop.push("\n".to_string());
-        }
+        sampling_parameters_to_patch.stop = vec![]; // avoid model cutting completion too early 
         let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
         let source = self
             .post

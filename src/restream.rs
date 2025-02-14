@@ -102,6 +102,7 @@ pub async fn scratchpad_interaction_not_stream_json(
 
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
+    let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
         Ok(serde_json::Value::Object(serde_json::Map::new()))
@@ -126,6 +127,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             &endpoint_template,
             &endpoint_chat_passthrough,
             &parameters,  // includes n
+            metadata_supported,
             meta
         ).await
     }.map_err(|e| {
@@ -394,6 +396,7 @@ pub async fn scratchpad_interaction_stream(
                 break;
             }
             // info!("prompt: {:?}", prompt);
+            let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
             let event_source_maybe = if endpoint_style == "hf" {
                 crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,
@@ -415,6 +418,7 @@ pub async fn scratchpad_interaction_stream(
                     &endpoint_template,
                     &endpoint_chat_passthrough,
                     &my_parameters,
+                    metadata_supported,
                     meta
                 ).await
             };
