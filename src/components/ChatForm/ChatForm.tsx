@@ -289,7 +289,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }
 
   return (
-    <Card mt="1" style={{ flexShrink: 0, position: "static" }}>
+    <Card mt="1" style={{ flexShrink: 0, position: "relative" }}>
       {!isOnline && (
         <Callout type="info" mb="2">
           Oops, seems that connection was lost... Check your internet connection

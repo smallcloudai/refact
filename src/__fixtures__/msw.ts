@@ -114,6 +114,7 @@ export const noChatLinks: HttpHandler = http.post(
   () => {
     const res: LinksForChatResponse = {
       uncommited_changes_warning: "",
+      new_chat_suggestion: false,
       links: [],
     };
     return HttpResponse.json(res);

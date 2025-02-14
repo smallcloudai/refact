@@ -52,6 +52,9 @@ describe("Pin messages", () => {
           send_immediately: false,
           thread: {
             id: "8ab48978-3ad3-4387-944c-fedd15bdbc0d",
+            new_chat_suggested: {
+              wasSuggested: false,
+            },
             messages: [
               {
                 role: "context_file",

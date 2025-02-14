@@ -459,6 +459,9 @@ export const CHAT_CONFIG_THREAD: Chat = {
       project: "",
     },
     read: true,
+    new_chat_suggested: {
+      wasSuggested: false,
+    },
     createdAt: "2024-12-02T14:42:18.902Z",
     updatedAt: "2024-12-02T14:42:18.902Z",
   },

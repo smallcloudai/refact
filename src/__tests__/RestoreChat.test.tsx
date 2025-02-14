@@ -46,6 +46,9 @@ describe("Restore Chat from history", () => {
               { role: "user", content: "test user message", checkpoints: [] },
               { role: "assistant", content: "👋" },
             ],
+            new_chat_suggested: {
+              wasSuggested: false,
+            },
             read: true,
           },
         },

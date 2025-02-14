@@ -29,6 +29,9 @@ const MockedStore: React.FC<{
     id: "test",
     model: "test",
     messages: messages ?? [],
+    new_chat_suggested: {
+      wasSuggested: false,
+    },
   };
   const store = setUpStore({
     chat: {

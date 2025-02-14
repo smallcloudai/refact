@@ -2,6 +2,9 @@ import { ChatThread } from "../features/Chat";
 
 export const CHAT_WITH_MULTI_MODAL: ChatThread = {
   id: "aa7cbc4d-e21f-446f-a4cd-c402f2593e8a",
+  new_chat_suggested: {
+    wasSuggested: false,
+  },
   messages: [
     {
       role: "user",

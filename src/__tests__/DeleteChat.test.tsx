@@ -23,6 +23,9 @@ describe("Delete a Chat form history", () => {
         id: "abc123",
         model: "foo",
         tool_use: "quick",
+        new_chat_suggested: {
+          wasSuggested: false,
+        },
         createdAt: now,
         updatedAt: now,
         read: true,

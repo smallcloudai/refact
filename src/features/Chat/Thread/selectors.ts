@@ -15,6 +15,9 @@ export const selectAutomaticPatch = (state: RootState) =>
 
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;
+
+export const selectThreadNewChatSuggested = (state: RootState) =>
+  state.chat.thread.new_chat_suggested;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;

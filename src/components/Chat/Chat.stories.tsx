@@ -33,6 +33,9 @@ const Template: React.FC<{
     id: "test",
     model: "gpt-4o", // or any model from STUB CAPS REQUEst
     messages: [],
+    new_chat_suggested: {
+      wasSuggested: false,
+    },
   };
   const store = setUpStore({
     tour: {

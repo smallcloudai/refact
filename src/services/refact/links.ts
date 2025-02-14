@@ -100,6 +100,7 @@ export function isPostChatLink(chatLink: ChatLink): chatLink is PostChatLink {
 export type LinksForChatResponse = {
   links: ChatLink[];
   uncommited_changes_warning: string;
+  new_chat_suggestion: boolean;
 };
 
 export type LinksApiRequest = {

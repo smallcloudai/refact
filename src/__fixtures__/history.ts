@@ -28,6 +28,9 @@ export const HISTORY: ChatHistoryItem[] = [
       "Write a program that solves word-chain puzzles.\n\nThere’s a type of puzzle where the challenge is to build a chain of words, starting with one particular word and ending with another. Successive entries in the chain must all be real words, and each can differ from the previous word by just one letter. For example, you can get from “cat” to “dog” using the following chain.\n",
     model: "",
     isTitleGenerated: true,
+    new_chat_suggested: {
+      wasSuggested: false,
+    },
     createdAt: "2024-07-02T10:43:13.401Z",
     updatedAt: "2024-07-02T10:44:38.325Z",
     tool_use: "explore",
@@ -115,6 +118,9 @@ export const HISTORY: ChatHistoryItem[] = [
       "In this project, what is the difference between a toad and a frog?\n",
     model: "",
     isTitleGenerated: true,
+    new_chat_suggested: {
+      wasSuggested: false,
+    },
     createdAt: "2024-07-02T10:40:27.354Z",
     updatedAt: "2024-07-02T10:40:32.341Z",
     tool_use: "explore",
