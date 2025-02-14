@@ -48,7 +48,7 @@ fn _make_conversation(
     messages: &Vec<ChatMessage>
 ) -> Vec<ChatMessage> {
     let mut history_message = "*Conversation:*\n".to_string();
-    for m in messages.iter().rev() {
+    for m in messages.iter().take(10).rev() {
         let message_row = match m.role.as_str() {
             "user" => {
                 format!("👤:{}\n\n", &m.content.content_text_only())
@@ -77,7 +77,7 @@ pub async fn generate_follow_up_message(
 ) -> Result<FollowUpResponse, String> {
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(),
-        16000,
+        32000,
         1,
         false,
         messages.clone(),
