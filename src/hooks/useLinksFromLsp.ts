@@ -13,6 +13,7 @@ import { useAppSelector } from "./useAppSelector";
 import { useGetCapsQuery } from "./useGetCapsQuery";
 import { useSendChatRequest } from "./useSendChatRequest";
 import {
+  chatModeToLspMode,
   selectChatId,
   selectIntegration,
   selectIsStreaming,
@@ -68,7 +69,7 @@ export function useGetLinksFromLsp() {
       chat_id: chatId,
       messages,
       model: model ?? "",
-      mode: threadMode, // TODO: Changing thread mode invalidates the cache.
+      mode: chatModeToLspMode(undefined, threadMode),
       current_config_file: maybeIntegration?.path,
     },
     { skip: skipLinksRequest },

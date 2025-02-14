@@ -80,7 +80,10 @@ export function chatModeToLspMode(
   toolUse?: ToolUse,
   mode?: LspChatMode,
 ): LspChatMode {
-  if (mode) return mode;
+  if (mode) {
+    if (mode === "AGENT" || mode === "THINKING_AGENT") return "AGENT";
+    return mode;
+  }
   if (toolUse === "agent") return "AGENT";
   if (toolUse === "quick") return "NO_TOOLS";
   return "EXPLORE";
