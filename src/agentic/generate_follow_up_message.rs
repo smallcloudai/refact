@@ -48,7 +48,7 @@ fn _make_conversation(
     messages: &Vec<ChatMessage>
 ) -> Vec<ChatMessage> {
     let mut history_message = "*Conversation:*\n".to_string();
-    for m in messages.iter().take(10).rev() {
+    for m in messages.iter().rev().take(10) {
         let message_row = match m.role.as_str() {
             "user" => {
                 format!("👤:{}\n\n", &m.content.content_text_only())
