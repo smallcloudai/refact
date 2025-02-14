@@ -9,7 +9,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::files_correction::{get_project_dirs, to_pathbuf_normalize, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 
@@ -106,8 +106,8 @@ impl Tool for ToolMv {
             .unwrap_or(dst_str.clone());
         let dst_corrected_path = format!("{}/{}", dst_parent_path.trim_end_matches('/'), dst_name);
 
-        let src_true_path = to_pathbuf_normalize(&src_corrected_path);
-        let dst_true_path = to_pathbuf_normalize(&dst_corrected_path);
+        let src_true_path = canonical_path(&src_corrected_path);
+        let dst_true_path = canonical_path(&dst_corrected_path);
 
         let src_within_project = project_dirs.iter().any(|p| src_true_path.starts_with(p));
         let dst_within_project = project_dirs.iter().any(|p| dst_true_path.starts_with(p));

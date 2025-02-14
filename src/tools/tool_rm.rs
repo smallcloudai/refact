@@ -8,7 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::files_correction::{get_project_dirs, to_pathbuf_normalize, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 
@@ -127,7 +127,7 @@ impl Tool for ToolRm {
             return Err(format!("Path '{}' not found", path_str));
         };
 
-        let true_path = to_pathbuf_normalize(&corrected_path);
+        let true_path = canonical_path(&corrected_path);
 
         // Check that the true_path is within project directories.
         let is_within_project = project_dirs.iter().any(|p| true_path.starts_with(p));

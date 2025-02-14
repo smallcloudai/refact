@@ -1,6 +1,6 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
-use crate::files_correction::to_pathbuf_normalize;
+use crate::files_correction::canonical_path;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::file_edit::auxiliary::{
@@ -25,7 +25,7 @@ pub struct ToolReplaceTextDoc;
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolReplaceTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = to_pathbuf_normalize(&s.trim().to_string());
+            let path = canonical_path(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
                     "argument 'path' should be an absolute path: {:?}",

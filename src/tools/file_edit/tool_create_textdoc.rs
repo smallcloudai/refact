@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::to_pathbuf_normalize;
+use crate::files_correction::canonical_path;
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
 
@@ -25,7 +25,7 @@ pub struct ToolCreateTextDoc;
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = to_pathbuf_normalize(&s.trim().to_string());
+            let path = canonical_path(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
                     "argument 'path' should be an absolute path: {:?}",
