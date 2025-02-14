@@ -282,21 +282,26 @@ pub async fn handle_v1_links(
     */
 
     // Follow-up
-    if false {
-        if post.meta.chat_mode != ChatMode::NO_TOOLS && links.is_empty() && post.messages.len() > 2 {
-            let follow_up_messages: Vec<String> = generate_follow_up_message(post.messages.clone(), gcx.clone(), &post.model_name, &post.meta.chat_id).await
-                .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
-            for follow_up_message in follow_up_messages {
-                tracing::info!("follow-up {:?}", follow_up_message);
-                links.push(Link {
-                    link_action: LinkAction::FollowUp,
-                    link_text: follow_up_message,
-                    link_goto: None,
-                    link_summary_path: None,
-                    link_tooltip: format!(""),
-                    ..Default::default()
-                });
-            }
+    let mut new_chat_suggestion = false;
+    if post.meta.chat_mode != ChatMode::NO_TOOLS 
+        && links.is_empty()
+        && post.messages.len() > 2
+        && post.messages.last().map(|x| x.role == "assistant").unwrap_or(false) {
+        let follow_up_response = generate_follow_up_message(
+            post.messages.clone(), gcx.clone(), Some("gpt-4o-mini".to_string()), &post.model_name, &post.meta.chat_id
+        ).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
+        new_chat_suggestion = follow_up_response.topic_changed;
+        for follow_up_message in follow_up_response.follow_ups {
+            tracing::info!("follow-up {:?}", follow_up_message);
+            links.push(Link {
+                link_action: LinkAction::FollowUp,
+                link_text: follow_up_message,
+                link_goto: None,
+                link_summary_path: None,
+                link_tooltip: format!(""),
+                ..Default::default()
+            });
         }
     }
 
@@ -308,6 +313,7 @@ pub async fn handle_v1_links(
         .body(Body::from(serde_json::to_string_pretty(&serde_json::json!({
             "links": links,
             "uncommited_changes_warning": uncommited_changes_warning,
+            "new_chat_suggestion": new_chat_suggestion
         })).unwrap())).unwrap())
 }
 
