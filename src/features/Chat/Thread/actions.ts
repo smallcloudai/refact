@@ -296,7 +296,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const onlyDeterministicMessages = checkForToolLoop(messages);
 
     const messagesForLsp = formatMessagesForLsp(messages);
-    console.log(`[DEBUG]: messagesForLsp: `, messagesForLsp);
     const realMode = mode ?? thread?.mode;
     const maybeLastUserMessageId = thread?.last_user_message_id;
 
