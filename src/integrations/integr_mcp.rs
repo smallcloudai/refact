@@ -383,7 +383,7 @@ impl Tool for ToolMCP {
                 }
                 Err(e) => {
                     tracing::error!("Failed to call tool: {:?}", e);
-                    return Err("Failed to call tool".to_string());
+                    return Err(e.to_string());
                 }
             }
         };
