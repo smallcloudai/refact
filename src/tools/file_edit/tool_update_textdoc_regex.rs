@@ -1,5 +1,5 @@
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
+use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace_regex, sync_documents_ast};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
@@ -11,6 +11,8 @@ use std::sync::Arc;
 use regex::Regex;
 use tokio::sync::Mutex as AMutex;
 use crate::files_correction::to_pathbuf_normalize;
+use tokio::sync::RwLock as ARwLock;
+use crate::global_context::GlobalContext;
 
 struct ToolUpdateTextDocRegexArgs {
     path: PathBuf,
@@ -70,6 +72,19 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocRegexArg
     })
 }
 
+pub async fn tool_update_text_doc_regex_exec(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    args: &HashMap<String, Value>,
+    dry: bool
+) -> Result<(String, String, Vec<DiffChunk>), String> {
+    let args = parse_args(args)?;
+    await_ast_indexing(gcx.clone()).await?;
+    let (before_text, after_text) = str_replace_regex(&args.path, &args.pattern, &args.replacement, args.multiple, dry)?;
+    sync_documents_ast(gcx.clone(), &args.path).await?;
+    let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
+    Ok((before_text, after_text, diff_chunks))
+}
+
 #[async_trait]
 impl Tool for ToolUpdateTextDocRegex {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -83,11 +98,7 @@ impl Tool for ToolUpdateTextDocRegex {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let args = parse_args(args)?;
-        await_ast_indexing(gcx.clone()).await?;
-        let (before_text, after_text) = str_replace_regex(&args.path, &args.pattern, &args.replacement, args.multiple)?;
-        sync_documents_ast(gcx.clone(), &args.path).await?;
-        let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
+        let (_, _, diff_chunks) = tool_update_text_doc_regex_exec(gcx.clone(), args, false).await?;
         let results = vec![ChatMessage {
             role: "diff".to_string(),
             content: ChatContent::SimpleText(json!(diff_chunks).to_string()),

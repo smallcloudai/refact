@@ -1,5 +1,5 @@
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
+use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::file_edit::auxiliary::{
     await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
@@ -12,6 +12,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use crate::files_correction::to_pathbuf_normalize;
+use crate::global_context::GlobalContext;
+use tokio::sync::RwLock as ARwLock;
 
 struct ToolCreateTextDocArgs {
     path: PathBuf,
@@ -19,7 +21,6 @@ struct ToolCreateTextDocArgs {
 }
 
 pub struct ToolCreateTextDoc;
-
 
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
@@ -56,6 +57,19 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, St
     })
 }
 
+pub async fn tool_create_text_doc_exec(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    args: &HashMap<String, Value>,
+    dry: bool
+) -> Result<(String, String, Vec<DiffChunk>), String> {
+    let args = parse_args(args)?;
+    await_ast_indexing(gcx.clone()).await?;
+    let (before_text, after_text) = write_file(&args.path, &args.content, dry)?;
+    sync_documents_ast(gcx.clone(), &args.path).await?;
+    let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
+    Ok((before_text, after_text, diff_chunks))
+}
+
 #[async_trait]
 impl Tool for ToolCreateTextDoc {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -69,11 +83,7 @@ impl Tool for ToolCreateTextDoc {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let args = parse_args(args)?;
-        await_ast_indexing(gcx.clone()).await?;
-        let (before_text, after_text) = write_file(&args.path, &args.content)?;
-        sync_documents_ast(gcx.clone(), &args.path).await?;
-        let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
+        let (_, _, diff_chunks) = tool_create_text_doc_exec(gcx.clone(), args, false).await?;
         let results = vec![ChatMessage {
             role: "diff".to_string(),
             content: ChatContent::SimpleText(json!(diff_chunks).to_string()),

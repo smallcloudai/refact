@@ -140,18 +140,20 @@ pub async fn sync_documents_ast(
     Ok(())
 }
 
-pub fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String), String> {
+pub fn write_file(path: &PathBuf, file_text: &String, dry: bool) -> Result<(String, String), String> {
     if !path.exists() {
         let parent = path.parent().ok_or(format!(
             "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
             path
         ))?;
         if !parent.exists() {
-            fs::create_dir_all(&parent).map_err(|e| {
-                let err = format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
-                warn!("{err}");
-                err
-            })?;
+            if !dry {
+                fs::create_dir_all(&parent).map_err(|e| {
+                    let err = format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
+                    warn!("{err}");
+                    err
+                })?;
+            }
         }
     }
     let before_text = if path.exists() {
@@ -159,11 +161,13 @@ pub fn write_file(path: &PathBuf, file_text: &String) -> Result<(String, String)
     } else {
         "".to_string()
     };
-    fs::write(&path, file_text).map_err(|e| {
-        let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
-        warn!("{err}");
-        err
-    })?;
+    if !dry {
+        fs::write(&path, file_text).map_err(|e| {
+            let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
+            warn!("{err}");
+            err
+        })?;
+    }
     Ok((before_text, file_text.to_string()))
 }
 
@@ -172,6 +176,7 @@ pub fn str_replace(
     old_str: &String,
     new_str: &String,
     replace_multiple: bool,
+    dry: bool,
 ) -> Result<(String, String), String> {
     let file_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
@@ -205,7 +210,7 @@ pub fn str_replace(
     let new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
 
     let new_file_content = restore_line_endings(&new_content, has_crlf);
-    write_file(path, &new_file_content)?;
+    write_file(path, &new_file_content, dry)?;
     Ok((file_content, new_file_content))
 }
 
@@ -214,6 +219,7 @@ pub fn str_replace_regex(
     pattern: &Regex,
     replacement: &String,
     multiple: bool,
+    dry: bool
 ) -> Result<(String, String), String> {
     let file_content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
@@ -244,6 +250,6 @@ pub fn str_replace_regex(
             .to_string()
     };
     let new_file_content = restore_line_endings(&new_content, has_crlf);
-    write_file(path, &new_file_content)?;
+    write_file(path, &new_file_content, dry)?;
     Ok((file_content, new_file_content))
 }

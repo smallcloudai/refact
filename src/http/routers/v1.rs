@@ -47,6 +47,7 @@ use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handl
 use crate::agent_db::db_cthread::{handle_db_v1_cthread_update, handle_db_v1_cthreads_sub};
 use crate::agent_db::db_cmessage::{handle_db_v1_cmessages_update, handle_db_v1_cmessages_sub};
 use crate::agent_db::db_chore::{handle_db_v1_chore_update, handle_db_v1_chore_event_update, handle_db_v1_chores_sub};
+use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
 use crate::http::routers::v1::handlers_memdb::{handle_mem_sub, handle_mem_upd};
 use crate::http::utils::telemetry_wrapper;
 
@@ -79,7 +80,7 @@ pub mod handlers_memdb;
 #[cfg(feature="vecdb")]
 pub mod vecdb;
 mod v1_integrations;
-
+mod file_edit_tools;
 
 pub fn make_v1_router() -> Router {
     let builder = Router::new()
@@ -144,6 +145,8 @@ pub fn make_v1_router() -> Router {
         .route("/checkpoints-restore", telemetry_post!(handle_v1_checkpoints_restore))
 
         .route("/links", telemetry_post!(handle_v1_links))
+
+        .route("/file_edit_tool_dry_run", telemetry_post!(handle_v1_file_edit_tool_dry_run))
 
         // experimental
         .route("/get-dashboard-plots", telemetry_get!(get_dashboard_plots))
