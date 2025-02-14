@@ -44,10 +44,6 @@ itertools = "0.14.0"
 lazy_static = "1.4.0"
 libsqlite3-sys = "0.28.0"
 log = "0.4.20"
-# To debug MCP on local laptop, uncomment this (breaks CI)
-#[patch.crates-io]
-#mcp_client_rs = { path = "../mcp_client_rust" }
-mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
 md5 = "0.7"
 notify = { version = "8.0.0", features = ["serde"] }
 parking_lot = { version = "0.12.1", features = ["serde"] }
@@ -100,3 +96,9 @@ uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2.3"
 which = "7.0.1"
 zerocopy = "0.8.14"
+
+# There you can use a local copy:
+mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
+#mcp_client_rs = { path = "../mcp_client_rust" }
+
+

@@ -79,7 +79,7 @@ impl IntegrationSession for SessionMCP {
 async fn _session_kill_process(session: &SessionMCP) {
     tracing::info!("MCP STOP {}", session.debug_name);
     if let Some(mcp_client) = &session.mcp_client {
-        let mcp_client_locked = mcp_client.lock().await;
+        let mut mcp_client_locked = mcp_client.lock().await;
         let maybe_err = mcp_client_locked.shutdown().await;
         if let Err(e) = maybe_err {
             tracing::error!("Failed to stop MCP {}:\n{:?}", session.debug_name, e);
