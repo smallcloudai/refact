@@ -8,34 +8,24 @@ use crate::subchat::subchat_single;
 use crate::call_validation::{ChatContent, ChatMessage};
 
 const PROMPT: &str = r#"
-Super simple job: generate follow-up messages and determine if the topic has drastically changed!
+Your task is to do two things for a conversation between a user and an assistant:
 
-**Input:**  
-You receive a conversation between a user and an assistant. Your task is twofold:  
-1. Create up to three distinct, concise follow-up messages that the user might send in response to the robot’s (assistant’s) last message. Each follow-up should be only a few words long and clearly meaningful.  
-2. Decide whether the user's message represents a drastic change of topic in the conversation.
+1. **Follow-Up Messages:**
+   - Create up to 3 short follow-up messages that the user might send after the assistant’s last message.
+   - The first message should invite the assistant to keep talking.
+   - Each message should have a different meaning.
+   - If there is no clear follow-up or the conversation isn’t asking a question, return an empty list.
 
-**Requirements:**  
-- **Follow-ups:**  
-  1. Generate up to 3 follow-up messages.  
-  2. The first follow-up should encourage the robot to continue the conversation.  
-  3. Each follow-up must convey a different meaning (avoid three variations of a simple “yes”).  
-  4. If no straightforward follow-up is possible or if the conversation does not include a question, return an empty list for follow-ups.
+2. **Topic Change Detection:**
+   - Decide if the user’s latest message is about a different topic from the previous conversation.
+   - A topic change means the new topic is not related to the previous discussion.
 
-- **Topic Change:**  
-  - Evaluate if the user's latest message indicates a drastic change of topic compared to the previous conversation.
-  
-**Output:**  
-Return your results in the following JSON format:  
-```
+Return the result in this JSON format (without extra formatting):
+
 {
-  "follow_ups": ["Follow up 1", "Follow up 2"],
+  "follow_ups": ["Follow-up 1", "Follow-up 2"],
   "topic_changed": true
 }
-```  
-Here, `topic_changed` should be `true` if the conversation topic has drastically changed, or `false` otherwise.
-
-Do not include any backticks or extra formatting in your output.
 "#;
 
 #[derive(Deserialize, Clone)]
