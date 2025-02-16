@@ -66,6 +66,7 @@ serde_yaml = "0.9.31"
 shadow-rs = { version = "0.36.0", features = [], default-features = false }
 sha2 = "0.10.8"
 shell-words = "1.1.0"
+shell-escape = "0.1.5"
 select = "0.6.0"
 similar = "2.3.0"
 sled = { version = "0.34", default-features = false, features = [] }
