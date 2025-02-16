@@ -528,6 +528,16 @@ pub const KNOWN_MODELS: &str = r####"
                 "llama3.3/70b/instruct/vllm"
             ]
         },
+        "mistral/24b/instruct/vllm": {
+            "n_ctx": 16384,
+            "supports_tools": true,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+            ]
+        },
         "qwen2.5/coder/1.5b/instruct/vllm": {
             "n_ctx": 32768,
             "supports_scratchpads": {
