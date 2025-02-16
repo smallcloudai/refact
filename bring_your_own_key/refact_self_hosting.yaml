@@ -1,5 +1,4 @@
-
-cloud_name: Refact API
+cloud_name: Refact local self-hosting server
 
 # Under development
 #chat_endpoint: "http://localhost:8008/v1/chat/completions"
