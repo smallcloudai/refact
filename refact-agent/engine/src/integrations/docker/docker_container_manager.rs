@@ -10,7 +10,7 @@ use url::Url;
 use walkdir::WalkDir;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::http::http_post;
+use crate::http::{http_post, http_post_with_retries};
 use crate::http::routers::v1::lsp_like_handlers::LspLikeInit;
 use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
@@ -438,7 +438,7 @@ async fn docker_container_sync_workspace(
         tar_path: format!("{}/{}", container_workspace_folder.trim_end_matches('/'), tar_file_name),
         extract_to: container_workspace_folder.clone(),
     };
-    http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &sync_files_post).await?;
+    http_post_with_retries(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &sync_files_post, 8).await?;
 
     tokio::fs::remove_file(&temp_tar_file).await
         .map_err(|e| format!("Error removing temporary archive: {}", e))?;
