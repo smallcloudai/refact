@@ -3,9 +3,13 @@ name: Refact Agent GUI CI build (Node.js)
 on:
   push:
     branches: [main, dev]
-    paths: ["refact-agent/gui/**"]
+    paths: 
+      - "refact-agent/gui/**"
+      - ".github/workflows/agent_gui_*"
   pull_request:
-    paths: ["refact-agent/gui/**"]
+    paths:
+      - "refact-agent/gui/**"
+      - ".github/workflows/agent_gui_*"
 
 defaults:
   run:
