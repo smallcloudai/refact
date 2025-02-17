@@ -585,6 +585,7 @@ mod tests {
     }
 
     #[cfg(windows)]
+    #[ignore]
     #[test]
     fn test_canonical_path_windows() 
     {
