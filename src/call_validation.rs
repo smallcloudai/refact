@@ -226,7 +226,7 @@ pub struct ChatMeta {
     pub current_config_file: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]
 #[allow(non_camel_case_types)]
 pub enum ChatMode {
     NO_TOOLS,
@@ -235,6 +235,16 @@ pub enum ChatMode {
     CONFIGURE,
     PROJECT_SUMMARY,
     THINKING_AGENT,
+}
+
+impl ChatMode {
+    pub fn supports_checkpoints(self) -> bool {
+        match self {
+            ChatMode::NO_TOOLS | ChatMode::EXPLORE => false,
+            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | 
+                ChatMode::THINKING_AGENT => true,
+        }
+    }
 }
 
 impl Default for ChatMode {

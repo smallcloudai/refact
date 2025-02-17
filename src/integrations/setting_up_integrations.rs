@@ -8,8 +8,9 @@ use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
-
+use jsonschema;
 use crate::global_context::GlobalContext;
+use crate::integrations::json_schema::INTEGRATION_JSON_SCHEMA;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
@@ -19,6 +20,26 @@ pub struct YamlError {
     pub integr_config_path: String,
     pub error_line: usize,  // starts with 1, zero if invalid
     pub error_msg: String,
+}
+
+impl From<(&str, &serde_yaml::Error)> for YamlError {
+    fn from((path, err): (&str, &serde_yaml::Error)) -> Self {
+        YamlError {
+            integr_config_path: path.to_string(),
+            error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
+            error_msg: err.to_string(),
+        }
+    }
+}
+
+impl From<(&str, &jsonschema::ValidationError<'_>)> for YamlError {
+    fn from((path, err): (&str, &jsonschema::ValidationError)) -> Self {
+        YamlError {
+            integr_config_path: path.to_string(),
+            error_line: 0,  // ValidationError doesn't provide line numbers
+            error_msg: format!("Schema validation error: {}", err),
+        }
+    }
 }
 
 #[derive(Serialize, Default, Debug, Clone)]
@@ -53,6 +74,17 @@ fn get_array_of_str_or_empty(val: &serde_json::Value, path: &str) -> Vec<String>
             })
         })
         .unwrap_or_default()
+}
+
+fn parse_and_validate_yaml(path: &str, content: &String) -> Result<serde_json::Value, YamlError> {
+    let value_yaml = serde_yaml::from_str::<serde_yaml::Value>(&content)
+        .map_err(|e| YamlError::from((path, &e)))?;
+
+    let json_value = serde_json::to_value(value_yaml.clone()).unwrap();
+    if let Err(err) = jsonschema::validate(&INTEGRATION_JSON_SCHEMA, &json_value) {
+        return Err(YamlError::from((path, &err)));
+    }
+    Ok(json_value)
 }
 
 pub fn read_integrations_d(
@@ -123,19 +155,19 @@ pub fn read_integrations_d(
         rec.integr_config_exists = path.exists();
         if rec.integr_config_exists {
             match fs::read_to_string(&path) {
-                Ok(file_content) => match serde_yaml::from_str::<serde_yaml::Value>(&file_content) {
-                    Ok(yaml_value) => {
+                Ok(file_content) => match parse_and_validate_yaml(&path_str, &file_content) {
+                    Ok(json_value) => {
                         // tracing::info!("{} has {}", short_pp, integr_name);
-                        rec.config_unparsed = serde_json::to_value(yaml_value.clone()).unwrap();
+                        rec.config_unparsed = json_value;
                     }
                     Err(e) => {
-                        let location = e.location().map(|loc| format!(" at line {}, column {}", loc.line(), loc.column())).unwrap_or_default();
-                        error_log.push(YamlError {
-                            integr_config_path: path_str.to_string(),
-                            error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
-                            error_msg: e.to_string(),
-                        });
-                        tracing::warn!("failed to parse {}{}: {}", path_str, location, e.to_string());
+                        let location = if e.error_line > 0 {
+                            format!(" at line {}", e.error_line)
+                        } else {
+                            String::new()
+                        };
+                        tracing::warn!("failed to parse {}{}: {}", path_str, location, e.error_msg);
+                        error_log.push(e);
                     }
                 },
                 Err(e) => {
