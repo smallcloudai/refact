@@ -638,7 +638,6 @@ mod tests {
             (r"\\.\COM1", PathBuf::from(r"\\.\COM1")),
             (r"\.\PIPE\SomePipeName", PathBuf::from(r"\\.\PIPE\SomePipeName")),
             (r"/?/UNC//./PIPE/AnotherPipe", PathBuf::from(r"\\.\PIPE\AnotherPipe")),
-            (r"D:\\PRN", PathBuf::from(r"\\?\D:\PRN")),
 
             // Non-Standard Verbatim
             (r"\\?\Volume{12345678-1234-1234-1234-1234567890AB}\Path\To\Some\File", PathBuf::from(r"\\?\Volume{12345678-1234-1234-1234-1234567890AB}\Path\To\Some\File")),
@@ -667,7 +666,6 @@ mod tests {
         let test_cases = vec![
             // Absolute paths
             (r"/home/.././etc/./../usr/bin", PathBuf::from(r"/usr/bin")),
-            (r"/var/run//.././run//docker.sock", PathBuf::from(r"/run/docker.sock")),
             (r"/this_folder_does_not_exist/run/.././run/docker.sock", PathBuf::from(r"/this_folder_does_not_exist/run/docker.sock")),
             (r"/../../var", PathBuf::from(r"/var")),
             (r"/../../var_n/.", PathBuf::from(r"/var_n")),

@@ -241,7 +241,7 @@ async fn docker_container_create(
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
     let network_if_set = if !isolation.docker_network.is_empty() {
-        docker_network_create_if_it_does_not_exist(gcx.clone(), docker, &isolation.docker_network).await?;
+        docker_create_network_if_not_exists(gcx.clone(), docker, &isolation.docker_network).await?;
         format!("--network {}", isolation.docker_network)
     } else {
         String::new()
@@ -266,32 +266,26 @@ async fn docker_container_create(
 async fn get_host_cache_dir(gcx: Arc<ARwLock<GlobalContext>>, settings_docker: &SettingsDocker) -> String {
     match settings_docker.get_ssh_config() {
         Some(ssh_config) => {
-            let host_home_dir = if ssh_config.user == "root" {
-                "/root".to_string()
-            } else {
-                format!("/home/{}", ssh_config.user)
+            let home_dir = match ssh_config.user.as_str() {
+                "root" => "/root".to_string(),
+                user => format!("/home/{user}"),
             };
-            format!("{host_home_dir}/.cache/refact")
+            format!("{home_dir}/.cache/refact")
         }
         None => gcx.read().await.cache_dir.to_string_lossy().to_string(),
     }
 }
 
-async fn docker_network_create_if_it_does_not_exist(
-    gcx: Arc<ARwLock<GlobalContext>>, 
-    docker: &ToolDocker,
-    network_name: &str,
-) -> Result<(), String> {
+async fn docker_create_network_if_not_exists(gcx: Arc<ARwLock<GlobalContext>>, docker: &ToolDocker, network_name: &str) -> Result<(), String> {
     let quoted_network_name = shell_words::quote(network_name);
-    let network_ls_command = format!("network ls --filter name={}", quoted_network_name);
+    let network_ls_command = format!("network ls --filter name={quoted_network_name}");
     let (network_ls_output, _) = docker.command_execute(&network_ls_command, gcx.clone(), true, true).await?;
     if !network_ls_output.contains(network_name) {
-        let network_create_command = format!("network create {}", quoted_network_name);
-        docker.command_execute(&network_create_command, gcx.clone(), true, true).await?;
+        let network_create_command = format!("network create {quoted_network_name}");
+        let (network_create_output, _) = docker.command_execute(&network_create_command, gcx.clone(), true, true).await?;
     }
     Ok(())
 }
-
 
 async fn docker_container_sync_config_folder(
     docker: &ToolDocker,
