@@ -1,9 +1,13 @@
 name: Refact Server CICD Build
 on:
   push:
-    paths: [ "refact-server/**" ]
+    paths: 
+      - "refact-server/**"
+      - ".github/workflows/server_*"
   pull_request:
-    paths: [ "refact-server/**" ]
+    paths:
+      - "refact-server/**"
+      - ".github/workflows/server_*"
   workflow_dispatch:
 
 jobs:
