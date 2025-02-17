@@ -1,0 +1,34 @@
+.ToolConfirmationCard {
+  width: 100%;
+  padding: 15px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 8px;
+  background-color: var(--gray-1);
+  flex-shrink: 0; /* this one should fix issue with shrinking */
+  & pre {
+    margin: 0;
+  }
+}
+
+.ToolConfirmationHeading {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.ToolConfirmationText {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 15px;
+  white-space: pre-wrap;
+}
+
+.ToolConfirmationTool {
+  font-weight: 700;
+}
+
+.ToolConfirmationRule {
+  display: block;
+  font-weight: 700;
+}

@@ -1,0 +1,13 @@
+.item {
+  height: unset;
+  min-height: var(--select-item-height);
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.content {
+  /* JB doesn't support dvw yet */
+  max-width: 50vw;
+  max-width: 80dvw;
+  max-height: 200px;
+}

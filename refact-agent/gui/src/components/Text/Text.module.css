@@ -1,0 +1,27 @@
+.text_rtl {
+  display: inline;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  max-width: 100%;
+  /* line-height: var(--line-height-2, 20px); */
+}
+
+.text_ltr {
+  display: inline;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: ltr;
+  max-width: 100%;
+  /* line-height: var(--line-height-2, 20px); */
+}
+
+.text_small {
+  font-size: calc(10px * var(--scaling));
+  --line-height: calc(12px * var(--scaling));
+  --letter-spacing: 0.005em;
+}

@@ -1,0 +1,26 @@
+.markdown {
+}
+
+.markdown pre {
+  margin: 0;
+}
+
+.pre {
+  padding: var(--space-2) !important;
+  margin: 0 !important;
+}
+
+.code {
+  color: inherit;
+  background: none;
+  padding: 0;
+}
+
+.image {
+  max-width: 100%;
+}
+
+.isInsideScrollArea {
+  width: fit-content;
+  min-width: 100%;
+}

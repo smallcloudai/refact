@@ -1,0 +1,20 @@
+.like__button__success {
+  animation: successAnimation 0.5s ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes successAnimation {
+  0% {
+    transform: scale(1);
+    color: var(--green-9);
+  }
+  50% {
+    transform: scale(1.2);
+    color: var(--yellow-9);
+  }
+  100% {
+    transform: scale(1);
+    color: var(--blue-9);
+    display: none;
+  }
+}

@@ -1,0 +1,12 @@
+.CheckpointsDialog {
+  width: calc(100vw - var(--space-8));
+  max-width: 500px;
+  /* padding: var(--space-4) var(--space-4); */
+  position: relative;
+}
+
+.CheckpointsRevertedDate {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}

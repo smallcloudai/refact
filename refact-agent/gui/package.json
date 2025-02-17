@@ -1,0 +1,140 @@
+{
+  "name": "refact-chat-js",
+  "version": "2.0.8-alpha.1",
+  "type": "module",
+  "license": "BSD-3-Clause",
+  "files": [
+    "dist",
+    "dist/chat/style.css"
+  ],
+  "main": "dist/chat/index.umd.cjs",
+  "module": "dist/chat/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/chat/index.js",
+      "require": "./dist/chat/index.umd.cjs",
+      "types": "./dist/chat/index.d.ts"
+    },
+    "./dist/events": {
+      "import": "./dist/events/index.js",
+      "require": "./dist/events/index.umd.cjs",
+      "types": "./dist/events/index.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smallcloudai/refact-chat-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/smallcloudai/refact-chat-js/issues"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && vite build -c vite.node.config.ts",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest run --coverage",
+    "format:check": "prettier . --check",
+    "format": "prettier . --write",
+    "prepare": "husky install",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "types": "tsc --noEmit",
+    "prepublishOnly": "npm run build",
+    "alpha:version": "npm --preid alpha version prerelease",
+    "alpha:publish": "npm publish --tag alpha"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.2.7",
+    "@tanstack/react-table": "^8.20.6",
+    "@types/react": "^18.2.43",
+    "debug": "^4.3.7",
+    "react-redux": "^9.1.2"
+  },
+  "devDependencies": {
+    "@ariakit/react": "^0.3.13",
+    "@radix-ui/react-accordion": "^1.2.2",
+    "@radix-ui/react-collapsible": "^1.0.3",
+    "@radix-ui/react-icons": "^1.3.0",
+    "@radix-ui/react-toolbar": "^1.0.4",
+    "@radix-ui/themes": "^3.0.1",
+    "@storybook/addon-essentials": "^7.6.4",
+    "@storybook/addon-interactions": "^7.6.4",
+    "@storybook/addon-links": "^7.6.4",
+    "@storybook/addon-onboarding": "^1.0.10",
+    "@storybook/blocks": "^7.6.4",
+    "@storybook/react": "^7.6.4",
+    "@storybook/react-vite": "^8.1.5",
+    "@storybook/test": "^7.6.4",
+    "@testing-library/dom": "^10.1.0",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/debug": "^4.1.12",
+    "@types/js-cookie": "^3.0.6",
+    "@types/lodash.groupby": "^4.6.9",
+    "@types/lodash.isequal": "^4.5.8",
+    "@types/react-dom": "^18.2.17",
+    "@types/react-redux": "^7.1.33",
+    "@types/react-syntax-highlighter": "^15.5.11",
+    "@types/textarea-caret": "^3.0.3",
+    "@types/wicg-file-system-access": "^2023.10.4",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "@vitest/ui": "^1.1.0",
+    "classnames": "^2.3.2",
+    "echarts": "^5.4.3",
+    "echarts-for-react": "^3.0.2",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "eslint-plugin-storybook": "^0.6.15",
+    "husky": ">=6",
+    "js-cookie": "^3.0.5",
+    "jsdom": "^23.0.1",
+    "lint-staged": ">=10",
+    "lodash.groupby": "^4.6.0",
+    "lodash.isequal": "^4.5.0",
+    "msw": "^2.3.4",
+    "msw-storybook-addon": "^2.0.3",
+    "prettier": "3.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-dropzone": "^14.2.10",
+    "react-markdown": "^9.0.1",
+    "react-syntax-highlighter": "^15.5.0",
+    "redux-persist": "^6.0.0",
+    "rehype-katex": "^7.0.0",
+    "remark-breaks": "^4.0.0",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
+    "storybook": "^7.6.4",
+    "textarea-caret": "^3.1.0",
+    "typescript": "^5.2.2",
+    "typescript-plugin-css-modules": "^5.0.2",
+    "usehooks-ts": "^2.14.0",
+    "uuid": "^9.0.1",
+    "vite": "^5.0.8",
+    "vite-plugin-dts": "^3.7.0",
+    "vite-plugin-eslint": "^1.8.1",
+    "vitest": "^1.6.0",
+    "vitest-matchmedia-mock": "^1.0.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --cache --fix"
+    ],
+    "*.{js,css,md}": "prettier --write"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

@@ -1,0 +1,68 @@
+.relative {
+  position: relative;
+}
+.markdown {
+  position: relative;
+  max-width: 100%;
+}
+
+.floatButton {
+  position: absolute;
+  right: 20px;
+}
+
+.code {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.code_inline {
+  word-break: break-word;
+  word-wrap: break-word;
+  white-space: break-spaces;
+}
+
+.code_block {
+  color: inherit;
+  background: none;
+}
+
+.code_wrap {
+  white-space: pre-wrap !important;
+}
+
+.code_block::selection,
+.code_block ::selection {
+  background-color: var(
+    --refact-chat-code-selection-color,
+    rgba(173, 214, 255, 0.5)
+  );
+}
+
+.list {
+  padding-inline-start: var(--space-6);
+}
+
+.maybe_pin {
+}
+
+.patch_title {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.patch_title,
+.patch_title::before,
+.patch_title::after {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-width: 0;
+}
+
+.maybe_pin:has(.patch_title) + pre {
+  margin-top: 0;
+}
+
+.maybe_pin:has(.patch_title) + pre pre {
+  margin-top: 0;
+}

@@ -1,0 +1,11 @@
+@media screen and (max-width: 387px) {
+  .magicButton {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-align: left;
+    justify-content: flex-start;
+    display: inline;
+  }
+}

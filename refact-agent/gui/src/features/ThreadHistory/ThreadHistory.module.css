@@ -1,0 +1,14 @@
+.calloutContainer {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  transform: translateX(-50%);
+  width: max-content;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+
+  @media screen and (max-width: 380px) {
+    width: fit-content;
+  }
+}

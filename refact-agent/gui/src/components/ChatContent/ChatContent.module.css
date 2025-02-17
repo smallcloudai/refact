@@ -1,0 +1,121 @@
+.content {
+  /* max-width: calc(100% - 12px); */
+}
+
+.file {
+  display: flex;
+  overflow: hidden;
+}
+
+.file_with_icon {
+  gap: 2px;
+  align-items: center;
+  justify-items: center;
+}
+
+.footer {
+  min-height: var(--space-5);
+}
+
+.userInput {
+  display: inline-flex;
+  flex-shrink: 1;
+  align-items: start;
+  flex-direction: column;
+  gap: 0;
+  text-align: left;
+  cursor: default;
+  user-select: auto;
+  max-width: calc(100% - var(--space-2) * 4.5);
+  padding: var(--space-2);
+  min-height: var(--base-button-height);
+  height: auto;
+  white-space: pre;
+}
+
+.break_word {
+  word-break: break-word;
+}
+
+.tool_result {
+  width: 100%;
+}
+
+.diff {
+  background: #252525;
+  max-width: unset;
+}
+
+.diff pre {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: visible !important;
+}
+
+.diff_pre {
+  margin: 0;
+  line-height: normal;
+  font-size: var(--font-size-1);
+}
+
+.diff_first:has(+ .diff_second) {
+  padding-bottom: 0 !important;
+}
+
+.diff_first:has(+ .diff_second) pre,
+.diff_first:has(+ .diff_second) pre > pre {
+  margin-bottom: 0;
+  padding-bottom: 0 !important;
+}
+
+.diff_first + .diff_second,
+.diff_first + .diff_second > pre,
+.diff_first + .diff_second > pre > pre {
+  margin-top: 0;
+  padding-top: 0 !important;
+}
+
+.diff pre > code > span {
+  min-width: 2.5em !important;
+}
+
+.diff_line > span {
+  font-family:
+    Consolas,
+    Monaco,
+    Lucida Console,
+    Liberation Mono,
+    DejaVu Sans Mono,
+    Bitstream Vera Sans Mono,
+    Courier New;
+  color: #c6cdd5;
+}
+
+.diff_line_number {
+  min-width: 50px;
+  padding-right: 8px;
+  text-align: end;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.diff_sign {
+  padding-left: 6px;
+  padding-right: 6px;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.diff_line_content {
+  flex: 1;
+}
+
+/** TODO: it seems the background doesn't grow inside of the scroll area */

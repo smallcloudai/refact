@@ -1,0 +1,10 @@
+.sidebar {
+  /* width: 260px; */
+  /* flex-shrink: 0; */
+  background: var(--gray-a3); /* var(--color-autofill-root) */
+}
+
+.coin {
+  width: var(--font-size-1);
+  height: var(--font-size-1);
+}
