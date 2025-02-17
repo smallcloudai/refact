@@ -1,0 +1,22 @@
+[
+  {
+    "top_row": 0,
+    "bottom_row": 6,
+    "line": "class Calculator\n    \"\"\"\n    This class represents a simple calculator.\n\n    Attributes:\n    name (str): The name of the calculator.\n    \"\"\"\n    ..."
+  },
+  {
+    "top_row": 17,
+    "bottom_row": 28,
+    "line": "def add(self, x, y):\n    \"\"\"\n    Adds two numbers and returns the result.\n\n    Parameters:\n    x (int): The first number.\n    y (int): The second number.\n\n    Returns:\n    int: The sum of x and y.\n    \"\"\"\n    return x + y"
+  },
+  {
+    "top_row": 8,
+    "bottom_row": 15,
+    "line": "def __init__(self, name):\n    \"\"\"\n    The constructor for the Calculator class.\n\n    Parameters:\n    name (str): The name of the calculator.\n    \"\"\"\n    self.name = name"
+  },
+  {
+    "top_row": 30,
+    "bottom_row": 41,
+    "line": "def subtract(self, x, y):\n    \"\"\"\n    Subtracts one number from another and returns the result.\n\n    Parameters:\n    x (int): The number to be subtracted from.\n    y (int): The number to subtract.\n\n    Returns:\n    int: The result of subtracting y from x.\n    \"\"\"\n    return x - y"
+  }
+]

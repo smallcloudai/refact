@@ -1,0 +1,5114 @@
+[
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "0819179a-e77b-4c6d-92d6-47746efdf424",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 0,
+          "end_byte": 19,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "std",
+        "sync",
+        "Arc"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "215fdec1-1475-4e78-bb37-20d0d810b83d",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 20,
+          "end_byte": 44,
+          "start_point": {
+            "row": 1,
+            "column": 0
+          },
+          "end_point": {
+            "row": 1,
+            "column": 24
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "parking_lot",
+        "RwLock"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "cab9d346-169d-4c19-adba-66c19c1c5754",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 63,
+          "end_byte": 77,
+          "start_point": {
+            "row": 2,
+            "column": 18
+          },
+          "end_point": {
+            "row": 2,
+            "column": 32
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "tree_sitter",
+        "Node",
+        "asd"
+      ],
+      "alias": "N",
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "d3fbd09a-249c-42d8-9c85-0aaaccd934a6",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 79,
+          "end_byte": 85,
+          "start_point": {
+            "row": 2,
+            "column": 34
+          },
+          "end_point": {
+            "row": 2,
+            "column": 40
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "tree_sitter",
+        "Parser"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "f70603b9-4fe4-4313-9868-1f3a485bec15",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 87,
+          "end_byte": 92,
+          "start_point": {
+            "row": 2,
+            "column": 42
+          },
+          "end_point": {
+            "row": 2,
+            "column": 47
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "tree_sitter",
+        "Point"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "268e21a3-7988-48b1-b95d-cfd9b7bef40f",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 94,
+          "end_byte": 99,
+          "start_point": {
+            "row": 2,
+            "column": 49
+          },
+          "end_point": {
+            "row": 2,
+            "column": 54
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "tree_sitter",
+        "Range"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "4fb19565-1a2f-4f50-9d47-5b123e811a71",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 102,
+          "end_byte": 137,
+          "start_point": {
+            "row": 3,
+            "column": 0
+          },
+          "end_point": {
+            "row": 3,
+            "column": 35
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "tokio",
+        "sync",
+        "RwLock as ARwLock"
+      ],
+      "alias": "ARwLock",
+      "import_type": "Library",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "8310ee18-5a21-40c6-a158-c2041abd409e",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 138,
+          "end_byte": 185,
+          "start_point": {
+            "row": 4,
+            "column": 0
+          },
+          "end_point": {
+            "row": 4,
+            "column": 47
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "crate",
+        "call_validation",
+        "SamplingParameters"
+      ],
+      "alias": null,
+      "import_type": "UserModule",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "c7ee4f91-d886-4f5f-877f-d959ca114774",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 191,
+          "end_byte": 204,
+          "start_point": {
+            "row": 5,
+            "column": 5
+          },
+          "end_point": {
+            "row": 5,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "std",
+        "fs"
+      ],
+      "alias": "fs",
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "TypeAlias": {
+      "ast_fields": {
+        "guid": "6c0688dc-c060-48e0-a4f7-eff4f9a784ef",
+        "name": "N",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 186,
+          "end_byte": 232,
+          "start_point": {
+            "row": 5,
+            "column": 0
+          },
+          "end_point": {
+            "row": 5,
+            "column": 46
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "types": [
+        {
+          "name": "Node",
+          "inference_info": null,
+          "inference_info_guid": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      ]
+    }
+  },
+  {
+    "TypeAlias": {
+      "ast_fields": {
+        "guid": "81c27ac1-6a7d-4132-8115-7bb2fc604d0f",
+        "name": "ass",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 186,
+          "end_byte": 232,
+          "start_point": {
+            "row": 5,
+            "column": 0
+          },
+          "end_point": {
+            "row": 5,
+            "column": 46
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "types": []
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "a215d79b-32a2-446c-a1b7-3a9195b3981f",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 222,
+          "end_byte": 230,
+          "start_point": {
+            "row": 5,
+            "column": 36
+          },
+          "end_point": {
+            "row": 5,
+            "column": 44
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "asd",
+        "zxc"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "TypeAlias": {
+      "ast_fields": {
+        "guid": "d983f0bd-ba8c-445c-a163-e8a1352ee51b",
+        "name": "sl",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 233,
+          "end_byte": 240,
+          "start_point": {
+            "row": 6,
+            "column": 0
+          },
+          "end_point": {
+            "row": 6,
+            "column": 7
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "types": []
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "6639a9a7-ac15-42f3-bb86-ab07ec488287",
+        "name": "f1",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f89fa75c-90a3-47ef-ae20-cacb6cdcaea9",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 262,
+          "end_byte": 269,
+          "start_point": {
+            "row": 9,
+            "column": 4
+          },
+          "end_point": {
+            "row": 9,
+            "column": 11
+          }
+        },
+        "declaration_range": {
+          "start_byte": 262,
+          "end_byte": 269,
+          "start_point": {
+            "row": 9,
+            "column": 4
+          },
+          "end_point": {
+            "row": 9,
+            "column": 11
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "u32",
+        "inference_info": null,
+        "inference_info_guid": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "2431248e-3112-4993-83ab-5aae495c675b",
+        "name": "f2",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f89fa75c-90a3-47ef-ae20-cacb6cdcaea9",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 275,
+          "end_byte": 282,
+          "start_point": {
+            "row": 10,
+            "column": 4
+          },
+          "end_point": {
+            "row": 10,
+            "column": 11
+          }
+        },
+        "declaration_range": {
+          "start_byte": 275,
+          "end_byte": 282,
+          "start_point": {
+            "row": 10,
+            "column": 4
+          },
+          "end_point": {
+            "row": 10,
+            "column": 11
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "f32",
+        "inference_info": null,
+        "inference_info_guid": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "f89fa75c-90a3-47ef-ae20-cacb6cdcaea9",
+        "name": "MyUnion",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "6639a9a7-ac15-42f3-bb86-ab07ec488287",
+          "2431248e-3112-4993-83ab-5aae495c675b"
+        ],
+        "full_range": {
+          "start_byte": 242,
+          "end_byte": 285,
+          "start_point": {
+            "row": 8,
+            "column": 0
+          },
+          "end_point": {
+            "row": 11,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 242,
+          "end_byte": 255,
+          "start_point": {
+            "row": 8,
+            "column": 0
+          },
+          "end_point": {
+            "row": 8,
+            "column": 13
+          }
+        },
+        "definition_range": {
+          "start_byte": 256,
+          "end_byte": 285,
+          "start_point": {
+            "row": 8,
+            "column": 14
+          },
+          "end_point": {
+            "row": 11,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "7ec89e41-9b95-4d2c-9858-032c76507079",
+        "name": "u",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 308,
+          "end_byte": 309,
+          "start_point": {
+            "row": 14,
+            "column": 12
+          },
+          "end_point": {
+            "row": 14,
+            "column": 13
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "5061f6f5-6bc5-437d-8dd0-14aa0a22d307",
+        "name": "f1",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 308,
+          "end_byte": 312,
+          "start_point": {
+            "row": 14,
+            "column": 12
+          },
+          "end_point": {
+            "row": 14,
+            "column": 16
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "7ec89e41-9b95-4d2c-9858-032c76507079",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "a641aa21-4af9-4717-8ecd-f73421c5bd76",
+        "name": "f",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 300,
+          "end_byte": 313,
+          "start_point": {
+            "row": 14,
+            "column": 4
+          },
+          "end_point": {
+            "row": 14,
+            "column": 17
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "u.f1",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "e547f8e8-965d-41e9-9cbf-7a4fe9c705bc",
+        "name": "GLOBAL_VARIABLE",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 320,
+          "end_byte": 360,
+          "start_point": {
+            "row": 17,
+            "column": 0
+          },
+          "end_point": {
+            "row": 17,
+            "column": 40
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "\"asdasd\"",
+        "inference_info_guid": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "c493d491-503f-42bb-be99-0612887ccbd6",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 441,
+          "end_byte": 463,
+          "start_point": {
+            "row": 23,
+            "column": 0
+          },
+          "end_point": {
+            "row": 24,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "030b2a02-26c9-4058-b91f-252dee8f405d",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 463,
+          "end_byte": 529,
+          "start_point": {
+            "row": 24,
+            "column": 0
+          },
+          "end_point": {
+            "row": 25,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "024a72e4-73b7-4d98-8a79-64041459a83a",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 530,
+          "end_byte": 555,
+          "start_point": {
+            "row": 26,
+            "column": 0
+          },
+          "end_point": {
+            "row": 26,
+            "column": 25
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "4ffde6be-7287-4ad5-9058-2dadee9a3e3d",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 556,
+          "end_byte": 625,
+          "start_point": {
+            "row": 27,
+            "column": 0
+          },
+          "end_point": {
+            "row": 27,
+            "column": 69
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "3beb00fe-9916-489b-a2a2-c18a65c665ce",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 627,
+          "end_byte": 648,
+          "start_point": {
+            "row": 29,
+            "column": 0
+          },
+          "end_point": {
+            "row": 29,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "fd79c90e-2c00-48ef-ad6b-0b06f6f7861f",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 649,
+          "end_byte": 691,
+          "start_point": {
+            "row": 30,
+            "column": 0
+          },
+          "end_point": {
+            "row": 31,
+            "column": 0
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "1a8b7980-651c-45bc-8a28-c3b8332abde9",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 691,
+          "end_byte": 712,
+          "start_point": {
+            "row": 31,
+            "column": 0
+          },
+          "end_point": {
+            "row": 31,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "45352c20-3c94-4b20-925c-09a6e1475868",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 714,
+          "end_byte": 738,
+          "start_point": {
+            "row": 33,
+            "column": 0
+          },
+          "end_point": {
+            "row": 33,
+            "column": 24
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "15efcb37-b83f-4484-bc5c-7a1cd545834e",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 739,
+          "end_byte": 786,
+          "start_point": {
+            "row": 34,
+            "column": 0
+          },
+          "end_point": {
+            "row": 34,
+            "column": 47
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "c80540ce-0fa9-4b0f-90e0-25c34cddcd3c",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 787,
+          "end_byte": 811,
+          "start_point": {
+            "row": 35,
+            "column": 0
+          },
+          "end_point": {
+            "row": 35,
+            "column": 24
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "c637e6c6-3601-48da-8fc3-8bf023e71c3d",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 813,
+          "end_byte": 831,
+          "start_point": {
+            "row": 37,
+            "column": 0
+          },
+          "end_point": {
+            "row": 37,
+            "column": 18
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "40e6df20-d0bd-4258-8662-1751b679b48a",
+        "name": "x",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "4b229390-ce11-4698-84dd-98716d609859",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 881,
+          "end_byte": 887,
+          "start_point": {
+            "row": 40,
+            "column": 4
+          },
+          "end_point": {
+            "row": 40,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 881,
+          "end_byte": 887,
+          "start_point": {
+            "row": 40,
+            "column": 4
+          },
+          "end_point": {
+            "row": 40,
+            "column": 10
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "f64",
+        "inference_info": null,
+        "inference_info_guid": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "91446280-33b5-4a43-8476-cc0b994a2ede",
+        "name": "y",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "4b229390-ce11-4698-84dd-98716d609859",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 893,
+          "end_byte": 899,
+          "start_point": {
+            "row": 41,
+            "column": 4
+          },
+          "end_point": {
+            "row": 41,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 893,
+          "end_byte": 899,
+          "start_point": {
+            "row": 41,
+            "column": 4
+          },
+          "end_point": {
+            "row": 41,
+            "column": 10
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "f64",
+        "inference_info": null,
+        "inference_info_guid": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "4b229390-ce11-4698-84dd-98716d609859",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "40e6df20-d0bd-4258-8662-1751b679b48a",
+          "91446280-33b5-4a43-8476-cc0b994a2ede"
+        ],
+        "full_range": {
+          "start_byte": 862,
+          "end_byte": 902,
+          "start_point": {
+            "row": 39,
+            "column": 0
+          },
+          "end_point": {
+            "row": 42,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 862,
+          "end_byte": 874,
+          "start_point": {
+            "row": 39,
+            "column": 0
+          },
+          "end_point": {
+            "row": 39,
+            "column": 12
+          }
+        },
+        "definition_range": {
+          "start_byte": 875,
+          "end_byte": 902,
+          "start_point": {
+            "row": 39,
+            "column": 13
+          },
+          "end_point": {
+            "row": 42,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "425f0275-0698-415f-90b3-5f18a4146a9e",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "5c329302-6e82-4d8c-8df1-fe6a9e7107c0",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 921,
+          "end_byte": 962,
+          "start_point": {
+            "row": 45,
+            "column": 4
+          },
+          "end_point": {
+            "row": 45,
+            "column": 45
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "c66e786e-7b22-4067-94f0-5bec903027f8",
+        "name": "x",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1032,
+          "end_byte": 1038,
+          "start_point": {
+            "row": 47,
+            "column": 22
+          },
+          "end_point": {
+            "row": 47,
+            "column": 28
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "3be71d6c-21b8-4e0f-be42-c75372b333b4",
+        "name": "other",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1041,
+          "end_byte": 1046,
+          "start_point": {
+            "row": 47,
+            "column": 31
+          },
+          "end_point": {
+            "row": 47,
+            "column": 36
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "c5676554-c28b-4bc1-9825-7f400112988e",
+        "name": "x",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1041,
+          "end_byte": 1048,
+          "start_point": {
+            "row": 47,
+            "column": 31
+          },
+          "end_point": {
+            "row": 47,
+            "column": 38
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "3be71d6c-21b8-4e0f-be42-c75372b333b4",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "a915e5ab-3615-4525-ad30-66b6ab478bae",
+        "name": "dx",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1018,
+          "end_byte": 1049,
+          "start_point": {
+            "row": 47,
+            "column": 8
+          },
+          "end_point": {
+            "row": 47,
+            "column": 39
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "self.x - other.x",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "05779b6b-4ff6-45f6-aff5-6a4be846d5b7",
+        "name": "y",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1067,
+          "end_byte": 1073,
+          "start_point": {
+            "row": 48,
+            "column": 17
+          },
+          "end_point": {
+            "row": 48,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "a8d7473f-4ca8-41f1-b323-bbb2d6bdb3eb",
+        "name": "other",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1076,
+          "end_byte": 1081,
+          "start_point": {
+            "row": 48,
+            "column": 26
+          },
+          "end_point": {
+            "row": 48,
+            "column": 31
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "4f3849dd-f47d-4fa2-9c28-b2f985348cc2",
+        "name": "y",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1076,
+          "end_byte": 1083,
+          "start_point": {
+            "row": 48,
+            "column": 26
+          },
+          "end_point": {
+            "row": 48,
+            "column": 33
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "a8d7473f-4ca8-41f1-b323-bbb2d6bdb3eb",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "d92f62a5-6f0f-4095-9f7c-27e05156a74e",
+        "name": "dy",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1058,
+          "end_byte": 1084,
+          "start_point": {
+            "row": 48,
+            "column": 8
+          },
+          "end_point": {
+            "row": 48,
+            "column": 34
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "self.y - other.y",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "eaafff7d-bd69-4444-b128-0fc9cbeae766",
+        "name": "dx",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1103,
+          "end_byte": 1105,
+          "start_point": {
+            "row": 49,
+            "column": 18
+          },
+          "end_point": {
+            "row": 49,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "58459a84-9e01-41f3-82cd-0b751c5ea3df",
+        "name": "dx",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1106,
+          "end_byte": 1108,
+          "start_point": {
+            "row": 49,
+            "column": 21
+          },
+          "end_point": {
+            "row": 49,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "23584f77-b410-4186-8515-088c0861278a",
+        "name": "dy",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1111,
+          "end_byte": 1113,
+          "start_point": {
+            "row": 49,
+            "column": 26
+          },
+          "end_point": {
+            "row": 49,
+            "column": 28
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "5828a19c-3cee-46c0-b476-40a978a55841",
+        "name": "dy",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1114,
+          "end_byte": 1116,
+          "start_point": {
+            "row": 49,
+            "column": 29
+          },
+          "end_point": {
+            "row": 49,
+            "column": 31
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "14c3ee33-d84b-45c9-a325-9808acc1c563",
+        "name": "sqrt",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "childs_guid": [
+          "eaafff7d-bd69-4444-b128-0fc9cbeae766",
+          "58459a84-9e01-41f3-82cd-0b751c5ea3df",
+          "23584f77-b410-4186-8515-088c0861278a",
+          "5828a19c-3cee-46c0-b476-40a978a55841"
+        ],
+        "full_range": {
+          "start_byte": 1093,
+          "end_byte": 1117,
+          "start_point": {
+            "row": 49,
+            "column": 8
+          },
+          "end_point": {
+            "row": 49,
+            "column": 32
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "def866db-1e45-4fbd-b365-6a73a47561e7",
+        "name": "distance",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "5c329302-6e82-4d8c-8df1-fe6a9e7107c0",
+        "childs_guid": [
+          "c66e786e-7b22-4067-94f0-5bec903027f8",
+          "3be71d6c-21b8-4e0f-be42-c75372b333b4",
+          "c5676554-c28b-4bc1-9825-7f400112988e",
+          "a915e5ab-3615-4525-ad30-66b6ab478bae",
+          "05779b6b-4ff6-45f6-aff5-6a4be846d5b7",
+          "a8d7473f-4ca8-41f1-b323-bbb2d6bdb3eb",
+          "4f3849dd-f47d-4fa2-9c28-b2f985348cc2",
+          "d92f62a5-6f0f-4095-9f7c-27e05156a74e",
+          "14c3ee33-d84b-45c9-a325-9808acc1c563"
+        ],
+        "full_range": {
+          "start_byte": 967,
+          "end_byte": 1123,
+          "start_point": {
+            "row": 46,
+            "column": 4
+          },
+          "end_point": {
+            "row": 50,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 967,
+          "end_byte": 1007,
+          "start_point": {
+            "row": 46,
+            "column": 4
+          },
+          "end_point": {
+            "row": 46,
+            "column": 44
+          }
+        },
+        "definition_range": {
+          "start_byte": 1008,
+          "end_byte": 1123,
+          "start_point": {
+            "row": 46,
+            "column": 45
+          },
+          "end_point": {
+            "row": 50,
+            "column": 5
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "other",
+          "type_": {
+            "name": "Point",
+            "inference_info": null,
+            "inference_info_guid": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        }
+      ],
+      "return_type": {
+        "name": "f64",
+        "inference_info": null,
+        "inference_info_guid": null,
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "5c329302-6e82-4d8c-8df1-fe6a9e7107c0",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "425f0275-0698-415f-90b3-5f18a4146a9e",
+          "def866db-1e45-4fbd-b365-6a73a47561e7"
+        ],
+        "full_range": {
+          "start_byte": 904,
+          "end_byte": 1125,
+          "start_point": {
+            "row": 44,
+            "column": 0
+          },
+          "end_point": {
+            "row": 51,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 904,
+          "end_byte": 914,
+          "start_point": {
+            "row": 44,
+            "column": 0
+          },
+          "end_point": {
+            "row": 44,
+            "column": 10
+          }
+        },
+        "definition_range": {
+          "start_byte": 915,
+          "end_byte": 1125,
+          "start_point": {
+            "row": 44,
+            "column": 11
+          },
+          "end_point": {
+            "row": 51,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "c1248b73-2fd5-4b21-a12e-17d629e3c1f2",
+        "name": "foo",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f5f2664a-14ef-4641-82b3-ba944219a277",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1151,
+          "end_byte": 1162,
+          "start_point": {
+            "row": 53,
+            "column": 4
+          },
+          "end_point": {
+            "row": 53,
+            "column": 15
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1151,
+          "end_byte": 1159,
+          "start_point": {
+            "row": 53,
+            "column": 4
+          },
+          "end_point": {
+            "row": 53,
+            "column": 12
+          }
+        },
+        "definition_range": {
+          "start_byte": 1160,
+          "end_byte": 1162,
+          "start_point": {
+            "row": 53,
+            "column": 13
+          },
+          "end_point": {
+            "row": 53,
+            "column": 15
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "f5f2664a-14ef-4641-82b3-ba944219a277",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "c1248b73-2fd5-4b21-a12e-17d629e3c1f2"
+        ],
+        "full_range": {
+          "start_byte": 1126,
+          "end_byte": 1164,
+          "start_point": {
+            "row": 52,
+            "column": 0
+          },
+          "end_point": {
+            "row": 54,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1126,
+          "end_byte": 1144,
+          "start_point": {
+            "row": 52,
+            "column": 0
+          },
+          "end_point": {
+            "row": 52,
+            "column": 18
+          }
+        },
+        "definition_range": {
+          "start_byte": 1145,
+          "end_byte": 1164,
+          "start_point": {
+            "row": 52,
+            "column": 19
+          },
+          "end_point": {
+            "row": 54,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [
+        {
+          "name": "Foo",
+          "inference_info": null,
+          "inference_info_guid": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      ],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "085de677-f025-40b2-b98c-6823a41b4c86",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1165,
+          "end_byte": 1182,
+          "start_point": {
+            "row": 55,
+            "column": 0
+          },
+          "end_point": {
+            "row": 55,
+            "column": 17
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "6b3da938-9377-4dce-a040-0dac25f07096",
+        "name": "Direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1183,
+          "end_byte": 1268,
+          "start_point": {
+            "row": 56,
+            "column": 0
+          },
+          "end_point": {
+            "row": 61,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1183,
+          "end_byte": 1197,
+          "start_point": {
+            "row": 56,
+            "column": 0
+          },
+          "end_point": {
+            "row": 56,
+            "column": 14
+          }
+        },
+        "definition_range": {
+          "start_byte": 1198,
+          "end_byte": 1268,
+          "start_point": {
+            "row": 56,
+            "column": 15
+          },
+          "end_point": {
+            "row": 61,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "c6aa67f9-2426-47d4-9556-dc2f34102a83",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1270,
+          "end_byte": 1308,
+          "start_point": {
+            "row": 63,
+            "column": 0
+          },
+          "end_point": {
+            "row": 63,
+            "column": 38
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "f006d7ee-6ed2-4a24-b85d-1127708d455f",
+        "name": "print",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "d995abe9-f68e-4782-ba1d-b580c44d8351",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1327,
+          "end_byte": 1343,
+          "start_point": {
+            "row": 65,
+            "column": 4
+          },
+          "end_point": {
+            "row": 65,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1327,
+          "end_byte": 1343,
+          "start_point": {
+            "row": 65,
+            "column": 4
+          },
+          "end_point": {
+            "row": 65,
+            "column": 20
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "d995abe9-f68e-4782-ba1d-b580c44d8351",
+        "name": "Print",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "f006d7ee-6ed2-4a24-b85d-1127708d455f"
+        ],
+        "full_range": {
+          "start_byte": 1309,
+          "end_byte": 1345,
+          "start_point": {
+            "row": 64,
+            "column": 0
+          },
+          "end_point": {
+            "row": 66,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1309,
+          "end_byte": 1320,
+          "start_point": {
+            "row": 64,
+            "column": 0
+          },
+          "end_point": {
+            "row": 64,
+            "column": 11
+          }
+        },
+        "definition_range": {
+          "start_byte": 1321,
+          "end_byte": 1345,
+          "start_point": {
+            "row": 64,
+            "column": 12
+          },
+          "end_point": {
+            "row": 66,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "cd246561-d4f8-44e6-bf6c-0d8ae3037bd9",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1347,
+          "end_byte": 1383,
+          "start_point": {
+            "row": 68,
+            "column": 0
+          },
+          "end_point": {
+            "row": 68,
+            "column": 36
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "57e0117c-6938-46e0-a688-ecb5763a3da9",
+        "name": "print",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "52c730e5-8eff-4af4-a02e-fa382a251217",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1415,
+          "end_byte": 1816,
+          "start_point": {
+            "row": 70,
+            "column": 4
+          },
+          "end_point": {
+            "row": 77,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1415,
+          "end_byte": 1430,
+          "start_point": {
+            "row": 70,
+            "column": 4
+          },
+          "end_point": {
+            "row": 70,
+            "column": 19
+          }
+        },
+        "definition_range": {
+          "start_byte": 1431,
+          "end_byte": 1816,
+          "start_point": {
+            "row": 70,
+            "column": 20
+          },
+          "end_point": {
+            "row": 77,
+            "column": 5
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "52c730e5-8eff-4af4-a02e-fa382a251217",
+        "name": "Direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "57e0117c-6938-46e0-a688-ecb5763a3da9"
+        ],
+        "full_range": {
+          "start_byte": 1384,
+          "end_byte": 1818,
+          "start_point": {
+            "row": 69,
+            "column": 0
+          },
+          "end_point": {
+            "row": 78,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1384,
+          "end_byte": 1408,
+          "start_point": {
+            "row": 69,
+            "column": 0
+          },
+          "end_point": {
+            "row": 69,
+            "column": 24
+          }
+        },
+        "definition_range": {
+          "start_byte": 1409,
+          "end_byte": 1818,
+          "start_point": {
+            "row": 69,
+            "column": 25
+          },
+          "end_point": {
+            "row": 78,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [
+        {
+          "name": "Print",
+          "inference_info": null,
+          "inference_info_guid": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      ],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "12e20a86-1d00-444d-bc5f-05d29013b460",
+        "name": "",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1820,
+          "end_byte": 1883,
+          "start_point": {
+            "row": 80,
+            "column": 0
+          },
+          "end_point": {
+            "row": 80,
+            "column": 63
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "ac3be573-ce89-4a62-9909-71a715c4f0af",
+        "name": "direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "cf4c913a-177a-49b4-b203-67aff57425bc",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1931,
+          "end_byte": 1940,
+          "start_point": {
+            "row": 82,
+            "column": 4
+          },
+          "end_point": {
+            "row": 82,
+            "column": 13
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "787fb3bd-348e-4d67-b2e2-8f69bdf17af9",
+        "name": "print",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "cf4c913a-177a-49b4-b203-67aff57425bc",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1931,
+          "end_byte": 1948,
+          "start_point": {
+            "row": 82,
+            "column": 4
+          },
+          "end_point": {
+            "row": 82,
+            "column": 21
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "ac3be573-ce89-4a62-9909-71a715c4f0af",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "cf4c913a-177a-49b4-b203-67aff57425bc",
+        "name": "print_direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "ac3be573-ce89-4a62-9909-71a715c4f0af",
+          "787fb3bd-348e-4d67-b2e2-8f69bdf17af9"
+        ],
+        "full_range": {
+          "start_byte": 1884,
+          "end_byte": 1951,
+          "start_point": {
+            "row": 81,
+            "column": 0
+          },
+          "end_point": {
+            "row": 83,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1884,
+          "end_byte": 1924,
+          "start_point": {
+            "row": 81,
+            "column": 0
+          },
+          "end_point": {
+            "row": 81,
+            "column": 40
+          }
+        },
+        "definition_range": {
+          "start_byte": 1925,
+          "end_byte": 1951,
+          "start_point": {
+            "row": 81,
+            "column": 41
+          },
+          "end_point": {
+            "row": 83,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "direction",
+          "type_": {
+            "name": "Direction",
+            "inference_info": null,
+            "inference_info_guid": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        }
+      ],
+      "return_type": null
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "1b0b6a3a-d58b-46d4-9934-67ef026a1b37",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "18cc942b-0682-44fb-b85d-3a03c8a0be49",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2013,
+          "end_byte": 2033,
+          "start_point": {
+            "row": 86,
+            "column": 48
+          },
+          "end_point": {
+            "row": 86,
+            "column": 68
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "18cc942b-0682-44fb-b85d-3a03c8a0be49",
+        "name": "Up",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "1b0b6a3a-d58b-46d4-9934-67ef026a1b37"
+        ],
+        "full_range": {
+          "start_byte": 1999,
+          "end_byte": 2034,
+          "start_point": {
+            "row": 86,
+            "column": 34
+          },
+          "end_point": {
+            "row": 86,
+            "column": 69
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "eb10da6c-856f-48b3-b13c-f20c81b867a6",
+        "name": "up",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1969,
+          "end_byte": 2035,
+          "start_point": {
+            "row": 86,
+            "column": 4
+          },
+          "end_point": {
+            "row": 86,
+            "column": 70
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "Direction::Up(Point { x: 0, y: 1 })",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "70f80d4e-b637-4899-b45e-714ecb14453f",
+        "name": "a",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2040,
+          "end_byte": 2041,
+          "start_point": {
+            "row": 87,
+            "column": 4
+          },
+          "end_point": {
+            "row": 87,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "66318e17-bc3d-4b35-b2f4-0d986b1a86e4",
+        "name": "b",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2040,
+          "end_byte": 2043,
+          "start_point": {
+            "row": 87,
+            "column": 4
+          },
+          "end_point": {
+            "row": 87,
+            "column": 7
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "70f80d4e-b637-4899-b45e-714ecb14453f",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "494ed40a-4ff1-4a24-ab1f-78e83ddd9132",
+        "name": "up",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "18356b1c-e09c-4dbd-b8b6-087c2bde355d",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2060,
+          "end_byte": 2062,
+          "start_point": {
+            "row": 87,
+            "column": 24
+          },
+          "end_point": {
+            "row": 87,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "18356b1c-e09c-4dbd-b8b6-087c2bde355d",
+        "name": "print_direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "494ed40a-4ff1-4a24-ab1f-78e83ddd9132"
+        ],
+        "full_range": {
+          "start_byte": 2040,
+          "end_byte": 2063,
+          "start_point": {
+            "row": 87,
+            "column": 4
+          },
+          "end_point": {
+            "row": 87,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "66318e17-bc3d-4b35-b2f4-0d986b1a86e4",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "3a6dd70c-6d40-4154-a3a7-65fe1738204c",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "6b5c18a9-a75c-4565-9b4a-21bef9332248",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2112,
+          "end_byte": 2133,
+          "start_point": {
+            "row": 89,
+            "column": 46
+          },
+          "end_point": {
+            "row": 89,
+            "column": 67
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "6b5c18a9-a75c-4565-9b4a-21bef9332248",
+        "name": "Down",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "3a6dd70c-6d40-4154-a3a7-65fe1738204c"
+        ],
+        "full_range": {
+          "start_byte": 2096,
+          "end_byte": 2134,
+          "start_point": {
+            "row": 89,
+            "column": 30
+          },
+          "end_point": {
+            "row": 89,
+            "column": 68
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "aa777a19-f9f6-477f-8b81-53e9e00c7427",
+        "name": "down",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2070,
+          "end_byte": 2135,
+          "start_point": {
+            "row": 89,
+            "column": 4
+          },
+          "end_point": {
+            "row": 89,
+            "column": 69
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "Direction::Down(Point { x: 0, y: -1 })",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "a88e6838-8a34-45f5-a099-b6ff983da309",
+        "name": "a",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2140,
+          "end_byte": 2141,
+          "start_point": {
+            "row": 90,
+            "column": 4
+          },
+          "end_point": {
+            "row": 90,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "4dc9b426-af55-428b-b404-90657dd595ab",
+        "name": "down",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f3085315-bf98-4c65-9931-0c999640be3a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2158,
+          "end_byte": 2162,
+          "start_point": {
+            "row": 90,
+            "column": 22
+          },
+          "end_point": {
+            "row": 90,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "f3085315-bf98-4c65-9931-0c999640be3a",
+        "name": "print_direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "4dc9b426-af55-428b-b404-90657dd595ab"
+        ],
+        "full_range": {
+          "start_byte": 2140,
+          "end_byte": 2163,
+          "start_point": {
+            "row": 90,
+            "column": 4
+          },
+          "end_point": {
+            "row": 90,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": "a88e6838-8a34-45f5-a099-b6ff983da309",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "9fbac0ac-1f01-4829-b0cc-0bca0b3a630f",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "3b09a383-ea94-4268-a7eb-5cfa00367866",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2206,
+          "end_byte": 2227,
+          "start_point": {
+            "row": 92,
+            "column": 40
+          },
+          "end_point": {
+            "row": 92,
+            "column": 61
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "3b09a383-ea94-4268-a7eb-5cfa00367866",
+        "name": "Left",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "9fbac0ac-1f01-4829-b0cc-0bca0b3a630f"
+        ],
+        "full_range": {
+          "start_byte": 2190,
+          "end_byte": 2228,
+          "start_point": {
+            "row": 92,
+            "column": 24
+          },
+          "end_point": {
+            "row": 92,
+            "column": 62
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "12107190-8f91-42fa-af64-e5d663998b2a",
+        "name": "left",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2170,
+          "end_byte": 2229,
+          "start_point": {
+            "row": 92,
+            "column": 4
+          },
+          "end_point": {
+            "row": 92,
+            "column": 63
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "Direction::Left(Point { x: -1, y: 0 })",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "1c69ba2b-7d04-4143-98af-8c508793843b",
+        "name": "left",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "3a83e959-f0c6-4cfd-82b9-dd5a0291e2bd",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2250,
+          "end_byte": 2254,
+          "start_point": {
+            "row": 93,
+            "column": 20
+          },
+          "end_point": {
+            "row": 93,
+            "column": 24
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "3a83e959-f0c6-4cfd-82b9-dd5a0291e2bd",
+        "name": "print_direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "1c69ba2b-7d04-4143-98af-8c508793843b"
+        ],
+        "full_range": {
+          "start_byte": 2234,
+          "end_byte": 2255,
+          "start_point": {
+            "row": 93,
+            "column": 4
+          },
+          "end_point": {
+            "row": 93,
+            "column": 25
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "ad0c03f6-49fb-4a50-8e43-7a476bae214e",
+        "name": "Point",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "e1408575-2548-4429-89e0-57144633e034",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2305,
+          "end_byte": 2325,
+          "start_point": {
+            "row": 95,
+            "column": 47
+          },
+          "end_point": {
+            "row": 95,
+            "column": 67
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "e1408575-2548-4429-89e0-57144633e034",
+        "name": "Right",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "ad0c03f6-49fb-4a50-8e43-7a476bae214e"
+        ],
+        "full_range": {
+          "start_byte": 2288,
+          "end_byte": 2326,
+          "start_point": {
+            "row": 95,
+            "column": 30
+          },
+          "end_point": {
+            "row": 95,
+            "column": 68
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "e31308b1-dfcc-4246-8f8c-5bb7541cfe01",
+        "name": "right",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2262,
+          "end_byte": 2327,
+          "start_point": {
+            "row": 95,
+            "column": 4
+          },
+          "end_point": {
+            "row": 95,
+            "column": 69
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "Direction::Right(Point { x: 1, y: 0 })",
+        "inference_info_guid": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "e7c8ba5c-d40b-49e6-9068-7293bbe8dcf5",
+        "name": "right",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "102e6ff2-3f98-4fbc-b10f-79880695c0f1",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 2348,
+          "end_byte": 2353,
+          "start_point": {
+            "row": 96,
+            "column": 20
+          },
+          "end_point": {
+            "row": 96,
+            "column": 25
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "102e6ff2-3f98-4fbc-b10f-79880695c0f1",
+        "name": "print_direction",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "childs_guid": [
+          "e7c8ba5c-d40b-49e6-9068-7293bbe8dcf5"
+        ],
+        "full_range": {
+          "start_byte": 2332,
+          "end_byte": 2354,
+          "start_point": {
+            "row": 96,
+            "column": 4
+          },
+          "end_point": {
+            "row": 96,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "f93d4ac1-9f7d-46ca-ade9-18cffaca93a6",
+        "name": "main",
+        "language": "Rust",
+        "file_path": "file:///main.rs",
+        "namespace": "",
+        "parent_guid": "8c24acc2-5f9f-4048-a1f0-50af894c8428",
+        "childs_guid": [
+          "18cc942b-0682-44fb-b85d-3a03c8a0be49",
+          "eb10da6c-856f-48b3-b13c-f20c81b867a6",
+          "70f80d4e-b637-4899-b45e-714ecb14453f",
+          "66318e17-bc3d-4b35-b2f4-0d986b1a86e4",
+          "18356b1c-e09c-4dbd-b8b6-087c2bde355d",
+          "6b5c18a9-a75c-4565-9b4a-21bef9332248",
+          "aa777a19-f9f6-477f-8b81-53e9e00c7427",
+          "a88e6838-8a34-45f5-a099-b6ff983da309",
+          "f3085315-bf98-4c65-9931-0c999640be3a",
+          "3b09a383-ea94-4268-a7eb-5cfa00367866",
+          "12107190-8f91-42fa-af64-e5d663998b2a",
+          "3a83e959-f0c6-4cfd-82b9-dd5a0291e2bd",
+          "e1408575-2548-4429-89e0-57144633e034",
+          "e31308b1-dfcc-4246-8f8c-5bb7541cfe01",
+          "102e6ff2-3f98-4fbc-b10f-79880695c0f1"
+        ],
+        "full_range": {
+          "start_byte": 1953,
+          "end_byte": 2357,
+          "start_point": {
+            "row": 85,
+            "column": 0
+          },
+          "end_point": {
+            "row": 97,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1953,
+          "end_byte": 1962,
+          "start_point": {
+            "row": 85,
+            "column": 0
+          },
+          "end_point": {
+            "row": 85,
+            "column": 9
+          }
+        },
+        "definition_range": {
+          "start_byte": 1963,
+          "end_byte": 2357,
+          "start_point": {
+            "row": 85,
+            "column": 10
+          },
+          "end_point": {
+            "row": 97,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "linked_decl_type": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [],
+      "return_type": null
+    }
+  }
+]

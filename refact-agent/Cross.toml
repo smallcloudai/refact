@@ -1,0 +1,22 @@
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture arm64",
+    "apt-get update && apt-get install --assume-yes libssl-dev:arm64 curl unzip",
+]
+[target.aarch64-unknown-linux-gnu.env]
+passthrough = [
+    "OPENSSL_STATIC=1",
+    "OPENSSL_LIB_DIR=/usr/lib/aarch64-linux-gnu",
+    "OPENSSL_INCLUDE_DIR=/usr/include/openssl"
+]
+
+[target.x86_64-unknown-linux-gnu]
+pre-build = [
+    "apt-get update && apt-get install --assume-yes libssl-dev curl unzip",
+]
+[target.x86_64-unknown-linux-gnu.env]
+passthrough = [
+    "OPENSSL_STATIC=1",
+    "OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu",
+    "OPENSSL_INCLUDE_DIR=/usr/include/openssl"
+]

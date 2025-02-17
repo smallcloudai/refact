@@ -1,11 +1,14 @@
+# Git
+.git/
+
 # Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-_*
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/_*
 
 # C extensions
-*.so
+**/*.so
 
 # Distribution / packaging
 .Python
@@ -137,7 +140,6 @@ dmypy.json
 .idea/
 
 ### VisualStudioCode ###
-.vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -162,11 +164,8 @@ dmypy.json
 # Ignore code-workspaces
 *.code-workspace
 
-workdir
+# macos dir cache
 .DS_Store
 
 # rust
 Cargo.lock
-
-# Misc
-zutils/

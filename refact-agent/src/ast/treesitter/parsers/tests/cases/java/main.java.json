@@ -1,0 +1,3656 @@
+[
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "a333bc61-d04f-4c60-9ec0-e2166e984802",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 0,
+          "end_byte": 27,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "java",
+        "util",
+        "ArrayList"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "8af63aa1-1af6-4171-9e4b-ef898ef27735",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 28,
+          "end_byte": 47,
+          "start_point": {
+            "row": 1,
+            "column": 0
+          },
+          "end_point": {
+            "row": 1,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "java",
+        "util"
+      ],
+      "alias": null,
+      "import_type": "System",
+      "filepath_ref": null
+    }
+  },
+  {
+    "ImportDeclaration": {
+      "ast_fields": {
+        "guid": "131b55bc-ed8e-48d9-8775-9c4590a8851e",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 48,
+          "end_byte": 70,
+          "start_point": {
+            "row": 2,
+            "column": 0
+          },
+          "end_point": {
+            "row": 2,
+            "column": 22
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "path_components": [
+        "com",
+        "github",
+        "pip"
+      ],
+      "alias": null,
+      "import_type": "Unknown",
+      "filepath_ref": null
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "c25dc5d0-b86c-41d3-a286-85c2e5d0766a",
+        "name": "Animal",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [
+          "e7c876cb-631d-4761-a355-9bf7367e28f9",
+          "e00cf40f-8469-4301-b13f-60dc3b2f61ae",
+          "edc2f52d-5b47-4a54-a6ed-e4b668b51a7d",
+          "2c845456-4b56-436b-87bd-235c7e9904ad"
+        ],
+        "full_range": {
+          "start_byte": 72,
+          "end_byte": 228,
+          "start_point": {
+            "row": 4,
+            "column": 0
+          },
+          "end_point": {
+            "row": 7,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 72,
+          "end_byte": 89,
+          "start_point": {
+            "row": 4,
+            "column": 0
+          },
+          "end_point": {
+            "row": 4,
+            "column": 17
+          }
+        },
+        "definition_range": {
+          "start_byte": 89,
+          "end_byte": 228,
+          "start_point": {
+            "row": 4,
+            "column": 17
+          },
+          "end_point": {
+            "row": 7,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "4ec74163-4dd0-432f-a87e-a9ade7d355e7",
+        "name": "a",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 230,
+          "end_byte": 243,
+          "start_point": {
+            "row": 9,
+            "column": 0
+          },
+          "end_point": {
+            "row": 9,
+            "column": 13
+          }
+        },
+        "declaration_range": {
+          "start_byte": 230,
+          "end_byte": 241,
+          "start_point": {
+            "row": 9,
+            "column": 0
+          },
+          "end_point": {
+            "row": 9,
+            "column": 11
+          }
+        },
+        "definition_range": {
+          "start_byte": 241,
+          "end_byte": 243,
+          "start_point": {
+            "row": 9,
+            "column": 11
+          },
+          "end_point": {
+            "row": 9,
+            "column": 13
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "3c0184a7-f989-4dcb-becf-24fb2b6bdc87",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 245,
+          "end_byte": 308,
+          "start_point": {
+            "row": 11,
+            "column": 0
+          },
+          "end_point": {
+            "row": 11,
+            "column": 63
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "e14b84f2-a220-4342-8019-a11b4df12980",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 309,
+          "end_byte": 338,
+          "start_point": {
+            "row": 12,
+            "column": 0
+          },
+          "end_point": {
+            "row": 12,
+            "column": 29
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "name": "Student",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [
+          "c18ea235-75fa-4675-81d6-46960f802320",
+          "3362215e-82d1-45eb-a927-0aaf1d11b08a",
+          "ffc5a060-42ec-4705-8721-28c99c2c9091",
+          "697d52fd-a157-47d3-a3ad-ad8d3760aa57",
+          "de819c22-9a90-4191-baf7-6f3998cd4584",
+          "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7"
+        ],
+        "full_range": {
+          "start_byte": 339,
+          "end_byte": 858,
+          "start_point": {
+            "row": 13,
+            "column": 0
+          },
+          "end_point": {
+            "row": 25,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 339,
+          "end_byte": 414,
+          "start_point": {
+            "row": 13,
+            "column": 0
+          },
+          "end_point": {
+            "row": 13,
+            "column": 75
+          }
+        },
+        "definition_range": {
+          "start_byte": 414,
+          "end_byte": 858,
+          "start_point": {
+            "row": 13,
+            "column": 75
+          },
+          "end_point": {
+            "row": 25,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": [
+        {
+          "name": "Animal",
+          "inference_info": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        },
+        {
+          "name": "PI1",
+          "inference_info": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        },
+        {
+          "name": "PI2",
+          "inference_info": null,
+          "is_pod": false,
+          "namespace": "",
+          "guid": null,
+          "nested_types": []
+        }
+      ]
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "03954dfd-f97e-4140-a36c-4d8bcbda7493",
+        "name": "a",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 862,
+          "end_byte": 874,
+          "start_point": {
+            "row": 27,
+            "column": 0
+          },
+          "end_point": {
+            "row": 28,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 862,
+          "end_byte": 871,
+          "start_point": {
+            "row": 27,
+            "column": 0
+          },
+          "end_point": {
+            "row": 27,
+            "column": 9
+          }
+        },
+        "definition_range": {
+          "start_byte": 871,
+          "end_byte": 874,
+          "start_point": {
+            "row": 27,
+            "column": 9
+          },
+          "end_point": {
+            "row": 28,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "",
+          "type_": null
+        },
+        {
+          "name": "",
+          "type_": null
+        }
+      ],
+      "return_type": {
+        "name": null,
+        "inference_info": "void",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "cc72d463-9e9e-4702-8160-f9b0831a0659",
+        "name": "as",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 876,
+          "end_byte": 895,
+          "start_point": {
+            "row": 30,
+            "column": 0
+          },
+          "end_point": {
+            "row": 30,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "int",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "b4220157-91f1-47a9-bff4-aa177864f26f",
+        "name": "sad",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 876,
+          "end_byte": 895,
+          "start_point": {
+            "row": 30,
+            "column": 0
+          },
+          "end_point": {
+            "row": 30,
+            "column": 19
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "int",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "9c107e1b-7e84-48b7-bedb-dc50b6992827",
+        "name": "as",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 896,
+          "end_byte": 910,
+          "start_point": {
+            "row": 31,
+            "column": 0
+          },
+          "end_point": {
+            "row": 31,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "Poo",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": [
+          {
+            "name": "s",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "55597865-4e17-4d97-98b9-94de2c9b9722",
+        "name": "asd",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 911,
+          "end_byte": 925,
+          "start_point": {
+            "row": 32,
+            "column": 0
+          },
+          "end_point": {
+            "row": 32,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "float",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "55013152-477e-46e4-bad2-a9ea1a2099e2",
+        "name": "qwe",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 926,
+          "end_byte": 938,
+          "start_point": {
+            "row": 33,
+            "column": 0
+          },
+          "end_point": {
+            "row": 33,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "Poo",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "a5cdb1a9-d61e-4249-9654-54f3ffd8fa52",
+        "name": "Main",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0c8a3de5-ac64-40f1-89b4-0fec16f86cb2",
+        "childs_guid": [
+          "1911838d-1ed5-4c56-b710-10ac56855680",
+          "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87"
+        ],
+        "full_range": {
+          "start_byte": 940,
+          "end_byte": 1414,
+          "start_point": {
+            "row": 35,
+            "column": 0
+          },
+          "end_point": {
+            "row": 55,
+            "column": 1
+          }
+        },
+        "declaration_range": {
+          "start_byte": 940,
+          "end_byte": 958,
+          "start_point": {
+            "row": 35,
+            "column": 0
+          },
+          "end_point": {
+            "row": 35,
+            "column": 18
+          }
+        },
+        "definition_range": {
+          "start_byte": 958,
+          "end_byte": 1414,
+          "start_point": {
+            "row": 35,
+            "column": 18
+          },
+          "end_point": {
+            "row": 55,
+            "column": 1
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "e7c876cb-631d-4761-a355-9bf7367e28f9",
+        "name": "animalSound",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "c25dc5d0-b86c-41d3-a286-85c2e5d0766a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 93,
+          "end_byte": 119,
+          "start_point": {
+            "row": 5,
+            "column": 2
+          },
+          "end_point": {
+            "row": 5,
+            "column": 28
+          }
+        },
+        "declaration_range": {
+          "start_byte": 93,
+          "end_byte": 119,
+          "start_point": {
+            "row": 5,
+            "column": 2
+          },
+          "end_point": {
+            "row": 5,
+            "column": 28
+          }
+        },
+        "definition_range": {
+          "start_byte": 93,
+          "end_byte": 119,
+          "start_point": {
+            "row": 5,
+            "column": 2
+          },
+          "end_point": {
+            "row": 5,
+            "column": 28
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "",
+          "type_": null
+        },
+        {
+          "name": "",
+          "type_": null
+        }
+      ],
+      "return_type": {
+        "name": null,
+        "inference_info": "void",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "e00cf40f-8469-4301-b13f-60dc3b2f61ae",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "c25dc5d0-b86c-41d3-a286-85c2e5d0766a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 120,
+          "end_byte": 162,
+          "start_point": {
+            "row": 5,
+            "column": 29
+          },
+          "end_point": {
+            "row": 5,
+            "column": 71
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "edc2f52d-5b47-4a54-a6ed-e4b668b51a7d",
+        "name": "run",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "c25dc5d0-b86c-41d3-a286-85c2e5d0766a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 165,
+          "end_byte": 183,
+          "start_point": {
+            "row": 6,
+            "column": 2
+          },
+          "end_point": {
+            "row": 6,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 165,
+          "end_byte": 183,
+          "start_point": {
+            "row": 6,
+            "column": 2
+          },
+          "end_point": {
+            "row": 6,
+            "column": 20
+          }
+        },
+        "definition_range": {
+          "start_byte": 165,
+          "end_byte": 183,
+          "start_point": {
+            "row": 6,
+            "column": 2
+          },
+          "end_point": {
+            "row": 6,
+            "column": 20
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "",
+          "type_": null
+        },
+        {
+          "name": "",
+          "type_": null
+        }
+      ],
+      "return_type": {
+        "name": null,
+        "inference_info": "void",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "2c845456-4b56-436b-87bd-235c7e9904ad",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "c25dc5d0-b86c-41d3-a286-85c2e5d0766a",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 184,
+          "end_byte": 226,
+          "start_point": {
+            "row": 6,
+            "column": 21
+          },
+          "end_point": {
+            "row": 6,
+            "column": 63
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "c18ea235-75fa-4675-81d6-46960f802320",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 419,
+          "end_byte": 438,
+          "start_point": {
+            "row": 14,
+            "column": 1
+          },
+          "end_point": {
+            "row": 14,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "3362215e-82d1-45eb-a927-0aaf1d11b08a",
+        "name": "id",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 440,
+          "end_byte": 447,
+          "start_point": {
+            "row": 15,
+            "column": 1
+          },
+          "end_point": {
+            "row": 15,
+            "column": 8
+          }
+        },
+        "declaration_range": {
+          "start_byte": 440,
+          "end_byte": 447,
+          "start_point": {
+            "row": 15,
+            "column": 1
+          },
+          "end_point": {
+            "row": 15,
+            "column": 8
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "int",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "ffc5a060-42ec-4705-8721-28c99c2c9091",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 447,
+          "end_byte": 492,
+          "start_point": {
+            "row": 15,
+            "column": 8
+          },
+          "end_point": {
+            "row": 15,
+            "column": 53
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "697d52fd-a157-47d3-a3ad-ad8d3760aa57",
+        "name": "name",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 494,
+          "end_byte": 513,
+          "start_point": {
+            "row": 16,
+            "column": 1
+          },
+          "end_point": {
+            "row": 16,
+            "column": 20
+          }
+        },
+        "declaration_range": {
+          "start_byte": 494,
+          "end_byte": 513,
+          "start_point": {
+            "row": 16,
+            "column": 1
+          },
+          "end_point": {
+            "row": 16,
+            "column": 20
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "String",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "de819c22-9a90-4191-baf7-6f3998cd4584",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 517,
+          "end_byte": 566,
+          "start_point": {
+            "row": 17,
+            "column": 1
+          },
+          "end_point": {
+            "row": 17,
+            "column": 50
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "name": "pip",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "0f761f93-fd06-47ff-9f5f-4bf98382f766",
+        "childs_guid": [
+          "bb123d01-015c-4d12-a907-f93121902caa",
+          "9585b363-bc75-4caa-9df7-81263fb63b0c",
+          "4a36db4c-9e29-4de5-ae4a-f58d1a31b57b",
+          "4f00c225-a65f-48fb-a4bb-33d7c3dacb53",
+          "35eabc5d-160e-452b-a905-71af6e7d1cd4",
+          "b553a01c-d144-4462-8d6f-a4312f15c059",
+          "05719aa3-1308-4476-a95a-b7b405f2edeb",
+          "6c80b8ab-1f8f-4a36-8ce3-bc840418fae5",
+          "1ae58985-f79d-44a4-9a92-ce2aa9a0ce2b",
+          "69cd7e1f-25be-4fde-a190-ab668d91113c",
+          "09a61b10-dae2-41a2-b8ed-50fc6691afd0",
+          "73e158ba-6946-4242-8105-74b915097641",
+          "dfd57d88-1993-4d44-b5e8-9e53e1468538",
+          "bcacfb68-c46b-4990-bcb4-9e5a68b0f176",
+          "10cf21e7-c75c-4cc8-8f09-a9084817fcec",
+          "b9f2f525-4dc4-4087-b946-b34dd6006095"
+        ],
+        "full_range": {
+          "start_byte": 568,
+          "end_byte": 854,
+          "start_point": {
+            "row": 18,
+            "column": 1
+          },
+          "end_point": {
+            "row": 24,
+            "column": 2
+          }
+        },
+        "declaration_range": {
+          "start_byte": 568,
+          "end_byte": 605,
+          "start_point": {
+            "row": 18,
+            "column": 1
+          },
+          "end_point": {
+            "row": 18,
+            "column": 38
+          }
+        },
+        "definition_range": {
+          "start_byte": 605,
+          "end_byte": 854,
+          "start_point": {
+            "row": 18,
+            "column": 38
+          },
+          "end_point": {
+            "row": 24,
+            "column": 2
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "",
+          "type_": null
+        },
+        {
+          "name": "args",
+          "type_": {
+            "name": "[]",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": [
+              {
+                "name": "String",
+                "inference_info": null,
+                "is_pod": false,
+                "namespace": "",
+                "guid": null,
+                "nested_types": []
+              }
+            ]
+          }
+        },
+        {
+          "name": "",
+          "type_": null
+        }
+      ],
+      "return_type": {
+        "name": null,
+        "inference_info": "void",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "StructDeclaration": {
+      "ast_fields": {
+        "guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "name": "Level",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "a5cdb1a9-d61e-4249-9654-54f3ffd8fa52",
+        "childs_guid": [
+          "65d4c55c-75fd-400a-9087-077abaf5f4cf",
+          "141623af-238c-4716-b4da-3ec97829d784",
+          "72eb5da4-f9c3-4941-8126-c11b9c39f79c",
+          "7fe75099-da21-483d-b5e6-0a8d28adbf25",
+          "f08bcd7a-a9e0-41dc-a1fd-3826e030aa38",
+          "3bcb5865-24e7-4bc7-b72a-7b71229bec07",
+          "1d1fa3ea-2660-4ef7-abc1-1b0385ad4b40"
+        ],
+        "full_range": {
+          "start_byte": 962,
+          "end_byte": 1260,
+          "start_point": {
+            "row": 36,
+            "column": 2
+          },
+          "end_point": {
+            "row": 48,
+            "column": 3
+          }
+        },
+        "declaration_range": {
+          "start_byte": 962,
+          "end_byte": 973,
+          "start_point": {
+            "row": 36,
+            "column": 2
+          },
+          "end_point": {
+            "row": 36,
+            "column": 13
+          }
+        },
+        "definition_range": {
+          "start_byte": 973,
+          "end_byte": 1260,
+          "start_point": {
+            "row": 36,
+            "column": 13
+          },
+          "end_point": {
+            "row": 48,
+            "column": 3
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "inherited_types": []
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "name": "main",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "a5cdb1a9-d61e-4249-9654-54f3ffd8fa52",
+        "childs_guid": [
+          "41b7fc3b-a146-4669-b0d5-9121da38c741",
+          "f23c9910-4d28-4e0c-8fb7-0a1d993651c7",
+          "05d78352-db26-4401-98a3-2f77b4b2c113",
+          "1d7d1b2d-2bd6-4e73-8bbb-e9e5f4417d5e",
+          "ac926b92-7da6-48d6-b101-77451976fc06",
+          "8dc0a089-effa-4beb-902a-02c622734886",
+          "dfb1bd41-ff23-476a-aa8f-95202e66b7b1",
+          "bedbadc4-50db-43c0-8da7-b456c0b20d6e"
+        ],
+        "full_range": {
+          "start_byte": 1264,
+          "end_byte": 1412,
+          "start_point": {
+            "row": 50,
+            "column": 2
+          },
+          "end_point": {
+            "row": 54,
+            "column": 3
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1264,
+          "end_byte": 1303,
+          "start_point": {
+            "row": 50,
+            "column": 2
+          },
+          "end_point": {
+            "row": 50,
+            "column": 41
+          }
+        },
+        "definition_range": {
+          "start_byte": 1303,
+          "end_byte": 1412,
+          "start_point": {
+            "row": 50,
+            "column": 41
+          },
+          "end_point": {
+            "row": 54,
+            "column": 3
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "",
+          "type_": null
+        },
+        {
+          "name": "args",
+          "type_": {
+            "name": "[]",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": [
+              {
+                "name": "String",
+                "inference_info": null,
+                "is_pod": false,
+                "namespace": "",
+                "guid": null,
+                "nested_types": []
+              }
+            ]
+          }
+        },
+        {
+          "name": "",
+          "type_": null
+        }
+      ],
+      "return_type": {
+        "name": null,
+        "inference_info": "void",
+        "is_pod": true,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "bb123d01-015c-4d12-a907-f93121902caa",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 611,
+          "end_byte": 645,
+          "start_point": {
+            "row": 19,
+            "column": 2
+          },
+          "end_point": {
+            "row": 19,
+            "column": 36
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "9585b363-bc75-4caa-9df7-81263fb63b0c",
+        "name": "s1",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 648,
+          "end_byte": 673,
+          "start_point": {
+            "row": 20,
+            "column": 2
+          },
+          "end_point": {
+            "row": 20,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "Student",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "4f00c225-a65f-48fb-a4bb-33d7c3dacb53",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 673,
+          "end_byte": 706,
+          "start_point": {
+            "row": 20,
+            "column": 27
+          },
+          "end_point": {
+            "row": 20,
+            "column": 60
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "35eabc5d-160e-452b-a905-71af6e7d1cd4",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 709,
+          "end_byte": 742,
+          "start_point": {
+            "row": 21,
+            "column": 2
+          },
+          "end_point": {
+            "row": 21,
+            "column": 35
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "09a61b10-dae2-41a2-b8ed-50fc6691afd0",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 771,
+          "end_byte": 818,
+          "start_point": {
+            "row": 22,
+            "column": 28
+          },
+          "end_point": {
+            "row": 22,
+            "column": 75
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "65d4c55c-75fd-400a-9087-077abaf5f4cf",
+        "name": "H",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 979,
+          "end_byte": 1003,
+          "start_point": {
+            "row": 37,
+            "column": 4
+          },
+          "end_point": {
+            "row": 37,
+            "column": 28
+          }
+        },
+        "declaration_range": {
+          "start_byte": 979,
+          "end_byte": 1003,
+          "start_point": {
+            "row": 37,
+            "column": 4
+          },
+          "end_point": {
+            "row": 37,
+            "column": 28
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "(\"Hydrogen\", 1, 1.008f)",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "141623af-238c-4716-b4da-3ec97829d784",
+        "name": "HE",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1009,
+          "end_byte": 1033,
+          "start_point": {
+            "row": 38,
+            "column": 4
+          },
+          "end_point": {
+            "row": 38,
+            "column": 28
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1009,
+          "end_byte": 1033,
+          "start_point": {
+            "row": 38,
+            "column": 4
+          },
+          "end_point": {
+            "row": 38,
+            "column": 28
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "(\"Helium\", 2, 4.0026f)",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "CommentDefinition": {
+      "ast_fields": {
+        "guid": "72eb5da4-f9c3-4941-8126-c11b9c39f79c",
+        "name": "",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1039,
+          "end_byte": 1045,
+          "start_point": {
+            "row": 39,
+            "column": 4
+          },
+          "end_point": {
+            "row": 39,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "7fe75099-da21-483d-b5e6-0a8d28adbf25",
+        "name": "NE",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1050,
+          "end_byte": 1073,
+          "start_point": {
+            "row": 40,
+            "column": 4
+          },
+          "end_point": {
+            "row": 40,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1050,
+          "end_byte": 1073,
+          "start_point": {
+            "row": 40,
+            "column": 4
+          },
+          "end_point": {
+            "row": 40,
+            "column": 27
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": null,
+        "inference_info": "(\"Neon\", 10, 20.180f)",
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "VariableDefinition": {
+      "ast_fields": {
+        "guid": "05d78352-db26-4401-98a3-2f77b4b2c113",
+        "name": "cars",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1321,
+          "end_byte": 1371,
+          "start_point": {
+            "row": 52,
+            "column": 4
+          },
+          "end_point": {
+            "row": 52,
+            "column": 54
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "[]",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": [
+          {
+            "name": "String",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "4a36db4c-9e29-4de5-ae4a-f58d1a31b57b",
+        "name": "Student",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 659,
+          "end_byte": 672,
+          "start_point": {
+            "row": 20,
+            "column": 13
+          },
+          "end_point": {
+            "row": 20,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "de046017-679a-4f7c-aa40-426657a29db9",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "b553a01c-d144-4462-8d6f-a4312f15c059",
+        "name": "println",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 745,
+          "end_byte": 770,
+          "start_point": {
+            "row": 22,
+            "column": 2
+          },
+          "end_point": {
+            "row": 22,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "05719aa3-1308-4476-a95a-b7b405f2edeb",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "73e158ba-6946-4242-8105-74b915097641",
+        "name": "println",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 821,
+          "end_byte": 848,
+          "start_point": {
+            "row": 23,
+            "column": 2
+          },
+          "end_point": {
+            "row": 23,
+            "column": 29
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "dfd57d88-1993-4d44-b5e8-9e53e1468538",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "ClassFieldDeclaration": {
+      "ast_fields": {
+        "guid": "f08bcd7a-a9e0-41dc-a1fd-3826e030aa38",
+        "name": "BY_LABEL",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1080,
+          "end_byte": 1149,
+          "start_point": {
+            "row": 42,
+            "column": 4
+          },
+          "end_point": {
+            "row": 42,
+            "column": 73
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1080,
+          "end_byte": 1149,
+          "start_point": {
+            "row": 42,
+            "column": 4
+          },
+          "end_point": {
+            "row": 42,
+            "column": 73
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "type_": {
+        "name": "Map",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": [
+          {
+            "name": "String",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          },
+          {
+            "name": "Element",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "FunctionDeclaration": {
+      "ast_fields": {
+        "guid": "1d1fa3ea-2660-4ef7-abc1-1b0385ad4b40",
+        "name": "valueOfLabel",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [
+          "0f88c523-d10b-48cb-95da-6ae92bcd8912",
+          "0762fbf5-2021-4461-b93e-b5519e192500",
+          "6f6cbc5a-a8d2-4cea-b573-40f75cb2846d"
+        ],
+        "full_range": {
+          "start_byte": 1164,
+          "end_byte": 1256,
+          "start_point": {
+            "row": 45,
+            "column": 4
+          },
+          "end_point": {
+            "row": 47,
+            "column": 5
+          }
+        },
+        "declaration_range": {
+          "start_byte": 1164,
+          "end_byte": 1213,
+          "start_point": {
+            "row": 45,
+            "column": 4
+          },
+          "end_point": {
+            "row": 45,
+            "column": 53
+          }
+        },
+        "definition_range": {
+          "start_byte": 1213,
+          "end_byte": 1256,
+          "start_point": {
+            "row": 45,
+            "column": 53
+          },
+          "end_point": {
+            "row": 47,
+            "column": 5
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": [],
+      "args": [
+        {
+          "name": "",
+          "type_": null
+        },
+        {
+          "name": "label",
+          "type_": {
+            "name": "String",
+            "inference_info": null,
+            "is_pod": false,
+            "namespace": "",
+            "guid": null,
+            "nested_types": []
+          }
+        },
+        {
+          "name": "",
+          "type_": null
+        }
+      ],
+      "return_type": {
+        "name": "Element",
+        "inference_info": null,
+        "is_pod": false,
+        "namespace": "",
+        "guid": null,
+        "nested_types": []
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "1d7d1b2d-2bd6-4e73-8bbb-e9e5f4417d5e",
+        "name": "println",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1376,
+          "end_byte": 1407,
+          "start_point": {
+            "row": 53,
+            "column": 4
+          },
+          "end_point": {
+            "row": 53,
+            "column": 35
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "ac926b92-7da6-48d6-b101-77451976fc06",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "1ae58985-f79d-44a4-9a92-ce2aa9a0ce2b",
+        "name": "id",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 764,
+          "end_byte": 769,
+          "start_point": {
+            "row": 22,
+            "column": 21
+          },
+          "end_point": {
+            "row": 22,
+            "column": 26
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "69cd7e1f-25be-4fde-a190-ab668d91113c",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "05719aa3-1308-4476-a95a-b7b405f2edeb",
+        "name": "out",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 745,
+          "end_byte": 755,
+          "start_point": {
+            "row": 22,
+            "column": 2
+          },
+          "end_point": {
+            "row": 22,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "6c80b8ab-1f8f-4a36-8ce3-bc840418fae5",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "10cf21e7-c75c-4cc8-8f09-a9084817fcec",
+        "name": "name",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 840,
+          "end_byte": 847,
+          "start_point": {
+            "row": 23,
+            "column": 21
+          },
+          "end_point": {
+            "row": 23,
+            "column": 28
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "b9f2f525-4dc4-4087-b946-b34dd6006095",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "dfd57d88-1993-4d44-b5e8-9e53e1468538",
+        "name": "out",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 821,
+          "end_byte": 831,
+          "start_point": {
+            "row": 23,
+            "column": 2
+          },
+          "end_point": {
+            "row": 23,
+            "column": 12
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "bcacfb68-c46b-4990-bcb4-9e5a68b0f176",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "3bcb5865-24e7-4bc7-b72a-7b71229bec07",
+        "name": "HashMap",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1911838d-1ed5-4c56-b710-10ac56855680",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1133,
+          "end_byte": 1148,
+          "start_point": {
+            "row": 42,
+            "column": 57
+          },
+          "end_point": {
+            "row": 42,
+            "column": 72
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "d7a743a1-a79c-4434-9491-5c4772dd3d99",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "41b7fc3b-a146-4669-b0d5-9121da38c741",
+        "name": "a",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1307,
+          "end_byte": 1308,
+          "start_point": {
+            "row": 51,
+            "column": 2
+          },
+          "end_point": {
+            "row": 51,
+            "column": 3
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "f23c9910-4d28-4e0c-8fb7-0a1d993651c7",
+        "name": "a",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1310,
+          "end_byte": 1311,
+          "start_point": {
+            "row": 51,
+            "column": 5
+          },
+          "end_point": {
+            "row": 51,
+            "column": 6
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "dfb1bd41-ff23-476a-aa8f-95202e66b7b1",
+        "name": "length",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1395,
+          "end_byte": 1406,
+          "start_point": {
+            "row": 53,
+            "column": 23
+          },
+          "end_point": {
+            "row": 53,
+            "column": 34
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "bedbadc4-50db-43c0-8da7-b456c0b20d6e",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "ac926b92-7da6-48d6-b101-77451976fc06",
+        "name": "out",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1376,
+          "end_byte": 1386,
+          "start_point": {
+            "row": 53,
+            "column": 4
+          },
+          "end_point": {
+            "row": 53,
+            "column": 14
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "8dc0a089-effa-4beb-902a-02c622734886",
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "69cd7e1f-25be-4fde-a190-ab668d91113c",
+        "name": "s1",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 764,
+          "end_byte": 766,
+          "start_point": {
+            "row": 22,
+            "column": 21
+          },
+          "end_point": {
+            "row": 22,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "6c80b8ab-1f8f-4a36-8ce3-bc840418fae5",
+        "name": "System",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 745,
+          "end_byte": 751,
+          "start_point": {
+            "row": 22,
+            "column": 2
+          },
+          "end_point": {
+            "row": 22,
+            "column": 8
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "b9f2f525-4dc4-4087-b946-b34dd6006095",
+        "name": "s1",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 840,
+          "end_byte": 842,
+          "start_point": {
+            "row": 23,
+            "column": 21
+          },
+          "end_point": {
+            "row": 23,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "bcacfb68-c46b-4990-bcb4-9e5a68b0f176",
+        "name": "System",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "aa428eb0-f34d-48ad-8a7d-1e8cf40167b7",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 821,
+          "end_byte": 827,
+          "start_point": {
+            "row": 23,
+            "column": 2
+          },
+          "end_point": {
+            "row": 23,
+            "column": 8
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "bedbadc4-50db-43c0-8da7-b456c0b20d6e",
+        "name": "cars",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1395,
+          "end_byte": 1399,
+          "start_point": {
+            "row": 53,
+            "column": 23
+          },
+          "end_point": {
+            "row": 53,
+            "column": 27
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "8dc0a089-effa-4beb-902a-02c622734886",
+        "name": "System",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "20b52cbe-4f63-4d27-ac2d-7a9bd9f9ad87",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1376,
+          "end_byte": 1382,
+          "start_point": {
+            "row": 53,
+            "column": 4
+          },
+          "end_point": {
+            "row": 53,
+            "column": 10
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "FunctionCall": {
+      "ast_fields": {
+        "guid": "0f88c523-d10b-48cb-95da-6ae92bcd8912",
+        "name": "get",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1d1fa3ea-2660-4ef7-abc1-1b0385ad4b40",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1230,
+          "end_byte": 1249,
+          "start_point": {
+            "row": 46,
+            "column": 15
+          },
+          "end_point": {
+            "row": 46,
+            "column": 34
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": "0762fbf5-2021-4461-b93e-b5519e192500",
+        "is_error": false,
+        "caller_depth": null
+      },
+      "template_types": []
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "6f6cbc5a-a8d2-4cea-b573-40f75cb2846d",
+        "name": "label",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1d1fa3ea-2660-4ef7-abc1-1b0385ad4b40",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1243,
+          "end_byte": 1248,
+          "start_point": {
+            "row": 46,
+            "column": 28
+          },
+          "end_point": {
+            "row": 46,
+            "column": 33
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  },
+  {
+    "VariableUsage": {
+      "ast_fields": {
+        "guid": "0762fbf5-2021-4461-b93e-b5519e192500",
+        "name": "BY_LABEL",
+        "language": "Java",
+        "file_path": "file:///main.java",
+        "namespace": "",
+        "parent_guid": "1d1fa3ea-2660-4ef7-abc1-1b0385ad4b40",
+        "childs_guid": [],
+        "full_range": {
+          "start_byte": 1230,
+          "end_byte": 1238,
+          "start_point": {
+            "row": 46,
+            "column": 15
+          },
+          "end_point": {
+            "row": 46,
+            "column": 23
+          }
+        },
+        "declaration_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "definition_range": {
+          "start_byte": 0,
+          "end_byte": 0,
+          "start_point": {
+            "row": 0,
+            "column": 0
+          },
+          "end_point": {
+            "row": 0,
+            "column": 0
+          }
+        },
+        "linked_decl_guid": null,
+        "caller_guid": null,
+        "is_error": false,
+        "caller_depth": null
+      }
+    }
+  }
+]

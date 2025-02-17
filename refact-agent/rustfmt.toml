@@ -1,0 +1,14 @@
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+use_small_heuristics = "Default"
+fn_single_line = false
+struct_lit_single_line = false
+reorder_imports = false
+brace_style = "SameLineWhere"
+control_brace_style = "AlwaysSameLine"
+indent_style = "Block"
+imports_indent = "Block"
+imports_layout = "Mixed"
+

@@ -1,0 +1,32 @@
+[
+  {
+    "top_row": 25,
+    "bottom_row": 31,
+    "line": "/**\n * This method returns the age of the person.\n * @returns The age of the person.\n */\ngetAge(): number {\n    return this.age;\n}"
+  },
+  {
+    "top_row": 33,
+    "bottom_row": 39,
+    "line": "/**\n * This method sets the name of the person.\n * @param name The new name of the person.\n */\nsetName(name: string): void {\n    this.name = name;\n}"
+  },
+  {
+    "top_row": 7,
+    "bottom_row": 15,
+    "line": "/**\n * This is the constructor method for the Person class.\n * @param name The name of the person.\n * @param age The age of the person.\n */\nconstructor(name: string, age: number) {\n    this.name = name;\n    this.age = age;\n}"
+  },
+  {
+    "top_row": 41,
+    "bottom_row": 47,
+    "line": "/**\n * This method sets the age of the person.\n * @param age The new age of the person.\n */\nsetAge(age: number): void {\n    this.age = age;\n}"
+  },
+  {
+    "top_row": 17,
+    "bottom_row": 23,
+    "line": "/**\n * This method returns the name of the person.\n * @returns The name of the person.\n */\ngetName(): string {\n    return this.name;\n}"
+  },
+  {
+    "top_row": 0,
+    "bottom_row": 3,
+    "line": "/**\n * This is a class representing a Person.\n */\nclass Person { ... }"
+  }
+]
