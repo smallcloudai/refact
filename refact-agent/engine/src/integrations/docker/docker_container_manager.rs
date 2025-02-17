@@ -16,7 +16,7 @@ use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel, ssh_tunnel_check_status};
-use crate::integrations::docker::integr_docker::ToolDocker;
+use crate::integrations::docker::integr_docker::{ToolDocker, SettingsDocker};
 use crate::integrations::docker::docker_and_isolation_load;
 use crate::integrations::docker::integr_isolation::SettingsIsolation;
 
@@ -223,7 +223,7 @@ async fn docker_container_create(
     if docker_image_id.is_empty() {
         return Err("No image ID to run container from, please specify one.".to_string());
     }
-    let host_lsp_path  = isolation.host_lsp_path.clone();
+    let host_lsp_path  = format!("{}/refact-lsp", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
 
     let (address_url, api_key, integrations_yaml) = {
         let gcx_locked = gcx.read().await;
@@ -241,6 +241,7 @@ async fn docker_container_create(
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
     let network_if_set = if !isolation.docker_network.is_empty() {
+        docker_network_create_if_it_does_not_exist(gcx.clone(), docker, &isolation.docker_network).await?;
         format!("--network {}", isolation.docker_network)
     } else {
         String::new()
@@ -261,6 +262,36 @@ async fn docker_container_create(
 
     Ok(container_id[..12].to_string())
 }
+
+async fn get_host_cache_dir(gcx: Arc<ARwLock<GlobalContext>>, settings_docker: &SettingsDocker) -> String {
+    match settings_docker.get_ssh_config() {
+        Some(ssh_config) => {
+            let host_home_dir = if ssh_config.user == "root" {
+                "/root".to_string()
+            } else {
+                format!("/home/{}", ssh_config.user)
+            };
+            format!("{host_home_dir}/.cache/refact")
+        }
+        None => gcx.read().await.cache_dir.to_string_lossy().to_string(),
+    }
+}
+
+async fn docker_network_create_if_it_does_not_exist(
+    gcx: Arc<ARwLock<GlobalContext>>, 
+    docker: &ToolDocker,
+    network_name: &str,
+) -> Result<(), String> {
+    let quoted_network_name = shell_words::quote(network_name);
+    let network_ls_command = format!("network ls --filter name={}", quoted_network_name);
+    let (network_ls_output, _) = docker.command_execute(&network_ls_command, gcx.clone(), true, true).await?;
+    if !network_ls_output.contains(network_name) {
+        let network_create_command = format!("network create {}", quoted_network_name);
+        docker.command_execute(&network_create_command, gcx.clone(), true, true).await?;
+    }
+    Ok(())
+}
+
 
 async fn docker_container_sync_config_folder(
     docker: &ToolDocker,
@@ -369,7 +400,10 @@ async fn docker_container_sync_workspace(
         .into_iter()
         .next()
         .ok_or_else(|| "No workspace folders found".to_string())?;
-    let container_workspace_folder = isolation.container_workspace_folder.clone();
+    let mut container_workspace_folder = isolation.container_workspace_folder.clone();
+    if !container_workspace_folder.ends_with("/") {
+        container_workspace_folder.push_str("/");
+    }
 
     let temp_tar_file = tempfile::Builder::new().suffix(".tar").tempfile()
         .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();

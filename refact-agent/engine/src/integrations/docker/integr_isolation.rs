@@ -15,7 +15,6 @@ pub struct SettingsIsolation {
     pub container_workspace_folder: String,
     pub docker_image_id: String,
     pub docker_network: String,
-    pub host_lsp_path: String,
     #[serde(serialize_with = "serialize_ports", deserialize_with = "deserialize_ports")]
     pub ports: Vec<Port>,
     #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
@@ -79,10 +78,6 @@ fields:
   docker_image_id:
     f_type: string_long
     f_desc: "The Docker image ID to use."
-  host_lsp_path:
-    f_type: string_long
-    f_desc: "Path to the LSP on the host."
-    f_default: "/opt/refact/bin/refact-lsp"
   command:
     f_type: string_long
     f_desc: "Command to run inside the Docker container."
