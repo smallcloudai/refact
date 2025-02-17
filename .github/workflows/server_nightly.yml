@@ -1,9 +1,12 @@
-name: Release
+name: Refact Server CICD Nightly
 on:
   push:
-    tags:
-      - v*
+    branches: [dev]
   workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: refact-server
 
 jobs:
   build:
@@ -47,6 +50,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Inject cache docker image
+        working-directory: refact-server
         run: |
           ./.github/scripts/cicl_docker_injection.sh
 
@@ -73,9 +77,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          context: .
+          context: refact-server
           tags: |
-            smallcloud/refact_self_hosting:${{github.ref_name}}
-            smallcloud/refact_self_hosting:latest
+            smallcloud/refact_self_hosting:nightly
           platforms: |
             linux/amd64

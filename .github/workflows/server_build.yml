@@ -1,6 +1,9 @@
-name: Build
+name: Refact Server CICD Build
 on:
+  push:
+    paths: [ "refact-server/**" ]
   pull_request:
+    paths: [ "refact-server/**" ]
   workflow_dispatch:
 
 jobs:
@@ -33,6 +36,7 @@ jobs:
           sudo docker image save -o ${GITHUB_WORKSPACE}/images.tar moby/buildkit
           echo "Back up /var/lib/docker folder structure and other files"
           sudo rsync -aPq /var/lib/docker/ ${GITHUB_WORKSPACE}/docker
+
       # Free GitHub Actions Environment Disk Space
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
@@ -58,6 +62,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Inject cache docker image
+        working-directory: refact-server
         run: |
           ./.github/scripts/cicl_docker_injection.sh
 
@@ -79,7 +84,7 @@ jobs:
         with:
           push: false
           load: true
-          context: .
+          context: refact-server
           tags: |
             smallcloud/refact_self_hosting:${{ needs.setup-vars.outputs.now_tag }}
           platforms: |
