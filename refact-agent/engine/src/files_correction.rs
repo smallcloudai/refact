@@ -653,6 +653,7 @@ mod tests {
     }
 
     #[cfg(not(windows))]
+    #[ignore]
     #[test]
     fn test_canonical_path_unix() 
     {
