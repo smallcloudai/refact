@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "2.0.8-alpha.1",
+  "version": "2.0.8-alpha.2",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
@@ -38,7 +38,7 @@
     "coverage": "vitest run --coverage",
     "format:check": "prettier . --check",
     "format": "prettier . --write",
-    "prepare": "",
+    "prepare": "husky install",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "types": "tsc --noEmit",
@@ -72,6 +72,7 @@
     "@testing-library/react": "^16.0.0",
     "@testing-library/user-event": "^14.5.1",
     "@types/debug": "^4.1.12",
+    "@types/diff": "^7.0.1",
     "@types/js-cookie": "^3.0.6",
     "@types/lodash.groupby": "^4.6.9",
     "@types/lodash.isequal": "^4.5.8",
@@ -86,6 +87,7 @@
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
     "classnames": "^2.3.2",
+    "diff": "^7.0.0",
     "echarts": "^5.4.3",
     "echarts-for-react": "^3.0.2",
     "eslint": "^8.55.0",

@@ -1,7 +1,11 @@
 import { RootState } from "../../app/store";
-import { AT_TOOLS_AVAILABLE_URL, TOOLS_CHECK_CONFIRMATION } from "./consts";
+import {
+  AT_TOOLS_AVAILABLE_URL,
+  TOOLS_CHECK_CONFIRMATION,
+  EDIT_TOOL_DRY_RUN_URL,
+} from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { ChatMessage, ToolCall } from "./types";
+import { ChatMessage, DiffChunk, isDiffChunk, ToolCall } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 export const toolsApi = createApi({
@@ -82,6 +86,40 @@ export const toolsApi = createApi({
         return { data: result.data };
       },
     }),
+    dryRunForEditTool: builder.mutation<
+      ToolEditResult,
+      { toolName: string; toolArgs: Record<string, unknown> }
+    >({
+      async queryFn(args, api, extraOptions, baseQuery) {
+        const getState = api.getState as () => RootState;
+        const state = getState();
+        const port = state.config.lspPort;
+        const url = `http://127.0.0.1:${port}${EDIT_TOOL_DRY_RUN_URL}`;
+
+        const response = await baseQuery({
+          ...extraOptions,
+          url,
+          method: "POST",
+          body: { tool_name: args.toolName, tool_args: args.toolArgs },
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+
+        if (response.error) return response;
+
+        if (!isToolEditResult(response.data)) {
+          return {
+            error: {
+              error: `Invalid response from ${EDIT_TOOL_DRY_RUN_URL}`,
+              data: response.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: response.data };
+      },
+    }),
   }),
   refetchOnMountOrArgChange: true,
 });
@@ -146,4 +184,23 @@ export function isToolConfirmationResponse(
     if (typeof reason.tool_call_id !== "string") return false;
   }
   return true;
+}
+
+export type ToolEditResult = {
+  file_before: string;
+  file_after: string;
+  chunks: DiffChunk[];
+};
+
+export function isToolEditResult(data: unknown): data is ToolEditResult {
+  if (!data) return false;
+  if (typeof data !== "object") return false;
+  if (!("file_before" in data)) return false;
+  if (typeof data.file_before !== "string") return false;
+  if (!("file_after" in data)) return false;
+  if (typeof data.file_after !== "string") return false;
+  if (!("chunks" in data)) return false;
+  if (!Array.isArray(data.chunks)) return false;
+
+  return data.chunks.every(isDiffChunk);
 }

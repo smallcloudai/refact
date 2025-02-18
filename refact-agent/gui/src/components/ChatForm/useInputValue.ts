@@ -34,7 +34,10 @@ export function useInputValue(
     (event: MessageEvent) => {
       if (addInputValue.match(event.data) || setInputValue.match(event.data)) {
         const { payload } = event.data;
-        debugRefact(`[DEBUG]: receiving event setInputValue/addInputValue`);
+        debugRefact(
+          `[DEBUG]: receiving event setInputValue/addInputValue with payload:`,
+          payload,
+        );
         setUpIfNotReady();
 
         if (payload.messages) {
@@ -49,14 +52,19 @@ export function useInputValue(
 
       if (addInputValue.match(event.data)) {
         const { payload } = event.data;
+        debugRefact(`[DEBUG]: addInputValue triggered with:`, payload);
         const { send_immediately, value } = payload;
-        setValue((prev) => prev + value);
+        setValue((prev) => {
+          debugRefact(`[DEBUG]: Previous value: "${prev}", Adding: "${value}"`);
+          return prev + value;
+        });
         setIsSendImmediately(send_immediately);
         return;
       }
 
       if (setInputValue.match(event.data)) {
         const { payload } = event.data;
+        debugRefact(`[DEBUG]: setInputValue triggered with:`, payload);
         const { send_immediately, value } = payload;
         uncheckCheckboxes();
         setValue(value ?? "");

@@ -1,11 +1,4 @@
-import React, {
-  Key,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { Key, useMemo } from "react";
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import classNames from "classnames";
@@ -25,26 +18,17 @@ import {
   Link,
   Quote,
   Strong,
-  Button,
   Flex,
-  Card,
   Table,
 } from "@radix-ui/themes";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
-import { useAppSelector, useLinksFromLsp, usePatchActions } from "../../hooks";
+import { useLinksFromLsp } from "../../hooks";
 
-import { ErrorCallout, DiffWarningCallout } from "../Callout";
-
-import { TruncateLeft } from "../Text";
-import { extractFilePathFromPin } from "../../utils";
-
-import { telemetryApi } from "../../services/refact/telemetry";
 import { ChatLinkButton } from "../ChatLinks";
 import { extractLinkFromPuzzle } from "../../utils/extractLinkFromPuzzle";
-import { selectAutomaticPatch, selectToolUse } from "../../features/Chat";
 
 export type MarkdownProps = Pick<
   React.ComponentProps<typeof ReactMarkdown>,
@@ -61,142 +45,6 @@ export type MarkdownProps = Pick<
     canHaveInteractiveElements?: boolean;
     wrap?: boolean;
   } & Partial<MarkdownControls>;
-
-const PinMessages: React.FC<{
-  children: string;
-}> = ({ children }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const {
-    handleShow,
-    errorMessage,
-    resetErrorMessage,
-    disable,
-    openFile,
-    handlePaste,
-    canPaste,
-  } = usePatchActions();
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
-
-  const toolUse = useAppSelector(selectToolUse);
-  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
-
-  const shouldInteractiveButtonsBeVisible = useMemo(() => {
-    if (toolUse === "agent") return !isPatchAutomatic;
-    return true;
-  }, [isPatchAutomatic, toolUse]);
-
-  const getMarkdown = useCallback(() => {
-    return (
-      ref.current?.parentElement?.nextElementSibling?.querySelector("code")
-        ?.textContent ?? null
-    );
-  }, []);
-
-  const onDiffClick = useCallback(() => {
-    const markdown = getMarkdown();
-    if (markdown) {
-      handlePaste(markdown);
-    }
-
-    void sendTelemetryEvent({
-      scope: `replaceSelection`,
-      success: true,
-      error_message: "",
-    });
-  }, [getMarkdown, handlePaste, sendTelemetryEvent]);
-
-  const handleAutoApply = useCallback(
-    (
-      event: React.MouseEvent<HTMLButtonElement>,
-      children: string,
-      filePath: string,
-    ) => {
-      event.preventDefault();
-      openFile({ file_name: filePath });
-      // timeout is required to open file properly and then start rainbow animation
-      const timeoutId = setTimeout(() => {
-        handleShow(children);
-        clearTimeout(timeoutId);
-      }, 150);
-    },
-    [handleShow, openFile],
-  );
-
-  const [hasMarkdown, setHasMarkdown] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!ref.current) {
-      setHasMarkdown(false);
-    } else {
-      const markdown = !!getMarkdown();
-      setHasMarkdown(markdown);
-    }
-  }, [getMarkdown]);
-
-  if (children.startsWith("📍OTHER")) {
-    return null;
-  }
-
-  const filePath = extractFilePathFromPin(children);
-
-  return (
-    <Card
-      className={styles.patch_title}
-      size="1"
-      variant="surface"
-      mt="4"
-      ref={ref}
-    >
-      <Flex gap="2" py="2" pl="2" justify="between">
-        <TruncateLeft>
-          <Link
-            title="Open file"
-            onClick={(event) => {
-              event.preventDefault();
-              openFile({ file_name: filePath });
-            }}
-          >
-            {filePath}
-          </Link>
-        </TruncateLeft>{" "}
-        <div style={{ flexGrow: 1 }} />
-        {shouldInteractiveButtonsBeVisible && (
-          <>
-            <Button
-              size="1"
-              onClick={(event) => handleAutoApply(event, children, filePath)}
-              disabled={disable}
-              title={`Show: ${children}`}
-            >
-              ➕ Auto Apply
-            </Button>
-            <Button
-              size="1"
-              onClick={onDiffClick}
-              disabled={disable || !hasMarkdown || !canPaste}
-              title="Replace the current selection in the ide."
-            >
-              ➕ Replace Selection
-            </Button>
-          </>
-        )}
-      </Flex>
-      {errorMessage && errorMessage.type === "error" && (
-        <ErrorCallout onClick={resetErrorMessage} timeout={5000}>
-          {errorMessage.text}
-        </ErrorCallout>
-      )}
-      {errorMessage && errorMessage.type === "warning" && (
-        <DiffWarningCallout
-          timeout={5000}
-          onClick={resetErrorMessage}
-          message={errorMessage.text}
-        />
-      )}
-    </Card>
-  );
-};
 
 const PuzzleLink: React.FC<{
   children: string;
@@ -218,10 +66,6 @@ const MaybeInteractiveElement: React.FC<{
   children?: React.ReactNode;
 }> = ({ children }) => {
   const processed = React.Children.map(children, (child, index) => {
-    if (typeof child === "string" && child.startsWith("📍")) {
-      const key = `pin-message-${index}`;
-      return <PinMessages key={key}>{child}</PinMessages>;
-    }
     if (typeof child === "string" && child.startsWith("🧩")) {
       const key = `puzzle-link-${index}`;
       return <PuzzleLink key={key}>{child}</PuzzleLink>;

@@ -1,0 +1,47 @@
+.textdoc {
+}
+
+.textdoc__header {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.textdoc__header,
+.textdoc__header::before,
+.textdoc__header::after {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-width: 0;
+}
+
+.textdoc pre {
+  margin-top: 0;
+}
+
+:global(.radix-themes) .textdoc.textdoc__update :global(.hljs.language-diff) {
+  --hlbg: var(--gray-3);
+  --hlcolor1: var(--gray-12);
+  /* --hlcolor2: #000000;
+  --hlcolor3: #000080;
+  --hlcolor4: #800080;
+  --hlcolor5: #808000;
+  --hlcolor6: #800000;
+  --hlcolor7: #0055af; */
+  --hlcolor8: var(--green-9);
+  --hlcolor9: var(--red-9);
+}
+:global(.radix-themes)
+  .textdoc.textdoc__update
+  :global(.hljs.language-diff .hljs-comment) {
+  color: var(--hlcolor1);
+}
+
+:global(.radix-themes)
+  .textdoc.textdoc__update
+  :global(.hljs.language-diff .hljs-meta) {
+  color: var(--hlcolor1);
+}
+
+.textdoc__update .textdoc__diffbox {
+  box-shadow: var(--shadow-1);
+}

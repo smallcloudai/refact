@@ -14,6 +14,7 @@ import { STUB_SUB_RESPONSE, STUB_SUB_RESPONSE_WITH_STATUS } from "./knowledge";
 import { GoodPollingResponse } from "../services/smallcloud";
 import type { LinksForChatResponse } from "../services/refact/links";
 import { CompressTrajectoryResponse } from "../services/refact/knowledge";
+import { ToolConfirmationResponse } from "../services/refact";
 
 export const goodPing: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/ping",
@@ -285,5 +286,17 @@ export const telemetryNetwork = http.post(
       retcode: "OK",
       status: "sent",
     });
+  },
+);
+
+export const ToolConfirmation = http.post(
+  "http://127.0.0.1:8001/v1/tools-check-if-confirmation-needed",
+  () => {
+    const response: ToolConfirmationResponse = {
+      pause: false,
+      pause_reasons: [],
+    };
+
+    return HttpResponse.json(response);
   },
 );

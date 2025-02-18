@@ -17,7 +17,6 @@ import type { TipOfTheDayState } from "../features/TipOfTheDay";
 import type { PageSliceState } from "../features/Pages/pagesSlice";
 import type { TourState } from "../features/Tour";
 import type { FIMDebugState } from "../hooks";
-import { createAction } from "@reduxjs/toolkit";
 import { CurrentProjectInfo } from "../features/Chat/currentProject";
 
 export { updateConfig, type Config } from "../features/Config/configSlice";
@@ -29,7 +28,6 @@ export {
 export type { FimDebugData } from "../services/refact/fim";
 export type { ChatHistoryItem } from "../features/History/historySlice";
 export { addInputValue, setInputValue } from "../components/ChatForm/actions";
-export { resetDiffApi } from "../services/refact/diffs";
 export {
   setCurrentProjectInfo,
   type CurrentProjectInfo,
@@ -38,15 +36,13 @@ export {
 export type {
   ToolCommand,
   CustomPromptsResponse,
-  DiffPreviewResponse,
-  PatchResult,
   CapsResponse,
   UserMessage,
   ChatMessage,
   ChatMessages,
+  DiffChunk,
+  ToolEditResult,
 } from "../services/refact";
-
-export const showPatchTicket = createAction<string>("showPatchTicket");
 
 // TODO: re-exporting from redux seems to break things :/
 export type InitialState = {
@@ -67,18 +63,17 @@ export {
   ideOpenFile,
   type OpenFilePayload,
   ideDiffPasteBackAction,
-  ideDiffPreviewAction,
   ideNewFileAction,
   ideOpenHotKeys,
   ideOpenSettingsAction,
   ideOpenChatInNewTab,
   ideAnimateFileStart,
   ideAnimateFileStop,
-  ideWriteResultsToFile,
   ideChatPageChange,
   ideEscapeKeyPressed,
   ideIsChatStreaming,
   ideIsChatReady,
+  ideToolEdit,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {
