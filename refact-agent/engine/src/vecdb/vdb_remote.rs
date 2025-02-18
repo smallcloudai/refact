@@ -19,6 +19,7 @@ impl VecdbSearch for VecDbRemote {
         _vecdb_scope_filter_mb: Option<String>,
         _api_key: &String,
     ) -> Result<SearchResult, String> {
+        // NOTE: if you're going to use https make sure that you set insecure flag from cmdline
         let url = "http://127.0.0.1:8008/v1/vdb-search".to_string();
         let mut headers = HeaderMap::new();
         // headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", self.token)).unwrap());

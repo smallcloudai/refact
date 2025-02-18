@@ -4,7 +4,7 @@ use hyper::Body;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
-use reqwest::Client;
+use reqwest;
 use serde::{Serialize, Deserialize};
 use tracing::info;
 use tokio::io;
@@ -25,11 +25,11 @@ struct DashboardPlotsResponse {
 }
 
 async fn fetch_data(
+    http_client: &reqwest::Client,
     url: &String,
     api_key: &String,
 ) -> Result<Vec<RHData>, String> {
-    let client = Client::new();
-    let response = match client
+    let response = match http_client
         .get(url)
         .header("Authorization", format!("Bearer {}", api_key))
         .send().await {
@@ -65,15 +65,16 @@ pub async fn get_dashboard_plots(
 ) -> axum::response::Result<Response<Body>, ScratchError> {
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (api_key, url) = {
+    let (http_client, api_key, url) = {
         let gcx_locked = global_context.read().await;
-        (gcx_locked.cmdline.api_key.clone(), caps.read().unwrap().telemetry_basic_retrieve_my_own.clone())
+        (gcx_locked.http_client.clone(), gcx_locked.cmdline.api_key.clone(), caps.read().unwrap().telemetry_basic_retrieve_my_own.clone())
     };
     if url.is_empty() {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error: no url provided from caps".to_string()));
     }
 
     let mut records = match fetch_data(
+        &http_client,
         &url,
         &api_key
     ).await {

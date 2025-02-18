@@ -74,6 +74,7 @@ async fn _make_http_request<T: Serialize>(
     url: &str,
     body: &T,
 ) -> Result<Response, String> {
+    // NOTE: if you're going to use https make sure that you set insecure flag from cmdline
     let client = Client::builder().build().map_err(|e| e.to_string())?;
     
     let request_builder = match method {
