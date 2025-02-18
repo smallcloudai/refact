@@ -671,3 +671,157 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
 
   return Object.values(json).every((value) => typeof value === "string");
 }
+
+// ChatDB
+
+export type CThread = {
+  cthread_id: string;
+  cthread_belongs_to_chore_event_id: string | null;
+  cthread_title: string;
+  cthread_toolset: string;
+  cthread_model: string;
+  cthread_temperature: number;
+  cthread_n_ctx: number;
+  cthread_max_new_tokens: number;
+  cthread_n: number;
+  cthread_error: string;
+  cthread_anything_new: boolean;
+  cthread_created_ts: number;
+  cthread_updated_ts: number;
+  cthread_archived_ts: number;
+  cthread_locked_by: string;
+  cthread_locked_ts: number;
+};
+export function isCThread(value: unknown): value is CThread {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (!("cthread_id" in value) || typeof value.cthread_id !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_belongs_to_chore_event_id" in value) ||
+    (value.cthread_belongs_to_chore_event_id !== null &&
+      typeof value.cthread_belongs_to_chore_event_id !== "string")
+  ) {
+    return false;
+  }
+
+  if (!("cthread_title" in value) || typeof value.cthread_title !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_toolset" in value) ||
+    typeof value.cthread_toolset !== "string"
+  ) {
+    return false;
+  }
+
+  if (!("cthread_model" in value) || typeof value.cthread_model !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_temperature" in value) ||
+    typeof value.cthread_temperature !== "number"
+  ) {
+    return false;
+  }
+
+  if (!("cthread_n_ctx" in value) || typeof value.cthread_n_ctx !== "number") {
+    return false;
+  }
+
+  if (
+    !("cthread_max_new_tokens" in value) ||
+    typeof value.cthread_max_new_tokens !== "number"
+  ) {
+    return false;
+  }
+
+  if (!("cthread_n" in value) || typeof value.cthread_n !== "number") {
+    return false;
+  }
+
+  if (!("cthread_error" in value) || typeof value.cthread_error !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_anything_new" in value) ||
+    typeof value.cthread_anything_new !== "boolean"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_created_ts" in value) ||
+    typeof value.cthread_created_ts !== "number"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_updated_ts" in value) ||
+    typeof value.cthread_updated_ts !== "number"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_archived_ts" in value) ||
+    typeof value.cthread_archived_ts !== "number"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_locked_by" in value) ||
+    typeof value.cthread_locked_by !== "string"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_locked_ts" in value) ||
+    typeof value.cthread_locked_ts !== "number"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+type CThreadSubResponseUpdate = {
+  sub_event: "cthread_update";
+  cthread_rec: CThread;
+};
+
+export function isCThreadSubResponseUpdate(
+  value: unknown,
+): value is CThreadSubResponseUpdate {
+  if (!value || typeof value !== "object") return false;
+  if (!("sub_event" in value)) return false;
+  if (typeof value.sub_event !== "string") return false;
+  if (!("cthread_rec" in value)) return false;
+  return isCThread(value.cthread_rec);
+}
+
+type CThreadSubResponseDelete = {
+  sub_event: "cthread_delete";
+  cthread_id: string;
+};
+
+export function isCThreadSubResponseDelete(
+  value: unknown,
+): value is CThreadSubResponseDelete {
+  if (!value || typeof value !== "object") return false;
+  if (!("sub_event" in value)) return false;
+  if (typeof value.sub_event !== "string") return false;
+  if (!("cthread_id" in value)) return false;
+  if (typeof value.cthread_id !== "string") return false;
+  return true;
+}
