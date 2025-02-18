@@ -28,6 +28,9 @@ __pycache__/
 *$py.class
 _*
 
+# Include python init files, ignored by _*
+!**/__init__.py
+
 # C extensions
 *.so
 
