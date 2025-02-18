@@ -26,7 +26,6 @@ pub async fn start_server(
     gcx: Arc<ARwLock<GlobalContext>>,
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
 ) -> Option<JoinHandle<()>> {
-    tokio::time::sleep(Duration::from_secs(5)).await;
     let (port, is_inside_container) = {
         let gcx_locked= gcx.read().await;
         (gcx_locked.cmdline.http_port, gcx_locked.cmdline.inside_container)
