@@ -30,6 +30,9 @@ _*
 !__fixtures__
 !__tests__
 
+# Include python init files, ignored by _*
+!**/__init__.py
+
 # C extensions
 *.so
 
