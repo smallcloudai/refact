@@ -3,11 +3,7 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
-import {
-  PaperPlaneButton,
-  BackToSideBarButton,
-  AgentIntegrationsButton,
-} from "../Buttons/Buttons";
+import { PaperPlaneButton, AgentIntegrationsButton } from "../Buttons/Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import {
@@ -57,14 +53,13 @@ import { AgentCapabilities } from "./AgentCapabilities";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
-  onClose?: () => void;
   className?: string;
   unCalledTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
-  onClose,
+
   className,
   unCalledTools,
 }) => {
@@ -360,14 +355,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 type="button"
                 onClick={handleAgentIntegrationsClick}
                 ref={(x) => refs.setSetupIntegrations(x)}
-              />
-            )}
-            {onClose && (
-              <BackToSideBarButton
-                disabled={isStreaming}
-                title="Return to sidebar"
-                size="1"
-                onClick={onClose}
               />
             )}
             {config.features?.images !== false &&

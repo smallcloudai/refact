@@ -15,9 +15,9 @@ import {
   HomeIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
-import { newChatAction } from "../../events";
+// import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
-import { popBackTo, push } from "../../features/Pages/pagesSlice";
+// import { popBackTo, push } from "../../features/Pages/pagesSlice";
 import {
   ChangeEvent,
   KeyboardEvent,
@@ -32,7 +32,11 @@ import {
   getHistory,
   updateChatTitleById,
 } from "../../features/History/historySlice";
-import { restoreChat, saveTitle, selectThread } from "../../features/Chat";
+import {
+  // restoreChat,
+  saveTitle,
+  selectThread,
+} from "../../features/Chat";
 import { TruncateLeft } from "../Text";
 import {
   useAppDispatch,
@@ -42,7 +46,7 @@ import {
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { telemetryApi } from "../../services/refact/telemetry";
-
+import { useNavigate } from "react-router";
 import styles from "./Toolbar.module.css";
 
 export type DashboardTab = {
@@ -65,10 +69,13 @@ function isChatTab(tab: Tab): tab is ChatTab {
 export type Tab = DashboardTab | ChatTab;
 
 export type ToolbarProps = {
-  activeTab: Tab;
+  // TODO: handle active tabs
+  activeTab?: Tab;
 };
 
+// TODO: remove active tabs
 export const Toolbar = ({ activeTab }: ToolbarProps) => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const tabNav = useRef<HTMLElement | null>(null);
   const [tabNavWidth, setTabNavWidth] = useState(0);
@@ -92,9 +99,10 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const [newTitle, setNewTitle] = useState<string | null>(null);
 
   const shouldChatTabLinkBeNotClickable = useMemo(() => {
-    return isOnlyOneChatTab && !isDashboardTab(activeTab);
+    return isOnlyOneChatTab && activeTab && !isDashboardTab(activeTab);
   }, [isOnlyOneChatTab, activeTab]);
 
+  // TODO: handle router nav here (refactor later to use Link)
   const handleNavigation = useCallback(
     (to: DropdownNavigationOptions | "chat") => {
       if (to === "settings") {
@@ -112,22 +120,25 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           error_message: "",
         });
       } else if (to === "fim") {
-        dispatch(push({ name: "fill in the middle debug page" }));
+        // dispatch(push({ name: "fill in the middle debug page" }));
+        void navigate("/fim");
         void sendTelemetryEvent({
           scope: `openDebugFim`,
           success: true,
           error_message: "",
         });
       } else if (to === "stats") {
-        dispatch(push({ name: "statistics page" }));
+        // dispatch(push({ name: "statistics page" }));
+        void navigate("/statistics");
         void sendTelemetryEvent({
           scope: `openStats`,
           success: true,
           error_message: "",
         });
       } else if (to === "restart tour") {
-        dispatch(popBackTo({ name: "login page" }));
-        dispatch(push({ name: "welcome" }));
+        // dispatch(popBackTo({ name: "login page" }));
+        // dispatch(push({ name: "welcome" }));
+        void navigate("/welcome");
         dispatch(restart());
         void sendTelemetryEvent({
           scope: `restartTour`,
@@ -135,26 +146,29 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           error_message: "",
         });
       } else if (to === "integrations") {
-        dispatch(push({ name: "integrations page" }));
+        // dispatch(push({ name: "integrations page" }));
+        void navigate("/integrations");
         void sendTelemetryEvent({
           scope: `openIntegrations`,
           success: true,
           error_message: "",
         });
       } else if (to === "chat") {
-        dispatch(popBackTo({ name: "history" }));
-        dispatch(push({ name: "chat" }));
+        // dispatch(popBackTo({ name: "history" }));
+        // dispatch(push({ name: "chat" }));
+        // dispatch(newChatAction());
+        void navigate("/chat");
       } else if (to === "knowledge list") {
         // TODO: send telemetry
-        dispatch(push({ name: "knowledge list" }));
+        void navigate("/knowledge");
       }
     },
-    [dispatch, sendTelemetryEvent, openSettings, openHotKeys],
+    [openSettings, sendTelemetryEvent, openHotKeys, navigate, dispatch],
   );
 
   const onCreateNewChat = useCallback(() => {
     setIsRenaming((prev) => (prev ? !prev : prev));
-    dispatch(newChatAction());
+    // dispatch(newChatAction());
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
         wasInteracted: false,
@@ -172,16 +186,18 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const goToTab = useCallback(
     (tab: Tab) => {
       if (tab.type === "dashboard") {
-        dispatch(popBackTo({ name: "history" }));
-        dispatch(newChatAction());
+        void navigate("/");
+        // dispatch(popBackTo({ name: "history" }));
+        // dispatch(newChatAction());
       } else {
-        if (shouldChatTabLinkBeNotClickable) return;
-        const chat = history.find((chat) => chat.id === tab.id);
-        if (chat != undefined) {
-          dispatch(restoreChat(chat));
-        }
-        dispatch(popBackTo({ name: "history" }));
-        dispatch(push({ name: "chat" }));
+        // if (shouldChatTabLinkBeNotClickable) return;
+        // const chat = history.find((chat) => chat.id === tab.id);
+        // if (chat != undefined) {
+        //   dispatch(restoreChat(chat));
+        // }
+        // dispatch(popBackTo({ name: "history" }));
+        // dispatch(push({ name: "chat" }));
+        void navigate(`/chat/${tab.id}`);
       }
       void sendTelemetryEvent({
         scope: `goToTab/${tab.type}`,
@@ -189,7 +205,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         error_message: "",
       });
     },
-    [dispatch, history, shouldChatTabLinkBeNotClickable, sendTelemetryEvent],
+    [sendTelemetryEvent, navigate],
   );
 
   useEffect(() => {
@@ -213,7 +229,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     return history.filter(
       (chat) =>
         chat.read === false ||
-        (activeTab.type === "chat" && activeTab.id == chat.id),
+        (activeTab?.type === "chat" && activeTab.id == chat.id),
     );
   }, [history, activeTab]);
 
@@ -225,8 +241,9 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
 
   const handleChatThreadDeletion = useCallback(() => {
     dispatch(deleteChatById(chatId));
-    goToTab({ type: "dashboard" });
-  }, [dispatch, chatId, goToTab]);
+    // goToTab({ type: "dashboard" });
+    void navigate("/");
+  }, [dispatch, chatId, navigate]);
 
   const handleChatThreadRenaming = useCallback(() => {
     setIsRenaming(true);
@@ -268,7 +285,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       <Flex flexGrow="1" align="start" maxHeight="40px" overflowY="hidden">
         <TabNav.Root style={{ flex: 1, overflowX: "scroll" }} ref={tabNav}>
           <TabNav.Link
-            active={isDashboardTab(activeTab)}
+            active={activeTab && isDashboardTab(activeTab)}
             ref={(x) => refs.setBack(x)}
             onClick={() => {
               setIsRenaming((prev) => (prev ? !prev : prev));
@@ -281,8 +298,12 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           {tabs.map((chat) => {
             const isStreamingThisTab =
               chat.id in cache ||
-              (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
-            const isActive = isChatTab(activeTab) && activeTab.id == chat.id;
+              (activeTab &&
+                isChatTab(activeTab) &&
+                chat.id === activeTab.id &&
+                isStreaming);
+            const isActive =
+              activeTab && isChatTab(activeTab) && activeTab.id == chat.id;
             if (isRenaming) {
               return (
                 <TextField.Root

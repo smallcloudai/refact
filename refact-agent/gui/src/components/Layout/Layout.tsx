@@ -1,22 +1,23 @@
 import React, { useMemo } from "react";
 import { Flex } from "@radix-ui/themes";
-import styles from "./PageWrapper.module.css";
+import styles from "./Layout.module.css";
 import classNames from "classnames";
-import type { Config } from "../../features/Config/configSlice";
+import { selectHost } from "../../features/Config/configSlice";
+import { useAppSelector } from "../../hooks";
+import { Outlet } from "react-router";
 
-type PageWrapperProps = {
-  children: React.ReactNode;
-  host: Config["host"];
+export type LayoutProps = {
+  children?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
 };
 
-export const PageWrapper: React.FC<PageWrapperProps> = ({
+export const BasicLayout: React.FC<LayoutProps> = ({
   children,
   className,
-  host,
   style,
 }) => {
+  const host = useAppSelector(selectHost);
   const xPadding = useMemo(() => {
     if (host === "web") return { initial: "8", xl: "9" };
     return {
@@ -40,10 +41,18 @@ export const PageWrapper: React.FC<PageWrapperProps> = ({
       flexGrow="1"
       py={yPadding}
       px={xPadding}
-      className={classNames(styles.PageWrapper, className)}
+      className={classNames(styles.Layout, className)}
       style={style}
     >
       {children}
     </Flex>
+  );
+};
+
+export const Layout: React.FC<LayoutProps> = (props) => {
+  return (
+    <BasicLayout {...props}>
+      <Outlet />
+    </BasicLayout>
   );
 };
