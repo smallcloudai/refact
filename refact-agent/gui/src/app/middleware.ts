@@ -20,7 +20,6 @@ import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
 import { commandsApi, isDetailMessage } from "../services/refact/commands";
 import { pathApi } from "../services/refact/path";
-import { diffApi } from "../services/refact/diffs";
 import { pingApi } from "../services/refact/ping";
 import {
   clearError,
@@ -66,7 +65,6 @@ startListening({
       // promptsApi.util.resetApiState(),
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
-      diffApi.util.resetApiState(),
       resetAttachedImagesSlice(),
       resetConfirmationInteractedState(),
     ].forEach((api) => listenerApi.dispatch(api));
@@ -314,19 +312,6 @@ startListening({
     ) {
       listenerApi.dispatch(setError(action.payload));
     }
-
-    if (diffApi.endpoints.applyAllPatchesInMessages.matchRejected(action)) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isDetailMessage(action.payload?.data)
-          ? action.payload.data.detail
-          : `Failed to apply diffs: ${action.payload?.status}`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
   },
 });
 
@@ -404,8 +389,6 @@ startListening({
   matcher: isAnyOf(
     chatAskQuestionThunk.rejected.match,
     chatAskQuestionThunk.fulfilled.match,
-    diffApi.endpoints.patchSingleFileFromTicket.matchFulfilled,
-    diffApi.endpoints.patchSingleFileFromTicket.matchRejected,
     // give files api
     pathApi.endpoints.getFullPath.matchFulfilled,
     pathApi.endpoints.getFullPath.matchRejected,
@@ -453,34 +436,6 @@ startListening({
         scope,
         success: true,
         error_message: "",
-      });
-
-      void listenerApi.dispatch(thunk);
-    }
-
-    if (diffApi.endpoints.patchSingleFileFromTicket.matchFulfilled(action)) {
-      const success = !action.payload.results.every(
-        (result) => result.already_applied,
-      );
-      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-        scope: "handleShow",
-        success: success,
-        error_message: success
-          ? ""
-          : "Already applied, no significant changes generated.",
-      });
-
-      void listenerApi.dispatch(thunk);
-    }
-
-    if (
-      diffApi.endpoints.patchSingleFileFromTicket.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-        scope: "handleShow",
-        success: false,
-        error_message: action.error.message ?? JSON.stringify(action.error),
       });
 
       void listenerApi.dispatch(thunk);

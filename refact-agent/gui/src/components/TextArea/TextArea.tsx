@@ -28,13 +28,15 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     const handleKeyDown = useCallback(
       (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
         const isMod = event.metaKey || event.ctrlKey;
-        if (isMod && event.key === "z" && !event.shiftKey) {
+        const eventKey = event.key.toLowerCase();
+
+        if (isMod && eventKey === "z" && !event.shiftKey) {
           event.preventDefault();
           undoRedo.undo();
           setCallChange(true);
         }
 
-        if (isMod && event.key === "z" && event.shiftKey) {
+        if (isMod && eventKey === "z" && event.shiftKey) {
           event.preventDefault();
           undoRedo.redo();
           setCallChange(true);

@@ -33,6 +33,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   onCopyClick,
   wrap = false,
   color = undefined,
+  useInlineStyles,
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
@@ -71,7 +72,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
             />
           )}
           language={language}
-          // useInlineStyles={false}
+          useInlineStyles={useInlineStyles}
         >
           {textWithOutIndent ? textWithOutIndent : "No content"}
         </SyntaxHighlighter>

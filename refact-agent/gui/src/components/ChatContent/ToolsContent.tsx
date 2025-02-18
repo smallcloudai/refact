@@ -33,6 +33,8 @@ import { DialogImage } from "../DialogImage";
 import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { RootState } from "../../app/store";
 import { selectFeatures } from "../../features/Config/configSlice";
+import { isRawTextDocToolCall } from "../Tools/types";
+import { TextDocTool } from "../Tools/Textdoc";
 
 type ResultProps = {
   children: string;
@@ -243,6 +245,16 @@ function processToolCalls(
   if (features.knowledge && result && head.function.name === "knowledge") {
     const elem = (
       <Knowledge key={`knowledge-tool-${processed.length}`} toolCall={head} />
+    );
+    return processToolCalls(tail, toolResults, features, [...processed, elem]);
+  }
+
+  if (isRawTextDocToolCall(head)) {
+    const elem = (
+      <TextDocTool
+        key={`textdoc-tool-${head.function.name}-${processed.length}`}
+        toolCall={head}
+      />
     );
     return processToolCalls(tail, toolResults, features, [...processed, elem]);
   }

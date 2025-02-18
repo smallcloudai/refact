@@ -36,6 +36,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 }) => {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [moveCursorTo, setMoveCursorTo] = React.useState<number | null>(null);
+  const [lastPasteTimestamp, setLastPasteTimestamp] = React.useState(0);
   const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
   const { escapeKeyPressed } = useEventsBusForIDE();
 
@@ -198,9 +199,30 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
 
   const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onChange(event.target.value);
+      const newValue = event.target.value;
+      const nativeEvent = event.nativeEvent as InputEvent;
+      const currentEventTimestamp = nativeEvent.timeStamp;
+
+      const inputType = nativeEvent.inputType;
+      const isPasteEvent = [
+        "insertFromPaste",
+        "insertFromDrop",
+        "insertFromYank",
+        "insertReplacementText",
+      ].includes(inputType);
+
+      const timeSinceLastChange = currentEventTimestamp - lastPasteTimestamp;
+
+      if (isPasteEvent && timeSinceLastChange < 100) return;
+
+      if (isPasteEvent) {
+        setLastPasteTimestamp(currentEventTimestamp);
+        closeCombobox();
+        requestCommandsCompletion.cancel();
+      }
+      onChange(newValue);
     },
-    [onChange],
+    [onChange, closeCombobox, requestCommandsCompletion, lastPasteTimestamp],
   );
 
   const onItemClick = useCallback(
@@ -240,7 +262,7 @@ export const ComboBox: React.FC<ComboBoxProps> = ({
         showOnChange={false}
         showOnKeyDown={false}
         showOnMouseDown={false}
-        setValueOnChange={true}
+        setValueOnChange={false}
         render={render({
           ref,
           placeholder,

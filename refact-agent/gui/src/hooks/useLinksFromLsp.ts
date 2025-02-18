@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  diffApi,
   isCommitLink,
   isPostChatLink,
   isUserMessage,
@@ -97,8 +96,6 @@ export function useLinksFromLsp() {
   const { handleGoTo } = useGoToLink();
   const { submit } = useSendChatRequest();
 
-  const [applyPatches, _applyPatchesResult] =
-    diffApi.useApplyAllPatchesInMessagesMutation();
   const [applyCommit, _applyCommitResult] = linksApi.useSendCommitMutation();
 
   const [sendTelemetryEvent] =
@@ -179,11 +176,15 @@ export function useLinksFromLsp() {
       }
 
       if (link.link_action === "patch-all") {
-        void applyPatches(messages).then(() => {
-          if ("link_goto" in link) {
-            handleGoTo({ goto: link.link_goto });
-          }
-        });
+        // TBD: smart links for patches
+        // void applyPatches(messages).then(() => {
+        //   if ("link_goto" in link) {
+        //     handleGoTo({ goto: link.link_goto });
+        //   }
+        // });
+        if ("link_goto" in link) {
+          handleGoTo({ goto: link.link_goto });
+        }
         return;
       }
 
@@ -262,15 +263,7 @@ export function useLinksFromLsp() {
       // eslint-disable-next-line no-console
       console.warn(`unknown action: ${JSON.stringify(link)}`);
     },
-    [
-      applyCommit,
-      applyPatches,
-      dispatch,
-      handleGoTo,
-      messages,
-      submit,
-      sendTelemetryEvent,
-    ],
+    [applyCommit, dispatch, handleGoTo, sendTelemetryEvent, submit],
   );
 
   const linksResult = useGetLinksFromLsp();

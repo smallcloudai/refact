@@ -32,3 +32,4 @@ export const activeFileReducer = createReducer(initialState, (builder) => {
 });
 
 export const selectActiveFile = (state: RootState) => state.active_file;
+export const selectCanPaste = (state: RootState) => state.active_file.can_paste;

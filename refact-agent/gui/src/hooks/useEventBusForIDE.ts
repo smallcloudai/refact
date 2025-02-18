@@ -7,13 +7,8 @@ import {
   HostSettings,
   SetupHost,
 } from "../events/setup";
-import type { DiffPreviewResponse, PatchResult } from "../services/refact";
 
 export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
-
-export const ideDiffPreviewAction = createAction<
-  DiffPreviewResponse & { currentPin: string; allPins: string[] }
->("ide/diffPreview");
 
 export const ideOpenSettingsAction = createAction("ide/openSettings");
 
@@ -37,21 +32,24 @@ export const ideAnimateFileStart = createAction<string>(
 
 export const ideAnimateFileStop = createAction<string>("ide/animateFile/stop");
 
-export const ideWriteResultsToFile = createAction<PatchResult[]>(
-  "ide/writeResultsToFile",
-);
-
 export const ideChatPageChange = createAction<string>("ide/chatPageChange");
 export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 
 export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
 export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
+export const ideToolEdit = createAction<{ path: string; edit: ToolEditResult }>(
+  "ide/toolEdit",
+);
+
 import { pathApi } from "../services/refact/path";
 
 import { telemetryApi } from "../services/refact/telemetry";
+import { ToolEditResult } from "../services/refact";
 
 export const useEventsBusForIDE = () => {
+  const [sendTelemetryEvent] =
+    telemetryApi.useLazySendTelemetryChatEventQuery();
   const postMessage = usePostMessage();
   // const canPaste = useAppSelector((state) => state.active_file.can_paste);
 
@@ -89,15 +87,13 @@ export const useEventsBusForIDE = () => {
     (content: string) => {
       const action = ideDiffPasteBackAction(content);
       postMessage(action);
+      void sendTelemetryEvent({
+        scope: `replaceSelection`,
+        success: true,
+        error_message: "",
+      });
     },
-    [postMessage],
-  );
-
-  const diffPreview = useCallback(
-    (preview: DiffPreviewResponse, currentPin: string, allPins: string[]) => {
-      postMessage(ideDiffPreviewAction({ ...preview, currentPin, allPins }));
-    },
-    [postMessage],
+    [postMessage, sendTelemetryEvent],
   );
 
   const openSettings = useCallback(() => {
@@ -146,14 +142,6 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
-  const writeResultsToFile = useCallback(
-    (results: PatchResult[]) => {
-      const action = ideWriteResultsToFile(results);
-      postMessage(action);
-    },
-    [postMessage],
-  );
-
   const chatPageChange = useCallback(
     (page: string) => {
       const action = ideChatPageChange(page);
@@ -190,8 +178,6 @@ export const useEventsBusForIDE = () => {
   const [getIntegrationsPath] = pathApi.useLazyIntegrationsPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
   const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   // Creating a generic function to trigger different queries from RTK Query (to avoid duplicative code)
   const openFileFromPathQuery = useCallback(
@@ -231,6 +217,14 @@ export const useEventsBusForIDE = () => {
   const openBringYourOwnKeyFile = () =>
     openFileFromPathQuery(getBringYourOwnKeyPath);
 
+  const sendToolEditToIde = useCallback(
+    (path: string, edit: ToolEditResult) => {
+      const action = ideToolEdit({ path, edit });
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   return {
     diffPasteBack,
     openSettings,
@@ -239,19 +233,17 @@ export const useEventsBusForIDE = () => {
     openFile,
     openChatInNewTab,
     setupHost,
-    diffPreview,
     queryPathThenOpenFile,
     openCustomizationFile,
     openPrivacyFile,
     openBringYourOwnKeyFile,
     openIntegrationsFile,
-    // canPaste,
     stopFileAnimation,
     startFileAnimation,
-    writeResultsToFile,
     chatPageChange,
     escapeKeyPressed,
     setIsChatStreaming,
     setIsChatReady,
+    sendToolEditToIde,
   };
 };

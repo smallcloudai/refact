@@ -17,6 +17,7 @@ import {
   useAgentUsage,
   useCapsForToolUse,
   USAGE_LIMIT_EXHAUSTED_MESSAGE,
+  useSendChatRequest,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -25,7 +26,7 @@ import { ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
-import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
+import { clearError, getErrorMessage } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useCheckboxes } from "./useCheckBoxes";
 import { useInputValue } from "./useInputValue";
@@ -41,6 +42,7 @@ import { AttachFileButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
   enableSend,
+  selectChatError,
   selectChatId,
   selectIsStreaming,
   selectIsWaiting,
@@ -72,12 +74,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
-  const error = useAppSelector(getErrorMessage);
+  const globalError = useAppSelector(getErrorMessage);
+  const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const { disableInput } = useAgentUsage();
   const isOnline = useIsOnline();
+  const { retry } = useSendChatRequest();
 
   const chatId = useAppSelector(selectChatId);
   const threadToolUse = useAppSelector(selectThreadToolUse);
@@ -88,7 +92,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return threadToolUse === "agent" && toolUse === "agent";
   }, [toolUse, threadToolUse]);
 
-  const onClearError = useCallback(() => dispatch(clearError()), [dispatch]);
+  const onClearError = useCallback(() => {
+    if (messages.length > 0 && chatError) {
+      retry(messages);
+    }
+    dispatch(clearError());
+  }, [dispatch, retry, messages, chatError]);
 
   const caps = useCapsForToolUse();
 
@@ -266,10 +275,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setIsSendImmediately,
   ]);
 
-  if (error) {
+  if (globalError) {
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
-        {error}
+        {globalError}
       </ErrorCallout>
     );
   }
