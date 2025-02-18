@@ -77,15 +77,15 @@ pub async fn cleanup_old_emb_tables(conn: &Connection, days: usize, max_count: u
         conn.call(move |conn| {
             for table in tables.iter().take(tables.len().saturating_sub(max_count)) {
                 warn!(
-                    "dropping emb table: {} (created at {})",
+                    "dropping emb table (1): {} (created at {})",
                     table.name, table.creation_time
                 );
                 conn.execute(&format!("DROP TABLE {}", table.name), [])?;
-            }       
+            }
             for table in tables.iter().skip(tables.len().saturating_sub(max_count)) {
                 if table.creation_time < cutoff {
                     warn!(
-                        "dropping emb table: {} (created at {})",
+                        "dropping emb table (2): {} (created at {})",
                         table.name, table.creation_time
                     );
                     conn.execute(&format!("DROP TABLE {}", table.name), [])?;
