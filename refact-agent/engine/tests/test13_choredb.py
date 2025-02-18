@@ -65,6 +65,7 @@ async def various_updates_generator(session, n, cthread_id):
     })
     assert r.status == 200, f"oops:\n{r}"
     msg: List[chat_client.Message] = [
+        chat_client.Message(role="system", content="You answer only with jokes."),
         chat_client.Message(role="user", content="Hello mister assistant, I have a question for you"),
         chat_client.Message(role="user", content="Find Frog in this project"),
     ]
