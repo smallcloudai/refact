@@ -23,10 +23,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smallcloudai/refact-chat-js.git"
+    "url": "git+https://github.com/smallcloudai/refact.git",
+    "directory": "refact-agent/gui"
   },
   "bugs": {
-    "url": "https://github.com/smallcloudai/refact-chat-js/issues"
+    "url": "https://github.com/smallcloudai/refact/issues"
   },
   "scripts": {
     "dev": "vite",
