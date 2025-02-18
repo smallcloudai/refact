@@ -6,6 +6,7 @@ use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use tracing::info;
 use chrono::{NaiveDateTime, Utc};
 
+// NOTE: if you're going to use it with local https proxy make sure that you set insecure flag from cmdline
 static URL: &str = "https://www.smallcloud.ai/v1/trajectory-get-all";
 static TRAJECTORIES_STATUS_FILENAME: &str = "trajectories_last_update";
 static TRAJECTORIES_UPDATE_EACH_N_DAYS: i64 = 7;
