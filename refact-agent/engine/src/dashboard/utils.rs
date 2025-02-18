@@ -11,7 +11,7 @@ pub fn robot_human_ratio(robot: i64, human: i64) -> f32 {
     if robot + human == 0 {
         return 0.0;
     }
-    return robot as f32 / (robot + human) as f32;
+    100. * robot as f32 / (robot + human) as f32
 }
 
 pub fn get_week_n(date: &DateTime<Utc>, from_year: i32) -> i32 {
