@@ -27,6 +27,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 _*
+!__fixtures__
+!__tests__
 
 # C extensions
 *.so
