@@ -10,6 +10,7 @@ import {
 import { push } from "../../features/Pages/pagesSlice";
 import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
+import { subscribeToThreadsThunk } from "../../services/refact/chatdb";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -27,6 +28,7 @@ export type SidebarProps = {
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
+  void dispatch(subscribeToThreadsThunk());
   const history = useAppSelector((app) => app.history, {
     // TODO: selector issue here
     devModeChecks: { stabilityCheck: "never" },

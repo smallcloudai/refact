@@ -52,6 +52,7 @@ import { knowledgeSlice } from "../features/Knowledge/knowledgeSlice";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
+import { chatDbSlice } from "../features/ChatDB/chatDbSlice";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -115,6 +116,7 @@ const rootReducer = combineSlices(
   knowledgeSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
+  chatDbSlice,
 );
 
 const rootPersistConfig = {
