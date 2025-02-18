@@ -104,7 +104,7 @@ async fn migrate_202501(conn: &Connection, embedding_size: i32, emb_table_name: 
         conn.execute(&format!(
             "CREATE VIRTUAL TABLE IF NOT EXISTS {emb_table_name} using vec0(
               embedding float[{embedding_size}] distance_metric=cosine,
-              scope TEXT PARTITION KEY,
+              scope TEXT,
               +start_line INTEGER,
               +end_line INTEGER
             );"), [])?;
@@ -273,7 +273,7 @@ impl VecDBSqlite {
             ))?;
             for item in records_owned.iter() {
                 stmt.execute(rusqlite::params![
-                    item.vector.clone().expect("No embedding is provided").as_bytes(), 
+                    item.vector.clone().expect("No embedding is provided").as_bytes(),
                     item.file_path.to_string_lossy().to_string(),
                     item.start_line,
                     item.end_line
@@ -318,7 +318,7 @@ impl VecDBSqlite {
                 Some(scope) => rusqlite::params![&embedding_bytes, top_n, scope.clone()],
                 None => rusqlite::params![&embedding_bytes, top_n],
             };
-            
+
             let rows = stmt.query_map(
                 params,
                 |row| {
