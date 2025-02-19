@@ -132,49 +132,56 @@ jobs:
             exit 1
           else
             echo "Version $VERSION is available, proceeding with publish..."
-            npm run alpha:publish
+            if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event_name }}" == "pull_request" && "${{ github.head_ref }}" == "test/workflow-alpha-version" ]]; then
+              npm run alpha:publish
+            else
+              npm publish
+            fi
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Push tag and version bump commit
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            git push origin HEAD:${{ github.head_ref }}
-            git push origin --tags
-          else
-            git push
-            git push --tags
-          fi
-      - name: Setup vars
-        shell: bash
-        id: setupvars
-        run: |
-          echo "plugin_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Post to a Slack channel
-        id: slack
-        uses: slackapi/slack-github-action@v1.26.0
-        with:
-          payload: |
-            {
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry",
-                    "emoji": true
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "by ${{ github.actor }}"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      # not pushing tags since tags are from refact-enterprise
+      # - name: Push tag and version bump commit
+      #   run: |
+      #     if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+      #       git push origin HEAD:${{ github.head_ref }}
+      #       git push origin --tags
+      #     else
+      #       git push
+      #       git push --tags
+      #     fi
+      # - name: Setup vars
+      #   shell: bash
+      #   id: setupvars
+      #   run: |
+      #     echo "plugin_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # # uncomment when SLACK_WEBHOOK_URL is added in secrets
+      # - name: Post to a Slack channel
+      #   id: slack
+      #   uses: slackapi/slack-github-action@v1.26.0
+      #   with:
+      #     payload: |
+      #       {
+      #         "blocks": [
+      #           {
+      #             "type": "header",
+      #             "text": {
+      #               "type": "plain_text",
+      #               "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry",
+      #               "emoji": true
+      #             }
+      #           },
+      #           {
+      #             "type": "section",
+      #             "text": {
+      #               "type": "mrkdwn",
+      #               "text": "by ${{ github.actor }}"
+      #             }
+      #           }
+      #         ]
+      #       }
+      #   env:
+      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
