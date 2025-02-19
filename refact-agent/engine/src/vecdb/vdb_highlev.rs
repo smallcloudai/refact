@@ -264,9 +264,16 @@ impl VecDb {
             api_key.clone(),
             memdb.clone(),
         ).await));
+
+        let mut http_client_builder = reqwest::Client::builder();
+        if cmdline.insecure {
+            http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
+        }
+        let vecdb_emb_client = Arc::new(AMutex::new(http_client_builder.build().unwrap()));
+
         Ok(VecDb {
             memdb: memdb.clone(),
-            vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
+            vecdb_emb_client,
             vecdb_handler,
             vectorizer_service,
             constants: constants.clone(),
