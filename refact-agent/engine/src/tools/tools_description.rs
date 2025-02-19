@@ -139,6 +139,11 @@ pub async fn tools_merged_and_filtered(
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
+        #[cfg(feature="vecdb")]
+        ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
+        #[cfg(feature="vecdb")]
+        ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
+        #[cfg(feature="vecdb")]
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
@@ -147,12 +152,6 @@ pub async fn tools_merged_and_filtered(
         #[cfg(feature="vecdb")]
         ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
     ]);
-
-    #[cfg(feature="vecdb")]
-    tools_all.insert("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>);
-
-    #[cfg(feature="vecdb")]
-    tools_all.insert("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>);
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
         gcx.clone(),
