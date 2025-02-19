@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit/react";
 import { AppDispatch, RootState } from "../../app/store";
-import { CHAT_DB_THREADS_SUB } from "./consts";
+import { CHAT_DB_THREADS_SUB, CHAT_DB_MESSAGES_SUB } from "./consts";
 import { consumeStream } from "../../features/Chat/Thread/utils";
 import {
   isCThreadSubResponseUpdate,
@@ -65,7 +65,7 @@ export const subscribeToThreadsThunk = createAppAsyncThunk<
       if (!reader) return;
 
       const onAbort = () => {
-        // console.log("knowledge stream aborted");
+        console.log("knowledge stream aborted");
       };
 
       const onChunk = (chunk: unknown) => {
@@ -87,21 +87,68 @@ export const subscribeToThreadsThunk = createAppAsyncThunk<
     .catch((err) => {
       // eslint-disable-next-line no-console
       console.error("Error in chat thread subscription", err);
+      // todo: handle error
+    });
+});
+
+function subscribeToThreadMessages(
+  cthreadId: string,
+  port = 8001,
+  apiKey?: string | null,
+  abortSignal?: AbortSignal,
+): Promise<Response> {
+  const url = `http://127.0.0.1:${port}${CHAT_DB_MESSAGES_SUB}`;
+  const headers = new Headers();
+  headers.append("Content-Type", "application/json");
+  if (apiKey) {
+    headers.append("Authorization", `Bearer ${apiKey}`);
+  }
+
+  return fetch(url, {
+    method: "POST",
+    headers,
+    redirect: "follow",
+    cache: "no-cache",
+    body: JSON.stringify({ cmessage_belongs_to_cthread_id: cthreadId }),
+    signal: abortSignal,
+  });
+}
+
+export const subscribeToThreadMessagesThunk = createAppAsyncThunk<
+  unknown,
+  string
+>("chatDbApi/subscribeToThreadMessages", (cthreadId, thunkApi) => {
+  const state = thunkApi.getState() as unknown as RootState;
+  const port = state.config.lspPort;
+  const apiKey = state.config.apiKey;
+
+  return subscribeToThreadMessages(cthreadId, port, apiKey, thunkApi.signal)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+      const reader = response.body?.getReader();
+      if (!reader) return;
+
+      const onAbort = () => {
+        // console.log("knowledge stream aborted");
+      };
+
+      const onChunk = (chunk: Record<string, unknown>) => {
+        console.log("cmessages chunks");
+        console.log({ chunk });
+      };
+
+      return consumeStream(reader, thunkApi.signal, onAbort, onChunk);
+    })
+    .catch((error) => {
+      // eslint-disable-next-line no-console
+      console.error("Error in chat thread subscription", error);
+      // todo: handle error
     });
 });
 
 // Types for the API
-
-// export interface CMessage {
-//   cmessage_belongs_to_cthread_id: string;
-//   cmessage_alt: number;
-//   cmessage_num: number;
-//   cmessage_prev_alt: number;
-//   cmessage_usage_model: string;
-//   cmessage_usage_prompt: number;
-//   cmessage_usage_completion: number;
-//   cmessage_json: string;
-// }
 
 // export interface Chore {
 //   chore_id: string;

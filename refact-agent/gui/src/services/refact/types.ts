@@ -825,3 +825,14 @@ export function isCThreadSubResponseDelete(
   if (typeof value.cthread_id !== "string") return false;
   return true;
 }
+
+export interface CMessage {
+  cmessage_belongs_to_cthread_id: string;
+  cmessage_alt: number;
+  cmessage_num: number;
+  cmessage_prev_alt: number;
+  cmessage_usage_model: string;
+  cmessage_usage_prompt: number;
+  cmessage_usage_completion: number;
+  cmessage_json: string; // stringified json ChatMessage
+}

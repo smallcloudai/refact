@@ -11,7 +11,7 @@ import {
   useCapsForToolUse,
   useAgentUsage,
 } from "../../hooks";
-import { type Config } from "../../features/Config/configSlice";
+// import { type Config } from "../../features/Config/configSlice";
 import {
   enableSend,
   selectIsStreaming,
@@ -31,19 +31,15 @@ import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
 
 export type ChatProps = {
-  host: Config["host"];
-  tabbed: Config["tabbed"];
-  backFromChat: () => void;
-  style?: React.CSSProperties;
-  unCalledTools: boolean;
-  maybeSendToSidebar: ChatFormProps["onClose"];
+  // host: Config["host"];
+  // tabbed: Config["tabbed"];
+  // backFromChat: () => void;
+  // style?: React.CSSProperties;
+  // unCalledTools: boolean;
+  // maybeSendToSidebar: ChatFormProps["onClose"];
 };
 
-export const Chat: React.FC<ChatProps> = ({
-  style,
-  unCalledTools,
-  maybeSendToSidebar,
-}) => {
+export const Chat: React.FC<ChatProps> = () => {
   const dispatch = useAppDispatch();
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
@@ -58,6 +54,17 @@ export const Chat: React.FC<ChatProps> = ({
 
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
+
+  // can be a selector
+  const unCalledTools = React.useMemo(() => {
+    if (messages.length === 0) return false;
+    const last = messages[messages.length - 1];
+    if (last.role !== "assistant") return false;
+    const maybeTools = last.tool_calls;
+    if (maybeTools && maybeTools.length > 0) return true;
+    return false;
+  }, [messages]);
+
   const capsForToolUse = useCapsForToolUse();
   const { disableInput } = useAgentUsage();
 
@@ -103,7 +110,6 @@ export const Chat: React.FC<ChatProps> = ({
   return (
     <DropzoneProvider asChild>
       <Flex
-        style={style}
         direction="column"
         flexGrow="1"
         width="100%"
@@ -111,14 +117,14 @@ export const Chat: React.FC<ChatProps> = ({
         justify="between"
         px="1"
       >
+        {" "}
+        {/** change messages? */}
         <ChatContent
           key={`chat-content-${chatId}`}
           onRetry={retryFromIndex}
           onStopStreaming={abort}
         />
-
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
-
         <AgentUsage />
         <SuggestNewChat
           shouldBeVisible={
@@ -138,14 +144,11 @@ export const Chat: React.FC<ChatProps> = ({
             </Card>
           </Flex>
         )}
-
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
           onSubmit={handleSummit}
-          onClose={maybeSendToSidebar}
           unCalledTools={unCalledTools}
         />
-
         <Flex justify="between" pl="1" pr="1" pt="1">
           {/* Two flexboxes are left for the future UI element on the right side */}
           {messages.length > 0 && (

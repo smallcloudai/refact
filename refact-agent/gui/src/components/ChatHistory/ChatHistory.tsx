@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { Flex, Box } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
@@ -13,7 +13,6 @@ import {
   chatDbActions,
 } from "../../features/ChatDB/chatDbSlice";
 import { subscribeToThreadsThunk } from "../../services/refact/chatdb";
-import { restoreChat } from "../../features/Chat/Thread/actions";
 import { push } from "../../features/Pages/pagesSlice";
 import { CThread } from "../../services/refact/types";
 
@@ -25,12 +24,21 @@ import { CThread } from "../../services/refact/types";
 //   currentChatId?: string;
 // };
 
-export const ChatHistory: React.FC = () => {
-  // const sortedHistory = getHistory({ history });
+function useGetHistory() {
+  // todo: search
   const dispatch = useAppDispatch();
-  void dispatch(subscribeToThreadsThunk());
-  const history = useAppSelector(chatDbSelectors.getChats);
-  // TODO: should be a request to the lsp, if supported
+  const history = useAppSelector(chatDbSelectors.getChats, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
+  const isLoading = useAppSelector(chatDbSelectors.getLoading);
+
+  useEffect(() => {
+    const thunk = dispatch(subscribeToThreadsThunk());
+    return () => {
+      thunk.abort("unmounted");
+    };
+  }, [dispatch]);
+
   const onDeleteHistoryItem = useCallback(
     (id: string) => {
       dispatch(chatDbActions.deleteCThread(id));
@@ -40,11 +48,21 @@ export const ChatHistory: React.FC = () => {
 
   const onHistoryItemClick = useCallback(
     (thread: CThread) => {
-      dispatch(restoreChat(thread));
-      dispatch(push({ name: "chat" }));
+      dispatch(push({ name: "chat", threadId: thread.cthread_id }));
     },
     [dispatch],
   );
+
+  return {
+    history,
+    isLoading,
+    onHistoryItemClick,
+    onDeleteHistoryItem,
+  };
+}
+
+export const ChatHistory: React.FC = () => {
+  const { history, onHistoryItemClick, onDeleteHistoryItem } = useGetHistory();
 
   return (
     <Box

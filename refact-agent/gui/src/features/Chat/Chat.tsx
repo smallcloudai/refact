@@ -1,49 +1,26 @@
-import React from "react";
-import type { Config } from "../Config/configSlice";
+import React, { useEffect } from "react";
+import { v4 as uuid } from "uuid";
 import { Chat as ChatComponent } from "../../components/Chat";
-import { useAppSelector } from "../../hooks";
-import { selectMessages } from "./Thread";
+import { subscribeToThreadMessagesThunk } from "../../services/refact/chatdb";
+import { useAppDispatch } from "../../hooks";
 
 export type ChatProps = {
-  host: Config["host"];
-  tabbed: Config["tabbed"];
-  style?: React.CSSProperties;
-  backFromChat: () => void;
+  threadId?: string;
 };
 
-export const Chat: React.FC<ChatProps> = ({
-  style,
-  backFromChat,
-  host,
-  tabbed,
-}) => {
-  const messages = useAppSelector(selectMessages);
+function useMessagesForThread(threadId: string) {
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    const thunk = dispatch(subscribeToThreadMessagesThunk(threadId));
+    return () => {
+      thunk.abort(threadId);
+    };
+  }, [dispatch, threadId]);
+}
 
-  const sendToSideBar = () => {
-    // TODO:
-  };
-
-  const maybeSendToSideBar =
-    host === "vscode" && tabbed ? sendToSideBar : undefined;
-
-  // can be a selector
-  const unCalledTools = React.useMemo(() => {
-    if (messages.length === 0) return false;
-    const last = messages[messages.length - 1];
-    if (last.role !== "assistant") return false;
-    const maybeTools = last.tool_calls;
-    if (maybeTools && maybeTools.length > 0) return true;
-    return false;
-  }, [messages]);
-
-  return (
-    <ChatComponent
-      style={style}
-      host={host}
-      tabbed={tabbed}
-      backFromChat={backFromChat}
-      unCalledTools={unCalledTools}
-      maybeSendToSidebar={maybeSendToSideBar}
-    />
-  );
+export const Chat: React.FC<ChatProps> = (props) => {
+  // TBD: does sqlite have a uuid function?
+  const threadId = props.threadId ?? uuid();
+  useMessagesForThread(threadId);
+  return <ChatComponent key={threadId} />;
 };
