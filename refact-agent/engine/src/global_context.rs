@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
+use std::time::Duration;
 use parking_lot::Mutex as ParkMutex;
 use hyper::StatusCode;
 use structopt::StructOpt;
@@ -347,6 +348,7 @@ pub async fn create_global_context(
     let cmdline = CommandLine::from_args();
     let (ask_shutdown_sender, ask_shutdown_receiver) = std::sync::mpsc::channel::<String>();
     let mut http_client_builder = reqwest::Client::builder();
+    http_client_builder = http_client_builder.timeout(Duration::from_secs(300));
     if cmdline.insecure {
         http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
     }
