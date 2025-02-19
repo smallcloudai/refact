@@ -167,12 +167,14 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
         let mut vcs_indexing_settings_map: HashMap<String, IndexingSettings> = HashMap::new();
         for indexing_root in vcs_dirs {
             let indexing_path = indexing_root.join(".refact").join("indexing.yaml");
-            match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
-                Ok(indexing_settings) => {
-                    vcs_indexing_settings_map.insert(indexing_root.to_str().unwrap().to_string(), indexing_settings);
-                },
-                Err(e) => {
-                    tracing::error!("{}, skip", e)
+            if indexing_path.exists() {
+                match load_indexing_yaml(&indexing_path, Some(&indexing_root)).await {
+                    Ok(indexing_settings) => {
+                        vcs_indexing_settings_map.insert(indexing_root.to_str().unwrap().to_string(), indexing_settings);
+                    },
+                    Err(e) => {
+                        tracing::error!("{}, skip", e);
+                    }
                 }
             }
         }
