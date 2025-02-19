@@ -132,7 +132,9 @@ jobs:
             exit 1
           else
             echo "Version $VERSION is available, proceeding with publish..."
-            if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || [[ "${{ github.event_name }}" == "pull_request" && "${{ github.head_ref }}" == "test/workflow-alpha-version" ]]; then
+            if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || \
+               [[ "${{ github.event_name }}" == "pull_request" && "${{ github.head_ref }}" == "test/workflow-alpha-version" ]] || \
+               [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.ref }}" == "refs/heads/dev" ]]; then
               npm run alpha:publish
             else
               npm publish
