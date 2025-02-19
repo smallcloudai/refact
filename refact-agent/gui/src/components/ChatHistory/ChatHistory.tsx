@@ -6,25 +6,26 @@ import {
   getHistory,
   type HistoryState,
 } from "../../features/History/historySlice";
-import type { ChatThread } from "../../features/Chat/Thread/types";
+// import type { ChatThread } from "../../features/Chat/Thread/types";
 
 export type ChatHistoryProps = {
   history: HistoryState;
-  onHistoryItemClick: (id: ChatThread) => void;
+  // onHistoryItemClick: (id: ChatThread) => void;
   onDeleteHistoryItem: (id: string) => void;
   onOpenChatInTab?: (id: string) => void;
   currentChatId?: string;
 };
-
+// TODO: history item should be a nav link
 export const ChatHistory = memo(
   ({
     history,
-    onHistoryItemClick,
+    // onHistoryItemClick,
     onDeleteHistoryItem,
     onOpenChatInTab,
     currentChatId,
   }: ChatHistoryProps) => {
     const sortedHistory = getHistory({ history });
+
     return (
       <Box
         style={{
@@ -43,7 +44,7 @@ export const ChatHistory = memo(
           >
             {sortedHistory.map((item) => (
               <HistoryItem
-                onClick={() => onHistoryItemClick(item)}
+                // onClick={() => onHistoryItemClick(item)}
                 onOpenInTab={onOpenChatInTab}
                 onDelete={onDeleteHistoryItem}
                 key={item.id}

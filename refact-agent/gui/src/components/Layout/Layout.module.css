@@ -1,4 +1,4 @@
-.PageWrapper {
+.Layout {
   width: 100%;
   /* justify-content: center; */
   /* Fallback height for JB */
@@ -7,7 +7,7 @@
   height: 100%;
 }
 @media print {
-  .PageWrapper {
+  .Layout {
     max-height: unset;
   }
 }

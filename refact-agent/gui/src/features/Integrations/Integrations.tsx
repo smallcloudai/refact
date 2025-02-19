@@ -2,7 +2,7 @@ import React, { useCallback, useState } from "react";
 import { Flex, Button } from "@radix-ui/themes";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "../../components/ScrollArea";
-import { PageWrapper } from "../../components/PageWrapper";
+import { Layout } from "../../components/Layout";
 import type { Config } from "../Config/configSlice";
 import { useGetIntegrationsQuery } from "../../hooks/useGetIntegrationsDataQuery";
 import { IntegrationsView } from "../../components/IntegrationsView";
@@ -65,8 +65,7 @@ export const Integrations: React.FC<IntegrationsProps> = ({
   );
 
   return (
-    <PageWrapper
-      host={host}
+    <Layout
       style={{
         padding: 0,
         marginTop: isInnerIntegrationSelected ? 50 : 0,
@@ -115,6 +114,6 @@ export const Integrations: React.FC<IntegrationsProps> = ({
           />
         </Flex>
       </ScrollArea>
-    </PageWrapper>
+    </Layout>
   );
 };

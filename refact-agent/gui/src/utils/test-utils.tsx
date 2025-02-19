@@ -8,6 +8,7 @@ import { Provider } from "react-redux";
 import { AppStore, RootState, setUpStore } from "../app/store";
 import { TourProvider } from "../features/Tour";
 import { AbortControllerProvider } from "../contexts/AbortControllers";
+import { MemoryRouter } from "react-router";
 
 // This type interface extends the default options for render from RTL, as well
 // as allows the user to specify other things such as initialState, store.
@@ -34,13 +35,15 @@ const customRender = (
   } = options;
 
   const Wrapper = ({ children }: PropsWithChildren) => (
-    <Provider store={store}>
-      <Theme>
-        <TourProvider>
-          <AbortControllerProvider>{children}</AbortControllerProvider>
-        </TourProvider>
-      </Theme>
-    </Provider>
+    <MemoryRouter>
+      <Provider store={store}>
+        <Theme>
+          <TourProvider>
+            <AbortControllerProvider>{children}</AbortControllerProvider>
+          </TourProvider>
+        </Theme>
+      </Provider>
+    </MemoryRouter>
   );
 
   return {

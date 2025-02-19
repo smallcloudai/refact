@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Card, Flex, Text, Box, Spinner } from "@radix-ui/themes";
 // import type { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
@@ -8,17 +8,34 @@ import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
 import { isUserMessage } from "../../services/refact";
 import { useAppSelector } from "../../hooks";
+import { useNavigate } from "react-router";
 
 export const HistoryItem: React.FC<{
   historyItem: ChatHistoryItem;
-  onClick: () => void;
+  // onClick: () => void;
   onDelete: (id: string) => void;
   onOpenInTab?: (id: string) => void;
   disabled: boolean;
-}> = ({ historyItem, onClick, onDelete, onOpenInTab, disabled }) => {
+}> = ({
+  historyItem,
+  // onClick,
+  onDelete,
+  onOpenInTab,
+  disabled,
+}) => {
   const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   const cache = useAppSelector((app) => app.chat.cache);
+  const navigate = useNavigate();
+
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void navigate(`/chat/${historyItem.id}`);
+    },
+    [historyItem.id, navigate],
+  );
 
   const isStreaming = historyItem.id in cache;
   return (
@@ -34,14 +51,7 @@ export const HistoryItem: React.FC<{
         asChild
         role="button"
       >
-        <button
-          disabled={disabled}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onClick();
-          }}
-        >
+        <button disabled={disabled} onClick={handleClick}>
           <Flex gap="2px" align="center">
             {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
             {!isStreaming && historyItem.read === false && (

@@ -62,3 +62,25 @@ export const selectThreadMode = createSelector(
   selectThread,
   (thread) => thread.mode,
 );
+
+export const selectChatCache = (state: RootState) => state.chat.cache;
+export const selectChatFromCache = (id: string) =>
+  createSelector(selectChatCache, (cache) => {
+    if (!(id in cache)) return null;
+    return cache[id];
+  });
+
+export const selectChatHistory = (state: RootState) => state.history;
+export const selectChatFromHistory = (id: string) =>
+  createSelector(selectChatHistory, (history) => {
+    if (!(id in history)) return null;
+    return history[id];
+  });
+
+export const selectChatFromCacheOrHistory =
+  (id?: string) => (state: RootState) => {
+    if (!id) return null;
+    const cached = selectChatFromCache(id)(state);
+    const history = selectChatFromHistory(id)(state);
+    return cached ?? history;
+  };
