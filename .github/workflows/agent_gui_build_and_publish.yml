@@ -26,8 +26,6 @@ defaults:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # remove this if when merging to main
-    if: github.event_name == 'push'
 
     strategy:
       matrix:
@@ -67,15 +65,23 @@ jobs:
           path: refact-agent/gui/dist
 
   publish:
-    # needs: build
+    needs: build
     runs-on: ubuntu-latest
+    # Runs only if pushing to dev or test/workflow-alpha-version, workflow_dispatch with inputs.perform_publish
+    # or on pull request trigger of test/workflow-alpha-version
     if: |
       inputs.perform_publish ||
-      (github.event_name == 'push' &&
-      (github.ref == 'refs/heads/dev' ||
-      github.ref == 'refs/heads/test/workflow-alpha-version')) ||
-      (github.event_name == 'pull_request' && 
-      (github.head_ref == 'test/workflow-alpha-version'))
+      (
+        github.event_name == 'push' &&
+        (
+          github.ref == 'refs/heads/dev' ||
+          github.ref == 'refs/heads/test/workflow-alpha-version'
+        )
+      ) ||
+      (
+        github.event_name == 'pull_request' &&
+        github.head_ref == 'test/workflow-alpha-version'
+      )
 
     steps:
       - uses: actions/checkout@v3
@@ -99,29 +105,36 @@ jobs:
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Debug information and Fail
+      - name: Debug information
         run: |
-          echo "github.ref: ${{ github.ref }}"
           echo "github.event_name: ${{ github.event_name }}"
+          echo "github.ref: ${{ github.ref }}"
+          echo "inputs.head_ref: ${{ github.head_ref }}"
           echo "inputs.perform_publish: ${{ inputs.perform_publish }}"
-          # exit 1
 
       - name: Bump version
         run: |
-          # if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          # Get current version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $VERSION"
+
+          # Determine version bump type based on branch/PR
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || \
+              [[ "${{ github.event_name }}" == "pull_request" && "${{ github.head_ref }}" == "test/workflow-alpha-version" ]] || \
+              [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "Bumping alpha version..."
             npm run alpha:version
-          # else
-          #   npm version patch -m "Bump version to %s [skip ci]"
-          # fi
+          else
+            echo "Bumping patch version..."
+            npm version patch -m "Bump version to %s [skip ci]"
+          fi
+
+          # Show new version for debugging
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "New version: $NEW_VERSION"
 
       - name: Publish to NPM Registry
         run: |
-          # if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
-            # npm run alpha:publish
-          # else
-          #   npm publish
-          # fi
-
           # Get current version from package.json
           VERSION=$(node -p "require('./package.json').version")
           echo "Attempting to publish version: $VERSION"
