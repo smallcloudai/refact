@@ -397,7 +397,7 @@ async fn find_relevant_files(
         Some(0.4),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-treeguess")),
-        Some(false),  // prepend_system_prompt=false for o3
+        Some(false),  
     ));
 
     // ----- VECDBSEARCH ------
@@ -422,7 +422,7 @@ async fn find_relevant_files(
         Some(0.4),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-gotodef")),
-        Some(false),  // prepend_system_prompt=false for o3
+        Some(false),  
     ));
 
     let results: Vec<Vec<Vec<ChatMessage>>> = join_all(futures).await.into_iter().filter_map(|x| x.ok()).collect();
@@ -466,7 +466,7 @@ async fn find_relevant_files(
         Some(0.0),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step2-reduce")),
-        Some(false),  // prepend_system_prompt=false for o3
+        Some(false),  
     ).await?[0].clone();
 
     check_for_inspected_files(&mut inspected_files, &result);

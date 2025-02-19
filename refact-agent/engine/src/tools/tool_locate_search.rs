@@ -205,7 +205,7 @@ async fn find_relevant_files_with_search(
         Some(0.1),
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-search")),
-        Some(false),  // prepend_system_prompt=false for o3
+        Some(false),  
     ).await?[0].clone();
 
     crate::tools::tool_relevant_files::check_for_inspected_files(&mut inspected_files, &result);
