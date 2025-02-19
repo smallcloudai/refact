@@ -67,8 +67,11 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    if: inputs.perform_publish || ((github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/workflow-alpha-version') && github.event_name == 'push')
-
+    # if: |
+    #   inputs.perform_publish ||
+    #   (github.ref == 'refs/heads/dev' ||
+    #   github.ref == 'refs/heads/test/workflow-alpha-version') &&
+    #   github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
         with:
@@ -91,6 +94,12 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - run: npm run build
+      - name: Debug information and Fail
+        run: |
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "inputs.perform_publish: ${{ inputs.perform_publish }}"
+          exit 1
 
       - name: Bump version
         run: |
@@ -102,7 +111,7 @@ jobs:
 
       - name: Publish to NPM Registry
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev"]]; then
+          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             npm run alpha:publish
           else
             npm publish
