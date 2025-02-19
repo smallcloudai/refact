@@ -25,7 +25,7 @@ use crate::{
 };
 use crate::global_context::try_load_caps_quickly_if_not_present;
 
-const MAX_EXPLORATION_STEPS: usize = 100;
+const MAX_EXPLORATION_STEPS: usize = 1000;
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 struct ExplorationTarget {
