@@ -332,7 +332,7 @@ const MB_SYSTEM_PROMPT: &str = r###"• Objective:
 • Operational Constraint:
   – Do NOT call create_knowledge() until instructed."###;
 
-const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now with your complete and full analysis from the previous step."###;
+const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now with your complete and full analysis from the previous step if you haven't called it yet. Otherwise just type "Finished"."###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
