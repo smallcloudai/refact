@@ -58,7 +58,7 @@ PROMPT_EXPLORATION_TOOLS: |
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
-  
+
 
 PROMPT_AGENTIC_TOOLS: |
   [mode3] You are Refact Agent, an autonomous bot for coding tasks.
