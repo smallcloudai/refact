@@ -6,6 +6,7 @@ import {
   useAppDispatch,
   useAppSelector,
   useGetPromptsQuery,
+  useGetCapsQuery,
 } from "../../hooks";
 import { getSelectedSystemPrompt } from "../../features/Chat/Thread/selectors";
 import { setSystemPrompt } from "../../features/Chat/Thread/actions";
@@ -30,8 +31,10 @@ export const PromptSelect: React.FC = () => {
     [onSetSelectedSystemPrompt, promptsRequest.data],
   );
 
+  const caps = useGetCapsQuery();
+  const default_system_prompt = caps.data?.code_chat_default_system_prompt ?? "default";
   const val = useMemo(
-    () => Object.keys(selectedSystemPrompt)[0] ?? "default",
+    () => Object.keys(selectedSystemPrompt)[0] ?? default_system_prompt,
     [selectedSystemPrompt],
   );
 
