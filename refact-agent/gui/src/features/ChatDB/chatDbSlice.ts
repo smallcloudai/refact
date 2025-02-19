@@ -1,8 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { CThread } from "../../services/refact";
-import { reset } from "../FIM";
-import { setError } from "../Errors/errorsSlice";
-import { getChatById } from "../History/historySlice";
 
 export type ChatDbState = {
   loading: boolean;
@@ -43,7 +40,7 @@ export const chatDbSlice = createSlice({
     },
   },
   selectors: {
-    getChats: (state) => state.chats,
+    getChats: (state) => Object.values(state.chats),
     getLoading: (state) => state.loading,
     getError: (state) => state.error,
   },

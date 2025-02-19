@@ -1,16 +1,8 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { Box, Flex } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Spinner } from "@radix-ui/themes";
-import { useAppSelector, useAppDispatch } from "../../hooks";
-import {
-  ChatHistoryItem,
-  deleteChatById,
-} from "../../features/History/historySlice";
-import { push } from "../../features/Pages/pagesSlice";
-import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
-import { subscribeToThreadsThunk } from "../../services/refact/chatdb";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -27,25 +19,25 @@ export type SidebarProps = {
 
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
-  const dispatch = useAppDispatch();
-  void dispatch(subscribeToThreadsThunk());
-  const history = useAppSelector((app) => app.history, {
-    // TODO: selector issue here
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  // const dispatch = useAppDispatch();
+  // void dispatch(subscribeToThreadsThunk());
+  // const history = useAppSelector((app) => app.history, {
+  //   // TODO: selector issue here
+  //   devModeChecks: { stabilityCheck: "never" },
+  // });
 
-  const onDeleteHistoryItem = useCallback(
-    (id: string) => dispatch(deleteChatById(id)),
-    [dispatch],
-  );
+  // const onDeleteHistoryItem = useCallback(
+  //   (id: string) => dispatch(deleteChatById(id)),
+  //   [dispatch],
+  // );
 
-  const onHistoryItemClick = useCallback(
-    (thread: ChatHistoryItem) => {
-      dispatch(restoreChat(thread));
-      dispatch(push({ name: "chat" }));
-    },
-    [dispatch],
-  );
+  // const onHistoryItemClick = useCallback(
+  //   (thread: ChatThread) => {
+  //     dispatch(restoreChat(thread));
+  //     dispatch(push({ name: "chat" }));
+  //   },
+  //   [dispatch],
+  // );
 
   return (
     <Flex style={style}>
@@ -55,11 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
           <Spinner loading={takingNotes} title="taking notes" />
         </Box>
       </Flex>
-      <ChatHistory
-        history={history}
-        onHistoryItemClick={onHistoryItemClick}
-        onDeleteHistoryItem={onDeleteHistoryItem}
-      />
+      <ChatHistory />
     </Flex>
   );
 };
