@@ -90,11 +90,19 @@ impl ExplorationState {
             count(node) as f64
         };
 
-        let depth_score = 1.0 - relative_depth;
-        let size_score = (direct_children + total_children) / (avg_dir_size * (1.0 + relative_depth));
-        let root_bonus = if relative_depth < 0.2 { 0.5 } else { 0.0 };
+        // For deep-first exploration: lower score = higher priority (we sort ascending)
+        // Invert relative_depth so deeper directories get lower scores
+        let depth_score = 1.0 - relative_depth;  // Now deeper dirs get higher relative_depth but lower depth_score
+        
+        // Size score - smaller directories get lower scores (preferred)
+        let size_score = ((direct_children + total_children) as f64 / avg_dir_size).min(1.0);
+        
+        // Deep directory bonus (subtracts from score for deeper directories)
+        let deep_bonus = if relative_depth > 0.8 { 1.0 } else { 0.0 };
 
-        Some(depth_score * 0.5 + size_score * 0.3 + root_bonus)
+        // Calculate final score - lower scores will be explored first
+        // Increased depth weight, reduced size impact, increased deep bonus
+        Some(depth_score * 0.8 + size_score * 0.1 - deep_bonus * 0.2)
     }
 
     async fn collect_targets_from_tree(
@@ -133,7 +141,7 @@ impl ExplorationState {
             .flat_map(|node| traverse(node, 0, max_depth, avg_size, &project_dirs))
             .collect();
         
-        scored_targets.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored_targets.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
         scored_targets.into_iter().map(|(target, _)| target).collect()
     }
 
@@ -273,9 +281,36 @@ async fn read_and_compress_directory(
 
 pub struct ToolCreateMemoryBank;
 
-const MB_SYSTEM_PROMPT: &str = r###"You are an expert software architect. Analyze the provided directory structure and file content to determine its purpose, organization, notable subdirectories and naming patterns."###;
+const MB_SYSTEM_PROMPT: &str = r###"• Objective:
+  – Document the directory's purpose, structure, and content while connecting these findings to previous project knowledge.
 
-const MB_EXPERT_WRAP_UP: &str = r###"Create a knowledge entry by calling create_knowledge()"###;
+• Analysis Guidelines:
+  1. Start with knowledge(); review previous memories as context.
+  2. Describe the current directory in detail:
+     - Core purpose and role in the project
+     - File organization and naming patterns
+     - Implementation approaches and design patterns
+     - Content of short files and their relationships
+  3. Link your findings to existing knowledge:
+     - What's similar: "This follows the pattern seen in..."
+     - What's different: "Unlike previous directories, this one..."
+     - What's new: "This introduces a new approach to..."
+  4. Use bullet-lists for clear documentation.
+  5. Skip duplicating known information; focus on what's unique or complementary.
+
+• Operational Constraint:
+  – Do NOT call create_knowledge() until instructed."###;
+
+const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now. Your entry must include:
+   1. Directory description:
+      - Core purpose and role in the project
+      - Key files and their organization
+      - Notable implementation patterns
+   2. Relationship to existing knowledge:
+      - Similar patterns: reference previous memories
+      - New or different approaches
+      - How it complements the known project structure
+   3. Keep it focused and non-repetitive"###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
@@ -362,7 +397,7 @@ impl Tool for ToolCreateMemoryBank {
                     ccx_subchat.clone(),
                     params.subchat_model.as_str(),
                     vec![step_msg],
-                    vec!["create_knowledge".to_string()],
+                    vec!["knowledge".to_string(), "create_knowledge".to_string()],
                     8,
                     params.subchat_max_new_tokens,
                     MB_EXPERT_WRAP_UP,
