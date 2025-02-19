@@ -117,10 +117,23 @@ jobs:
       - name: Publish to NPM Registry
         run: |
           # if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
-            npm run alpha:publish
+            # npm run alpha:publish
           # else
           #   npm publish
           # fi
+
+          # Get current version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          echo "Attempting to publish version: $VERSION"
+
+          # Check if version exists
+          if npm view refact-chat-js@$VERSION version &> /dev/null; then
+            echo "Version $VERSION already exists in npm registry!"
+            exit 1
+          else
+            echo "Version $VERSION is available, proceeding with publish..."
+            npm run alpha:publish
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
