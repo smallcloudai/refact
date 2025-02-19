@@ -139,6 +139,7 @@ pub async fn tools_merged_and_filtered(
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
+        ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
@@ -149,6 +150,9 @@ pub async fn tools_merged_and_filtered(
 
     #[cfg(feature="vecdb")]
     tools_all.insert("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>);
+
+    #[cfg(feature="vecdb")]
+    tools_all.insert("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>);
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
         gcx.clone(),
@@ -458,6 +462,38 @@ tools:
       - "im_going_to_apply_to"
       - "goal"
       - "language_slash_framework"
+
+  - name: "create_knowledge"
+    agentic: true
+    description: "Creates a new knowledge entry in the vector database to help with future tasks."
+    parameters:
+      - name: "im_going_to_use_tools"
+        type: "string"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger"
+      - name: "im_going_to_apply_to"
+        type: "string"
+        description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
+      - name: "goal"
+        type: "string"
+        description: "What is your goal here?"
+      - name: "language_slash_framework"
+        type: "string"
+        description: "What programming language and framework is the current project using? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
+      - name: "knowledge_entry"
+        type: "string"
+        description: "The knowledge content to be stored. This should be a detailed description of what was done, how it was done, and any important observations."
+    parameters_required:
+      - "im_going_to_use_tools"
+      - "im_going_to_apply_to"
+      - "goal"
+      - "language_slash_framework"
+      - "knowledge_entry"
+
+  - name: "create_memory_bank"
+    agentic: true
+    description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
+    parameters: []
+    parameters_required: []
 "####;
 
 
