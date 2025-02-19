@@ -162,7 +162,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published",
+                    "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry",
                     "emoji": true
                   }
                 },
