@@ -282,37 +282,57 @@ async fn read_and_compress_directory(
 pub struct ToolCreateMemoryBank;
 
 const MB_SYSTEM_PROMPT: &str = r###"• Objective:
-  – Document the directory's purpose, structure, and content while connecting these findings to previous project knowledge.
-
+  – Create a clear, natural language description of the project structure while building a comprehensive architectural understanding.
+    Do NOT call create_knowledge() until instructed
+    
 • Analysis Guidelines:
-  1. Start with knowledge(); review previous memories as context. 
-     - Use knowledge() to retrieve information about deeper directories and submodules than the one given.
-  2. Describe the current directory in detail:
-     - Core purpose and role in the project
-     - File organization and naming patterns
-     - Implementation approaches and design patterns
-     - Content of short files and their relationships
-  3. Link your findings to existing knowledge:
-     - What's similar: "This follows the pattern seen in..."
-     - What's different: "Unlike previous directories, this one..."
-     - What's new: "This introduces a new approach to..."
-  4. Use bullet-lists for clear documentation.
-  5. Skip duplicating known information; focus on what's unique or complementary.
+  1. Start with knowledge(); examine existing context:
+     - Review previous descriptions of related components
+     - Understand known architectural patterns
+     - Map existing module relationships
+
+  2. Describe project structure in natural language:
+     - Explain what this directory/module is for
+     - Describe key files and their purposes
+     - Detail how files work together
+     - Note any interesting implementation details
+     - Explain naming patterns and organization
+
+  3. Analyze code architecture:
+     - Module's role and responsibilities
+     - Key types, traits, functions, and their purposes
+     - Public interfaces and abstraction boundaries
+     - Error handling and data flow patterns
+     - Cross-cutting concerns and utilities
+
+  4. Document relationships:
+     - Which modules use this one and how
+     - What this module uses from others
+     - How components communicate
+     - Integration patterns and dependencies
+
+  5. Map architectural patterns:
+     - Design patterns used and why
+     - How it fits in the layered architecture
+     - State management approaches
+     - Extension and plugin points
+
+  6. Compare with existing knowledge:
+     - "This builds upon X from module Y by..."
+     - "Unlike module X, this takes a different approach to Y by..."
+     - "This introduces a new way to handle X through..."
+
+  7. Use structured format:
+     • Purpose: [clear description of what this does]
+     • Files: [key files and their roles]
+     • Architecture: [design patterns and module relationships]
+     • Key Symbols: [important types/traits/functions]
+     • Integration: [how it works with other parts]
 
 • Operational Constraint:
   – Do NOT call create_knowledge() until instructed."###;
 
-const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now. Your entry must include:
-   1. Directory description:
-      - Core purpose and role in the project
-      - Key files and their organization
-      - Notable implementation patterns
-   2. Relationship to existing knowledge:
-      - Similar patterns: reference previous memories
-      - New or different approaches
-      - How it complements the known project structure
-   3. Keep it focused and non-repetitive
-   4. Write the information in a free descriptive form"###;
+const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now with your complete and full analysis from the previous step."###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
