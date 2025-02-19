@@ -442,6 +442,7 @@ pub async fn scratchpad_interaction_stream(
             let mut last_finish_reason = FinishReason::None;
             // let mut test_countdown = 250;
             while let Some(event) = event_source.next().await {
+                info!("EVENT: `{:?}`", event);
                 match event {
                     Ok(Event::Open) => {},
                     Ok(Event::Message(message)) => {
