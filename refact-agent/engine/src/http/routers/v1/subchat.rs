@@ -48,6 +48,7 @@ pub async fn handle_v1_subchat(
         None,
         None,
         None,
+        Some(false),  // prepend_system_prompt=false for o3
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let new_messages = new_messages.into_iter()
@@ -102,7 +103,7 @@ pub async fn handle_v1_subchat_single(
         None,
         post.n,
         None,
-        true,
+        false,  // prepend_system_prompt=false for o3
         None,
         None,
         None,
