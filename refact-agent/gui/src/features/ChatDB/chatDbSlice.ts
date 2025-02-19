@@ -13,8 +13,8 @@ const initialState: ChatDbState = {
   chats: {},
 };
 
-export const chatDbSlice = createSlice({
-  name: "chatDb",
+export const chatDbThreadsSlice = createSlice({
+  name: "chatDbThreads",
   initialState,
   reducers: {
     reset: () => initialState,
@@ -46,5 +46,5 @@ export const chatDbSlice = createSlice({
   },
 });
 
-export const chatDbActions = chatDbSlice.actions;
-export const chatDbSelectors = chatDbSlice.selectors;
+export const chatDbActions = chatDbThreadsSlice.actions;
+export const chatDbSelectors = chatDbThreadsSlice.selectors;

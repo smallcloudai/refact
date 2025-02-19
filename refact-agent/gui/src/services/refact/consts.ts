@@ -42,3 +42,4 @@ export const KNOWLEDGE_UPDATE_URL = "/v1/mem-upd";
 export const KNOWLEDGE_CREATE_URL = "/v1/trajectory-save";
 // Chatdblinks
 export const CHAT_DB_THREADS_SUB = "/db_v1/cthreads-sub";
+export const CHAT_DB_MESSAGES_SUB = "/db_v1/cmessages-sub";
