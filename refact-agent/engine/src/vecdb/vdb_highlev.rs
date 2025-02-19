@@ -264,16 +264,9 @@ impl VecDb {
             api_key.clone(),
             memdb.clone(),
         ).await));
-
-        let mut http_client_builder = reqwest::Client::builder();
-        if cmdline.insecure {
-            http_client_builder = http_client_builder.danger_accept_invalid_certs(true)
-        }
-        let vecdb_emb_client = Arc::new(AMutex::new(http_client_builder.build().unwrap()));
-
         Ok(VecDb {
             memdb: memdb.clone(),
-            vecdb_emb_client,
+            vecdb_emb_client: Arc::new(AMutex::new(reqwest::Client::new())),
             vecdb_handler,
             vectorizer_service,
             constants: constants.clone(),
@@ -536,6 +529,19 @@ pub async fn memories_search(
         let score_b = calculate_score(b.distance, b.mstat_times_used);
         score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
     });
+
+    let rejection_threshold = model_to_rejection_threshold(constants.embedding_model.as_str());
+    let mut filtered_results = Vec::new();
+    for rec in results.iter() {
+        if rec.distance.abs() >= rejection_threshold {
+            info!("distance {:.3} -> dropped memory {}", rec.distance, rec.memid);
+        } else {
+            info!("distance {:.3} -> kept memory {}", rec.distance, rec.memid);
+            filtered_results.push(rec.clone());
+        }
+    }
+    results = filtered_results;
+
     Ok(MemoSearchResult { query_text: query.clone(), results })
 }
 
