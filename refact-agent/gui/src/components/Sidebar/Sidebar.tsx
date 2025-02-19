@@ -24,25 +24,25 @@ export type SidebarProps = {
 
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
-  const dispatch = useAppDispatch();
-  void dispatch(subscribeToThreadsThunk());
-  const history = useAppSelector((app) => app.history, {
-    // TODO: selector issue here
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  // const dispatch = useAppDispatch();
+  // void dispatch(subscribeToThreadsThunk());
+  // const history = useAppSelector((app) => app.history, {
+  //   // TODO: selector issue here
+  //   devModeChecks: { stabilityCheck: "never" },
+  // });
 
-  const onDeleteHistoryItem = useCallback(
-    (id: string) => dispatch(deleteChatById(id)),
-    [dispatch],
-  );
+  // const onDeleteHistoryItem = useCallback(
+  //   (id: string) => dispatch(deleteChatById(id)),
+  //   [dispatch],
+  // );
 
-  const onHistoryItemClick = useCallback(
-    (thread: ChatThread) => {
-      dispatch(restoreChat(thread));
-      dispatch(push({ name: "chat" }));
-    },
-    [dispatch],
-  );
+  // const onHistoryItemClick = useCallback(
+  //   (thread: ChatThread) => {
+  //     dispatch(restoreChat(thread));
+  //     dispatch(push({ name: "chat" }));
+  //   },
+  //   [dispatch],
+  // );
 
   return (
     <Flex style={style}>
@@ -52,11 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
           <Spinner loading={takingNotes} title="taking notes" />
         </Box>
       </Flex>
-      <ChatHistory
-        history={history}
-        onHistoryItemClick={onHistoryItemClick}
-        onDeleteHistoryItem={onDeleteHistoryItem}
-      />
+      <ChatHistory />
     </Flex>
   );
 };
