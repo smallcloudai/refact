@@ -67,7 +67,7 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    if: inputs.perform_publish || (github.ref == 'refs/heads/dev' && github.event_name == 'push')
+    if: inputs.perform_publish || ((github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/test/workflow-alpha-version') && github.event_name == 'push')
 
     steps:
       - uses: actions/checkout@v3
