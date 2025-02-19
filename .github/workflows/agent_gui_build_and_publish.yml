@@ -67,11 +67,14 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
-    # if: |
-    #   inputs.perform_publish ||
-    #   (github.ref == 'refs/heads/dev' ||
-    #   github.ref == 'refs/heads/test/workflow-alpha-version') &&
-    #   github.event_name == 'push'
+    if: |
+      inputs.perform_publish ||
+      (github.event_name == 'push' &&
+      (github.ref == 'refs/heads/dev' ||
+      github.ref == 'refs/heads/test/workflow-alpha-version')) ||
+      (github.event_name == 'pull_request' && 
+      (github.head_ref == 'test/workflow-alpha-version'))
+
     steps:
       - uses: actions/checkout@v3
         with:
@@ -99,23 +102,23 @@ jobs:
           echo "github.ref: ${{ github.ref }}"
           echo "github.event_name: ${{ github.event_name }}"
           echo "inputs.perform_publish: ${{ inputs.perform_publish }}"
-          exit 1
+          # exit 1
 
       - name: Bump version
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          # if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             npm run alpha:version
-          else
-            npm version patch -m "Bump version to %s [skip ci]"
-          fi
+          # else
+          #   npm version patch -m "Bump version to %s [skip ci]"
+          # fi
 
       - name: Publish to NPM Registry
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          # if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             npm run alpha:publish
-          else
-            npm publish
-          fi
+          # else
+          #   npm publish
+          # fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
