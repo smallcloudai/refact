@@ -285,7 +285,8 @@ const MB_SYSTEM_PROMPT: &str = r###"• Objective:
   – Document the directory's purpose, structure, and content while connecting these findings to previous project knowledge.
 
 • Analysis Guidelines:
-  1. Start with knowledge(); review previous memories as context.
+  1. Start with knowledge(); review previous memories as context. 
+     - Use knowledge() to retrieve information about deeper directories and submodules than the one given.
   2. Describe the current directory in detail:
      - Core purpose and role in the project
      - File organization and naming patterns
@@ -310,7 +311,8 @@ const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now. Your entry mus
       - Similar patterns: reference previous memories
       - New or different approaches
       - How it complements the known project structure
-   3. Keep it focused and non-repetitive"###;
+   3. Keep it focused and non-repetitive
+   4. Write the information in a free descriptive form"###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
@@ -422,11 +424,14 @@ impl Tool for ToolCreateMemoryBank {
                 }
 
                 state.mark_explored(target.clone());
+                let total = state.to_explore.len() + state.explored.len();
                 tracing::info!(
                     target = "memory_bank",
                     directory = target.target_name,
                     remaining_dirs = state.to_explore.len(),
                     explored_dirs = state.explored.len(),
+                    total_dirs = total,
+                    progress = format!("{}/{}", state.to_explore.len(), total),
                     "Completed directory exploration"
                 );
             } else {
@@ -437,9 +442,10 @@ impl Tool for ToolCreateMemoryBank {
         final_results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(format!(
-                "Memory bank creation completed after {} steps. {}. Usage: {} prompt tokens, {} completion tokens",
+                "Memory bank creation completed. Steps: {}, {}. Total directories: {}. Usage: {} prompt tokens, {} completion tokens",
                 step,
                 state.get_exploration_summary(),
+                state.explored.len() + state.to_explore.len(),
                 usage_collector.prompt_tokens,
                 usage_collector.completion_tokens,
             )),
