@@ -1,33 +1,34 @@
 import React from "react";
-import { Card, Flex, Text, Box, Spinner } from "@radix-ui/themes";
-// import type { ChatHistoryItem } from "../../hooks/useChatHistory";
+import { Card, Flex, Text, Box } from "@radix-ui/themes";
 import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../Buttons/Buttons";
-import { IconButton } from "@radix-ui/themes";
-import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
-import type { ChatHistoryItem } from "../../features/History/historySlice";
-import { isUserMessage } from "../../services/refact";
-import { useAppSelector } from "../../hooks";
+import { CThread } from "../../services/refact";
 
 export const HistoryItem: React.FC<{
-  historyItem: ChatHistoryItem;
-  onClick: () => void;
+  historyItem: CThread;
+  onClick: (thread: CThread) => void;
   onDelete: (id: string) => void;
-  onOpenInTab?: (id: string) => void;
-  disabled: boolean;
-}> = ({ historyItem, onClick, onDelete, onOpenInTab, disabled }) => {
-  const dateCreated = new Date(historyItem.createdAt);
+  // onOpenInTab?: (id: string) => void;
+  // disabled: boolean;
+}> = ({
+  historyItem,
+  onClick,
+  onDelete,
+  // onOpenInTab,
+  // disabled
+}) => {
+  const dateCreated = new Date(historyItem.cthread_created_ts);
   const dateTimeString = dateCreated.toLocaleString();
-  const cache = useAppSelector((app) => app.chat.cache);
-
-  const isStreaming = historyItem.id in cache;
+  // maybe remove this?
+  // const cache = useAppSelector((app) => app.chat.cache);
+  // const isStreaming = historyItem.cthread_id in cache;
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <Card
         style={{
           width: "100%",
           marginBottom: "2px",
-          opacity: disabled ? 0.8 : 1,
+          // opacity: disabled ? 0.8 : 1,
         }}
         variant="surface"
         className="rt-Button"
@@ -35,16 +36,19 @@ export const HistoryItem: React.FC<{
         role="button"
       >
         <button
-          disabled={disabled}
+          // disabled={disabled}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onClick();
+            onClick(historyItem);
           }}
         >
           <Flex gap="2px" align="center">
-            {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
-            {!isStreaming && historyItem.read === false && (
+            {/* {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />}
+            {!isStreaming && historyItem.cthread_anything_new && (
+              <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
+            )} */}
+            {historyItem.cthread_anything_new && (
               <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
             )}
             <Text
@@ -57,7 +61,7 @@ export const HistoryItem: React.FC<{
                 whiteSpace: "nowrap",
               }}
             >
-              {historyItem.title}
+              {historyItem.cthread_title}
             </Text>
           </Flex>
 
@@ -66,8 +70,7 @@ export const HistoryItem: React.FC<{
               size="1"
               style={{ display: "flex", gap: "4px", alignItems: "center" }}
             >
-              <ChatBubbleIcon />{" "}
-              {historyItem.messages.filter(isUserMessage).length}
+              <ChatBubbleIcon /> {historyItem.cthread_n}
             </Text>
 
             <Text size="1">{dateTimeString}</Text>
@@ -85,7 +88,7 @@ export const HistoryItem: React.FC<{
         // justify to flex end
       >
         {/**TODO: open in tab button */}
-        {onOpenInTab && (
+        {/* {onOpenInTab && (
           <IconButton
             size="1"
             title="open in tab"
@@ -98,7 +101,7 @@ export const HistoryItem: React.FC<{
           >
             <OpenInNewWindowIcon width="10" height="10" />
           </IconButton>
-        )}
+        )} */}
 
         <CloseButton
           size="1"
@@ -106,7 +109,7 @@ export const HistoryItem: React.FC<{
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onDelete(historyItem.id);
+            onDelete(historyItem.cthread_id);
           }}
           iconSize={10}
           title="delete chat"
