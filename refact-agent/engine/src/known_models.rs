@@ -378,6 +378,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 200000,
             "supports_tools": true,
             "supports_multimodality": true,
+            "supports_reasoning": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -386,6 +387,7 @@ pub const KNOWN_MODELS: &str = r####"
         "o1-mini": {
             "n_ctx": 128000,
             "supports_tools": true,
+            "supports_reasoning": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -396,6 +398,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_tools": true,
             "supports_multimodality": false,
             "supports_agent": true,
+            "supports_reasoning": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -722,6 +725,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 64000,
             "supports_tools": false,
             "supports_multimodality": false,
+            "supports_reasoning": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             }
