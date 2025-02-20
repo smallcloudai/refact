@@ -124,6 +124,15 @@ interface BaseMessage {
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
 }
 
+function isBaseMessage(json: unknown): json is BaseMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  if (typeof json.role !== "string") return false;
+  if (!("content" in json)) return false;
+  return true;
+}
+
 export interface ChatContextFileMessage extends BaseMessage {
   role: "context_file";
   content: ChatContextFile[];
@@ -220,7 +229,7 @@ export interface DiffMessage extends BaseMessage {
   tool_call_id: string;
 }
 
-export function isUserMessage(message: ChatMessage): message is UserMessage {
+export function isUserMessage(message: BaseMessage): message is UserMessage {
   return message.role === "user";
 }
 
@@ -299,6 +308,11 @@ export function isCDInstructionMessage(
   message: ChatMessage,
 ): message is CDInstructionMessage {
   return message.role === "cd_instruction";
+}
+
+export function isAChatMessage(value: unknown) {
+  if (!value) return false;
+  if (typeof value !== "object") return false;
 }
 
 // function isChatMessage(json: unknown): json is ChatMessage {
@@ -878,6 +892,33 @@ export function isCMessageFromChatDB(
 export type CMessage = Omit<CMessageFromChatDB, "cmessage_json"> & {
   cmessage_json: ChatMessage;
 };
+
+export type UserCMessage = Omit<CMessage, "cmessage_json"> & {
+  cmessage_json: UserMessage;
+};
+
+export function isUserCMessage(value: unknown): value is UserCMessage {
+  if (!value || typeof value !== "object") return false;
+  if (!("cmessage_belongs_to_cthread_id" in value)) return false;
+  if (typeof value.cmessage_belongs_to_cthread_id !== "string") return false;
+  if (!("cmessage_alt" in value)) return false;
+  if (typeof value.cmessage_alt !== "number") return false;
+  if (!("cmessage_num" in value)) return false;
+  if (typeof value.cmessage_num !== "number") return false;
+  if (!("cmessage_prev_alt" in value)) return false;
+  if (typeof value.cmessage_prev_alt !== "number") return false;
+  if (!("cmessage_usage_model" in value)) return false;
+  if (typeof value.cmessage_usage_model !== "string") return false;
+  if (!("cmessage_usage_prompt" in value)) return false;
+  if (typeof value.cmessage_usage_prompt !== "number") return false;
+  if (!("cmessage_usage_completion" in value)) return false;
+  if (typeof value.cmessage_usage_completion !== "number") return false;
+  if (!("cmessage_json" in value)) return false;
+  if (!value.cmessage_json) return false;
+  if (!isBaseMessage(value.cmessage_json)) return false;
+  if (!isUserMessage(value.cmessage_json)) return false;
+  return true;
+}
 
 export type CMessageUpdateResponse = {
   sub_event: "cmessage_update";

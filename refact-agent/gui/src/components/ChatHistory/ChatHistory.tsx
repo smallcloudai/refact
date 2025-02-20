@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Flex, Box } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
@@ -33,10 +33,15 @@ function useGetHistory() {
   });
   const isLoading = useAppSelector(chatDbSelectors.getLoading);
 
+  // move this to a dedicated hook
   useEffect(() => {
     const thunk = dispatch(subscribeToThreadsThunk());
     return () => {
-      thunk.abort("unmounted");
+      try {
+        thunk.abort("unmounted");
+      } catch {
+        // noop
+      }
     };
   }, [dispatch]);
 
