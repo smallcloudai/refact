@@ -1,57 +1,35 @@
 import React from "react";
 import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
-
 import { ScrollArea } from "../../ScrollArea";
 import { Usage } from "../../../services/refact";
-
 import styles from "./UsageCounter.module.css";
 
 type UsageCounterProps = {
   usage: Usage;
 };
-/*
-
-completion_tokens: number;
-prompt_tokens: number;
-total_tokens: number;
-completion_tokens_details: CompletionTokenDetails | null;
-prompt_tokens_details: PromptTokenDetails | null;
-cache_creation_input_tokens?: number;
-cache_read_input_tokens?: number;
-
-*/
 
 function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + "M";
-  } else if (num >= 1000) {
-    return (num / 1000).toFixed(2) + "k";
-  }
-  return num.toString();
+  return num >= 1_000_000
+    ? (num / 1_000_000).toFixed(1) + "M"
+    : num >= 1_000
+      ? (num / 1_000).toFixed(2) + "k"
+      : num.toString();
 }
 
-export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
-  const inputTokens = Object.entries(usage).reduce((acc, [key, value]) => {
-    if (key === "prompt_tokens" && typeof value === "number") {
-      return acc + value;
-    } else if (
-      key === "cache_creation_input_tokens" &&
-      typeof value === "number"
-    ) {
-      return acc + value;
-    } else if (key === "cache_read_input_tokens" && typeof value === "number") {
-      return acc + value;
-    }
-    return acc;
+const calculateTokens = (usage: Usage, keys: (keyof Usage)[]): number =>
+  keys.reduce((acc, key) => {
+    const value = usage[key];
+    return acc + (typeof value === "number" ? value : 0);
   }, 0);
 
-  const outputTokens = Object.entries(usage).reduce((acc, [key, value]) => {
-    if (key === "completion_tokens" && typeof value === "number") {
-      return acc + value;
-    }
-    return acc;
-  }, 0);
+export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
+  const inputTokens = calculateTokens(usage, [
+    "prompt_tokens",
+    "cache_creation_input_tokens",
+    "cache_read_input_tokens",
+  ]);
+  const outputTokens = calculateTokens(usage, ["completion_tokens"]);
 
   return (
     <HoverCard.Root>
@@ -87,14 +65,14 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
               </Text>
               <Text size="1">{inputTokens}</Text>
             </Flex>
-            {usage.cache_read_input_tokens ? (
+            {usage.cache_read_input_tokens && (
               <Flex align="center" justify="between" width="100%">
                 <Text size="1" weight="bold">
                   Cache read input tokens:{" "}
                 </Text>
                 <Text size="1">{usage.cache_read_input_tokens}</Text>
               </Flex>
-            ) : undefined}
+            )}
             {usage.cache_creation_input_tokens && (
               <Flex align="center" justify="between" width="100%">
                 <Text size="1" weight="bold">

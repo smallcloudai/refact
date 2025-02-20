@@ -1,3 +1,4 @@
+import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Provider } from "react-redux";
 
@@ -6,8 +7,13 @@ import { Theme } from "../../Theme";
 import { AbortControllerProvider } from "../../../contexts/AbortControllers";
 
 import { UsageCounter } from ".";
+import { Usage } from "../../../services/refact";
+import {
+  USAGE_COUNTER_STUB_ANTHROPIC,
+  USAGE_COUNTER_STUB_GPT,
+} from "./UsageCounter.fixtures";
 
-const MockedStore: React.FC = () => {
+const MockedStore: React.FC<{ usage: Usage }> = ({ usage }) => {
   const store = setUpStore({
     config: {
       themeProps: {
@@ -22,7 +28,7 @@ const MockedStore: React.FC = () => {
     <Provider store={store}>
       <AbortControllerProvider>
         <Theme accentColor="gray">
-          <UsageCounter />
+          <UsageCounter usage={usage} />
         </Theme>
       </AbortControllerProvider>
     </Provider>
@@ -32,8 +38,20 @@ const MockedStore: React.FC = () => {
 const meta: Meta<typeof MockedStore> = {
   title: "UsageCounter",
   component: MockedStore,
+  args: {
+    usage: USAGE_COUNTER_STUB_GPT,
+  },
 };
 
 export default meta;
 
-export const Default: StoryObj<typeof UsageCounter> = {};
+export const GPTUsageCounter: StoryObj<typeof UsageCounter> = {
+  args: {
+    usage: USAGE_COUNTER_STUB_GPT,
+  },
+};
+export const AnthropicUsageCounter: StoryObj<typeof UsageCounter> = {
+  args: {
+    usage: USAGE_COUNTER_STUB_ANTHROPIC,
+  },
+};
