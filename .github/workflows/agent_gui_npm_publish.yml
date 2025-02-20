@@ -132,7 +132,7 @@ jobs:
           VERSION="${{ steps.setupvars.outputs.plugin_version }}"
           git add package.json package-lock.json
           git commit -m "Version bump $VERSION"
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:${{ github.ref_name }}
         # not sure if we have this set up
         # env:
         #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
