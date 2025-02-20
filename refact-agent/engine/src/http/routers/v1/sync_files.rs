@@ -1,12 +1,11 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use async_tar::Archive;
+use tokio_tar::Archive;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
-use tokio_util::compat::TokioAsyncWriteCompatExt;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -29,7 +28,7 @@ pub async fn handle_v1_sync_files_extract_tar(
     let tar_file = tokio::fs::File::open(&tar_path).await
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Can't open tar file: {}", e)))?;
 
-    Archive::new(tar_file.compat_write()).unpack(&extract_to).await
+    Archive::new(tar_file).unpack(&extract_to).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Can't unpack tar file: {}", e)))?;   
 
     tokio::fs::remove_file(&tar_path).await

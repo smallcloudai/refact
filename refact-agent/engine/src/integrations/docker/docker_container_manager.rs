@@ -1,10 +1,8 @@
 use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
 use std::future::Future;
-use tokio::fs::File;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
-use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 use tracing::{error, info, warn};
 use url::Url;
 use walkdir::WalkDir;
@@ -282,7 +280,7 @@ async fn docker_create_network_if_not_exists(gcx: Arc<ARwLock<GlobalContext>>, d
     let (network_ls_output, _) = docker.command_execute(&network_ls_command, gcx.clone(), true, true).await?;
     if !network_ls_output.contains(network_name) {
         let network_create_command = format!("network create {quoted_network_name}");
-        let (network_create_output, _) = docker.command_execute(&network_create_command, gcx.clone(), true, true).await?;
+        let (_network_create_output, _) = docker.command_execute(&network_create_command, gcx.clone(), true, true).await?;
     }
     Ok(())
 }
@@ -402,12 +400,12 @@ async fn docker_container_sync_workspace(
     let temp_tar_file = tempfile::Builder::new().suffix(".tar").tempfile()
         .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();
     let tar_file_name = temp_tar_file.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let tar_async_file = File::create(&temp_tar_file).await
+    let tar_async_file = tokio::fs::File::create(&temp_tar_file).await
         .map_err(|e| format!("Error opening temporary tar file: {}", e))?;
 
-    let mut tar_builder = async_tar::Builder::new(tar_async_file.compat_write());
+    let mut tar_builder = tokio_tar::Builder::new(tar_async_file);
     tar_builder.follow_symlinks(true);
-    tar_builder.mode(async_tar::HeaderMode::Complete);
+    tar_builder.mode(tokio_tar::HeaderMode::Complete);
 
     let mut indexing_everywhere = crate::files_blocklist::reload_global_indexing_only(gcx.clone()).await;
     let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
@@ -460,7 +458,7 @@ async fn docker_container_sync_workspace(
 }
 
 async fn append_folder_if_exists(
-    tar_builder: &mut async_tar::Builder<Compat<File>>,
+    tar_builder: &mut tokio_tar::Builder<tokio::fs::File>,
     workspace_folder: &PathBuf,
     folder_name: &str
 ) -> Result<(), String> {
