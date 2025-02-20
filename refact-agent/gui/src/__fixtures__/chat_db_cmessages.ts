@@ -118,3 +118,111 @@ export const CSMESSAGES_NETWORK_STUB: CMessageFromChatDB[] = CMESSAGES_STUB.map(
     };
   },
 );
+
+export const CMESSAGES_WITH_NESTED_BRANCHES_STUB: CMessage[] = [
+  CMESSAGES_STUB[0],
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 0,
+    cmessage_num: 1,
+    cmessage_prev_alt: 0,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "user",
+      content: "Hello",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 0,
+    cmessage_num: 2,
+    cmessage_prev_alt: 0,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "assistant",
+      content: "Hello.",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 0,
+    cmessage_num: 3,
+    cmessage_prev_alt: 0,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "user",
+      content: "1",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 1,
+    cmessage_num: 3,
+    cmessage_prev_alt: 0,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "user",
+      content: "2",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 0,
+    cmessage_num: 4,
+    cmessage_prev_alt: 0,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "assistant",
+      content: "1",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 1,
+    cmessage_num: 4,
+    cmessage_prev_alt: 1,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "assistant",
+      content: "2",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 0,
+    cmessage_num: 5,
+    cmessage_prev_alt: 1,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "user",
+      content: "4",
+    },
+  },
+  {
+    cmessage_belongs_to_cthread_id: "test13thread1739988322_2",
+    cmessage_alt: 0,
+    cmessage_num: 6,
+    cmessage_prev_alt: 0,
+    cmessage_usage_model: "",
+    cmessage_usage_prompt: 0,
+    cmessage_usage_completion: 0,
+    cmessage_json: {
+      role: "assistant",
+      content: "🏌️",
+    },
+  },
+];
