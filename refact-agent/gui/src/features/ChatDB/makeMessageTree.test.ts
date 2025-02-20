@@ -1,7 +1,6 @@
 import { expect, describe, test } from "vitest";
-import { CMessage } from "../../services/refact";
 import { CMessageNode } from "./chatDbMessagesSlice";
-import { makeMessageTree } from "./makeMessageTrie";
+import { makeMessageTree } from "./makeMessageTree";
 import {
   CMESSAGES_STUB,
   CMESSAGES_WITH_NESTED_BRANCHES_STUB,

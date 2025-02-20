@@ -5,20 +5,32 @@ import {
   CThreadDefault,
   CMessage,
   ChatMessage,
+  UserCMessage,
+  isUserCMessage,
 } from "../../services/refact";
 import { v4 as uuid } from "uuid";
 import { parseOrElse } from "../../utils";
+import { makeMessageTree } from "./makeMessageTree";
 
-export type CMessageNode = {
+export interface CMessageNode {
   message: CMessage;
   children: CMessageNode[];
-};
+}
 
 export type CMessageRoot = CMessageNode[];
 
+export interface UserCMessageNode extends CMessageNode {
+  message: UserCMessage;
+}
+
+export function isUserCMessageNode(
+  node: CMessageNode,
+): node is UserCMessageNode {
+  return isUserCMessage(node.message);
+}
+
 type InitialState = {
   thread: CThread | CThreadDefault;
-  messageTree: CMessageRoot;
   messageList: CMessage[];
   loading: boolean;
   error: null | string;
@@ -37,28 +49,9 @@ const createChatThread = (): CThreadDefault => {
 
 const initialState: InitialState = {
   thread: createChatThread(),
-  messageTree: [[]],
   messageList: [],
   loading: false,
   error: null,
-};
-
-const findNodeByAltAndNum = (
-  nodes: CMessageNode[],
-  alt: number,
-  num: number,
-): CMessageNode | null => {
-  for (const node of nodes) {
-    if (
-      node.message.cmessage_alt === alt &&
-      node.message.cmessage_num === num
-    ) {
-      return node;
-    }
-    const found = findNodeByAltAndNum(node.children, alt, num);
-    if (found) return found;
-  }
-  return null;
 };
 
 function parseCMessageFromChatDBToCMessage(
@@ -79,7 +72,6 @@ export const chatDbMessageSlice = createSlice({
   reducers: {
     setThread: (state, action: PayloadAction<CThread>) => {
       state.thread = action.payload;
-      state.messageTree = [];
     },
     updateMessage: (
       state,
@@ -88,63 +80,13 @@ export const chatDbMessageSlice = createSlice({
       if (action.payload.threadId !== state.thread.cthread_id) return state;
       const message = parseCMessageFromChatDBToCMessage(action.payload.message);
       if (!message) return;
-
       // Update message list
       state.messageList[message.cmessage_num] = message;
-
-      if (message.cmessage_num === 0) {
-        state.messageTree[message.cmessage_num] = {
-          message,
-          children: state.messageTree[message.cmessage_num]?.children ?? [],
-        };
-        return;
-      }
-
-      // find it's place
-      //   function traverse(node: CMessageNode) {}
-      // updateMessage: (
-      //   state,
-      //   action: PayloadAction<{ threadId: string; message: CMessageFromChatDB }>,
-      // ) => {
-      //   if (action.payload.threadId !== state.thread.cthread_id) return state;
-      //   const message = parseCMessageFromChatDBToCMessage(action.payload.message);
-      //   if (!message) return;
-
-      //   state.messageList[message.cmessage_num] = message;
-      //   if (message.cmessage_num === 0) {
-      //     state.messageTree[message.cmessage_num] = {
-      //       message,
-      //       children: state.messageTree[message.cmessage_num]?.children ?? [],
-      //     };
-
-      //     return;
-      //   }
-
-      //   // find the parent node,
-      //   const parentMessage = state.messageList.find(
-      //     (m) =>
-      //       m.cmessage_num === message.cmessage_num - 1 &&
-      //       m.cmessage_alt === message.cmessage_prev_alt,
-      //   );
-      //   console.log("parentMessage", JSON.stringify(parentMessage)
-
-      //   //   const parentNode = findNodeByAltAndNum(
-      //   //     state.messageTree.flat(),
-      //   //     prevAlt,
-      //   //     prevNum
-      //   //   );
-
-      //   //   state.messageTree[message.cmessage_num] =
-      //   //     state.messageTree[message.cmessage_num] ?? [];
-      //   //   state.messageTree[message.cmessage_num][message.cmessage_alt] = {
-      //   //     children:
-      //   //       state.messageTree[message.cmessage_num][message.cmessage_alt]
-      //   //         ?.children ?? [],
-      //   //     message,
-      //   //  };
-      //   //   const node = row[message.cmessage_alt] ?? { message, children: [] };
-      // },
     },
+  },
+
+  selectors: {
+    selectMessageTree: (state) => makeMessageTree(state.messageList),
   },
 });
 
