@@ -301,6 +301,15 @@ export function isCDInstructionMessage(
   return message.role === "cd_instruction";
 }
 
+// function isChatMessage(json: unknown): json is ChatMessage {
+//   if (!json) return false;
+//   if (typeof json !== "object") return false;
+//   if (!("role" in json)) return false;
+//   if(typeof json.role !== "string") return false;
+//   if(isChatContextFileMessage(json)) return false;
+
+// }
+
 interface BaseDelta {
   role?: ChatRole | null;
 }
@@ -674,7 +683,13 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
 
 // ChatDB
 
-export type CThread = {
+export type CThreadDefault = {
+  cthread_id: string;
+  cthread_title: string;
+  cthread_toolset: string;
+  cthread_model: string;
+};
+export type CThread = CThreadDefault & {
   cthread_id: string;
   cthread_belongs_to_chore_event_id: string | null;
   cthread_title: string;
@@ -826,7 +841,7 @@ export function isCThreadSubResponseDelete(
   return true;
 }
 
-export interface CMessage {
+export type CMessageFromChatDB = {
   cmessage_belongs_to_cthread_id: string;
   cmessage_alt: number;
   cmessage_num: number;
@@ -835,4 +850,47 @@ export interface CMessage {
   cmessage_usage_prompt: number;
   cmessage_usage_completion: number;
   cmessage_json: string; // stringified json ChatMessage
+};
+
+export function isCMessageFromChatDB(
+  value: unknown,
+): value is CMessageFromChatDB {
+  if (!value || typeof value !== "object") return false;
+  if (!("cmessage_belongs_to_cthread_id" in value)) return false;
+  if (typeof value.cmessage_belongs_to_cthread_id !== "string") return false;
+  if (!("cmessage_alt" in value)) return false;
+  if (typeof value.cmessage_alt !== "number") return false;
+  if (!("cmessage_num" in value)) return false;
+  if (typeof value.cmessage_num !== "number") return false;
+  if (!("cmessage_prev_alt" in value)) return false;
+  if (typeof value.cmessage_prev_alt !== "number") return false;
+  if (!("cmessage_usage_model" in value)) return false;
+  if (typeof value.cmessage_usage_model !== "string") return false;
+  if (!("cmessage_usage_prompt" in value)) return false;
+  if (typeof value.cmessage_usage_prompt !== "number") return false;
+  if (!("cmessage_usage_completion" in value)) return false;
+  if (typeof value.cmessage_usage_completion !== "number") return false;
+  if (!("cmessage_json" in value)) return false;
+  if (typeof value.cmessage_json !== "string") return false;
+  return true;
+}
+
+export type CMessage = Omit<CMessageFromChatDB, "cmessage_json"> & {
+  cmessage_json: ChatMessage;
+};
+
+export type CMessageUpdateResponse = {
+  sub_event: "cmessage_update";
+  cmessage_rec: CMessageFromChatDB;
+};
+
+export function isCMessageUpdateResponse(
+  value: unknown,
+): value is CMessageUpdateResponse {
+  if (!value || typeof value !== "object") return false;
+  if (!("sub_event" in value)) return false;
+  if (typeof value.sub_event !== "string") return false;
+  if (value.sub_event !== "cmessage_update") return false;
+  if (!("cmessage_rec" in value)) return false;
+  return isCMessageFromChatDB(value.cmessage_rec);
 }

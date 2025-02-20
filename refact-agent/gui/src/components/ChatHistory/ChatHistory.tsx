@@ -15,6 +15,7 @@ import {
 import { subscribeToThreadsThunk } from "../../services/refact/chatdb";
 import { push } from "../../features/Pages/pagesSlice";
 import { CThread } from "../../services/refact/types";
+import { chatDbMessageSliceActions } from "../../features/ChatDB/chatDbMessagesSlice";
 
 // export type ChatHistoryProps = {
 //   history: HistoryState;
@@ -48,6 +49,7 @@ function useGetHistory() {
 
   const onHistoryItemClick = useCallback(
     (thread: CThread) => {
+      dispatch(chatDbMessageSliceActions.setThread(thread));
       dispatch(push({ name: "chat", threadId: thread.cthread_id }));
     },
     [dispatch],
