@@ -1,6 +1,6 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
-use crate::files_correction::canonical_path;
+use crate::files_correction::{canonicalize_normalized_path, preprocess_path_for_normalization};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::file_edit::auxiliary::{
@@ -25,13 +25,14 @@ pub struct ToolReplaceTextDoc;
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolReplaceTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = canonical_path(&s.trim().to_string());
+            let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
             if !path.is_absolute() {
                 return Err(format!(
-                    "Error: The provided path '{:?}' is not absolute. Please provide a full path starting from the root directory.",
-                    path
+                    "Error: The provided path '{}' is not absolute. Please provide a full path starting from the root directory.",
+                    s.trim()
                 ));
             }
+            let path = canonicalize_normalized_path(path);
             if !path.exists() {
                 return Err(format!(
                     "Error: The file '{:?}' does not exist. Please check if the path is correct and the file exists.",
