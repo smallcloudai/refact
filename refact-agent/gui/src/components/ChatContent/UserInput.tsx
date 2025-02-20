@@ -18,9 +18,10 @@ import styles from "./ChatContent.module.css";
 
 export type UserInputProps = {
   children: UserMessage["content"];
-  messageIndex: number;
+  // TODO: remove when using nodes
+  messageIndex?: number;
   // maybe add images argument ?
-  onRetry: (index: number, question: UserMessage["content"]) => void;
+  onRetry?: (index: number, question: UserMessage["content"]) => void;
   // disableRetry?: boolean;
 };
 
@@ -29,7 +30,7 @@ export const UserInput: React.FC<UserInputProps> = ({
   children,
   onRetry,
 }) => {
-  const messages = useAppSelector(selectMessages);
+  // const messages = useAppSelector(selectMessages);
 
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
@@ -37,7 +38,7 @@ export const UserInput: React.FC<UserInputProps> = ({
 
   const handleSubmit = useCallback(
     (value: UserMessage["content"]) => {
-      onRetry(messageIndex, value);
+      onRetry && messageIndex && onRetry(messageIndex, value);
       setShowTextArea(false);
     },
     [messageIndex, onRetry],
@@ -58,11 +59,13 @@ export const UserInput: React.FC<UserInputProps> = ({
   const isString = typeof children === "string";
   const linesLength = isString ? children.split("\n").length : Infinity;
 
-  const checkpointsFromMessage = useMemo(() => {
-    const maybeUserMessage = messages[messageIndex];
-    if (!isUserMessage(maybeUserMessage)) return null;
-    return maybeUserMessage.checkpoints;
-  }, [messageIndex, messages]);
+  // TODO: add this back in
+  // const checkpointsFromMessage = useMemo(() => {
+  //   if (!messageIndex) return null;
+  //   const maybeUserMessage = messages[messageIndex];
+  //   if (!isUserMessage(maybeUserMessage)) return null;
+  //   return maybeUserMessage.checkpoints;
+  // }, [messageIndex, messages]);
 
   return (
     <Container position="relative" pt="1">
@@ -105,12 +108,12 @@ export const UserInput: React.FC<UserInputProps> = ({
               transition: "opacity 0.15s, visibility 0.15s",
             }}
           >
-            {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
+            {/* {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
               <CheckpointButton
                 checkpoints={checkpointsFromMessage}
                 messageIndex={messageIndex}
               />
-            )}
+            )} */}
             <IconButton
               title="Edit message"
               variant="soft"
