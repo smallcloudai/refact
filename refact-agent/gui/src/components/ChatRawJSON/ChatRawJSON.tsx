@@ -1,10 +1,10 @@
 import { Box, Button, Flex, Heading } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
-import { RootState } from "../../app/store";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
+import { ChatHistoryItem } from "../../events";
 
 type ChatRawJSONProps = {
-  thread: RootState["chat"]["thread"];
+  thread: ChatHistoryItem;
   copyHandler: () => void;
 };
 

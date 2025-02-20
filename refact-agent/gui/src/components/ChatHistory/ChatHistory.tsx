@@ -3,14 +3,14 @@ import { Flex, Box } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
 import {
+  ChatHistoryItem,
   getHistory,
   type HistoryState,
 } from "../../features/History/historySlice";
-import type { ChatThread } from "../../features/Chat/Thread/types";
 
 export type ChatHistoryProps = {
   history: HistoryState;
-  onHistoryItemClick: (id: ChatThread) => void;
+  onHistoryItemClick: (id: ChatHistoryItem) => void;
   onDeleteHistoryItem: (id: string) => void;
   onOpenChatInTab?: (id: string) => void;
   currentChatId?: string;

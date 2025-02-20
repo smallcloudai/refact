@@ -3,9 +3,12 @@ import { Box, Flex } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
 import { Spinner } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../hooks";
-import { deleteChatById } from "../../features/History/historySlice";
+import {
+  ChatHistoryItem,
+  deleteChatById,
+} from "../../features/History/historySlice";
 import { push } from "../../features/Pages/pagesSlice";
-import { restoreChat, type ChatThread } from "../../features/Chat/Thread";
+import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
 
 export type SidebarProps = {
@@ -35,7 +38,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   );
 
   const onHistoryItemClick = useCallback(
-    (thread: ChatThread) => {
+    (thread: ChatHistoryItem) => {
       dispatch(restoreChat(thread));
       dispatch(push({ name: "chat" }));
     },

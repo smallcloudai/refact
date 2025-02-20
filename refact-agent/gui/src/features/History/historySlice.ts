@@ -12,6 +12,7 @@ import {
   removeChatFromCache,
   restoreChat,
   setChatMode,
+  SuggestedChat,
 } from "../Chat/Thread";
 import {
   isAssistantMessage,
@@ -20,11 +21,12 @@ import {
 } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
 
-export type ChatHistoryItem = ChatThread & {
+export type ChatHistoryItem = Omit<ChatThread, "new_chat_suggested"> & {
   createdAt: string;
   updatedAt: string;
   title: string;
   isTitleGenerated?: boolean;
+  new_chat_suggested?: SuggestedChat;
 };
 
 export type HistoryMeta = Pick<
