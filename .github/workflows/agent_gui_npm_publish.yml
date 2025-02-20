@@ -72,6 +72,7 @@ jobs:
         run: |
           echo "github.event_name: ${{ github.event_name }}"
           echo "github.ref: ${{ github.ref }}"
+          echo "inputs.ref_name: ${{ github.ref_name }}"
           echo "inputs.head_ref: ${{ github.head_ref }}"
           echo "inputs.perform_publish: ${{ inputs.perform_publish }}"
 
@@ -83,8 +84,9 @@ jobs:
 
           # Determine version bump type based on branch/PR
           if [[ "${{ github.ref }}" == "refs/heads/dev" ]] || \
-              [[ "${{ github.event_name }}" == "pull_request" && "${{ github.head_ref }}" == "test/workflow-alpha-version" ]] || \
-              [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.ref }}" == "refs/heads/dev" ]]; then
+             [[ "${{ github.ref }}" == "refs/heads/test/workflow-alpha-version" ]] || \
+             [[ "${{ github.event_name }}" == "pull_request" && "${{ github.head_ref }}" == "test/workflow-alpha-version" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.ref }}" == "refs/heads/dev" ]]; then
             echo "Bumping alpha version..."
             npm run alpha:version
           else
