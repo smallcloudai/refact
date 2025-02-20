@@ -130,37 +130,71 @@ pub async fn handle_v1_links(
 
     // GIT uncommitted
     if post.meta.chat_mode == ChatMode::AGENT && post.messages.is_empty() {
-        let commits = get_commit_information_from_current_changes(gcx.clone()).await;
+        let commits_info = get_commit_information_from_current_changes(gcx.clone()).await;
 
-        let mut s = Vec::new();
-        for commit in &commits {
-            s.push(format!(
-                "In project {}:\n{}{}",
-                commit.get_project_name(),
-                commit.file_changes.iter().take(3).map(|f| format!("{} {}", f.status.initial(), f.relative_path.to_string_lossy())).collect::<Vec<_>>().join("\n"),
-                if commit.file_changes.len() > 3 { format!("\n...{} files more\n", commit.file_changes.len() - 3) } else { format!("\n") },
-            ));
-        }
-        if !s.is_empty() {
-            if s.len() > 5 {
-                let omitted_projects = s.len() - 4;
-                s.truncate(4);
-                s.push(format!("...{} projects more", omitted_projects));
+        let mut commit_texts = Vec::new();
+        for commit_info in &commits_info {
+            let mut commit_text = format!("In project {}:\n", commit_info.get_project_name());
+            
+            if !commit_info.staged_changes.is_empty() {
+                commit_text.push_str("Staged changes:\n");
+                commit_text.push_str(&commit_info.staged_changes.iter()
+                    .take(2)
+                    .map(|f| format!("{} {}", f.status.initial(), f.relative_path.to_string_lossy()))
+                    .collect::<Vec<_>>()
+                    .join("\n"));
+                commit_text.push('\n');
+                if commit_info.staged_changes.len() > 2 {
+                    commit_text.push_str(&format!("...{} files more\n", commit_info.staged_changes.len() - 2));
+                }
             }
-            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\nIt's fine, but you might have a problem rolling back agent's changes.", s.join("\n"));
+
+            if !commit_info.unstaged_changes.is_empty() {
+                commit_text.push_str("Unstaged changes:\n");
+                commit_text.push_str(&commit_info.unstaged_changes.iter()
+                    .take(2)
+                    .map(|f| format!("{} {}", f.status.initial(), f.relative_path.to_string_lossy()))
+                    .collect::<Vec<_>>()
+                    .join("\n"));
+                commit_text.push('\n');
+                if commit_info.unstaged_changes.len() > 2 {
+                    commit_text.push_str(&format!("...{} files more\n", commit_info.unstaged_changes.len() - 2));
+                }
+            }
+
+            commit_texts.push(commit_text);
+        }
+        if !commit_texts.is_empty() {
+            if commit_texts.len() > 4 {
+                let omitted_projects = commit_texts.len() - 3;
+                commit_texts.truncate(3);
+                commit_texts.push(format!("...{} projects more", omitted_projects));
+            }
+            uncommited_changes_warning = format!("You have uncommitted changes:\n```\n{}\n```\nIt's fine, but you might have a problem rolling back agent's changes.", commit_texts.join("\n"));
         }
 
         if false {
-            for commit_with_msg in generate_commit_messages(gcx.clone(), commits).await {
-                let tooltip_message = format!(
+            for commit_with_msg in generate_commit_messages(gcx.clone(), commits_info).await {
+                let all_changes = commit_with_msg.staged_changes.iter()
+                    .chain(commit_with_msg.unstaged_changes.iter());
+                let first_changes = all_changes.clone().take(5)
+                    .map(|f| format!("{} {}", f.status.initial(), f.relative_path.to_string_lossy()))
+                    .collect::<Vec<_>>().join("\n");
+                let remaining_changes = all_changes.count().saturating_sub(5);
+
+                let mut tooltip_message = format!(
                     "git commit -m \"{}{}\"\n{}",
                     commit_with_msg.commit_message.lines().next().unwrap_or(""),
                     if commit_with_msg.commit_message.lines().count() > 1 { "..." } else { "" },
-                    commit_with_msg.file_changes.iter().map(|f| format!("{} {}", f.status.initial(), f.relative_path.to_string_lossy())).collect::<Vec<_>>().join("\n"),
+                    first_changes,
                 );
+                if remaining_changes != 0 {
+                    tooltip_message.push_str(&format!("\n...{} files more", remaining_changes));
+                }
                 links.push(Link {
                     link_action: LinkAction::Commit,
-                    link_text: format!("Commit {} files in `{}`", commit_with_msg.file_changes.len(), commit_with_msg.get_project_name()),
+                    link_text: format!("Commit {} files in `{}`", commit_with_msg.staged_changes.len() + 
+                        commit_with_msg.unstaged_changes.len(), commit_with_msg.get_project_name()),
                     link_goto: Some("LINKS_AGAIN".to_string()),
                     link_summary_path: None,
                     link_tooltip: tooltip_message,
