@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   type CreateTextDocToolCall,
   type RawTextDocTool,
@@ -12,20 +12,16 @@ import {
   isUpdateTextDocToolCall,
   parseRawTextDocToolCall,
 } from "./types";
-import { Box, Button, Card, Flex } from "@radix-ui/themes";
+import { Box, Card, Flex } from "@radix-ui/themes";
 import { TruncateLeft } from "../Text";
 import { Link } from "../Link";
 import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
 import { Markdown } from "../Markdown";
 import { filename } from "../../utils/filename";
 import styles from "./Texdoc.module.css";
-import { createPatch } from "diff";
 import classNames from "classnames";
-import { useAppSelector } from "../../hooks";
-import { selectCanPaste } from "../../features/Chat";
-import { toolsApi } from "../../services/refact";
-import { ErrorCallout } from "../Callout";
-import { isRTKResponseErrorWithDetailMessage } from "../../utils";
+import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
+import { Reveal } from "../Reveal";
 
 export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
   toolCall,
@@ -56,63 +52,13 @@ export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
 const TextDocHeader: React.FC<{
   toolCall: TextDocToolCall;
 }> = ({ toolCall }) => {
-  const { openFile, diffPasteBack, sendToolEditToIde } = useEventsBusForIDE();
-  const [requestDryRun, dryRunResult] = toolsApi.useDryRunForEditToolMutation();
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const canPaste = useAppSelector(selectCanPaste);
+  const { openFile } = useEventsBusForIDE();
 
-  const clearErrorMessage = useCallback(() => setErrorMessage(""), []);
   // move this
   const handleOpenFile = useCallback(() => {
     if (!toolCall.function.arguments.path) return;
     openFile({ file_name: toolCall.function.arguments.path });
   }, [openFile, toolCall.function.arguments.path]);
-
-  const handleReplace = useCallback(
-    (content: string) => {
-      diffPasteBack(content);
-    },
-    [diffPasteBack],
-  );
-
-  const replaceContent = useMemo(() => {
-    if (isCreateTextDocToolCall(toolCall))
-      return toolCall.function.arguments.content;
-    if (isUpdateTextDocToolCall(toolCall))
-      return toolCall.function.arguments.replacement;
-    return null;
-  }, [toolCall]);
-
-  const handleApplyToolResult = useCallback(() => {
-    requestDryRun({
-      toolName: toolCall.function.name,
-      toolArgs: toolCall.function.arguments,
-    })
-      .then((results) => {
-        if (results.data) {
-          sendToolEditToIde(toolCall.function.arguments.path, results.data);
-        } else if (isRTKResponseErrorWithDetailMessage(results)) {
-          setErrorMessage(results.error.data.detail);
-        }
-      })
-      .catch((error: unknown) => {
-        if (
-          error &&
-          typeof error === "object" &&
-          "message" in error &&
-          typeof error.message === "string"
-        ) {
-          setErrorMessage(error.message);
-        } else {
-          setErrorMessage("Error with patch: " + JSON.stringify(error));
-        }
-      });
-  }, [
-    requestDryRun,
-    sendToolEditToIde,
-    toolCall.function.arguments,
-    toolCall.function.name,
-  ]);
 
   return (
     <Card size="1" variant="surface" mt="4" className={styles.textdoc__header}>
@@ -128,31 +74,7 @@ const TextDocHeader: React.FC<{
             {toolCall.function.arguments.path}
           </Link>
         </TruncateLeft>{" "}
-        <div style={{ flexGrow: 1 }} />
-        <Button
-          size="1"
-          onClick={handleApplyToolResult}
-          disabled={dryRunResult.isLoading}
-          title={`Apply`}
-        >
-          ➕ Apply
-        </Button>
-        {replaceContent && (
-          <Button
-            size="1"
-            onClick={() => handleReplace(replaceContent)}
-            disabled={dryRunResult.isLoading || !canPaste}
-            title="Replace the current selection in the ide."
-          >
-            ➕ Replace Selection
-          </Button>
-        )}
       </Flex>
-      {errorMessage && (
-        <ErrorCallout onClick={clearErrorMessage} timeout={5000}>
-          {errorMessage}
-        </ErrorCallout>
-      )}
     </Card>
   );
 };
@@ -166,11 +88,17 @@ const CreateTextDoc: React.FC<{
       "```" + extension + "\n" + toolCall.function.arguments.content + "\n```"
     );
   }, [toolCall.function.arguments.content, toolCall.function.arguments.path]);
+  const handleCopy = useCopyToClipboard();
+
+  const lineCount = useMemo(() => code.split("\n").length, [code]);
+
   return (
     // TODO: move this box up a bit, or make it generic
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
-      <Markdown>{code}</Markdown>
+      <Reveal isRevealingCode defaultOpen={lineCount < 9}>
+        <Markdown onCopyClick={handleCopy}>{code}</Markdown>
+      </Reveal>
     </Box>
   );
 };
@@ -191,11 +119,20 @@ const ReplaceTextDoc: React.FC<{
     toolCall.function.arguments.path,
     toolCall.function.arguments.replacement,
   ]);
+
+  const copyToClipBoard = useCopyToClipboard();
+  const handleCopy = useCallback(() => {
+    copyToClipBoard(toolCall.function.arguments.replacement);
+  }, [copyToClipBoard, toolCall.function.arguments.replacement]);
+
+  const lineCount = useMemo(() => code.split("\n").length, [code]);
   return (
     // TODO: move this box up a bit, or make it generic
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
-      <Markdown>{code}</Markdown>
+      <Reveal isRevealingCode defaultOpen={lineCount < 9}>
+        <Markdown onCopyClick={handleCopy}>{code}</Markdown>
+      </Reveal>
     </Box>
   );
 };
@@ -219,10 +156,14 @@ const UpdateRegexTextDoc: React.FC<{
     toolCall.function.arguments.replacement,
   ]);
 
+  const lineCount = useMemo(() => code.split("\n").length, [code]);
+
   return (
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
-      <Markdown>{code}</Markdown>
+      <Reveal isRevealingCode defaultOpen={lineCount < 9}>
+        <Markdown>{code}</Markdown>
+      </Reveal>
     </Box>
   );
 };
@@ -230,26 +171,28 @@ const UpdateRegexTextDoc: React.FC<{
 const UpdateTextDoc: React.FC<{
   toolCall: UpdateTextDocToolCall;
 }> = ({ toolCall }) => {
-  const diff = useMemo(() => {
-    const patch = createPatch(
-      toolCall.function.arguments.path,
-      toolCall.function.arguments.old_str,
-      toolCall.function.arguments.replacement,
+  const code = useMemo(() => {
+    const extension = getFileExtension(toolCall.function.arguments.path);
+    return (
+      "```" +
+      extension +
+      "\n" +
+      toolCall.function.arguments.replacement +
+      "\n```"
     );
-
-    return "```diff\n" + patch + "\n```";
   }, [
-    toolCall.function.arguments.replacement,
-    toolCall.function.arguments.old_str,
     toolCall.function.arguments.path,
+    toolCall.function.arguments.replacement,
   ]);
-  // TODO: don't use markdown for this, it's two bright
+
+  const lineCount = useMemo(() => code.split("\n").length, [code]);
+
   return (
     <Box className={classNames(styles.textdoc, styles.textdoc__update)}>
       <TextDocHeader toolCall={toolCall} />
-      <Box className={classNames(styles.textdoc__diffbox)}>
-        <Markdown useInlineStyles={false}>{diff}</Markdown>
-      </Box>
+      <Reveal isRevealingCode defaultOpen={lineCount < 9}>
+        <Markdown useInlineStyles={false}>{code}</Markdown>
+      </Reveal>
     </Box>
   );
 };
