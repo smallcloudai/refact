@@ -126,6 +126,7 @@ jobs:
         id: setupvars
         run: |
           echo "plugin_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$(node -p "if(require('./package.json').version.includes('alpha')){console.log('alpha')}else{console.log('latest')}")" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push version update
         run: |
@@ -148,7 +149,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry",
+                    "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry with '${{ steps.setupvars.outputs.release_tag }}' tag",
                     "emoji": true
                   }
                 },
