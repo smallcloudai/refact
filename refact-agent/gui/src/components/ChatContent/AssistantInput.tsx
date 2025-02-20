@@ -7,6 +7,7 @@ import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { LikeButton } from "./LikeButton";
+import { UsageCounter } from "./UsageCounter";
 
 type ChatInputProps = {
   message: string | null;
@@ -58,6 +59,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
 
   return (
     <Container position="relative">
+      <UsageCounter />
       {message && (
         <Box py="4">
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
