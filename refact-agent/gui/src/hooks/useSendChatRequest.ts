@@ -268,9 +268,6 @@ export const useSendChatRequest = () => {
         toolUse,
         maybeMode ?? threadMode ?? maybeConfigure,
       );
-      console.log(
-        `[DEBUG]: maybeMode: ${maybeMode}, threadMode: ${threadMode}, maybeConfigure: ${maybeConfigure}`,
-      );
       dispatch(setChatMode(mode));
 
       void sendMessages(messages, mode);
