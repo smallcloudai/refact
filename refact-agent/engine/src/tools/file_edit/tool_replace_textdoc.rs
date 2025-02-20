@@ -28,29 +28,32 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolReplaceTextDocArgs, S
             let path = canonical_path(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
-                    "argument 'path' should be an absolute path: {:?}",
+                    "Error: The provided path '{:?}' is not absolute. Please provide a full path starting from the root directory.",
                     path
                 ));
             }
             if !path.exists() {
-                return Err(format!("argument 'path' doesn't exists: {:?}", path));
+                return Err(format!(
+                    "Error: The file '{:?}' does not exist. Please check if the path is correct and the file exists.",
+                    path
+                ));
             }
             path
         }
-        Some(v) => return Err(format!("argument 'path' should be a string: {:?}", v)),
-        None => return Err("argument 'path' is required".to_string()),
+        Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
+        None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),
     };
     let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s,
         Some(v) => {
             return Err(format!(
-                "argument 'replacement' should be a string: {:?}",
+                "Error: The 'replacement' argument must be a string containing the new file content, but received: {:?}",
                 v
             ))
         }
         None => {
             return Err(format!(
-                "argument 'replacement' is required for the `create` command: {:?}",
+                "Error: The 'replacement' argument is required. Please provide the new content that will replace the entire file at '{:?}'.",
                 path
             ))
         }

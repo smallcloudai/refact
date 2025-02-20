@@ -28,32 +28,35 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocArgs, St
             let path = canonical_path(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
-                    "argument 'path' should be an absolute path: {:?}",
+                    "Error: The provided path '{:?}' is not absolute. Please provide a full path starting from the root directory.",
                     path
                 ));
             }
             if !path.exists() {
-                return Err(format!("argument 'path' doesn't exists: {:?}", path));
+                return Err(format!(
+                    "Error: The file '{:?}' does not exist. Please check if the path is correct and the file exists.",
+                    path
+                ));
             }
             path
         }
-        Some(v) => return Err(format!("argument 'path' should be a string: {:?}", v)),
-        None => return Err("argument 'path' is required".to_string()),
+        Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
+        None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),
     };
     let old_str = match args.get("old_str") {
         Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("argument 'old_str' should be a string: {:?}", v)),
-        None => return Err("argument 'old_str' is required".to_string())
+        Some(v) => return Err(format!("Error: The 'old_str' argument must be a string containing the text to replace, but received: {:?}", v)),
+        None => return Err("Error: The 'old_str' argument is required. Please provide the text that needs to be replaced.".to_string())
     };
     let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("argument 'replacement' should be a string: {:?}", v)),
-        None => return Err("argument 'replacement' is required".to_string())
+        Some(v) => return Err(format!("Error: The 'replacement' argument must be a string containing the new text, but received: {:?}", v)),
+        None => return Err("Error: The 'replacement' argument is required. Please provide the new text that will replace the old text.".to_string())
     };
     let multiple = match args.get("multiple") {
         Some(Value::Bool(b)) => b.clone(),
-        Some(v) => return Err(format!("argument 'multiple' should be a boolean: {:?}", v)),
-        None => return Err("argument 'multiple' is required".to_string())
+        Some(v) => return Err(format!("Error: The 'multiple' argument must be a boolean (true/false) indicating whether to replace all occurrences, but received: {:?}", v)),
+        None => return Err("Error: The 'multiple' argument is required. Please specify true to replace all occurrences or false to replace only the first occurrence.".to_string())
     };
 
     Ok(ToolUpdateTextDocArgs {
