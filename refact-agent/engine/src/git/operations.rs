@@ -5,7 +5,7 @@ use tracing::error;
 
 use crate::custom_error::MapErrToString;
 use crate::files_correction::canonical_path;
-use crate::git::{FileChange, FileChangeStatus, DiffStatusType};
+use crate::git::{FileChange, FileChangeStatus};
 
 fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
     let mut options = git2::StatusOptions::new();
@@ -68,19 +68,19 @@ fn is_changed_in_index(status: git2::Status) -> bool {
         git2::Status::INDEX_TYPECHANGE)
 }
 
+/// Returns (staged_changes, unstaged_changes), note that one of them may be always empty based on show_opt
+/// 
 /// If include_abs_path is true, they are included in the FileChanges result, use it if they need to be 
 /// returned to the client or the absolute paths are needed
-pub fn get_diff_statuses(diff_status_type: DiffStatusType, repo: &Repository, include_abs_paths: bool) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses(show_opt: git2::StatusShow, repo: &Repository, include_abs_paths: bool) -> Result<(Vec<FileChange>, Vec<FileChange>), String> {
     let repo_workdir = repo.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
-    let mut result = Vec::new();
-    let show_opt = match diff_status_type {
-        DiffStatusType::IndexToHead => git2::StatusShow::Index,
-        DiffStatusType::WorkdirToIndex => git2::StatusShow::Workdir,
-    };
+    let mut staged_changes = Vec::new();
+    let mut unstaged_changes = Vec::new();
     let statuses = repo.statuses(Some(&mut status_options(false, show_opt)))
         .map_err_with_prefix("Failed to get statuses:")?;
+    
     for entry in statuses.iter() {
         let status = entry.status();
         let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
@@ -89,54 +89,50 @@ pub fn get_diff_statuses(diff_status_type: DiffStatusType, repo: &Repository, in
             continue;
         }
 
-        let should_not_be_present = match diff_status_type {
-            DiffStatusType::IndexToHead => is_changed_in_wt(status) || status.is_index_renamed(),
-            DiffStatusType::WorkdirToIndex => is_changed_in_index(status) || status.is_wt_renamed(),
+        let should_not_be_present = match show_opt {
+            git2::StatusShow::Index => is_changed_in_wt(status) || status.is_index_renamed(),
+            git2::StatusShow::Workdir => is_changed_in_index(status) || status.is_wt_renamed(),
+            git2::StatusShow::IndexAndWorkdir => status.is_index_renamed() || status.is_wt_renamed(),
         };
         if should_not_be_present {
             tracing::error!("File status is {:?} for file {:?}, which should not be present due to status options.", status, relative_path);
             continue;
         }
 
-        let file_change_status = match diff_status_type {
-            DiffStatusType::IndexToHead => {
-                if is_changed_in_index(status) {
-                    match status {
-                        s if s.is_index_new() => Some(FileChangeStatus::ADDED),
-                        s if s.is_index_deleted() => Some(FileChangeStatus::DELETED),
-                        _ => Some(FileChangeStatus::MODIFIED),
-                    }
-                } else {
-                    None
-                }
-            },
-            DiffStatusType::WorkdirToIndex => {
-                if is_changed_in_wt(status) {
-                    match status {
-                        s if s.is_wt_new() => Some(FileChangeStatus::ADDED),
-                        s if s.is_wt_deleted() => Some(FileChangeStatus::DELETED),
-                        _ => Some(FileChangeStatus::MODIFIED),
-                    }
-                } else {
-                    None
-                }
-            },
+        let absolute_path = if include_abs_paths && (is_changed_in_index(status) || is_changed_in_wt(status)) { 
+            canonical_path(repo_workdir.join(&relative_path).to_string_lossy().to_string())
+        } else {
+            PathBuf::new()
         };
 
-        if let Some(status) = file_change_status {
-            result.push(FileChange {
+        if is_changed_in_index(status) {
+            let status = match status {
+                s if s.is_index_new() => FileChangeStatus::ADDED,
+                s if s.is_index_deleted() => FileChangeStatus::DELETED,
+                _ => FileChangeStatus::MODIFIED,
+            };
+            staged_changes.push(FileChange {
                 status,
-                absolute_path: if include_abs_paths { 
-                    canonical_path(repo_workdir.join(&relative_path).to_string_lossy().to_string())
-                } else {
-                    PathBuf::new()
-                },
-                relative_path,
+                absolute_path: absolute_path.clone(),
+                relative_path: relative_path.clone(),
+            });
+        }
+
+        if is_changed_in_wt(status) {
+            let status = match status {
+                s if s.is_wt_new() => FileChangeStatus::ADDED,
+                s if s.is_wt_deleted() => FileChangeStatus::DELETED,
+                _ => FileChangeStatus::MODIFIED,
+            };
+            unstaged_changes.push(FileChange {
+                status,
+                absolute_path: absolute_path.clone(),
+                relative_path: relative_path.clone(),
             });
         }
     }
 
-    Ok(result)
+    Ok((staged_changes, unstaged_changes))
 }
 
 pub fn get_diff_statuses_workdir_to_head(repository: &Repository) -> Result<Vec<FileChange>, String> {
@@ -205,7 +201,7 @@ pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &g
 
     repository.set_head_detached(commit_oid.clone()).map_err_with_prefix("Failed to set HEAD:")?;
 
-    let result = get_diff_statuses(DiffStatusType::IndexToHead, repository, include_abs_paths);
+    let result = get_diff_statuses(git2::StatusShow::Index, repository, include_abs_paths);
 
     let restore_result = match (&original_head_ref, original_head_oid) {
         (Some(head_ref), _) => repository.set_head(head_ref),
@@ -218,7 +214,7 @@ pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &g
         return Err(format!("{}\nFailed to restore head: {}", prev_err, restore_err));
     }
 
-    result
+    result.map(|(staged_changes, _unstaged_changes)| staged_changes)
 }
 
 pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<(), String> {
@@ -293,47 +289,22 @@ pub fn get_commit_datetime(repository: &Repository, commit_oid: &Oid) -> Result<
         .ok_or_else(|| "Failed to get commit datetime".to_string())
 }
 
-pub fn git_diff<'repo>(repository: &'repo Repository, file_changes: &Vec<FileChange>) -> Result<git2::Diff<'repo>, String> {
+pub fn git_diff_head_to_workdir<'repo>(repository: &'repo Repository) -> Result<git2::Diff<'repo>, String> {
     let mut diff_options = DiffOptions::new();
     diff_options.include_untracked(true);
     diff_options.recurse_untracked_dirs(true);
-    for file_change in file_changes {
-        diff_options.pathspec(&file_change.relative_path);
-    }
-
-    let mut sorted_file_changes = file_changes.clone();
-    sorted_file_changes.sort_by_key(|fc| {
-        std::fs::metadata(&fc.relative_path).map(|meta| meta.len()).unwrap_or(0)
-    });
-
-    // Create a new temporary tree, with all changes staged
-    let mut index = repository.index().map_err(|e| format!("Failed to get repository index: {}", e))?;
-    for file_change in &sorted_file_changes {
-        match file_change.status {
-            FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
-                index.add_path(&file_change.relative_path)
-                    .map_err(|e| format!("Failed to add file to index: {}", e))?;
-            },
-            FileChangeStatus::DELETED => {
-                index.remove_path(&file_change.relative_path)
-                    .map_err(|e| format!("Failed to remove file from index: {}", e))?;
-            },
-        }
-    }
-    let oid = index.write_tree().map_err(|e| format!("Failed to write tree: {}", e))?;
-    let new_tree = repository.find_tree(oid).map_err(|e| format!("Failed to find tree: {}", e))?;
 
     let head = repository.head().and_then(|head_ref| head_ref.peel_to_tree())
         .map_err(|e| format!("Failed to get HEAD tree: {}", e))?;
 
-    let diff = repository.diff_tree_to_tree(Some(&head), Some(&new_tree), Some(&mut diff_options))
+    let diff = repository.diff_tree_to_workdir(Some(&head), Some(&mut diff_options))
         .map_err(|e| format!("Failed to generate diff: {}", e))?;
-
+    
     Ok(diff)
 }
 
-pub fn git_diff_as_string(repository: &Repository, file_changes: &Vec<FileChange>, max_size: usize) -> Result<String, String> {
-    let diff = git_diff(repository, file_changes)?;
+pub fn git_diff_head_to_workdir_as_string(repository: &Repository, max_size: usize) -> Result<String, String> {
+    let diff = git_diff_head_to_workdir(repository)?;
 
     let mut diff_str = String::new();
     diff.print(git2::DiffFormat::Patch, |_, _, line| {
