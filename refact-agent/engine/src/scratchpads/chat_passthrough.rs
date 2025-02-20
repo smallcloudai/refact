@@ -144,12 +144,20 @@ impl ScratchpadAbstract for ChatPassthrough {
             16000
         );
         _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
+
+        // Handle models that support reasoning
+        let messages = if model_supports_reasoning(&self.post.model) {
+            _adapt_for_reasoning_models(&messages, sampling_parameters_to_patch)
+        } else {
+            messages
+        };
+
         let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
             error!("error limiting messages: {}", e);
             vec![]
         });
 
-        if self.prepend_system_prompt {
+        if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
             assert_eq!(limited_msgs.first().unwrap().role, "system");
         }
         let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
@@ -330,4 +338,38 @@ fn _replace_broken_tool_call_messages(
             }
         }
     }
+}
+
+pub fn model_supports_reasoning(model_name: &str) -> bool {
+    let known_models: serde_json::Value = serde_json::from_str(crate::known_models::KNOWN_MODELS)
+        .expect("Failed to parse KNOWN_MODELS");
+
+    // Check if the model exists in code_chat_models and has supports_reasoning set to true
+    if let Some(chat_models) = known_models.get("code_chat_models") {
+        if let Some(model) = chat_models.get(model_name) {
+            return model.get("supports_reasoning")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+        }
+    }
+
+    // If model is not found or doesn't have supports_reasoning field, return false
+    false
+}
+
+fn _adapt_for_reasoning_models(
+    messages: &Vec<ChatMessage>,
+    sampling_parameters: &mut SamplingParameters,
+) -> Vec<ChatMessage> {
+    // Set temperature to None
+    sampling_parameters.temperature = None;
+
+    // Convert system messages to user messages
+    messages.iter().map(|msg| {
+        let mut msg = msg.clone();
+        if msg.role == "system" {
+            msg.role = "user".to_string();
+        }
+        msg
+    }).collect()
 }
