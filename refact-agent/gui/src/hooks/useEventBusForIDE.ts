@@ -38,14 +38,9 @@ export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
 export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
-export const ideToolEdit = createAction<{ path: string; edit: ToolEditResult }>(
-  "ide/toolEdit",
-);
-
 import { pathApi } from "../services/refact/path";
 
 import { telemetryApi } from "../services/refact/telemetry";
-import { ToolEditResult } from "../services/refact";
 
 export const useEventsBusForIDE = () => {
   const [sendTelemetryEvent] =
@@ -217,14 +212,6 @@ export const useEventsBusForIDE = () => {
   const openBringYourOwnKeyFile = () =>
     openFileFromPathQuery(getBringYourOwnKeyPath);
 
-  const sendToolEditToIde = useCallback(
-    (path: string, edit: ToolEditResult) => {
-      const action = ideToolEdit({ path, edit });
-      postMessage(action);
-    },
-    [postMessage],
-  );
-
   return {
     diffPasteBack,
     openSettings,
@@ -244,6 +231,5 @@ export const useEventsBusForIDE = () => {
     escapeKeyPressed,
     setIsChatStreaming,
     setIsChatReady,
-    sendToolEditToIde,
   };
 };
