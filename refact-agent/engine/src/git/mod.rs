@@ -11,7 +11,8 @@ use crate::files_correction::{serialize_path, deserialize_path};
 pub struct CommitInfo {
     pub project_path: url::Url,
     pub commit_message: String,
-    pub file_changes: Vec<FileChange>,
+    pub staged_changes: Vec<FileChange>,
+    pub unstaged_changes: Vec<FileChange>,
 }
 
 impl CommitInfo {
@@ -48,11 +49,6 @@ impl FileChangeStatus {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum DiffStatusType {
-    IndexToHead,
-    WorkdirToIndex,
-}
 
 /// It's not equivalent or good match, just best effort so that it works in most cases.
 /// Making a 1-to-1 mapping would be very hard.

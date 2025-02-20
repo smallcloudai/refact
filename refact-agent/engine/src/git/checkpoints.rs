@@ -11,7 +11,7 @@ use crate::custom_error::MapErrToString;
 use crate::files_blocklist::reload_indexing_everywhere_if_needed;
 use crate::files_correction::{deserialize_path, get_active_workspace_folder, get_project_dirs, serialize_path};
 use crate::global_context::GlobalContext;
-use crate::git::{FileChange, FileChangeStatus, DiffStatusType, from_unix_glob_pattern_to_gitignore};
+use crate::git::{FileChange, FileChangeStatus, from_unix_glob_pattern_to_gitignore};
 use crate::git::operations::{checkout_head_and_branch_to_commit, commit, get_commit_datetime, get_diff_statuses, get_diff_statuses_index_to_commit, get_or_create_branch, stage_changes, open_or_init_repo};
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
@@ -88,7 +88,7 @@ fn get_file_changes_from_nested_repos<'a>(
     let mut file_changes_flatened = Vec::new();
 
     for nested_repo in nested_repos {
-        let nested_repo_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, nested_repo, include_abs_paths)?;
+        let (_, nested_repo_changes) = get_diff_statuses(git2::StatusShow::Workdir, nested_repo, include_abs_paths)?;
         let nested_repo_workdir = nested_repo.workdir()
             .ok_or("Failed to get nested repo workdir".to_string())?;
         let nested_repo_rel_path = nested_repo_workdir.strip_prefix(repo_workdir).map_err_to_string()?;
@@ -132,7 +132,7 @@ pub async fn create_workspace_checkpoint(
     let checkpoint = {
         let branch = get_or_create_branch(&repo, &format!("refact-{chat_id}"))?;
 
-        let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, false)?;
+        let (_, mut file_changes) = get_diff_statuses(git2::StatusShow::Workdir, &repo, false)?;
 
         let (nested_file_changes, flatened_nested_file_changes) = 
             get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
@@ -234,7 +234,7 @@ pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> ()
         let t0 = Instant::now();
 
         let initial_commit_result: Result<Oid, String> = (|| {
-            let mut file_changes = get_diff_statuses(DiffStatusType::WorkdirToIndex, &repo, false)?;
+            let (_, mut file_changes) = get_diff_statuses(git2::StatusShow::Workdir, &repo, false)?;
             let (nested_file_changes, all_nested_changes) = 
                 get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
             file_changes.extend(all_nested_changes);
