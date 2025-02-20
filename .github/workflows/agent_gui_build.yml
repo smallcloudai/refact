@@ -3,13 +3,13 @@ name: Refact Agent GUI CI build (Node.js)
 on:
   push:
     branches: [main, dev]
-    paths:
-      - 'refact-agent/gui/**'
-      - '.github/workflows/agent_gui_*'
+    paths: 
+      - "refact-agent/gui/**"
+      - ".github/workflows/agent_gui_*"
   pull_request:
     paths:
-      - 'refact-agent/gui/**'
-      - '.github/workflows/agent_gui_*'
+      - "refact-agent/gui/**"
+      - ".github/workflows/agent_gui_*"
 
 defaults:
   run:
@@ -25,12 +25,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
+      
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: refact-agent/gui/package-lock.json
 
       # Disable Husky install during npm ci
@@ -38,6 +38,7 @@ jobs:
         run: |
           npm pkg delete scripts.prepare
           npm ci
+
       - run: npm run test
       - run: npm run format:check
       - run: npm run types
@@ -47,6 +48,7 @@ jobs:
       - run: |
           name=$(echo -n "${{ matrix.node-version }}" | tr -cd '[[:alnum:]]')
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
