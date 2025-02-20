@@ -28,24 +28,27 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, St
             let path = canonical_path(&s.trim().to_string());
             if !path.is_absolute() {
                 return Err(format!(
-                    "argument 'path' should be an absolute path: {:?}",
+                    "Error: The provided path '{:?}' is not absolute. Please provide a full path starting from the root directory.",
                     path
                 ));
             }
             if path.exists() {
-                return Err(format!("argument 'path' already exists: {:?}", path));
+                return Err(format!(
+                    "Error: Cannot create file at '{:?}' because it already exists. Please choose a different path or use update_textdoc/replace_textdoc to modify existing files.",
+                    path
+                ));
             }
             path
         }
-        Some(v) => return Err(format!("argument 'path' should be a string: {:?}", v)),
-        None => return Err("argument 'path' is required".to_string()),
+        Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
+        None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),
     };
     let content = match args.get("content") {
         Some(Value::String(s)) => s,
-        Some(v) => return Err(format!("argument 'content' should be a string: {:?}", v)),
+        Some(v) => return Err(format!("Error: The 'content' argument must be a string containing the initial file content, but received: {:?}", v)),
         None => {
             return Err(format!(
-                "argument 'content' is required for the `create` command: {:?}",
+                "Error: The 'content' argument is required. Please provide the initial content for the new file at '{:?}'.",
                 path
             ))
         }

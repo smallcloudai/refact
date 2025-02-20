@@ -46,12 +46,15 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolUpdateTextDocRegexArg
             match Regex::new(s) {
                 Ok(r) => r,
                 Err(err) => {
-                    return Err(format!("argument 'pattern' should be a correct regex: {:?}", err));
+                    return Err(format!(
+                        "Error: The provided regex pattern is invalid. Details: {}. Please check your regular expression syntax.",
+                        err
+                    ));
                 }
             }
         },
-        Some(v) => return Err(format!("argument 'pattern' should be a string: {:?}", v)),
-        None => return Err("argument 'pattern' is required:".to_string())
+        Some(v) => return Err(format!("Error: The 'pattern' argument must be a string containing a valid regular expression, but received: {:?}", v)),
+        None => return Err("Error: The 'pattern' argument is required. Please provide a regular expression pattern to match the text that needs to be updated.".to_string())
     };
     let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s.to_string(),
