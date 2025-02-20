@@ -5,8 +5,13 @@ import { consumeStream } from "../../features/Chat/Thread/utils";
 import {
   isCThreadSubResponseUpdate,
   isCThreadSubResponseDelete,
+  isCMessageUpdateResponse,
 } from "./types";
 import { chatDbActions } from "../../features/ChatDB/chatDbSlice";
+import {
+  chatDbMessageSlice,
+  chatDbMessageSliceActions,
+} from "../../features/ChatDB/chatDbMessagesSlice";
 
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
@@ -135,8 +140,15 @@ export const subscribeToThreadMessagesThunk = createAppAsyncThunk<
       };
 
       const onChunk = (chunk: Record<string, unknown>) => {
-        console.log("cmessages chunks");
-        console.log({ chunk });
+        // console.log("cmessages chunks");
+        // console.log({ chunk });
+        if (isCMessageUpdateResponse(chunk)) {
+          const action = chatDbMessageSliceActions.updateMessage({
+            threadId: cthreadId,
+            message: chunk.cmessage_rec,
+          });
+          thunkApi.dispatch(action);
+        }
       };
 
       return consumeStream(reader, thunkApi.signal, onAbort, onChunk);
