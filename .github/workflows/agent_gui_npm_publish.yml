@@ -1,4 +1,4 @@
-name: Refact Agent GUI CI build and Publish (Node.js)
+name: Refact Agent GUI CI Publish (Node.js)
 
 on:
   workflow_dispatch:
@@ -7,10 +7,10 @@ on:
         required: true
         type: boolean
         default: false
-        description: Publish to NPM Registry after successful build
+        description: Publish to NPM Registry
   # Automatic trigger for alpha and dev branches
   push:
-    branches: [main, dev]
+    branches: [dev, test/workflow-alpha-version]
     paths:
       - 'refact-agent/gui/**'
       - '.github/workflows/agent_gui_*'
@@ -18,54 +18,15 @@ on:
     paths:
       - 'refact-agent/gui/**'
       - '.github/workflows/agent_gui_*'
+    branches:
+      - 'test/workflow-alpha-version'
 
 defaults:
   run:
     working-directory: refact-agent/gui
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [lts/*, latest]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: refact-agent/gui/package-lock.json
-
-      # Disable Husky install during npm ci
-      - name: Install dependencies
-        run: |
-          npm pkg delete scripts.prepare
-          npm ci
-
-      - run: npm run test
-      - run: npm run format:check
-      - run: npm run types
-      - run: npm run lint
-      - run: npm run build
-
-      - run: |
-          name=$(echo -n "${{ matrix.node-version }}" | tr -cd '[[:alnum:]]')
-          echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: refact-chat-js-${{ env.ARTIFACT_NAME }}
-          if-no-files-found: ignore
-          path: refact-agent/gui/dist
-
   publish:
-    needs: build
     runs-on: ubuntu-latest
     # Runs only if pushing to dev or test/workflow-alpha-version, workflow_dispatch with inputs.perform_publish
     # or on pull request trigger of test/workflow-alpha-version
@@ -94,6 +55,8 @@ jobs:
         with:
           node-version: 'lts/*'
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: refact-agent/gui/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -156,47 +119,46 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # not pushing tags since tags are from refact-enterprise
-      # - name: Push tag and version bump commit
-      #   run: |
-      #     if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-      #       git push origin HEAD:${{ github.head_ref }}
-      #       git push origin --tags
-      #     else
-      #       git push
-      #       git push --tags
-      #     fi
-      # - name: Setup vars
-      #   shell: bash
-      #   id: setupvars
-      #   run: |
-      #     echo "plugin_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Setup vars
+        shell: bash
+        id: setupvars
+        run: |
+          echo "plugin_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
-      # # uncomment when SLACK_WEBHOOK_URL is added in secrets
-      # - name: Post to a Slack channel
-      #   id: slack
-      #   uses: slackapi/slack-github-action@v1.26.0
-      #   with:
-      #     payload: |
-      #       {
-      #         "blocks": [
-      #           {
-      #             "type": "header",
-      #             "text": {
-      #               "type": "plain_text",
-      #               "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry",
-      #               "emoji": true
-      #             }
-      #           },
-      #           {
-      #             "type": "section",
-      #             "text": {
-      #               "type": "mrkdwn",
-      #               "text": "by ${{ github.actor }}"
-      #             }
-      #           }
-      #         ]
-      #       }
-      #   env:
-      #     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      #     SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      - name: Commit and push version update
+        run: |
+          VERSION="${{ steps.setupvars.outputs.plugin_version }}"
+          git add package.json package-lock.json
+          git commit -m "Version bump $VERSION"
+          git push origin HEAD:${{ github.head_ref }}
+        # not sure if we have this set up
+        # env:
+        #   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post to a Slack channel
+        id: slack
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "GUI ${{ steps.setupvars.outputs.plugin_version }} is published on npm registry",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "by ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
