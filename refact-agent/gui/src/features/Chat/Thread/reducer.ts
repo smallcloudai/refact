@@ -269,7 +269,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
       state.streaming = false;
     }
     state.prevent_send = true;
-    state.thread = mostUptoDateThread;
+    state.thread = {
+      new_chat_suggested: { wasSuggested: false },
+      ...mostUptoDateThread,
+    };
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
   });
 

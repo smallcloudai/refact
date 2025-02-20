@@ -33,6 +33,7 @@ import {
 import { ToolCommand } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
+import { ChatHistoryItem } from "../../History/historySlice";
 
 export const newChatAction = createAction("chatThread/new");
 
@@ -94,7 +95,9 @@ export const removeChatFromCache = createAction<PayloadWithId>(
   "chatThread/removeChatFromCache",
 );
 
-export const restoreChat = createAction<ChatThread>("chatThread/restoreChat");
+export const restoreChat = createAction<ChatHistoryItem>(
+  "chatThread/restoreChat",
+);
 
 export const clearChatError = createAction<PayloadWithId>(
   "chatThread/clearError",
