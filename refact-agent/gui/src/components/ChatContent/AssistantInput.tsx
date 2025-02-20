@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { Markdown } from "../Markdown";
 
 import { Container, Box } from "@radix-ui/themes";
-import { ToolCall } from "../../services/refact";
+import { ToolCall, Usage } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
@@ -12,12 +12,14 @@ import { UsageCounter } from "./UsageCounter";
 type ChatInputProps = {
   message: string | null;
   toolCalls?: ToolCall[] | null;
+  usage?: Usage | null;
   isLast?: boolean;
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
   message,
   toolCalls,
+  usage,
   isLast,
 }) => {
   const [sendTelemetryEvent] =
@@ -60,7 +62,6 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
 
   return (
     <Container position="relative">
-      <UsageCounter />
       {message && (
         <Box py="4">
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
@@ -69,6 +70,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         </Box>
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
+      {usage && <UsageCounter usage={usage} />}
       {isLast && <LikeButton />}
     </Container>
   );

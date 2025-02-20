@@ -71,7 +71,7 @@ export function useGetLinksFromLsp() {
       chat_id: chatId,
       messages,
       model: model ?? "",
-      mode: chatModeToLspMode(undefined, threadMode),
+      mode: chatModeToLspMode({ defaultMode: threadMode }),
       current_config_file: maybeIntegration?.path,
     },
     { skip: skipLinksRequest },

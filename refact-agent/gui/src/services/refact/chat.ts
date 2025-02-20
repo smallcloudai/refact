@@ -12,6 +12,7 @@ export type LspChatMessage =
       // TODO make this a union type for user message
       content: string | null;
       finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+      usage?: Usage | null;
       // TBD: why was index omitted ?
       // tool_calls?: Omit<ToolCall, "index">[];
       tool_calls?: ToolCall[];
@@ -109,11 +110,28 @@ export type DeterministicMessage = {
   usage: unknown;
 };
 
+type CompletionTokenDetails = {
+  accepted_prediction_tokens: number;
+  audio_tokens: number;
+  reasoning_tokens: number;
+  rejected_prediction_tokens: number;
+};
+
+type PromptTokenDetails = {
+  audio_tokens: number;
+  cached_tokens: number;
+};
+
 export type Usage = {
   completion_tokens: number;
   prompt_tokens: number;
   total_tokens: number;
+  completion_tokens_details: CompletionTokenDetails | null;
+  prompt_tokens_details: PromptTokenDetails | null;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 };
+
 // TODO: add config url
 export async function sendChat({
   messages,

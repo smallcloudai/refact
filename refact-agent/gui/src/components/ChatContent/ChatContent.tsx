@@ -189,6 +189,7 @@ function renderMessages(
         key={key}
         message={head.content}
         toolCalls={head.tool_calls}
+        usage={head.usage}
         isLast={isLast}
       />,
     ];

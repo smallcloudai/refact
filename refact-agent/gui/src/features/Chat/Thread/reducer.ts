@@ -82,7 +82,7 @@ const getThreadMode = ({
     return maybeMode === "CONFIGURE" ? "AGENT" : maybeMode;
   }
 
-  return chatModeToLspMode(tool_use);
+  return chatModeToLspMode({ toolUse: tool_use });
 };
 
 const createInitialState = ({
@@ -113,7 +113,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setToolUse, (state, action) => {
     state.thread.tool_use = action.payload;
     state.tool_use = action.payload;
-    state.thread.mode = chatModeToLspMode(action.payload);
+    state.thread.mode = chatModeToLspMode({ toolUse: action.payload });
   });
 
   builder.addCase(setPreventSend, (state, action) => {

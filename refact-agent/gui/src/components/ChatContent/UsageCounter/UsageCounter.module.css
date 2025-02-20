@@ -1,7 +1,8 @@
 .usageCounterContainer {
-  position: absolute;
-  top: 0;
-  right: 0;
+  /* position: absolute; */
+  /* top: 0;
+  right: 0; */
+  margin-left: auto;
   display: flex;
   align-items: center;
   padding: var(--space-2) var(--space-3);

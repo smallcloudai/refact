@@ -83,12 +83,33 @@ export type LspChatMode =
   | "PROJECT_SUMMARY"
   | "THINKING_AGENT";
 
-export function chatModeToLspMode(
+export function chatModeToLspMode({
+  toolUse,
+  mode,
+  defaultMode,
+}: {
+  toolUse?: ToolUse;
+  mode?: LspChatMode;
+  defaultMode?: LspChatMode;
+}): LspChatMode {
+  if (defaultMode) {
+    if (defaultMode === "AGENT" || defaultMode === "THINKING_AGENT")
+      return "AGENT";
+    return defaultMode;
+  }
+  if (mode) {
+    return mode;
+  }
+  if (toolUse === "agent") return "AGENT";
+  if (toolUse === "quick") return "NO_TOOLS";
+  return "EXPLORE";
+}
+
+export function chatModeToLspModeForChat(
   toolUse?: ToolUse,
   mode?: LspChatMode,
 ): LspChatMode {
   if (mode) {
-    if (mode === "AGENT" || mode === "THINKING_AGENT") return "AGENT";
     return mode;
   }
   if (toolUse === "agent") return "AGENT";

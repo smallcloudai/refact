@@ -1,5 +1,5 @@
 import { Checkpoint } from "../../features/Checkpoints/types";
-import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
+import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
 
 export type ChatRole =
@@ -156,6 +156,7 @@ export interface AssistantMessage extends BaseMessage {
   content: string | null;
   tool_calls?: ToolCall[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+  usage?: Usage | null;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -535,6 +536,7 @@ type ChatResponseChoice = {
   created: number;
   model: string;
   id: string;
+  usage?: Usage;
   refact_agent_request_available: null | number;
   refact_agent_max_request_num: number;
 };

@@ -46,6 +46,7 @@ import {
 } from "../features/ToolConfirmation/confirmationSlice";
 import {
   chatModeToLspMode,
+  chatModeToLspModeForChat,
   LspChatMode,
   setChatMode,
   setIsWaitingForResponse,
@@ -173,7 +174,8 @@ export const useSendChatRequest = () => {
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
-      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
+      const mode =
+        maybeMode ?? chatModeToLspMode({ toolUse, mode: threadMode });
 
       const toolsConfirmed =
         isCurrentToolCallAPatch && isPatchAutomatic
@@ -262,9 +264,12 @@ export const useSendChatRequest = () => {
 
       // TODO: make a better way for setting / detecting thread mode.
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
-      const mode = chatModeToLspMode(
+      const mode = chatModeToLspModeForChat(
         toolUse,
         maybeMode ?? threadMode ?? maybeConfigure,
+      );
+      console.log(
+        `[DEBUG]: maybeMode: ${maybeMode}, threadMode: ${threadMode}, maybeConfigure: ${maybeConfigure}`,
       );
       dispatch(setChatMode(mode));
 
