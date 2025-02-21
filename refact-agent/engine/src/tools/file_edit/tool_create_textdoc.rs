@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::canonical_path;
+use crate::files_correction::{canonicalize_normalized_path, preprocess_path_for_normalization};
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
 
@@ -25,13 +25,14 @@ pub struct ToolCreateTextDoc;
 fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = canonical_path(&s.trim().to_string());
+            let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
             if !path.is_absolute() {
                 return Err(format!(
-                    "Error: The provided path '{:?}' is not absolute. Please provide a full path starting from the root directory.",
-                    path
+                    "Error: The provided path '{}' is not absolute. Please provide a full path starting from the root directory.",
+                    s.trim()
                 ));
             }
+            let path = canonicalize_normalized_path(path);
             if path.exists() {
                 return Err(format!(
                     "Error: Cannot create file at '{:?}' because it already exists. Please choose a different path or use update_textdoc/replace_textdoc to modify existing files.",
