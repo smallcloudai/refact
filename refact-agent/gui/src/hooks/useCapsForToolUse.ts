@@ -25,7 +25,7 @@ const PAID_AGENT_LIST = [
 ];
 
 export function useCapsForToolUse() {
-  const [wasInteracted, setWasInteracted] = useState(false);
+  const [wasAdjusted, setWasAdjusted] = useState(false);
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
   const usage = useAgentUsage();
@@ -129,31 +129,24 @@ export function useCapsForToolUse() {
     };
 
     const handleAutomaticToolUseChange = () => {
-      if (!caps.isSuccess || wasInteracted) return;
+      if (!caps.isSuccess || wasAdjusted) return;
 
       const newToolUse = determineNewToolUse();
       if (newToolUse) {
         dispatch(setToolUse(newToolUse));
+        setWasAdjusted(true);
       }
     };
 
     handleAutomaticToolUseChange();
   }, [
     dispatch,
-    wasInteracted,
+    wasAdjusted,
     caps.isSuccess,
     toolUse,
     modelsSupportingAgent,
     modelsSupportingTools,
   ]);
-
-  const handleManualToolUseChange = useCallback(
-    (newToolUse: ToolUse) => {
-      setWasInteracted(true);
-      dispatch(setToolUse(newToolUse));
-    },
-    [dispatch],
-  );
 
   return {
     usableModels,
@@ -162,6 +155,5 @@ export function useCapsForToolUse() {
     setCapModel,
     isMultimodalitySupportedForCurrentModel,
     loading: !caps.data && (caps.isFetching || caps.isLoading),
-    handleManualToolUseChange,
   };
 }
