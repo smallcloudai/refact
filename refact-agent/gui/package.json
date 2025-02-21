@@ -39,7 +39,7 @@
     "coverage": "vitest run --coverage",
     "format:check": "prettier . --check",
     "format": "prettier . --write",
-    "prepare": "husky install",
+    "_prepare": "husky install",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "types": "tsc --noEmit",
