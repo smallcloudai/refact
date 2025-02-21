@@ -35,7 +35,7 @@ export const AbortControllerProvider: React.FC<{
   const abort = (key: string, reason?: string) => {
     if (key in abortControllers) {
       const fn = abortControllers[key];
-      fn(reason);
+      fn(reason ?? "aborted");
       removeController(key);
     }
   };
