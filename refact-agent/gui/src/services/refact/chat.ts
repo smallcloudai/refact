@@ -12,7 +12,6 @@ export type LspChatMessage =
       // TODO make this a union type for user message
       content: string | null;
       finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
-      usage?: Usage | null;
       // TBD: why was index omitted ?
       // tool_calls?: Omit<ToolCall, "index">[];
       tool_calls?: ToolCall[];

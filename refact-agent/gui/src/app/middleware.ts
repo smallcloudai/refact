@@ -11,6 +11,7 @@ import {
   restoreChat,
   newIntegrationChat,
   chatResponse,
+  setThreadUsage,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -40,6 +41,7 @@ import {
   updateAgentUsage,
   updateMaxAgentUsageAmount,
 } from "../features/AgentUsage/agentUsageSlice";
+import { isChatResponseChoice } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -106,6 +108,13 @@ startListening({
     if ("refact_agent_max_request_num" in payload) {
       const maxFreeAgentUsage = getMaxFreeAgentUsage(payload);
       dispatch(updateMaxAgentUsageAmount(maxFreeAgentUsage));
+    }
+
+    if (isChatResponseChoice(payload)) {
+      const { usage } = payload;
+      if (usage) {
+        dispatch(setThreadUsage({ chatId: payload.id, usage }));
+      }
     }
   },
 });

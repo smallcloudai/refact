@@ -4,6 +4,7 @@ import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 import { ScrollArea } from "../../ScrollArea";
 import { Usage } from "../../../services/refact";
 import styles from "./UsageCounter.module.css";
+import { calculateInputTokens } from "./UsageCounter.utils";
 
 type UsageCounterProps = {
   usage: Usage;
@@ -17,19 +18,25 @@ function formatNumber(num: number): string {
       : num.toString();
 }
 
-const calculateTokens = (usage: Usage, keys: (keyof Usage)[]): number =>
-  keys.reduce((acc, key) => {
-    const value = usage[key];
-    return acc + (typeof value === "number" ? value : 0);
-  }, 0);
+const TokenDisplay: React.FC<{ label: string; value: number }> = ({
+  label,
+  value,
+}) => (
+  <Flex align="center" justify="between" width="100%">
+    <Text size="1" weight="bold">
+      {label}
+    </Text>
+    <Text size="1">{value}</Text>
+  </Flex>
+);
 
 export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
-  const inputTokens = calculateTokens(usage, [
+  const inputTokens = calculateInputTokens(usage, [
     "prompt_tokens",
     "cache_creation_input_tokens",
     "cache_read_input_tokens",
   ]);
-  const outputTokens = calculateTokens(usage, ["completion_tokens"]);
+  const outputTokens = calculateInputTokens(usage, ["completion_tokens"]);
 
   return (
     <HoverCard.Root>
@@ -59,43 +66,28 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
             <Text size="2" mb="2">
               Tokens spent per message:
             </Text>
-            <Flex align="center" justify="between" width="100%">
-              <Text size="1" weight="bold">
-                Input tokens (in total):{" "}
-              </Text>
-              <Text size="1">{inputTokens}</Text>
-            </Flex>
+            <TokenDisplay
+              label="Input tokens (in total):"
+              value={inputTokens}
+            />
             {usage.cache_read_input_tokens && (
-              <Flex align="center" justify="between" width="100%">
-                <Text size="1" weight="bold">
-                  Cache read input tokens:{" "}
-                </Text>
-                <Text size="1">{usage.cache_read_input_tokens}</Text>
-              </Flex>
+              <TokenDisplay
+                label="Cache read input tokens:"
+                value={usage.cache_read_input_tokens}
+              />
             )}
             {usage.cache_creation_input_tokens && (
-              <Flex align="center" justify="between" width="100%">
-                <Text size="1" weight="bold">
-                  Cache creation input tokens:{" "}
-                </Text>
-                <Text size="1">{usage.cache_creation_input_tokens}</Text>
-              </Flex>
+              <TokenDisplay
+                label="Cache creation input tokens:"
+                value={usage.cache_creation_input_tokens}
+              />
             )}
-            <Flex align="center" justify="between" width="100%">
-              <Text size="1" weight="bold">
-                Completion tokens:{" "}
-              </Text>
-              <Text size="1">{outputTokens}</Text>
-            </Flex>
+            <TokenDisplay label="Completion tokens:" value={outputTokens} />
             {usage.completion_tokens_details && (
-              <Flex align="center" justify="between" width="100%">
-                <Text size="1" weight="bold">
-                  Reasoning tokens:{" "}
-                </Text>
-                <Text size="1">
-                  {usage.completion_tokens_details.reasoning_tokens}
-                </Text>
-              </Flex>
+              <TokenDisplay
+                label="Reasoning tokens:"
+                value={usage.completion_tokens_details.reasoning_tokens}
+              />
             )}
           </Flex>
         </HoverCard.Content>

@@ -156,7 +156,6 @@ export interface AssistantMessage extends BaseMessage {
   content: string | null;
   tool_calls?: ToolCall[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
-  usage?: Usage | null;
 }
 
 export interface ToolCallMessage extends AssistantMessage {

@@ -1,3 +1,4 @@
+import { Usage } from "../../../services/refact";
 import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
@@ -23,6 +24,7 @@ export type ChatThread = {
   project_name?: string;
   last_user_message_id?: string;
   new_chat_suggested: SuggestedChat;
+  usage?: Usage;
 };
 
 export type SuggestedChat = {
@@ -50,6 +52,7 @@ export type Chat = {
 export type PayloadWithId = { id: string };
 export type PayloadWithChatAndMessageId = { chatId: string; messageId: string };
 export type PayloadWithChatAndBoolean = { chatId: string; value: boolean };
+export type PayloadWithChatAndUsage = { chatId: string; usage: Usage };
 export type PayloadWithIdAndTitle = {
   title: string;
   isTitleGenerated: boolean;

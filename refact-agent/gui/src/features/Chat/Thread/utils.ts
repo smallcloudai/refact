@@ -210,11 +210,9 @@ export function formatChatResponse(
     return messages;
   }
 
-  const usage = response.usage;
-
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
-      const msg = { role: cur.delta.role, content: cur.delta.content, usage };
+      const msg = { role: cur.delta.role, content: cur.delta.content };
       return acc.concat([msg]);
     }
 
@@ -230,7 +228,6 @@ export function formatChatResponse(
           content: cur.delta.content,
           tool_calls: cur.delta.tool_calls,
           finish_reason: cur.finish_reason,
-          usage: response.usage,
         };
         return acc.concat([msg]);
       }
@@ -254,7 +251,6 @@ export function formatChatResponse(
             content: cur.delta.content ?? "",
             tool_calls: cur.delta.tool_calls,
             finish_reason: cur.finish_reason,
-            usage: response.usage,
           },
         ]);
       }
@@ -273,7 +269,6 @@ export function formatChatResponse(
           content: message,
           tool_calls: calls,
           finish_reason: cur.finish_reason,
-          usage: response.usage,
         },
       ]);
     }
@@ -292,7 +287,6 @@ export function formatChatResponse(
           content: currentMessage + cur.delta.content,
           tool_calls: toolCalls,
           finish_reason: cur.finish_reason,
-          usage: response.usage ?? lastMessage.usage,
         },
       ]);
     } else if (
@@ -304,7 +298,6 @@ export function formatChatResponse(
           role: "assistant",
           content: cur.delta.content,
           finish_reason: cur.finish_reason,
-          usage: response.usage,
         },
       ]);
     } else if (cur.delta.role === "assistant") {
@@ -314,21 +307,22 @@ export function formatChatResponse(
 
     // saving usage if is assistant message and no delta role
     if (
-      (cur.delta.role === null || cur.finish_reason !== null) &&
-      isAssistantMessage(lastMessage)
+      cur.delta.role === null ||
+      cur.finish_reason !== null // &&
+      // isAssistantMessage(lastMessage)
     ) {
-      const last = acc.slice(0, -1);
-      const currentMessage = lastMessage.content ?? "";
-      const toolCalls = lastMessage.tool_calls;
-      return last.concat([
-        {
-          role: "assistant",
-          content: currentMessage,
-          tool_calls: toolCalls,
-          finish_reason: cur.finish_reason,
-          usage: response.usage ?? lastMessage.usage,
-        },
-      ]);
+      return acc;
+      // const last = acc.slice(0, -1);
+      // const currentMessage = lastMessage.content ?? "";
+      // const toolCalls = lastMessage.tool_calls;
+      // return last.concat([
+      //   {
+      //     role: "assistant",
+      //     content: currentMessage,
+      //     tool_calls: toolCalls,
+      //     finish_reason: cur.finish_reason,
+      //   },
+      // ]);
     }
 
     // console.log("Fall though");
@@ -477,7 +471,6 @@ export function formatMessagesForChat(
       const assistantMessage = message as AssistantMessage;
       return acc.concat({
         ...assistantMessage,
-        usage: assistantMessage.usage,
       });
     }
 

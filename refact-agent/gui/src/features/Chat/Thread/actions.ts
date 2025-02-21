@@ -8,6 +8,7 @@ import {
   LspChatMode,
   PayloadWithChatAndMessageId,
   PayloadWithChatAndBoolean,
+  PayloadWithChatAndUsage,
 } from "./types";
 import {
   isAssistantDelta,
@@ -60,6 +61,10 @@ export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
 
 export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
+);
+
+export const setThreadUsage = createAction<PayloadWithChatAndUsage>(
+  "chatThread/setThreadUsage",
 );
 
 export const setIsNewChatSuggestionRejected =

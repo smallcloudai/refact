@@ -35,6 +35,7 @@ import {
   fixBrokenToolMessages,
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
+  setThreadUsage,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -42,6 +43,9 @@ import {
   isToolCallMessage,
   validateToolCall,
 } from "../../../services/refact";
+import { calculateInputTokens } from "../../../components/ChatContent/UsageCounter/UsageCounter.utils";
+
+const RECOMMENDED_MAXIMUM_PROMPT_TOKENS_AMOUNT = 30000;
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -216,6 +220,31 @@ export const chatReducer = createReducer(initialState, (builder) => {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
     };
+  });
+
+  builder.addCase(setThreadUsage, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+
+    const { usage } = action.payload;
+    state.thread.usage = usage;
+
+    const inputTokensAmount = calculateInputTokens(usage, [
+      "prompt_tokens",
+      "cache_creation_input_tokens",
+      "cache_read_input_tokens",
+    ]);
+
+    if (inputTokensAmount >= RECOMMENDED_MAXIMUM_PROMPT_TOKENS_AMOUNT) {
+      const { wasSuggested, wasRejectedByUser } =
+        state.thread.new_chat_suggested;
+
+      state.thread.new_chat_suggested = {
+        wasSuggested: wasSuggested || !wasSuggested,
+        wasRejectedByUser: wasRejectedByUser
+          ? !wasRejectedByUser
+          : wasRejectedByUser,
+      };
+    }
   });
 
   builder.addCase(setEnabledCheckpoints, (state, action) => {
