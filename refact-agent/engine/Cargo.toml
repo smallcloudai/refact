@@ -23,7 +23,6 @@ axum = { version = "0.6.20", features = ["default", "http2"] }
 async-process = "2.0.1"
 async-stream = "0.3.5"
 async-trait = "0.1.73"
-auto_generate_cdp = "=0.4.4" # Temporary fix for headless_chrome dependency, we don't use it directly 
 backtrace = "0.3.71"
 base64 = "0.22.1"
 chrono = { version = "0.4.31", features = ["serde"] }
