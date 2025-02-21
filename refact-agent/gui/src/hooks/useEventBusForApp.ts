@@ -6,13 +6,14 @@ import { updateConfig } from "../features/Config/configSlice";
 import { setFileInfo } from "../features/Chat/activeFile";
 import { setSelectedSnippet } from "../features/Chat/selectedSnippet";
 import { setCurrentProjectInfo } from "../features/Chat/currentProject";
-import { newChatAction } from "../features/Chat/Thread/actions";
+import { newChatAction, upsertToolCall } from "../features/Chat/Thread/actions";
 import {
   isPageInHistory,
   push,
   selectPages,
 } from "../features/Pages/pagesSlice";
 import { ideToolCallResponse } from "./useEventBusForIDE";
+import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 export function useEventBusForApp() {
   const config = useConfig();
@@ -45,9 +46,11 @@ export function useEventBusForApp() {
       }
 
       if (ideToolCallResponse.match(event.data)) {
-        console.log("IDE TOOL EDIT RESPONSE");
-        console.log(event.data);
-        // TODO: handle the edits
+        const actions = [
+          upsertToolCall(event.data.payload),
+          upsertToolCallIntoHistory(event.data.payload),
+        ];
+        actions.forEach((action) => dispatch(action));
       }
 
       // TODO: ideToolEditResponse.
