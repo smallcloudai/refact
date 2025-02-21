@@ -32,7 +32,8 @@ export const PromptSelect: React.FC = () => {
   );
 
   const caps = useGetCapsQuery();
-  const default_system_prompt = caps.data?.code_chat_default_system_prompt ?? "default";
+  const default_system_prompt =
+    caps.data?.code_chat_default_system_prompt ?? "default";
   const val = useMemo(
     () => Object.keys(selectedSystemPrompt)[0] ?? default_system_prompt,
     [selectedSystemPrompt],
