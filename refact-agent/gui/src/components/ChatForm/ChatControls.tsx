@@ -35,7 +35,6 @@ import {
   setAutomaticPatch,
   setChatMode,
   setEnabledCheckpoints,
-  setToolUse,
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { getChatById } from "../../features/History/historySlice";
@@ -356,14 +355,14 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
 }) => {
   const refs = useTourRefs();
-  const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const messages = useAppSelector(selectMessages);
   const toolUse = useAppSelector(selectToolUse);
+  const { handleManualToolUseChange } = useCapsForToolUse();
   const onSetToolUse = useCallback(
-    (value: ToolUse) => dispatch(setToolUse(value)),
-    [dispatch],
+    (value: ToolUse) => handleManualToolUseChange(value),
+    [handleManualToolUseChange],
   );
 
   const showControls = useMemo(

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { selectThreadToolUse } from "../features/Chat/Thread/selectors";
 import {
   useAppSelector,
@@ -12,6 +12,7 @@ import {
   getSelectedChatModel,
   setChatModel,
   setToolUse,
+  ToolUse,
 } from "../features/Chat";
 
 // TODO: hard coded for now.
@@ -24,6 +25,7 @@ const PAID_AGENT_LIST = [
 ];
 
 export function useCapsForToolUse() {
+  const [wasInteracted, setWasInteracted] = useState(false);
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
   const usage = useAgentUsage();
@@ -116,20 +118,42 @@ export function useCapsForToolUse() {
   }, [currentModel, setCapModel, usableModels, usableModelsForPlan]);
 
   useEffect(() => {
-    if (caps.isSuccess) {
+    const determineNewToolUse = (): ToolUse | null => {
       if (toolUse === "agent" && modelsSupportingAgent.length === 0) {
-        dispatch(setToolUse("explore"));
-      } else if (toolUse === "explore" && modelsSupportingTools.length === 0) {
-        dispatch(setToolUse("quick"));
+        return "explore";
       }
-    }
+      if (toolUse === "explore" && modelsSupportingTools.length === 0) {
+        return "quick";
+      }
+      return null;
+    };
+
+    const handleAutomaticToolUseChange = () => {
+      if (!caps.isSuccess || wasInteracted) return;
+
+      const newToolUse = determineNewToolUse();
+      if (newToolUse) {
+        dispatch(setToolUse(newToolUse));
+      }
+    };
+
+    handleAutomaticToolUseChange();
   }, [
     dispatch,
+    wasInteracted,
     caps.isSuccess,
     toolUse,
     modelsSupportingAgent,
     modelsSupportingTools,
   ]);
+
+  const handleManualToolUseChange = useCallback(
+    (newToolUse: ToolUse) => {
+      setWasInteracted(true);
+      dispatch(setToolUse(newToolUse));
+    },
+    [dispatch],
+  );
 
   return {
     usableModels,
@@ -138,5 +162,6 @@ export function useCapsForToolUse() {
     setCapModel,
     isMultimodalitySupportedForCurrentModel,
     loading: !caps.data && (caps.isFetching || caps.isLoading),
+    handleManualToolUseChange,
   };
 }
