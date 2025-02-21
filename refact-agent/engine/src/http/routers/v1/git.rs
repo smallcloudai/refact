@@ -92,7 +92,7 @@ pub async fn handle_v1_git_commit(
             Err(e) => { error_log.push(git_error(format!("Failed to open repo: {}", e))); continue; }
         };
 
-        if let Err(stage_err) = stage_changes(&repository, &commit.file_changes) {
+        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes) {
             error_log.push(git_error(stage_err));
             continue;
         }
