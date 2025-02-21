@@ -28,3 +28,4 @@ export * from "./useAgentUsage";
 export * from "./useOpenUrl";
 export * from "./useCapsForToolUse";
 export * from "./useCanUseTools";
+export * from "./useCopyToClipboard";

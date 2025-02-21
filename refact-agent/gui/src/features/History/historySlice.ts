@@ -143,6 +143,18 @@ export const historySlice = createSlice({
     clearHistory: () => {
       return {};
     },
+
+    // upsertToolCallIntoHistory: (
+    //   state,
+    //   action: PayloadAction<Parameters<typeof ideToolCallResponse>[0]>,
+    // ) => {
+    //   if (!(action.payload.chatId in state)) return;
+    //   maybeAppendToolCallResultFromIdeToMessages(
+    //     state[action.payload.chatId].messages,
+    //     action.payload.toolCallId,
+    //     action.payload.accepted,
+    //   );
+    // },
   },
   selectors: {
     getChatById: (state, id: string): ChatHistoryItem | null => {

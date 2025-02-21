@@ -144,6 +144,10 @@ export const fixBrokenToolMessages = createAction<PayloadWithId>(
   "chatThread/fixBrokenToolMessages",
 );
 
+// export const upsertToolCall = createAction<
+//   Parameters<typeof ideToolCallResponse>[0]
+// >("chatThread/upsertToolCall");
+
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
