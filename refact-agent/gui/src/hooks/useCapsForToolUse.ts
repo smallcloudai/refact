@@ -3,7 +3,6 @@ import { selectThreadToolUse } from "../features/Chat/Thread/selectors";
 import {
   useAppSelector,
   useGetCapsQuery,
-  useGetUser,
   useAgentUsage,
   useAppDispatch,
 } from ".";
@@ -23,7 +22,6 @@ export function useCapsForToolUse() {
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
   const usage = useAgentUsage();
-  const user = useGetUser();
   const dispatch = useAppDispatch();
 
   const defaultCap = caps.data?.code_chat_default_model ?? "";
