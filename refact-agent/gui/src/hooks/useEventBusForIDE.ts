@@ -7,8 +7,17 @@ import {
   HostSettings,
   SetupHost,
 } from "../events/setup";
+import { pathApi } from "../services/refact/path";
 
-export const ideDiffPasteBackAction = createAction<string>("ide/diffPasteBack");
+import { telemetryApi } from "../services/refact/telemetry";
+import { ToolEditResult } from "../services/refact";
+import { TextDocToolCall } from "../components/Tools/types";
+
+export const ideDiffPasteBackAction = createAction<{
+  content: string;
+  chatId?: string;
+  toolCallId?: string;
+}>("ide/diffPasteBack");
 
 export const ideOpenSettingsAction = createAction("ide/openSettings");
 
@@ -38,9 +47,17 @@ export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
 export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
-import { pathApi } from "../services/refact/path";
+export const ideToolCall = createAction<{
+  toolCall: TextDocToolCall;
+  chatId: string;
+  edit: ToolEditResult;
+}>("ide/toolEdit");
 
-import { telemetryApi } from "../services/refact/telemetry";
+export const ideToolCallResponse = createAction<{
+  toolCallId: string;
+  chatId: string;
+  accepted: boolean | "indeterminate";
+}>("ide/toolEditResponse");
 
 export const useEventsBusForIDE = () => {
   const [sendTelemetryEvent] =
@@ -79,8 +96,8 @@ export const useEventsBusForIDE = () => {
   );
 
   const diffPasteBack = useCallback(
-    (content: string) => {
-      const action = ideDiffPasteBackAction(content);
+    (content: string, chatId?: string, toolCallId?: string) => {
+      const action = ideDiffPasteBackAction({ content, chatId, toolCallId });
       postMessage(action);
       void sendTelemetryEvent({
         scope: `replaceSelection`,
@@ -212,6 +229,14 @@ export const useEventsBusForIDE = () => {
   const openBringYourOwnKeyFile = () =>
     openFileFromPathQuery(getBringYourOwnKeyPath);
 
+  const sendToolCallToIde = useCallback(
+    (toolCall: TextDocToolCall, edit: ToolEditResult, chatId: string) => {
+      const action = ideToolCall({ toolCall, edit, chatId });
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   return {
     diffPasteBack,
     openSettings,
@@ -231,5 +256,6 @@ export const useEventsBusForIDE = () => {
     escapeKeyPressed,
     setIsChatStreaming,
     setIsChatReady,
+    sendToolCallToIde,
   };
 };
