@@ -12,6 +12,7 @@ import {
   push,
   selectPages,
 } from "../features/Pages/pagesSlice";
+import { ideToolCallResponse } from "./useEventBusForIDE";
 
 export function useEventBusForApp() {
   const config = useConfig();
@@ -42,6 +43,14 @@ export function useEventBusForApp() {
       if (setCurrentProjectInfo.match(event.data)) {
         dispatch(setCurrentProjectInfo(event.data.payload));
       }
+
+      if (ideToolCallResponse.match(event.data)) {
+        console.log("IDE TOOL EDIT RESPONSE");
+        console.log(event.data);
+        // TODO: handle the edits
+      }
+
+      // TODO: ideToolEditResponse.
 
       // TODO: active project
       // vscode workspace can be found with vscode.workspace.name
