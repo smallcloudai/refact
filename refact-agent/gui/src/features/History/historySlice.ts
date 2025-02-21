@@ -9,7 +9,6 @@ import {
   chatGenerateTitleThunk,
   ChatThread,
   doneStreaming,
-  maybeAppendToolCallResultFromIdeToMessages,
   removeChatFromCache,
   restoreChat,
   setChatMode,
@@ -21,7 +20,6 @@ import {
   isUserMessage,
 } from "../../services/refact";
 import { AppDispatch, RootState } from "../../app/store";
-import { ideToolCallResponse } from "../../hooks/useEventBusForIDE";
 
 export type ChatHistoryItem = Omit<ChatThread, "new_chat_suggested"> & {
   createdAt: string;
@@ -146,17 +144,17 @@ export const historySlice = createSlice({
       return {};
     },
 
-    upsertToolCallIntoHistory: (
-      state,
-      action: PayloadAction<Parameters<typeof ideToolCallResponse>[0]>,
-    ) => {
-      if (!(action.payload.chatId in state)) return;
-      maybeAppendToolCallResultFromIdeToMessages(
-        state[action.payload.chatId].messages,
-        action.payload.toolCallId,
-        action.payload.accepted,
-      );
-    },
+    // upsertToolCallIntoHistory: (
+    //   state,
+    //   action: PayloadAction<Parameters<typeof ideToolCallResponse>[0]>,
+    // ) => {
+    //   if (!(action.payload.chatId in state)) return;
+    //   maybeAppendToolCallResultFromIdeToMessages(
+    //     state[action.payload.chatId].messages,
+    //     action.payload.toolCallId,
+    //     action.payload.accepted,
+    //   );
+    // },
   },
   selectors: {
     getChatById: (state, id: string): ChatHistoryItem | null => {
@@ -179,7 +177,6 @@ export const {
   setTitleGenerationCompletionForChat,
   updateChatTitleById,
   clearHistory,
-  upsertToolCallIntoHistory,
 } = historySlice.actions;
 export const { getChatById, getHistory } = historySlice.selectors;
 
