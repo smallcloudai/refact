@@ -59,9 +59,8 @@ export const confirmationSlice = createSlice({
       );
       if (pauseReasons.length === 0) {
         state.status.wasInteracted = true; // work around for auto send.
-      } else {
-        state.pauseReasons = pauseReasons;
       }
+      state.pauseReasons = pauseReasons;
     },
   },
   selectors: {
