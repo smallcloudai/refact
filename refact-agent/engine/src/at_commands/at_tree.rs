@@ -32,6 +32,12 @@ impl AtTree {
 #[derive(Debug, Clone)]
 pub struct PathsHolderNodeArc(Arc<RwLock<PathsHolderNode>>);
 
+impl PathsHolderNodeArc {
+    pub fn read(&self) -> std::sync::RwLockReadGuard<'_, PathsHolderNode> {
+        self.0.read().unwrap()
+    }
+}
+
 impl PartialEq for PathsHolderNodeArc {
     fn eq(&self, other: &Self) -> bool {
         self.0.read().unwrap().path == other.0.read().unwrap().path
@@ -49,6 +55,14 @@ pub struct PathsHolderNode {
 impl PathsHolderNode {
     pub fn file_name(&self) -> String {
         self.path.file_name().unwrap_or_default().to_string_lossy().to_string()
+    }
+
+    pub fn child_paths(&self) -> &Vec<PathsHolderNodeArc> {
+        &self.child_paths
+    }
+
+    pub fn get_path(&self) -> &PathBuf {
+        &self.path
     }
 }
 
