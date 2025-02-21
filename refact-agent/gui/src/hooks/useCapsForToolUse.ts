@@ -3,7 +3,6 @@ import { selectThreadToolUse } from "../features/Chat/Thread/selectors";
 import {
   useAppSelector,
   useGetCapsQuery,
-  useGetUser,
   useAgentUsage,
   useAppDispatch,
 } from ".";
@@ -23,7 +22,6 @@ export function useCapsForToolUse() {
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
   const usage = useAgentUsage();
-  const user = useGetUser();
   const dispatch = useAppDispatch();
 
   const defaultCap = caps.data?.code_chat_default_model ?? "";
@@ -65,7 +63,6 @@ export function useCapsForToolUse() {
   }, [caps.data?.code_chat_models, toolUse]);
 
   const usableModelsForPlan = useMemo(() => {
-    if (user.data?.inference !== "FREE") return usableModels;
     if (!usage.aboveUsageLimit && toolUse === "agent") return usableModels;
     return usableModels.map((model) => {
       if (!PAID_AGENT_LIST.includes(model)) return model;
@@ -77,7 +74,7 @@ export function useCapsForToolUse() {
           toolUse !== "agent" ? `${model} (Available in agent)` : undefined,
       };
     });
-  }, [user.data?.inference, usableModels, usage.aboveUsageLimit, toolUse]);
+  }, [usableModels, usage.aboveUsageLimit, toolUse]);
 
   useEffect(() => {
     if (
