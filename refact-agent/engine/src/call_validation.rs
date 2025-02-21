@@ -245,6 +245,14 @@ impl ChatMode {
                 ChatMode::THINKING_AGENT => true,
         }
     }
+
+    pub fn is_agentic(self) -> bool {
+        match self {
+            ChatMode::AGENT | ChatMode::THINKING_AGENT => true,
+            ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE | 
+                ChatMode::PROJECT_SUMMARY => false,
+        }
+    }
 }
 
 impl Default for ChatMode {
