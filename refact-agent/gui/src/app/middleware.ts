@@ -11,6 +11,8 @@ import {
   restoreChat,
   newIntegrationChat,
   chatResponse,
+  setIsWaitingForResponse,
+  upsertToolCall,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -31,7 +33,11 @@ import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
-import { resetConfirmationInteractedState } from "../features/ToolConfirmation/confirmationSlice";
+import {
+  clearPauseReasonsAndHandleToolsStatus,
+  resetConfirmationInteractedState,
+  updateConfirmationAfterIdeToolUse,
+} from "../features/ToolConfirmation/confirmationSlice";
 import {
   getAgentUsageCounter,
   getMaxFreeAgentUsage,
@@ -40,6 +46,8 @@ import {
   updateAgentUsage,
   updateMaxAgentUsageAmount,
 } from "../features/AgentUsage/agentUsageSlice";
+import { ideToolCallResponse } from "../hooks/useEventBusForIDE";
+import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -493,6 +501,32 @@ startListening({
         error_message: action.error.message ?? JSON.stringify(action.error),
       });
       void listenerApi.dispatch(thunk);
+    }
+  },
+});
+
+// Tool Call results from ide.
+startListening({
+  actionCreator: ideToolCallResponse,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    listenerApi.dispatch(upsertToolCall(action.payload));
+    listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
+    listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
+
+    const pauseReasons = state.confirmation.pauseReasons.filter(
+      (reason) => reason.tool_call_id !== action.payload.toolCallId,
+    );
+
+    if (pauseReasons.length === 0) {
+      // TODO: it seems odd tool confirmation opens with no reasons.
+      listenerApi.dispatch(
+        clearPauseReasonsAndHandleToolsStatus({
+          wasInteracted: true, // bit of a work around to enable auto send again.
+          confirmationStatus: false,
+        }),
+      );
+      listenerApi.dispatch(setIsWaitingForResponse(false));
     }
   },
 });
