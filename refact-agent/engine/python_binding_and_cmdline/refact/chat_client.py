@@ -296,6 +296,8 @@ async def ask_using_http(
                     j = json.loads(line_str)
                     # print(">>>", line_str)
                     if "choices" in j and len(j["choices"]) > 0:
+                        if "usage" in j and j.get("usage") is not None:
+                            have_usage = Usage(**j["usage"])
                         deltas_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
