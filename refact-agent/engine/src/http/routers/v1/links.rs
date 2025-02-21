@@ -109,7 +109,7 @@ pub async fn handle_v1_links(
     }
     
     // GIT Init
-    // if post.meta.chat_mode == ChatMode::AGENT && post.messages.is_empty() {
+    // if post.meta.chat_mode.is_agentic() && post.messages.is_empty() {
     //     if let Some(path) = crate::files_correction::get_active_project_path(gcx.clone()).await {
     //         let path_has_vcs = {
     //             let cx_locked = gcx.write().await;
@@ -129,7 +129,7 @@ pub async fn handle_v1_links(
     // }
 
     // GIT uncommitted
-    if post.meta.chat_mode == ChatMode::AGENT && post.messages.is_empty() {
+    if post.meta.chat_mode.is_agentic() && post.messages.is_empty() {
         let commits_info = get_commit_information_from_current_changes(gcx.clone()).await;
 
         let mut commit_texts = Vec::new();
@@ -205,7 +205,7 @@ pub async fn handle_v1_links(
     }
 
     // Failures in integrations
-    if post.meta.chat_mode == ChatMode::AGENT {
+    if post.meta.chat_mode.is_agentic() {
         for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
             links.push(Link {
                 link_action: LinkAction::Goto,
@@ -252,7 +252,7 @@ pub async fn handle_v1_links(
     
     // Tool recommendations
     /* temporary remove project summary and recomended integrations 
-    if (post.meta.chat_mode == ChatMode::AGENT) {
+    if post.meta.chat_mode.is_agentic() {
         if post.messages.is_empty() {
             let (summary_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
             if !summary_exists {
