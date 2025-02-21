@@ -79,6 +79,7 @@ export type CapsResponse = {
   caps_version: number;
   cloud_name: string;
   code_chat_default_model: string;
+  code_chat_default_system_prompt: string;
   code_chat_models: Record<string, CodeChatModel>;
   code_completion_default_model: string;
   code_completion_models: Record<string, CodeCompletionModel>;

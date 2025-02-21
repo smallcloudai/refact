@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
+use indexmap::IndexMap;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
@@ -25,7 +26,7 @@ pub struct ModelRecord {
     #[serde(default)]
     pub n_ctx: usize,
     #[serde(default)]
-    pub supports_scratchpads: HashMap<String, serde_json::Value>,
+    pub supports_scratchpads: HashMap<String, Value>,
     #[serde(default)]
     pub default_scratchpad: String,
     #[serde(default)]
@@ -42,8 +43,8 @@ pub struct ModelRecord {
 
 #[derive(Debug, Deserialize)]
 pub struct ModelsOnly {
-    pub code_completion_models: HashMap<String, ModelRecord>,
-    pub code_chat_models: HashMap<String, ModelRecord>,
+    pub code_completion_models: IndexMap<String, ModelRecord>,
+    pub code_chat_models: IndexMap<String, ModelRecord>,
     pub tokenizer_rewrite_path: HashMap<String, String>,
 }
 
@@ -110,7 +111,7 @@ pub struct CodeAssistantCaps {
     #[serde(default = "default_telemetry_basic_retrieve_my_own")]
     pub telemetry_basic_retrieve_my_own: String,
     #[serde(default)]
-    pub code_completion_models: HashMap<String, ModelRecord>,
+    pub code_completion_models: IndexMap<String, ModelRecord>,
     #[serde(default)]
     #[serde(alias = "completion_model")]
     pub code_completion_default_model: String,
@@ -121,7 +122,7 @@ pub struct CodeAssistantCaps {
     #[serde(alias = "completion_n_ctx")]
     pub code_completion_n_ctx: usize,
     #[serde(default)]
-    pub code_chat_models: HashMap<String, ModelRecord>,
+    pub code_chat_models: IndexMap<String, ModelRecord>,
     #[serde(default)]
     #[serde(alias = "chat_model")]
     pub code_chat_default_model: String,
@@ -147,8 +148,8 @@ pub struct CodeAssistantCaps {
     pub running_models: Vec<String>,  // check there if a model is available or not, not in other places
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
-    // #[serde(default)]
-    // pub code_chat_default_system_prompt: String,
+    #[serde(default)]
+    pub code_chat_default_system_prompt: String,
 
     #[serde(default)]
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
@@ -463,7 +464,7 @@ fn _inherit_r1_from_r0(
 }
 
 pub fn which_model_to_use<'a>(
-    models: &'a HashMap<String, ModelRecord>,
+    models: &'a IndexMap<String, ModelRecord>,
     user_wants_model: &str,
     default_model: &str,
 ) -> Result<(String, &'a ModelRecord), String> {
@@ -473,15 +474,15 @@ pub fn which_model_to_use<'a>(
     }
     let no_finetune = strip_model_from_finetune(&take_this_one.to_string());
     if let Some(model_rec) = models.get(&take_this_one.to_string()) {
-        return Ok((take_this_one.to_string(), model_rec));
+        Ok((take_this_one.to_string(), model_rec))
     } else if let Some(model_rec) = models.get(&no_finetune) {
-        return Ok((take_this_one.to_string(), model_rec));
+        Ok((take_this_one.to_string(), model_rec))
     } else {
-        return Err(format!(
+        Err(format!(
             "Model '{}' not found. Server has these models: {:?}",
             take_this_one,
             models.keys()
-        ));
+        ))
     }
 }
 
