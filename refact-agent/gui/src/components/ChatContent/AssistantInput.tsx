@@ -21,6 +21,7 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
 }) => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
+
   const handleCopy = useCallback(
     (text: string) => {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

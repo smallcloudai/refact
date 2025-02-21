@@ -173,7 +173,8 @@ export const useSendChatRequest = () => {
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
-      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
+      const mode =
+        maybeMode ?? chatModeToLspMode({ toolUse, mode: threadMode });
 
       const toolsConfirmed =
         isCurrentToolCallAPatch && isPatchAutomatic
@@ -262,10 +263,10 @@ export const useSendChatRequest = () => {
 
       // TODO: make a better way for setting / detecting thread mode.
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
-      const mode = chatModeToLspMode(
+      const mode = chatModeToLspMode({
         toolUse,
-        maybeMode ?? threadMode ?? maybeConfigure,
-      );
+        mode: maybeMode ?? threadMode ?? maybeConfigure,
+      });
       dispatch(setChatMode(mode));
 
       void sendMessages(messages, mode);
