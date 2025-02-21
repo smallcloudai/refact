@@ -46,7 +46,6 @@ import {
 } from "../features/ToolConfirmation/confirmationSlice";
 import {
   chatModeToLspMode,
-  chatModeToLspModeForChat,
   LspChatMode,
   setChatMode,
   setIsWaitingForResponse,
@@ -264,10 +263,10 @@ export const useSendChatRequest = () => {
 
       // TODO: make a better way for setting / detecting thread mode.
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
-      const mode = chatModeToLspModeForChat(
+      const mode = chatModeToLspMode({
         toolUse,
-        maybeMode ?? threadMode ?? maybeConfigure,
-      );
+        mode: maybeMode ?? threadMode ?? maybeConfigure,
+      });
       dispatch(setChatMode(mode));
 
       void sendMessages(messages, mode);

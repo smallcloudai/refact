@@ -107,15 +107,3 @@ export function chatModeToLspMode({
   if (toolUse === "quick") return "NO_TOOLS";
   return "EXPLORE";
 }
-
-export function chatModeToLspModeForChat(
-  toolUse?: ToolUse,
-  mode?: LspChatMode,
-): LspChatMode {
-  if (mode) {
-    return mode;
-  }
-  if (toolUse === "agent") return "AGENT";
-  if (toolUse === "quick") return "NO_TOOLS";
-  return "EXPLORE";
-}
