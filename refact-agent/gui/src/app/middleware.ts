@@ -34,10 +34,6 @@ import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
 import { resetConfirmationInteractedState } from "../features/ToolConfirmation/confirmationSlice";
 import {
-  getAgentUsageCounter,
-  getMaxFreeAgentUsage,
-} from "../features/Chat/Thread/utils";
-import {
   updateAgentUsage,
   updateMaxAgentUsageAmount,
 } from "../features/AgentUsage/agentUsageSlice";
