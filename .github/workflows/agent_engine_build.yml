@@ -90,7 +90,6 @@ jobs:
           rustup update --no-self-update stable
           rustup target add ${{ matrix.target }}
           rustup component add rust-src
-          cargo update --package auto_generate_cdp --precise 0.4.4
       
       - name: setup cross-rs
         if: matrix.cross
