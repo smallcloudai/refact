@@ -1,6 +1,6 @@
 {
   "name": "refact-chat-js",
-  "version": "2.0.8-alpha.2",
+  "version": "2.0.8-alpha.13",
   "type": "module",
   "license": "BSD-3-Clause",
   "files": [
@@ -39,7 +39,6 @@
     "coverage": "vitest run --coverage",
     "format:check": "prettier . --check",
     "format": "prettier . --write",
-    "prepare": "husky install",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "types": "tsc --noEmit",
