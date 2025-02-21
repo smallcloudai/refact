@@ -134,8 +134,8 @@ export function useCapsForToolUse() {
       const newToolUse = determineNewToolUse();
       if (newToolUse) {
         dispatch(setToolUse(newToolUse));
-        setWasAdjusted(true);
       }
+      setWasAdjusted(true);
     };
 
     handleAutomaticToolUseChange();
