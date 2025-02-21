@@ -1,6 +1,6 @@
-import { Usage } from "../../../services/refact";
+import { Usage } from "../services/refact";
 
-export const calculateInputTokens = (
+export const calculateUsageInputTokens = (
   usage: Usage,
   keys: (keyof Usage)[],
 ): number =>

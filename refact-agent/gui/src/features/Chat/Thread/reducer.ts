@@ -43,7 +43,7 @@ import {
   isToolCallMessage,
   validateToolCall,
 } from "../../../services/refact";
-import { calculateInputTokens } from "../../../components/ChatContent/UsageCounter/UsageCounter.utils";
+import { calculateUsageInputTokens } from "../../../utils/calculateUsageInputTokens";
 
 const RECOMMENDED_MAXIMUM_PROMPT_TOKENS_AMOUNT = 30000;
 
@@ -228,7 +228,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const { usage } = action.payload;
     state.thread.usage = usage;
 
-    const inputTokensAmount = calculateInputTokens(usage, [
+    const inputTokensAmount = calculateUsageInputTokens(usage, [
       "prompt_tokens",
       "cache_creation_input_tokens",
       "cache_read_input_tokens",

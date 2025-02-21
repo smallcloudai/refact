@@ -1,10 +1,12 @@
 import React from "react";
 import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
+
 import { ScrollArea } from "../../ScrollArea";
-import { Usage } from "../../../services/refact";
+import { calculateUsageInputTokens } from "../../../utils/calculateUsageInputTokens";
+import type { Usage } from "../../../services/refact";
+
 import styles from "./UsageCounter.module.css";
-import { calculateInputTokens } from "./UsageCounter.utils";
 
 type UsageCounterProps = {
   usage: Usage;
@@ -31,12 +33,12 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
 );
 
 export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
-  const inputTokens = calculateInputTokens(usage, [
+  const inputTokens = calculateUsageInputTokens(usage, [
     "prompt_tokens",
     "cache_creation_input_tokens",
     "cache_read_input_tokens",
   ]);
-  const outputTokens = calculateInputTokens(usage, ["completion_tokens"]);
+  const outputTokens = calculateUsageInputTokens(usage, ["completion_tokens"]);
 
   return (
     <HoverCard.Root>
