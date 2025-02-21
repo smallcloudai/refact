@@ -37,6 +37,8 @@ class ToolCallDict(BaseModel):
 class Usage(BaseModel):
     prompt_tokens: int
     completion_tokens: int
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
 
 
 class MultimodalElement(BaseModel):
