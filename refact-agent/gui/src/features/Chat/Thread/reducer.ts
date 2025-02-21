@@ -43,7 +43,6 @@ import {
   DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
   isDiffMessage,
-  isMultiModalToolContent,
   isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
