@@ -37,6 +37,8 @@ class ToolCallDict(BaseModel):
 class Usage(BaseModel):
     prompt_tokens: int
     completion_tokens: int
+    cache_creation_input_tokens: int = 0
+    cache_read_input_tokens: int = 0
 
 
 class MultimodalElement(BaseModel):
@@ -296,6 +298,8 @@ async def ask_using_http(
                     j = json.loads(line_str)
                     # print(">>>", line_str)
                     if "choices" in j and len(j["choices"]) > 0:
+                        if "usage" in j and j.get("usage") is not None:
+                            have_usage = Usage(**j["usage"])
                         deltas_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
