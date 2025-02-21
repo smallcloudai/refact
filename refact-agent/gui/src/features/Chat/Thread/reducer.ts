@@ -43,6 +43,8 @@ import {
   DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
   isDiffMessage,
+  isMultiModalToolContent,
+  isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
   ToolMessage,
@@ -376,7 +378,21 @@ export function maybeAppendToolCallResultFromIdeToMessages(
     (d) => isToolMessage(d) && d.content.tool_call_id === toolCallId,
   );
 
-  if (hasToolCall) return;
+  if (
+    hasToolCall &&
+    isToolMessage(hasToolCall) &&
+    typeof hasToolCall.content.content === "string"
+  ) {
+    hasToolCall.content.content = message;
+    return;
+  } else if (
+    hasToolCall &&
+    isToolMessage(hasToolCall) &&
+    isMultiModalToolResult(hasToolCall.content)
+  ) {
+    hasToolCall.content.content.push({ m_type: "text", m_content: message });
+    return;
+  }
 
   const assistantMessageIndex = messages.findIndex((message) => {
     if (!isAssistantMessage(message)) return false;
