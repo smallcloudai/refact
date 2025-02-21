@@ -99,19 +99,19 @@ startListening({
     // saving to store agent_usage counter from the backend, only one chunk has this field.
     const { payload } = action;
 
-    if ("refact_agent_request_available" in payload) {
-      const agentUsageCounter = getAgentUsageCounter(payload);
-
-      dispatch(updateAgentUsage(agentUsageCounter ?? null));
-    }
-
-    if ("refact_agent_max_request_num" in payload) {
-      const maxFreeAgentUsage = getMaxFreeAgentUsage(payload);
-      dispatch(updateMaxAgentUsageAmount(maxFreeAgentUsage));
-    }
-
     if (isChatResponseChoice(payload)) {
-      const { usage } = payload;
+      const {
+        usage,
+        refact_agent_max_request_num,
+        refact_agent_request_available,
+      } = payload;
+      const actions = [
+        updateAgentUsage(refact_agent_request_available),
+        updateMaxAgentUsageAmount(refact_agent_max_request_num),
+      ];
+
+      actions.forEach((action) => dispatch(action));
+
       if (usage) {
         dispatch(setThreadUsage({ chatId: payload.id, usage }));
       }
