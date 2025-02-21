@@ -8,7 +8,11 @@ import {
   useAppDispatch,
 } from ".";
 
-import { getSelectedChatModel, setChatModel } from "../features/Chat";
+import {
+  getSelectedChatModel,
+  setChatModel,
+  setToolUse,
+} from "../features/Chat";
 
 // TODO: hard coded for now.
 const PAID_AGENT_LIST = [
@@ -47,6 +51,20 @@ export function useCapsForToolUse() {
     if (!item.supports_multimodality) return false;
     return true;
   }, [caps.data?.code_chat_models, currentModel]);
+
+  const modelsSupportingTools = useMemo(() => {
+    const models = caps.data?.code_chat_models ?? {};
+    return Object.entries(models)
+      .filter(([_, value]) => value.supports_tools)
+      .map(([key]) => key);
+  }, [caps.data?.code_chat_models]);
+
+  const modelsSupportingAgent = useMemo(() => {
+    const models = caps.data?.code_chat_models ?? {};
+    return Object.entries(models)
+      .filter(([_, value]) => value.supports_agent)
+      .map(([key]) => key);
+  }, [caps.data?.code_chat_models]);
 
   const usableModels = useMemo(() => {
     const models = caps.data?.code_chat_models ?? {};
@@ -96,6 +114,22 @@ export function useCapsForToolUse() {
       setCapModel(toChange);
     }
   }, [currentModel, setCapModel, usableModels, usableModelsForPlan]);
+
+  useEffect(() => {
+    if (caps.isSuccess) {
+      if (toolUse === "agent" && modelsSupportingAgent.length === 0) {
+        dispatch(setToolUse("explore"));
+      } else if (toolUse === "explore" && modelsSupportingTools.length === 0) {
+        dispatch(setToolUse("quick"));
+      }
+    }
+  }, [
+    dispatch,
+    caps.isSuccess,
+    toolUse,
+    modelsSupportingAgent,
+    modelsSupportingTools,
+  ]);
 
   return {
     usableModels,

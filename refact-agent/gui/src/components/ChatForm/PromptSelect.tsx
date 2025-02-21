@@ -32,11 +32,13 @@ export const PromptSelect: React.FC = () => {
   );
 
   const caps = useGetCapsQuery();
+
   const default_system_prompt =
     caps.data?.code_chat_default_system_prompt ?? "default";
+
   const val = useMemo(
     () => Object.keys(selectedSystemPrompt)[0] ?? default_system_prompt,
-    [selectedSystemPrompt],
+    [selectedSystemPrompt, default_system_prompt],
   );
 
   const options = useMemo(() => {
@@ -47,6 +49,12 @@ export const PromptSelect: React.FC = () => {
       };
     });
   }, [promptsRequest.data]);
+
+  const isLoading = useMemo(
+    () =>
+      promptsRequest.isLoading || promptsRequest.isFetching || caps.isLoading,
+    [promptsRequest.isLoading, promptsRequest.isFetching, caps.isLoading],
+  );
 
   return (
     <Flex
@@ -60,7 +68,7 @@ export const PromptSelect: React.FC = () => {
       <Text size="2" wrap="nowrap">
         System Prompt:
       </Text>
-      <Skeleton loading={promptsRequest.isLoading || promptsRequest.isFetching}>
+      <Skeleton loading={isLoading}>
         <Box flexGrow="1" flexShrink="0">
           <Select
             name="system prompt"
