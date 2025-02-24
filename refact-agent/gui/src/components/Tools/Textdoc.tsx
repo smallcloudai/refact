@@ -19,7 +19,6 @@ import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
 import { Markdown } from "../Markdown";
 import { filename } from "../../utils/filename";
 import styles from "./Texdoc.module.css";
-import classNames from "classnames";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { Reveal } from "../Reveal";
 import { useAppSelector } from "../../hooks";
