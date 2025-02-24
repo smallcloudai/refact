@@ -264,11 +264,16 @@ const UpdateTextDoc: React.FC<{
 
   const lineCount = useMemo(() => code.split("\n").length, [code]);
 
+  const copyToClipBoard = useCopyToClipboard();
+  const handleCopy = useCallback(() => {
+    copyToClipBoard(toolCall.function.arguments.replacement);
+  }, [copyToClipBoard, toolCall.function.arguments.replacement]);
+
   return (
-    <Box className={classNames(styles.textdoc, styles.textdoc__update)}>
+    <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
       <Reveal isRevealingCode defaultOpen={lineCount < 9}>
-        <Markdown useInlineStyles={false}>{code}</Markdown>
+        <Markdown onCopyClick={handleCopy}>{code}</Markdown>
       </Reveal>
     </Box>
   );
