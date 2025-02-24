@@ -13,6 +13,7 @@ use tracing::{error, info, warn};
 
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::call_validation::ReasoningEffort;
 use crate::known_models::KNOWN_MODELS;
 
 
@@ -25,7 +26,7 @@ pub struct ModelRecord {
     #[serde(default)]
     pub n_ctx: usize,
     #[serde(default)]
-    pub supports_scratchpads: HashMap<String, serde_json::Value>,
+    pub supports_scratchpads: HashMap<String, Value>,
     #[serde(default)]
     pub default_scratchpad: String,
     #[serde(default)]
@@ -38,6 +39,12 @@ pub struct ModelRecord {
     pub supports_clicks: bool,
     #[serde(default)]
     pub supports_agent: bool,
+    #[serde(default)]
+    pub supports_reasoning: bool,
+    #[serde(default)]
+    pub default_temperature: Option<f32>,
+    #[serde(default)]
+    pub default_reasoning_effort: Option<ReasoningEffort>,
 }
 
 #[derive(Debug, Deserialize)]
