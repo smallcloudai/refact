@@ -1,0 +1,42 @@
+.popover {
+  position: relative;
+  z-index: 50;
+  min-width: 180px;
+  /* max-width: 280px; */
+  /* JB doesn't support dvw */
+  max-width: 50vw;
+  max-width: 50dvw;
+  border-radius: max(var(--radius-2), var(--radius-full));
+}
+
+.popover__scroll {
+  --scrollarea-scrollbar-vertical-margin-right: 2px;
+  max-height: min(var(--popover-available-height, 186px), 186px);
+}
+
+.popover__box {
+  overflow-y: hidden;
+  overflow-x: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+}
+
+.item {
+  display: flex;
+  cursor: default;
+  /* TODO: negative margin ? */
+  margin: 0 -4px !important;
+  padding: 2px 4px !important;
+}
+
+.item[data-active-item] {
+  background-color: var(--accent-a5);
+}
+
+.combobox__item {
+  display: flex;
+  align-items: flex-start !important;
+  flex-direction: column !important;
+}

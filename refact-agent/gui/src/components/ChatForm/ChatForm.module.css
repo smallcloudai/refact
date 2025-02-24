@@ -1,0 +1,73 @@
+.buttonGroup {
+  position: absolute;
+  /* display: flex;
+    gap: 4px; */
+  right: 6px;
+  bottom: 8px;
+  padding: 1px 6px;
+}
+
+.button {
+  color: #000;
+}
+
+.chatForm {
+  box-shadow: inset 0 0 0 1px var(--gray-a7);
+  border: 1px solid var(--gray-a7);
+  border-radius: 6px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.file {
+  display: block;
+  margin: 0;
+  /* overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap; */
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.file_name {
+  display: flex;
+  line-height: 0;
+}
+
+.file_name_ellipsis_rtl {
+  display: inline;
+  vertical-align: middle;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  direction: rtl;
+  max-width: 100%;
+  line-height: var(--line-height-2, 20px);
+}
+
+.file_name_ellipsis_ltr {
+  direction: ltr;
+}
+
+.removeFileButton {
+  background-color: transparent;
+  padding: 0;
+  height: unset;
+  font-size: unset;
+  vertical-align: unset;
+  line-height: var(--line-height-1);
+  margin: 0;
+  margin-right: var(--space-1);
+}
+
+.checkbox_container {
+  display: flex;
+  white-space: nowrap;
+  gap: var(--space-2);
+}
+
+.controls {
+  overflow: hidden;
+}

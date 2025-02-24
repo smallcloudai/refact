@@ -1,0 +1,8 @@
+.symbol {
+  direction: ltr;
+}
+
+.symbol_list_button {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}

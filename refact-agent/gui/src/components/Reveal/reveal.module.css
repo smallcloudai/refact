@@ -1,0 +1,36 @@
+.reveal_button {
+  text-align: left;
+  justify-content: start;
+  width: 100%;
+  --button-ghost-padding-y: 0;
+  --button-ghost-padding-x: 0;
+}
+
+.reveal_button_inline {
+  color: unset !important;
+  &:hover {
+    background: none;
+    cursor: pointer;
+    .reveal_text {
+      text-decoration: underline;
+    }
+  }
+}
+
+.reveal_text {
+  color: var(--accent-a11);
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.reveal_hidden {
+  width: 100%;
+  overflow: hidden;
+  max-height: 9em;
+  mask-image: linear-gradient(
+    to bottom,
+    var(--color-background) 50%,
+    transparent 100%
+  );
+}

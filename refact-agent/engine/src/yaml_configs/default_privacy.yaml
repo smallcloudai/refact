@@ -1,0 +1,20 @@
+# This config file determines if Refact is allowed to read, index or send a file to remote servers.
+#
+# If you have a syntax error in this file, the refact-lsp will revert to the default "block everything".
+#
+# Uses glob patterns: https://en.wikipedia.org/wiki/Glob_(programming)
+#
+# The most restrictive rule applies if a file matches multiple patterns.
+
+privacy_rules:
+  blocked:
+    - "secrets.yaml"                  # That's not just an example, it's a real file at ~/.config/refact/secrets.yaml, the model shouldn't look at your passwords 
+    - "*/secret_project1/*"           # Don't forget leading */ if you are matching directory names
+    - "*/secret_project2/*.txt"
+    - "*.pem"
+
+  only_send_to_servers_I_control:       # You can set up which ones you control in bring-your-own-key.yaml, otherwise you control none
+    - "secret_passwords.txt"
+
+
+# See unit tests in privacy.rs for more examples.

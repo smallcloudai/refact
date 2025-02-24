@@ -1,0 +1,13 @@
+cloud_name: OpenRouter API
+
+chat_endpoint: "https://openrouter.ai/api/v1/chat/completions"
+chat_apikey: "$OPENROUTER_API_KEY"
+chat_model: meta-llama/llama-3.1-8b-instruct
+tokenizer_rewrite_path:
+  meta-llama/llama-3.1-8b-instruct: unsloth/llama-3-8b-bnb-4bit
+
+running_models:
+  - gpt-4o
+  - meta-llama/llama-3.1-8b-instruct
+
+# no code completion though :/

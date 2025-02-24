@@ -1,0 +1,17 @@
+.table {
+  border-collapse: collapse;
+
+  font-size: var(--font-size-1);
+  line-height: var(--line-height-1);
+  text-align: center;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.td {
+  border: 1px solid white;
+  padding: 3px;
+}
+.tableCellHead {
+  font-weight: var(--font-weight-bold, bold);
+}

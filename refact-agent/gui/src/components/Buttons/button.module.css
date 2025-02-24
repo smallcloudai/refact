@@ -1,0 +1,12 @@
+.rightButton {
+  position: absolute;
+  /* right: 20px; */
+  right: var(--space-3);
+  min-width: 50px;
+}
+
+.rightButtonGroup {
+  position: absolute;
+  /* right: 10px; */
+  right: var(--space-1);
+}

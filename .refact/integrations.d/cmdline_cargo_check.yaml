@@ -1,0 +1,22 @@
+command: "cargo check %additional_params%"
+command_workdir: "%project_path%"
+description: "Run cargo check to verify Rust code compilation without producing an executable"
+parameters:
+  - name: "additional_params"
+    description: "Additional parameters for cargo check, such as --workspace or --all-features"
+  - name: "project_path"
+    description: "absolute path to the project"
+timeout: "60"
+output_filter:
+  limit_lines: 100
+  limit_chars: 10000
+  valuable_top_or_bottom: "top"
+  grep: "(?i)(error|warning)"
+  grep_context_lines: 5
+  remove_from_output: "process didn't exit"
+available:
+  on_your_laptop: true
+  when_isolated: true
+confirmation:
+  ask_user: []
+  deny: []

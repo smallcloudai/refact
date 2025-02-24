@@ -1,0 +1,8 @@
+.RenameInput {
+  --base-button-height: var(--space-6);
+  outline: none;
+  width: 100%;
+  margin-right: var(--space-1);
+  height: var(--base-button-height);
+  box-shadow: inset 0 0 0 1px var(--accent-a8);
+}

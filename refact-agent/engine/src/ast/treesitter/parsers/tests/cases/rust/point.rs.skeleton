@@ -1,0 +1,8 @@
+[
+  {
+    "line": "pub struct Point {\n  x: f64,\n  y: f64,\n}"
+  },
+  {
+    "line": "impl Point {\n  pub fn new(x: f64, y: f64) -> Point { ... }\n  pub fn get_x(&self) -> f64 { ... }\n  pub fn get_y(&self) -> f64 { ... }\n}"
+  }
+]

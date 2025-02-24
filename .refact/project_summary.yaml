@@ -1,0 +1,24 @@
+project_summary: >
+  The Refact Agent project is a Rust-based
+  executable designed to integrate seamlessly
+  with IDEs like VSCode and JetBrains. Its
+  primary function is to maintain up-to-date
+  AST and VecDB indexes, ensuring efficient
+  code completion and project analysis. The
+  agent acts as an LSP server, providing tools
+  for code completion, chat functionalities,
+  and integration with various external tools
+  such as browsers, databases, and debuggers.
+  It supports multiple programming languages
+  for AST capabilities and can be used both as
+  a standalone command-line tool and within a
+  Python program.
+
+  The project is structured with a main Rust
+  source directory src/ containing modules
+  for background tasks, integrations, HTTP
+  handling, and more. The tests/ directory
+  includes various test scripts mostly written in python, while the
+  examples/ directory provides usage examples.
+
+recommended_integrations: []

@@ -1,0 +1,51 @@
+.callout_text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.callout_box {
+  transform: translateY(-15px);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 0.3s ease-in-out,
+    visibility 0.3s ease-in-out,
+    opacity 0.3s ease-in-out;
+}
+
+.callout_box_background {
+  background-color: var(--orange-3) !important;
+  position: absolute;
+  top: 0;
+  left: -15px;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  border-radius: 10px;
+}
+
+.callout_box_opened {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform 0.3s ease-in-out,
+    visibility 0.3s ease-in-out,
+    opacity 0.3s ease-in-out;
+}
+
+.callout_from_top {
+  overflow-wrap: anywhere;
+  position: absolute;
+  animation: rollin_from_top 0.2s ease-out;
+  z-index: 1;
+}
+
+@keyframes rollin_from_top {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}

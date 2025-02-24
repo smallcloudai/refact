@@ -1,0 +1,8 @@
+.agent_usage {
+  flex-shrink: 0;
+}
+
+.upgrade_button {
+  height: auto;
+  min-height: var(--base-button-height);
+}

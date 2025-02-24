@@ -1,0 +1,161 @@
+name: Refact Agent Engine CI build (Rust)
+
+on:
+  # Trigger the workflow on pushes to only the 'main' branch (this avoids duplicate checks being run e.g. for dependabot pull requests)
+  push:
+    branches: [main, dev]
+    paths: 
+      - "refact-agent/engine/**"
+      - ".github/workflows/agent_engine_*"
+  # Trigger the workflow on any pull request
+  pull_request:
+    paths:
+      - "refact-agent/engine/**"
+      - ".github/workflows/agent_engine_*"
+  workflow_dispatch:
+  repository_dispatch:
+#  workflow_run:
+#    workflows: ["Cache cleanup"]
+#    types:
+#      - completed
+
+defaults:
+  run:
+    working-directory: refact-agent/engine
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  # RUSTFLAGS: "-D warnings -W unreachable-pub"
+  RUSTUP_MAX_RETRIES: 10
+  FETCH_DEPTH: 0 # pull in the tags for the version string
+  MACOSX_DEPLOYMENT_TARGET: 10.15
+
+jobs:
+  dist:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            code-target: win32-x64
+            ext: .exe
+            whl-tag: win_amd64
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            code-target: win32-ia32
+            ext: .exe
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            code-target: win32-arm64
+            ext: .exe
+            whl-tag: win_arm64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            code-target: linux-x64
+            whl-tag: manylinux2014_x86_64
+            cross: true
+          - os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            code-target: linux-arm64
+            whl-tag: manylinux2014_aarch64
+            cross: true
+#          - os: ubuntu-22.04
+#            target: arm-unknown-linux-gnueabihf
+#            code-target: linux-armhf
+          - os: macos-13
+            target: x86_64-apple-darwin
+            code-target: darwin-x64
+            whl-tag: macosx_13_0_x86_64
+          - os: macos-14
+            target: aarch64-apple-darwin
+            code-target: darwin-arm64 
+            whl-tag: macosx_13_0_arm64
+
+    env:
+      LLM_LS_TARGET: ${{ matrix.target }}
+
+    name: dist (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: ${{ env.FETCH_DEPTH }}
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.target }}
+          rustup component add rust-src
+      
+      - name: setup cross-rs
+        if: matrix.cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+      
+      - name: Install ARM target toolchain
+        if: matrix.target == 'arm-unknown-linux-gnueabihf'
+        run: sudo apt-get install gcc-arm-linux-gnueabihf
+
+      - name: Restore cached cargo
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.target }}-cargo
+          shared-key: ${{ matrix.os }}-${{ matrix.target }}-cargo
+
+      - name: Build and test artifact
+        if: matrix.cross == null && startsWith(matrix.os, 'windows')
+        run: |
+          cargo test --release || exit 1
+          cargo build --release || exit 1
+          mkdir python_binding_and_cmdline/refact/bin
+          cp ./target/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/release/refact-lsp${{ matrix.ext }} ../..
+      
+      - name: Build and test artifact
+        if: matrix.cross == null && !startsWith(matrix.os, 'windows')
+        run: |
+          OPENSSL_STATIC=1 cargo test --release --target ${{ matrix.target }} || exit 1
+          OPENSSL_STATIC=1 cargo build --release --target ${{ matrix.target }} || exit 1
+          mkdir python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} ../..
+          
+      - name: build linux-like artifacts
+        if: matrix.cross
+        run: |
+          CROSS_NO_WARNINGS=0 cross test --release --target ${{ matrix.target }} || exit 1
+          CROSS_NO_WARNINGS=0 cross build --release --target ${{ matrix.target }} || exit 1
+          mkdir python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} python_binding_and_cmdline/refact/bin
+          cp ./target/${{ matrix.target }}/release/refact-lsp${{ matrix.ext }} ../..
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.target }}
+          if-no-files-found: ignore
+          path: |
+            refact-lsp
+            refact-lsp.exe
+      
+      - if: matrix.whl-tag
+        shell: bash
+        env:
+          WHL_TAG: ${{ matrix.whl-tag }}
+        run: |
+          version=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')-dev
+          sed -i.bak -E "s/version=\"[^\"]+\"/version=\"$version\"/" python_binding_and_cmdline/setup.py
+          
+          pip install wheel build setuptools
+          python -m build --wheel --no-isolation python_binding_and_cmdline --outdir artefacts/
+        
+      - uses: actions/upload-artifact@v4
+        if: matrix.whl-tag
+        with:
+          name: whl-${{ matrix.target }}
+          if-no-files-found: ignore
+          path: refact-agent/engine/artefacts/*.whl

@@ -1,0 +1,27 @@
+[
+  {
+    "top_row": 23,
+    "bottom_row": 29,
+    "line": "/**\n * Method to decelerate the car.\n * @param {number} decrement - The amount by which to decrease the speed.\n */\ndecelerate(decrement) {\n    this.speed -= decrement;\n}"
+  },
+  {
+    "top_row": 0,
+    "bottom_row": 3,
+    "line": "/**\n * This class represents a car object.\n */\nclass Car { ... }"
+  },
+  {
+    "top_row": 15,
+    "bottom_row": 21,
+    "line": "/**\n * Method to accelerate the car.\n * @param {number} increment - The amount by which to increase the speed.\n */\naccelerate(increment) {\n    this.speed += increment;\n}"
+  },
+  {
+    "top_row": 31,
+    "bottom_row": 37,
+    "line": "/**\n * Method to get the current speed of the car.\n * @returns {number} The current speed of the car.\n */\ngetSpeed() {\n    return this.speed;\n}"
+  },
+  {
+    "top_row": 4,
+    "bottom_row": 13,
+    "line": "/**\n * Constructor for creating a new Car object.\n * @param {string} make - The make of the car.\n * @param {string} model - The model of the car.\n */\nconstructor(make, model) {\n    this.make = make;\n    this.model = model;\n    this.speed = 0;\n}"
+  }
+]

@@ -1,0 +1,44 @@
+.icon {
+  max-width: 75px;
+  object-fit: cover;
+}
+
+.SetupIcon {
+  max-width: 100px;
+  object-fit: cover;
+}
+
+.SetupTitle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.IntegrationForm {
+  width: 100%;
+  max-width: 100%;
+}
+
+.IntegrationWarning {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.WarningHoverCardContent {
+  background-color: var(--accent-a3);
+  color: var(--accent-a11);
+}
+
+.popup {
+  position: fixed;
+  width: max-content;
+  max-width: 80%;
+  left: 50%;
+  translate: -50%;
+  background-color: var(--accent-3);
+  overflow: hidden;
+  bottom: 65px;
+}

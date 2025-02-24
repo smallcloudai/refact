@@ -1,0 +1,1 @@
+export { IntermediateIntegration } from "./IntermediateIntegration";

@@ -1,0 +1,19 @@
+.vertical > div > div,
+.vertical :global(.rt-ScrollAreaViewport) {
+  display: block !important;
+}
+
+.vertical :global(.rt-ScrollAreaViewport > *) {
+  height: auto;
+  width: auto;
+}
+
+.full_height {
+  /* JB doesn't support dvh */
+  height: 100vh;
+  height: 100dvh;
+}
+
+.full_height :global(.rt-ScrollAreaViewport > *) {
+  height: 100%;
+}

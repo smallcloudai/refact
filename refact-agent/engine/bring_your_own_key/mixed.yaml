@@ -1,0 +1,20 @@
+cloud_name: Mixed API
+
+chat_endpoint: "https://openrouter.ai/api/v1/chat/completions"
+chat_apikey: "$OPENROUTER_API_KEY"
+chat_model: meta-llama/llama-3.1-8b-instruct
+  
+completion_endpoint_style: "hf"
+completion_endpoint: "https://api-inference.huggingface.co/models/$MODEL"
+completion_model: bigcode/starcoder2-3b
+completion_apikey: "$HF_TOKEN"
+
+embedding_endpoint: "https://api.openai.com/v1/embeddings"
+embedding_apikey: "$OPENAI_API_KEY"
+embedding_default_model: text-embedding-3-small
+embedding_size: 1536
+
+tokenizer_rewrite_path:
+  meta-llama/llama-3.1-8b-instruct: unsloth/llama-3-8b-bnb-4bit
+  
+

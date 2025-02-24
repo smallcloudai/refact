@@ -1,0 +1,37 @@
+.integrationCard {
+  padding: 1rem;
+  width: 100%;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.integrationCardInline {
+  width: 100%;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  .integrationIcon {
+    max-width: 45px;
+  }
+}
+
+.disabledCard {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.integrationIcon {
+  max-width: 30px;
+  object-fit: cover;
+}
+
+.availabilitySwitch {
+  cursor: pointer;
+}
+
+.disabledAvailabilitySwitch {
+  cursor: not-allowed;
+}

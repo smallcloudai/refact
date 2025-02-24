@@ -1,0 +1,13 @@
+.PageWrapper {
+  width: 100%;
+  /* justify-content: center; */
+  /* Fallback height for JB */
+  max-height: 100vh;
+  max-height: 100dvh;
+  height: 100%;
+}
+@media print {
+  .PageWrapper {
+    max-height: unset;
+  }
+}
