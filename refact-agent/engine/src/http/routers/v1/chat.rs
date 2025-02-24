@@ -49,7 +49,7 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
             vec![]
         },
         ChatMode::EXPLORE | ChatMode::AGENT => filter_out_tools(&current_tools, &vec!["think"]),
-        ChatMode::THINKING_AGENT => filter_out_tools(&current_tools, &vec!["knowledge"]),
+        ChatMode::THINKING_AGENT => current_tools,
         ChatMode::CONFIGURE => filter_out_tools(&current_tools, &vec!["tree", "locate", "knowledge", "search"]),
         ChatMode::PROJECT_SUMMARY => keep_tools(&current_tools, &vec!["cat", "tree", "bash"]),
     }
