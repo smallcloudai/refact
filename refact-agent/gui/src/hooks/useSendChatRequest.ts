@@ -346,6 +346,7 @@ export const useSendChatRequest = () => {
     retry,
     retryFromIndex,
     confirmToolUsage,
+    maybeAddImagesToQuestion,
     rejectToolUsage,
     sendMessages,
   };
