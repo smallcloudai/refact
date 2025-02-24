@@ -112,39 +112,12 @@ jobs:
           echo "gui_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
           echo "release_tag=$(node -p "require('./package.json').version.includes('alpha') ? 'alpha' : 'latest'")" >> "$GITHUB_OUTPUT"
 
-      # - name: Commit and push version update
-      #   run: |
-      #     VERSION="${{ steps.setupvars.outputs.gui_version }}"
-      #     git add package.json package-lock.json
-      #     git commit -m "Version bump refact-chat-js@$VERSION"
-      #     git push origin HEAD:${{ github.ref_name }}
-
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: 'Version bump refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
-          title: 'Version bump refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
-          body: |
-            ## Automated version bump by GitHub Actions
-
-            This PR updates the package version to ${{ steps.setupvars.outputs.gui_version }}.
-
-            ### Changes
-            - Updated package.json version
-            - Updated package-lock.json
-
-            ### Checks
-            - [x] Version bump only - no code changes
-            - [x] Automated by CI/CD pipeline
-            - [x] Follows semantic versioning
-          branch: 'chore/version-bump-gui/${{ steps.setupvars.outputs.gui_version }}'
-          base: ${{ github.ref_name }}
-          delete-branch: true
-          labels: |
-            automated
-            version-bump
-            dependencies
+      - name: Commit and push version update
+        run: |
+          VERSION="${{ steps.setupvars.outputs.gui_version }}"
+          git add package.json package-lock.json
+          git commit -m "Version bump refact-chat-js@$VERSION"
+          git push origin HEAD:${{ github.ref_name }}
 
       - name: Post to a Slack channel
         if: github.ref_name != 'ci/publish-npm-fixes'
