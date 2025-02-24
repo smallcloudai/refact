@@ -18,6 +18,7 @@ const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
   }
 
   if (message.role === "assistant") {
+    // find the tool result for the tool call
     return (
       <AssistantInput
         message={message.content}
@@ -25,6 +26,8 @@ const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
       />
     );
   }
+
+  // add more case here from refact-agent/gui/src/components/ChatContent/ChatContent.tsx
 
   return false;
 };
