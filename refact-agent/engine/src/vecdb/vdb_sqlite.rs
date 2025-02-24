@@ -29,7 +29,7 @@ struct DataColumn {
     type_: String,
 }
 
-async fn get_db_path(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<String, String> {
+pub async fn get_db_path(cache_dir: &PathBuf, model_name: &String, embedding_size: i32) -> Result<String, String> {
     let old_path = cache_dir
         .join("refact_vecdb_cache")
         .join(format!("model_{}_esize_{}.sqlite",
