@@ -126,13 +126,25 @@ jobs:
           commit-message: 'Version bump refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
           title: 'Version bump refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
           body: |
-            Automated version bump by GitHub Actions
+            ## Automated version bump by GitHub Actions
 
-            This PR was created by the npm publish workflow.
-            - Version: refact-chat-js@${{ steps.setupvars.outputs.gui_version }}
-            - Branch: ${{ github.ref_name }}
-          branch: 'version-bump/refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
+            This PR updates the package version to ${{ steps.setupvars.outputs.gui_version }}.
+
+            ### Changes
+            - Updated package.json version
+            - Updated package-lock.json
+
+            ### Checks
+            - [x] Version bump only - no code changes
+            - [x] Automated by CI/CD pipeline
+            - [x] Follows semantic versioning
+          branch: 'chore/version-bump-gui/${{ steps.setupvars.outputs.gui_version }}'
           base: ${{ github.ref_name }}
+          delete-branch: true
+          labels: |
+            automated
+            version-bump
+            dependencies
 
       - name: Post to a Slack channel
         if: github.ref_name != 'ci/publish-npm-fixes'
