@@ -32,6 +32,7 @@ import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
+import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -52,6 +53,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const integrationMeta = useAppSelector(selectIntegration);
+  const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
 
   const {
     handleScroll,
@@ -115,7 +117,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         <UncommittedChangesWarning />
 
         <Container py="4">
-          <Spinner spinning={isWaiting} />
+          <Spinner spinning={isWaiting && !isWaitingForConfirmation} />
         </Container>
       </Flex>
       {showFollowButton && (
