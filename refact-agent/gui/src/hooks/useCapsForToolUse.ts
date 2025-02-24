@@ -22,6 +22,7 @@ const PAID_AGENT_LIST = [
   "grok-2-1212",
   "grok-beta",
   "gemini-2.0-flash-exp",
+  "claude-3-7-sonnet",
 ];
 
 export function useCapsForToolUse() {
