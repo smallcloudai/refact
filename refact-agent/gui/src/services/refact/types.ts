@@ -1,5 +1,5 @@
 import { Checkpoint } from "../../features/Checkpoints/types";
-import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
+import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
 
 export type ChatRole =
@@ -535,6 +535,7 @@ type ChatResponseChoice = {
   created: number;
   model: string;
   id: string;
+  usage?: Usage;
   refact_agent_request_available: null | number;
   refact_agent_max_request_num: number;
 };

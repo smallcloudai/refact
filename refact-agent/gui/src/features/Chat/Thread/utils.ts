@@ -129,20 +129,6 @@ function replaceLastUserMessage(
   return result.concat([userMessage]);
 }
 
-export function getAgentUsageCounter(response: ChatResponse): number | null {
-  if (isChatResponseChoice(response)) {
-    return response.refact_agent_request_available;
-  }
-  return null;
-}
-
-export function getMaxFreeAgentUsage(response: ChatResponse): number {
-  if (isChatResponseChoice(response)) {
-    return response.refact_agent_max_request_num;
-  }
-  return 0;
-}
-
 export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
@@ -236,6 +222,7 @@ export function formatChatResponse(
         role: cur.delta.role,
         content: cur.delta.content,
         finish_reason: cur.finish_reason,
+        usage: response.usage,
       } as ChatMessage;
       return acc.concat([message]);
     }
@@ -304,8 +291,24 @@ export function formatChatResponse(
       return acc;
     }
 
-    if (cur.delta.role === null || cur.finish_reason !== null) {
+    // saving usage if is assistant message and no delta role
+    if (
+      cur.delta.role === null ||
+      cur.finish_reason !== null // &&
+      // isAssistantMessage(lastMessage)
+    ) {
       return acc;
+      // const last = acc.slice(0, -1);
+      // const currentMessage = lastMessage.content ?? "";
+      // const toolCalls = lastMessage.tool_calls;
+      // return last.concat([
+      //   {
+      //     role: "assistant",
+      //     content: currentMessage,
+      //     tool_calls: toolCalls,
+      //     finish_reason: cur.finish_reason,
+      //   },
+      // ]);
     }
 
     // console.log("Fall though");
@@ -452,7 +455,9 @@ export function formatMessagesForChat(
     if (message.role === "assistant") {
       // TODO: why type cast this.
       const assistantMessage = message as AssistantMessage;
-      return acc.concat(assistantMessage);
+      return acc.concat({
+        ...assistantMessage,
+      });
     }
 
     if (

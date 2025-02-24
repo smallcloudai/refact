@@ -96,7 +96,7 @@ export const SuggestNewChat = ({
           usage limits faster.
         </Text>
         <Flex align="center" gap="3" flexShrink="0">
-          <Link size="1" onClick={onCreateNewChat}>
+          <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
           <IconButton
