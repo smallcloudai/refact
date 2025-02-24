@@ -190,7 +190,9 @@ pub const KNOWN_MODELS: &str = r####"
                 "claude-3-5-haiku-20241022",
                 "claude-3-opus",
                 "claude-3-5-sonnet",
-                "claude-3-5-sonnet-20241022"
+                "claude-3-5-sonnet-20241022",
+                "claude-3-7-sonnet",
+                "claude-3-7-sonnet-20250219"
             ]
         },
         "groq-llama-3.1-8b": {
@@ -436,7 +438,11 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_agent": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "similar_models": [
+                "claude-3-7-sonnet",
+                "claude-3-7-sonnet-20250219"
+            ]
         },
         "claude-3-5-haiku": {
             "n_ctx": 16384,
@@ -449,15 +455,6 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "claude-3-5-haiku-20241022"
             ]
-        },
-        "claude-3-5-haiku-20241022": {
-            "n_ctx": 16384,
-            "supports_tools": true,
-            "supports_multimodality": false,
-            "supports_agent": false,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {}
-            }
         },
         "gemini-2.0-flash-exp": {
             "n_ctx": 128000,
@@ -792,6 +789,7 @@ pub const KNOWN_MODELS: &str = r####"
         "claude-3-5-haiku-20241022":  "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
         "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
+        "claude-3-7-sonnet":          "Xenova/claude-tokenizer",
 
         "groq-llama-3.1-8b":      "Xenova/Meta-Llama-3.1-Tokenizer",
         "cerebras-llama3.1-8b":     "Xenova/Meta-Llama-3.1-Tokenizer",
