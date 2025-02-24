@@ -68,6 +68,17 @@ passthrough_mini_db = {
         "pp1000t_generated": 12_000,   # $12.00 / 1M tokens (2025 january)
         "filter_caps": ["chat", "tools"],
     },
+    "o3-mini": {
+        "backend": "litellm",
+        "provider": "openai",
+        "tokenizer_path": "Xenova/gpt-4o",
+        "resolve_as": "o3-mini-2025-01-31",
+        "T": 200_000,
+        "T_out": 64_000,
+        "pp1000t_prompt": 1_100,  # $1.10 / 1M tokens (2025 january)
+        "pp1000t_generated": 4_400,  # $4.40 / 1M tokens (2025 january)
+        "filter_caps": ["chat", "tools"],
+    },
 
     # Anthropic models
     "claude-3-5-sonnet": {

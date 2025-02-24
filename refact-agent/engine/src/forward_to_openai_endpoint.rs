@@ -45,16 +45,13 @@ pub async fn forward_to_openai_style_endpoint(
     if let Some(n) = sampling_parameters.n {
         data["n"] = serde_json::Value::from(n);
     }
-    if model_name != "o1-mini" {
-        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
+    if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
+        // NOTE: reasoning_effort supported by openai models only
+        data["reasoning_effort"] = serde_json::Value::String(format!("{:?}", reasoning_effort).to_lowercase());
         data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     } else {
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
         data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
-    }
-    if let Some(n) = sampling_parameters.n {
-        if n > 1 {
-            data["n"] = serde_json::Value::from(n);
-        }
     }
     info!("NOT STREAMING TEMP {}", sampling_parameters.temperature
         .map(|x| x.to_string())
@@ -122,8 +119,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     let mut data = json!({
         "model": model_name,
         "stream": true,
-        "temperature": sampling_parameters.temperature,
-        "max_completion_tokens": sampling_parameters.max_new_tokens,
         "stream_options": {"include_usage": true},
     });
     if !sampling_parameters.stop.is_empty() {  // openai does not like empty stop
@@ -131,6 +126,14 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     };
     if let Some(n) = sampling_parameters.n{
         data["n"] = serde_json::Value::from(n);
+    }
+    if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
+        // NOTE: reasoning_effort supported by openai models only
+        data["reasoning_effort"] = serde_json::Value::String(format!("{:?}", reasoning_effort).to_lowercase());
+        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+    } else {
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
+        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     }
     info!("STREAMING TEMP {}", sampling_parameters.temperature
         .map(|x| x.to_string())
@@ -152,6 +155,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     Ok(event_source)
 }
 
+// NOTE: questionable function, no idea why we need it
 fn passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
