@@ -775,6 +775,8 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "deepseek-r1-distill/1.5b/vllm": {
             "n_ctx": 32768,
+            "supports_reasoning": true,
+            "default_temperature": 0.6,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
