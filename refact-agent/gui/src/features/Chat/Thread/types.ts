@@ -25,6 +25,7 @@ export type ChatThread = {
   last_user_message_id?: string;
   new_chat_suggested: SuggestedChat;
   usage?: Usage;
+  currentMaximumContextTokens?: number;
 };
 
 export type SuggestedChat = {
@@ -50,6 +51,7 @@ export type Chat = {
 };
 
 export type PayloadWithId = { id: string };
+export type PayloadWithChatAndNumber = { chatId: string; value: number };
 export type PayloadWithChatAndMessageId = { chatId: string; messageId: string };
 export type PayloadWithChatAndBoolean = { chatId: string; value: boolean };
 export type PayloadWithChatAndUsage = { chatId: string; usage: Usage };

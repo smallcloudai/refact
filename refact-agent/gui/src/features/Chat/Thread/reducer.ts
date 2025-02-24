@@ -45,8 +45,6 @@ import {
 } from "../../../services/refact";
 import { calculateUsageInputTokens } from "../../../utils/calculateUsageInputTokens";
 
-const RECOMMENDED_MAXIMUM_PROMPT_TOKENS_AMOUNT = 30000;
-
 const createChatThread = (
   tool_use: ToolUse,
   integration?: IntegrationMeta | null,
@@ -234,7 +232,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
       "cache_read_input_tokens",
     ]);
 
-    if (inputTokensAmount >= RECOMMENDED_MAXIMUM_PROMPT_TOKENS_AMOUNT) {
+    const maximumInputTokens = state.thread.currentMaximumContextTokens;
+
+    if (maximumInputTokens && inputTokensAmount >= maximumInputTokens) {
       const { wasSuggested, wasRejectedByUser } =
         state.thread.new_chat_suggested;
 

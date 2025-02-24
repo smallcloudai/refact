@@ -72,13 +72,13 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
               label="Input tokens (in total):"
               value={inputTokens}
             />
-            {usage.cache_read_input_tokens && (
+            {usage.cache_read_input_tokens !== undefined && (
               <TokenDisplay
                 label="Cache read input tokens:"
                 value={usage.cache_read_input_tokens}
               />
             )}
-            {usage.cache_creation_input_tokens && (
+            {usage.cache_creation_input_tokens !== undefined && (
               <TokenDisplay
                 label="Cache creation input tokens:"
                 value={usage.cache_creation_input_tokens}
