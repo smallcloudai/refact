@@ -85,7 +85,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatContext(NlpSamplingParams):
-    model: str = Query(pattern="^[a-z/A-Z0-9_\.\-]+$")
+    model: str = Query(pattern="^[a-z/A-Z0-9_\.\-\:]+$")
     messages: List[ChatMessage]
     # TODO: validate using pydantic
     tools: Optional[List[Dict[str, Any]]] = None
