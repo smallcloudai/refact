@@ -32,6 +32,7 @@ export {
   setCurrentProjectInfo,
   type CurrentProjectInfo,
 } from "../features/Chat/currentProject";
+export type { TextDocToolCall } from "../components/Tools/types";
 
 export type {
   ToolCommand,
@@ -73,7 +74,8 @@ export {
   ideEscapeKeyPressed,
   ideIsChatStreaming,
   ideIsChatReady,
-  ideToolEdit,
+  ideToolCall,
+  ideToolCallResponse,
 } from "../hooks/useEventBusForIDE";
 
 export const fim = {

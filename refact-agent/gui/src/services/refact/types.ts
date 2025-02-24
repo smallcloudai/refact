@@ -80,12 +80,12 @@ export interface MultiModalToolResult extends BaseToolResult {
 
 export type ToolResult = SingleModelToolResult | MultiModalToolResult;
 
-type MultiModalToolContent = {
+export type MultiModalToolContent = {
   m_type: string; // "image/*" | "text" ... maybe narrow this?
   m_content: string; // base64 if image,
 };
 
-function isMultiModalToolContent(
+export function isMultiModalToolContent(
   content: unknown,
 ): content is MultiModalToolContent {
   if (!content) return false;
