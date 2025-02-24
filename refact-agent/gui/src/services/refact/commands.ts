@@ -1,7 +1,7 @@
 import { RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
 import { AT_COMMAND_COMPLETION, AT_COMMAND_PREVIEW } from "./consts";
-import { type ChatContextFile } from "./types";
+import type { ChatMessages, ChatContextFile, ChatMeta } from "./types";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
@@ -80,8 +80,12 @@ export const commandsApi = createApi({
         }
       },
     }),
-    getCommandPreview: builder.query<(ChatContextFile | string)[], string>({
-      queryFn: async (query, api, _opts, baseQuery) => {
+    getCommandPreview: builder.query<
+      (ChatContextFile | string)[],
+      CommandPreviewRequest
+    >({
+      queryFn: async (args, api, _opts, baseQuery) => {
+        const { messages, meta } = args;
         const state = api.getState() as RootState;
         const port = state.config.lspPort;
         const url = `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`;
@@ -90,7 +94,7 @@ export const commandsApi = createApi({
           method: "POST",
           credentials: "same-origin",
           redirect: "follow",
-          body: { query },
+          body: { messages, meta },
         });
 
         if (response.error) return { error: response.error };
@@ -111,7 +115,7 @@ export const commandsApi = createApi({
         if (isDetailMessage(response.data)) {
           return { data: [] };
         }
-
+        // TODO: return a dict instead of just files?
         const files = response.data.messages.reduce<
           (ChatContextFile | string)[]
         >((acc, curr) => {
@@ -170,8 +174,16 @@ function isCommandPreviewContent(json: unknown): json is CommandPreviewContent {
   if (json.role === "plain_text") return true;
   return false;
 }
+
+export type CommandPreviewRequest = {
+  messages: ChatMessages;
+  meta: ChatMeta;
+};
+
 export type CommandPreviewResponse = {
   messages: CommandPreviewContent[];
+  current_context: number;
+  number_context: number;
 };
 
 export function isCommandPreviewResponse(
@@ -179,6 +191,10 @@ export function isCommandPreviewResponse(
 ): json is CommandPreviewResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
+  if (!("current_context" in json) || typeof json.current_context !== "number")
+    return false;
+  if (!("number_context" in json) || typeof json.number_context !== "number")
+    return false;
   if (!("messages" in json)) return false;
   if (!Array.isArray(json.messages)) return false;
 
