@@ -328,15 +328,19 @@ pub async fn get_vars_for_replacements(
     gcx: Arc<ARwLock<GlobalContext>>,
     error_log: &mut Vec<YamlError>,
 ) -> HashMap<String, String> {
-    let (config_dir, variables_yaml) = {
+    let (config_dir, variables_yaml, secrets_yaml) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.variables_yaml.clone())
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.variables_yaml.clone(), gcx_locked.cmdline.secrets_yaml.clone())
     };
-    let secrets_yaml_path = config_dir.join("secrets.yaml");
     let variables_yaml_path = if variables_yaml.is_empty() {
         config_dir.join("variables.yaml")
     } else {
         crate::files_correction::canonical_path(&variables_yaml)
+    };
+    let secrets_yaml_path = if secrets_yaml.is_empty() {
+        config_dir.join("secrets.yaml")
+    } else {
+        crate::files_correction::canonical_path(&secrets_yaml)
     };
     let mut variables = HashMap::new();
 
