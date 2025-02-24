@@ -78,7 +78,6 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "Attempting to publish version: $VERSION"
-          exit 0
 
           if npm view refact-chat-js@$VERSION version &> /dev/null; then
             echo "Version $VERSION already exists in npm registry!"
