@@ -114,6 +114,7 @@ export type Usage = {
   prompt_tokens: number;
   total_tokens: number;
 };
+
 // TODO: add config url
 export async function sendChat({
   messages,

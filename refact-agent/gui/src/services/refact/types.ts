@@ -1,3 +1,4 @@
+import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
 import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
@@ -244,6 +245,13 @@ export type ChatMessage =
   | CDInstructionMessage;
 
 export type ChatMessages = ChatMessage[];
+
+export type ChatMeta = {
+  current_config_file?: string | undefined;
+  chat_id?: string | undefined;
+  request_attempt_id?: string | undefined;
+  chat_mode: LspChatMode;
+};
 
 export function isChatContextFileMessage(
   message: ChatMessage,
