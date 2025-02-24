@@ -10,7 +10,8 @@ use tracing::{error, info};
 
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ReasoningEffort, SamplingParameters};
+use crate::caps::ModelRecord;
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -146,8 +147,14 @@ impl ScratchpadAbstract for ChatPassthrough {
         _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
 
         // Handle models that support reasoning
-        let messages = if model_supports_reasoning(&self.post.model) {
-            _adapt_for_reasoning_models(&messages, sampling_parameters_to_patch)
+        let (supports_reasoning, default_temperature, default_reasoning_effort) = _model_reasoning_params(&self.post.model);
+        let messages = if supports_reasoning {
+            _adapt_for_reasoning_models(
+                &messages,
+                sampling_parameters_to_patch,
+                default_temperature,
+                default_reasoning_effort,
+            )
         } else {
             messages
         };
@@ -157,7 +164,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             vec![]
         });
 
-        if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
+        if self.prepend_system_prompt && !supports_reasoning {
             assert_eq!(limited_msgs.first().unwrap().role, "system");
         }
         let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
@@ -340,29 +347,40 @@ fn _replace_broken_tool_call_messages(
     }
 }
 
-pub fn model_supports_reasoning(model_name: &str) -> bool {
-    let known_models: serde_json::Value = serde_json::from_str(crate::known_models::KNOWN_MODELS)
+fn _model_reasoning_params(model_name: &str) -> (bool, Option<f32>, Option<ReasoningEffort>) {
+    let known_models: Value = serde_json::from_str(crate::known_models::KNOWN_MODELS)
         .expect("Failed to parse KNOWN_MODELS");
 
-    // Check if the model exists in code_chat_models and has supports_reasoning set to true
+    let mut support_reasoning: bool = false;
+    let mut temperature: Option<f32> = None;
+    let mut reasoning_effort: Option<ReasoningEffort> = None;
+
     if let Some(chat_models) = known_models.get("code_chat_models") {
         if let Some(model) = chat_models.get(model_name) {
-            return model.get("supports_reasoning")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
+            match serde_json::from_value::<ModelRecord>(model.clone()) {
+                Ok(model_record) => {
+                    support_reasoning = model_record.supports_reasoning.clone();
+                    temperature = model_record.default_temperature.clone();
+                    reasoning_effort = model_record.default_reasoning_effort.clone();
+                },
+                Err(_) => {},
+            }
         }
     }
 
-    // If model is not found or doesn't have supports_reasoning field, return false
-    false
+    (support_reasoning, temperature, reasoning_effort)
 }
 
 fn _adapt_for_reasoning_models(
     messages: &Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
+    default_temperature: Option<f32>,
+    default_reasoning_effort: Option<ReasoningEffort>,
 ) -> Vec<ChatMessage> {
-    // Set temperature to None
-    sampling_parameters.temperature = None;
+    sampling_parameters.temperature = default_temperature.clone();
+    if sampling_parameters.reasoning_effort.is_none() {
+        sampling_parameters.reasoning_effort = default_reasoning_effort.clone();
+    }
 
     // Convert system messages to user messages
     messages.iter().map(|msg| {
