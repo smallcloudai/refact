@@ -47,7 +47,7 @@ pub async fn forward_to_openai_style_endpoint(
     }
     if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
         // NOTE: reasoning_effort supported by openai models only
-        data["reasoning_effort"] = serde_json::Value::String(format!("{:?}", reasoning_effort).to_lowercase());
+        data["reasoning_effort"] = serde_json::Value::String(format!("{:?}", reasoning_effort));
         data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     } else {
         data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
@@ -129,7 +129,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     }
     if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
         // NOTE: reasoning_effort supported by openai models only
-        data["reasoning_effort"] = serde_json::Value::String(format!("{:?}", reasoning_effort).to_lowercase());
+        data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
         data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     } else {
         data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
