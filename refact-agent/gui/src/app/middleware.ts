@@ -13,6 +13,7 @@ import {
   chatResponse,
   setThreadUsage,
   setIsWaitingForResponse,
+  upsertToolCall,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -44,6 +45,7 @@ import {
 } from "../features/AgentUsage/agentUsageSlice";
 import { isChatResponseChoice } from "../services/refact";
 import { ideToolCallResponse } from "../hooks/useEventBusForIDE";
+import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -513,6 +515,12 @@ startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
+
+    // TODO: also handle this in confirmation box
+    if (action.payload.accepted === false) {
+      listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
+      listenerApi.dispatch(upsertToolCall(action.payload));
+    }
     listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
     const pauseReasons = state.confirmation.pauseReasons.filter(
@@ -521,6 +529,7 @@ startListening({
 
     if (pauseReasons.length === 0) {
       // TODO: it seems odd tool confirmation opens with no reasons.
+      // changin pause should remove it too.
       listenerApi.dispatch(
         clearPauseReasonsAndHandleToolsStatus({
           wasInteracted: true, // bit of a work around to enable auto send again.
