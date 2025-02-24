@@ -39,6 +39,10 @@ impl Default for ReasoningEffort {
     }
 }
 
+impl ReasoningEffort {
+    pub fn to_string(&self) -> String { format!("{:?}", self).to_lowercase() }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SamplingParameters {
     #[serde(default)]
