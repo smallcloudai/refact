@@ -381,7 +381,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_tools": true,
             "supports_multimodality": true,
             "supports_reasoning": true,
-            "default_reasoning_effort": "medium",
+            "supports_reasoning_effort": ["medium", "high"],
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -391,7 +391,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 128000,
             "supports_tools": true,
             "supports_reasoning": true,
-            "default_reasoning_effort": "medium",
+            "supports_reasoning_effort": ["medium", "high"],
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -403,7 +403,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": false,
             "supports_agent": true,
             "supports_reasoning": true,
-            "default_reasoning_effort": "medium",
+            "supports_reasoning_effort": ["medium", "high"],
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
