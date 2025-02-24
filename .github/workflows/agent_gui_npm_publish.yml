@@ -104,7 +104,7 @@ jobs:
         run: |
           VERSION="${{ steps.setupvars.outputs.gui_version }}"
           git add package.json package-lock.json
-          git commit -m "Version bump $VERSION"
+          git commit -m "Version bump refact-chat-js@$VERSION"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Post to a Slack channel
