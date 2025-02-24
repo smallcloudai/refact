@@ -6,6 +6,7 @@ use tokio::time::Duration;
 use tokio::fs;
 use std::time::SystemTime;
 use std::collections::HashMap;
+use crate::files_correction::canonical_path;
 use crate::global_context::GlobalContext;
 use crate::privacy::any_glob_matches_path;
 
@@ -133,8 +134,15 @@ pub async fn load_indexing_yaml(
 
 pub async fn reload_global_indexing_only(gcx: Arc<ARwLock<GlobalContext>>) -> IndexingEverywhere
 {
-    let gcx_locked = gcx.read().await;
-    let global_indexing_path = gcx_locked.config_dir.join("indexing.yaml");
+    let (config_dir, indexing_yaml) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.indexing_yaml.clone())
+    };
+    let global_indexing_path = if indexing_yaml.is_empty() {
+        config_dir.join("indexing.yaml")
+    } else {
+        canonical_path(indexing_yaml)
+    };
     IndexingEverywhere {
         global: load_indexing_yaml(&global_indexing_path, None).await.unwrap_or_default(),
         vcs_indexing_settings_map: HashMap::new(),
@@ -146,17 +154,21 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
 {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     // Initially this is loaded in _ls_files_under_version_control_recursive()
-    let (config_dir, workspace_vcs_roots) = {
+    let (config_dir, indexing_yaml, workspace_vcs_roots) = {
         let gcx_locked = gcx.read().await;
         if gcx_locked.indexing_everywhere.loaded_ts + INDEXING_TOO_OLD.as_secs() > now {
             return gcx_locked.indexing_everywhere.clone();
         }
-        (gcx_locked.config_dir.clone(), gcx_locked.documents_state.workspace_vcs_roots.clone())
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.indexing_yaml.clone(), gcx_locked.documents_state.workspace_vcs_roots.clone())
     };
 
     let indexing_everywhere = {
         let global = {
-            let global_indexing_path = config_dir.join("indexing.yaml");
+            let global_indexing_path = if indexing_yaml.is_empty() {
+                config_dir.join("indexing.yaml")
+            } else {
+                canonical_path(indexing_yaml)
+            };
             load_indexing_yaml(&global_indexing_path, None).await.unwrap_or_else(|e| {
                 tracing::error!("cannot load {:?}: {}, fallback to defaults", config_dir, e);
                 IndexingSettings::default()
