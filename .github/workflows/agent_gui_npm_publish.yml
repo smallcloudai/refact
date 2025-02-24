@@ -1,5 +1,9 @@
 name: Refact Agent GUI CI Publish (Node.js)
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,10 +13,12 @@ on:
         default: false
         description: Publish to NPM Registry
   push:
-    branches: [main, dev]
+    branches: [main, dev, ci/publish-npm-fixes]
     paths:
       - 'refact-agent/gui/**'
       - '.github/workflows/agent_gui_*'
+  pull_request:
+    branches: [ci/publish-npm-fixes]
 
 defaults:
   run:
@@ -29,8 +35,13 @@ jobs:
         github.event_name == 'push' &&
         (
           github.ref_name == 'main' ||
-          github.ref_name == 'dev'
+          github.ref_name == 'dev' ||
+          github.ref_name == 'ci/publish-npm-fixes'
         )
+      ) ||
+      (
+        github.event_name == 'pull_request' &&
+        github.ref_name == 'ci/publish-npm-fixes'
       )
 
     steps:
@@ -78,6 +89,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "Attempting to publish version: $VERSION"
+          exit 0
 
           if npm view refact-chat-js@$VERSION version &> /dev/null; then
             echo "Version $VERSION already exists in npm registry!"
@@ -100,14 +112,30 @@ jobs:
           echo "gui_version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
           echo "release_tag=$(node -p "require('./package.json').version.includes('alpha') ? 'alpha' : 'latest'")" >> "$GITHUB_OUTPUT"
 
-      - name: Commit and push version update
-        run: |
-          VERSION="${{ steps.setupvars.outputs.gui_version }}"
-          git add package.json package-lock.json
-          git commit -m "Version bump refact-chat-js@$VERSION"
-          git push origin HEAD:${{ github.ref_name }}
+      # - name: Commit and push version update
+      #   run: |
+      #     VERSION="${{ steps.setupvars.outputs.gui_version }}"
+      #     git add package.json package-lock.json
+      #     git commit -m "Version bump refact-chat-js@$VERSION"
+      #     git push origin HEAD:${{ github.ref_name }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'Version bump refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
+          title: 'Version bump refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
+          body: |
+            Automated version bump by GitHub Actions
+
+            This PR was created by the npm publish workflow.
+            - Version: refact-chat-js@${{ steps.setupvars.outputs.gui_version }}
+            - Branch: ${{ github.ref_name }}
+          branch: 'version-bump/refact-chat-js@${{ steps.setupvars.outputs.gui_version }}'
+          base: ${{ github.ref_name }}
 
       - name: Post to a Slack channel
+        if: github.ref_name != 'ci/publish-npm-fixes'
         id: slack
         uses: slackapi/slack-github-action@v1.26.0
         with:
