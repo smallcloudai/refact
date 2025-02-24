@@ -511,11 +511,14 @@ startListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
-    // TODO: also handle this in confirmation box
-    if (action.payload.accepted === false) {
-      listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
-      listenerApi.dispatch(upsertToolCall(action.payload));
-    }
+    const toolCallUpsertPayload = {
+      ...action.payload,
+      replaceOnly: !!action.payload.accepted,
+    };
+
+    listenerApi.dispatch(upsertToolCallIntoHistory(toolCallUpsertPayload));
+    listenerApi.dispatch(upsertToolCall(toolCallUpsertPayload));
+
     listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
     const pauseReasons = state.confirmation.pauseReasons.filter(
@@ -523,11 +526,9 @@ startListening({
     );
 
     if (pauseReasons.length === 0) {
-      // TODO: it seems odd tool confirmation opens with no reasons.
-      // changin pause should remove it too.
       listenerApi.dispatch(
         clearPauseReasonsAndHandleToolsStatus({
-          wasInteracted: true, // bit of a work around to enable auto send again.
+          wasInteracted: true,
           confirmationStatus: !!action.payload.accepted,
         }),
       );

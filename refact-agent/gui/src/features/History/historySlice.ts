@@ -148,13 +148,18 @@ export const historySlice = createSlice({
 
     upsertToolCallIntoHistory: (
       state,
-      action: PayloadAction<Parameters<typeof ideToolCallResponse>[0]>,
+      action: PayloadAction<
+        Parameters<typeof ideToolCallResponse>[0] & {
+          replaceOnly?: boolean;
+        }
+      >,
     ) => {
       if (!(action.payload.chatId in state)) return;
       maybeAppendToolCallResultFromIdeToMessages(
         state[action.payload.chatId].messages,
         action.payload.toolCallId,
         action.payload.accepted,
+        action.payload.replaceOnly,
       );
     },
   },
