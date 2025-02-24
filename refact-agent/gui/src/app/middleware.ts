@@ -519,7 +519,7 @@ startListening({
       listenerApi.dispatch(
         clearPauseReasonsAndHandleToolsStatus({
           wasInteracted: true, // bit of a work around to enable auto send again.
-          confirmationStatus: false,
+          confirmationStatus: !!action.payload.accepted,
         }),
       );
       listenerApi.dispatch(setIsWaitingForResponse(false));
