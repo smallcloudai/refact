@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{io::Write, time::Duration};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
@@ -73,30 +73,49 @@ async fn _make_http_request<T: Serialize>(
     method: &str,
     url: &str,
     body: &T,
+    max_attempts: usize,
 ) -> Result<Response, String> {
     // NOTE: if you're going to use https make sure that you set insecure flag from cmdline
     let client = Client::builder().build().map_err(|e| e.to_string())?;
     
-    let request_builder = match method {
-        "POST" => client.post(url).json(body),
-        "GET" => client.get(url),
-        _ => return Err(format!("HTTP method {method} not supported")),
-    };
-    let response = request_builder.send().await.map_err(|e| e.to_string())?;
+    let mut attempt = 1;
+    let mut backoff = Duration::from_millis(125);
+    loop {
 
-    if !response.status().is_success() {
-        let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(format!("HTTP request failed with status {}: {}", status, error_text));
+        let request_builder = match method {
+            "POST" => client.post(url).json(body),
+            "GET" => client.get(url),
+            _ => return Err(format!("HTTP method {method} not supported")),
+        };
+        match request_builder.send().await {
+            Ok(response) => {
+                if !response.status().is_success() {
+                    let status = response.status();
+                    let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    return Err(format!("HTTP request failed with status {}: {}", status, error_text));
+                }
+                return Ok(response);
+            },
+            Err(err) => {
+                if attempt < max_attempts {
+                    tracing::warn!("HTTP request failed, retrying in {}s:\n{}", backoff.as_secs_f64(), err);
+                    tokio::time::sleep(backoff).await;
+                    attempt += 1;
+                    backoff *= 2;
+                    continue;
+                } else {
+                    return Err(format!("HTTP request failed after {} attempts: {}", max_attempts, err));
+                }
+            }
+        }
     }
-    Ok(response)
 }
 
 pub async fn http_post_json<T: Serialize, R: for<'de> serde::Deserialize<'de>>(
     url: &str,
     body: &T,
 ) -> Result<R, String> {
-    let post_result = _make_http_request("POST", url, body).await?;
+    let post_result = _make_http_request("POST", url, body, 1).await?;
     post_result.json::<R>().await.map_err(|e| e.to_string())
 }
 
@@ -104,12 +123,20 @@ pub async fn http_post<T: Serialize>(
     url: &str,
     body: &T,
 ) -> Result<(), String> {
-    _make_http_request("POST", url, body).await.map(|_| ())
+    _make_http_request("POST", url, body, 1).await.map(|_| ())
+}
+
+pub async fn http_post_with_retries<T: Serialize>(
+    url: &str,
+    body: &T,
+    max_attempts: usize,
+) -> Result<(), String> {
+    _make_http_request("POST", url, body, max_attempts).await.map(|_| ())
 }
 
 pub async fn http_get_json<R: for<'de> serde::Deserialize<'de>>(
     url: &str,
 ) -> Result<R, String> {
-    let get_result = _make_http_request("GET", url, &()).await?;
+    let get_result = _make_http_request("GET", url, &(), 1).await?;
     get_result.json::<R>().await.map_err(|e| e.to_string())
 }

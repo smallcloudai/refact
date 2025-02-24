@@ -1,22 +1,20 @@
 use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
 use std::future::Future;
-use tokio::fs::File;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::time::Duration;
-use tokio_util::compat::{Compat, TokioAsyncWriteCompatExt};
 use tracing::{error, info, warn};
 use url::Url;
 use walkdir::WalkDir;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::http::http_post;
+use crate::http::{http_post, http_post_with_retries};
 use crate::http::routers::v1::lsp_like_handlers::LspLikeInit;
 use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{ssh_tunnel_open, SshTunnel, ssh_tunnel_check_status};
-use crate::integrations::docker::integr_docker::ToolDocker;
+use crate::integrations::docker::integr_docker::{ToolDocker, SettingsDocker};
 use crate::integrations::docker::docker_and_isolation_load;
 use crate::integrations::docker::integr_isolation::SettingsIsolation;
 
@@ -223,7 +221,7 @@ async fn docker_container_create(
     if docker_image_id.is_empty() {
         return Err("No image ID to run container from, please specify one.".to_string());
     }
-    let host_lsp_path  = isolation.host_lsp_path.clone();
+    let host_lsp_path  = format!("{}/refact-lsp", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
 
     let (address_url, api_key, integrations_yaml) = {
         let gcx_locked = gcx.read().await;
@@ -241,6 +239,7 @@ async fn docker_container_create(
     let ports_to_forward_as_arg_list = ports_to_forward.iter()
         .map(|p| format!("--publish={}:{}", p.published, p.target)).collect::<Vec<_>>().join(" ");
     let network_if_set = if !isolation.docker_network.is_empty() {
+        docker_create_network_if_not_exists(gcx.clone(), docker, &isolation.docker_network).await?;
         format!("--network {}", isolation.docker_network)
     } else {
         String::new()
@@ -260,6 +259,30 @@ async fn docker_container_create(
     }
 
     Ok(container_id[..12].to_string())
+}
+
+async fn get_host_cache_dir(gcx: Arc<ARwLock<GlobalContext>>, settings_docker: &SettingsDocker) -> String {
+    match settings_docker.get_ssh_config() {
+        Some(ssh_config) => {
+            let home_dir = match ssh_config.user.as_str() {
+                "root" => "/root".to_string(),
+                user => format!("/home/{user}"),
+            };
+            format!("{home_dir}/.cache/refact")
+        }
+        None => gcx.read().await.cache_dir.to_string_lossy().to_string(),
+    }
+}
+
+async fn docker_create_network_if_not_exists(gcx: Arc<ARwLock<GlobalContext>>, docker: &ToolDocker, network_name: &str) -> Result<(), String> {
+    let quoted_network_name = shell_words::quote(network_name);
+    let network_ls_command = format!("network ls --filter name={quoted_network_name}");
+    let (network_ls_output, _) = docker.command_execute(&network_ls_command, gcx.clone(), true, true).await?;
+    if !network_ls_output.contains(network_name) {
+        let network_create_command = format!("network create {quoted_network_name}");
+        let (_network_create_output, _) = docker.command_execute(&network_create_command, gcx.clone(), true, true).await?;
+    }
+    Ok(())
 }
 
 async fn docker_container_sync_config_folder(
@@ -369,17 +392,20 @@ async fn docker_container_sync_workspace(
         .into_iter()
         .next()
         .ok_or_else(|| "No workspace folders found".to_string())?;
-    let container_workspace_folder = isolation.container_workspace_folder.clone();
+    let mut container_workspace_folder = isolation.container_workspace_folder.clone();
+    if !container_workspace_folder.ends_with("/") {
+        container_workspace_folder.push_str("/");
+    }
 
     let temp_tar_file = tempfile::Builder::new().suffix(".tar").tempfile()
         .map_err(|e| format!("Error creating temporary tar file: {}", e))?.into_temp_path();
     let tar_file_name = temp_tar_file.file_name().unwrap_or_default().to_string_lossy().to_string();
-    let tar_async_file = File::create(&temp_tar_file).await
+    let tar_async_file = tokio::fs::File::create(&temp_tar_file).await
         .map_err(|e| format!("Error opening temporary tar file: {}", e))?;
 
-    let mut tar_builder = async_tar::Builder::new(tar_async_file.compat_write());
+    let mut tar_builder = tokio_tar::Builder::new(tar_async_file);
     tar_builder.follow_symlinks(true);
-    tar_builder.mode(async_tar::HeaderMode::Complete);
+    tar_builder.mode(tokio_tar::HeaderMode::Complete);
 
     let mut indexing_everywhere = crate::files_blocklist::reload_global_indexing_only(gcx.clone()).await;
     let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
@@ -410,7 +436,7 @@ async fn docker_container_sync_workspace(
         tar_path: format!("{}/{}", container_workspace_folder.trim_end_matches('/'), tar_file_name),
         extract_to: container_workspace_folder.clone(),
     };
-    http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &sync_files_post).await?;
+    http_post_with_retries(&format!("http://localhost:{lsp_port_to_connect}/v1/sync-files-extract-tar"), &sync_files_post, 8).await?;
 
     tokio::fs::remove_file(&temp_tar_file).await
         .map_err(|e| format!("Error removing temporary archive: {}", e))?;
@@ -432,7 +458,7 @@ async fn docker_container_sync_workspace(
 }
 
 async fn append_folder_if_exists(
-    tar_builder: &mut async_tar::Builder<Compat<File>>,
+    tar_builder: &mut tokio_tar::Builder<tokio::fs::File>,
     workspace_folder: &PathBuf,
     folder_name: &str
 ) -> Result<(), String> {

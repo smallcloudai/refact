@@ -3,9 +3,9 @@ import { selectThreadToolUse } from "../features/Chat/Thread/selectors";
 import {
   useAppSelector,
   useGetCapsQuery,
-  useGetUser,
   useAgentUsage,
   useAppDispatch,
+  useGetUser,
 } from ".";
 
 import { getSelectedChatModel, setChatModel } from "../features/Chat";

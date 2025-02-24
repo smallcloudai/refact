@@ -22,7 +22,6 @@ shadow-rs = "0.36.0"
 axum = { version = "0.6.20", features = ["default", "http2"] }
 async-process = "2.0.1"
 async-stream = "0.3.5"
-async-tar = "0.5.0"
 async-trait = "0.1.73"
 backtrace = "0.3.71"
 base64 = "0.22.1"
@@ -30,11 +29,10 @@ chrono = { version = "0.4.31", features = ["serde"] }
 diff = "0.1.13"
 dyn_partial_eq = "=0.1.2"
 futures = "0.3"
-futures-util = "0.3"
 git2 = "0.19.0"
 glob = "0.3.1"
 hashbrown = "0.15.2"
-headless_chrome = "1.0.15"
+headless_chrome = "1.0.16"
 home = "0.5"
 html2text = "0.12.5"
 hyper = { version = "0.14", features = ["server", "stream"] }
@@ -78,6 +76,7 @@ tokenizers = "0.21.0"
 tokio = { version = "1.43.0", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
 tokio-rusqlite = "0.5.0"
 tokio-util = { version = "0.7.12", features = ["compat"] }
+tokio-tar = "0.3.1"
 tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["cors"] }
 tower-lsp = "0.20"

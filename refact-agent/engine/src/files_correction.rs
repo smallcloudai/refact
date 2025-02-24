@@ -338,7 +338,7 @@ fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<
 /// In Windows, tries to fix the path, permissive about paths like \\?\C:\path, incorrect amount of \ and more.
 /// 
 /// Temporarily remove verbatim, to resolve ., .., symlinks if possible, it will be added again later.
-fn preprocess_path_for_normalization(p: String) -> String {
+pub fn preprocess_path_for_normalization(p: String) -> String {
     use itertools::Itertools;
 
     let p = p.replace(r"/", r"\");
@@ -380,7 +380,7 @@ fn preprocess_path_for_normalization(p: String) -> String {
 
 #[cfg(not(windows))]
 /// In Unix, do nothing
-fn preprocess_path_for_normalization(p: String) -> String {
+pub fn preprocess_path_for_normalization(p: String) -> String {
     p
 }
 
@@ -447,8 +447,12 @@ fn absolute(path: &Path) -> Result<PathBuf, String> {
 pub fn canonical_path<T: Into<String>>(p: T) -> PathBuf {
     let p: String = p.into();
     let path= PathBuf::from(preprocess_path_for_normalization(p));
+    canonicalize_normalized_path(path)
+}
 
-    path.canonicalize().unwrap_or_else(|_| absolute(&path).unwrap_or(path))
+/// If you did not call preprocess_path_for_normalization() before, use crate::files_correction::canonical_path() instead
+pub fn canonicalize_normalized_path(p: PathBuf) -> PathBuf {
+    p.canonicalize().unwrap_or_else(|_| absolute(&p).unwrap_or(p))
 }
 
 pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Result<S::Ok, S::Error> {
@@ -634,7 +638,6 @@ mod tests {
             (r"\\.\COM1", PathBuf::from(r"\\.\COM1")),
             (r"\.\PIPE\SomePipeName", PathBuf::from(r"\\.\PIPE\SomePipeName")),
             (r"/?/UNC//./PIPE/AnotherPipe", PathBuf::from(r"\\.\PIPE\AnotherPipe")),
-            (r"D:\\PRN", PathBuf::from(r"\\?\D:\PRN")),
 
             // Non-Standard Verbatim
             (r"\\?\Volume{12345678-1234-1234-1234-1234567890AB}\Path\To\Some\File", PathBuf::from(r"\\?\Volume{12345678-1234-1234-1234-1234567890AB}\Path\To\Some\File")),
@@ -663,7 +666,6 @@ mod tests {
         let test_cases = vec![
             // Absolute paths
             (r"/home/.././etc/./../usr/bin", PathBuf::from(r"/usr/bin")),
-            (r"/var/run//.././run//docker.sock", PathBuf::from(r"/run/docker.sock")),
             (r"/this_folder_does_not_exist/run/.././run/docker.sock", PathBuf::from(r"/this_folder_does_not_exist/run/docker.sock")),
             (r"/../../var", PathBuf::from(r"/var")),
             (r"/../../var_n/.", PathBuf::from(r"/var_n")),

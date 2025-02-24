@@ -27,12 +27,13 @@ export const AgentUsage: React.FC = () => {
       return `You have reached your usage limit of ${maxAgentUsageAmount} messages a day.
           You can ${
             toolUse === "agent" ? "use agent" : "send messages"
-          } again tomorrow, or upgrade to PRO.`;
+          } again tomorrow${plan === "FREE" ? ", or upgrade to PRO." : "."}`;
     }
 
     if (agentUsageAmount <= 5) {
-      return `You have left only ${agentUsageAmount} messages left today. To remove
-          the limit upgrade to PRO.`;
+      return `You have left only ${agentUsageAmount} messages left today.${
+        plan === "FREE" ? " To remove the limit upgrade to PRO." : ""
+      }`;
     }
 
     return `You have ${agentUsageAmount} ${
@@ -58,16 +59,18 @@ export const AgentUsage: React.FC = () => {
           >
             <ReloadIcon />
           </IconButton>
-          <LinkButton
-            size="2"
-            variant="outline"
-            href="https://refact.smallcloud.ai/pro"
-            target="_blank"
-            onClick={startPollingForUser}
-            className={styles.upgrade_button}
-          >
-            Upgrade now
-          </LinkButton>
+          {plan === "FREE" && (
+            <LinkButton
+              size="2"
+              variant="outline"
+              href="https://refact.smallcloud.ai/pro"
+              target="_blank"
+              onClick={startPollingForUser}
+              className={styles.upgrade_button}
+            >
+              Upgrade now
+            </LinkButton>
+          )}
         </Flex>
       </Flex>
     </Card>

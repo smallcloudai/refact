@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::string::ToString;
 use std::sync::Arc;
+use futures::future::join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use regex::Regex;
@@ -10,7 +11,6 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use futures_util::future::join_all;
 use hashbrown::HashSet;
 
 use crate::global_context::GlobalContext;

@@ -6,7 +6,7 @@ use tracing::{error, info, warn};
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
 use crate::git::CommitInfo;
-use crate::git::operations::{get_diff_statuses_workdir_to_head, git_diff_as_string};
+use crate::git::operations::{get_diff_statuses, git_diff_head_to_workdir_as_string};
 
 pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo>
 {
@@ -22,8 +22,9 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { warn!("{}", e); continue; }
         };
 
-        let file_changes = match get_diff_statuses_workdir_to_head(&repository) {
-            Ok(changes) if changes.is_empty() => { continue; }
+        let (staged_changes, unstaged_changes) = match get_diff_statuses(git2::StatusShow::IndexAndWorkdir, &repository, true) {
+            Ok((staged, unstaged)) 
+                if staged.is_empty() && unstaged.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { warn!("{}", e); continue; }
         };
@@ -31,7 +32,8 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
         commits.push(CommitInfo {
             project_path: Url::from_file_path(project_path).ok().unwrap_or_else(|| Url::parse("file:///").unwrap()),
             commit_message: "".to_string(),
-            file_changes,
+            staged_changes,
+            unstaged_changes,
         });
     }
 
@@ -41,7 +43,7 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
 pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits: Vec<CommitInfo>) -> Vec<CommitInfo> {
     const MAX_DIFF_SIZE: usize = 4096;
     let mut commits_with_messages = Vec::new();
-    for commit in commits {
+    for mut commit in commits {
         let project_path = commit.project_path.to_file_path().ok().unwrap_or_default();
 
         let repository = match git2::Repository::open(&project_path) {
@@ -49,22 +51,18 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
             Err(e) => { error!("{}", e); continue; }
         };
 
-        let diff = match git_diff_as_string(&repository, &commit.file_changes, MAX_DIFF_SIZE) {
+        let diff = match git_diff_head_to_workdir_as_string(&repository, MAX_DIFF_SIZE) {
             Ok(d) if d.is_empty() => { continue; }
             Ok(d) => d,
             Err(e) => { error!("{}", e); continue; }
         };
 
-        let commit_msg = match generate_commit_message_by_diff(gcx.clone(), &diff, &None).await {
+        commit.commit_message = match generate_commit_message_by_diff(gcx.clone(), &diff, &None).await {
             Ok(msg) => msg,
             Err(e) => { error!("{}", e); continue; }
         };
 
-        commits_with_messages.push(CommitInfo {
-            project_path: commit.project_path,
-            commit_message: commit_msg,
-            file_changes: commit.file_changes,
-        });
+        commits_with_messages.push(commit);
     }
 
     commits_with_messages
