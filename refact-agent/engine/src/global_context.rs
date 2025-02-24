@@ -100,6 +100,8 @@ pub struct CommandLine {
     pub variables_yaml: String,
     #[structopt(long, default_value="", help="Specify the secrets.yaml, disabling the global one")]
     pub secrets_yaml: String,
+    #[structopt(long, default_value="", help="Specify the indexing.yaml, replacing the global one")]
+    pub indexing_yaml: String,
 }
 
 impl CommandLine {
