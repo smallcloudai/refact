@@ -35,6 +35,7 @@ import {
   fixBrokenToolMessages,
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
+  upsertToolCall,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
