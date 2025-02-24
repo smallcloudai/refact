@@ -48,8 +48,6 @@ export function useEventBusForApp() {
         dispatch(event.data);
       }
 
-      // TODO: ideToolEditResponse.
-
       // TODO: active project
       // vscode workspace can be found with vscode.workspace.name
       // JB: project.name

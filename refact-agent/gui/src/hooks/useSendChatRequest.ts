@@ -309,7 +309,6 @@ export const useSendChatRequest = () => {
   );
 
   const confirmToolUsage = useCallback(() => {
-    // of either way it aborts, shouldn't it just abort before asking?
     abort();
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
@@ -389,7 +388,6 @@ export function useAutoSend() {
       !preventSend
     ) {
       const lastMessage = currentMessages.slice(-1)[0];
-      // here ish
       if (
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls &&

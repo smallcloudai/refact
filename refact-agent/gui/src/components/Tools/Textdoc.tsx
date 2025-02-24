@@ -137,7 +137,6 @@ const TextDocHeader: React.FC<{
         {replaceContent && (
           <Button
             size="1"
-            // this one can directly dismiss the tool confirmation.
             onClick={() => handleReplace(replaceContent)}
             disabled={dryRunResult.isLoading || !canPaste}
             title="Replace the current selection in the ide."
