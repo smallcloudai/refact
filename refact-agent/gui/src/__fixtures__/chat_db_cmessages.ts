@@ -1,5 +1,4 @@
 import { CMessage, CMessageFromChatDB } from "../services/refact/types";
-
 export const CMESSAGES_STUB: CMessage[] = [
   {
     cmessage_belongs_to_cthread_id: "test13thread1739988322_2",

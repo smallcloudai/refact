@@ -81,7 +81,22 @@ export const chatDbMessageSlice = createSlice({
       const message = parseCMessageFromChatDBToCMessage(action.payload.message);
       if (!message) return;
       // Update message list
-      state.messageList[message.cmessage_num] = message;
+      const updateIndex = state.messageList.findIndex(
+        (m) =>
+          m.cmessage_num === message.cmessage_num &&
+          m.cmessage_alt === message.cmessage_alt,
+      );
+      if (updateIndex > -1) {
+        state.messageList[updateIndex] = message;
+      } else {
+        state.messageList.push(message);
+        state.messageList.sort((a, b) => {
+          if (a.cmessage_num === b.cmessage_num) {
+            return a.cmessage_alt - b.cmessage_alt;
+          }
+          return a.cmessage_num - b.cmessage_num;
+        });
+      }
     },
   },
 
