@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   PATCH_LIKE_FUNCTIONS,
   useAppDispatch,
@@ -88,6 +88,10 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
     confirmToolUsage();
   };
 
+  const handleReject = useCallback(() => {
+    rejectToolUsage(toolCallIds);
+  }, [rejectToolUsage, toolCallIds]);
+
   const message = getConfirmationMessage(
     commands,
     rules,
@@ -101,7 +105,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
     return (
       <PatchConfirmation
         handleAllowForThisChat={handleAllowForThisChat}
-        rejectToolUsage={rejectToolUsage}
+        rejectToolUsage={handleReject}
         confirmToolUsage={confirmToolUsage}
       />
     );
@@ -167,9 +171,9 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
               color="red"
               variant="surface"
               size="1"
-              onClick={rejectToolUsage}
+              onClick={handleReject}
             >
-              Deny
+              Stop
             </Button>
           )}
         </Flex>
@@ -258,7 +262,7 @@ const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
             size="1"
             onClick={rejectToolUsage}
           >
-            Deny
+            Stop
           </Button>
         </Flex>
       </Flex>

@@ -157,7 +157,7 @@ export const fixBrokenToolMessages = createAction<PayloadWithId>(
 );
 
 export const upsertToolCall = createAction<
-  Parameters<typeof ideToolCallResponse>[0]
+  Parameters<typeof ideToolCallResponse>[0] & { replaceOnly?: boolean }
 >("chatThread/upsertToolCall");
 
 // TODO: This is the circular dep when imported from hooks :/

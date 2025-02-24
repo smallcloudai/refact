@@ -385,6 +385,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
         thread.messages,
         action.payload.toolCallId,
         action.payload.accepted,
+        action.payload.replaceOnly,
       );
     }
   });
@@ -394,6 +395,7 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   messages: Draft<ChatMessages>,
   toolCallId: string,
   accepted: boolean | "indeterminate",
+  replaceOnly = false,
 ) {
   const hasDiff = messages.find(
     (d) => isDiffMessage(d) && d.tool_call_id === toolCallId,
@@ -405,6 +407,8 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   const hasToolCall = messages.find(
     (d) => isToolMessage(d) && d.content.tool_call_id === toolCallId,
   );
+
+  if (replaceOnly && !hasToolCall) return;
 
   if (
     hasToolCall &&
