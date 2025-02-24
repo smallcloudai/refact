@@ -1,9 +1,5 @@
 name: Refact Agent GUI CI Publish (Node.js)
 
-permissions:
-  contents: write
-  pull-requests: write
-
 on:
   workflow_dispatch:
     inputs:
@@ -117,6 +113,7 @@ jobs:
           VERSION="${{ steps.setupvars.outputs.gui_version }}"
           git add package.json package-lock.json
           git commit -m "Version bump refact-chat-js@$VERSION"
+          git remote set-url origin https://${{ secrets.GH_USER }}@github.com/${{ github.repository }}
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Post to a Slack channel
