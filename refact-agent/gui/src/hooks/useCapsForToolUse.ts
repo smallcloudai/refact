@@ -106,7 +106,7 @@ export function useCapsForToolUse() {
 
   useEffect(() => {
     const currentModelMaximumContextTokens =
-      caps.data?.code_chat_models[currentModel].n_ctx;
+      caps.data?.code_chat_models[currentModel]?.n_ctx;
 
     if (currentModelMaximumContextTokens) {
       const inputTokensLimit = parseInt(
