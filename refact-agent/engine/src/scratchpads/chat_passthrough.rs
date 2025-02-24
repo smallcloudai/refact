@@ -137,8 +137,18 @@ impl ScratchpadAbstract for ChatPassthrough {
                 run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
-        // Handle models that support reasoning
-        let (supports_reasoning, default_temperature, default_reasoning_effort) = _model_reasoning_params(&self.post.model);
+
+        let caps = {
+            let gcx_locked = gcx.write().await;
+            gcx_locked.caps.clone().unwrap()
+        };
+        let model_record_mb = {
+            let caps_locked = caps.read().unwrap();
+            caps_locked.code_chat_models.get(&self.post.model).cloned()
+        };
+
+        let (supports_reasoning, default_temperature, default_reasoning_effort) =
+            _model_reasoning_params(model_record_mb);
         let messages = if supports_reasoning {
             _adapt_for_reasoning_models(
                 &messages,
@@ -257,26 +267,17 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 }
 
-
-fn _model_reasoning_params(model_name: &str) -> (bool, Option<f32>, Option<ReasoningEffort>) {
-    let known_models: Value = serde_json::from_str(crate::known_models::KNOWN_MODELS)
-        .expect("Failed to parse KNOWN_MODELS");
-
+fn _model_reasoning_params(
+    model_record_mb: Option<ModelRecord>,
+) -> (bool, Option<f32>, Option<ReasoningEffort>) {
     let mut support_reasoning: bool = false;
     let mut temperature: Option<f32> = None;
     let mut reasoning_effort: Option<ReasoningEffort> = None;
 
-    if let Some(chat_models) = known_models.get("code_chat_models") {
-        if let Some(model) = chat_models.get(model_name) {
-            match serde_json::from_value::<ModelRecord>(model.clone()) {
-                Ok(model_record) => {
-                    support_reasoning = model_record.supports_reasoning.clone();
-                    temperature = model_record.default_temperature.clone();
-                    reasoning_effort = model_record.default_reasoning_effort.clone();
-                },
-                Err(_) => {},
-            }
-        }
+    if let Some(model_record) = model_record_mb {
+        support_reasoning = model_record.supports_reasoning.clone();
+        temperature = model_record.default_temperature.clone();
+        reasoning_effort = model_record.supports_reasoning_effort.first().cloned();
     }
 
     (support_reasoning, temperature, reasoning_effort)
