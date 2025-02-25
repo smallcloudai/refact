@@ -139,6 +139,7 @@ pub async fn tools_merged_and_filtered(
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
+        ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
@@ -461,6 +462,25 @@ tools:
       - "im_going_to_apply_to"
       - "goal"
       - "language_slash_framework"
+      
+  - name: "regex_search"
+    description: "Search for patterns in files using regular expressions"
+    parameters:
+      - name: "pattern"
+        type: "string"
+        description: "Regular expression pattern to search for"
+      - name: "scope"
+        type: "string"
+        description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
+      - name: "case_sensitive"
+        type: "boolean"
+        description: "Whether the search should be case-sensitive. Defaults to false."
+      - name: "max_results"
+        type: "number"
+        description: "Maximum number of results to return. If not specified, all matches will be returned."
+    parameters_required:
+      - "pattern"
+      - "scope"
 
   - name: "create_knowledge"
     agentic: true
