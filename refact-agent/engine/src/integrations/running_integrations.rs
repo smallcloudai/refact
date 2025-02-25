@@ -64,12 +64,12 @@ pub async fn load_integrations(
             }
         };
         let should_be_fine = integr.integr_settings_apply(gcx.clone(), rec.integr_config_path.clone(), &rec.config_unparsed).await;
-        if should_be_fine.is_err() {
-            // tracing::warn!("failed to apply settings for integration {}: {:?}", rec.integr_name, should_be_fine.err());
+        if let Err(err) = should_be_fine {
+            let error_line = err.line();
             error_log.push(crate::integrations::setting_up_integrations::YamlError {
                 integr_config_path: rec.integr_config_path.clone(),
-                error_line: 0,
-                error_msg: format!("failed to apply settings: {:?}", should_be_fine.err()),
+                error_line,
+                error_msg: format!("failed to apply settings: {}", err),
             });
         }
         integrations_map.insert(rec.integr_name.clone(), integr);

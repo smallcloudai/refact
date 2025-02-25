@@ -502,15 +502,14 @@ pub async fn integration_config_get(
                     Ok(y) => {
                         let j = serde_json::to_value(y).unwrap();
                         match integration_box.integr_settings_apply(gcx.clone(), better_integr_config_path.clone(), &j).await {
-                            Ok(_) => {
-                            }
+                            Ok(_) => {}
                             Err(err) => {
                                 result.error_log.push(YamlError {
                                     integr_config_path: better_integr_config_path.clone(),
-                                    error_line: 0,
+                                    error_line: err.line(),
                                     error_msg: err.to_string(),
                                 });
-                                tracing::warn!("cannot deserialize some fields in the integration cfg {better_integr_config_path}: {err}");
+                                tracing::warn!("cannot deserialize fields in {better_integr_config_path}: {err}");
                             }
                         }
                         let common_settings = integration_box.integr_common();
@@ -550,7 +549,9 @@ pub async fn integration_config_save(
     let mut integration_box = crate::integrations::integration_from_name(integr_name.as_str())
         .map_err(|e| format!("Failed to load integrations: {}", e))?;
 
-    integration_box.integr_settings_apply(gcx.clone(), integr_config_path.clone(), integr_values).await?;  // this will produce "no field XXX" errors
+    integration_box.integr_settings_apply(gcx.clone(), integr_config_path.clone(), integr_values).await
+        .map_err(|e| format!("validation error at {}:{}: {}", integr_config_path, e.line(), e))?;
+
     let mut sanitized_json: serde_json::Value = integration_box.integr_settings_as_json();
     let common_settings = integration_box.integr_common();
     if let (Value::Object(sanitized_json_m), Value::Object(common_settings_m)) = (&mut sanitized_json, json!(common_settings)) {

@@ -93,7 +93,7 @@ async fn _session_apply_settings(
     gcx: Arc<ARwLock<GlobalContext>>,
     config_path: String,
     new_cfg: SettingsMCP,
-) -> Result<(), String> {
+) {
     let session_key = format!("{}", config_path);
 
     let session_arc = {
@@ -184,8 +184,6 @@ async fn _session_apply_settings(
         let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
         session_downcasted.launched_coroutines.push(coroutine);
     }
-
-    Ok(())
 }
 
 async fn _session_wait_coroutines(
@@ -213,32 +211,12 @@ impl IntegrationTrait for IntegrationMCP {
         self
     }
 
-    async fn integr_settings_apply(
-        &mut self,
-        gcx: Arc<ARwLock<GlobalContext>>,
-        config_path: String,
-        value: &serde_json::Value
-    ) -> Result<(), String> {
+    async fn integr_settings_apply(&mut self, gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
         self.gcx_option = Some(Arc::downgrade(&gcx));
-
-        match serde_json::from_value::<SettingsMCP>(value.clone()) {
-            Ok(x) => self.cfg = x,
-            Err(e) => {
-                tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        };
-        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
-            Ok(x) => self.common = x,
-            Err(e) => {
-                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        }
-        self.config_path = config_path.clone();
-
-        _session_apply_settings(gcx.clone(), config_path.clone(), self.cfg.clone()).await?;  // possibly saves coroutine in session
-
+        self.cfg = serde_json::from_value(value.clone())?;
+        self.common = serde_json::from_value(value.clone())?;
+        self.config_path = config_path;
+        _session_apply_settings(gcx.clone(), self.config_path.clone(), self.cfg.clone()).await;  // possibly saves coroutine in session
         Ok(())
     }
 

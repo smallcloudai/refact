@@ -66,21 +66,9 @@ pub struct ToolCmdline {
 impl IntegrationTrait for ToolCmdline {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
-        match serde_json::from_value::<CmdlineToolConfig>(value.clone()) {
-            Ok(x) => self.cfg = x,
-            Err(e) => {
-                tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        }
-        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
-            Ok(x) => self.common = x,
-            Err(e) => {
-                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        }
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+        self.cfg = serde_json::from_value(value.clone())?;
+        self.common = serde_json::from_value(value.clone())?;
         self.config_path = config_path;
         Ok(())
     }
