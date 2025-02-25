@@ -291,24 +291,8 @@ export function formatChatResponse(
       return acc;
     }
 
-    // saving usage if is assistant message and no delta role
-    if (
-      cur.delta.role === null ||
-      cur.finish_reason !== null // &&
-      // isAssistantMessage(lastMessage)
-    ) {
+    if (cur.delta.role === null || cur.finish_reason !== null) {
       return acc;
-      // const last = acc.slice(0, -1);
-      // const currentMessage = lastMessage.content ?? "";
-      // const toolCalls = lastMessage.tool_calls;
-      // return last.concat([
-      //   {
-      //     role: "assistant",
-      //     content: currentMessage,
-      //     tool_calls: toolCalls,
-      //     finish_reason: cur.finish_reason,
-      //   },
-      // ]);
     }
 
     // console.log("Fall though");

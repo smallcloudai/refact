@@ -33,7 +33,7 @@ import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
-import { UsageCounter } from "./UsageCounter";
+import { UsageCounter } from "../UsageCounter";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;

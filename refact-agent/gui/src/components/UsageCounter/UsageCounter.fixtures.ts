@@ -1,4 +1,4 @@
-import { Usage } from "../../../services/refact";
+import { Usage } from "../../services/refact";
 
 export const USAGE_COUNTER_STUB_GPT: Usage = {
   completion_tokens: 30,

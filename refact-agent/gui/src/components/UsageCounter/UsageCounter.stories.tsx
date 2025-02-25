@@ -2,12 +2,12 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Provider } from "react-redux";
 
-import { setUpStore } from "../../../app/store";
-import { Theme } from "../../Theme";
-import { AbortControllerProvider } from "../../../contexts/AbortControllers";
+import { setUpStore } from "../../app/store";
+import { Theme } from "../Theme";
+import { AbortControllerProvider } from "../../contexts/AbortControllers";
 
 import { UsageCounter } from ".";
-import { Usage } from "../../../services/refact";
+import { Usage } from "../../services/refact";
 import {
   USAGE_COUNTER_STUB_ANTHROPIC,
   USAGE_COUNTER_STUB_GPT,

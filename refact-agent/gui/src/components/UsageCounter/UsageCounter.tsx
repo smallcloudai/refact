@@ -2,9 +2,9 @@ import React from "react";
 import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 
-import { ScrollArea } from "../../ScrollArea";
-import { calculateUsageInputTokens } from "../../../utils/calculateUsageInputTokens";
-import type { Usage } from "../../../services/refact";
+import { ScrollArea } from "../ScrollArea";
+import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens";
+import type { Usage } from "../../services/refact";
 
 import styles from "./UsageCounter.module.css";
 
