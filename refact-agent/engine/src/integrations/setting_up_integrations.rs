@@ -8,9 +8,7 @@ use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
-use jsonschema;
 use crate::global_context::GlobalContext;
-use crate::integrations::json_schema::INTEGRATION_JSON_SCHEMA;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
@@ -28,16 +26,6 @@ impl From<(&str, &serde_yaml::Error)> for YamlError {
             integr_config_path: path.to_string(),
             error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
             error_msg: err.to_string(),
-        }
-    }
-}
-
-impl From<(&str, &jsonschema::ValidationError<'_>)> for YamlError {
-    fn from((path, err): (&str, &jsonschema::ValidationError)) -> Self {
-        YamlError {
-            integr_config_path: path.to_string(),
-            error_line: 0,  // ValidationError doesn't provide line numbers
-            error_msg: format!("Schema validation error: {}", err),
         }
     }
 }
@@ -79,11 +67,7 @@ fn get_array_of_str_or_empty(val: &serde_json::Value, path: &str) -> Vec<String>
 fn parse_and_validate_yaml(path: &str, content: &String) -> Result<serde_json::Value, YamlError> {
     let value_yaml = serde_yaml::from_str::<serde_yaml::Value>(&content)
         .map_err(|e| YamlError::from((path, &e)))?;
-
     let json_value = serde_json::to_value(value_yaml.clone()).unwrap();
-    if let Err(err) = jsonschema::validate(&INTEGRATION_JSON_SCHEMA, &json_value) {
-        return Err(YamlError::from((path, &err)));
-    }
     Ok(json_value)
 }
 
@@ -103,7 +87,7 @@ pub fn read_integrations_d(
 
     // 1. Read and parse integrations.yaml (Optional, used for testing)
     // This reads the file to be used by (2) and (3), it does not create the records yet.
-    // --integrations-yaml flag disables global config dir, except for integrations 
+    // --integrations-yaml flag disables global config dir, except for integrations
     // in `globally_allowed_integrations` list in this yaml file
     let mut integrations_yaml_value = None;
     let mut globally_allowed_integration_list = if integrations_yaml_path.is_empty() {
@@ -184,7 +168,7 @@ pub fn read_integrations_d(
     }
 
     for (path_str, integr_name, project_path) in files_to_read {
-        // If --integrations-yaml is set, ignore the global config folder 
+        // If --integrations-yaml is set, ignore the global config folder
         // except for the list of integrations specified as `globally_allowed_integrations`.
         if let Some(allowed_integr_list) = &globally_allowed_integration_list {
             if project_path.is_empty() && !allowed_integr_list.contains(&integr_name) {
