@@ -74,7 +74,7 @@ export const ChatLinkButton: React.FC<{
       variant="surface"
       title={
         shouldLinkBeDisabled
-          ? "You have reached your usage limit of 20 messages a day. You can use agent again tomorrow, or upgrade to PRO."
+          ? "You have reached your usage limit for the day. You can use agent again tomorrow, or upgrade to PRO."
           : title
       }
       onClick={handleClick}

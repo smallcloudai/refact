@@ -32,7 +32,7 @@ export const AgentUsage: React.FC = () => {
 
     if (agentUsageAmount <= 5) {
       return `You have left only ${agentUsageAmount} messages left today.${
-        plan === "FREE" ? " To remove the limit upgrade to PRO." : ""
+        plan === "FREE" ? " To increase the limit upgrade to PRO." : ""
       }`;
     }
 
