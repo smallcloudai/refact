@@ -31,7 +31,7 @@ OR     (1) goal/thinking/coding/outcome (2) string according to the guidelines
 Example:
 [
 ["goal", "Rename my_function1 to my_function2"],
-["thinking", "There are definition(), search() and locate() tools, all can be used to find my_function1, system prompt says I need to start with locate()."],
+["thinking", "There are definition(), search(), regex_search() and locate() tools, all can be used to find my_function1, system prompt says I need to start with locate()."],
 ["locate(problem_statement=\"Rename my_function1 to my_function2\")", "The file my_script.py (1337 lines) has my_function1 on line 42."],
 ["thinking", "I can rewrite my_function1 inside my_script.py, so I'll do that."],
 ["update_textdoc(path=\"my_script\", old_str=\"...\", replacement=\"...\", multiple=false)", "The output of update_textdoc() has 15 lines_add and 15 lines_remove, confirming the operation."],

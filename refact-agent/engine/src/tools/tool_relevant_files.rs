@@ -186,9 +186,10 @@ GOTODEF = call definition("xxx", skeleton=true) in parallel for symbols either v
 or symbols you can guess; don't call definition() for symbols from standard libraries, only symbols
 within the project are indexed.
 
-VECDBSEARCH = call up to five search() in parallel, some good ideas on what to look for: symbols
+VECDBSEARCH = call up to five search() or regex_search() in parallel. For semantic search, use search() with symbols
 mentioned in the task, one call for each symbol, strings mentioned, or write imaginary code that does the
-thing to fix search("    def f():\n        print(\"the example function!\")")
+thing to fix search("    def f():\n        print(\"the example function!\")"). For exact pattern matching, use
+regex_search() with regular expressions to find specific patterns like regex_search("function\\s+name\\s*\\(")
 
 You'll receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate
 well between chat restarts and they are always in English. Answer in the language the user prefers.
@@ -236,8 +237,10 @@ Examples:
 definition("my_method1")
 definition("MyClass2")
 references("my_method2")
-search("    def f():\n        print(\"the example function!\")")
+search("    def f():\n        print(\"the example function!\")")  # semantic search for similar code
 search("    my_object->tricky_call(with, weird, parameters)")
+regex_search("my_method1")  # exact pattern matching
+regex_search("(?i)error.*not found")  # case-insensitive pattern matching
 
 Limits on the number of calls are pretty liberal, 10 definitions, 5 references and 3 searches is a reasonable request.
 
