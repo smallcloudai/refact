@@ -5,7 +5,7 @@ parameters:
   - name: "additional_params"
     description: "Additional parameters for cargo check, such as --workspace or --all-features"
   - name: "project_path"
-    description: "absolute path to the project"
+    description: "Absolute path to the project, the rust stuff is at refact/refact-agent/engine/Cargo.toml for the Refact project, so use ../refact/refact-agent/engine"
 timeout: "60"
 output_filter:
   limit_lines: 100

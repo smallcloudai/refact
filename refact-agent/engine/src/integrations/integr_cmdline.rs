@@ -148,10 +148,16 @@ fn powershell_escape(s: &str) -> String {
 pub fn replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
     let mut result = x.to_string();
     for (key, value) in args_str {
-        #[cfg(target_os = "windows")]
-        let escaped_value = powershell_escape(value);
-        #[cfg(not(target_os = "windows"))]
-        let escaped_value = escape(Cow::from(value.as_str())).to_string();
+        let escaped_value = if value == "" {
+            // special case for an empty paramter, we want it empty as replacement, rather than escaped empty string ""
+            "".to_string()
+        } else {
+            #[cfg(target_os = "windows")]
+            let x = powershell_escape(value);
+            #[cfg(not(target_os = "windows"))]
+            let x = escape(Cow::from(value.as_str())).to_string();
+            x
+        };
         result = result.replace(&format!("%{}%", key), &escaped_value);
     }
     result
@@ -257,7 +263,7 @@ pub async fn execute_blocking_command(
     }
 }
 
-fn parse_command_args(args: &HashMap<String, serde_json::Value>, cfg: &CmdlineToolConfig) -> Result<(String, String), String>
+fn _parse_command_args(args: &HashMap<String, serde_json::Value>, cfg: &CmdlineToolConfig) -> Result<(String, String), String>
 {
     let mut args_str: HashMap<String, String> = HashMap::new();
     let valid_params: Vec<String> = cfg.parameters.iter().map(|p| p.name.clone()).collect();
@@ -293,7 +299,7 @@ impl Tool for ToolCmdline {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let (command, workdir) = parse_command_args(args, &self.cfg)?;
+        let (command, workdir) = _parse_command_args(args, &self.cfg)?;
 
         let gcx = ccx.lock().await.global_context.clone();
         let mut error_log = Vec::<YamlError>::new();
@@ -335,7 +341,7 @@ impl Tool for ToolCmdline {
         &self,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<String, String> {
-        let (command, _workdir) = parse_command_args(args, &self.cfg)?;
+        let (command, _workdir) = _parse_command_args(args, &self.cfg)?;
         return Ok(command);
     }
 
