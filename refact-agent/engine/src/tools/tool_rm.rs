@@ -9,6 +9,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 
@@ -128,6 +129,15 @@ impl Tool for ToolRm {
         };
 
         let true_path = canonical_path(&corrected_path);
+
+        let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+        if let Err(e) = check_file_privacy(
+            privacy_settings.clone(), 
+            &true_path, 
+            &FilePrivacyLevel::AllowToSendAnywhere
+        ) {
+            return Err(format!("Cannot rm '{}': {}", path_str, e));
+        }
 
         // Check that the true_path is within project directories.
         let is_within_project = project_dirs.iter().any(|p| true_path.starts_with(p));
