@@ -68,15 +68,9 @@ async fn search_files_with_regex(
     gcx: Arc<ARwLock<GlobalContext>>,
     pattern: &str,
     scope: &String,
-    case_sensitive: bool,
-    max_results: Option<usize>,
     subchat_tx: Option<Arc<AMutex<tokio::sync::mpsc::UnboundedSender<Value>>>>,
 ) -> Result<Vec<ContextFile>, String> {
-    let regex = if case_sensitive {
-        Regex::new(pattern).map_err(|e| format!("Invalid regex pattern: {}", e))?
-    } else {
-        Regex::new(&format!("(?i){}", pattern)).map_err(|e| format!("Invalid regex pattern: {}", e))?
-    };
+    let regex = Regex::new(pattern).map_err(|e| format!("Invalid regex pattern: {}", e))?;
 
     let files_to_search = if scope == "workspace" {
         let workspace_files = gcx.read().await.documents_state.workspace_files.lock().unwrap().clone();
@@ -131,31 +125,18 @@ async fn search_files_with_regex(
 
     let regex_arc = Arc::new(regex);
     let results_mutex = Arc::new(AMutex::new(Vec::new()));
-    let max_results_reached = Arc::new(AtomicUsize::new(0));
-    
     let search_futures = files_to_search.into_iter().map(|file_path| {
         let gcx_clone = gcx.clone();
         let regex_clone = regex_arc.clone();
         let progress_clone = progress.clone();
         let results_mutex_clone = results_mutex.clone();
         let subchat_tx_clone = subchat_tx.clone();
-        let max_results_reached_clone = max_results_reached.clone();
         
         async move {
-            // Skip if we've already reached the maximum number of results
-            if let Some(_) = max_results {
-                if max_results_reached_clone.load(Ordering::Relaxed) > 0 {
-                    return;
-                }
-            }
-            
             let file_results = search_single_file(gcx_clone, file_path, &regex_clone).await;
-            
-            // Update progress counters
             let processed = progress_clone.processed_files.fetch_add(1, Ordering::Relaxed) + 1;
             let matches_found = progress_clone.total_matches.fetch_add(file_results.len(), Ordering::Relaxed) + file_results.len();
             
-            // Send progress update (every 10 files or when matches are found)
             if let Some(tx) = &subchat_tx_clone {
                 if processed % 10 == 0 || !file_results.is_empty() {
                     let _ = tx.lock().await.send(json!({
@@ -167,40 +148,15 @@ async fn search_files_with_regex(
                 }
             }
             
-            // Add results to the shared results vector
             if !file_results.is_empty() {
                 let mut results = results_mutex_clone.lock().await;
                 results.extend(file_results);
-                
-                // Check if we've reached the maximum number of results
-                if let Some(max) = max_results {
-                    if results.len() >= max {
-                        max_results_reached_clone.store(1, Ordering::Relaxed);
-                        if let Some(tx) = &subchat_tx_clone {
-                            let _ = tx.lock().await.send(json!({
-                                "progress": format!(
-                                    "Maximum result limit ({}) reached. Stopping search...",
-                                    max
-                                )
-                            }));
-                        }
-                    }
-                }
             }
         }
     });
     
     join_all(search_futures).await;
-    
-    // Get the final results
     let mut results = results_mutex.lock().await.clone();
-    
-    // Apply result limit if specified
-    if let Some(max) = max_results {
-        if results.len() > max {
-            results.truncate(max);
-        }
-    }
     
     // Sort results by file name
     results.sort_by(|a, b| a.file_name.cmp(&b.file_name));
@@ -240,23 +196,7 @@ impl Tool for ToolRegexSearch {
             None => return Err("Missing argument `scope` in the regex_search() call.".to_string())
         };
         
-        let case_sensitive = match args.get("case_sensitive") {
-            Some(Value::Bool(b)) => *b,
-            Some(v) => return Err(format!("argument `case_sensitive` is not a boolean: {:?}", v)),
-            None => false,
-        };
-        
-        let max_results = match args.get("max_results") {
-            Some(Value::Number(n)) => {
-                if let Some(num) = n.as_u64() {
-                    Some(num as usize)
-                } else {
-                    return Err("argument `max_results` must be a positive integer".to_string());
-                }
-            },
-            Some(v) => return Err(format!("argument `max_results` is not a number: {:?}", v)),
-            None => None,
-        };
+
 
         // Get context and subchat_tx for progress updates
         let ccx_lock = ccx.lock().await;
@@ -269,12 +209,8 @@ impl Tool for ToolRegexSearch {
             "progress": format!("Starting regex search for pattern '{}' in scope '{}'...", pattern, scope)
         }));
         
-        let pattern_to_validate = if case_sensitive { 
-            pattern.clone() 
-        } else { 
-            format!("(?i){}", pattern) 
-        };
-        if let Err(e) = Regex::new(&pattern_to_validate) {
+        // Validate the pattern
+        if let Err(e) = Regex::new(&pattern) {
             return Err(format!("Invalid regex pattern: {}. Please check your syntax.", e));
         }
         
@@ -282,8 +218,6 @@ impl Tool for ToolRegexSearch {
             gcx.clone(), 
             &pattern, 
             &scope, 
-            case_sensitive,
-            max_results,
             Some(subchat_tx.clone()),
         ).await?;
         
@@ -296,10 +230,7 @@ impl Tool for ToolRegexSearch {
             "progress": format!("Search complete. Found {} matches.", search_results.len())
         }));
 
-        let mut content = format!("Regex search results for pattern '{}' (case-{}):\n\n", 
-            pattern, 
-            if case_sensitive { "sensitive" } else { "insensitive" }
-        );
+        let mut content = format!("Regex search results for pattern '{}':\n\n", pattern);
         
         let mut file_results: HashMap<String, Vec<&ContextFile>> = HashMap::new();
         search_results.iter().for_each(|rec| {
@@ -310,16 +241,7 @@ impl Tool for ToolRegexSearch {
         let total_matches = search_results.len();
         let total_files = file_results.len();
         
-        if let Some(limit) = max_results {
-            if total_matches >= limit {
-                content.push_str(&format!("Found {} matches across {} files (limited to first {} matches)\n\n", 
-                    total_matches, total_files, limit));
-            } else {
-                content.push_str(&format!("Found {} matches across {} files\n\n", total_matches, total_files));
-            }
-        } else {
-            content.push_str(&format!("Found {} matches across {} files\n\n", total_matches, total_files));
-        }
+        content.push_str(&format!("Found {} matches across {} files\n\n", total_matches, total_files));
         
         for rec in search_results.iter() {
             if !used_files.contains(&rec.file_name) {
