@@ -27,14 +27,18 @@ MORE_TOCHANGE = likely to change as well, as a consequence of completing the tas
 USAGE = code that uses the things the task description is about
 SIMILAR = code that might provide an example of how to write similar things
 
-Your job is to use search() calls and summarize the results.
+Your job is to use search() and regex_search() calls and summarize the results.
 
 Some good ideas:
 
-search("MyClass1")                  -- if MyClass1 mentioned in the task, for each symbol
-search("log message 1 mentioned")   -- when the task has log messages, for each message
-search("    def f():\n        print(\"the example function!\")")   -- look for the code piece mentioned in the task
+search("MyClass1")                  -- if MyClass1 mentioned in the task, for semantic search of each symbol
+search("log message 1 mentioned")   -- when the task has log messages, for semantic search of each message
+search("    def f():\n        print(\"the example function!\")")   -- look for semantically similar code to the piece mentioned in the task
 search("imaginary_call(imaginary_arguments)\nmore_calls()\n")      -- you can imagine what kind of code you need to find
+
+regex_search("MyClass1")            -- if you need to find exact occurrences of a class name
+regex_search("(?i)error.*not found") -- if you need to find specific error patterns
+regex_search("function\\s+name\\s*\\(")  -- if you need to find function declarations with specific patterns
 
 Call any of those that make sense in parallel. Make at least two calls in parallel, pay special attention that at least one
 search() call should not have a restrictive scope, because you are running the risk of getting no results at all.
@@ -191,13 +195,13 @@ async fn find_relevant_files_with_search(
     let mut msgs = vec![];
     msgs.push(ChatMessage::new("system".to_string(), LS_SYSTEM_PROMPT.to_string()));
     msgs.push(ChatMessage::new("user".to_string(), user_query.to_string()));
-    msgs.push(ChatMessage::new("cd_instruction".to_string(), "Look at user query above. Follow the system prompt. Run several search() calls in parallel.".to_string()));
+    msgs.push(ChatMessage::new("cd_instruction".to_string(), "Look at user query above. Follow the system prompt. Run several search() and regex_search() calls in parallel.".to_string()));
 
     let result = subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         msgs,
-        vec!["search".to_string()],
+        vec!["search".to_string(), "regex_search".to_string()],
         1,
         subchat_params.subchat_max_new_tokens,
         LS_WRAP_UP,
