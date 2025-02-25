@@ -19,6 +19,7 @@ import {
   // isChatGetTitleResponse,
   isToolCallMessage,
   isToolMessage,
+  isUserMessage,
   ToolCall,
   ToolMessage,
   type ChatMessages,
@@ -32,7 +33,7 @@ import {
   generateChatTitle,
   sendChat,
 } from "../../../services/refact/chat";
-import { ToolCommand } from "../../../services/refact/tools";
+import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
@@ -375,5 +376,60 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
       });
+  },
+);
+
+export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
+  unknown,
+  { chatId: string; toolCallId: string }
+>(
+  "chatThread/sendCurrentChatToLspAfterToolCallUpdate",
+  async ({ chatId, toolCallId }, thunkApi) => {
+    const state = thunkApi.getState();
+    const toolUse = state.chat.thread.tool_use;
+    if (state.chat.thread.id !== chatId) return;
+    if (
+      state.chat.streaming ||
+      state.chat.prevent_send ||
+      state.chat.waiting_for_response
+    ) {
+      return;
+    }
+    const lastMessages = takeFromEndWhile(
+      state.chat.thread.messages,
+      (message) => !isUserMessage(message) && !isAssistantMessage(message),
+    );
+
+    const toolUseInThisSet = lastMessages.some(
+      (message) =>
+        isToolMessage(message) && message.content.tool_call_id === toolCallId,
+    );
+
+    if (!toolUseInThisSet) return;
+    thunkApi.dispatch(setIsWaitingForResponse(true));
+    // duplicate in sendChat
+    let tools = await thunkApi
+      .dispatch(toolsApi.endpoints.getTools.initiate(undefined))
+      .unwrap();
+
+    if (toolUse === "quick") {
+      tools = [];
+    } else if (toolUse === "explore") {
+      tools = tools.filter((t) => !t.function.agentic);
+    }
+    tools = tools.map((t) => {
+      const { agentic: _, ...remaining } = t.function;
+      return { ...t, function: { ...remaining } };
+    });
+
+    return thunkApi.dispatch(
+      chatAskQuestionThunk({
+        messages: state.chat.thread.messages,
+        tools,
+        chatId,
+        mode: state.chat.thread.mode,
+        checkpointsEnabled: state.chat.checkpoints_enabled,
+      }),
+    );
   },
 );
