@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { selectThreadToolUse } from "../features/Chat/Thread/selectors";
+import {
+  selectChatId,
+  selectThreadToolUse,
+} from "../features/Chat/Thread/selectors";
 import {
   useAppSelector,
   useGetCapsQuery,
@@ -11,6 +14,7 @@ import {
 import {
   getSelectedChatModel,
   setChatModel,
+  updateMaximumContextTokens,
   setToolUse,
   ToolUse,
 } from "../features/Chat";
@@ -29,6 +33,7 @@ export function useCapsForToolUse() {
   const [wasAdjusted, setWasAdjusted] = useState(false);
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
+  const chatId = useAppSelector(selectChatId);
   const usage = useAgentUsage();
   const user = useGetUser();
   const dispatch = useAppDispatch();
@@ -112,9 +117,28 @@ export function useCapsForToolUse() {
       const toChange =
         models.find((elem) => currentModel.startsWith(elem)) ??
         (models[0] || "");
+
       setCapModel(toChange);
     }
-  }, [currentModel, setCapModel, usableModels, usableModelsForPlan]);
+  }, [setCapModel, currentModel, usableModels, usableModelsForPlan]);
+
+  useEffect(() => {
+    const currentModelMaximumContextTokens =
+      caps.data?.code_chat_models[currentModel]?.n_ctx;
+
+    if (currentModelMaximumContextTokens) {
+      const inputTokensLimit = parseInt(
+        (currentModelMaximumContextTokens / 3).toFixed(0),
+      );
+
+      dispatch(
+        updateMaximumContextTokens({
+          chatId,
+          value: inputTokensLimit,
+        }),
+      );
+    }
+  }, [dispatch, caps.data?.code_chat_models, chatId, currentModel]);
 
   useEffect(() => {
     const determineNewToolUse = (): ToolUse | null => {

@@ -11,6 +11,7 @@ import {
   restoreChat,
   newIntegrationChat,
   chatResponse,
+  setThreadUsage,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -33,13 +34,10 @@ import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
 import { resetConfirmationInteractedState } from "../features/ToolConfirmation/confirmationSlice";
 import {
-  getAgentUsageCounter,
-  getMaxFreeAgentUsage,
-} from "../features/Chat/Thread/utils";
-import {
   updateAgentUsage,
   updateMaxAgentUsageAmount,
 } from "../features/AgentUsage/agentUsageSlice";
+import { isChatResponseChoice } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -97,15 +95,22 @@ startListening({
     // saving to store agent_usage counter from the backend, only one chunk has this field.
     const { payload } = action;
 
-    if ("refact_agent_request_available" in payload) {
-      const agentUsageCounter = getAgentUsageCounter(payload);
+    if (isChatResponseChoice(payload)) {
+      const {
+        usage,
+        refact_agent_max_request_num,
+        refact_agent_request_available,
+      } = payload;
+      const actions = [
+        updateAgentUsage(refact_agent_request_available),
+        updateMaxAgentUsageAmount(refact_agent_max_request_num),
+      ];
 
-      dispatch(updateAgentUsage(agentUsageCounter ?? null));
-    }
+      actions.forEach((action) => dispatch(action));
 
-    if ("refact_agent_max_request_num" in payload) {
-      const maxFreeAgentUsage = getMaxFreeAgentUsage(payload);
-      dispatch(updateMaxAgentUsageAmount(maxFreeAgentUsage));
+      if (usage) {
+        dispatch(setThreadUsage({ chatId: payload.id, usage }));
+      }
     }
   },
 });

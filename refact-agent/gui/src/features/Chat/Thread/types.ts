@@ -1,3 +1,4 @@
+import { Usage } from "../../../services/refact";
 import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
@@ -23,6 +24,8 @@ export type ChatThread = {
   project_name?: string;
   last_user_message_id?: string;
   new_chat_suggested: SuggestedChat;
+  usage?: Usage;
+  currentMaximumContextTokens?: number;
 };
 
 export type SuggestedChat = {
@@ -48,8 +51,10 @@ export type Chat = {
 };
 
 export type PayloadWithId = { id: string };
+export type PayloadWithChatAndNumber = { chatId: string; value: number };
 export type PayloadWithChatAndMessageId = { chatId: string; messageId: string };
 export type PayloadWithChatAndBoolean = { chatId: string; value: boolean };
+export type PayloadWithChatAndUsage = { chatId: string; usage: Usage };
 export type PayloadWithIdAndTitle = {
   title: string;
   isTitleGenerated: boolean;
@@ -83,12 +88,21 @@ export type LspChatMode =
   | "PROJECT_SUMMARY"
   | "THINKING_AGENT";
 
-export function chatModeToLspMode(
-  toolUse?: ToolUse,
-  mode?: LspChatMode,
-): LspChatMode {
+export function chatModeToLspMode({
+  toolUse,
+  mode,
+  defaultMode,
+}: {
+  toolUse?: ToolUse;
+  mode?: LspChatMode;
+  defaultMode?: LspChatMode;
+}): LspChatMode {
+  if (defaultMode) {
+    if (defaultMode === "AGENT" || defaultMode === "THINKING_AGENT")
+      return "AGENT";
+    return defaultMode;
+  }
   if (mode) {
-    if (mode === "AGENT" || mode === "THINKING_AGENT") return "AGENT";
     return mode;
   }
   if (toolUse === "agent") return "AGENT";

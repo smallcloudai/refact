@@ -18,6 +18,7 @@ export const selectCheckpointsEnabled = (state: RootState) =>
 
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;
+export const selectThreadUsage = (state: RootState) => state.chat.thread.usage;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
