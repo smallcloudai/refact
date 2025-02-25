@@ -46,7 +46,7 @@ PROMPT_EXPLORATION_TOOLS: |
   **Determine if the question is related to the current project**:
    - **If yes**:
        - Explain your plan briefly before calling any tools
-       - Gather the necessary context using `tree()`, `cat()`, `search()`, `definition()`, `references()` and other tool calls, or follow the user’s instructions.
+       - Gather the necessary context using `tree()`, `cat()`, `search()` (semantic search), `regex_search()` (pattern matching), `definition()`, `references()` and other tool calls, or follow the user’s instructions.
        - Ask clarifying questions if needed, making as many iterations as necessary to refine the context.
        - After gathering context, propose required project changes.
        - Then use `*_textdoc()` tools to make changes.
@@ -133,14 +133,12 @@ PROMPT_THINKING_AGENT: |
      - Always call knowledge() first when facing any agentic (complex) task.
      - This tool can access external data, including successful "trajectories" (examples of past solutions) marked by "🗃️."
      - Use these records to help solve tasks by analogy.
-  
   2. Gather Maximum Context
      - **Objective**: Ensure no relevant information is overlooked.
      - Use tree() to explore the project structure.
      - Use locate() with the full problem statement.
-     - Use search(), cat(), definition() and any related tool to collect all available context.
+     - Use all other tools such as `search()` (semantic search), `regex_search()` (pattern matching), `cat()`, `definition()`, etc. to collect every piece of relevant context.
      - Open all files that might be indirectly referenced.
-  
   3. Plan Thoroughly with think()
      - **Objective**: Develop a precise plan before making any changes.
      - Call think() with the full problem statement and specify the expected output format.

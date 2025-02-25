@@ -178,11 +178,11 @@ pub async fn tools_merged_and_filtered(
 const BUILT_IN_TOOLS: &str = r####"
 tools:
   - name: "search"
-    description: "Find similar pieces of code or text using vector database"
+    description: "Find semantically similar pieces of code or text using vector database (semantic search)"
     parameters:
       - name: "query"
         type: "string"
-        description: "Single line, paragraph or code sample to search for similar content."
+        description: "Single line, paragraph or code sample to search for semantically similar content."
       - name: "scope"
         type: "string"
         description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
@@ -464,7 +464,7 @@ tools:
       - "language_slash_framework"
       
   - name: "regex_search"
-    description: "Search for patterns in files using regular expressions"
+    description: "Search for exact text patterns in files using regular expressions (pattern matching)"
     parameters:
       - name: "pattern"
         type: "string"
