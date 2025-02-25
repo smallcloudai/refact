@@ -290,7 +290,7 @@ async fn docker_container_sync_config_folder(
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let (config_dir, integrations_yaml, variables_yaml, secrets_yaml, indexing_yaml) = {
+    let (config_dir, integrations_yaml, variables_yaml, secrets_yaml, indexing_yaml, privacy_yaml) = {
         let gcx_locked = gcx.read().await;
         (
             gcx_locked.config_dir.clone(), 
@@ -298,6 +298,7 @@ async fn docker_container_sync_config_folder(
             gcx_locked.cmdline.variables_yaml.clone(),
             gcx_locked.cmdline.secrets_yaml.clone(),
             gcx_locked.cmdline.indexing_yaml.clone(),
+            gcx_locked.cmdline.privacy_yaml.clone(),
         )
     };
     let config_dir_string = config_dir.to_string_lossy().to_string();
@@ -328,6 +329,10 @@ async fn docker_container_sync_config_folder(
     if !indexing_yaml.is_empty() {
         docker_container_copy(docker, gcx.clone(), container_id, &indexing_yaml, 
             &format!("{container_home_dir}/.config/refact/indexing.yaml")).await?;
+    }
+    if !privacy_yaml.is_empty() {
+        docker_container_copy(docker, gcx.clone(), container_id, &privacy_yaml, 
+            &format!("{container_home_dir}/.config/refact/privacy.yaml")).await?;
     }
 
     Ok(())
