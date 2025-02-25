@@ -13,7 +13,6 @@ import {
   chatResponse,
   setThreadUsage,
   setIsWaitingForResponse,
-  upsertToolCall,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -45,7 +44,6 @@ import {
 } from "../features/AgentUsage/agentUsageSlice";
 import { isChatResponseChoice } from "../services/refact";
 import { ideToolCallResponse } from "../hooks/useEventBusForIDE";
-import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -515,14 +513,6 @@ startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-
-    const toolCallUpsertPayload = {
-      ...action.payload,
-      replaceOnly: !!action.payload.accepted,
-    };
-
-    listenerApi.dispatch(upsertToolCallIntoHistory(toolCallUpsertPayload));
-    listenerApi.dispatch(upsertToolCall(toolCallUpsertPayload));
 
     listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 

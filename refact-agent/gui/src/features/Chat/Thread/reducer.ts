@@ -1,4 +1,4 @@
-import { createReducer, Draft } from "@reduxjs/toolkit";
+import { createReducer } from "@reduxjs/toolkit";
 import {
   Chat,
   ChatThread,
@@ -40,14 +40,8 @@ import {
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
-  ChatMessages,
   DEFAULT_MAX_NEW_TOKENS,
-  isAssistantMessage,
-  isDiffMessage,
-  isMultiModalToolResult,
   isToolCallMessage,
-  isToolMessage,
-  ToolMessage,
   validateToolCall,
 } from "../../../services/refact";
 import { calculateUsageInputTokens } from "../../../utils/calculateUsageInputTokens";
@@ -370,81 +364,4 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const newMessage = { ...lastMessage, tool_calls: validToolCalls };
     state.thread.messages = [...messages, newMessage];
   });
-
-  builder.addCase(upsertToolCall, (state, action) => {
-    // if (action.payload.toolCallId !== state.thread.id && !(action.payload.chatId in state.cache)) return state;
-    if (action.payload.chatId === state.thread.id) {
-      maybeAppendToolCallResultFromIdeToMessages(
-        state.thread.messages,
-        action.payload.toolCallId,
-        action.payload.accepted,
-      );
-    } else if (action.payload.chatId in state.cache) {
-      const thread = state.cache[action.payload.chatId];
-      maybeAppendToolCallResultFromIdeToMessages(
-        thread.messages,
-        action.payload.toolCallId,
-        action.payload.accepted,
-        action.payload.replaceOnly,
-      );
-    }
-  });
 });
-
-export function maybeAppendToolCallResultFromIdeToMessages(
-  messages: Draft<ChatMessages>,
-  toolCallId: string,
-  accepted: boolean | "indeterminate",
-  replaceOnly = false,
-) {
-  const hasDiff = messages.find(
-    (d) => isDiffMessage(d) && d.tool_call_id === toolCallId,
-  );
-  if (hasDiff) return;
-
-  const message = messageForToolCall(accepted);
-
-  const hasToolCall = messages.find(
-    (d) => isToolMessage(d) && d.content.tool_call_id === toolCallId,
-  );
-
-  if (replaceOnly && !hasToolCall) return;
-
-  if (
-    hasToolCall &&
-    isToolMessage(hasToolCall) &&
-    typeof hasToolCall.content.content === "string"
-  ) {
-    hasToolCall.content.content = message;
-    return;
-  } else if (
-    hasToolCall &&
-    isToolMessage(hasToolCall) &&
-    isMultiModalToolResult(hasToolCall.content)
-  ) {
-    hasToolCall.content.content.push({ m_type: "text", m_content: message });
-    return;
-  }
-
-  const assistantMessageIndex = messages.findIndex((message) => {
-    if (!isAssistantMessage(message)) return false;
-    return message.tool_calls?.find((toolCall) => toolCall.id === toolCallId);
-  });
-
-  if (assistantMessageIndex === -1) return;
-  const toolMessage: ToolMessage = {
-    role: "tool",
-    content: {
-      content: message,
-      tool_call_id: toolCallId,
-    },
-  };
-
-  messages.splice(assistantMessageIndex + 1, 0, toolMessage);
-}
-
-function messageForToolCall(accepted: boolean | "indeterminate") {
-  if (accepted === false) return "The user rejected the changes.";
-  if (accepted === true) return "The user accepted the changes.";
-  return "The user may have made modifications to changes.";
-}
