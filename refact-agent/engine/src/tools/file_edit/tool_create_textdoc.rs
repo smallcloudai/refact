@@ -1,6 +1,7 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
+use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel, PrivacySettings};
 use crate::tools::file_edit::auxiliary::{
     await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
 };
@@ -22,7 +23,7 @@ struct ToolCreateTextDocArgs {
 
 pub struct ToolCreateTextDoc;
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, String> {
+fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
@@ -33,6 +34,12 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, St
                 ));
             }
             let path = canonicalize_normalized_path(path);
+            if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
+                return Err(format!(
+                    "Error: Cannot create the file '{:?}' due to privacy settings.",
+                    s.trim()
+                ));
+            }
             if path.exists() {
                 return Err(format!(
                     "Error: Cannot create file at '{:?}' because it already exists. Please choose a different path or use update_textdoc/replace_textdoc to modify existing files.",
@@ -66,7 +73,8 @@ pub async fn tool_create_text_doc_exec(
     args: &HashMap<String, Value>,
     dry: bool
 ) -> Result<(String, String, Vec<DiffChunk>), String> {
-    let args = parse_args(args)?;
+    let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+    let args = parse_args(args, privacy_settings)?;
     await_ast_indexing(gcx.clone()).await?;
     let (before_text, after_text) = write_file(gcx.clone(), &args.path, &args.content, dry).await?;
     sync_documents_ast(gcx.clone(), &args.path).await?;
@@ -107,8 +115,11 @@ impl Tool for ToolCreateTextDoc {
         ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<MatchConfirmDeny, String> {
-        async fn can_execute_tool_edit(args: &HashMap<String, Value>) -> Result<(), String> {
-            let _ = parse_args(args)?;
+        let gcx = ccx.lock().await.global_context.clone();
+        let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+        
+        async fn can_execute_tool_edit(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
+            let _ = parse_args(args, privacy_settings)?;
             Ok(())
         }
 
@@ -117,7 +128,7 @@ impl Tool for ToolCreateTextDoc {
         // workaround: if messages weren't passed by ToolsPermissionCheckPost, legacy
         if msgs_len != 0 {
             // if we cannot execute apply_edit, there's no need for confirmation
-            if let Err(_) = can_execute_tool_edit(args).await {
+            if let Err(_) = can_execute_tool_edit(args, privacy_settings).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
                     command: "create_textdoc".to_string(),
