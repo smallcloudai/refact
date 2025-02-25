@@ -66,7 +66,7 @@ export const LoginPage: React.FC = () => {
                 <ul>
                   <li>
                     Chat with your codebase powered by top models (e.g. Claude
-                    3.5 Sonnet & GPT-4o with 32k context).
+                    3.7 Sonnet, OpenAI GPT-4o and o3-mini).
                   </li>
                   <li>Unlimited Code Completions (powered by Qwen2.5).</li>
                   <li>Codebase-aware vector database (RAG).</li>

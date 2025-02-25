@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   selectChatId,
   selectThreadToolUse,
@@ -15,6 +15,8 @@ import {
   getSelectedChatModel,
   setChatModel,
   updateMaximumContextTokens,
+  setToolUse,
+  ToolUse,
 } from "../features/Chat";
 
 // TODO: hard coded for now.
@@ -24,9 +26,11 @@ const PAID_AGENT_LIST = [
   "grok-2-1212",
   "grok-beta",
   "gemini-2.0-flash-exp",
+  "claude-3-7-sonnet",
 ];
 
 export function useCapsForToolUse() {
+  const [wasAdjusted, setWasAdjusted] = useState(false);
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
   const chatId = useAppSelector(selectChatId);
@@ -55,6 +59,20 @@ export function useCapsForToolUse() {
     if (!item.supports_multimodality) return false;
     return true;
   }, [caps.data?.code_chat_models, currentModel]);
+
+  const modelsSupportingTools = useMemo(() => {
+    const models = caps.data?.code_chat_models ?? {};
+    return Object.entries(models)
+      .filter(([_, value]) => value.supports_tools)
+      .map(([key]) => key);
+  }, [caps.data?.code_chat_models]);
+
+  const modelsSupportingAgent = useMemo(() => {
+    const models = caps.data?.code_chat_models ?? {};
+    return Object.entries(models)
+      .filter(([_, value]) => value.supports_agent)
+      .map(([key]) => key);
+  }, [caps.data?.code_chat_models]);
 
   const usableModels = useMemo(() => {
     const models = caps.data?.code_chat_models ?? {};
@@ -121,6 +139,37 @@ export function useCapsForToolUse() {
       );
     }
   }, [dispatch, caps.data?.code_chat_models, chatId, currentModel]);
+
+  useEffect(() => {
+    const determineNewToolUse = (): ToolUse | null => {
+      if (toolUse === "agent" && modelsSupportingAgent.length === 0) {
+        return "explore";
+      }
+      if (toolUse === "explore" && modelsSupportingTools.length === 0) {
+        return "quick";
+      }
+      return null;
+    };
+
+    const handleAutomaticToolUseChange = () => {
+      if (!caps.isSuccess || wasAdjusted) return;
+
+      const newToolUse = determineNewToolUse();
+      if (newToolUse) {
+        dispatch(setToolUse(newToolUse));
+      }
+      setWasAdjusted(true);
+    };
+
+    handleAutomaticToolUseChange();
+  }, [
+    dispatch,
+    wasAdjusted,
+    caps.isSuccess,
+    toolUse,
+    modelsSupportingAgent,
+    modelsSupportingTools,
+  ]);
 
   return {
     usableModels,

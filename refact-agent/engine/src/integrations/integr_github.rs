@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 use async_trait::async_trait;
-use tracing::{error, info};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -35,23 +34,9 @@ pub struct ToolGithub {
 impl IntegrationTrait for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
-        match serde_json::from_value::<SettingsGitHub>(value.clone()) {
-            Ok(settings_github) => {
-                self.settings_github = settings_github;
-            },
-            Err(e) => {
-                error!("Failed to apply settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        };
-        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
-            Ok(x) => self.common = x,
-            Err(e) => {
-                error!("Failed to apply common settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        };
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+        self.settings_github = serde_json::from_value(value.clone())?;
+        self.common = serde_json::from_value(value.clone())?;
         self.config_path = config_path;
         Ok(())
     }
@@ -185,7 +170,7 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
         return Err("Parsed command is empty".to_string());
     }
     for (i, arg) in parsed_args.iter().enumerate() {
-        info!("argument[{}]: {}", i, arg);
+        tracing::info!("argument[{}]: {}", i, arg);
     }
     if parsed_args[0] == "gh" {
         parsed_args.remove(0);

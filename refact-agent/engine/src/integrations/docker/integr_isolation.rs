@@ -31,26 +31,11 @@ pub struct IntegrationIsolation {
 impl IntegrationTrait for IntegrationIsolation {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, _config_path: String, value: &serde_json::Value) -> Result<(), String> {
-        match serde_json::from_value::<SettingsIsolation>(value.clone()) {
-            Ok(settings_isolation) => {
-                tracing::info!("Isolation settings applied: {:?}", settings_isolation);
-                self.settings_isolation = settings_isolation
-            },
-            Err(e) => {
-                tracing::error!("Failed to apply settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        }
-        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
-            Ok(x) => self.common = x,
-            Err(e) => {
-                tracing::error!("Failed to apply common settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        }
-        Ok(())
-    }
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, _config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+      self.settings_isolation = serde_json::from_value(value.clone())?;
+      self.common = serde_json::from_value(value.clone())?;
+      Ok(())
+  }
 
     fn integr_settings_as_json(&self) -> Value {
         serde_json::to_value(&self.settings_isolation).unwrap()
