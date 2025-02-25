@@ -1,7 +1,12 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { chatAskQuestionThunk, chatResponse } from "../Chat";
-import { isAssistantMessage, isDiffResponse } from "../../events";
+import {
+  isAssistantMessage,
+  isDiffResponse,
+  isToolResponse,
+} from "../../events";
 import { parseOrElse, partition } from "../../utils";
+import { TEXTDOC_TOOL_NAMES } from "../../components/Tools/types";
 
 export type PatchMeta = {
   chatId: string;
@@ -55,7 +60,12 @@ export const patchesAndDiffsTrackerSlice = createSlice({
       if (!toolCalls) return state;
       const patches = toolCalls.reduce<PatchMeta[]>((acc, toolCall) => {
         if (toolCall.id === undefined) return acc;
-        if (toolCall.function.name !== "patch") return acc;
+        if (
+          !toolCall.function.name ||
+          !TEXTDOC_TOOL_NAMES.includes(toolCall.function.name)
+        ) {
+          return acc; // maybe this
+        }
         const filePath = pathFromArgString(toolCall.function.arguments);
         if (!filePath) return acc;
         return [
@@ -73,7 +83,9 @@ export const patchesAndDiffsTrackerSlice = createSlice({
     });
 
     builder.addCase(chatResponse, (state, action) => {
-      if (!isDiffResponse(action.payload)) return state;
+      if (!isDiffResponse(action.payload) && !isToolResponse(action.payload)) {
+        return state;
+      }
       const { id, tool_call_id } = action.payload;
       const next = state.patches.map((patchMeta) => {
         if (patchMeta.chatId !== id) return patchMeta;
@@ -118,6 +130,8 @@ export const patchesAndDiffsTrackerSlice = createSlice({
     selectAllFilePaths: (state) => {
       return state.patches.map((patchMeta) => patchMeta.filePath);
     },
+
+    selectPatches: (state) => state.patches,
   },
 });
 
@@ -125,6 +139,7 @@ export const {
   selectCompletedPatchesFilePaths,
   selectUnsentPatchesFilePaths,
   selectAllFilePaths,
+  selectPatches,
 } = patchesAndDiffsTrackerSlice.selectors;
 
 export const { setStartedByFilePaths, removePatchMetaByFileNameIfCompleted } =
