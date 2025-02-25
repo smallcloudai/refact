@@ -468,16 +468,10 @@ tools:
     parameters:
       - name: "pattern"
         type: "string"
-        description: "Regular expression pattern to search for"
+        description: "Regular expression pattern to search for. Use (?i) at the start for case-insensitive search."
       - name: "scope"
         type: "string"
         description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
-      - name: "case_sensitive"
-        type: "boolean"
-        description: "Whether the search should be case-sensitive. Defaults to false."
-      - name: "max_results"
-        type: "number"
-        description: "Maximum number of results to return. If not specified, all matches will be returned."
     parameters_required:
       - "pattern"
       - "scope"
