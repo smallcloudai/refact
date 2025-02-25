@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 use async_trait::async_trait;
-use tracing::{error, info};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::process::Command;
@@ -34,24 +33,9 @@ pub struct ToolGitlab {
 impl IntegrationTrait for ToolGitlab {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
-        match serde_json::from_value::<SettingsGitLab>(value.clone()) {
-            Ok(settings_gitlab) => {
-                info!("GitLab settings applied: {:?}", settings_gitlab);
-                self.settings_gitlab = settings_gitlab;
-            },
-            Err(e) => {
-                error!("Failed to apply settings: {}\n{:?}", e, value);
-                return Err(e.to_string())
-            }
-        };
-        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
-            Ok(x) => self.common = x,
-            Err(e) => {
-                error!("Failed to apply common settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        };
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+        self.settings_gitlab = serde_json::from_value(value.clone())?;
+        self.common = serde_json::from_value(value.clone())?;
         self.config_path = config_path;
         Ok(())
     }
@@ -184,7 +168,7 @@ fn parse_command_args(args: &HashMap<String, Value>) -> Result<Vec<String>, Stri
         return Err("Parsed command is empty".to_string());
     }
     for (i, arg) in parsed_args.iter().enumerate() {
-        info!("argument[{}]: {}", i, arg);
+        tracing::info!("argument[{}]: {}", i, arg);
     }
     if parsed_args[0] == "glab" {
         parsed_args.remove(0);

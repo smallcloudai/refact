@@ -292,7 +292,7 @@ tools:
     parameters_required:
       - "path"
       - "content"
-      
+
   - name: "update_textdoc"
     agentic: false
     description: "Updates an existing document by replacing specific text. Optimized for large files or small changes where simple string replacement is sufficient. Prefer this over replace_textdoc for large files."
@@ -302,19 +302,19 @@ tools:
         description: "Absolute path to the file to change."
       - name: "old_str"
         type: "string"
-        description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching."        
+        description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching."
       - name: "replacement"
         type: "string"
-        description: "The new text that will replace the old text."        
+        description: "The new text that will replace the old text."
       - name: "multiple"
         type: "boolean"
-        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."        
+        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."
     parameters_required:
       - "path"
       - "old_str"
       - "replacement"
       - "multiple"
-      
+
   # -- agentic tools below --
   - name: "locate"
     agentic: true
@@ -335,7 +335,7 @@ tools:
         description: "What's the topic and what kind of result do you want?"
     parameters_required:
       - "problem_statement"
-      
+
   - name: "update_textdoc_regex"
     agentic: true
     description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. May be slower than update_textdoc for large files."
@@ -345,19 +345,19 @@ tools:
         description: "Absolute path to the file to change."
       - name: "pattern"
         type: "string"
-        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance."        
+        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance."
       - name: "replacement"
         type: "string"
-        description: "The new text that will replace the matched pattern."        
+        description: "The new text that will replace the matched pattern."
       - name: "multiple"
         type: "boolean"
-        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."        
+        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."
     parameters_required:
       - "path"
       - "pattern"
       - "replacement"
       - "multiple"
-      
+
   - name: "replace_textdoc"
     agentic: true
     description: "Completely replaces the content of an existing document. Use ONLY for small files, as it rewrites the entire file. For large files or small changes, use update_textdoc instead."
@@ -488,10 +488,28 @@ pub struct ToolDesc {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ToolParam {
+    #[serde(deserialize_with = "validate_snake_case")]
     pub name: String,
     #[serde(rename = "type", default = "default_param_type")]
     pub param_type: String,
     pub description: String,
+}
+
+fn validate_snake_case<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if !s.chars().next().map_or(false, |c| c.is_ascii_lowercase())
+        || !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+        || s.contains("__")
+        || s.ends_with('_')
+    {
+        return Err(serde::de::Error::custom(
+            format!("name {:?} must be in snake_case format: lowercase letters, numbers and single underscores, must start with letter", s)
+        ));
+    }
+    Ok(s)
 }
 
 fn default_param_type() -> String {
