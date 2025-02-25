@@ -13,6 +13,7 @@ import {
   chatResponse,
   setIsWaitingForResponse,
   upsertToolCall,
+  sendCurrentChatToLspAfterToolCallUpdate,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -34,7 +35,6 @@ import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
 import {
-  clearPauseReasonsAndHandleToolsStatus,
   resetConfirmationInteractedState,
   updateConfirmationAfterIdeToolUse,
 } from "../features/ToolConfirmation/confirmationSlice";
@@ -511,11 +511,8 @@ startListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
-    if (action.payload.accepted === false) {
-      listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
-      listenerApi.dispatch(upsertToolCall(action.payload));
-    }
-
+    listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
+    listenerApi.dispatch(upsertToolCall(action.payload));
     listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
     const pauseReasons = state.confirmation.pauseReasons.filter(
@@ -523,13 +520,17 @@ startListening({
     );
 
     if (pauseReasons.length === 0) {
-      listenerApi.dispatch(
-        clearPauseReasonsAndHandleToolsStatus({
-          wasInteracted: true,
-          confirmationStatus: !!action.payload.accepted,
+      listenerApi.dispatch(resetConfirmationInteractedState());
+      listenerApi.dispatch(setIsWaitingForResponse(false));
+    }
+
+    if (pauseReasons.length === 0 && action.payload.accepted) {
+      void listenerApi.dispatch(
+        sendCurrentChatToLspAfterToolCallUpdate({
+          chatId: action.payload.chatId,
+          toolCallId: action.payload.toolCallId,
         }),
       );
-      listenerApi.dispatch(setIsWaitingForResponse(false));
     }
   },
 });
