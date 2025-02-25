@@ -9,7 +9,7 @@ on:
         default: false
         description: Publish to NPM Registry
   push:
-    branches: [main, dev]
+    branches: [dev]
     paths:
       - 'refact-agent/gui/**'
       - '.github/workflows/agent_gui_*'
@@ -27,10 +27,7 @@ jobs:
       inputs.perform_publish ||
       (
         github.event_name == 'push' &&
-        (
-          github.ref_name == 'main' ||
-          github.ref_name == 'dev'
-        )
+        github.ref_name == 'dev'
       )
 
     steps:
