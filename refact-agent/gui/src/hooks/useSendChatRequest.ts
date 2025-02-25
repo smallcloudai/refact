@@ -308,7 +308,6 @@ export const useSendChatRequest = () => {
   );
 
   const confirmToolUsage = useCallback(() => {
-    // of either way it aborts, shouldn't it just abort before asking?
     abort();
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
@@ -322,7 +321,6 @@ export const useSendChatRequest = () => {
 
   const rejectToolUsage = useCallback(() => {
     abort();
-
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
         wasInteracted: true,
