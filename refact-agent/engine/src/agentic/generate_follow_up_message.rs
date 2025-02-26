@@ -11,7 +11,7 @@ const PROMPT: &str = r#"
 Your task is to do two things for a conversation between a user and an assistant:
 
 1. **Follow-Up Messages:**
-   - Create up to 5 short follow-up messages that the user might send after the assistant's last message.
+   - Create up to 5 super short follow-up messages that the user might send after the assistant's last message.
    - The first message should invite the assistant to keep talking.
    - Each message should have a different meaning.
    - If the assistant's last message contains a question, generate different replies that address that question.
