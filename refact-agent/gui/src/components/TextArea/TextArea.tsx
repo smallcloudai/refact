@@ -11,6 +11,8 @@ import { useUndoRedo } from "../../hooks";
 import { createSyntheticEvent } from "../../utils/createSyntheticEvent";
 import styles from "./TextArea.module.css";
 
+const INTERACTIVE_BUTTONS_CONTAINER_HEIGHT = 20;
+
 export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> &
   React.JSX.IntrinsicElements["textarea"] & {
     onTextAreaHeightChange?: (scrollHeight: number) => void;
@@ -62,7 +64,10 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
       if (innerRef.current) {
         innerRef.current.style.height = "1px";
         innerRef.current.style.height =
-          2 + innerRef.current.scrollHeight + "px";
+          2 +
+          INTERACTIVE_BUTTONS_CONTAINER_HEIGHT +
+          innerRef.current.scrollHeight +
+          "px";
         onTextAreaHeightChange &&
           onTextAreaHeightChange(innerRef.current.scrollHeight);
       }

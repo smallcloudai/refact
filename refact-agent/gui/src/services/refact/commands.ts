@@ -81,7 +81,7 @@ export const commandsApi = createApi({
       },
     }),
     getCommandPreview: builder.query<
-      (ChatContextFile | string)[],
+      CommandPreviewResponse & { files: (ChatContextFile | string)[] },
       CommandPreviewRequest
     >({
       queryFn: async (args, api, _opts, baseQuery) => {
@@ -113,7 +113,14 @@ export const commandsApi = createApi({
         }
 
         if (isDetailMessage(response.data)) {
-          return { data: [] };
+          return {
+            data: {
+              messages: [],
+              current_context: 10,
+              number_context: 10,
+              files: [],
+            },
+          };
         }
         // TODO: return a dict instead of just files?
         const files = response.data.messages.reduce<
@@ -126,7 +133,7 @@ export const commandsApi = createApi({
           return [...acc, curr.content];
         }, []);
 
-        return { data: files };
+        return { data: { ...response.data, files } };
       },
     }),
   }),

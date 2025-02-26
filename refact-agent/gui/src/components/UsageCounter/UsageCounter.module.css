@@ -10,3 +10,9 @@
   max-width: max-content;
   opacity: 0.7;
 }
+
+.usageCounterContainerInline {
+  padding: calc(var(--space-1) * 1.5);
+  --color-panel: transparent;
+  --base-card-border-radius: 4px;
+}
