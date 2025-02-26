@@ -182,7 +182,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         "memid", "m_type", "m_goal", "m_project", "m_payload", "m_origin",
         "mstat_correct", "mstat_relevant", "mstat_times_used"
     ], "memid")?;
-    setup_triggers(&conn, "cthread", vec![
+    setup_triggers(&conn, "cthreads", vec![
         "cthread_id", "cthread_belongs_to_chore_event_id", "cthread_title",
         "cthread_toolset", "cthread_model", "cthread_temperature",
         "cthread_max_new_tokens", "cthread_n", "cthread_error",
@@ -194,6 +194,10 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         "cmessage_prev_alt", "cmessage_usage_model", "cmessage_usage_prompt",
         "cmessage_usage_completion", "cmessage_json"
     ], "cmessage_belongs_to_cthread_id")?;
+    setup_triggers(&conn, "chore_events", vec![
+        "chore_event_id", "chore_event_belongs_to_chore_id", "chore_event_summary",
+        "chore_event_ts", "chore_event_link", "chore_event_cthread_id"
+    ], "chore_event_id")?;
     unsafe {
         libsqlite3_sys::sqlite3_update_hook(
             conn.handle(),

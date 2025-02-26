@@ -215,7 +215,9 @@ pub async fn handle_db_v1_chore_update(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
     })?;
 
-    chore_set(mdb.clone().expect("memdb not initialized"), chore_rec);
+    if let Err(e) = chore_set(mdb.clone().expect("memdb not initialized"), chore_rec) {
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to set chore: {}", e)));
+    }
 
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -255,7 +257,9 @@ pub async fn handle_db_v1_chore_event_update(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
     })?;
 
-    chore_event_set(mdb.clone().expect("memdb not initialized"), chore_event_rec);
+    if let Err(e) = chore_event_set(mdb.clone().expect("memdb not initialized"), chore_event_rec) {
+        return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to set chore event: {}", e)));
+    }
 
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -417,7 +421,7 @@ fn _chore_subscription_poll(
         SELECT pubevent_id, pubevent_action, pubevent_json
         FROM pubsub_events
         WHERE pubevent_id > ?1
-        AND pubevent_channel = 'chore' AND (pubevent_action = 'update' OR pubevent_action = 'delete')
+        AND pubevent_channel = 'chores' AND (pubevent_action = 'update' OR pubevent_action = 'delete')
         ORDER BY pubevent_id ASC
     ").unwrap();
     let mut rows = stmt.query([*seen_id]).map_err(|e| format!("Failed to execute query: {}", e))?;

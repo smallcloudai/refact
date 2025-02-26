@@ -1,15 +1,7 @@
-use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::memdb::db_structs::MemDB;
-use async_stream::stream;
-
-use axum::http::{Response, StatusCode};
-use axum::Extension;
-use hyper::Body;
 use parking_lot::Mutex as ParkMutex;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use std::collections::HashSet;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
@@ -22,15 +14,6 @@ pub struct PubSubEvent {
     pub pubevent_obj_id: String,
     pub pubevent_obj_json: String,
     pub pubevent_ts: String,
-}
-
-#[derive(Deserialize, Default)]
-pub struct PubSubSubscriptionPost {
-    pub channel: String,
-    #[serde(default)]
-    pub quick_search: Option<String>,
-    #[serde(default)]
-    pub limit: Option<usize>,
 }
 
 pub async fn pubsub_trigerred(
@@ -87,121 +70,4 @@ pub fn pubsub_poll(
         .map_err(|e| e.to_string())?)
 }
 
-pub async fn handle_pubsub(
-    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    body_bytes: hyper::body::Bytes,
-) -> axum::response::Result<Response<Body>, ScratchError> {
-    fn _get_last_pubevent_id(events: &Vec<PubSubEvent>) -> i64 {
-        events
-            .iter()
-            .max_by_key(|x| x.pubevent_id)
-            .map(|x| x.pubevent_id)
-            .unwrap_or(0)
-    }
-    let post = serde_json::from_slice::<PubSubSubscriptionPost>(&body_bytes)
-        .map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e)))?;
 
-    let memdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
-    let lite = memdb.lock().lite.clone();
-    
-    let events = pubsub_poll(lite.clone(), &post.channel, None)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
-    let mut last_pubevent_id = _get_last_pubevent_id(&events);
-
-    let (preexisting_items, maybe_obj_ids_to_keep) =
-        if let Some(quick_search_query) = post.quick_search {
-            let mut preexisting_memories = crate::memdb::db_memories::memories_select_like(
-                memdb.clone(),
-                &quick_search_query,
-            )
-            .await
-            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
-            if let Some(limit) = post.limit {
-                preexisting_memories = preexisting_memories.into_iter().take(limit).collect();
-            }
-            let memids_to_keep = preexisting_memories
-                .iter()
-                .map(|x| x.memid.clone())
-                .collect::<HashSet<String>>();
-            (preexisting_memories, Some(memids_to_keep))
-        } else {
-            let mut preexisting_memories =
-                crate::memdb::db_memories::memories_select_all(memdb.clone())
-                    .await
-                    .map_err(|e| {
-                        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
-                    })?;
-            if let Some(limit) = post.limit {
-                preexisting_memories = preexisting_memories.into_iter().take(limit).collect();
-            }
-            (preexisting_memories, None)
-        };
-
-    let sse = stream! {
-        for item in preexisting_items.iter() {
-            if let Some(obj_ids_to_keep) = &maybe_obj_ids_to_keep {
-                if !obj_ids_to_keep.contains(&item.memid) {
-                    continue;
-                }
-            }
-            // pubevent_id, pubevent_channel, pubevent_action, pubevent_obj_id, pubevent_obj_json, pubevent_ts
-            let e = json!({
-                "pubevent_id": -1,
-                "pubevent_channel": post.channel,
-                "pubevent_action": "INSERT",
-                "pubevent_obj_id": item.memid,
-                "pubevent_json": serde_json::to_string(&item).unwrap(),
-            });
-            yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&e).unwrap()));
-        }
-
-        loop {
-            if !pubsub_trigerred(gcx.clone(), &memdb, 5).await {
-                break;
-            };
-            match pubsub_poll(lite.clone(), &post.channel, Some(last_pubevent_id)) {
-                Ok(new_events) => {
-                    for event in new_events.iter() {
-                        if let Some(obj_ids_to_keep) = &maybe_obj_ids_to_keep {
-                            if !obj_ids_to_keep.contains(&event.pubevent_obj_id) {
-                                continue;
-                            }
-                        }
-                        yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&event).unwrap()));
-                    }
-                    if !new_events.is_empty() {
-                        last_pubevent_id = _get_last_pubevent_id(&new_events);
-                    }
-                },
-                Err(e) => {
-                    tracing::error!(e);
-                    break;
-                }
-            };
-
-            // No need to get status anymore
-            /*match crate::vecdb::vdb_highlev::get_status(vecdb.clone()).await {
-                Ok(Some(status)) => {
-                    yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&status).unwrap()));
-                },
-                Err(err) => {
-                    warn!("Error while getting vecdb status: {}", err);
-                    continue;
-                },
-                _ => {
-                    warn!("Cannot get vecdb status");
-                    continue;
-                }
-            };*/
-
-        }
-    };
-
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "text/event-stream")
-        .header("Cache-Control", "no-cache")
-        .body(Body::wrap_stream(sse))
-        .unwrap();
-    Ok(response)
-}

@@ -327,7 +327,7 @@ pub fn cthread_subsription_poll(
         SELECT pubevent_id, pubevent_action, pubevent_json
         FROM pubsub_events
         WHERE pubevent_id > ?1
-        AND pubevent_channel = 'cthread' AND (pubevent_action = 'update' OR pubevent_action = 'delete')
+        AND pubevent_channel = 'cthreads' AND (pubevent_action = 'update' OR pubevent_action = 'delete')
         ORDER BY pubevent_id ASC
     ").unwrap();
     let mut rows = stmt.query([*seen_id]).map_err(|e| format!("Failed to execute query: {}", e))?;
