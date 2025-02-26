@@ -40,10 +40,10 @@ impl Tool for ToolCreateKnowledge {
             None => return Err("argument `im_going_to_apply_to` is missing".to_string())
         };
 
-        let goal = match args.get("goal") {
+        let search_key = match args.get("search_key") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `goal` is not a string: {:?}", v)),
-            None => return Err("argument `goal` is missing".to_string())
+            Some(v) => return Err(format!("argument `search_key` is not a string: {:?}", v)),
+            None => return Err("argument `search_key` is missing".to_string())
         };
 
         let language_slash_framework = match args.get("language_slash_framework") {
@@ -64,7 +64,7 @@ impl Tool for ToolCreateKnowledge {
         let memid = match crate::vecdb::vdb_highlev::memories_add(
             vec_db.clone(),
             "knowledge-entry",
-            &goal,
+            &search_key,
             &im_going_to_apply_to,
             &knowledge_entry,
             "user-created"
@@ -78,11 +78,11 @@ impl Tool for ToolCreateKnowledge {
             return Err(format!("Memory stored but vectorization failed: {}", e));
         }
 
-        let message = format!("Knowledge entry created successfully with ID: {}\nTools: {}\nApply to: {}\nGoal: {}\nLanguage/Framework: {}\nEntry: {}", 
+        let message = format!("Knowledge entry created successfully with ID: {}\nTools: {}\nApply to: {}\nSearch Key: {}\nLanguage/Framework: {}\nEntry: {}", 
             memid,
             im_going_to_use_tools,
             im_going_to_apply_to,
-            goal,
+            search_key,
             language_slash_framework,
             knowledge_entry
         );
