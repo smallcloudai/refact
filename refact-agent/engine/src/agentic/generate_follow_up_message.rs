@@ -11,19 +11,23 @@ const PROMPT: &str = r#"
 Your task is to do two things for a conversation between a user and an assistant:
 
 1. **Follow-Up Messages:**
-   - Create up to 3 short follow-up messages that the user might send after the assistant’s last message.
+   - Create up to 5 short follow-up messages that the user might send after the assistant's last message.
    - The first message should invite the assistant to keep talking.
    - Each message should have a different meaning.
-   - If there is no clear follow-up or the conversation isn’t asking a question, return an empty list.
+   - If the assistant's last message contains a question, generate different replies that address that question.
+   - Maybe include a suggestion to think deeper.
+   - Maybe include a suggestion to explore more context (e.g., "Can we look at more files?", "Is there additional context I should provide?").
+   - Maybe include a suggestion to remember/create knowledge (e.g., "Can you save this solution for future reference?", "Let's document this approach").
+   - If there is no clear follow-up or the conversation isn't asking a question, return an empty list.
 
 2. **Topic Change Detection:**
-   - Decide if the user’s latest message is about a different topic from the previous conversation.
+   - Decide if the user's latest message is about a different topic or a different project or a different problem from the previous conversation.
    - A topic change means the new topic is not related to the previous discussion.
 
 Return the result in this JSON format (without extra formatting):
 
 {
-  "follow_ups": ["Follow-up 1", "Follow-up 2"],
+  "follow_ups": ["Follow-up 1", "Follow-up 2", "Follow-up 3", "Follow-up 4", "Follow-up 5"],
   "topic_changed": true
 }
 "#;
