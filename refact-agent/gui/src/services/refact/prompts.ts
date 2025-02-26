@@ -1,6 +1,7 @@
 import { RootState } from "../../app/store";
 import { CUSTOM_PROMPTS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { callEngine } from "./call_engine";
 
 export const promptsApi = createApi({
   reducerPath: "prompts",
@@ -17,33 +18,33 @@ export const promptsApi = createApi({
   }),
   endpoints: (builder) => ({
     getPrompts: builder.query<SystemPrompts, undefined>({
-      queryFn: async (_args, api, _opts, baseQuery) => {
-        const getState = api.getState as () => RootState;
-        const state = getState();
-        const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${CUSTOM_PROMPTS_URL}`;
-        const result = await baseQuery({
-          url,
-          credentials: "same-origin",
-          redirect: "follow",
-        });
+      queryFn: async (_args, api, _opts, _baseQuery) => {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, CUSTOM_PROMPTS_URL, {
+            credentials: "same-origin",
+            redirect: "follow",
+          });
 
-        if (result.error) {
-          return {
-            error: result.error,
-          };
-        }
-        if (!isCustomPromptsResponse(result.data)) {
+          if (!isCustomPromptsResponse(data)) {
+            return {
+              error: {
+                data: data,
+                error: "Invalid response from server",
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
+
+          return { data: data.system_prompts };
+        } catch (error) {
           return {
             error: {
-              data: result.data,
-              error: "Invalid response from server",
-              status: "CUSTOM_ERROR",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return { data: result.data.system_prompts };
       },
     }),
   }),

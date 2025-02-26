@@ -28,6 +28,7 @@ export type Config = {
 const initialState: Config = {
   host: "web",
   lspPort: __REFACT_LSP_PORT__ ?? 8001,
+  lspUrl: __REFACT_LSP_URL__ ?? 'http://127.0.0.1',
   apiKey: null,
   features: {
     statistics: true,
@@ -100,6 +101,7 @@ export const selectThemeMode = (state: RootState) =>
 
 export const selectConfig = (state: RootState) => state.config;
 export const selectLspPort = (state: RootState) => state.config.lspPort;
+export const selectLspUrl = (state: RootState) => state.config.lspUrl;
 
 export const selectFeatures = (state: RootState) => state.config.features;
 export const selectVecdb = createSelector(

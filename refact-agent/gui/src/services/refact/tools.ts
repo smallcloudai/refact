@@ -7,6 +7,7 @@ import {
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { ChatMessage, DiffChunk, isDiffChunk, ToolCall } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
+import { callEngine } from "./call_engine";
 
 export const toolsApi = createApi({
   reducerPath: "tools",
@@ -23,101 +24,120 @@ export const toolsApi = createApi({
   }),
   endpoints: (builder) => ({
     getTools: builder.query<ToolCommand[], undefined>({
-      queryFn: async (_args, api, _extraOptions, baseQuery) => {
-        const getState = api.getState as () => RootState;
-        const state = getState();
-        const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${AT_TOOLS_AVAILABLE_URL}`;
-        const result = await baseQuery({
-          url,
-          credentials: "same-origin",
-          redirect: "follow",
-        });
-        if (result.error) return result;
-        if (!Array.isArray(result.data)) {
+      queryFn: async (_args, api, _extraOptions, _baseQuery) => {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, AT_TOOLS_AVAILABLE_URL, {
+            credentials: "same-origin",
+            redirect: "follow",
+          });
+
+          if (!Array.isArray(data)) {
+            return {
+              error: {
+                error: "Invalid response from tools",
+                data: data,
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
+
+          const tools = data.filter((d) => isToolCommand(d)) as ToolCommand[];
+          return { data: tools };
+        } catch (error) {
           return {
             error: {
-              error: "Invalid response from tools",
-              data: result.data,
-              status: "CUSTOM_ERROR",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-        const tools = result.data.filter((d) =>
-          isToolCommand(d),
-        ) as ToolCommand[];
-        return { data: tools };
       },
     }),
     checkForConfirmation: builder.mutation<
       ToolConfirmationResponse,
       ToolConfirmationRequest
     >({
-      queryFn: async (args, api, _extraOptions, baseQuery) => {
-        const getState = api.getState as () => RootState;
-        const state = getState();
-        const port = state.config.lspPort;
+      queryFn: async (args, api, _extraOptions, _baseQuery) => {
+        try {
+          const state = api.getState() as RootState;
+          const { messages, tool_calls } = args;
+          const messagesForLsp = formatMessagesForLsp(messages);
 
-        const { messages, tool_calls } = args;
-        const messagesForLsp = formatMessagesForLsp(messages);
+          const data = await callEngine<unknown>(state, TOOLS_CHECK_CONFIRMATION, {
+            method: "POST",
+            body: JSON.stringify({
+              tool_calls: tool_calls,
+              messages: messagesForLsp,
+            }),
+            credentials: "same-origin",
+            redirect: "follow",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-        const url = `http://127.0.0.1:${port}${TOOLS_CHECK_CONFIRMATION}`;
-        const result = await baseQuery({
-          url,
-          method: "POST",
-          body: {
-            tool_calls: tool_calls,
-            messages: messagesForLsp,
-          },
-          credentials: "same-origin",
-          redirect: "follow",
-        });
-        if (result.error) return result;
-        if (!isToolConfirmationResponse(result.data)) {
+          if (!isToolConfirmationResponse(data)) {
+            return {
+              error: {
+                error: "Invalid response from tools",
+                data: data,
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
+
+          return { data };
+        } catch (error) {
           return {
             error: {
-              error: "Invalid response from tools",
-              data: result.data,
-              status: "CUSTOM_ERROR",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return { data: result.data };
       },
     }),
     dryRunForEditTool: builder.mutation<
       ToolEditResult,
       { toolName: string; toolArgs: Record<string, unknown> }
     >({
-      async queryFn(args, api, extraOptions, baseQuery) {
-        const getState = api.getState as () => RootState;
-        const state = getState();
-        const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${EDIT_TOOL_DRY_RUN_URL}`;
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
 
-        const response = await baseQuery({
-          ...extraOptions,
-          url,
-          method: "POST",
-          body: { tool_name: args.toolName, tool_args: args.toolArgs },
-          credentials: "same-origin",
-          redirect: "follow",
-        });
+          const data = await callEngine<unknown>(state, EDIT_TOOL_DRY_RUN_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              tool_name: args.toolName,
+              tool_args: args.toolArgs,
+            }),
+            credentials: "same-origin",
+            redirect: "follow",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-        if (response.error) return response;
+          if (!isToolEditResult(data)) {
+            return {
+              error: {
+                error: `Invalid response from ${EDIT_TOOL_DRY_RUN_URL}`,
+                data: data,
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
 
-        if (!isToolEditResult(response.data)) {
+          return { data };
+        } catch (error) {
           return {
             error: {
-              error: `Invalid response from ${EDIT_TOOL_DRY_RUN_URL}`,
-              data: response.data,
-              status: "CUSTOM_ERROR",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return { data: response.data };
       },
     }),
   }),
@@ -134,7 +154,6 @@ export type ToolFunction = {
   agentic?: boolean;
   name: string;
   description: string;
-  // parameters: ToolParams[];
   parameters: Record<string, unknown>;
   parameters_required?: string[];
 };

@@ -210,6 +210,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     chatId,
     apiKey: state.config.apiKey,
     port: state.config.lspPort,
+    lspUrl: state.config.lspUrl,
   })
     .then((response) => {
       if (!response.ok) {
@@ -340,6 +341,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,
+      lspUrl: state.config.lspUrl,
       onlyDeterministicMessages,
       toolsConfirmed: toolsConfirmed,
       checkpointsEnabled,

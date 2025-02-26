@@ -3,6 +3,7 @@ import path from "path";
 import { PluginOption, UserConfig, defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import eslint from "vite-plugin-eslint";
+import mkcert from 'vite-plugin-mkcert';
 
 import { coverageConfigDefaults } from "vitest/config";
 import dts from "vite-plugin-dts";
@@ -28,6 +29,7 @@ function makeConfig(library: "browser" | "node") {
         }),
         "process.env.DEBUG": JSON.stringify(process.env.DEBUG),
         __REFACT_LSP_PORT__: process.env.REFACT_LSP_PORT,
+        __REFACT_LSP_URL__: JSON.stringify(process.env.REFACT_LSP_URL ?? 'http://127.0.0.1'),
       },
       mode,
       build: {
@@ -46,7 +48,7 @@ function makeConfig(library: "browser" | "node") {
           },
         },
       },
-      plugins: [react()],
+      plugins: [react()], //mkcert() - to enable https
       server: {
         proxy: {
           "/v1": process.env.REFACT_LSP_URL ?? "http://127.0.0.1:8001",

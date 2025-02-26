@@ -2,6 +2,7 @@ import { IntegrationMeta, LspChatMode } from "../../features/Chat";
 import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
 import { ChatRole, ToolCall, ToolResult, UserMessage } from "./types";
+import { CallEngineConfig, getServerUrl } from "./call_engine";
 
 export const DEFAULT_MAX_NEW_TOKENS = 4096;
 export const INCREASED_MAX_NEW_TOKENS = 16384;
@@ -9,18 +10,14 @@ export const INCREASED_MAX_NEW_TOKENS = 16384;
 export type LspChatMessage =
   | {
       role: ChatRole;
-      // TODO make this a union type for user message
       content: string | null;
       finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
-      // TBD: why was index omitted ?
-      // tool_calls?: Omit<ToolCall, "index">[];
       tool_calls?: ToolCall[];
       tool_call_id?: string;
     }
   | UserMessage
   | { role: "tool"; content: ToolResult["content"]; tool_call_id: string };
 
-// could be more narrow.
 export function isLspChatMessage(json: unknown): json is LspChatMessage {
   if (!json) return false;
   if (typeof json !== "object") return false;
@@ -46,7 +43,7 @@ type StreamArgs =
 
 type SendChatArgs = {
   messages: LspChatMessage[];
-  last_user_message_id?: string; // used for `refact-message-id` header
+  last_user_message_id?: string;
   model: string;
   max_new_tokens?: number;
   lspUrl?: string;
@@ -56,11 +53,10 @@ type SendChatArgs = {
   tools: ToolCommand[] | null;
   port?: number;
   apiKey?: string | null;
-  // isConfig?: boolean;
   toolsConfirmed?: boolean;
   checkpointsEnabled?: boolean;
   integration?: IntegrationMeta | null;
-  mode?: LspChatMode; // used for chat actions
+  mode?: LspChatMode;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -131,15 +127,12 @@ export type Usage = {
   cache_read_input_tokens?: number;
 };
 
-// TODO: add config url
 export async function sendChat({
   messages,
   model,
   abortSignal,
   stream,
   max_new_tokens,
-  // lspUrl,
-  // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
   tools,
@@ -147,21 +140,11 @@ export async function sendChat({
   apiKey,
   toolsConfirmed = true,
   checkpointsEnabled = true,
-  // isConfig = false,
   integration,
   last_user_message_id = "",
   mode,
+  lspUrl = "",
 }: SendChatArgs): Promise<Response> {
-  // const toolsResponse = await getAvailableTools();
-
-  // const tools = takeNote
-  //   ? toolsResponse.filter(
-  //       (tool) => tool.function.name === "remember_how_to_use_tools",
-  //     )
-  //   : toolsResponse.filter(
-  //       (tool) => tool.function.name !== "remember_how_to_use_tools",
-  //     );
-
   const body = JSON.stringify({
     messages,
     model: model,
@@ -171,38 +154,29 @@ export async function sendChat({
     only_deterministic_messages,
     tools_confirmation: toolsConfirmed,
     checkpoints_enabled: checkpointsEnabled,
-    // chat_id,
     meta: {
       chat_id,
       request_attempt_id: last_user_message_id,
-      // chat_remote,
-      // TODO: pass this through
       chat_mode: mode ?? "EXPLORE",
-      // chat_mode: "EXPLORE", // NOTOOLS, EXPLORE, AGENT, CONFIGURE, PROJECTSUMMARY,
-      // TODO: not clear, that if we set integration.path it's going to be set also in meta as current_config_file
       ...(integration?.path ? { current_config_file: integration.path } : {}),
     },
   });
 
-  //   const apiKey = getApiKey();
-  const headers = {
-    "Content-Type": "application/json",
-    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  };
-
-  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
-
-  return fetch(url, {
+  const config: CallEngineConfig = {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
+    },
     body,
+    signal: abortSignal,
     redirect: "follow",
     cache: "no-cache",
-    // TODO: causes an error during tests :/
-    // referrer: "no-referrer",
-    signal: abortSignal,
     credentials: "same-origin",
-  });
+  };
+
+  const url = getServerUrl({ config: { lspPort: port, lspUrl } } as RootState, CHAT_URL);
+  return fetch(url, config);
 }
 
 export async function generateChatTitle({
@@ -213,6 +187,7 @@ export async function generateChatTitle({
   chatId: chat_id,
   port = 8001,
   apiKey,
+  lspUrl,
 }: GetChatTitleArgs): Promise<Response> {
   const body = JSON.stringify({
     messages,
@@ -223,21 +198,18 @@ export async function generateChatTitle({
     chat_id,
   });
 
-  const headers = {
-    "Content-Type": "application/json",
-    ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
-  };
-
-  const url = `http://127.0.0.1:${port}${CHAT_URL}`;
-
-  return fetch(url, {
+  const config: CallEngineConfig = {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiKey ? { Authorization: "Bearer " + apiKey } : {}),
+    },
     body,
     redirect: "follow",
     cache: "no-cache",
-    // TODO: causes an error during tests :/
-    // referrer: "no-referrer",
     credentials: "same-origin",
-  });
+  };
+
+  const url = getServerUrl({ config: { lspPort: port, lspUrl } } as RootState, CHAT_URL);
+  return fetch(url, config);
 }

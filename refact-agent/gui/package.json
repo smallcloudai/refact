@@ -30,7 +30,7 @@
     "url": "https://github.com/smallcloudai/refact/issues"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc && vite build && vite build -c vite.node.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
@@ -124,6 +124,7 @@
     "vite": "^5.0.8",
     "vite-plugin-dts": "^3.7.0",
     "vite-plugin-eslint": "^1.8.1",
+    "vite-plugin-mkcert": "^1.17.6",
     "vitest": "^1.6.0",
     "vitest-matchmedia-mock": "^1.0.3"
   },

@@ -1,6 +1,7 @@
 import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { callEngine } from "./call_engine";
 
 export const capsApi = createApi({
   reducerPath: "caps",
@@ -15,31 +16,28 @@ export const capsApi = createApi({
   }),
   endpoints: (builder) => ({
     getCaps: builder.query<CapsResponse, undefined>({
-      queryFn: async (_args, api, _opts, baseQuery) => {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${CAPS_URL}`;
+      queryFn: async (_args, api, _opts, _baseQuery) => {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<CapsResponse>(state, CAPS_URL, {
+            credentials: 'same-origin',
+            redirect: 'follow'
+          });
 
-        const result = await baseQuery({
-          url,
-          credentials: "same-origin",
-          redirect: "follow",
-        });
-        if (result.error) {
-          return { error: result.error };
-        }
-        if (!isCapsResponse(result.data)) {
-          return {
-            meta: result.meta,
-            error: {
-              error: "Invalid response from caps",
-              data: result.data,
-              status: "CUSTOM_ERROR",
-            },
-          };
-        }
+          if (!isCapsResponse(data)) {
+            return {
+              error: {
+                error: "Invalid response from caps",
+                data: data,
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
 
-        return { data: result.data };
+          return { data };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: String(error) } };
+        }
       },
     }),
   }),
@@ -61,7 +59,6 @@ export type CodeChatModel = {
   >;
   supports_multimodality?: boolean;
   supports_clicks?: boolean;
-  // TODO: could be defined
   supports_agent?: boolean;
 };
 

@@ -9,6 +9,7 @@ import {
   RestoreCheckpointsPayload,
   RestoreCheckpointsResponse,
 } from "../../features/Checkpoints/types";
+import { callEngine } from "./call_engine";
 
 export const checkpointsApi = createApi({
   reducerPath: "checkpointsApi",
@@ -30,83 +31,96 @@ export const checkpointsApi = createApi({
       PreviewCheckpointsResponse,
       PreviewCheckpointsPayload
     >({
-      async queryFn(args, api, _extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const { checkpoints } = args;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${PREVIEW_CHECKPOINTS}`;
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const { checkpoints } = args;
+          const chat_id = state.chat.thread.id;
+          const mode = state.chat.thread.mode;
 
-        const chat_id = state.chat.thread.id;
-        const mode = state.chat.thread.mode;
-
-        const result = await baseQuery({
-          url,
-          credentials: "same-origin",
-          redirect: "follow",
-          method: "POST",
-          body: {
-            meta: {
-              chat_id,
-              chat_mode: mode ?? "EXPLORE",
+          const data = await callEngine<unknown>(state, PREVIEW_CHECKPOINTS, {
+            method: "POST",
+            credentials: "same-origin",
+            redirect: "follow",
+            body: JSON.stringify({
+              meta: {
+                chat_id,
+                chat_mode: mode ?? "EXPLORE",
+              },
+              checkpoints,
+            }),
+            headers: {
+              "Content-Type": "application/json",
             },
-            checkpoints,
-          },
-        });
+          });
 
-        if (result.error) return { error: result.error };
+          if (!isPreviewCheckpointsResponse(data)) {
+            return {
+              error: {
+                status: "CUSTOM_ERROR",
+                error: "Failed to parse preview checkpoints response",
+                data: data,
+              },
+            };
+          }
 
-        if (!isPreviewCheckpointsResponse(result.data)) {
+          return { data };
+        } catch (error) {
           return {
             error: {
-              status: "CUSTOM_ERROR",
-              error: "Failed to parse preview checkpoints response",
-              data: result.data,
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return { data: result.data };
       },
     }),
     restoreCheckpoints: builder.mutation<
       RestoreCheckpointsResponse,
       RestoreCheckpointsPayload
     >({
-      async queryFn(args, api, _extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const { checkpoints } = args;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${RESTORE_CHECKPOINTS}`;
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const { checkpoints } = args;
+          const chat_id = state.chat.thread.id;
+          const mode = state.chat.thread.mode;
 
-        const chat_id = state.chat.thread.id;
-        const mode = state.chat.thread.mode;
-
-        const result = await baseQuery({
-          url,
-          credentials: "same-origin",
-          redirect: "follow",
-          method: "POST",
-          body: {
-            meta: {
-              chat_id,
-              chat_mode: mode ?? "EXPLORE",
+          const data = await callEngine<unknown>(state, RESTORE_CHECKPOINTS, {
+            method: "POST",
+            credentials: "same-origin",
+            redirect: "follow",
+            body: JSON.stringify({
+              meta: {
+                chat_id,
+                chat_mode: mode ?? "EXPLORE",
+              },
+              checkpoints,
+            }),
+            headers: {
+              "Content-Type": "application/json",
             },
-            checkpoints,
-          },
-        });
+          });
 
-        if (result.error) return { error: result.error };
-        if (!isRestoreCheckpointsResponse(result.data)) {
+          if (!isRestoreCheckpointsResponse(data)) {
+            return {
+              error: {
+                status: "CUSTOM_ERROR",
+                error: "Failed to parse restored checkpoints response",
+                data: data,
+              },
+            };
+          }
+
+          return { data };
+        } catch (error) {
           return {
             error: {
-              status: "CUSTOM_ERROR",
-              error: "Failed to parse restored checkpoints response",
-              data: result.data,
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return { data: result.data };
       },
     }),
   }),

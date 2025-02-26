@@ -1,6 +1,7 @@
 import { RootState } from "../../app/store";
 import { TELEMETRY_CHAT_PATH, TELEMETRY_NET_PATH } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { callEngine } from "./call_engine";
 
 export type TelemetryChatEvent = {
   scope: string;
@@ -30,41 +31,61 @@ export const telemetryApi = createApi({
   }),
   endpoints: (builder) => ({
     sendTelemetryChatEvent: builder.query<unknown, TelemetryChatEvent>({
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${TELEMETRY_CHAT_PATH}`;
-        const response = await baseQuery({
-          ...extraOptions,
-          url,
-          method: "POST",
-          body: arg,
-        });
-
-        if (response.error) {
-          const netWorkErrorResponse = await baseQuery({
-            ...extraOptions,
-            url: `http://127.0.0.1:${port}${TELEMETRY_NET_PATH}`,
+      async queryFn(arg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const response = await callEngine<unknown>(state, TELEMETRY_CHAT_PATH, {
             method: "POST",
-            body: { ...arg, url: TELEMETRY_NET_PATH },
+            body: JSON.stringify(arg),
+            headers: {
+              "Content-Type": "application/json",
+            },
           });
-          return { data: netWorkErrorResponse.data };
-        }
 
-        return { data: response.data };
+          return { data: response };
+        } catch (error) {
+          // If chat telemetry fails, try to send network error telemetry
+          try {
+            const state = api.getState() as RootState;
+            const netWorkErrorResponse = await callEngine<unknown>(state, TELEMETRY_NET_PATH, {
+              method: "POST",
+              body: JSON.stringify({ ...arg, url: TELEMETRY_NET_PATH }),
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
+            return { data: netWorkErrorResponse };
+          } catch (netError) {
+            return {
+              error: {
+                status: "FETCH_ERROR",
+                error: String(netError),
+              },
+            };
+          }
+        }
       },
     }),
     sendTelemetryNetEvent: builder.query<unknown, TelemetryNetEvent>({
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const netWorkErrorResponse = await baseQuery({
-          ...extraOptions,
-          url: `http://127.0.0.1:${port}${TELEMETRY_NET_PATH}`,
-          method: "POST",
-          body: { ...arg },
-        });
-        return { data: netWorkErrorResponse.data };
+      async queryFn(arg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const response = await callEngine<unknown>(state, TELEMETRY_NET_PATH, {
+            method: "POST",
+            body: JSON.stringify(arg),
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+          return { data: response };
+        } catch (error) {
+          return {
+            error: {
+              status: "FETCH_ERROR",
+              error: String(error),
+            },
+          };
+        }
       },
     }),
   }),

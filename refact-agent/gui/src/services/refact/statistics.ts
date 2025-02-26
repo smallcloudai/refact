@@ -1,11 +1,10 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-
 import { STATISTIC_URL } from "./consts";
 import { RootState } from "../../app/store";
+import { callEngine } from "./call_engine";
 
 export const statisticsApi = createApi({
   reducerPath: "statisticsApi",
-
   baseQuery: fetchBaseQuery({
     prepareHeaders: (headers, api) => {
       const getState = api.getState as () => RootState;
@@ -19,36 +18,42 @@ export const statisticsApi = createApi({
   }),
   endpoints: (builder) => ({
     getStatisticData: builder.query<StatisticData, undefined>({
-      queryFn: async (_args, api, _opts, baseQuery) => {
-        const getState = api.getState as () => RootState;
-        const state = getState();
-        const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${STATISTIC_URL}`;
-        const result = await baseQuery({
-          url,
-          credentials: "same-origin",
-          redirect: "follow",
-        });
-        if (result.error) return { error: result.error };
-        if (!isStatisticDataResponse(result.data)) {
-          return {
-            error: {
-              data: result.data,
-              error: "Invalid response from server",
-              status: "CUSTOM_ERROR",
-            },
-          };
-        }
+      queryFn: async (_args, api, _opts, _baseQuery) => {
         try {
-          const json = JSON.parse(result.data.data) as StatisticData;
-          return { data: json };
-        } catch (e) {
+          const state = api.getState() as RootState;
+          const response = await callEngine<unknown>(state, STATISTIC_URL, {
+            credentials: "same-origin",
+            redirect: "follow",
+          });
+
+          if (!isStatisticDataResponse(response)) {
+            return {
+              error: {
+                data: response,
+                error: "Invalid response from server",
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
+
+          try {
+            const json = JSON.parse(response.data) as StatisticData;
+            return { data: json };
+          } catch (e) {
+            return {
+              error: {
+                data: response.data,
+                error: "Invalid response from server",
+                originalStatus: 200,
+                status: "PARSING_ERROR",
+              },
+            };
+          }
+        } catch (error) {
           return {
             error: {
-              data: result.data.data,
-              error: "Invalid response from server",
-              originalStatus: 200,
-              status: "PARSING_ERROR",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
@@ -66,9 +71,11 @@ export type RefactTableImpactDateObj = {
   refact_impact: number;
   total: number;
 };
+
 export type RefactTableImpactLanguagesRow = {
   [key in ColumnName]: string | number;
 };
+
 export type StatisticData = {
   refact_impact_dates: {
     data: {
