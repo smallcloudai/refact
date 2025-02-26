@@ -23,7 +23,7 @@ async fn _get_endpoint_and_stuff_from_model_name(
     gcx: Arc<ARwLock<crate::global_context::GlobalContext>>,
     caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
     model_name: String,
-) -> (String, String, String, String, String)
+) -> (String, String, String, String)
 {
     let (
         custom_apikey,
@@ -32,10 +32,9 @@ async fn _get_endpoint_and_stuff_from_model_name(
         mut endpoint_template,
         custom_endpoint_template,
         endpoint_chat_passthrough,
-        inference_model_name,
     ) = {
         let caps_locked = caps.read().unwrap();
-        if let Some(model_record) = caps_locked.code_chat_models.get(&model_name) {
+        if caps_locked.code_chat_models.contains_key(&model_name) {
             (
                 caps_locked.chat_apikey.clone(),
                 caps_locked.endpoint_style.clone(),      // abstract
@@ -43,7 +42,6 @@ async fn _get_endpoint_and_stuff_from_model_name(
                 caps_locked.endpoint_template.clone(),   // abstract
                 caps_locked.chat_endpoint.clone(),       // chat-specific
                 caps_locked.endpoint_chat_passthrough.clone(),
-                model_record.clone().inference_model_name.unwrap_or(model_name.clone())
             )
         } else {
             (
@@ -53,7 +51,6 @@ async fn _get_endpoint_and_stuff_from_model_name(
                 caps_locked.endpoint_template.clone(),          // abstract
                 caps_locked.completion_endpoint.clone(),        // completion-specific
                 "".to_string(),
-                model_name.clone(),
             )
         }
     };
@@ -69,7 +66,6 @@ async fn _get_endpoint_and_stuff_from_model_name(
         endpoint_template,
         endpoint_style,
         endpoint_chat_passthrough,
-        inference_model_name,
     )
 }
 
@@ -101,7 +97,6 @@ pub async fn scratchpad_interaction_not_stream_json(
         endpoint_template,
         endpoint_style,
         endpoint_chat_passthrough,
-        inference_model_name,
     ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
 
     let mut save_url: String = String::new();
@@ -114,7 +109,7 @@ pub async fn scratchpad_interaction_not_stream_json(
         crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
             bearer.clone(),
-            &inference_model_name,
+            &model_name,
             &prompt,
             &client,
             &endpoint_template,
@@ -125,7 +120,7 @@ pub async fn scratchpad_interaction_not_stream_json(
         crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
             &mut save_url,
             bearer.clone(),
-            &inference_model_name,
+            &model_name,
             &prompt,
             &client,
             &endpoint_template,
@@ -327,7 +322,6 @@ pub async fn scratchpad_interaction_stream(
             endpoint_template,
             endpoint_style,
             endpoint_chat_passthrough,
-            inference_model_name,
         ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
 
         let t0 = std::time::Instant::now();
@@ -406,7 +400,7 @@ pub async fn scratchpad_interaction_stream(
                 crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,
                     bearer.clone(),
-                    &inference_model_name,
+                    &model_name,
                     prompt.as_str(),
                     &client,
                     &endpoint_template,
@@ -417,7 +411,7 @@ pub async fn scratchpad_interaction_stream(
                 crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
                     &mut save_url,
                     bearer.clone(),
-                    &inference_model_name,
+                    &model_name,
                     prompt.as_str(),
                     &client,
                     &endpoint_template,
