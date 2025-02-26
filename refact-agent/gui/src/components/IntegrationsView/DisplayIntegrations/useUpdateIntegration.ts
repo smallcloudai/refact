@@ -23,8 +23,8 @@ export const useUpdateIntegration = ({
   const [updatedAvailability, setUpdatedAvailability] = useState<
     Record<string, boolean>
   >({
-    on_your_laptop: integration.on_your_laptop,
-    when_isolated: integration.when_isolated,
+    on_your_laptop: integration?.on_your_laptop ?? false,
+    when_isolated: integration?.when_isolated ?? false,
   });
 
   const [isUpdatingAvailability, setIsUpdatingAvailability] = useState(false);

@@ -7,6 +7,7 @@ import {
   INTEGRATION_SAVE_URL,
   INTEGRATIONS_URL,
 } from "./consts";
+import { callEngine } from "./call_engine";
 import { isDetailMessage } from "./commands";
 
 // TODO: Cache invalidation logic.
@@ -28,29 +29,33 @@ export const integrationsApi = createApi({
   endpoints: (builder) => ({
     getAllIntegrations: builder.query<IntegrationWithIconResponse, undefined>({
       providesTags: ["INTEGRATIONS"],
-      async queryFn(_arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${INTEGRATIONS_URL}`;
-        const response = await baseQuery({
-          url,
-          ...extraOptions,
-        });
+      async queryFn(_arg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, INTEGRATIONS_URL, {
+            method: "GET",
+            credentials: "same-origin",
+            redirect: "follow",
+          });
 
-        if (response.error) {
-          return { error: response.error };
-        }
-
-        if (!isIntegrationWithIconResponse(response.data)) {
+          if (!isIntegrationWithIconResponse(data)) {
+            return {
+              error: {
+                status: "CUSTOM_ERROR",
+                error: "Failed to parse integrations response",
+                data: data,
+              },
+            };
+          }
+          return { data };
+        } catch (error) {
           return {
             error: {
-              status: "CUSTOM_ERROR",
-              error: "Failed to parse integrations response",
-              data: response.data,
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-        return { data: response.data };
       },
     }),
 
@@ -58,36 +63,40 @@ export const integrationsApi = createApi({
       providesTags: (_result, _error, arg) => [
         { type: "INTEGRATION", id: arg },
       ],
-      async queryFn(pathArg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${INTEGRATION_GET_URL}`;
-        const response = await baseQuery({
-          url,
-          method: "POST",
-          body: {
-            integr_config_path: pathArg,
-          },
-          ...extraOptions,
-        });
+      async queryFn(pathArg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, INTEGRATION_GET_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              integr_config_path: pathArg,
+            }),
+            credentials: "same-origin",
+            redirect: "follow",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-        if (response.error) {
-          return { error: response.error };
-        }
+          if (!isIntegration(data)) {
+            return {
+              error: {
+                status: "CUSTOM_ERROR",
+                error: "Failed to parse integration response for: " + pathArg,
+                data: data,
+              },
+            };
+          }
 
-        if (!isIntegration(response.data)) {
+          return { data };
+        } catch (error) {
           return {
             error: {
-              status: "CUSTOM_ERROR",
-              error: "Failed to parse integration response for: " + pathArg,
-              data: response.data,
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return {
-          data: response.data,
-        };
       },
     }),
 
@@ -98,55 +107,65 @@ export const integrationsApi = createApi({
       invalidatesTags: (_result, _error, args) => [
         { type: "INTEGRATION", id: args.filePath },
       ],
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${INTEGRATION_SAVE_URL}`;
-        const response = await baseQuery({
-          ...extraOptions,
-          url,
-          method: "POST",
-          body: {
-            integr_config_path: arg.filePath,
-            integr_values: arg.values,
-          },
-        });
+      async queryFn(arg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, INTEGRATION_SAVE_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              integr_config_path: arg.filePath,
+              integr_values: arg.values,
+            }),
+            credentials: "same-origin",
+            redirect: "follow",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-        return response;
+          return { data };
+        } catch (error) {
+          return {
+            error: {
+              status: "FETCH_ERROR",
+              error: String(error),
+            },
+          };
+        }
       },
     }),
     deleteIntegration: builder.query<unknown, string>({
       providesTags: (_result, _error, arg) => [
         { type: "INTEGRATION", id: arg },
       ],
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${INTEGRATION_DELETE_URL}?integration_path=${arg}`;
+      async queryFn(arg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, `${INTEGRATION_DELETE_URL}?integration_path=${arg}`, {
+            method: "DELETE",
+            credentials: "same-origin",
+            redirect: "follow",
+          });
 
-        const response = await baseQuery({
-          ...extraOptions,
-          url,
-          method: "DELETE",
-        });
+          if (isDetailMessage(data)) {
+            return {
+              error: {
+                status: "CUSTOM_ERROR",
+                error: `Failed to delete integration by path: ${arg}. Details: ${data.detail}`,
+                data: data,
+              },
+            };
+          }
 
-        if (response.error) {
-          return { error: response.error };
-        }
-
-        if (isDetailMessage(response.data)) {
+          return { data };
+        } catch (error) {
           return {
             error: {
-              status: "CUSTOM_ERROR",
-              error: `Failed to delete integration by path: ${arg}. Details: ${response.data.detail}`,
-              data: response.data,
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return {
-          data: response.data,
-        };
       },
     }),
   }),

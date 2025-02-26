@@ -3,6 +3,7 @@ import { RootState } from "../../app/store";
 import { ChatMessage, ChatMessages } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 import { CHAT_COMMIT_LINK_URL, CHAT_LINKS_URL } from "./consts";
+import { callEngine } from "./call_engine";
 import { LspChatMode } from "../../features/Chat";
 // useful for forcing specific links
 // import { STUB_LINKS_FOR_CHAT_RESPONSE } from "../../__fixtures__";
@@ -133,73 +134,87 @@ export const linksApi = createApi({
   endpoints: (builder) => ({
     getLinksForChat: builder.query<LinksForChatResponse, LinksApiRequest>({
       providesTags: ["Chat_Links"],
-      async queryFn(args, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const messageFotLsp = formatMessagesForLsp(args.messages);
+      async queryFn(args, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const messageFotLsp = formatMessagesForLsp(args.messages);
 
-        const response = await baseQuery({
-          ...extraOptions,
-          method: "POST",
-          url: `http://127.0.0.1:${port}${CHAT_LINKS_URL}`,
-          body: {
-            meta: {
-              chat_id: args.chat_id,
-              current: args.current_config_file,
-              chat_mode: args.mode,
+          const data = await callEngine<unknown>(state, CHAT_LINKS_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              meta: {
+                chat_id: args.chat_id,
+                current: args.current_config_file,
+                chat_mode: args.mode,
+              },
+              messages: messageFotLsp,
+              model_name: args.model,
+            }),
+            credentials: "same-origin",
+            redirect: "follow",
+            headers: {
+              "Content-Type": "application/json",
             },
-            messages: messageFotLsp,
-            model_name: args.model,
-          },
-        });
+          });
 
-        if (response.error) {
-          return { error: response.error };
-        }
+          if (!isLinksForChatResponse(data)) {
+            return {
+              error: {
+                error: "Invalid response for chat links",
+                data: data,
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
 
-        if (!isLinksForChatResponse(response.data)) {
+          // return { data: STUB_LINKS_FOR_CHAT_RESPONSE };
+
+          return { data };
+        } catch (error) {
           return {
             error: {
-              error: "Invalid response for chat links",
-              data: response.data,
-              status: "CUSTOM_ERROR",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        // return { data: STUB_LINKS_FOR_CHAT_RESPONSE };
-
-        return { data: response.data };
       },
     }),
 
     sendCommit: builder.mutation<CommitResponse, CommitLinkPayload>({
       invalidatesTags: ["Chat_Links"],
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${CHAT_COMMIT_LINK_URL}`;
-        const response = await baseQuery({
-          ...extraOptions,
-          method: "POST",
-          url,
-          body: arg,
-        });
-        if (response.error) {
-          return { error: response.error };
-        }
+      async queryFn(arg, api, _extraOptions, _baseQuery) {
+        try {
+          const state = api.getState() as RootState;
+          const data = await callEngine<unknown>(state, CHAT_COMMIT_LINK_URL, {
+            method: "POST",
+            body: JSON.stringify(arg),
+            credentials: "same-origin",
+            redirect: "follow",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
 
-        if (!isCommitResponse(response.data)) {
+          if (!isCommitResponse(data)) {
+            return {
+              error: {
+                error: "Invalid response for commit",
+                data: data,
+                status: "CUSTOM_ERROR",
+              },
+            };
+          }
+
+          return { data };
+        } catch (error) {
           return {
             error: {
-              status: "CUSTOM_ERROR",
-              data: response.data,
-              error: "Invalid response for commit",
+              status: "FETCH_ERROR",
+              error: String(error),
             },
           };
         }
-
-        return { data: response.data };
       },
     }),
   }),

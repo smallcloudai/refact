@@ -33,11 +33,13 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
   handleIntegrationShowUp,
   isNotConfigured = false,
 }) => {
-  const config = useAppSelector(selectConfig);
-  const port = config.lspPort;
+  const state = useAppSelector((state) => state);
 
-  const iconPath = formatIntegrationIconPath(integration.icon_path);
-  const integrationLogo = `http://127.0.0.1:${port}/v1${iconPath}`;
+  if (!integration || !state) {
+    return null;
+  }
+
+  const integrationLogo = formatIntegrationIconPath(integration.icon_path, state);
 
   const { displayName } = getIntegrationInfo(integration.integr_name);
   const {
@@ -79,6 +81,10 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
           src={integrationLogo}
           className={styles.integrationIcon}
           alt={integration.integr_name}
+          onError={(e) => {
+            // On error, set a default image or hide the broken image icon
+            e.currentTarget.style.display = 'none';
+          }}
         />
         <Flex
           align="center"
@@ -103,7 +109,7 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
               {switches.map(({ label, leftRadius }) => {
                 const isOn = label === "On";
                 const isActive =
-                  isOn === integrationAvailability.on_your_laptop;
+                  isOn === (integrationAvailability?.on_your_laptop ?? false);
 
                 return (
                   <Badge
