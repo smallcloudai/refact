@@ -474,7 +474,7 @@ tools:
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
       - name: "goal"
         type: "string"
-        description: "What is your goal here?"
+        description: "Comprehensive search key for the knowledge database. Write a concise but complete summary that combines the essential elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search, so include all key terms and concepts that would help retrieve this knowledge in relevant future contexts."
       - name: "language_slash_framework"
         type: "string"
         description: "What programming language and framework is the current project using? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
