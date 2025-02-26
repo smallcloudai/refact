@@ -73,11 +73,6 @@ impl Tool for ToolCreateKnowledge {
             Err(e) => return Err(format!("Failed to store knowledge: {}", e))
         };
 
-        // Wait for the memory to be vectorized
-        if let Err(e) = crate::vecdb::vdb_highlev::memories_block_until_vectorized(vec_db, 20_000).await {
-            return Err(format!("Memory stored but vectorization failed: {}", e));
-        }
-
         let message = format!("Knowledge entry created successfully with ID: {}\nTools: {}\nApply to: {}\nSearch Key: {}\nLanguage/Framework: {}\nEntry: {}", 
             memid,
             im_going_to_use_tools,
