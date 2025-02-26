@@ -46,8 +46,6 @@ pub struct ModelRecord {
     pub supports_reasoning_effort: Vec<ReasoningEffort>,
     #[serde(default)]
     pub default_temperature: Option<f32>,
-    #[serde(default)]
-    pub inference_model_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -454,29 +452,7 @@ fn _inherit_r1_from_r0(
 
         for (rec_name, rec) in r0.code_chat_models.iter() {
             if rec_name == &k_stripped || rec.similar_models.contains(&k_stripped) {
-                if rec.supports_reasoning_effort.is_empty() {
-                    r1.code_chat_models.insert(k.to_string(), rec.clone());
-                } else {
-                    // NOTE: expand model list with all supported reasoning efforts
-                    for reasoning_effort in &rec.supports_reasoning_effort {
-                        let mut model_name = k.to_string();
-                        let mut reasoning_rec = rec.clone();
-                        let tokenizer_rewrite_path = if let Some(path) = r1.tokenizer_rewrite_path.get(k) {
-                            path.clone()
-                        } else if let Some(path) = r0.tokenizer_rewrite_path.get(k) {
-                            path.clone()
-                        } else {
-                            k.to_string()
-                        };
-                        if reasoning_effort.clone() != ReasoningEffort::Medium {
-                            model_name = format!("{}-{}", model_name, reasoning_effort.to_string());
-                        }
-                        reasoning_rec.supports_reasoning_effort = vec![reasoning_effort.clone()];
-                        reasoning_rec.inference_model_name = Some(k.to_string());
-                        r1.code_chat_models.insert(model_name.clone(), reasoning_rec);
-                        r1.tokenizer_rewrite_path.insert(model_name, tokenizer_rewrite_path);
-                    }
-                }
+                r1.code_chat_models.insert(k.to_string(), rec.clone());
             }
         }
     }
