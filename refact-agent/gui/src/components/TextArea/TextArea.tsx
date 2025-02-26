@@ -11,7 +11,7 @@ import { useUndoRedo } from "../../hooks";
 import { createSyntheticEvent } from "../../utils/createSyntheticEvent";
 import styles from "./TextArea.module.css";
 
-const INTERACTIVE_BUTTONS_CONTAINER_HEIGHT = 20;
+const INTERACTIVE_BUTTONS_CONTAINER_HEIGHT = 30;
 
 export type TextAreaProps = React.ComponentProps<typeof RadixTextArea> &
   React.JSX.IntrinsicElements["textarea"] & {

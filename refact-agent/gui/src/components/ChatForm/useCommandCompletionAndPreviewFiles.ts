@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useAppSelector, useHasCaps, useSendChatRequest } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useHasCaps,
+  useSendChatRequest,
+} from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import {
   type CommandCompletionResponse,
@@ -14,8 +19,10 @@ import {
 } from "../../services/refact/types";
 import {
   selectChatId,
+  selectIsStreaming,
   selectMessages,
   selectThreadMode,
+  setUsageTokensOnCommandPreview,
 } from "../../features/Chat";
 
 function useGetCommandCompletionQuery(
@@ -72,45 +79,16 @@ function useCommandCompletion() {
   };
 }
 
-export function useGetCommandPreviewRaw(query: string) {
-  const hasCaps = useHasCaps();
-  const { maybeAddImagesToQuestion } = useSendChatRequest();
-
-  const messages = useAppSelector(selectMessages);
-  const chatId = useAppSelector(selectChatId);
-  const currentThreadMode = useAppSelector(selectThreadMode);
-
-  const userMessage = maybeAddImagesToQuestion(query);
-
-  const messagesToSend: ChatMessages = [...messages, userMessage];
-
-  const metaToSend: ChatMeta = {
-    chat_id: chatId,
-    chat_mode: currentThreadMode ?? "AGENT",
-  };
-
-  const { data } = commandsApi.useGetCommandPreviewQuery(
-    { messages: messagesToSend, meta: metaToSend },
-    {
-      skip: !hasCaps,
-    },
-  );
-  if (!data) return {};
-  return {
-    messages: data.messages,
-    number_context: data.number_context,
-    current_context: data.current_context,
-  };
-}
-
 function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
+  const dispatch = useAppDispatch();
   const hasCaps = useHasCaps();
   const { maybeAddImagesToQuestion } = useSendChatRequest();
 
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
+  const isStreaming = useAppSelector(selectIsStreaming);
   const currentThreadMode = useAppSelector(selectThreadMode);
 
   const userMessage = maybeAddImagesToQuestion(query);
@@ -125,9 +103,21 @@ function useGetCommandPreviewQuery(
   const { data } = commandsApi.useGetCommandPreviewQuery(
     { messages: messagesToSend, meta: metaToSend },
     {
-      skip: !hasCaps,
+      skip: !hasCaps || isStreaming,
     },
   );
+
+  useEffect(() => {
+    if (data?.current_context && data.number_context) {
+      dispatch(
+        setUsageTokensOnCommandPreview({
+          chatId,
+          n_ctx: data.number_context,
+          prompt_tokens: data.current_context,
+        }),
+      );
+    }
+  }, [dispatch, chatId, data?.current_context, data?.number_context]);
   if (!data) return [];
   return data.files;
 }
