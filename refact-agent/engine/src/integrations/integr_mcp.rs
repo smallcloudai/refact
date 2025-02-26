@@ -22,8 +22,6 @@ use crate::integrations::sessions::IntegrationSession;
 pub struct SettingsMCP {
     #[serde(rename = "command")]
     pub mcp_command: String,
-    #[serde(rename = "args")]
-    pub mcp_args: Vec<String>,
     #[serde(default, rename = "env")]
     pub mcp_env: HashMap<String, String>,
 }
@@ -132,8 +130,22 @@ async fn _session_apply_settings(
 
         _session_kill_process(session_downcasted).await;
 
-        let mut client_builder = ClientBuilder::new(new_cfg_clone.mcp_command.as_str());
-        for arg in &new_cfg_clone.mcp_args {
+        let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
+            Ok(args) => {
+                if args.is_empty() {
+                    tracing::info!("Empty command");
+                    return;
+                }
+                args
+            }
+            Err(e) => {
+                tracing::info!("Failed to parse command: {}", e);
+                return;
+            }
+        };
+
+        let mut client_builder = ClientBuilder::new(&parsed_args[0]);
+        for arg in parsed_args.iter().skip(1) {
             client_builder = client_builder.arg(arg);
         }
         for (key, value) in &new_cfg_clone.mcp_env {
@@ -463,8 +475,6 @@ fields:
   command:
     f_type: string
     f_desc: "The MCP command to execute, typically `npx`, `/my/path/venv/python`, or `docker`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
-  args:
-    f_type: string_array
   env:
     f_type: string_to_string_map
 description: |
