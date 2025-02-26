@@ -481,7 +481,7 @@ pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:
   command:
     f_type: string
-    f_desc: "The MCP command to execute, typically `npx`, `/my/path/venv/python`, or `docker`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
+    f_desc: "The MCP command to execute, like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
   env:
     f_type: string_to_string_map
 description: |
