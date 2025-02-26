@@ -9,7 +9,7 @@ use hyper::{Body, Response, StatusCode};
 use serde::Deserialize;
 use async_stream::stream;
 
-use crate::agent_db::db_structs::CMessage;
+use crate::memdb::db_structs::CMessage;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 
@@ -95,14 +95,7 @@ pub fn cmessage_set(
         tracing::error!("Failed to insert or replace cmessage:\n{}", e);
         return;
     }
-    let j = serde_json::json!({
-        "cmessage_belongs_to_cthread_id": cmessage.cmessage_belongs_to_cthread_id,
-        "cmessage_alt": cmessage.cmessage_alt,
-        "cmessage_num": cmessage.cmessage_num,
-        "cthread_id": cmessage.cmessage_belongs_to_cthread_id,
-    });
-    crate::agent_db::chore_pubub_push(tx, "cmessage", "update", &j);
-    crate::agent_db::chore_pubub_push(tx, "cthread", "update", &j);
+    // No need to push to pubsub, triggers will handle it
 }
 
 pub fn cmessage_get(
@@ -138,7 +131,7 @@ pub async fn handle_db_v1_cmessages_update(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let cdb = gcx.read().await.chore_db.clone();
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
         tracing::error!("cannot parse input:\n{:?}", body_bytes);
@@ -149,9 +142,9 @@ pub async fn handle_db_v1_cmessages_update(
         ScratchError::new(StatusCode::BAD_REQUEST, "Expected a list of updates".to_string())
     })?;
 
-    let (lite, chore_sleeping_point) = {
-        let db = cdb.lock();
-        (db.lite.clone(), db.chore_sleeping_point.clone())
+    let (lite, memdb_sleeping_point) = {
+        let db = mdb.lock();
+        (db.lite.clone(), db.memdb_sleeping_point.clone())
     };
     {
         let mut conn = lite.lock();
@@ -175,7 +168,7 @@ pub async fn handle_db_v1_cmessages_update(
             };
 
             let mut cmessage_json = serde_json::to_value(&cmessage_rec).unwrap();
-            crate::agent_db::merge_json(&mut cmessage_json, &update);
+            crate::memdb::merge_json(&mut cmessage_json, &update);
 
             let cmessage_rec: CMessage = serde_json::from_value(cmessage_json).map_err(|e| {
                 ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
@@ -183,7 +176,7 @@ pub async fn handle_db_v1_cmessages_update(
 
             cmessage_set(&tx, cmessage_rec);
         }
-        chore_sleeping_point.notify_waiters();
+        memdb_sleeping_point.notify_waiters();
 
         tx.commit().map_err(|e| {
             ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Commit error: {}", e))
@@ -213,8 +206,8 @@ pub async fn handle_db_v1_cmessages_sub(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let cdb = gcx.read().await.chore_db.clone();
-    let lite_arc = cdb.lock().lite.clone();
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let lite_arc = mdb.lock().lite.clone();
 
     let (pre_existing_cmessages, mut last_pubsub_id) = {
         let mut conn = lite_arc.lock();
@@ -249,7 +242,7 @@ pub async fn handle_db_v1_cmessages_sub(
         }
 
         loop {
-            if !crate::agent_db::chore_pubsub_sleeping_procedure(gcx.clone(), &cdb, 10).await {
+            if !crate::memdb::db_pubsub::pubsub_trigerred(gcx.clone(), &mdb, 10).await {
                 break;
             }
             let (deleted_cmessage_keys, updated_cmessage_keys) = match _cmessage_subscription_poll(lite_arc.clone(), &mut last_pubsub_id) {

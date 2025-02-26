@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::vecdb::vdb_highlev::memories_search;
+use crate::memdb::db_memories::memories_search;
 
 
 pub struct ToolGetKnowledge;

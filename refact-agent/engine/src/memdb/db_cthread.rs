@@ -10,15 +10,15 @@ use async_stream::stream;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::agent_db::db_structs::{ChoreDB, CThread};
-use crate::agent_db::chore_pubsub_sleeping_procedure;
+use crate::memdb::db_structs::{MemDB, CThread};
+use crate::memdb::db_pubsub::pubsub_trigerred;
 
 
 pub fn cthread_get(
-    cdb: Arc<ParkMutex<ChoreDB>>,
+    mdb: Arc<ParkMutex<MemDB>>,
     cthread_id: String,
 ) -> Result<CThread, String> {
-    let lite = cdb.lock().lite.clone();
+    let lite = mdb.lock().lite.clone();
     let conn = lite.lock();
     let mut stmt = conn.prepare("SELECT * FROM cthreads WHERE cthread_id = ?1")
         .map_err(|e| e.to_string())?;
@@ -137,12 +137,12 @@ pub fn cthread_set_lowlevel(
 }
 
 pub fn cthread_set(
-    cdb: Arc<ParkMutex<ChoreDB>>,
+    mdb: Arc<ParkMutex<MemDB>>,
     cthread: &CThread,
 ) {
-    let (lite, chore_sleeping_point) = {
-        let db = cdb.lock();
-        (db.lite.clone(), db.chore_sleeping_point.clone())
+    let (lite, memdb_sleeping_point) = {
+        let db = mdb.lock();
+        (db.lite.clone(), db.memdb_sleeping_point.clone())
     };
     {
         let mut conn = lite.lock();
@@ -150,21 +150,21 @@ pub fn cthread_set(
         if let Err(e) = cthread_set_lowlevel(&tx, cthread) {
             tracing::error!("Failed to insert or replace cthread:\n{}", e);
         }
-        let j = serde_json::json!({
+        let _j = serde_json::json!({
             "cthread_id": cthread.cthread_id,
             "cthread_belongs_to_chore_event_id": cthread.cthread_belongs_to_chore_event_id,
         });
-        crate::agent_db::chore_pubub_push(&tx, "cthread", "update", &j);
+        // No need to push to pubsub, triggers will handle it
         if let Err(e) = tx.commit() {
             tracing::error!("Failed to commit transaction:\n{}", e);
             return;
         }
     }
-    chore_sleeping_point.notify_waiters();
+    memdb_sleeping_point.notify_waiters();
 }
 
 pub fn cthread_apply_json(
-    cdb: Arc<ParkMutex<ChoreDB>>,
+    mdb: Arc<ParkMutex<MemDB>>,
     incoming_json: serde_json::Value,
 ) -> Result<CThread, String> {
     let cthread_id = incoming_json.get("cthread_id")
@@ -172,11 +172,11 @@ pub fn cthread_apply_json(
         .ok_or_else(|| "cthread_id is required".to_string())?
         .to_string();
     // all default values if not found, as a way to create new cthreads
-    let mut cthread_rec = cthread_get(cdb.clone(), cthread_id.clone()).unwrap_or_default();
+    let mut cthread_rec = cthread_get(mdb.clone(), cthread_id.clone()).unwrap_or_default();
     let mut chat_thread_json = serde_json::to_value(&cthread_rec).unwrap();
-    crate::agent_db::merge_json(&mut chat_thread_json, &incoming_json);
+    crate::memdb::merge_json(&mut chat_thread_json, &incoming_json);
     cthread_rec = serde_json::from_value(chat_thread_json).unwrap();
-    cthread_set(cdb, &cthread_rec);
+    cthread_set(mdb, &cthread_rec);
     Ok(cthread_rec)
 }
 
@@ -185,14 +185,14 @@ pub async fn handle_db_v1_cthread_update(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let cdb = gcx.read().await.chore_db.clone();
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
         tracing::info!("cannot parse input:\n{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON parsing error: {}", e))
     })?;
 
-    let cthread_rec = cthread_apply_json(cdb, incoming_json).map_err(|e| {
+    let cthread_rec = cthread_apply_json(mdb, incoming_json).map_err(|e| {
         tracing::error!("Failed to apply JSON: {}", e);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Failed to apply JSON: {}", e))
     })?;
@@ -226,14 +226,14 @@ pub async fn handle_db_v1_cthreads_sub(
         post.limit = 100;
     }
 
-    let cdb = gcx.read().await.chore_db.clone();
-    let lite_arc = cdb.lock().lite.clone();
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let lite_arc = mdb.lock().lite.clone();
 
     let (pre_existing_cthreads, mut last_pubsub_id) = {
-        let lite = cdb.lock().lite.clone();
+        let lite = mdb.lock().lite.clone();
         let max_event_id: i64 = lite.lock().query_row("SELECT COALESCE(MAX(pubevent_id), 0) FROM pubsub_events", [], |row| row.get(0))
             .map_err(|e| { ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to get max event ID: {}", e)) })?;
-        let cthreads = cthread_quicksearch(cdb.clone(), &String::new(), &post).map_err(|e| {
+        let cthreads = cthread_quicksearch(mdb.clone(), &String::new(), &post).map_err(|e| {
             ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Query error: {}", e))
         })?;
         (cthreads, max_event_id)
@@ -248,7 +248,7 @@ pub async fn handle_db_v1_cthreads_sub(
             yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&e).unwrap()));
         }
         loop {
-            if !chore_pubsub_sleeping_procedure(gcx.clone(), &cdb, 10).await {
+            if !pubsub_trigerred(gcx.clone(), &mdb, 10).await {
                 break;
             }
             let (deleted_cthread_ids, updated_cthread_ids) = match cthread_subsription_poll(lite_arc.clone(), &mut last_pubsub_id) {
@@ -268,7 +268,7 @@ pub async fn handle_db_v1_cthreads_sub(
             }
             for updated_id in updated_cthread_ids {
                 // XXX idea: remember cthread_ids sent to client to filter, instead of quicksearch again here
-                match cthread_quicksearch(cdb.clone(), &updated_id, &post) {
+                match cthread_quicksearch(mdb.clone(), &updated_id, &post) {
                     Ok(updated_cthreads) => {
                         for updated_cthread in updated_cthreads {
                             let update_event = json!({
@@ -298,11 +298,11 @@ pub async fn handle_db_v1_cthreads_sub(
 }
 
 pub fn cthread_quicksearch(
-    cdb: Arc<ParkMutex<ChoreDB>>,
+    mdb: Arc<ParkMutex<MemDB>>,
     cthread_id: &String,
     post: &CThreadSubscription,
 ) -> Result<Vec<CThread>, String> {
-    let lite = cdb.lock().lite.clone();
+    let lite = mdb.lock().lite.clone();
     let conn = lite.lock();
     let query = if cthread_id.is_empty() {
         "SELECT * FROM cthreads WHERE cthread_title LIKE ?1 ORDER BY cthread_id LIMIT ?2"

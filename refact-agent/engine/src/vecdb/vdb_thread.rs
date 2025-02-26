@@ -14,7 +14,9 @@ use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
 use crate::files_in_workspace::{is_path_to_enqueue_valid, Document};
 use crate::global_context::GlobalContext;
-use crate::knowledge::{vectorize_dirty_memories, MemoriesDatabase};
+use crate::memdb::db_memories::vectorize_dirty_memories;
+use crate::memdb::db_structs::MemDB;
+use parking_lot::Mutex as ParkMutex;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{SimpleTextHashVector, SplitResult, VecDbStatus, VecdbConstants, VecdbRecord};
 
@@ -34,7 +36,7 @@ pub struct FileVectorizerService {
     pub vstatus_notify: Arc<ANotify>,   // fun stuff https://docs.rs/tokio/latest/tokio/sync/struct.Notify.html
     constants: VecdbConstants,
     api_key: String,
-    memdb: Arc<AMutex<MemoriesDatabase>>,
+    memdb: Arc<ParkMutex<MemDB>>,
     vecdb_todo: Arc<AMutex<VecDeque<MessageToVecdbThread>>>,
 }
 
@@ -425,7 +427,7 @@ impl FileVectorizerService {
         vecdb_handler: Arc<AMutex<VecDBSqlite>>,
         constants: VecdbConstants,
         api_key: String,
-        memdb: Arc<AMutex<MemoriesDatabase>>,
+        memdb: Arc<ParkMutex<MemDB>>,
     ) -> Self {
         let vstatus = Arc::new(AMutex::new(
             VecDbStatus {

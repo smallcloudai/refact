@@ -60,9 +60,11 @@ pub async fn handle_v1_trajectory_save(
     let (goal, trajectory) = compress_trajectory(global_context.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
-    let vec_db = global_context.read().await.vec_db.clone();
-    let memid = crate::vecdb::vdb_highlev::memories_add(
-        vec_db,
+    let memdb = global_context.read().await.memdb.clone().expect("memdb not initialized");
+    let vec_service = global_context.read().await.vec_db.lock().await.as_ref().unwrap().vectorizer_service.clone();
+    let memid = crate::memdb::db_memories::memories_add(
+        memdb,
+        vec_service,
         &mem_type,
         &goal.as_str(),
         &post.project.as_str(),

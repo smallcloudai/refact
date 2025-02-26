@@ -4,9 +4,9 @@ use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use indexmap::IndexSet;
 
 use crate::global_context::GlobalContext;
-use crate::agent_db::db_structs::{CThread, CMessage};
-use crate::agent_db::chore_pubsub_sleeping_procedure;
-use crate::agent_db::db_cthread::CThreadSubscription;
+use crate::memdb::db_structs::{CThread, CMessage};
+use crate::memdb::db_pubsub::pubsub_trigerred;
+use crate::memdb::db_cthread::CThreadSubscription;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::subchat::subchat_single;
@@ -21,11 +21,11 @@ pub async fn look_for_a_job(
 ) {
     let worker_pid = std::process::id();
     let worker_name = format!("aworker-{}-{}", worker_pid, worker_n);
-    let cdb = gcx.read().await.chore_db.clone();
-    let lite_arc = cdb.lock().lite.clone();
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let lite_arc = mdb.lock().lite.clone();
 
     let (mut might_work_on_cthread_id, mut last_pubsub_id) = {
-        let lite = cdb.lock().lite.clone();
+        let lite = mdb.lock().lite.clone();
         // intentional unwrap(), it's better to crash quickly than continue with a non-functioning thread
         let max_pubsub_id: i64 = lite.lock().query_row("SELECT COALESCE(MAX(pubevent_id), 0) FROM pubsub_events", [], |row| row.get(0)).unwrap();
         let post = CThreadSubscription {
@@ -33,7 +33,7 @@ pub async fn look_for_a_job(
             limit: 100,
         };
         // intentional unwrap()
-        let cthreads = crate::agent_db::db_cthread::cthread_quicksearch(cdb.clone(), &String::new(), &post).unwrap();
+        let cthreads = crate::memdb::db_cthread::cthread_quicksearch(mdb.clone(), &String::new(), &post).unwrap();
         let mut might_work_on_cthread_id = IndexSet::new();
         for ct in cthreads.iter() {
             might_work_on_cthread_id.insert(ct.cthread_id.clone());
@@ -43,10 +43,10 @@ pub async fn look_for_a_job(
 
     loop {
         let sleep_seconds = if might_work_on_cthread_id.is_empty() { SLEEP_IF_NO_WORK_SEC } else { 1 };
-        if !chore_pubsub_sleeping_procedure(gcx.clone(), &cdb, sleep_seconds).await {
+        if !pubsub_trigerred(gcx.clone(), &mdb, sleep_seconds).await {
             break;
         }
-        let (deleted_cthread_ids, updated_cthread_ids) = match crate::agent_db::db_cthread::cthread_subsription_poll(lite_arc.clone(), &mut last_pubsub_id) {
+        let (deleted_cthread_ids, updated_cthread_ids) = match crate::memdb::db_cthread::cthread_subsription_poll(lite_arc.clone(), &mut last_pubsub_id) {
             Ok(x) => x,
             Err(e) => {
                 tracing::error!("wait_for_cthread_to_work_on(1): {}", e);
@@ -81,8 +81,8 @@ async fn look_if_the_job_for_me(
     cthread_id: &String,
 ) -> Result<bool, String> {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs_f64();
-    let cdb = gcx.read().await.chore_db.clone();
-    let lite_arc = cdb.lock().lite.clone();
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let lite_arc = mdb.lock().lite.clone();
     let (cthread_rec, cmessages) = {
         let mut conn = lite_arc.lock();
         let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -90,14 +90,14 @@ async fn look_if_the_job_for_me(
         let mut cthread_rec = {
             let mut stmt = tx.prepare("SELECT * FROM cthreads WHERE cthread_id = ?1").unwrap();
             let rows = stmt.query(rusqlite::params![cthread_id]).map_err(|e| e.to_string())?;
-            let mut cthreads = crate::agent_db::db_cthread::cthreads_from_rows(rows);
+            let mut cthreads = crate::memdb::db_cthread::cthreads_from_rows(rows);
             cthreads.pop().ok_or_else(|| format!("No CThread found with id: {}", cthread_id))?
         };
 
         let cmessages = {
             let mut stmt = tx.prepare("SELECT * FROM cmessages WHERE cmessage_belongs_to_cthread_id = ?1 ORDER BY cmessage_num, cmessage_alt").unwrap();
             let rows = stmt.query(rusqlite::params![cthread_id]).map_err(|e| e.to_string())?;
-            crate::agent_db::db_cmessage::cmessages_from_rows(rows)
+            crate::memdb::db_cmessage::cmessages_from_rows(rows)
         };
 
         assert!(cthread_rec.cthread_locked_by != *worker_name);
@@ -120,7 +120,7 @@ async fn look_if_the_job_for_me(
 
         cthread_rec.cthread_locked_by = worker_name.clone();
         cthread_rec.cthread_locked_ts = now;
-        crate::agent_db::db_cthread::cthread_set_lowlevel(&tx, &cthread_rec)?;
+        crate::memdb::db_cthread::cthread_set_lowlevel(&tx, &cthread_rec)?;
         tx.commit().map_err(|e| e.to_string())?;
         (cthread_rec, cmessages)
     };
@@ -142,7 +142,7 @@ async fn look_if_the_job_for_me(
     apply_json["cthread_locked_by"] = serde_json::json!("");
     apply_json["cthread_locked_ts"] = serde_json::json!(0);
     tracing::info!("{} {} /autonomous work\n{}", worker_name, cthread_id, apply_json);
-    crate::agent_db::db_cthread::cthread_apply_json(cdb, apply_json)?;
+    crate::memdb::db_cthread::cthread_apply_json(mdb, apply_json)?;
 
     Ok(true)  // true means don't come back to it again
 }
@@ -153,10 +153,10 @@ async fn do_the_job(
     cthread_rec: &CThread,
     cmessages: &Vec<CMessage>,
 ) -> Result<serde_json::Value, String> {
-    let cdb = gcx.read().await.chore_db.clone();
-    let (lite, chore_sleeping_point) = {
-        let db = cdb.lock();
-        (db.lite.clone(), db.chore_sleeping_point.clone())
+    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let (lite, memdb_sleeping_point) = {
+        let db = mdb.lock();
+        (db.lite.clone(), db.memdb_sleeping_point.clone())
     };
 
     let messages: Vec<ChatMessage> = cmessages.iter().map(|cmsg| { serde_json::from_str(&cmsg.cmessage_json).map_err(|e| format!("{}", e))}).collect::<Result<Vec<_>, _>>()?;
@@ -240,11 +240,11 @@ async fn do_the_job(
                 cmessage_usage_completion,
                 cmessage_json: serde_json::to_string(chat_message).map_err(|e| format!("{}", e))?,
             };
-            crate::agent_db::db_cmessage::cmessage_set(&tx, cmessage);
+            crate::memdb::db_cmessage::cmessage_set(&tx, cmessage);
         }
         tx.commit().map_err(|e| e.to_string())?;
     }
-    chore_sleeping_point.notify_waiters();
+    memdb_sleeping_point.notify_waiters();
     Ok(serde_json::json!({}))
 }
 

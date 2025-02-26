@@ -39,7 +39,7 @@ mod files_correction;
 #[cfg(feature="vecdb")]
 mod vecdb;
 #[cfg(feature="vecdb")]
-mod knowledge;
+use crate::vecdb::vdb_structs::VecdbConstants;
 
 mod ast;
 mod subchat;
@@ -59,7 +59,7 @@ mod forward_to_openai_endpoint;
 mod restream;
 
 mod call_validation;
-mod agent_db;
+mod memdb;
 mod dashboard;
 mod lsp;
 mod http;
@@ -182,6 +182,29 @@ async fn main() {
 
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
+    
+    // Initialize memdb if not already initialized by vecdb
+    if gcx.read().await.memdb.is_none() {
+        let (_cache_dir, config_dir, cmdline) = {
+            let gcx_locked = gcx.read().await;
+            (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
+        };
+        
+        let constants = VecdbConstants {
+            embedding_model: "text-embedding-3-small".to_string(),
+            embedding_size: 1536,
+            embedding_batch: 64,
+            vectorizer_n_ctx: 8192,
+            tokenizer: None,
+            endpoint_embeddings_template: "https://api.openai.com/v1/embeddings".to_string(),
+            endpoint_embeddings_style: "openai".to_string(),
+            splitter_window_size: 4096,
+            vecdb_max_files: 10000,
+        };
+        
+        let memdb = crate::memdb::db_init::memdb_init(&config_dir, &constants, cmdline.reset_memory).await;
+        gcx.write().await.memdb = Some(memdb);
+    }
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||

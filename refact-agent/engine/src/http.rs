@@ -34,11 +34,9 @@ pub async fn start_server(
         return None
     }
     let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
-    let chore_sleeping_point = gcx.read().await.chore_db.lock().chore_sleeping_point.clone();
-    let vecdb = gcx.read().await.vec_db.clone();
-    let memdb_mb = vecdb.lock().await.as_ref().map(|x| x.memdb.clone());
-    let memdb_sleeping_point_mb = if let Some(memdb) = memdb_mb {
-        Some(memdb.lock().await.pubsub_notifier.clone())
+    let memdb = gcx.read().await.memdb.clone();
+    let memdb_sleeping_point_mb = if let Some(memdb) = memdb {
+        Some(memdb.lock().memdb_sleeping_point.clone())
     } else {
         None
     };
@@ -54,7 +52,7 @@ pub async fn start_server(
                 let router = make_refact_http_server().layer(Extension(gcx.clone()));
                 let server = builder
                     .serve(router.into_make_service())
-                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver, shutdown_flag, chore_sleeping_point, memdb_sleeping_point_mb));
+                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver, shutdown_flag, memdb_sleeping_point_mb));
                 let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
                 if let Err(e) = resp {
                     error!("server error: {}", e);
