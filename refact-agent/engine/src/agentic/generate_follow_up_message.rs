@@ -15,9 +15,9 @@ Your task is to do two things for a conversation between a user and an assistant
    - The first message should invite the assistant to keep talking.
    - Each message should have a different meaning.
    - If the assistant's last message contains a question, generate different replies that address that question.
-   - Maybe include a suggestion to think deeper.
+   - Maybe include a suggestion to think.
    - Maybe include a suggestion to explore more context (e.g., "Can we look at more files?", "Is there additional context I should provide?").
-   - Maybe include a suggestion to remember/create knowledge (e.g., "Can you save this solution for future reference?", "Let's document this approach").
+   - Maybe include a suggestion to create knowledge.
    - If there is no clear follow-up or the conversation isn't asking a question, return an empty list.
 
 2. **Topic Change Detection:**
