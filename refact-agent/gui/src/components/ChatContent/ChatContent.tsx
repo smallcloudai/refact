@@ -118,7 +118,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper)}
         <UncommittedChangesWarning />
-        {threadUsage && <UsageCounter usage={threadUsage} />}
+        {threadUsage && messages.length > 0 && <UsageCounter />}
 
         <Container py="4">
           <Spinner
