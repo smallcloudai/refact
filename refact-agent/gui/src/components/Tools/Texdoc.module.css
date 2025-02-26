@@ -18,15 +18,9 @@
   margin-top: 0;
 }
 
-:global(.radix-themes) .textdoc.textdoc__update :global(.hljs.language-diff) {
+/* :global(.radix-themes) .textdoc.textdoc__update :global(.hljs.language-diff) {
   --hlbg: var(--gray-3);
   --hlcolor1: var(--gray-12);
-  /* --hlcolor2: #000000;
-  --hlcolor3: #000080;
-  --hlcolor4: #800080;
-  --hlcolor5: #808000;
-  --hlcolor6: #800000;
-  --hlcolor7: #0055af; */
   --hlcolor8: var(--green-9);
   --hlcolor9: var(--red-9);
 }
@@ -44,4 +38,4 @@
 
 .textdoc__update .textdoc__diffbox {
   box-shadow: var(--shadow-1);
-}
+} */
