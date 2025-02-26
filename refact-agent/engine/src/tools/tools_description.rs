@@ -472,7 +472,7 @@ tools:
       - name: "im_going_to_apply_to"
         type: "string"
         description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
-      - name: "goal"
+      - name: "search_key"
         type: "string"
         description: "Comprehensive search key for the knowledge database. Write a concise but complete summary that combines the essential elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search, so include all key terms and concepts that would help retrieve this knowledge in relevant future contexts."
       - name: "language_slash_framework"
@@ -484,7 +484,7 @@ tools:
     parameters_required:
       - "im_going_to_use_tools"
       - "im_going_to_apply_to"
-      - "goal"
+      - "search_key"
       - "language_slash_framework"
       - "knowledge_entry"
 
