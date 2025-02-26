@@ -1,6 +1,6 @@
 import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
-import { GetChatTitleActionPayload, GetChatTitleResponse } from "./chat";
+import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
 import { MCPArgs, MCPEnvs } from "./integrations";
 
 export type ChatRole =
@@ -81,12 +81,12 @@ export interface MultiModalToolResult extends BaseToolResult {
 
 export type ToolResult = SingleModelToolResult | MultiModalToolResult;
 
-type MultiModalToolContent = {
+export type MultiModalToolContent = {
   m_type: string; // "image/*" | "text" ... maybe narrow this?
   m_content: string; // base64 if image,
 };
 
-function isMultiModalToolContent(
+export function isMultiModalToolContent(
   content: unknown,
 ): content is MultiModalToolContent {
   if (!content) return false;
@@ -543,6 +543,7 @@ type ChatResponseChoice = {
   created: number;
   model: string;
   id: string;
+  usage?: Usage;
   refact_agent_request_available: null | number;
   refact_agent_max_request_num: number;
 };

@@ -129,20 +129,6 @@ function replaceLastUserMessage(
   return result.concat([userMessage]);
 }
 
-export function getAgentUsageCounter(response: ChatResponse): number | null {
-  if (isChatResponseChoice(response)) {
-    return response.refact_agent_request_available;
-  }
-  return null;
-}
-
-export function getMaxFreeAgentUsage(response: ChatResponse): number {
-  if (isChatResponseChoice(response)) {
-    return response.refact_agent_max_request_num;
-  }
-  return 0;
-}
-
 export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
@@ -236,6 +222,7 @@ export function formatChatResponse(
         role: cur.delta.role,
         content: cur.delta.content,
         finish_reason: cur.finish_reason,
+        usage: response.usage,
       } as ChatMessage;
       return acc.concat([message]);
     }
@@ -452,7 +439,9 @@ export function formatMessagesForChat(
     if (message.role === "assistant") {
       // TODO: why type cast this.
       const assistantMessage = message as AssistantMessage;
-      return acc.concat(assistantMessage);
+      return acc.concat({
+        ...assistantMessage,
+      });
     }
 
     if (

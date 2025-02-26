@@ -24,6 +24,7 @@ import {
   selectIsWaiting,
   selectMessages,
   selectThread,
+  selectThreadUsage,
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
@@ -32,6 +33,8 @@ import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
+import { UsageCounter } from "../UsageCounter";
+import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -47,11 +50,13 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
+  const threadUsage = useAppSelector(selectThreadUsage);
   const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const integrationMeta = useAppSelector(selectIntegration);
+  const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
 
   const {
     handleScroll,
@@ -113,9 +118,10 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper)}
         <UncommittedChangesWarning />
+        {threadUsage && <UsageCounter usage={threadUsage} />}
 
         <Container py="4">
-          <Spinner spinning={isWaiting} />
+          <Spinner spinning={isWaiting && !isWaitingForConfirmation} />
         </Container>
       </Flex>
       {showFollowButton && (

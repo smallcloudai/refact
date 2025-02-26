@@ -198,7 +198,7 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
 
 pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
     let block = any_glob_matches_path(&indexing_settings.blocklist, &path);
-    tracing::info!("is_blocklisted {:?} {:?} block={}", indexing_settings, path, block);
+    // tracing::info!("is_blocklisted {:?} {:?} block={}", indexing_settings, path, block);
     block
 }
 

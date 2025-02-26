@@ -50,9 +50,11 @@ import {
   setChatMode,
   setIsWaitingForResponse,
   setLastUserMessageId,
+  upsertToolCall,
 } from "../features/Chat";
 
 import { v4 as uuidv4 } from "uuid";
+import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 type SubmitHandlerParams =
   | {
@@ -173,7 +175,8 @@ export const useSendChatRequest = () => {
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
 
-      const mode = maybeMode ?? chatModeToLspMode(toolUse, threadMode);
+      const mode =
+        maybeMode ?? chatModeToLspMode({ toolUse, mode: threadMode });
 
       const toolsConfirmed =
         isCurrentToolCallAPatch && isPatchAutomatic
@@ -262,10 +265,10 @@ export const useSendChatRequest = () => {
 
       // TODO: make a better way for setting / detecting thread mode.
       const maybeConfigure = threadIntegration ? "CONFIGURE" : undefined;
-      const mode = chatModeToLspMode(
+      const mode = chatModeToLspMode({
         toolUse,
-        maybeMode ?? threadMode ?? maybeConfigure,
-      );
+        mode: maybeMode ?? threadMode ?? maybeConfigure,
+      });
       dispatch(setChatMode(mode));
 
       void sendMessages(messages, mode);
@@ -318,16 +321,27 @@ export const useSendChatRequest = () => {
     dispatch(setIsWaitingForResponse(false));
   }, [abort, dispatch]);
 
-  const rejectToolUsage = useCallback(() => {
-    abort();
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: true,
-        confirmationStatus: false,
-      }),
-    );
-    dispatch(setIsWaitingForResponse(false));
-  }, [abort, dispatch]);
+  const rejectToolUsage = useCallback(
+    (toolCallIds: string[]) => {
+      abort();
+
+      toolCallIds.forEach((toolCallId) => {
+        dispatch(
+          upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }),
+        );
+        dispatch(upsertToolCall({ toolCallId, chatId, accepted: false }));
+      });
+
+      dispatch(
+        clearPauseReasonsAndHandleToolsStatus({
+          wasInteracted: true,
+          confirmationStatus: false,
+        }),
+      );
+      dispatch(setIsWaitingForResponse(false));
+    },
+    [abort, chatId, dispatch],
+  );
 
   const retryFromIndex = useCallback(
     (index: number, question: UserMessage["content"]) => {
@@ -376,6 +390,7 @@ export function useAutoSend() {
       !preventSend
     ) {
       const lastMessage = currentMessages.slice(-1)[0];
+      // here ish
       if (
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls &&

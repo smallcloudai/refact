@@ -76,18 +76,32 @@ async fn _create_vecdb(
         &base_dir_cache,
         &base_dir_config,
         cmdline.clone(),
-        constants,
+        constants.clone(),
         &api_key
     ).await {
         Ok(res) => Some(res),
         Err(err) => {
-            error!("Ooops database is broken!
-                Last error message: {}
-                You can report this issue here:
-                https://github.com/smallcloudai/refact-lsp/issues
-                Also, you can run this to erase your db:
-                `rm -rf ~/.cache/refact/refact_vecdb_cache`
-                After that restart this LSP server or your IDE.", err);
+            match crate::vecdb::vdb_sqlite::get_db_path(
+                &base_dir_cache, &constants.embedding_model, constants.embedding_size
+            ).await.map(|x| PathBuf::from(x)) {
+                Ok(db_path) => {
+                    if db_path.exists() {
+                        error!("Removing vecdb database: {:?} since it's malformed: {}", db_path, err);
+                        std::fs::remove_file(db_path).map_err(|x| format!("Couldn't remove the malformed vecdb: {x}. Vecdb initialization aborted: {}", err))?;
+                        VecDb::init(
+                            &base_dir_cache,
+                            &base_dir_config,
+                            cmdline.clone(),
+                            constants.clone(),
+                            &api_key
+                        ).await.map_err(|x| format!("Cannot initialize vecdb after removing a malformed db: {x}"))?;
+                    }
+                }
+                Err(_) => {
+                    error!("Vecdb cannot be initialized: {err}");
+                }
+            };
+            
             return Err(err);
         }
     };

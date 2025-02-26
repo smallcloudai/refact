@@ -75,7 +75,7 @@ pub async fn tool_update_text_doc_exec(
 ) -> Result<(String, String, Vec<DiffChunk>), String> {
     let args = parse_args(args)?;
     await_ast_indexing(gcx.clone()).await?;
-    let (before_text, after_text) = str_replace(&args.path, &args.old_str, &args.replacement, args.multiple, dry)?;
+    let (before_text, after_text) = str_replace(gcx.clone(), &args.path, &args.old_str, &args.replacement, args.multiple, dry).await?;
     sync_documents_ast(gcx.clone(), &args.path).await?;
     let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
     Ok((before_text, after_text, diff_chunks))

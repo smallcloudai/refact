@@ -125,6 +125,17 @@ passthrough_mini_db = {
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 oct)
         "filter_caps": ["chat", "tools", "completion"],
     },
+    "claude-3-7-sonnet": {
+        "backend": "litellm",
+        "provider": "anthropic",
+        "tokenizer_path": "Xenova/claude-tokenizer",
+        "resolve_as": "anthropic/claude-3-7-sonnet-20250219",
+        "T": 200_000,
+        "T_out": 4096,
+        "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2025 feb)
+        "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2025 feb)
+        "filter_caps": ["chat", "tools", "completion"],
+    },
 
     # Groq models
     "groq-llama-3.1-8b": {

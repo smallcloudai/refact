@@ -1,5 +1,6 @@
 use crate::ast::ast_indexer_thread::{ast_indexer_block_until_finished, ast_indexer_enqueue_files};
 use crate::call_validation::DiffChunk;
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::GlobalContext;
 use regex::{Match, Regex};
 use std::fs;
@@ -140,7 +141,7 @@ pub async fn sync_documents_ast(
     Ok(())
 }
 
-pub fn write_file(path: &PathBuf, file_text: &String, dry: bool) -> Result<(String, String), String> {
+pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_text: &String, dry: bool) -> Result<(String, String), String> {
     if !path.exists() {
         let parent = path.parent().ok_or(format!(
             "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
@@ -157,7 +158,7 @@ pub fn write_file(path: &PathBuf, file_text: &String, dry: bool) -> Result<(Stri
         }
     }
     let before_text = if path.exists() {
-        fs::read_to_string(&path).map_err(|x| x.to_string())?
+        get_file_text_from_memory_or_disk(gcx.clone(), path).await?
     } else {
         "".to_string()
     };
@@ -171,15 +172,15 @@ pub fn write_file(path: &PathBuf, file_text: &String, dry: bool) -> Result<(Stri
     Ok((before_text, file_text.to_string()))
 }
 
-pub fn str_replace(
+pub async fn str_replace(
+    gcx: Arc<ARwLock<GlobalContext>>,
     path: &PathBuf,
     old_str: &String,
     new_str: &String,
     replace_multiple: bool,
     dry: bool,
 ) -> Result<(String, String), String> {
-    let file_content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
+    let file_content = get_file_text_from_memory_or_disk(gcx.clone(), path).await?;
 
     let has_crlf = file_content.contains("\r\n");
 
@@ -210,19 +211,19 @@ pub fn str_replace(
     let new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
 
     let new_file_content = restore_line_endings(&new_content, has_crlf);
-    write_file(path, &new_file_content, dry)?;
+    write_file(gcx.clone(), path, &new_file_content, dry).await?;
     Ok((file_content, new_file_content))
 }
 
-pub fn str_replace_regex(
+pub async fn str_replace_regex(
+    gcx: Arc<ARwLock<GlobalContext>>,
     path: &PathBuf,
     pattern: &Regex,
     replacement: &String,
     multiple: bool,
     dry: bool
 ) -> Result<(String, String), String> {
-    let file_content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read file: {:?}\nERROR: {}", path, e))?;
+    let file_content = get_file_text_from_memory_or_disk(gcx.clone(), path).await?;
     let has_crlf = file_content.contains("\r\n");
 
     let normalized_content = normalize_line_endings(&file_content);
@@ -250,6 +251,6 @@ pub fn str_replace_regex(
             .to_string()
     };
     let new_file_content = restore_line_endings(&new_content, has_crlf);
-    write_file(path, &new_file_content, dry)?;
+    write_file(gcx.clone(), path, &new_file_content, dry).await?;
     Ok((file_content, new_file_content))
 }

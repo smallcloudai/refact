@@ -73,24 +73,9 @@ impl IntegrationSession for PdbSession
 impl IntegrationTrait for ToolPdb {
     fn as_any(&self) -> &dyn Any { self }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), String> {
-        match serde_json::from_value::<SettingsPdb>(value.clone()) {
-            Ok(settings_pdb) => {
-                info!("PDB settings applied: {:?}", settings_pdb);
-                self.settings_pdb = settings_pdb;
-            },
-            Err(e) => {
-                error!("Failed to apply settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        };
-        match serde_json::from_value::<IntegrationCommon>(value.clone()) {
-            Ok(x) => self.common = x,
-            Err(e) => {
-                error!("Failed to apply common settings: {}\n{:?}", e, value);
-                return Err(e.to_string());
-            }
-        };
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+        self.settings_pdb = serde_json::from_value(value.clone())?;
+        self.common = serde_json::from_value(value.clone())?;
         self.config_path = config_path;
         Ok(())
     }

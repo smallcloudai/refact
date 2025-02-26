@@ -1,24 +1,8 @@
-import React, { useCallback } from "react";
-import { Markdown } from "../Markdown";
+import { useCallback } from "react";
+import { telemetryApi } from "../services/refact";
+import { fallbackCopying } from "../utils/fallbackCopying";
 
-import { Container, Box } from "@radix-ui/themes";
-import { ToolCall } from "../../services/refact";
-import { ToolContent } from "./ToolsContent";
-import { fallbackCopying } from "../../utils/fallbackCopying";
-import { telemetryApi } from "../../services/refact/telemetry";
-import { LikeButton } from "./LikeButton";
-
-type ChatInputProps = {
-  message: string | null;
-  toolCalls?: ToolCall[] | null;
-  isLast?: boolean;
-};
-
-export const AssistantInput: React.FC<ChatInputProps> = ({
-  message,
-  toolCalls,
-  isLast,
-}) => {
+export const useCopyToClipboard = () => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
 
@@ -57,17 +41,5 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
     [sendTelemetryEvent],
   );
 
-  return (
-    <Container position="relative">
-      {message && (
-        <Box py="4">
-          <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
-            {message}
-          </Markdown>
-        </Box>
-      )}
-      {toolCalls && <ToolContent toolCalls={toolCalls} />}
-      {isLast && <LikeButton />}
-    </Container>
-  );
+  return handleCopy;
 };

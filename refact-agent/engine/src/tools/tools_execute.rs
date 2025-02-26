@@ -203,7 +203,7 @@ pub async fn run_tools(
                         let command_to_match = cmd
                             .command_to_match_against_confirm_deny(&args)
                             .unwrap_or("<error_command>".to_string());
-                        generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' has been denied by the user"), t_call.id.to_string()));
+                        generated_tool.push(tool_answer(format!("Whoops the user didn't like the command '{command_to_match}'. Stop and ask for correction from the user."), t_call.id.to_string()));
                         continue;
                     }
                     _ => {}
