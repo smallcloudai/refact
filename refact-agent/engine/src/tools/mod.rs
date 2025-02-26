@@ -1,5 +1,6 @@
 pub mod tools_description;
 pub mod tools_execute;
+pub mod scope_utils;
 
 mod tool_ast_definition;
 mod tool_ast_reference;
