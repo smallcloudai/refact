@@ -8,9 +8,8 @@ use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
-use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::at_commands::at_search::execute_at_search;
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
+use crate::tools::scope_utils::create_scope_filter;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
@@ -23,42 +22,12 @@ async fn execute_att_search(
     scope: &String,
 ) -> Result<Vec<ContextFile>, String> {
     let gcx = ccx.lock().await.global_context.clone();
-    if scope == "workspace" {
-        return execute_at_search(ccx.clone(), &query, None).await
-    }
-    let scope_is_dir = scope.ends_with('/') || scope.ends_with('\\');
-
-    let filter = if scope_is_dir {
-        return_one_candidate_or_a_good_error(
-            gcx.clone(),
-            scope,
-            &correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await,
-            &get_project_dirs(gcx.clone()).await,
-            true,
-        ).await.map(|dir| format!("(scope LIKE '{}%')", dir))?
-    } else {
-        match return_one_candidate_or_a_good_error(
-            gcx.clone(),
-            scope,
-            &file_repair_candidates(gcx.clone(), scope, 10, false).await,
-            &get_project_dirs(gcx.clone()).await,
-            false,
-        ).await {
-            Ok(file) => format!("(scope = \"{}\")", file),
-            Err(file_err) => {
-                return_one_candidate_or_a_good_error(
-                    gcx.clone(),
-                    scope,
-                    &correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await,
-                    &get_project_dirs(gcx.clone()).await,
-                    true,
-                ).await.map(|dir| format!("(scope LIKE '{}%')", dir)).map_err(|_| file_err)?
-            },
-        }
-    };
+    
+    // Use the common function to create a scope filter
+    let filter = create_scope_filter(gcx.clone(), scope).await?;
 
     info!("att-search: filter: {:?}", filter);
-    execute_at_search(ccx.clone(), &query, Some(filter)).await
+    execute_at_search(ccx.clone(), &query, filter).await
 }
 
 #[async_trait]
