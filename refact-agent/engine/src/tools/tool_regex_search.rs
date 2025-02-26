@@ -13,11 +13,11 @@ use tokio::sync::RwLock as ARwLock;
 
 
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
-use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, shortify_paths};
+use crate::files_correction::shortify_paths;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::GlobalContext;
+use crate::tools::scope_utils::{resolve_scope, validate_scope_files};
 use crate::tools::tools_description::Tool;
 
 pub struct ToolRegexSearch;
@@ -72,40 +72,10 @@ async fn search_files_with_regex(
 ) -> Result<Vec<ContextFile>, String> {
     let regex = Regex::new(pattern).map_err(|e| format!("Invalid regex pattern: {}", e))?;
 
-    let files_to_search = if scope == "workspace" {
-        let workspace_files = gcx.read().await.documents_state.workspace_files.lock().unwrap().clone();
-        workspace_files.into_iter().map(|f| f.to_string_lossy().to_string()).collect::<Vec<_>>()
-    } else {
-        let scope_is_dir = scope.ends_with('/') || scope.ends_with('\\');
-
-        if scope_is_dir {
-            let dir_path = return_one_candidate_or_a_good_error(
-                gcx.clone(),
-                scope,
-                &correct_to_nearest_dir_path(gcx.clone(), scope, false, 10).await,
-                &get_project_dirs(gcx.clone()).await,
-                true,
-            ).await?;
-            
-            let workspace_files = gcx.read().await.documents_state.workspace_files.lock().unwrap().clone();
-            workspace_files.into_iter()
-                .filter(|f| f.starts_with(&dir_path))
-                .map(|f| f.to_string_lossy().to_string())
-                .collect::<Vec<_>>()
-        } else {
-            vec![return_one_candidate_or_a_good_error(
-                gcx.clone(),
-                scope,
-                &file_repair_candidates(gcx.clone(), scope, 10, false).await,
-                &get_project_dirs(gcx.clone()).await,
-                false,
-            ).await?]
-        }
-    };
-
-    if files_to_search.is_empty() {
-        return Err(format!("No files found in scope: {}", scope));
-    }
+    // Use the common function to resolve the scope
+    let files_to_search = resolve_scope(gcx.clone(), scope)
+        .await
+        .and_then(|files| validate_scope_files(files, scope))?;
 
     // Send initial progress update
     if let Some(tx) = &subchat_tx {
