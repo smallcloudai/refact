@@ -38,8 +38,6 @@ mod files_correction;
 
 #[cfg(feature="vecdb")]
 mod vecdb;
-#[cfg(feature="vecdb")]
-use crate::vecdb::vdb_structs::VecdbConstants;
 
 mod ast;
 mod subchat;
@@ -181,30 +179,50 @@ async fn main() {
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
-    // vector db will spontaneously start if the downloaded caps and command line parameters are right
-    
-    // Initialize memdb if not already initialized by vecdb
-    if gcx.read().await.memdb.is_none() {
-        let (_cache_dir, config_dir, cmdline) = {
-            let gcx_locked = gcx.read().await;
-            (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
+
+    // Initialize memdb if vecdb is enabled
+    #[cfg(feature="vecdb")]
+    if cmdline.vecdb && gcx.read().await.memdb.is_none() {
+        let config_dir = gcx.read().await.config_dir.clone();
+        let caps = match crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+            Ok(caps) => caps,
+            Err(e) => {
+                tracing::error!("Failed to load caps for memdb initialization: {}", e);
+                std::sync::Arc::new(std::sync::RwLock::new(crate::caps::CodeAssistantCaps::default()))
+            }
         };
         
-        let constants = VecdbConstants {
-            embedding_model: "text-embedding-3-small".to_string(),
-            embedding_size: 1536,
-            embedding_batch: 64,
-            vectorizer_n_ctx: 8192,
-            tokenizer: None,
-            endpoint_embeddings_template: "https://api.openai.com/v1/embeddings".to_string(),
-            endpoint_embeddings_style: "openai".to_string(),
-            splitter_window_size: 4096,
-            vecdb_max_files: 10000,
+        let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
+        let constants = {
+            let caps_locked = caps.read().unwrap();
+            let mut b = caps_locked.embedding_batch;
+            if b == 0 {
+                b = 64;
+            }
+            if b > 256 {
+                tracing::warn!("embedding_batch can't be higher than 256");
+                b = 64;
+            }
+            crate::vecdb::vdb_structs::VecdbConstants {
+                embedding_model: caps_locked.embedding_model.clone(),
+                embedding_size: caps_locked.embedding_size,
+                embedding_batch: b,
+                vectorizer_n_ctx: caps_locked.embedding_n_ctx,
+                tokenizer: None,
+                endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
+                endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
+                splitter_window_size: caps_locked.embedding_n_ctx / 2,
+                vecdb_max_files: vecdb_max_files,
+            }
         };
         
+        info!("Initializing memdb in main");
         let memdb = crate::memdb::db_init::memdb_init(&config_dir, &constants, cmdline.reset_memory).await;
-        gcx.write().await.memdb = Some(memdb);
+        let mut gcx_locked = gcx.write().await;
+        gcx_locked.memdb = Some(memdb.clone());
     }
+    
+    // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
     let should_start_lsp = (cmdline.lsp_port == 0 && cmdline.lsp_stdin_stdout == 1) ||

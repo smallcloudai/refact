@@ -21,13 +21,19 @@ pub async fn handle_v1_rag_status(
     Extension(gcx): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let (vec_db_module, vec_db_error, ast_module) = {
-        let gcx_locked = gcx.write().await;
-        (gcx_locked.vec_db.clone(), gcx_locked.vec_db_error.clone(), gcx_locked.ast_service.clone())
+    let (vec_db_module, vec_db_error, ast_module, vectorizer_service) = {
+        let gcx_locked = gcx.read().await;
+        (
+            gcx_locked.vec_db.clone(), 
+            gcx_locked.vec_db_error.clone(), 
+            gcx_locked.ast_service.clone(),
+            #[cfg(feature="vecdb")]
+            gcx_locked.vectorizer_service.clone()
+        )
     };
 
     #[cfg(feature="vecdb")]
-    let (maybe_vecdb_status, vecdb_message) = match crate::vecdb::vdb_highlev::get_status(vec_db_module).await {
+    let (maybe_vecdb_status, vecdb_message) = match crate::vecdb::vdb_highlev::get_status(vec_db_module, vectorizer_service).await {
         Ok(Some(status)) => (Some(status), "working".to_string()),
         Ok(None) => (None, "turned_off".to_string()),
         Err(err) => (None, err.to_string()),

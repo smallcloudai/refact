@@ -160,6 +160,8 @@ pub struct GlobalContext {
     #[cfg(not(feature="vecdb"))]
     pub vec_db: bool,
     pub vec_db_error: String,
+    #[cfg(feature="vecdb")]
+    pub vectorizer_service: Arc<AMutex<Option<crate::vecdb::vectorizer_service::FileVectorizerService>>>,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
@@ -169,6 +171,7 @@ pub struct GlobalContext {
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
+    #[cfg(feature="vecdb")]
     pub memdb: Option<Arc<ParkMutex<crate::memdb::db_structs::MemDB>>>,
 }
 
@@ -375,6 +378,8 @@ pub async fn create_global_context(
         #[cfg(not(feature="vecdb"))]
         vec_db: false,
         vec_db_error: String::new(),
+        #[cfg(feature="vecdb")]
+        vectorizer_service: Arc::new(AMutex::new(None)),
         ast_service: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
@@ -384,6 +389,7 @@ pub async fn create_global_context(
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
+        #[cfg(feature="vecdb")]
         memdb: None,
     };
     let gcx = Arc::new(ARwLock::new(cx));

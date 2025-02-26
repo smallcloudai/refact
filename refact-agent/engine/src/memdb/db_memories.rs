@@ -18,7 +18,7 @@ use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{
     MemoRecord, MemoSearchResult, SimpleTextHashVector, VecDbStatus, VecdbConstants,
 };
-use crate::vecdb::vdb_thread::{vectorizer_enqueue_dirty_memory, FileVectorizerService};
+use crate::vecdb::vectorizer_service::{vectorizer_enqueue_dirty_memory, FileVectorizerService};
 use zerocopy::IntoBytes;
 
 

@@ -150,11 +150,6 @@ pub fn cthread_set(
         if let Err(e) = cthread_set_lowlevel(&tx, cthread) {
             tracing::error!("Failed to insert or replace cthread:\n{}", e);
         }
-        let _j = serde_json::json!({
-            "cthread_id": cthread.cthread_id,
-            "cthread_belongs_to_chore_event_id": cthread.cthread_belongs_to_chore_event_id,
-        });
-        // No need to push to pubsub, triggers will handle it
         if let Err(e) = tx.commit() {
             tracing::error!("Failed to commit transaction:\n{}", e);
             return;
@@ -185,6 +180,7 @@ pub async fn handle_db_v1_cthread_update(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    // TODO agent: avoid unwraps and expect
     let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
@@ -215,6 +211,7 @@ pub struct CThreadSubscription {
 }
 
 // HTTP handler
+// TODO agent: refactor the function a little bit (like in db_memories)
 pub async fn handle_db_v1_cthreads_sub(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -225,6 +222,7 @@ pub async fn handle_db_v1_cthreads_sub(
     if post.limit == 0 {
         post.limit = 100;
     }
+    // TODO agent: avoid unwraps and expect
 
     let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
     let lite_arc = mdb.lock().lite.clone();

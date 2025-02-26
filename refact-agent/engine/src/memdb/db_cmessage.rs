@@ -91,11 +91,11 @@ pub fn cmessage_set(
     tx: &rusqlite::Transaction,
     cmessage: CMessage,
 ) {
+    // TODO agent: move cmessage_set_lowlevel here, like in the db_chore
     if let Err(e) = cmessage_set_lowlevel(&tx, &cmessage) {
         tracing::error!("Failed to insert or replace cmessage:\n{}", e);
         return;
     }
-    // No need to push to pubsub, triggers will handle it
 }
 
 pub fn cmessage_get(
@@ -131,6 +131,7 @@ pub async fn handle_db_v1_cmessages_update(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    // TODO agent: avoid unwraps and expect
     let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
@@ -198,6 +199,7 @@ struct CMessagesSubscription {
 }
 
 // HTTP handler
+// TODO agent: refactor the function a little bit (like in db_memories)
 pub async fn handle_db_v1_cmessages_sub(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -206,6 +208,7 @@ pub async fn handle_db_v1_cmessages_sub(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
+    // TODO agent: avoid unwraps and expect
     let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
     let lite_arc = mdb.lock().lite.clone();
 

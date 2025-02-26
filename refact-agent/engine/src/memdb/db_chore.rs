@@ -9,6 +9,10 @@ use hyper::{Body, Response, StatusCode};
 use serde::Deserialize;
 use async_stream::stream;
 
+use crate::memdb::db_structs::{MemDB, Chore, ChoreEvent};
+use crate::custom_error::ScratchError;
+use crate::global_context::GlobalContext;
+
 #[derive(Deserialize, Default)]
 pub struct ChoresSubscriptionPost {
     pub quicksearch: String,
@@ -17,10 +21,6 @@ pub struct ChoresSubscriptionPost {
     #[serde(default)]
     pub only_archived: bool,
 }
-
-use crate::memdb::db_structs::{MemDB, Chore, ChoreEvent};
-use crate::custom_error::ScratchError;
-use crate::global_context::GlobalContext;
 
 
 pub fn chore_set(
@@ -68,7 +68,7 @@ pub fn chore_set(
         }
     }
 
-
+    // TODO agent: avoid unwraps and expect
     let lite = mdb.lock().lite.clone();
     let mut conn = lite.lock();
     let tx = conn.transaction().expect("Failed to start transaction");
@@ -126,6 +126,7 @@ pub fn chore_event_set(
         }
     }
 
+    // TODO agent: avoid unwraps and expect
     let lite = mdb.lock().lite.clone();
     let mut conn = lite.lock();
     let tx = conn.transaction().expect("Failed to start transaction");
@@ -154,6 +155,7 @@ pub fn chore_get(
         chores
     }
 
+    // TODO agent: avoid unwraps and expect
     let lite = mdb.lock().lite.clone();
     let conn = lite.lock();
     let mut stmt = conn.prepare("SELECT * FROM chores WHERE chore_id = ?1").unwrap();
@@ -200,6 +202,7 @@ pub async fn handle_db_v1_chore_update(
 
     let chore_id = incoming_json.get("chore_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
 
+    // TODO agent: avoid unwraps and expect
     let chore_rec = match chore_get(mdb.clone().expect("memdb not initialized"), chore_id.clone()) {
         Ok(existing_chore) => existing_chore,
         Err(_) => Chore {
@@ -242,6 +245,7 @@ pub async fn handle_db_v1_chore_event_update(
 
     let chore_event_id = incoming_json.get("chore_event_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
 
+    // TODO agent: avoid unwraps and expect
     let chore_event_rec = match chore_event_get(mdb.clone().expect("memdb not initialized"), chore_event_id.clone()) {
         Ok(existing_event) => existing_event,
         Err(_) => ChoreEvent {

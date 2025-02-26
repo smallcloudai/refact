@@ -8,7 +8,7 @@ struct TableInfo {
     creation_time: DateTime<Utc>,
 }
 
-pub fn _create_emb_table_name(workspace_folders: &Vec<String>) -> String {
+pub fn create_emb_table_name(workspace_folders: &Vec<String>) -> String {
     fn _make_hash(msg: String) -> String {
         let mut hasher = DefaultHasher::new();
         hasher.write(msg.as_bytes());
