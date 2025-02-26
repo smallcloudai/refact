@@ -54,6 +54,7 @@ import {
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
+import { TokensPreview } from "./TokensPreview";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -352,33 +353,40 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex gap="2" className={styles.buttonGroup}>
-            {toolUse === "agent" && (
-              <AgentIntegrationsButton
-                title="Set up Agent Integrations"
+          <Flex
+            className={styles.textareaInteractive}
+            align="center"
+            justify="between"
+          >
+            <TokensPreview currentInputValue={value} />
+            <Flex gap="2" className={styles.buttonGroup}>
+              {toolUse === "agent" && (
+                <AgentIntegrationsButton
+                  title="Set up Agent Integrations"
+                  size="1"
+                  type="button"
+                  onClick={handleAgentIntegrationsClick}
+                  ref={(x) => refs.setSetupIntegrations(x)}
+                />
+              )}
+              {onClose && (
+                <BackToSideBarButton
+                  disabled={isStreaming}
+                  title="Return to sidebar"
+                  size="1"
+                  onClick={onClose}
+                />
+              )}
+              {config.features?.images !== false &&
+                isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
+              {/* TODO: Reserved space for microphone button coming later on */}
+              <PaperPlaneButton
+                disabled={disableSend || disableInput}
+                title="Send message"
                 size="1"
-                type="button"
-                onClick={handleAgentIntegrationsClick}
-                ref={(x) => refs.setSetupIntegrations(x)}
+                type="submit"
               />
-            )}
-            {onClose && (
-              <BackToSideBarButton
-                disabled={isStreaming}
-                title="Return to sidebar"
-                size="1"
-                onClick={onClose}
-              />
-            )}
-            {config.features?.images !== false &&
-              isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
-            {/* TODO: Reserved space for microphone button coming later on */}
-            <PaperPlaneButton
-              disabled={disableSend || disableInput}
-              title="Send message"
-              size="1"
-              type="submit"
-            />
+            </Flex>
           </Flex>
         </Form>
       </Flex>

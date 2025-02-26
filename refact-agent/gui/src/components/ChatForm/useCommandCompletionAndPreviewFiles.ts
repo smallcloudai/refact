@@ -72,6 +72,37 @@ function useCommandCompletion() {
   };
 }
 
+export function useGetCommandPreviewRaw(query: string) {
+  const hasCaps = useHasCaps();
+  const { maybeAddImagesToQuestion } = useSendChatRequest();
+
+  const messages = useAppSelector(selectMessages);
+  const chatId = useAppSelector(selectChatId);
+  const currentThreadMode = useAppSelector(selectThreadMode);
+
+  const userMessage = maybeAddImagesToQuestion(query);
+
+  const messagesToSend: ChatMessages = [...messages, userMessage];
+
+  const metaToSend: ChatMeta = {
+    chat_id: chatId,
+    chat_mode: currentThreadMode ?? "AGENT",
+  };
+
+  const { data } = commandsApi.useGetCommandPreviewQuery(
+    { messages: messagesToSend, meta: metaToSend },
+    {
+      skip: !hasCaps,
+    },
+  );
+  if (!data) return {};
+  return {
+    messages: data.messages,
+    number_context: data.number_context,
+    current_context: data.current_context,
+  };
+}
+
 function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
@@ -98,7 +129,7 @@ function useGetCommandPreviewQuery(
     },
   );
   if (!data) return [];
-  return data;
+  return data.files;
 }
 
 function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {

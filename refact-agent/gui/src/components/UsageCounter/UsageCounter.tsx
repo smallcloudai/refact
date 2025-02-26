@@ -7,9 +7,13 @@ import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens
 import type { Usage } from "../../services/refact";
 
 import styles from "./UsageCounter.module.css";
+import classNames from "classnames";
+import { useGetCommandPreviewRaw } from "../ChatForm/useCommandCompletionAndPreviewFiles";
 
 type UsageCounterProps = {
   usage: Usage;
+  isInline?: boolean;
+  currentInputValue?: string;
 };
 
 function formatNumber(num: number): string {
@@ -24,7 +28,7 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
   label,
   value,
 }) => (
-  <Flex align="center" justify="between" width="100%">
+  <Flex align="center" justify="between" width="100%" gap="2">
     <Text size="1" weight="bold">
       {label}
     </Text>
@@ -32,7 +36,38 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
   </Flex>
 );
 
-export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
+const InlineHoverCard: React.FC<{ currentInputValue: string }> = ({
+  currentInputValue,
+}) => {
+  const { current_context, number_context } =
+    useGetCommandPreviewRaw(currentInputValue);
+  if (!current_context && !number_context) return null;
+  return (
+    <div>
+      <HoverCard.Content
+        size="1"
+        maxHeight="50vh"
+        avoidCollisions
+        align="start"
+        side="top"
+      >
+        <Flex direction="column" align="start" gap="2">
+          <TokenDisplay
+            label="Current chat thread context size:"
+            value={number_context}
+          />
+          <TokenDisplay label="Potential tokens:" value={current_context} />
+        </Flex>
+      </HoverCard.Content>
+    </div>
+  );
+};
+
+export const UsageCounter: React.FC<UsageCounterProps> = ({
+  usage,
+  isInline = false,
+  currentInputValue,
+}) => {
   const inputTokens = calculateUsageInputTokens(usage, [
     "prompt_tokens",
     "cache_creation_input_tokens",
@@ -43,7 +78,11 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
   return (
     <HoverCard.Root>
       <HoverCard.Trigger>
-        <Card className={styles.usageCounterContainer}>
+        <Card
+          className={classNames(styles.usageCounterContainer, {
+            [styles.usageCounterContainerInline]: isInline,
+          })}
+        >
           <Flex align="center">
             <ArrowUpIcon width="12" height="12" />
             <Text size="1">{formatNumber(inputTokens)}</Text>
@@ -55,44 +94,48 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({ usage }) => {
         </Card>
       </HoverCard.Trigger>
       <ScrollArea scrollbars="both" asChild>
-        <HoverCard.Content
-          size="1"
-          maxHeight="50vh"
-          maxWidth="90vw"
-          minWidth="300px"
-          avoidCollisions
-          align="end"
-          side="top"
-        >
-          <Flex direction="column" align="start" gap="2">
-            <Text size="2" mb="2">
-              Tokens spent per message:
-            </Text>
-            <TokenDisplay
-              label="Input tokens (in total):"
-              value={inputTokens}
-            />
-            {usage.cache_read_input_tokens !== undefined && (
+        {!isInline || !currentInputValue ? (
+          <HoverCard.Content
+            size="1"
+            maxHeight="50vh"
+            maxWidth="90vw"
+            minWidth="300px"
+            avoidCollisions
+            align="end"
+            side="top"
+          >
+            <Flex direction="column" align="start" gap="2">
+              <Text size="2" mb="2">
+                Tokens spent per message:
+              </Text>
               <TokenDisplay
-                label="Cache read input tokens:"
-                value={usage.cache_read_input_tokens}
+                label="Input tokens (in total):"
+                value={inputTokens}
               />
-            )}
-            {usage.cache_creation_input_tokens !== undefined && (
-              <TokenDisplay
-                label="Cache creation input tokens:"
-                value={usage.cache_creation_input_tokens}
-              />
-            )}
-            <TokenDisplay label="Completion tokens:" value={outputTokens} />
-            {usage.completion_tokens_details && (
-              <TokenDisplay
-                label="Reasoning tokens:"
-                value={usage.completion_tokens_details.reasoning_tokens}
-              />
-            )}
-          </Flex>
-        </HoverCard.Content>
+              {usage.cache_read_input_tokens !== undefined && (
+                <TokenDisplay
+                  label="Cache read input tokens:"
+                  value={usage.cache_read_input_tokens}
+                />
+              )}
+              {usage.cache_creation_input_tokens !== undefined && (
+                <TokenDisplay
+                  label="Cache creation input tokens:"
+                  value={usage.cache_creation_input_tokens}
+                />
+              )}
+              <TokenDisplay label="Completion tokens:" value={outputTokens} />
+              {usage.completion_tokens_details && (
+                <TokenDisplay
+                  label="Reasoning tokens:"
+                  value={usage.completion_tokens_details.reasoning_tokens}
+                />
+              )}
+            </Flex>
+          </HoverCard.Content>
+        ) : (
+          <InlineHoverCard currentInputValue={currentInputValue} />
+        )}
       </ScrollArea>
     </HoverCard.Root>
   );
