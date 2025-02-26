@@ -46,9 +46,14 @@ pub async fn enqueue_all_docs_from_jsonl(
         }
     }
     #[cfg(feature="vecdb")]
-    match *vec_db_module.lock().await {
-        Some(ref mut db) => db.vectorizer_enqueue_files(&docs, false).await,
-        None => {},
+    if let Some(_) = *vec_db_module.lock().await {
+        if let Some(service) = &*gcx.read().await.vectorizer_service.lock().await {
+            crate::vecdb::vectorizer_service::vectorizer_enqueue_files(
+                gcx.read().await.vectorizer_service.clone(), 
+                &docs, 
+                false
+            ).await;
+        }
     };
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;

@@ -2,7 +2,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Notify as ANotify;
 use parking_lot::Mutex as ParkMutex;
-
+use crate::vecdb::vdb_structs::VecdbConstants;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Chore {
@@ -87,7 +87,10 @@ pub struct CMessage {
 // db_v1/cmessage_update  { cthread_id, n_onwards } -> ok or detail
 
 
-pub struct ChoreDB {
+pub struct MemDB {
     pub lite: Arc<ParkMutex<rusqlite::Connection>>,
-    pub chore_sleeping_point: Arc<ANotify>,
+    pub vecdb_constants: VecdbConstants,
+    pub dirty_memids: Vec<String>,
+    pub dirty_everything: bool,
+    pub memdb_sleeping_point: Arc<ANotify>,
 }
