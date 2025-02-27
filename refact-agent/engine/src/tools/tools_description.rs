@@ -139,6 +139,13 @@ pub async fn tools_merged_and_filtered(
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
+        ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
+        #[cfg(feature="vecdb")]
+        ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
+        #[cfg(feature="vecdb")]
+        ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
+        #[cfg(feature="vecdb")]
+        ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
@@ -146,9 +153,6 @@ pub async fn tools_merged_and_filtered(
         #[cfg(feature="vecdb")]
         ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
     ]);
-
-    #[cfg(feature="vecdb")]
-    tools_all.insert("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>);
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
         gcx.clone(),
@@ -174,11 +178,11 @@ pub async fn tools_merged_and_filtered(
 const BUILT_IN_TOOLS: &str = r####"
 tools:
   - name: "search"
-    description: "Find similar pieces of code or text using vector database"
+    description: "Find semantically similar pieces of code or text using vector database (semantic search)"
     parameters:
       - name: "query"
         type: "string"
-        description: "Single line, paragraph or code sample to search for similar content."
+        description: "Single line, paragraph or code sample to search for semantically similar content."
       - name: "scope"
         type: "string"
         description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
@@ -458,6 +462,51 @@ tools:
       - "im_going_to_apply_to"
       - "goal"
       - "language_slash_framework"
+      
+  - name: "regex_search"
+    description: "Search for exact text patterns in files using regular expressions (pattern matching)"
+    parameters:
+      - name: "pattern"
+        type: "string"
+        description: "Regular expression pattern to search for. Use (?i) at the start for case-insensitive search."
+      - name: "scope"
+        type: "string"
+        description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
+    parameters_required:
+      - "pattern"
+      - "scope"
+
+  - name: "create_knowledge"
+    agentic: true
+    description: "Creates a new knowledge entry in the vector database to help with future tasks."
+    parameters:
+      - name: "im_going_to_use_tools"
+        type: "string"
+        description: "Which tools are you about to use? Comma-separated list, examples: hg, git, gitlab, rust debugger"
+      - name: "im_going_to_apply_to"
+        type: "string"
+        description: "What your actions will be applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
+      - name: "search_key"
+        type: "string"
+        description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search."
+      - name: "language_slash_framework"
+        type: "string"
+        description: "What programming language and framework is the current project using? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
+      - name: "knowledge_entry"
+        type: "string"
+        description: "The detailed knowledge content to be stored. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what was done, how it was done, why certain choices were made, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve."
+    parameters_required:
+      - "im_going_to_use_tools"
+      - "im_going_to_apply_to"
+      - "search_key"
+      - "language_slash_framework"
+      - "knowledge_entry"
+
+  - name: "create_memory_bank"
+    agentic: true
+    description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
+    parameters: []
+    parameters_required: []
 "####;
 
 

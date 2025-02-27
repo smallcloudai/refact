@@ -536,6 +536,19 @@ pub async fn memories_search(
         let score_b = calculate_score(b.distance, b.mstat_times_used);
         score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
     });
+
+    let rejection_threshold = model_to_rejection_threshold(constants.embedding_model.as_str());
+    let mut filtered_results = Vec::new();
+    for rec in results.iter() {
+        if rec.distance.abs() >= rejection_threshold {
+            info!("distance {:.3} -> dropped memory {}", rec.distance, rec.memid);
+        } else {
+            info!("distance {:.3} -> kept memory {}", rec.distance, rec.memid);
+            filtered_results.push(rec.clone());
+        }
+    }
+    results = filtered_results;
+
     Ok(MemoSearchResult { query_text: query.clone(), results })
 }
 

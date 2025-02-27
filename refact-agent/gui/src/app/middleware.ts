@@ -109,13 +109,17 @@ startListening({
         refact_agent_max_request_num,
         refact_agent_request_available,
       } = payload;
-      const actions = [
-        updateAgentUsage(refact_agent_request_available),
-        updateMaxAgentUsageAmount(refact_agent_max_request_num),
-      ];
 
-      actions.forEach((action) => dispatch(action));
+      if (
+        refact_agent_request_available !== undefined &&
+        refact_agent_request_available !== null
+      ) {
+        dispatch(updateAgentUsage(refact_agent_request_available));
+      }
 
+      if (refact_agent_max_request_num !== undefined) {
+        dispatch(updateMaxAgentUsageAmount(refact_agent_max_request_num));
+      }
       if (usage) {
         dispatch(setThreadUsage({ chatId: payload.id, usage }));
       }

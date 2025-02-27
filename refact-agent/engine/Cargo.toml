@@ -99,6 +99,6 @@ zerocopy = "0.8.14"
 
 # There you can use a local copy:
 mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
-#mcp_client_rs = { path = "../mcp_client_rust" }
+#mcp_client_rs = { path = "../../../mcp_client_rust" }
 
 
