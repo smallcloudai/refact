@@ -1,7 +1,8 @@
-import { render } from "../../utils/test-utils";
-import { beforeEach, describe, expect, test, vi } from "vitest";
-import { ChatForm, ChatFormProps } from "./ChatForm";
 import React from "react";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { render } from "../../utils/test-utils";
+import { ChatForm, ChatFormProps } from "./ChatForm";
 
 import {
   server,
@@ -11,10 +12,12 @@ import {
   noCommandPreview,
   noCompletions,
   goodPing,
+  goodUser,
 } from "../../utils/mockServer";
 
 const handlers = [
   goodCaps,
+  goodUser,
   goodPrompts,
   noTools,
   noCommandPreview,
@@ -23,6 +26,15 @@ const handlers = [
 ];
 
 server.use(...handlers);
+
+const goodAgentUsage = {
+  _persist: {
+    rehydrated: true,
+    version: 1,
+  },
+  agent_max_usage_amount: 20,
+  agent_usage: 20,
+};
 
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
@@ -42,7 +54,11 @@ describe("ChatForm", () => {
   test("when I push enter it should call onSubmit", async () => {
     const fakeOnSubmit = vi.fn();
 
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
+      preloadedState: {
+        agentUsage: goodAgentUsage,
+      },
+    });
 
     const textarea: HTMLTextAreaElement | null =
       app.container.querySelector("textarea");
@@ -88,6 +104,7 @@ describe("ChatForm", () => {
           can_paste: true,
         },
         config: { host: "vscode", themeProps: {}, lspPort: 8001 },
+        agentUsage: goodAgentUsage,
       },
     });
 
