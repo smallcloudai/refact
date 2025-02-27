@@ -5,6 +5,12 @@
   min-width: 50px;
 }
 
+.error {
+  color: var(--red-9);
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
 .rightButtonGroup {
   position: absolute;
   /* right: 10px; */
