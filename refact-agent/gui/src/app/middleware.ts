@@ -552,7 +552,7 @@ startListening({
   actionCreator: setError,
   effect: (state, listenerApi) => {
     const rootState = listenerApi.getState();
-    if (state.payload === USAGE_LIMITS_ERROR_MESSAGE) {
+    if (state.payload.includes(USAGE_LIMITS_ERROR_MESSAGE)) {
       const currentMaxUsageAmount = rootState.agentUsage.agent_max_usage_amount;
 
       listenerApi.dispatch(clearError());
