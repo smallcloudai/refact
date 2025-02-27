@@ -10,6 +10,7 @@ import {
   PayloadWithChatAndBoolean,
   PayloadWithChatAndUsage,
   PayloadWithChatAndNumber,
+  PayloadWithChatAndCurrentUsage,
 } from "./types";
 import {
   isAssistantDelta,
@@ -62,6 +63,11 @@ export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
   "chatThread/setLastUserMessageId",
 );
 
+export const setUsageTokensOnCommandPreview =
+  createAction<PayloadWithChatAndCurrentUsage>(
+    "chatThread/setUsageTokensOnCommandPreview",
+  );
+
 export const updateMaximumContextTokens =
   createAction<PayloadWithChatAndNumber>(
     "chatThread/updateMaximumContextTokens",
@@ -70,6 +76,11 @@ export const updateMaximumContextTokens =
 export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
 );
+
+export const setIsNewChatCreationMandatory =
+  createAction<PayloadWithChatAndBoolean>(
+    "chatThread/setIsNewChatCreationMandatory",
+  );
 
 export const setThreadUsage = createAction<PayloadWithChatAndUsage>(
   "chatThread/setThreadUsage",

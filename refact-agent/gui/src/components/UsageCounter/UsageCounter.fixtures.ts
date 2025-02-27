@@ -25,3 +25,11 @@ export const USAGE_COUNTER_STUB_ANTHROPIC: Usage = {
   cache_creation_input_tokens: 3291,
   cache_read_input_tokens: 3608,
 };
+
+export const USAGE_COUNTER_STUB_INLINE: Usage = {
+  prompt_tokens: 3391,
+  total_tokens: 147,
+  completion_tokens: 142,
+  completion_tokens_details: null,
+  prompt_tokens_details: null,
+};
