@@ -61,6 +61,15 @@ const handlers = [
   telemetryNetwork,
 ];
 
+const goodAgentUsage = {
+  _persist: {
+    rehydrated: true,
+    version: 1,
+  },
+  agent_max_usage_amount: 20,
+  agent_usage: 20,
+};
+
 // const handlers = [
 //   http.get("http://127.0.0.1:8001/v1/caps", () => {
 //     return HttpResponse.json(STUB_CAPS_RESPONSE);
@@ -222,7 +231,12 @@ describe("Chat", () => {
 
     const { user, ...app } = render(
       <Chat host="vscode" tabbed={false} backFromChat={() => ({})} />,
-      { preloadedState: { pages: [{ name: "chat" }] } },
+      {
+        preloadedState: {
+          pages: [{ name: "chat" }],
+          agentUsage: goodAgentUsage,
+        },
+      },
     );
 
     const textarea = screen.getByTestId("chat-form-textarea");
@@ -408,7 +422,11 @@ describe("Chat", () => {
         // { once: true }, TODO: title
       ),
     );
-    const { user, ...app } = render(<App />);
+    const { user, ...app } = render(<App />, {
+      preloadedState: {
+        agentUsage: goodAgentUsage,
+      },
+    });
 
     const textarea = app.getByTestId("chat-form-textarea");
 

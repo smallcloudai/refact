@@ -6,8 +6,13 @@ import {
 } from "../features/AgentUsage/agentUsageSlice";
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
-import { selectIsStreaming, selectIsWaiting } from "../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectModel,
+} from "../features/Chat";
 import { useAppDispatch } from "./useAppDispatch";
+import { FREE_TIER_MODELS_LIST } from "./useCapsForToolUse";
 
 export const USAGE_LIMIT_EXHAUSTED_MESSAGE =
   "You have exceeded the FREE usage limit. Wait till tomorrow to send messages again, or upgrade to PRO.";
@@ -19,6 +24,7 @@ export function useAgentUsage() {
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
+  const currentModel = useAppSelector(selectModel);
 
   const aboveUsageLimit = useMemo(() => {
     if (agentUsage === null) return false;
@@ -71,12 +77,12 @@ export function useAgentUsage() {
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
-    if (user.data?.inference !== "FREE") return false;
+    if (FREE_TIER_MODELS_LIST.includes(currentModel)) return false;
     if (isStreaming || isWaiting) return false;
     if (agentUsage === null) return false;
     if (agentUsage > 5) return false;
     return true;
-  }, [isStreaming, isWaiting, agentUsage, user.data?.inference]);
+  }, [isStreaming, isWaiting, agentUsage, currentModel]);
 
   const disableInput = useMemo(() => {
     return shouldShow && aboveUsageLimit;

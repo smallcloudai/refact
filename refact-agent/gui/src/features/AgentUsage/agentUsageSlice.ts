@@ -6,8 +6,8 @@ export type AgentUsageMeta = {
 };
 
 const initialState: AgentUsageMeta = {
-  agent_usage: null,
-  agent_max_usage_amount: 20,
+  agent_usage: 0,
+  agent_max_usage_amount: 8,
 };
 
 // TODO: is this needed since agent usage now comes from the getUser request and chat response :/ ?

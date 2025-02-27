@@ -82,8 +82,9 @@ export const LinkButton: React.FC<
     href?: string;
     target?: HTMLFormElement["target"];
     onClick?: () => void;
+    children?: React.ReactNode;
   }
-> = ({ href, target, onClick, ...rest }) => {
+> = ({ href, target, children, onClick, ...rest }) => {
   const openUrl = useOpenUrl();
   const handleClick = useCallback(() => {
     if (onClick) onClick();
@@ -92,7 +93,7 @@ export const LinkButton: React.FC<
   return (
     <form action={href} target={target} onSubmit={handleClick}>
       <Button type="submit" {...rest}>
-        Upgrade to our pro plan
+        {children}
       </Button>
     </form>
   );
