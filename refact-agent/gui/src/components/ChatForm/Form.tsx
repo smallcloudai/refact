@@ -14,7 +14,6 @@ export const Form: React.FC<
     <Box mt="1" className={styles.chatForm}>
       <ScrollArea scrollbars="vertical">
         <form
-          style={{ background: "transparent" }}
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit(event);
