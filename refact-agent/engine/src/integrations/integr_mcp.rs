@@ -439,7 +439,7 @@ impl Tool for ToolMCP {
         ToolDesc {
             name: self.tool_name(),
             agentic: true,
-            experimental: true,
+            experimental: false,
             description: self.mcp_tool.description.clone(),
             parameters,
             parameters_required,
@@ -498,7 +498,7 @@ smartlinks:
     sl_chat:
       - role: "user"
         content: >
-          🔧 Your job is to test %CURRENT_CONFIG%. Tools that this MCP server has created should be visible to you. Run one and express happiness. If something
-          does wrong, or you don't see the tools, ask user if the want to fix it by changing %CURRENT_CONFIG%.
+          🔧 Your job is to test %CURRENT_CONFIG%. Tools that this MCP server has created should be visible to you. Don't search anything, it should be visible as
+          a tools already. Run one and express happiness. If something does wrong, or you don't see the tools, ask user if they want to fix it by rewriting the config.
     sl_enable_only_with_tool: true
 "#;
