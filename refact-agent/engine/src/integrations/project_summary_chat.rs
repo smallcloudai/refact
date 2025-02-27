@@ -9,7 +9,7 @@ use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 pub async fn mix_project_summary_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
-    chat_meta: &ChatMeta,
+    _chat_meta: &ChatMeta,
     messages: &mut Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
 ) {
