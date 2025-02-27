@@ -29,7 +29,6 @@ pub async fn mix_project_summary_messages(
 
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("project_summary").unwrap();
     let mut sp_text = sp.text.clone();
-    sp_text = sp_text.replace("%CONFIG_PATH%", &chat_meta.current_config_file);
 
     if sp_text.contains("%ALL_INTEGRATIONS%") {
         let allow_experimental = gcx.read().await.cmdline.experimental;

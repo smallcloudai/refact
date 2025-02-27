@@ -26,7 +26,6 @@ pub struct SettingsMCP {
     pub mcp_env: HashMap<String, String>,
 }
 
-// #[derive(PartialEq)]
 pub struct ToolMCP {
     pub common: IntegrationCommon,
     pub config_path: String,
@@ -42,7 +41,6 @@ pub struct IntegrationMCP {
     pub config_path: String,
 }
 
-// #[derive(Default)]
 pub struct SessionMCP {
     pub debug_name: String,
     pub config_path: String,        // to check if expired or not
@@ -439,7 +437,7 @@ impl Tool for ToolMCP {
         }
 
         ToolDesc {
-            name: self.mcp_tool.name.clone(),
+            name: self.tool_name(),
             agentic: true,
             experimental: true,
             description: self.mcp_tool.description.clone(),
@@ -449,7 +447,15 @@ impl Tool for ToolMCP {
     }
 
     fn tool_name(&self) -> String  {
-        self.mcp_tool.name.clone()
+        let yaml_name = std::path::Path::new(&self.config_path)
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("unknown");
+        let sanitized_yaml_name = format!("{}_{}", yaml_name, self.mcp_tool.name)
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>();
+        sanitized_yaml_name
     }
 
     fn command_to_match_against_confirm_deny(
@@ -487,4 +493,12 @@ available:
 confirmation:
   ask_user_default: ["*"]
   deny_default: []
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: >
+          🔧 Your job is to test %CURRENT_CONFIG%. Tools that this MCP server has created should be visible to you. Run one and express happiness. If something
+          does wrong, or you don't see the tools, ask user if the want to fix it by changing %CURRENT_CONFIG%.
+    sl_enable_only_with_tool: true
 "#;
