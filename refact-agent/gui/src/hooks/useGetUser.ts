@@ -22,11 +22,12 @@ export const useGetUser = () => {
     addressURL.startsWith("https://") || addressURL.startsWith("http://");
 
   const request = smallCloudApi.useGetUserQuery(
-    { apiKey, addressURL: addressURL, isStreaming }, // it's a hack
+    { apiKey, addressURL: addressURL },
     {
-      skip: !(
-        NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL) || isAddressURLALink
-      ),
+      skip:
+        !(
+          NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL) || isAddressURLALink
+        ) || isStreaming,
       refetchOnMountOrArgChange: true,
     },
   );
