@@ -11,6 +11,10 @@
   outline: none;
 }
 
+:global(.rt-TextAreaRoot) > .textarea {
+  background-color: unset;
+}
+
 .textarea :global(.rt-TextAreaChrome) {
   box-shadow: none;
 }
