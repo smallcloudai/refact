@@ -295,7 +295,7 @@ pub async fn subchat_single(
         error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });
-    let tools = tools_desclist.into_iter().map(|x|x.into_openai_style()).collect::<Vec<_>>();
+    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_name)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
     info!("tools_subset {:?}", tools_subset);
     info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
     info!("tools_on_intersection {:?}", tools_on_intersection);

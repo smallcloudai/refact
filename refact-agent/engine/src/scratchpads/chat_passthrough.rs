@@ -195,7 +195,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 } else {
                     let allow_experimental = gcx.read().await.cmdline.experimental;
                     let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
-                    Some(tool_descriptions.into_iter().map(|x: crate::tools::tools_description::ToolDesc|x.into_openai_style()).collect::<Vec<_>>())
+                    Some(tool_descriptions.into_iter().filter(|x| x.is_supported_by(&self.post.model)).map(|x| x.into_openai_style()).collect::<Vec<_>>())
                 }
             } else {
                 None
