@@ -44,14 +44,18 @@ jobs:
       - run: npm run types
       - run: npm run lint
       - run: npm run build
+      - run: npm pack
 
       - run: |
           name=$(echo -n "${{ matrix.node-version }}" | tr -cd '[[:alnum:]]')
+          pkg_name=$(ls refact-chat-js-*.tgz)
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
-
+          echo "PACKAGE_NAME=$pkg_name" >> $GITHUB_ENV
+          
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: refact-chat-js-${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME }}-${{ env.PACKAGE_NAME }}
           if-no-files-found: ignore
-          path: refact-agent/gui/dist
+          path: refact-agent/gui/${{env.PACKAGE_NAME}}
+          compression-level: 0
