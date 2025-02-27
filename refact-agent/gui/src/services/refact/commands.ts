@@ -122,7 +122,7 @@ export const commandsApi = createApi({
             },
           };
         }
-        // TODO: return a dict instead of just files?
+
         const files = response.data.messages.reduce<
           (ChatContextFile | string)[]
         >((acc, curr) => {
