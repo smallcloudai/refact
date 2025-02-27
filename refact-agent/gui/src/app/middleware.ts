@@ -40,6 +40,7 @@ import {
   updateConfirmationAfterIdeToolUse,
 } from "../features/ToolConfirmation/confirmationSlice";
 import {
+  setInitialAgentUsage,
   updateAgentUsage,
   updateMaxAgentUsageAmount,
 } from "../features/AgentUsage/agentUsageSlice";
@@ -49,6 +50,9 @@ import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
+
+const USAGE_LIMITS_ERROR_MESSAGE =
+  '429 Too Many Requests: "Free plan daily limit reached';
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -538,6 +542,24 @@ startListening({
         sendCurrentChatToLspAfterToolCallUpdate({
           chatId: action.payload.chatId,
           toolCallId: action.payload.toolCallId,
+        }),
+      );
+    }
+  },
+});
+
+startListening({
+  actionCreator: setError,
+  effect: (state, listenerApi) => {
+    const rootState = listenerApi.getState();
+    if (state.payload === USAGE_LIMITS_ERROR_MESSAGE) {
+      const currentMaxUsageAmount = rootState.agentUsage.agent_max_usage_amount;
+
+      listenerApi.dispatch(clearError());
+      listenerApi.dispatch(
+        setInitialAgentUsage({
+          agent_max_usage_amount: currentMaxUsageAmount,
+          agent_usage: 0,
         }),
       );
     }

@@ -19,8 +19,10 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 
 export const ChatLinks: React.FC = () => {
   const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
+  const { disableInput } = useAgentUsage();
   const toolUse = useAppSelector(selectThreadToolUse);
   if (streaming) return null;
+  if (disableInput) return null;
   if (toolUse !== "agent") return null;
 
   const submittingChatActions = ["post-chat", "follow-up", "summarize-project"];

@@ -29,6 +29,9 @@ const PAID_AGENT_LIST = [
   "claude-3-7-sonnet",
 ];
 
+// TODO: hard coded for now. Unlimited usage models
+export const FREE_TIER_MODELS_LIST = ["gpt-4o-mini"];
+
 export function useCapsForToolUse() {
   const [wasAdjusted, setWasAdjusted] = useState(false);
   const caps = useGetCapsQuery();
