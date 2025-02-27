@@ -48,6 +48,8 @@ jobs:
       - run: |
           name=$(echo -n "${{ matrix.node-version }}" | tr -cd '[[:alnum:]]')
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
+          
+      - run: cp package.json ./dist/
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
