@@ -536,8 +536,8 @@ type ChatResponseChoice = {
   model: string;
   id: string;
   usage?: Usage;
-  refact_agent_request_available: null | number;
-  refact_agent_max_request_num: number;
+  refact_agent_request_available?: null | number;
+  refact_agent_max_request_num?: number;
 };
 
 export function isChatResponseChoice(
