@@ -311,50 +311,11 @@ impl Tool for ToolMCP {
         let session = session_option.unwrap();
         _session_wait_coroutines(session.clone()).await;
 
-        let mut json_arguments: serde_json::Value = serde_json::json!({});
-        if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {
-            if let Some(serde_json::Value::Object(properties)) = schema.get("properties") {
-                for (name, prop) in properties {
-                    if let Some(prop_type) = prop.get("type") {
-                        match prop_type.as_str().unwrap_or("") {
-                            "string" => {
-                                if let Some(arg_value) = args.get(name) {
-                                    json_arguments[name] = serde_json::Value::String(arg_value.as_str().unwrap_or("").to_string());
-                                }
-                            },
-                            "integer" => {
-                                if let Some(arg_value) = args.get(name) {
-                                    json_arguments[name] = serde_json::Value::Number(arg_value.as_i64().unwrap_or(0).into());
-                                }
-                            },
-                            "boolean" => {
-                                if let Some(arg_value) = args.get(name) {
-                                    json_arguments[name] = serde_json::Value::Bool(arg_value.as_bool().unwrap_or(false));
-                                }
-                            },
-                            _ => {
-                                tracing::warn!("Unsupported argument type: {}", prop_type);
-                            }
-                        }
-                    }
-                }
-            }
-            if let Some(serde_json::Value::Array(required)) = schema.get("required") {
-                for req in required {
-                    if let Some(req_str) = req.as_str() {
-                        if !json_arguments.as_object().unwrap().contains_key(req_str) {
-                            return Err(format!("Missing required argument: {}", req_str));
-                        }
-                    }
-                }
-            }
-        }
-
-        tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_arguments);
-
+        let json_args = serde_json::json!(args);
+        tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args);
         let tool_output = {
             let mut mcp_client_locked = self.mcp_client.lock().await;
-            let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_arguments).await;
+            let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_args).await;
 
             match result_probably {
                 Ok(result) => {
