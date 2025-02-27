@@ -116,13 +116,13 @@ async fn _session_apply_settings(
     let session_arc_clone = session_arc.clone();
 
     let coroutine = tokio::spawn(async move {
-        tracing::info!("MCP START SESSION LOCK {:?}", session_key_clone);
+        // tracing::info!("MCP START SESSION LOCK {:?}", session_key_clone);
         let mut session_locked = session_arc_clone.lock().await;
         let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-        tracing::info!("MCP START SESSION /LOCK {:?}", session_key_clone);
+        // tracing::info!("MCP START SESSION /LOCK {:?}", session_key_clone);
 
         if session_downcasted.mcp_client.is_some() && new_cfg == session_downcasted.launched_cfg {
-            tracing::info!("MCP NO UPDATE NEEDED {:?}", session_key);
+            // tracing::info!("MCP NO UPDATE NEEDED {:?}", session_key);
             return;
         }
 
