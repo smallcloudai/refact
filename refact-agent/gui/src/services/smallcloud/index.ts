@@ -172,6 +172,7 @@ export const smallCloudApi = createApi({
       {
         apiKey: string;
         addressURL?: string;
+        isStreaming?: boolean;
       }
     >({
       query: (args) => {

@@ -4,6 +4,7 @@ import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
 import { smallCloudApi } from "../services/smallcloud";
 import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 import { useAppDispatch } from "./useAppDispatch";
+import { selectIsStreaming } from "../features/Chat";
 
 const NOT_SKIPPABLE_ADDRESS_URLS = [
   "Refact",
@@ -15,12 +16,13 @@ export const useGetUser = () => {
   const maybeAddressURL = useAppSelector(selectAddressURL);
   const addressURL = maybeAddressURL ? maybeAddressURL.trim() : "";
   const maybeApiKey = useAppSelector(selectApiKey);
+  const isStreaming = useAppSelector(selectIsStreaming);
   const apiKey = maybeApiKey ?? "";
   const isAddressURLALink =
     addressURL.startsWith("https://") || addressURL.startsWith("http://");
 
   const request = smallCloudApi.useGetUserQuery(
-    { apiKey, addressURL: addressURL },
+    { apiKey, addressURL: addressURL, isStreaming }, // it's a hack
     {
       skip: !(
         NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL) || isAddressURLALink
@@ -30,14 +32,14 @@ export const useGetUser = () => {
   );
 
   useEffect(() => {
-    if (request.data) {
+    if (request.data && !isStreaming) {
       const action = setInitialAgentUsage({
         agent_usage: request.data.refact_agent_request_available,
         agent_max_usage_amount: request.data.refact_agent_max_request_num,
       });
       dispatch(action);
     }
-  }, [dispatch, request.data]);
+  }, [dispatch, request.data, isStreaming]);
 
   return request;
 };
