@@ -772,4 +772,3 @@ async fn docker_container_kill(
     info!("Removed docker container {container_id}.");
     Ok(())
 }
-

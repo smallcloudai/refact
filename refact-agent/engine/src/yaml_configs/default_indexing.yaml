@@ -15,7 +15,27 @@
 #
 
 blocklist:
+  - "*/.*"
+  - "*/target/*"
+  - "*/node_modules/*"
+  - "*/vendor/*"
+  - "*/build/*"
   - "*/dist/*"
+  - "*/bin/*"
+  - "*/pkg/*"
+  - "*/lib/*"
+  - "*/obj/*"
+  - "*/out/*"
+  - "*/venv/*"
+  - "*/env/*"
+  - "*/tmp/*"
+  - "*/temp/*"
+  - "*/logs/*"
+  - "*/coverage/*"
+  - "*/backup/*"
+  - "*/__pycache__/*"
+  - "*/_trajectories/*"
+  - "*/.gradle/*"
 
 additional_indexing_dirs:
  - "~/my_favorite_library/"
