@@ -51,8 +51,10 @@ import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
 
-const USAGE_LIMITS_ERROR_MESSAGE =
-  '429 Too Many Requests: "Free plan daily limit reached';
+const USAGE_LIMITS_ERROR_MESSAGES = [
+  '429 Too Many Requests: "Free plan daily limit reached',
+  '429 Too Many Requests: "Pro plan daily limit reached',
+];
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -551,8 +553,12 @@ startListening({
 startListening({
   actionCreator: setError,
   effect: (state, listenerApi) => {
+    console.log(`[DEBUG]: setError`, state);
     const rootState = listenerApi.getState();
-    if (state.payload.includes(USAGE_LIMITS_ERROR_MESSAGE)) {
+    if (
+      state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[0]) ||
+      state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[1])
+    ) {
       const currentMaxUsageAmount = rootState.agentUsage.agent_max_usage_amount;
 
       listenerApi.dispatch(clearError());

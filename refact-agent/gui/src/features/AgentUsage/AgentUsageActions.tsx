@@ -1,7 +1,7 @@
 import React from "react";
 import { Flex, IconButton } from "@radix-ui/themes";
 import { ReloadIcon } from "@radix-ui/react-icons";
-import { LinkButton } from "../../components/Buttons";
+import { AgentUsageLinkButton } from "../../components/Buttons";
 import styles from "./AgentUsage.module.css";
 
 interface AgentUsageActionsProps {
@@ -32,16 +32,17 @@ export const AgentUsageActions: React.FC<AgentUsageActionsProps> = ({
       >
         <ReloadIcon />
       </IconButton>
-      <LinkButton
+      <AgentUsageLinkButton
         size="2"
         variant="outline"
         href={buttonHref}
         target="_blank"
         onClick={startPollingForUser}
+        isPlanFree={isPlanFree}
         className={styles.upgrade_button}
       >
         {buttonText}
-      </LinkButton>
+      </AgentUsageLinkButton>
     </Flex>
   );
 };
