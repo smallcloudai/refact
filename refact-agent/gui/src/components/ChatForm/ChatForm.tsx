@@ -68,7 +68,7 @@ export type ChatFormProps = {
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
-  className,
+  // className,
   unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
@@ -349,7 +349,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         {shouldAgentCapabilitiesBeShown && <AgentCapabilities />}
         <Form
           disabled={disableSend}
-          className={className}
+          className={styles.chatForm__form}
           onSubmit={handleSubmit}
         >
           <FilesPreview files={previewFiles} />
