@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use axum::Json;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 
@@ -142,11 +143,8 @@ pub async fn handle_v1_code_completion(
 
 pub async fn handle_v1_code_completion_web(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    body_bytes: hyper::body::Bytes,
+    Json(mut code_completion_post): Json<CodeCompletionPost>,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut code_completion_post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    )?;
     handle_v1_code_completion(gcx.clone(), &mut code_completion_post).await
 }
 
