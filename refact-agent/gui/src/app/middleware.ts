@@ -553,6 +553,7 @@ startListening({
 startListening({
   actionCreator: setError,
   effect: (state, listenerApi) => {
+    // eslint-disable-next-line no-console
     console.log(`[DEBUG]: setError`, state);
     const rootState = listenerApi.getState();
     if (
