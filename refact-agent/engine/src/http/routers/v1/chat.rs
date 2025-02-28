@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
+use axum::Json;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
@@ -87,39 +88,38 @@ pub async fn lookup_chat_scratchpad(
 pub async fn handle_v1_chat_completions(
     // standard openai-style handler
     Extension(gcx): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
+    Json(chat_post): Json<ChatPost>,
 ) -> Result<Response<Body>, ScratchError> {
-    _chat(gcx, &body_bytes, false).await
+    _chat(gcx, chat_post, false).await
 }
 
 pub async fn handle_v1_chat(
     // less-standard openai-style handler that sends role="context_*" messages first, rewrites the user message
     Extension(gcx): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
+    Json(chat_post): Json<ChatPost>,
 ) -> Result<Response<Body>, ScratchError> {
-    _chat(gcx, &body_bytes, true).await
+    _chat(gcx, chat_post, true).await
 }
 
-pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
-    let messages: Vec<ChatMessage> = messages.iter()
-        .map(|x| serde_json::from_value(x.clone()))
-        .collect::<Result<Vec<_>, _>>()
+pub fn deserialize_messages_from_post(
+    messages: &[serde_json::Value],
+) -> Result<Vec<ChatMessage>, ScratchError> {
+    messages
+        .iter()
+        .cloned()
+        .map(serde_json::from_value)
+        .collect::<Result<_, _>>()
         .map_err(|e| {
             tracing::error!("can't deserialize ChatMessage: {}", e);
             ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-        })?;
-    Ok(messages)
+        })
 }
 
 async fn _chat(
     gcx: Arc<ARwLock<GlobalContext>>,
-    body_bytes: &hyper::body::Bytes,
-    allow_at: bool
+    mut chat_post: ChatPost,
+    allow_at: bool,
 ) -> Result<Response<Body>, ScratchError> {
-    let mut chat_post: ChatPost = serde_json::from_slice::<ChatPost>(&body_bytes).map_err(|e| {
-        tracing::warn!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
 
     tracing::info!("chat_mode {:?}", chat_post.meta.chat_mode);
