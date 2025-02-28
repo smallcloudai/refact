@@ -17,7 +17,6 @@ import {
   useAgentUsage,
   useCapsForToolUse,
   USAGE_LIMIT_EXHAUSTED_MESSAGE,
-  PAID_AGENT_LIST,
   useSendChatRequest,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
@@ -76,7 +75,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const { isMultimodalitySupportedForCurrentModel, currentModel } = useCapsForToolUse();
+  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
   const globalError = useAppSelector(getErrorMessage);

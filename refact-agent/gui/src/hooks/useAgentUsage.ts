@@ -77,12 +77,16 @@ export function useAgentUsage() {
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
-    if (user?.data?.inference !== "FREE" && UNLIMITED_PRO_MODELS_LIST.includes(currentModel)) return false;
+    if (
+      user.data?.inference !== "FREE" &&
+      UNLIMITED_PRO_MODELS_LIST.includes(currentModel)
+    )
+      return false;
     if (isStreaming || isWaiting) return false;
     if (agentUsage === null) return false;
     if (agentUsage > 5) return false;
     return true;
-  }, [isStreaming, isWaiting, agentUsage, currentModel]);
+  }, [user.data?.inference, isStreaming, isWaiting, agentUsage, currentModel]);
 
   const disableInput = useMemo(() => {
     return shouldShow && aboveUsageLimit;

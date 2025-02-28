@@ -6,9 +6,9 @@ import {
 import {
   useAppSelector,
   useGetCapsQuery,
-  useAgentUsage,
+  // useAgentUsage,
   useAppDispatch,
-  useGetUser,
+  // useGetUser,
 } from ".";
 
 import {
@@ -29,9 +29,7 @@ export const PAID_AGENT_LIST = [
   "claude-3-7-sonnet",
 ];
 
-const THINKING_MODELS_LIST = [
-  "o3-mini"
-];
+const THINKING_MODELS_LIST = ["o3-mini"];
 
 // TODO: hard coded for now. Unlimited usage models
 export const UNLIMITED_PRO_MODELS_LIST = ["gpt-4o-mini"];
@@ -41,8 +39,8 @@ export function useCapsForToolUse() {
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
   const chatId = useAppSelector(selectChatId);
-  const usage = useAgentUsage();
-  const user = useGetUser();
+  // const usage = useAgentUsage();
+  // const user = useGetUser();
   const dispatch = useAppDispatch();
 
   const defaultCap = caps.data?.code_chat_default_model ?? "";
@@ -99,17 +97,36 @@ export function useCapsForToolUse() {
   }, [caps.data?.code_chat_models, toolUse]);
 
   const usableModelsForPlan = useMemo(() => {
-    return usableModels;
-  }, [user.data?.inference, usableModels, usage.aboveUsageLimit, toolUse]);
+    // TODO: keep filtering logic for the future BYOK + Cloud (to show different providers)
+    // if (user.data?.inference !== "FREE") return usableModels;
+    // if (!usage.aboveUsageLimit && toolUse === "agent") return usableModels;
+    return usableModels.map((model) => {
+      // if (!PAID_AGENT_LIST.includes(model)) return model;
+
+      return {
+        value: model,
+        disabled: false,
+        textValue:
+          // toolUse !== "agent" ? `${model} (Available in agent)` : undefined,
+          model,
+      };
+    });
+    // return usableModels;
+  }, [
+    // user.data?.inference,
+    usableModels,
+    // toolUse,
+    // usage.aboveUsageLimit,
+  ]);
 
   useEffect(() => {
     if (
       usableModelsForPlan.length > 0 &&
-      usableModelsForPlan.some((elem) => typeof elem === "string") &&
-      !usableModelsForPlan.includes(currentModel)
+      usableModelsForPlan.some((elem) => elem.textValue.includes(currentModel))
+      // !usableModelsForPlan.includes(currentModel)
     ) {
-      const models: string[] = usableModelsForPlan.filter(
-        (elem): elem is string => typeof elem === "string",
+      const models: string[] = usableModelsForPlan.map(
+        (elem) => elem.textValue,
       );
       const toChange =
         models.find((elem) => currentModel.startsWith(elem)) ??
