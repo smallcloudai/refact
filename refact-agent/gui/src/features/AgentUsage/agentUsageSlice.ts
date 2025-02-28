@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { smallCloudApi } from "../../services/smallcloud";
 import { chatResponse } from "../Chat";
 import { isChatResponseChoice } from "../../services/refact/types";
+import { capsApi } from "../../services/refact";
 
 export type AgentUsageMeta = {
   agent_usage: null | number; // null if plan is PRO or ROBOT
@@ -34,18 +35,6 @@ export const agentUsageSlice = createSlice({
     },
   },
 
-  extraReducers: (builder) => {
-    builder.addMatcher(
-      smallCloudApi.endpoints.getUser.matchFulfilled,
-      (state, action) => {
-        const { refact_agent_max_request_num, refact_agent_request_available } =
-          action.payload;
-        state.agent_max_usage_amount = refact_agent_max_request_num;
-        state.agent_usage = refact_agent_request_available;
-      },
-    );
-  },
-
   selectors: {
     selectAgentUsage: (state) => state.agent_usage,
     selectMaxAgentUsageAmount: (state) => state.agent_max_usage_amount,
@@ -71,6 +60,16 @@ export const agentUsageSlice = createSlice({
         refact_agent_max_request_num ?? state.agent_max_usage_amount;
       state.agent_usage = refact_agent_request_available ?? state.agent_usage;
     });
+
+    builder.addMatcher(
+      capsApi.endpoints.getCaps.matchFulfilled,
+      (state, action) => {
+        if (!action.payload.support_metadata) {
+          state.agent_max_usage_amount = 40;
+          state.agent_usage = null;
+        }
+      },
+    );
   },
 });
 

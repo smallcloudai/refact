@@ -8,7 +8,6 @@ import {
   setToolUse,
   ToolUse,
 } from "../features/Chat";
-import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 
 // TODO: hard coded for now.
 export const PAID_AGENT_LIST = [
@@ -32,8 +31,6 @@ export function useCapsForToolUse() {
   const dispatch = useAppDispatch();
 
   const defaultCap = caps.data?.code_chat_default_model ?? "";
-
-  const supportMetadata = caps.data?.support_metadata;
 
   const selectedModel = useAppSelector(getSelectedChatModel);
 
@@ -157,17 +154,6 @@ export function useCapsForToolUse() {
     modelsSupportingAgent,
     modelsSupportingTools,
   ]);
-
-  useEffect(() => {
-    if (!supportMetadata) {
-      dispatch(
-        setInitialAgentUsage({
-          agent_max_usage_amount: 40,
-          agent_usage: null,
-        }),
-      );
-    }
-  }, [dispatch, supportMetadata]);
 
   return {
     usableModels,
