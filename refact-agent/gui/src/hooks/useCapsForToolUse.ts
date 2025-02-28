@@ -20,7 +20,7 @@ import {
 } from "../features/Chat";
 
 // TODO: hard coded for now.
-const PAID_AGENT_LIST = [
+export const PAID_AGENT_LIST = [
   "gpt-4o",
   "claude-3-5-sonnet",
   "grok-2-1212",
@@ -29,8 +29,12 @@ const PAID_AGENT_LIST = [
   "claude-3-7-sonnet",
 ];
 
+const THINKING_MODELS_LIST = [
+  "o3-mini"
+];
+
 // TODO: hard coded for now. Unlimited usage models
-export const FREE_TIER_MODELS_LIST = ["gpt-4o-mini"];
+export const UNLIMITED_PRO_MODELS_LIST = ["gpt-4o-mini"];
 
 export function useCapsForToolUse() {
   const [wasAdjusted, setWasAdjusted] = useState(false);
@@ -81,6 +85,7 @@ export function useCapsForToolUse() {
     const models = caps.data?.code_chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
       (acc, [key, value]) => {
+        if (THINKING_MODELS_LIST.includes(key)) return acc;
         if (toolUse === "explore" && value.supports_tools) {
           return [...acc, key];
         }
@@ -94,18 +99,7 @@ export function useCapsForToolUse() {
   }, [caps.data?.code_chat_models, toolUse]);
 
   const usableModelsForPlan = useMemo(() => {
-    if (user.data?.inference !== "FREE") return usableModels;
-    if (!usage.aboveUsageLimit && toolUse === "agent") return usableModels;
-    return usableModels.map((model) => {
-      if (!PAID_AGENT_LIST.includes(model)) return model;
-
-      return {
-        value: model,
-        disabled: true,
-        textValue:
-          toolUse !== "agent" ? `${model} (Available in agent)` : undefined,
-      };
-    });
+    return usableModels;
   }, [user.data?.inference, usableModels, usage.aboveUsageLimit, toolUse]);
 
   useEffect(() => {

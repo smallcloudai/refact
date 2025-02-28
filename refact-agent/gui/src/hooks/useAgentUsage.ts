@@ -12,7 +12,7 @@ import {
   selectModel,
 } from "../features/Chat";
 import { useAppDispatch } from "./useAppDispatch";
-import { FREE_TIER_MODELS_LIST } from "./useCapsForToolUse";
+import { UNLIMITED_PRO_MODELS_LIST } from "./useCapsForToolUse";
 
 export const USAGE_LIMIT_EXHAUSTED_MESSAGE =
   "You have exceeded the FREE usage limit. Wait till tomorrow to send messages again, or upgrade to PRO.";
@@ -77,7 +77,7 @@ export function useAgentUsage() {
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
-    if (FREE_TIER_MODELS_LIST.includes(currentModel)) return false;
+    if (user?.data?.inference !== "FREE" && UNLIMITED_PRO_MODELS_LIST.includes(currentModel)) return false;
     if (isStreaming || isWaiting) return false;
     if (agentUsage === null) return false;
     if (agentUsage > 5) return false;
