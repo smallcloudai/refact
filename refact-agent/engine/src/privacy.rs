@@ -46,23 +46,18 @@ impl Default for PrivacySettings {
 
 const PRIVACY_TOO_OLD: Duration = Duration::from_secs(3);
 
-async fn read_privacy_yaml(path: &Path) -> PrivacySettings
-{
+async fn read_privacy_yaml(path: &Path) -> PrivacySettings {
     match fs::read_to_string(&path).await {
-        Ok(content) => {
-            match serde_yaml::from_str(&content) {
-                Ok(privacy_settings) => {
-                    privacy_settings
-                }
-                Err(e) => {
-                    error!("parsing {} failed\n{}", path.display(), e);
-                    return PrivacySettings::default();
-                }
+        Ok(content) => match serde_yaml::from_str(&content) {
+            Ok(privacy_settings) => privacy_settings,
+            Err(e) => {
+                error!("parsing {} failed\n{}", path.display(), e);
+                PrivacySettings::default()
             }
-        }
+        },
         Err(e) => {
             error!("unable to read content from {}\n{}", path.display(), e);
-            return PrivacySettings::default();
+            PrivacySettings::default()
         }
     }
 }
