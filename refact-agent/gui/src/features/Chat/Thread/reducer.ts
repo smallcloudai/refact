@@ -35,7 +35,6 @@ import {
   fixBrokenToolMessages,
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
-  setThreadUsage,
   upsertToolCall,
   setUsageTokensOnCommandPreview,
   setIsNewChatCreationMandatory,
@@ -45,6 +44,7 @@ import {
   ChatMessages,
   DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
+  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -53,6 +53,7 @@ import {
   ToolMessage,
   validateToolCall,
 } from "../../../services/refact";
+import { capsApi } from "../../../services/refact";
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -187,6 +188,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = true;
     state.waiting_for_response = false;
     state.thread.messages = messages;
+    // maybe update thread usage here.
+    if (isChatResponseChoice(action.payload) && action.payload.usage) {
+      state.thread.usage = action.payload.usage;
+    }
   });
 
   builder.addCase(backUpMessages, (state, action) => {
@@ -237,12 +242,12 @@ export const chatReducer = createReducer(initialState, (builder) => {
     };
   });
 
-  builder.addCase(setThreadUsage, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
+  // builder.addCase(setThreadUsage, (state, action) => {
+  //   if (state.thread.id !== action.payload.chatId) return state;
 
-    const { usage } = action.payload;
-    state.thread.usage = usage;
-  });
+  //   const { usage } = action.payload;
+  //   state.thread.usage = usage;
+  // });
 
   builder.addCase(setUsageTokensOnCommandPreview, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
@@ -400,6 +405,25 @@ export const chatReducer = createReducer(initialState, (builder) => {
       );
     }
   });
+
+  builder.addMatcher(
+    capsApi.endpoints.getCaps.matchFulfilled,
+    (state, action) => {
+      console.log("Thread caps effect");
+      const model =
+        state.thread.model || action.payload.code_chat_default_model;
+      if (!(model in action.payload.code_chat_models)) return;
+
+      const currentModelMaximumContextTokens =
+        action.payload.code_chat_models[model].n_ctx;
+
+      const inputTokensLimit = parseInt(
+        (currentModelMaximumContextTokens / 3).toFixed(0),
+      );
+
+      state.thread.currentMaximumContextTokens = inputTokensLimit;
+    },
+  );
 });
 
 export function maybeAppendToolCallResultFromIdeToMessages(

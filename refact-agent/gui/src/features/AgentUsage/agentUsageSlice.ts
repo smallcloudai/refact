@@ -1,5 +1,7 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { smallCloudApi } from "../../services/smallcloud";
+import { chatResponse } from "../Chat";
+import { isChatResponseChoice } from "../../services/refact/types";
 
 export type AgentUsageMeta = {
   agent_usage: null | number; // null if plan is PRO or ROBOT
@@ -48,12 +50,34 @@ export const agentUsageSlice = createSlice({
     selectAgentUsage: (state) => state.agent_usage,
     selectMaxAgentUsageAmount: (state) => state.agent_max_usage_amount,
   },
+
+  extraReducers: (builder) => {
+    builder.addMatcher(
+      smallCloudApi.endpoints.getUser.matchFulfilled,
+      (state, action) => {
+        // update logic here
+        state.agent_max_usage_amount =
+          action.payload.refact_agent_max_request_num;
+        state.agent_usage = action.payload.refact_agent_request_available;
+      },
+    );
+
+    builder.addMatcher(chatResponse.match, (state, action) => {
+      if (!isChatResponseChoice(action.payload)) return state;
+      const { refact_agent_max_request_num, refact_agent_request_available } =
+        action.payload;
+
+      state.agent_max_usage_amount =
+        refact_agent_max_request_num ?? state.agent_max_usage_amount;
+      state.agent_usage = refact_agent_request_available ?? state.agent_usage;
+    });
+  },
 });
 
 export const {
+  setInitialAgentUsage,
   updateAgentUsage,
   updateMaxAgentUsageAmount,
-  setInitialAgentUsage,
 } = agentUsageSlice.actions;
 export const { selectAgentUsage, selectMaxAgentUsageAmount } =
   agentUsageSlice.selectors;

@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   selectMaxAgentUsageAmount,
   selectAgentUsage,
-  setInitialAgentUsage,
 } from "../features/AgentUsage/agentUsageSlice";
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
@@ -11,12 +10,10 @@ import {
   selectIsWaiting,
   selectModel,
 } from "../features/Chat";
-import { useAppDispatch } from "./useAppDispatch";
 import { UNLIMITED_PRO_MODELS_LIST } from "./useCapsForToolUse";
 import { useGetCapsQuery } from "./useGetCapsQuery";
 
 export function useAgentUsage() {
-  const dispatch = useAppDispatch();
   const caps = useGetCapsQuery();
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
@@ -72,14 +69,8 @@ export function useAgentUsage() {
 
   const refetchUser = useCallback(async () => {
     // TODO: find a better way to refetch user and update store state :/
-    const updatedUserData = await user.refetch();
-    if (!updatedUserData.data) return;
-    const action = setInitialAgentUsage({
-      agent_usage: updatedUserData.data.refact_agent_request_available,
-      agent_max_usage_amount: updatedUserData.data.refact_agent_max_request_num,
-    });
-    dispatch(action);
-  }, [dispatch, user]);
+    await user.refetch();
+  }, [user]);
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
