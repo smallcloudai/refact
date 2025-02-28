@@ -121,7 +121,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         {threadUsage && <UsageCounter usage={threadUsage} />}
 
         <Container py="4">
-          <Spinner spinning={isWaiting && !isWaitingForConfirmation} />
+          <Spinner
+            spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
+          />
         </Container>
       </Flex>
       {showFollowButton && (
