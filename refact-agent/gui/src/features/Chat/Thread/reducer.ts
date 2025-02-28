@@ -36,12 +36,12 @@ import {
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
   upsertToolCall,
-  setUsageTokensOnCommandPreview,
   setIsNewChatCreationMandatory,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
+  commandsApi,
   DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
   isChatResponseChoice,
@@ -242,34 +242,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     };
   });
 
-  // builder.addCase(setThreadUsage, (state, action) => {
-  //   if (state.thread.id !== action.payload.chatId) return state;
-
-  //   const { usage } = action.payload;
-  //   state.thread.usage = usage;
-  // });
-
-  builder.addCase(setUsageTokensOnCommandPreview, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    const currentUsage = state.thread.usage;
-    if (!currentUsage) {
-      state.thread.usage = {
-        prompt_tokens: action.payload.prompt_tokens,
-        completion_tokens: 0,
-        completion_tokens_details: null,
-        prompt_tokens_details: null,
-        total_tokens: action.payload.prompt_tokens,
-      };
-    } else {
-      state.thread.usage = {
-        ...currentUsage,
-        prompt_tokens: action.payload.prompt_tokens,
-      };
-
-      state.thread.currentMaximumContextTokens = action.payload.n_ctx;
-    }
-  });
-
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
   });
@@ -409,7 +381,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addMatcher(
     capsApi.endpoints.getCaps.matchFulfilled,
     (state, action) => {
-      console.log("Thread caps effect");
       const model =
         state.thread.model || action.payload.code_chat_default_model;
       if (!(model in action.payload.code_chat_models)) return;
@@ -422,6 +393,28 @@ export const chatReducer = createReducer(initialState, (builder) => {
       );
 
       state.thread.currentMaximumContextTokens = inputTokensLimit;
+    },
+  );
+
+  builder.addMatcher(
+    commandsApi.endpoints.getCommandPreview.matchFulfilled,
+    (state, action) => {
+      state.thread.currentMaximumContextTokens = action.payload.number_context;
+      const currentUsage = state.thread.usage;
+      if (!currentUsage) {
+        state.thread.usage = {
+          prompt_tokens: action.payload.current_context,
+          completion_tokens: 0,
+          completion_tokens_details: null,
+          prompt_tokens_details: null,
+          total_tokens: action.payload.current_context,
+        };
+      } else {
+        state.thread.usage = {
+          ...currentUsage,
+          prompt_tokens: action.payload.current_context,
+        };
+      }
     },
   );
 });
