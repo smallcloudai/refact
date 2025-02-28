@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   PATCH_LIKE_FUNCTIONS,
   useAppDispatch,
