@@ -85,7 +85,7 @@ export const commandsApi = createApi({
       CommandPreviewRequest
     >({
       queryFn: async (args, api, _opts, baseQuery) => {
-        const { messages, meta } = args;
+        const { messages, meta, model } = args;
         const state = api.getState() as RootState;
         const port = state.config.lspPort;
         const url = `http://127.0.0.1:${port}${AT_COMMAND_PREVIEW}`;
@@ -94,7 +94,7 @@ export const commandsApi = createApi({
           method: "POST",
           credentials: "same-origin",
           redirect: "follow",
-          body: { messages, meta },
+          body: { messages, meta, model },
         });
 
         if (response.error) return { error: response.error };
@@ -185,6 +185,7 @@ function isCommandPreviewContent(json: unknown): json is CommandPreviewContent {
 export type CommandPreviewRequest = {
   messages: ChatMessages;
   meta: ChatMeta;
+  model: string;
 };
 
 export type CommandPreviewResponse = {
