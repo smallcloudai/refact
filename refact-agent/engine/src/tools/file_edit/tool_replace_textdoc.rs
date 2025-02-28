@@ -23,7 +23,10 @@ struct ToolReplaceTextDocArgs {
 
 pub struct ToolReplaceTextDoc;
 
-fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<ToolReplaceTextDocArgs, String> {
+fn parse_args(
+    args: &HashMap<String, Value>,
+    privacy_settings: Arc<PrivacySettings>,
+) -> Result<ToolReplaceTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
@@ -34,7 +37,13 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
                 ));
             }
             let path = canonicalize_normalized_path(path);
-            if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
+            if check_file_privacy(
+                privacy_settings,
+                &path,
+                FilePrivacyLevel::AllowToSendAnywhere,
+            )
+            .is_err()
+            {
                 return Err(format!(
                     "Error: Cannot update the file '{:?}' due to privacy settings.",
                     s.trim()
@@ -48,8 +57,15 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
             }
             path
         }
-        Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
-        None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),
+        Some(v) => {
+            return Err(format!(
+                "Error: The 'path' argument must be a string, but received: {:?}",
+                v
+            ))
+        }
+        None => {
+            return Err("Error: The 'path' argument is required but was not provided.".to_string())
+        }
     };
     let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s,
@@ -81,7 +97,8 @@ pub async fn tool_replace_text_doc_exec(
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     let args = parse_args(args, privacy_settings)?;
     await_ast_indexing(gcx.clone()).await?;
-    let (before_text, after_text) = write_file(gcx.clone(), &args.path, &args.replacement, dry).await?;
+    let (before_text, after_text) =
+        write_file(gcx.clone(), &args.path, &args.replacement, dry).await?;
     sync_documents_ast(gcx.clone(), &args.path).await?;
     let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
     Ok((before_text, after_text, diff_chunks))
@@ -122,8 +139,11 @@ impl Tool for ToolReplaceTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
-        async fn can_execute_tool_edit(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
+
+        async fn can_execute_tool_edit(
+            args: &HashMap<String, Value>,
+            privacy_settings: Arc<PrivacySettings>,
+        ) -> Result<(), String> {
             let _ = parse_args(args, privacy_settings)?;
             Ok(())
         }

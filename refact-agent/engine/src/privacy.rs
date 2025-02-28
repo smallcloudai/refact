@@ -11,8 +11,7 @@ use std::time::SystemTime;
 use crate::files_correction::canonical_path;
 use crate::global_context::GlobalContext;
 
-
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub enum FilePrivacyLevel {
     Blocked = 0,
     OnlySendToServersIControl = 1,
@@ -116,10 +115,13 @@ fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -
     }
 }
 
-pub fn check_file_privacy(privacy_settings: Arc<PrivacySettings>, path: &Path, min_allowed_privacy_level: &FilePrivacyLevel) -> Result<(), String>
-{
+pub fn check_file_privacy(
+    privacy_settings: Arc<PrivacySettings>,
+    path: &Path,
+    min_allowed_privacy_level: FilePrivacyLevel,
+) -> Result<(), String> {
     let file_privacy_level = get_file_privacy_level(privacy_settings.clone(), path);
-    if file_privacy_level < *min_allowed_privacy_level {
+    if file_privacy_level < min_allowed_privacy_level {
         return Err(format!("privacy level {:?}", file_privacy_level));
     }
     Ok(())
@@ -191,9 +193,10 @@ mod tests {
             (current_dir.join("test.cat.txt"), FilePrivacyLevel::OnlySendToServersIControl, false),
         ];
 
-        for (path, expected_privacy_level, expected_result) in &cases {
-            let result = check_file_privacy(privacy_settings.clone(), path, expected_privacy_level);
-            if *expected_result {
+        for (path, expected_privacy_level, expected_result) in cases {
+            let result =
+                check_file_privacy(privacy_settings.clone(), &path, expected_privacy_level);
+            if expected_result {
                 assert!(
                     result.is_ok(),
                     "Testing check_file_privacy with path {} and expected privacy level {:?}, got {:?} and it should have been ok",

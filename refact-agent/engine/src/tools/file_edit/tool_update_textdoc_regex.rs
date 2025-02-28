@@ -2,7 +2,9 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel, PrivacySettings};
-use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace_regex, sync_documents_ast};
+use crate::tools::file_edit::auxiliary::{
+    await_ast_indexing, convert_edit_to_diffchunks, str_replace_regex, sync_documents_ast,
+};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use async_trait::async_trait;
 use serde_json::{json, Value};
@@ -24,7 +26,10 @@ struct ToolUpdateTextDocRegexArgs {
 
 pub struct ToolUpdateTextDocRegex;
 
-fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<ToolUpdateTextDocRegexArgs, String> {
+fn parse_args(
+    args: &HashMap<String, Value>,
+    privacy_settings: Arc<PrivacySettings>,
+) -> Result<ToolUpdateTextDocRegexArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
@@ -35,7 +40,13 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
                 ));
             }
             let path = canonicalize_normalized_path(path);
-            if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
+            if check_file_privacy(
+                privacy_settings,
+                &path,
+                FilePrivacyLevel::AllowToSendAnywhere,
+            )
+            .is_err()
+            {
                 return Err(format!(
                     "Error: Cannot update the file '{:?}' due to privacy settings.",
                     s.trim()
@@ -66,27 +77,32 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
     };
     let replacement = match args.get("replacement") {
         Some(Value::String(s)) => s.to_string(),
-        Some(v) => return Err(format!("argument 'replacement' should be a string: {:?}", v)),
-        None => return Err("argument 'replacement' is required".to_string())
+        Some(v) => {
+            return Err(format!(
+                "argument 'replacement' should be a string: {:?}",
+                v
+            ))
+        }
+        None => return Err("argument 'replacement' is required".to_string()),
     };
     let multiple = match args.get("multiple") {
-        Some(Value::Bool(b)) => b.clone(),
+        Some(Value::Bool(b)) => *b,
         Some(v) => return Err(format!("argument 'multiple' should be a boolean: {:?}", v)),
-        None => return Err("argument 'multiple' is required".to_string())
+        None => return Err("argument 'multiple' is required".to_string()),
     };
 
     Ok(ToolUpdateTextDocRegexArgs {
         path,
         pattern,
         replacement,
-        multiple
+        multiple,
     })
 }
 
 pub async fn tool_update_text_doc_regex_exec(
     gcx: Arc<ARwLock<GlobalContext>>,
     args: &HashMap<String, Value>,
-    dry: bool
+    dry: bool,
 ) -> Result<(String, String, Vec<DiffChunk>), String> {
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     let args = parse_args(args, privacy_settings)?;
@@ -120,7 +136,7 @@ impl Tool for ToolUpdateTextDocRegex {
             ..Default::default()
         }]
         .into_iter()
-        .map(|x| ContextEnum::ChatMessage(x))
+        .map(ContextEnum::ChatMessage)
         .collect::<Vec<_>>();
         Ok((false, results))
     }
@@ -132,8 +148,11 @@ impl Tool for ToolUpdateTextDocRegex {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
-        async fn can_execute_tool_edit(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
+
+        async fn can_execute_tool_edit(
+            args: &HashMap<String, Value>,
+            privacy_settings: Arc<PrivacySettings>,
+        ) -> Result<(), String> {
             let _ = parse_args(args, privacy_settings)?;
             Ok(())
         }

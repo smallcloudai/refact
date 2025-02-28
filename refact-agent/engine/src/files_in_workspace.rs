@@ -55,11 +55,22 @@ pub struct Document {
     pub doc_text: Option<Rope>,
 }
 
-pub async fn get_file_text_from_memory_or_disk(global_context: Arc<ARwLock<GlobalContext>>, file_path: &PathBuf) -> Result<String, String>
-{
-    check_file_privacy(load_privacy_if_needed(global_context.clone()).await, &file_path, &FilePrivacyLevel::AllowToSendAnywhere)?;
-
-    if let Some(doc) = global_context.read().await.documents_state.memory_document_map.get(file_path) {
+pub async fn get_file_text_from_memory_or_disk(
+    global_context: Arc<ARwLock<GlobalContext>>,
+    file_path: &PathBuf,
+) -> Result<String, String> {
+    check_file_privacy(
+        load_privacy_if_needed(global_context.clone()).await,
+        &file_path,
+        FilePrivacyLevel::AllowToSendAnywhere,
+    )?;
+    if let Some(doc) = global_context
+        .read()
+        .await
+        .documents_state
+        .memory_document_map
+        .get(file_path)
+    {
         let doc = doc.read().await;
         if doc.doc_text.is_some() {
             return Ok(doc.doc_text.as_ref().unwrap().to_string());
@@ -224,7 +235,11 @@ pub async fn read_file_from_disk(
     privacy_settings: Arc<PrivacySettings>,
     path: &PathBuf,
 ) -> Result<Rope, String> {
-    check_file_privacy(privacy_settings, path, &FilePrivacyLevel::AllowToSendAnywhere)?;
+    check_file_privacy(
+        privacy_settings,
+        path,
+        FilePrivacyLevel::AllowToSendAnywhere,
+    )?;
     read_file_from_disk_without_privacy_check(path).await
 }
 

@@ -112,16 +112,16 @@ impl Tool for ToolMv {
 
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
         if let Err(e) = check_file_privacy(
-            privacy_settings.clone(), 
-            &src_true_path, 
-            &FilePrivacyLevel::AllowToSendAnywhere
+            privacy_settings.clone(),
+            &src_true_path,
+            FilePrivacyLevel::AllowToSendAnywhere,
         ) {
             return Err(format!("Cannot move '{}': {}", src_str, e));
         }
         if let Err(e) = check_file_privacy(
-            privacy_settings.clone(), 
-            &dst_true_path, 
-            &FilePrivacyLevel::AllowToSendAnywhere
+            privacy_settings.clone(),
+            &dst_true_path,
+            FilePrivacyLevel::AllowToSendAnywhere,
         ) {
             return Err(format!("Cannot move to '{}': {}", src_str, e));
         }

@@ -132,9 +132,9 @@ impl Tool for ToolRm {
 
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
         if let Err(e) = check_file_privacy(
-            privacy_settings.clone(), 
-            &true_path, 
-            &FilePrivacyLevel::AllowToSendAnywhere
+            privacy_settings.clone(),
+            &true_path,
+            FilePrivacyLevel::AllowToSendAnywhere,
         ) {
             return Err(format!("Cannot rm '{}': {}", path_str, e));
         }

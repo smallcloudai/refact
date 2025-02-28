@@ -23,7 +23,10 @@ struct ToolCreateTextDocArgs {
 
 pub struct ToolCreateTextDoc;
 
-fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<ToolCreateTextDocArgs, String> {
+fn parse_args(
+    args: &HashMap<String, Value>,
+    privacy_settings: Arc<PrivacySettings>,
+) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
             let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
@@ -34,7 +37,13 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
                 ));
             }
             let path = canonicalize_normalized_path(path);
-            if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
+            if check_file_privacy(
+                privacy_settings,
+                &path,
+                FilePrivacyLevel::AllowToSendAnywhere,
+            )
+            .is_err()
+            {
                 return Err(format!(
                     "Error: Cannot create the file '{:?}' due to privacy settings.",
                     s.trim()
@@ -48,8 +57,15 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
             }
             path
         }
-        Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
-        None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),
+        Some(v) => {
+            return Err(format!(
+                "Error: The 'path' argument must be a string, but received: {:?}",
+                v
+            ))
+        }
+        None => {
+            return Err("Error: The 'path' argument is required but was not provided.".to_string())
+        }
     };
     let content = match args.get("content") {
         Some(Value::String(s)) => s,
@@ -71,7 +87,7 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
 pub async fn tool_create_text_doc_exec(
     gcx: Arc<ARwLock<GlobalContext>>,
     args: &HashMap<String, Value>,
-    dry: bool
+    dry: bool,
 ) -> Result<(String, String, Vec<DiffChunk>), String> {
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     let args = parse_args(args, privacy_settings)?;
@@ -117,8 +133,11 @@ impl Tool for ToolCreateTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
-        async fn can_execute_tool_edit(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
+
+        async fn can_execute_tool_edit(
+            args: &HashMap<String, Value>,
+            privacy_settings: Arc<PrivacySettings>,
+        ) -> Result<(), String> {
             let _ = parse_args(args, privacy_settings)?;
             Ok(())
         }
