@@ -16,7 +16,6 @@ import {
   useConfig,
   useAgentUsage,
   useCapsForToolUse,
-  USAGE_LIMIT_EXHAUSTED_MESSAGE,
   useSendChatRequest,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
@@ -83,7 +82,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
-  const { disableInput } = useAgentUsage();
+  const { disableInput, usageLimitExhaustedMessage } = useAgentUsage();
   const isOnline = useIsOnline();
   const { retry } = useSendChatRequest();
 
@@ -187,7 +186,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (disableInput) {
-      const action = setInformation(USAGE_LIMIT_EXHAUSTED_MESSAGE);
+      const action = setInformation(usageLimitExhaustedMessage);
       dispatch(action);
     } else if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(
@@ -204,8 +203,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
     disableInput,
     disableSend,
-    dispatch,
     checkboxes,
+    usageLimitExhaustedMessage,
+    dispatch,
     setFileInteracted,
     setLineSelectionInteracted,
     onSubmit,

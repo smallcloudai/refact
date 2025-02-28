@@ -35,16 +35,16 @@ import {
   fixBrokenToolMessages,
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
-  setThreadUsage,
   upsertToolCall,
-  setUsageTokensOnCommandPreview,
   setIsNewChatCreationMandatory,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
+  commandsApi,
   DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
+  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -53,6 +53,7 @@ import {
   ToolMessage,
   validateToolCall,
 } from "../../../services/refact";
+import { capsApi } from "../../../services/refact";
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -187,6 +188,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = true;
     state.waiting_for_response = false;
     state.thread.messages = messages;
+    // maybe update thread usage here.
+    if (isChatResponseChoice(action.payload) && action.payload.usage) {
+      state.thread.usage = action.payload.usage;
+    }
   });
 
   builder.addCase(backUpMessages, (state, action) => {
@@ -235,34 +240,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
       ...state.thread.new_chat_suggested,
       isMandatory: action.payload.value,
     };
-  });
-
-  builder.addCase(setThreadUsage, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-
-    const { usage } = action.payload;
-    state.thread.usage = usage;
-  });
-
-  builder.addCase(setUsageTokensOnCommandPreview, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    const currentUsage = state.thread.usage;
-    if (!currentUsage) {
-      state.thread.usage = {
-        prompt_tokens: action.payload.prompt_tokens,
-        completion_tokens: 0,
-        completion_tokens_details: null,
-        prompt_tokens_details: null,
-        total_tokens: action.payload.prompt_tokens,
-      };
-    } else {
-      state.thread.usage = {
-        ...currentUsage,
-        prompt_tokens: action.payload.prompt_tokens,
-      };
-
-      state.thread.currentMaximumContextTokens = action.payload.n_ctx;
-    }
   });
 
   builder.addCase(setEnabledCheckpoints, (state, action) => {
@@ -400,6 +377,46 @@ export const chatReducer = createReducer(initialState, (builder) => {
       );
     }
   });
+
+  builder.addMatcher(
+    capsApi.endpoints.getCaps.matchFulfilled,
+    (state, action) => {
+      const model =
+        state.thread.model || action.payload.code_chat_default_model;
+      if (!(model in action.payload.code_chat_models)) return;
+
+      const currentModelMaximumContextTokens =
+        action.payload.code_chat_models[model].n_ctx;
+
+      const inputTokensLimit = parseInt(
+        (currentModelMaximumContextTokens / 3).toFixed(0),
+      );
+
+      state.thread.currentMaximumContextTokens = inputTokensLimit;
+    },
+  );
+
+  builder.addMatcher(
+    commandsApi.endpoints.getCommandPreview.matchFulfilled,
+    (state, action) => {
+      state.thread.currentMaximumContextTokens = action.payload.number_context;
+      const currentUsage = state.thread.usage;
+      if (!currentUsage) {
+        state.thread.usage = {
+          prompt_tokens: action.payload.current_context,
+          completion_tokens: 0,
+          completion_tokens_details: null,
+          prompt_tokens_details: null,
+          total_tokens: action.payload.current_context,
+        };
+      } else {
+        state.thread.usage = {
+          ...currentUsage,
+          prompt_tokens: action.payload.current_context,
+        };
+      }
+    },
+  );
 });
 
 export function maybeAppendToolCallResultFromIdeToMessages(

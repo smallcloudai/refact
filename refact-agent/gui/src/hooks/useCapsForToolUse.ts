@@ -1,26 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  selectChatId,
-  selectThreadToolUse,
-} from "../features/Chat/Thread/selectors";
-import {
-  useAppSelector,
-  useGetCapsQuery,
-  useAgentUsage,
-  useAppDispatch,
-  useGetUser,
-} from ".";
+import { selectThreadToolUse } from "../features/Chat/Thread/selectors";
+import { useAppSelector, useGetCapsQuery, useAppDispatch } from ".";
 
 import {
   getSelectedChatModel,
   setChatModel,
-  updateMaximumContextTokens,
   setToolUse,
   ToolUse,
 } from "../features/Chat";
 
 // TODO: hard coded for now.
-const PAID_AGENT_LIST = [
+export const PAID_AGENT_LIST = [
   "gpt-4o",
   "claude-3-5-sonnet",
   "grok-2-1212",
@@ -29,19 +19,19 @@ const PAID_AGENT_LIST = [
   "claude-3-7-sonnet",
 ];
 
+const THINKING_MODELS_LIST = ["o3-mini"];
+
 // TODO: hard coded for now. Unlimited usage models
-export const FREE_TIER_MODELS_LIST = ["gpt-4o-mini"];
+export const UNLIMITED_PRO_MODELS_LIST = ["gpt-4o-mini"];
 
 export function useCapsForToolUse() {
   const [wasAdjusted, setWasAdjusted] = useState(false);
   const caps = useGetCapsQuery();
   const toolUse = useAppSelector(selectThreadToolUse);
-  const chatId = useAppSelector(selectChatId);
-  const usage = useAgentUsage();
-  const user = useGetUser();
   const dispatch = useAppDispatch();
 
   const defaultCap = caps.data?.code_chat_default_model ?? "";
+
   const selectedModel = useAppSelector(getSelectedChatModel);
 
   const currentModel = selectedModel || defaultCap;
@@ -81,6 +71,7 @@ export function useCapsForToolUse() {
     const models = caps.data?.code_chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
       (acc, [key, value]) => {
+        if (THINKING_MODELS_LIST.includes(key)) return acc;
         if (toolUse === "explore" && value.supports_tools) {
           return [...acc, key];
         }
@@ -94,28 +85,36 @@ export function useCapsForToolUse() {
   }, [caps.data?.code_chat_models, toolUse]);
 
   const usableModelsForPlan = useMemo(() => {
-    if (user.data?.inference !== "FREE") return usableModels;
-    if (!usage.aboveUsageLimit && toolUse === "agent") return usableModels;
+    // TODO: keep filtering logic for the future BYOK + Cloud (to show different providers)
+    // if (user.data?.inference !== "FREE") return usableModels;
+    // if (!usage.aboveUsageLimit && toolUse === "agent") return usableModels;
     return usableModels.map((model) => {
-      if (!PAID_AGENT_LIST.includes(model)) return model;
+      // if (!PAID_AGENT_LIST.includes(model)) return model;
 
       return {
         value: model,
-        disabled: true,
+        disabled: false,
         textValue:
-          toolUse !== "agent" ? `${model} (Available in agent)` : undefined,
+          // toolUse !== "agent" ? `${model} (Available in agent)` : undefined,
+          model,
       };
     });
-  }, [user.data?.inference, usableModels, usage.aboveUsageLimit, toolUse]);
+    // return usableModels;
+  }, [
+    // user.data?.inference,
+    usableModels,
+    // toolUse,
+    // usage.aboveUsageLimit,
+  ]);
 
   useEffect(() => {
     if (
       usableModelsForPlan.length > 0 &&
-      usableModelsForPlan.some((elem) => typeof elem === "string") &&
-      !usableModelsForPlan.includes(currentModel)
+      usableModelsForPlan.some((elem) => elem.textValue.includes(currentModel))
+      // !usableModelsForPlan.includes(currentModel)
     ) {
-      const models: string[] = usableModelsForPlan.filter(
-        (elem): elem is string => typeof elem === "string",
+      const models: string[] = usableModelsForPlan.map(
+        (elem) => elem.textValue,
       );
       const toChange =
         models.find((elem) => currentModel.startsWith(elem)) ??
@@ -124,24 +123,6 @@ export function useCapsForToolUse() {
       setCapModel(toChange);
     }
   }, [setCapModel, currentModel, usableModels, usableModelsForPlan]);
-
-  useEffect(() => {
-    const currentModelMaximumContextTokens =
-      caps.data?.code_chat_models[currentModel]?.n_ctx;
-
-    if (currentModelMaximumContextTokens) {
-      const inputTokensLimit = parseInt(
-        (currentModelMaximumContextTokens / 3).toFixed(0),
-      );
-
-      dispatch(
-        updateMaximumContextTokens({
-          chatId,
-          value: inputTokensLimit,
-        }),
-      );
-    }
-  }, [dispatch, caps.data?.code_chat_models, chatId, currentModel]);
 
   useEffect(() => {
     const determineNewToolUse = (): ToolUse | null => {

@@ -1,12 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import {
-  useAppDispatch,
-  useAppSelector,
-  useHasCaps,
-  useSendChatRequest,
-} from "../../hooks";
+import { useAppSelector, useHasCaps, useSendChatRequest } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import {
   type CommandCompletionResponse,
@@ -23,7 +18,6 @@ import {
   selectMessages,
   selectModel,
   selectThreadMode,
-  setUsageTokensOnCommandPreview,
 } from "../../features/Chat";
 
 function useGetCommandCompletionQuery(
@@ -83,7 +77,6 @@ function useCommandCompletion() {
 function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
-  const dispatch = useAppDispatch();
   const hasCaps = useHasCaps();
   const { maybeAddImagesToQuestion } = useSendChatRequest();
 
@@ -109,17 +102,6 @@ function useGetCommandPreviewQuery(
     },
   );
 
-  useEffect(() => {
-    if (data?.current_context && data.number_context) {
-      dispatch(
-        setUsageTokensOnCommandPreview({
-          chatId,
-          n_ctx: data.number_context,
-          prompt_tokens: data.current_context,
-        }),
-      );
-    }
-  }, [dispatch, chatId, data?.current_context, data?.number_context]);
   if (!data) return [];
   return data.files;
 }

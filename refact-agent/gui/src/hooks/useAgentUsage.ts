@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import {
   selectMaxAgentUsageAmount,
   selectAgentUsage,
-  setInitialAgentUsage,
 } from "../features/AgentUsage/agentUsageSlice";
 import { useGetUser } from "./useGetUser";
 import { useAppSelector } from "./useAppSelector";
@@ -11,20 +10,24 @@ import {
   selectIsWaiting,
   selectModel,
 } from "../features/Chat";
-import { useAppDispatch } from "./useAppDispatch";
-import { FREE_TIER_MODELS_LIST } from "./useCapsForToolUse";
-
-export const USAGE_LIMIT_EXHAUSTED_MESSAGE =
-  "You have exceeded the FREE usage limit. Wait till tomorrow to send messages again, or upgrade to PRO.";
+import { UNLIMITED_PRO_MODELS_LIST } from "./useCapsForToolUse";
+import { useGetCapsQuery } from "./useGetCapsQuery";
 
 export function useAgentUsage() {
-  const dispatch = useAppDispatch();
+  const caps = useGetCapsQuery();
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const currentModel = useAppSelector(selectModel);
+
+  const usageLimitExhaustedMessage = useMemo(() => {
+    const userPlan = user.data?.inference;
+    return userPlan === "FREE"
+      ? "You have exceeded the FREE usage limit. Wait till tomorrow to send messages again, or upgrade to PRO."
+      : "You have exceeded the PRO usage limit. Wait till tomorrow to send messages again, or increase limits.";
+  }, [user.data?.inference]);
 
   const aboveUsageLimit = useMemo(() => {
     if (agentUsage === null) return false;
@@ -66,23 +69,29 @@ export function useAgentUsage() {
 
   const refetchUser = useCallback(async () => {
     // TODO: find a better way to refetch user and update store state :/
-    const updatedUserData = await user.refetch();
-    if (!updatedUserData.data) return;
-    const action = setInitialAgentUsage({
-      agent_usage: updatedUserData.data.refact_agent_request_available,
-      agent_max_usage_amount: updatedUserData.data.refact_agent_max_request_num,
-    });
-    dispatch(action);
-  }, [dispatch, user]);
+    await user.refetch();
+  }, [user]);
 
   const shouldShow = useMemo(() => {
     // TODO: maybe uncalled tools.
-    if (FREE_TIER_MODELS_LIST.includes(currentModel)) return false;
+    if (
+      user.data?.inference !== "FREE" &&
+      UNLIMITED_PRO_MODELS_LIST.includes(currentModel)
+    )
+      return false;
+    if (caps.data?.support_metadata === false) return false;
     if (isStreaming || isWaiting) return false;
     if (agentUsage === null) return false;
     if (agentUsage > 5) return false;
     return true;
-  }, [isStreaming, isWaiting, agentUsage, currentModel]);
+  }, [
+    user.data?.inference,
+    caps.data?.support_metadata,
+    isStreaming,
+    isWaiting,
+    agentUsage,
+    currentModel,
+  ]);
 
   const disableInput = useMemo(() => {
     return shouldShow && aboveUsageLimit;
@@ -97,5 +106,6 @@ export function useAgentUsage() {
     pollingForUser,
     disableInput,
     plan: user.data?.inference ?? "",
+    usageLimitExhaustedMessage,
   };
 }

@@ -10,8 +10,6 @@ import {
   chatAskQuestionThunk,
   restoreChat,
   newIntegrationChat,
-  chatResponse,
-  setThreadUsage,
   setIsWaitingForResponse,
   upsertToolCall,
   sendCurrentChatToLspAfterToolCallUpdate,
@@ -39,12 +37,7 @@ import {
   resetConfirmationInteractedState,
   updateConfirmationAfterIdeToolUse,
 } from "../features/ToolConfirmation/confirmationSlice";
-import {
-  setInitialAgentUsage,
-  updateAgentUsage,
-  updateMaxAgentUsageAmount,
-} from "../features/AgentUsage/agentUsageSlice";
-import { isChatResponseChoice } from "../services/refact";
+import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 import { ideToolCallResponse } from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
@@ -95,41 +88,6 @@ startListening({
       listenerApi.dispatch(api),
     );
     listenerApi.dispatch(clearError());
-  },
-});
-
-type ChatResponseAction = ReturnType<typeof chatResponse>;
-
-startListening({
-  matcher: isAnyOf((d: unknown): d is ChatResponseAction =>
-    chatResponse.match(d),
-  ),
-  effect: (action: ChatResponseAction, listenerApi) => {
-    const dispatch = listenerApi.dispatch;
-    // saving to store agent_usage counter from the backend, only one chunk has this field.
-    const { payload } = action;
-
-    if (isChatResponseChoice(payload)) {
-      const {
-        usage,
-        refact_agent_max_request_num,
-        refact_agent_request_available,
-      } = payload;
-
-      if (
-        refact_agent_request_available !== undefined &&
-        refact_agent_request_available !== null
-      ) {
-        dispatch(updateAgentUsage(refact_agent_request_available));
-      }
-
-      if (refact_agent_max_request_num !== undefined) {
-        dispatch(updateMaxAgentUsageAmount(refact_agent_max_request_num));
-      }
-      if (usage) {
-        dispatch(setThreadUsage({ chatId: payload.id, usage }));
-      }
-    }
   },
 });
 
@@ -553,8 +511,6 @@ startListening({
 startListening({
   actionCreator: setError,
   effect: (state, listenerApi) => {
-    // eslint-disable-next-line no-console
-    console.log(`[DEBUG]: setError`, state);
     const rootState = listenerApi.getState();
     if (
       state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[0]) ||

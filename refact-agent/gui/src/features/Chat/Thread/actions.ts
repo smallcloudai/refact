@@ -8,16 +8,12 @@ import {
   LspChatMode,
   PayloadWithChatAndMessageId,
   PayloadWithChatAndBoolean,
-  PayloadWithChatAndUsage,
-  PayloadWithChatAndNumber,
-  PayloadWithChatAndCurrentUsage,
 } from "./types";
 import {
   isAssistantDelta,
   isAssistantMessage,
   isCDInstructionMessage,
   isChatResponseChoice,
-  // isChatGetTitleResponse,
   isToolCallMessage,
   isToolMessage,
   isUserMessage,
@@ -63,16 +59,6 @@ export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
   "chatThread/setLastUserMessageId",
 );
 
-export const setUsageTokensOnCommandPreview =
-  createAction<PayloadWithChatAndCurrentUsage>(
-    "chatThread/setUsageTokensOnCommandPreview",
-  );
-
-export const updateMaximumContextTokens =
-  createAction<PayloadWithChatAndNumber>(
-    "chatThread/updateMaximumContextTokens",
-  );
-
 export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
 );
@@ -81,10 +67,6 @@ export const setIsNewChatCreationMandatory =
   createAction<PayloadWithChatAndBoolean>(
     "chatThread/setIsNewChatCreationMandatory",
   );
-
-export const setThreadUsage = createAction<PayloadWithChatAndUsage>(
-  "chatThread/setThreadUsage",
-);
 
 export const setIsNewChatSuggestionRejected =
   createAction<PayloadWithChatAndBoolean>(
