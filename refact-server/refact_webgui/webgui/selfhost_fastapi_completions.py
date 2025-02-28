@@ -42,8 +42,8 @@ class NlpSamplingParams(BaseModel):
     max_tokens: Optional[int] = None
     max_completion_tokens: Optional[int] = 500
     temperature: float = 0.2
-    top_p: float = 1.0
-    top_n: int = 0
+    top_p: float = 1.0  # TODO: deprecated field
+    top_n: int = 0  # TODO: deprecated field
     stop: Union[List[str], str] = []
 
     @property
@@ -92,7 +92,8 @@ class ChatContext(NlpSamplingParams):
     tool_choice: Optional[str] = None
     stream: Optional[bool] = True
     n: int = 1
-    reasoning_effort: Optional[str] = None
+    reasoning_effort: Optional[str] = None  # OpenAI style reasoning
+    thinking: Optional[Dict] = None  # Anthropic style reasoning
 
 
 class EmbeddingsStyleOpenAI(BaseModel):
@@ -536,8 +537,20 @@ class BaseCompletionsRouter(APIRouter):
             "stop": post.stop if post.stop else None,
             "n": post.n,
         }
-        if post.reasoning_effort is not None:
+
+        if post.reasoning_effort or post.thinking:
+            del completion_kwargs["temperature"]
+            del completion_kwargs["top_p"]
+
+        if post.reasoning_effort:
             completion_kwargs["reasoning_effort"] = post.reasoning_effort
+        if post.thinking:
+            completion_kwargs["thinking"] = post.thinking
+
+        log(f"{completion_kwargs}")
+        if model_name.startswith("claude"):
+            with open("completion_kwargs.json", "w") as f:
+                json.dump(completion_kwargs, f)
 
         async def litellm_streamer():
             generated_tokens_n = 0

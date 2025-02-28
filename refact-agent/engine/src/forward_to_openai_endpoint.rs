@@ -46,13 +46,13 @@ pub async fn forward_to_openai_style_endpoint(
         data["n"] = serde_json::Value::from(n);
     }
     if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
-        // NOTE: reasoning_effort supported by openai models only
         data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
-        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+    } else if let Some(thinking) = sampling_parameters.thinking.clone() {
+        data["thinking"] = thinking.clone();
     } else {
         data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
-        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     }
+    data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     info!("NOT STREAMING TEMP {}", sampling_parameters.temperature
         .map(|x| x.to_string())
         .unwrap_or("None".to_string()));
@@ -121,28 +121,33 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         "stream": true,
         "stream_options": {"include_usage": true},
     });
+
+    if is_passthrough {
+        passthrough_messages_to_json(&mut data, prompt, model_name);
+    } else {
+        data["prompt"] = serde_json::Value::String(prompt.to_string());
+    }
+
     if !sampling_parameters.stop.is_empty() {  // openai does not like empty stop
         data["stop"] = serde_json::Value::from(sampling_parameters.stop.clone());
     };
     if let Some(n) = sampling_parameters.n{
         data["n"] = serde_json::Value::from(n);
     }
+
     if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
-        // NOTE: reasoning_effort supported by openai models only
         data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
-        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+    } else if let Some(thinking) = sampling_parameters.thinking.clone() {
+        data["thinking"] = thinking.clone();
     } else {
         data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
-        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     }
+    data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+
     info!("STREAMING TEMP {}", sampling_parameters.temperature
         .map(|x| x.to_string())
         .unwrap_or("None".to_string()));
-    if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt, model_name);
-    } else {
-        data["prompt"] = serde_json::Value::String(prompt.to_string());
-    }
+
     if let Some(meta) = meta {
         data["meta"] = json!(meta);
     }
