@@ -565,6 +565,13 @@ fn default_param_type() -> String {
     "string".to_string()
 }
 
+/// TODO: Think a better way to know if we can send array type to the model
+/// 
+/// For now, anthropic models support it, gpt models don't, for other, we'll need to test
+pub fn model_supports_array_param_type(model_name: &str) -> bool {
+    model_name.starts_with("claude")
+}
+
 pub fn make_openai_tool_value(
     name: String,
     agentic: bool,
@@ -607,6 +614,18 @@ impl ToolDesc {
             self.parameters_required,
             self.parameters,
         )
+    }
+
+    pub fn is_supported_by(&self, model: &str) -> bool {
+        if !model_supports_array_param_type(model) {
+            for param in &self.parameters {
+                if param.param_type == "array" {
+                    tracing::error!("Tool {} has array parameter, but model {} does not support it", self.name, model);
+                    return false;
+                }
+            }
+        }
+        true
     }
 }
 

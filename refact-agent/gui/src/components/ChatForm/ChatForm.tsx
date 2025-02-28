@@ -49,12 +49,16 @@ import {
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
+  selectThreadMaximumTokens,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
+import { TokensPreview } from "./TokensPreview";
+import { useUsageCounter } from "../UsageCounter/useUsageCounter";
+import classNames from "classnames";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -88,6 +92,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
+  const currentThreadMaximumContextTokens = useAppSelector(
+    selectThreadMaximumTokens,
+  );
+
+  const { isOverflown: arePromptTokensBiggerThanContext, currentThreadUsage } =
+    useUsageCounter();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent" && toolUse === "agent";
@@ -110,9 +120,26 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
+    if (
+      currentThreadMaximumContextTokens &&
+      currentThreadUsage?.prompt_tokens &&
+      currentThreadUsage.prompt_tokens > currentThreadMaximumContextTokens
+    )
+      return false;
+    if (arePromptTokensBiggerThanContext) return true;
     if (messages.length === 0) return false;
     return isWaiting || isStreaming || !isOnline || preventSend;
-  }, [isOnline, isStreaming, isWaiting, preventSend, messages, allDisabled]);
+  }, [
+    isOnline,
+    isStreaming,
+    isWaiting,
+    arePromptTokensBiggerThanContext,
+    currentThreadMaximumContextTokens,
+    currentThreadUsage?.prompt_tokens,
+    preventSend,
+    messages,
+    allDisabled,
+  ]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
@@ -324,7 +351,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         {shouldAgentCapabilitiesBeShown && <AgentCapabilities />}
         <Form
           disabled={disableSend}
-          className={className}
+          className={classNames(styles.chatForm__form, className)}
           onSubmit={handleSubmit}
         >
           <FilesPreview files={previewFiles} />
@@ -353,33 +380,40 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex gap="2" className={styles.buttonGroup}>
-            {toolUse === "agent" && (
-              <AgentIntegrationsButton
-                title="Set up Agent Integrations"
+          <Flex
+            className={styles.textareaInteractive}
+            align="center"
+            justify="between"
+          >
+            <TokensPreview />
+            <Flex gap="2" className={styles.buttonGroup}>
+              {toolUse === "agent" && (
+                <AgentIntegrationsButton
+                  title="Set up Agent Integrations"
+                  size="1"
+                  type="button"
+                  onClick={handleAgentIntegrationsClick}
+                  ref={(x) => refs.setSetupIntegrations(x)}
+                />
+              )}
+              {onClose && (
+                <BackToSideBarButton
+                  disabled={isStreaming}
+                  title="Return to sidebar"
+                  size="1"
+                  onClick={onClose}
+                />
+              )}
+              {config.features?.images !== false &&
+                isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
+              {/* TODO: Reserved space for microphone button coming later on */}
+              <PaperPlaneButton
+                disabled={disableSend || disableInput}
+                title="Send message"
                 size="1"
-                type="button"
-                onClick={handleAgentIntegrationsClick}
-                ref={(x) => refs.setSetupIntegrations(x)}
+                type="submit"
               />
-            )}
-            {onClose && (
-              <BackToSideBarButton
-                disabled={isStreaming}
-                title="Return to sidebar"
-                size="1"
-                onClick={onClose}
-              />
-            )}
-            {config.features?.images !== false &&
-              isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
-            {/* TODO: Reserved space for microphone button coming later on */}
-            <PaperPlaneButton
-              disabled={disableSend || disableInput}
-              title="Send message"
-              size="1"
-              type="submit"
-            />
+            </Flex>
           </Flex>
         </Form>
       </Flex>

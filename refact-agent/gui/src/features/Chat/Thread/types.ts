@@ -31,6 +31,7 @@ export type ChatThread = {
 export type SuggestedChat = {
   wasSuggested: boolean;
   wasRejectedByUser?: boolean;
+  isMandatory?: boolean;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -55,6 +56,11 @@ export type PayloadWithChatAndNumber = { chatId: string; value: number };
 export type PayloadWithChatAndMessageId = { chatId: string; messageId: string };
 export type PayloadWithChatAndBoolean = { chatId: string; value: boolean };
 export type PayloadWithChatAndUsage = { chatId: string; usage: Usage };
+export type PayloadWithChatAndCurrentUsage = {
+  chatId: string;
+  n_ctx: number;
+  prompt_tokens: number;
+};
 export type PayloadWithIdAndTitle = {
   title: string;
   isTitleGenerated: boolean;

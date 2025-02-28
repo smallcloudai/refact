@@ -1,10 +1,20 @@
-.buttonGroup {
+.textareaInteractive {
   position: absolute;
   /* display: flex;
     gap: 4px; */
+  left: 2px;
   right: 6px;
   bottom: 8px;
   padding: 1px 6px;
+  justify-content: flex-end;
+  width: calc(100% - 6px - 2px);
+}
+.buttonGroup {
+  align-self: flex-end;
+  justify-self: flex-end;
+  &:first-child {
+    margin-left: auto;
+  }
 }
 
 .button {
@@ -17,6 +27,13 @@
   border-radius: 6px;
   flex-shrink: 0;
   overflow: hidden;
+  --interactive-group-height: 17px;
+  min-height: calc(100% + var(--interactive-group-height));
+  background-color: var(--color-surface);
+}
+
+.chatForm__form :global(.rt-TextAreaRoot) {
+  background-color: unset;
 }
 
 .file {
@@ -29,6 +46,7 @@
   overflow-wrap: break-word;
   word-break: break-word;
   white-space: normal;
+  max-height: 16px;
 }
 
 .file_name {

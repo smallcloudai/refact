@@ -37,6 +37,8 @@ import {
   setIsNewChatSuggestionRejected,
   setThreadUsage,
   upsertToolCall,
+  setUsageTokensOnCommandPreview,
+  setIsNewChatCreationMandatory,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -51,7 +53,6 @@ import {
   ToolMessage,
   validateToolCall,
 } from "../../../services/refact";
-import { calculateUsageInputTokens } from "../../../utils/calculateUsageInputTokens";
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -228,30 +229,39 @@ export const chatReducer = createReducer(initialState, (builder) => {
     };
   });
 
+  builder.addCase(setIsNewChatCreationMandatory, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.new_chat_suggested = {
+      ...state.thread.new_chat_suggested,
+      isMandatory: action.payload.value,
+    };
+  });
+
   builder.addCase(setThreadUsage, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
 
     const { usage } = action.payload;
     state.thread.usage = usage;
+  });
 
-    const inputTokensAmount = calculateUsageInputTokens(usage, [
-      "prompt_tokens",
-      "cache_creation_input_tokens",
-      "cache_read_input_tokens",
-    ]);
-
-    const maximumInputTokens = state.thread.currentMaximumContextTokens;
-
-    if (maximumInputTokens && inputTokensAmount >= maximumInputTokens) {
-      const { wasSuggested, wasRejectedByUser } =
-        state.thread.new_chat_suggested;
-
-      state.thread.new_chat_suggested = {
-        wasSuggested: wasSuggested || !wasSuggested,
-        wasRejectedByUser: wasRejectedByUser
-          ? !wasRejectedByUser
-          : wasRejectedByUser,
+  builder.addCase(setUsageTokensOnCommandPreview, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    const currentUsage = state.thread.usage;
+    if (!currentUsage) {
+      state.thread.usage = {
+        prompt_tokens: action.payload.prompt_tokens,
+        completion_tokens: 0,
+        completion_tokens_details: null,
+        prompt_tokens_details: null,
+        total_tokens: action.payload.prompt_tokens,
       };
+    } else {
+      state.thread.usage = {
+        ...currentUsage,
+        prompt_tokens: action.payload.prompt_tokens,
+      };
+
+      state.thread.currentMaximumContextTokens = action.payload.n_ctx;
     }
   });
 
