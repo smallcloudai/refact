@@ -6,18 +6,28 @@ import {
 } from "../../features/ChatDB/chatDbMessagesSlice";
 import { UserInput } from "../ChatContent/UserInput";
 import { AssistantInput } from "../ChatContent/AssistantInput";
-import { ChatMessage } from "../../services/refact";
+import {
+  ChatMessage,
+  isAssistantMessage,
+  isChatContextFileMessage,
+  isDiffMessage,
+  isPlainTextMessage,
+  isUserMessage,
+} from "../../services/refact";
 import { IconButton } from "@radix-ui/themes";
 import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
+import { PlainText } from "../ChatContent/PlainText";
+import { ContextFiles } from "../ChatContent/ContextFiles";
+import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
   message,
 }) => {
-  if (message.role === "user") {
+  if (isUserMessage(message)) {
     return <UserInput>{message.content}</UserInput>;
   }
 
-  if (message.role === "assistant") {
+  if (isAssistantMessage(message)) {
     // find the tool result for the tool call
     return (
       <AssistantInput
@@ -25,6 +35,19 @@ const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
         toolCalls={message.tool_calls}
       />
     );
+  }
+
+  if (isPlainTextMessage(message)) {
+    return <PlainText>{message.content}</PlainText>;
+  }
+
+  if (isChatContextFileMessage(message)) {
+    return <ContextFiles files={message.content} />;
+  }
+
+  if (isDiffMessage(message)) {
+    // TODO: do we still need to group diffs?
+    return <GroupedDiffs diffs={[message]} />;
   }
 
   // add more case here from refact-agent/gui/src/components/ChatContent/ChatContent.tsx

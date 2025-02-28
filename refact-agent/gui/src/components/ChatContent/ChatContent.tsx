@@ -196,7 +196,7 @@ function renderMessages(
 
   if (head.role === "assistant") {
     const key = "assistant-input-" + index;
-    const isLast = !tail.some(isAssistantMessage);
+    const isLast = !tail.some(isAssistantMessage); // TODO: this is for knowledge
     const nextMemo = [
       ...memo,
       <AssistantInput
@@ -229,6 +229,7 @@ function renderMessages(
   }
 
   if (isDiffMessage(head)) {
+    // TODO: do we still need to group diffs?
     const restInTail = takeWhile(tail, (message) => {
       return isDiffMessage(message) || isToolMessage(message);
     });
