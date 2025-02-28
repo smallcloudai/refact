@@ -52,7 +52,7 @@ export const FormSmartlinks: FC<FormSmartlinksProps> = ({
             );
           })}
         </Flex>
-        {config.host !== "vscode" && (
+        {config.host !== "web" && (
           <Button
             variant="outline"
             color="gray"
