@@ -14,7 +14,6 @@ use tracing::{error, info, warn};
 
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::call_validation::ReasoningEffort;
 use crate::known_models::KNOWN_MODELS;
 
 
@@ -41,9 +40,9 @@ pub struct ModelRecord {
     #[serde(default)]
     pub supports_agent: bool,
     #[serde(default)]
-    pub supports_reasoning: bool,
+    pub supports_reasoning: Option<String>,
     #[serde(default)]
-    pub supports_reasoning_effort: Vec<ReasoningEffort>,
+    pub supports_boost_reasoning: bool,
     #[serde(default)]
     pub default_temperature: Option<f32>,
 }

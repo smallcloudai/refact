@@ -147,14 +147,20 @@ impl ScratchpadAbstract for ChatPassthrough {
             caps_locked.code_chat_models.get(&self.post.model).cloned()
         };
 
-        let (supports_reasoning, default_temperature, default_reasoning_effort) =
-            _model_reasoning_params(model_record_mb);
+        let supports_reasoning = if let Some(model_record) = model_record_mb.clone() {
+            !model_record.supports_reasoning.is_none()
+        } else {
+            false
+        };
+
         let messages = if supports_reasoning {
+            let model_record = model_record_mb.unwrap();
             _adapt_for_reasoning_models(
                 &messages,
                 sampling_parameters_to_patch,
-                default_temperature,
-                default_reasoning_effort,
+                model_record.supports_reasoning.unwrap(),
+                model_record.default_temperature.clone(),
+                model_record.supports_boost_reasoning.clone(),
             )
         } else {
             messages
@@ -267,39 +273,41 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 }
 
-fn _model_reasoning_params(
-    model_record_mb: Option<ModelRecord>,
-) -> (bool, Option<f32>, Option<ReasoningEffort>) {
-    let mut support_reasoning: bool = false;
-    let mut temperature: Option<f32> = None;
-    let mut reasoning_effort: Option<ReasoningEffort> = None;
-
-    if let Some(model_record) = model_record_mb {
-        support_reasoning = model_record.supports_reasoning.clone();
-        temperature = model_record.default_temperature.clone();
-        reasoning_effort = model_record.supports_reasoning_effort.first().cloned();
-    }
-
-    (support_reasoning, temperature, reasoning_effort)
-}
-
 fn _adapt_for_reasoning_models(
     messages: &Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
+    supports_reasoning: String,
     default_temperature: Option<f32>,
-    default_reasoning_effort: Option<ReasoningEffort>,
+    supports_boost_reasoning: bool,
 ) -> Vec<ChatMessage> {
-    sampling_parameters.temperature = default_temperature.clone();
-    if sampling_parameters.reasoning_effort.is_none() {
-        sampling_parameters.reasoning_effort = default_reasoning_effort.clone();
-    }
-
-    // Convert system messages to user messages
-    messages.iter().map(|msg| {
-        let mut msg = msg.clone();
-        if msg.role == "system" {
-            msg.role = "user".to_string();
+    match supports_reasoning.as_ref() {
+        "openai" => {
+            if supports_boost_reasoning && sampling_parameters.boost_reasoning {
+                sampling_parameters.reasoning_effort = Some(ReasoningEffort::High);
+            }
+            // NOTE: OpenAI prefer user message over system
+            messages.iter().map(|msg| {
+                let mut msg = msg.clone();
+                if msg.role == "system" {
+                    msg.role = "user".to_string();
+                }
+                msg
+            }).collect()
+        },
+        "anthropic" => {
+            // TODO: anthropic models require thinking to be passed in case of tool message in the end
+            // also we should compute budget_tokens
+            if supports_boost_reasoning && sampling_parameters.boost_reasoning {
+                sampling_parameters.thinking = Some(json!({
+                    "type": "enabled",
+                    "budget_tokens": 1024,  // in range [1024, max max_completion_tokens]
+                }));
+            }
+            messages.clone()
+        },
+        _ => {
+            sampling_parameters.temperature = default_temperature.clone();
+            messages.clone()
         }
-        msg
-    }).collect()
+    }
 }

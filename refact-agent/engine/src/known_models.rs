@@ -383,8 +383,8 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 200000,
             "supports_tools": true,
             "supports_multimodality": true,
-            "supports_reasoning": true,
-            "supports_reasoning_effort": ["medium", "high"],
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -393,8 +393,7 @@ pub const KNOWN_MODELS: &str = r####"
         "o1-mini": {
             "n_ctx": 128000,
             "supports_tools": true,
-            "supports_reasoning": true,
-            "supports_reasoning_effort": ["medium", "high"],
+            "supports_reasoning": "openai",
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -405,8 +404,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_tools": true,
             "supports_multimodality": false,
             "supports_agent": true,
-            "supports_reasoning": true,
-            "supports_reasoning_effort": ["medium", "high"],
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
@@ -444,11 +443,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_agent": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            },
-            "similar_models": [
-                "claude-3-7-sonnet",
-                "claude-3-7-sonnet-20250219"
-            ]
+            }
         },
         "claude-3-5-haiku": {
             "n_ctx": 16384,
@@ -460,6 +455,21 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "claude-3-5-haiku-20241022"
+            ]
+        },
+        "claude-3-7-sonnet": {
+            "n_ctx": 16384,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_clicks": true,
+            "supports_agent": true,
+            "supports_reasoning": "anthropic",
+            "supports_boost_reasoning": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "claude-3-7-sonnet-20250219"
             ]
         },
         "gemini-2.0-flash-exp": {
@@ -739,7 +749,7 @@ pub const KNOWN_MODELS: &str = r####"
             "n_ctx": 64000,
             "supports_tools": false,
             "supports_multimodality": false,
-            "supports_reasoning": true,
+            "supports_reasoning": "deepseek",
             "default_temperature": 0.6,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
@@ -775,7 +785,7 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "deepseek-r1-distill/1.5b/vllm": {
             "n_ctx": 32768,
-            "supports_reasoning": true,
+            "supports_reasoning": "deepseek",
             "default_temperature": 0.6,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
