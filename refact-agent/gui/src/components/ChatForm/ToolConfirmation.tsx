@@ -88,10 +88,6 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
     confirmToolUsage();
   };
 
-  const handleReject = useCallback(() => {
-    rejectToolUsage(toolCallIds);
-  }, [rejectToolUsage, toolCallIds]);
-
   const message = getConfirmationMessage(
     commands,
     rules,
@@ -105,7 +101,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
     return (
       <PatchConfirmation
         handleAllowForThisChat={handleAllowForThisChat}
-        rejectToolUsage={handleReject}
+        rejectToolUsage={rejectToolUsage}
         confirmToolUsage={confirmToolUsage}
       />
     );
@@ -171,7 +167,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
               color="red"
               variant="surface"
               size="1"
-              onClick={handleReject}
+              onClick={rejectToolUsage}
             >
               Stop
             </Button>
