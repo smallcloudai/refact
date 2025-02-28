@@ -6,12 +6,11 @@ use std::fmt;
 use axum::Json;
 use axum::response::IntoResponse;
 
-
 #[derive(Debug, Clone)]
 pub struct ScratchError {
     pub status_code: StatusCode,
     pub message: String,
-    pub telemetry_skip: bool,    // because already posted a better description directly
+    pub telemetry_skip: bool, // because already posted a better description directly
 }
 
 impl IntoResponse for ScratchError {
@@ -19,7 +18,9 @@ impl IntoResponse for ScratchError {
         let payload = json!({
             "detail": self.message,
         });
-        (self.status_code, Json(payload)).into_response()
+        let mut response = (self.status_code, Json(payload)).into_response();
+        response.extensions_mut().insert(self);
+        response
     }
 }
 
