@@ -91,6 +91,7 @@ export type CapsResponse = {
   telemetry_basic_dest: string;
   tokenizer_path_template: string;
   tokenizer_rewrite_path: Record<string, unknown>;
+  support_metadata: boolean;
 };
 
 export function isCapsResponse(json: unknown): json is CapsResponse {

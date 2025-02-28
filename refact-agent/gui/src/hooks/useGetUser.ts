@@ -1,10 +1,8 @@
-import { useEffect } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
 import { smallCloudApi } from "../services/smallcloud";
-import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
-import { useAppDispatch } from "./useAppDispatch";
 import { selectIsStreaming } from "../features/Chat";
+import { useGetCapsQuery } from "./useGetCapsQuery";
 
 const NOT_SKIPPABLE_ADDRESS_URLS = [
   "Refact",
@@ -12,10 +10,11 @@ const NOT_SKIPPABLE_ADDRESS_URLS = [
 ];
 
 export const useGetUser = () => {
-  const dispatch = useAppDispatch();
   const maybeAddressURL = useAppSelector(selectAddressURL);
   const addressURL = maybeAddressURL ? maybeAddressURL.trim() : "";
   const maybeApiKey = useAppSelector(selectApiKey);
+  const { data: capsData } = useGetCapsQuery();
+  const supportsMetadata = capsData?.support_metadata;
   const isStreaming = useAppSelector(selectIsStreaming);
   const apiKey = maybeApiKey ?? "";
   const isAddressURLALink =
@@ -27,20 +26,12 @@ export const useGetUser = () => {
       skip:
         !(
           NOT_SKIPPABLE_ADDRESS_URLS.includes(addressURL) || isAddressURLALink
-        ) || isStreaming,
-      refetchOnMountOrArgChange: true,
+        ) ||
+        isStreaming ||
+        (supportsMetadata !== undefined && !supportsMetadata), // if it's enterprise, then skipping this request
+      pollingInterval: 60 * 60 * 1000, // 1 hour
     },
   );
-
-  useEffect(() => {
-    if (request.data && !isStreaming) {
-      const action = setInitialAgentUsage({
-        agent_usage: request.data.refact_agent_request_available,
-        agent_max_usage_amount: request.data.refact_agent_max_request_num,
-      });
-      dispatch(action);
-    }
-  }, [dispatch, request.data, isStreaming]);
 
   return request;
 };

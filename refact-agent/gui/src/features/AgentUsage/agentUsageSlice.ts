@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { smallCloudApi } from "../../services/smallcloud";
 
 export type AgentUsageMeta = {
   agent_usage: null | number; // null if plan is PRO or ROBOT
@@ -29,6 +30,18 @@ export const agentUsageSlice = createSlice({
       state.agent_usage = agent_usage;
       state.agent_max_usage_amount = agent_max_usage_amount;
     },
+  },
+
+  extraReducers: (builder) => {
+    builder.addMatcher(
+      smallCloudApi.endpoints.getUser.matchFulfilled,
+      (state, action) => {
+        const { refact_agent_max_request_num, refact_agent_request_available } =
+          action.payload;
+        state.agent_max_usage_amount = refact_agent_max_request_num;
+        state.agent_usage = refact_agent_request_available;
+      },
+    );
   },
 
   selectors: {

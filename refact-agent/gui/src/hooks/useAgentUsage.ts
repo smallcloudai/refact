@@ -14,9 +14,6 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { UNLIMITED_PRO_MODELS_LIST } from "./useCapsForToolUse";
 
-export const USAGE_LIMIT_EXHAUSTED_MESSAGE =
-  "You have exceeded the FREE usage limit. Wait till tomorrow to send messages again, or upgrade to PRO.";
-
 export function useAgentUsage() {
   const dispatch = useAppDispatch();
   const user = useGetUser();
@@ -25,6 +22,13 @@ export function useAgentUsage() {
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const currentModel = useAppSelector(selectModel);
+
+  const usageLimitExhaustedMessage = useMemo(() => {
+    const userPlan = user.data?.inference;
+    return userPlan === "FREE"
+      ? "You have exceeded the FREE usage limit. Wait till tomorrow to send messages again, or upgrade to PRO."
+      : "You have exceeded the PRO usage limit. Wait till tomorrow to send messages again, or increase limits.";
+  }, [user.data?.inference]);
 
   const aboveUsageLimit = useMemo(() => {
     if (agentUsage === null) return false;
@@ -101,5 +105,6 @@ export function useAgentUsage() {
     pollingForUser,
     disableInput,
     plan: user.data?.inference ?? "",
+    usageLimitExhaustedMessage,
   };
 }
