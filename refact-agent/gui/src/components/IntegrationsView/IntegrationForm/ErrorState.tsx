@@ -3,7 +3,8 @@ import { Badge, Button, Flex, Text } from "@radix-ui/themes";
 import { FC } from "react";
 import { IntegrationDeletePopover } from "../IntegrationDeletePopover";
 import { Integration } from "../../../services/refact";
-import { useEventsBusForIDE } from "../../../hooks";
+import { useAppSelector, useEventsBusForIDE } from "../../../hooks";
+import { selectConfig } from "../../../features/Config/configSlice";
 
 type ErrorStateProps = {
   integration: Integration;
@@ -18,11 +19,13 @@ export const ErrorState: FC<ErrorStateProps> = ({
   isDeletingIntegration,
   integration,
 }) => {
+  const config = useAppSelector(selectConfig);
   const { openFile } = useEventsBusForIDE();
 
   const { integr_name } = integration;
   const { error_msg, integr_config_path, error_line } =
     integration.error_log[0];
+
   return (
     <Flex width="100%" direction="column" align="start" gap="4">
       <Text size="2" color="gray">
@@ -33,18 +36,21 @@ export const ErrorState: FC<ErrorStateProps> = ({
         <ExclamationTriangleIcon /> {error_msg}
       </Badge>
       <Flex align="center" gap="2">
-        <Button
-          variant="outline"
-          color="gray"
-          onClick={() =>
-            openFile({
-              file_name: integr_config_path,
-              line: error_line === 0 ? 1 : error_line,
-            })
-          }
-        >
-          Open {integr_name}.yaml
-        </Button>
+        {config.host !== "web" && (
+          <Button
+            variant="outline"
+            color="gray"
+            title={`Open ${integr_name}.yaml configuration file in your IDE`}
+            onClick={() =>
+              openFile({
+                file_name: integr_config_path,
+                line: error_line === 0 ? 1 : error_line,
+              })
+            }
+          >
+            Open {integr_name}.yaml
+          </Button>
+        )}
         <IntegrationDeletePopover
           integrationName={integr_name}
           integrationConfigPath={integr_config_path}
