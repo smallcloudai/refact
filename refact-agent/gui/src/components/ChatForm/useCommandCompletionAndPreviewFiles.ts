@@ -21,6 +21,7 @@ import {
   selectChatId,
   selectIsStreaming,
   selectMessages,
+  selectModel,
   selectThreadMode,
   setUsageTokensOnCommandPreview,
 } from "../../features/Chat";
@@ -90,6 +91,7 @@ function useGetCommandPreviewQuery(
   const chatId = useAppSelector(selectChatId);
   const isStreaming = useAppSelector(selectIsStreaming);
   const currentThreadMode = useAppSelector(selectThreadMode);
+  const currentModel = useAppSelector(selectModel);
 
   const userMessage = maybeAddImagesToQuestion(query);
 
@@ -101,7 +103,7 @@ function useGetCommandPreviewQuery(
   };
 
   const { data } = commandsApi.useGetCommandPreviewQuery(
-    { messages: messagesToSend, meta: metaToSend },
+    { messages: messagesToSend, meta: metaToSend, model: currentModel },
     {
       skip: !hasCaps || isStreaming,
     },

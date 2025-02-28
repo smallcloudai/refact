@@ -57,6 +57,7 @@ import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter";
+import classNames from "classnames";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -68,7 +69,7 @@ export type ChatFormProps = {
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
-  // className,
+  className,
   unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
@@ -349,7 +350,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         {shouldAgentCapabilitiesBeShown && <AgentCapabilities />}
         <Form
           disabled={disableSend}
-          className={styles.chatForm__form}
+          className={classNames(styles.chatForm__form, className)}
           onSubmit={handleSubmit}
         >
           <FilesPreview files={previewFiles} />

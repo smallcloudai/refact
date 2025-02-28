@@ -43,32 +43,30 @@ const InlineHoverCard: React.FC = () => {
   const { prompt_tokens } = currentThreadUsage;
 
   return (
-    <div>
-      <HoverCard.Content
-        size="1"
-        maxHeight="50vh"
-        avoidCollisions
-        align="start"
-        side="top"
-      >
-        <Flex direction="column" align="start" gap="2">
-          {maximumThreadContextTokens && (
-            <TokenDisplay
-              label="Current chat thread context size:"
-              value={maximumThreadContextTokens}
-            />
-          )}
+    <HoverCard.Content
+      size="1"
+      maxHeight="50vh"
+      avoidCollisions
+      align="start"
+      side="top"
+    >
+      <Flex direction="column" align="start" gap="2">
+        {maximumThreadContextTokens && (
           <TokenDisplay
-            label="Potential tokens from current message:"
-            value={prompt_tokens}
+            label="Current chat thread context size:"
+            value={maximumThreadContextTokens}
           />
-          <TokenDisplay
-            label="Updated prompt tokens for this thread:"
-            value={totalInputTokens}
-          />
-        </Flex>
-      </HoverCard.Content>
-    </div>
+        )}
+        <TokenDisplay
+          label="Potential tokens from current message:"
+          value={prompt_tokens}
+        />
+        <TokenDisplay
+          label="Updated prompt tokens for this thread:"
+          value={totalInputTokens}
+        />
+      </Flex>
+    </HoverCard.Content>
   );
 };
 
