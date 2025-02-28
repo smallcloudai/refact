@@ -1,7 +1,8 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { chatAskQuestionThunk, chatResponse } from "../Chat";
 import { isAssistantMessage, isDiffResponse } from "../../events";
 import { parseOrElse, partition } from "../../utils";
+import { RootState } from "../../app/store";
 
 export type PatchMeta = {
   chatId: string;
@@ -86,46 +87,45 @@ export const patchesAndDiffsTrackerSlice = createSlice({
   },
 
   selectors: {
-    selectUnsentPatchesFilePaths: (state) => {
-      const [unstarted, started] = partition(
-        state.patches,
-        (patchMeta) => patchMeta.started,
-      );
-      const unstaredFilePaths = unstarted.map(
-        (patchMeta) => patchMeta.filePath,
-      );
-      const startedFilePaths = started.map((patchMeta) => patchMeta.filePath);
-      return unstaredFilePaths.filter(
-        (filePath) => !startedFilePaths.includes(filePath),
-      );
-    },
-    selectCompletedPatchesFilePaths: (state) => {
-      const [incomplete, completed] = partition(
-        state.patches,
-        (patchMeta) => patchMeta.completed,
-      );
-      const incompleteFilePaths = incomplete.map(
-        (patchMeta) => patchMeta.filePath,
-      );
-      const completeFilePaths = completed.map(
-        (patchMeta) => patchMeta.filePath,
-      );
-      return completeFilePaths.filter(
-        (filePath) => !incompleteFilePaths.includes(filePath),
-      );
-    },
-
     selectAllFilePaths: (state) => {
       return state.patches.map((patchMeta) => patchMeta.filePath);
     },
   },
 });
 
-export const {
-  selectCompletedPatchesFilePaths,
-  selectUnsentPatchesFilePaths,
-  selectAllFilePaths,
-} = patchesAndDiffsTrackerSlice.selectors;
+export const { selectAllFilePaths } = patchesAndDiffsTrackerSlice.selectors;
+
+export const selectUnsentPatchesFilePaths = createSelector(
+  [(state: RootState) => state.patchesAndDiffsTracker],
+  (state) => {
+    const [unstarted, started] = partition(
+      state.patches,
+      (patchMeta) => patchMeta.started,
+    );
+    const unstartedFilePaths = unstarted.map((patchMeta) => patchMeta.filePath);
+    const startedFilePaths = started.map((patchMeta) => patchMeta.filePath);
+    return unstartedFilePaths.filter(
+      (filePath) => !startedFilePaths.includes(filePath),
+    );
+  },
+);
+
+export const selectCompletedPatchesFilePaths = createSelector(
+  [(state: RootState) => state.patchesAndDiffsTracker],
+  (state) => {
+    const [incomplete, completed] = partition(
+      state.patches,
+      (patchMeta) => patchMeta.completed,
+    );
+    const incompleteFilePaths = incomplete.map(
+      (patchMeta) => patchMeta.filePath,
+    );
+    const completeFilePaths = completed.map((patchMeta) => patchMeta.filePath);
+    return completeFilePaths.filter(
+      (filePath) => !incompleteFilePaths.includes(filePath),
+    );
+  },
+);
 
 export const { setStartedByFilePaths, removePatchMetaByFileNameIfCompleted } =
   patchesAndDiffsTrackerSlice.actions;
