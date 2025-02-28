@@ -53,7 +53,7 @@ fn is_default_json_value(value: &serde_json::Value) -> bool {
 
 fn last_message_assistant_without_tools_with_code_blocks(messages: &Vec<ChatMessage>) -> bool {
     if let Some(m) = messages.last() {
-        m.role == "assistant" 
+        m.role == "assistant"
             && m.tool_calls.as_ref().map(|x| x.is_empty()).unwrap_or(true)
             && (m.content.content_text_only().contains("```") || m.content.content_text_only().contains("|"))
     } else {
@@ -107,7 +107,7 @@ pub async fn handle_v1_links(
             });
         }
     }
-    
+
     // GIT Init
     // if post.meta.chat_mode.is_agentic() && post.messages.is_empty() {
     //     if let Some(path) = crate::files_correction::get_active_project_path(gcx.clone()).await {
@@ -135,7 +135,7 @@ pub async fn handle_v1_links(
         let mut commit_texts = Vec::new();
         for commit_info in &commits_info {
             let mut commit_text = format!("In project {}:\n", commit_info.get_project_name());
-            
+
             if !commit_info.staged_changes.is_empty() {
                 commit_text.push_str("Staged changes:\n");
                 commit_text.push_str(&commit_info.staged_changes.iter()
@@ -193,7 +193,7 @@ pub async fn handle_v1_links(
                 }
                 links.push(Link {
                     link_action: LinkAction::Commit,
-                    link_text: format!("Commit {} files in `{}`", commit_with_msg.staged_changes.len() + 
+                    link_text: format!("Commit {} files in `{}`", commit_with_msg.staged_changes.len() +
                         commit_with_msg.unstaged_changes.len(), commit_with_msg.get_project_name()),
                     link_goto: Some("LINKS_AGAIN".to_string()),
                     link_summary_path: None,
@@ -216,7 +216,7 @@ pub async fn handle_v1_links(
                 ..Default::default()
             })
         }
-    
+
         // YAML problems
         for e in integration_yaml_errors {
             links.push(Link {
@@ -229,7 +229,7 @@ pub async fn handle_v1_links(
             });
         }
     }
-    
+
     // RegenerateWithIncreasedContextSize
     if last_message_stripped_assistant(&post.messages) {
         links.push(Link {
@@ -249,9 +249,9 @@ pub async fn handle_v1_links(
             ..Default::default()
         });
     }
-    
+
     // Tool recommendations
-    /* temporary remove project summary and recomended integrations 
+    /* temporary remove project summary and recomended integrations
     if post.meta.chat_mode.is_agentic() {
         if post.messages.is_empty() {
             let (summary_exists, summary_path_option) = crate::scratchpads::chat_utils_prompts::dig_for_project_summarization_file(gcx.clone()).await;
@@ -331,17 +331,18 @@ pub async fn handle_v1_links(
                         }
                     }
                 }
-            }      
+            }
         }
     }
     */
 
     // Follow-up
     let mut new_chat_suggestion = false;
-    if post.meta.chat_mode != ChatMode::NO_TOOLS 
+    if post.meta.chat_mode != ChatMode::NO_TOOLS
         && links.is_empty()
         && post.messages.len() > 2
-        && post.messages.last().map(|x| x.role == "assistant").unwrap_or(false) {
+        && post.messages.last().map(|x| x.role == "assistant").unwrap_or(false)
+    {
         let follow_up_response = generate_follow_up_message(
             post.messages.clone(), gcx.clone(), Some("gpt-4o-mini".to_string()), &post.model_name, &post.meta.chat_id
         ).await
