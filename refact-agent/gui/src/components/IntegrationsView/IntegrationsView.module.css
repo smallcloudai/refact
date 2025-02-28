@@ -37,16 +37,8 @@
   max-width: 80%;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 65px;
-
-  /* position: fixed; */
-  /* width: max-content; */
-  /* max-width: 80%;
-  left: 50%;
-  translate: -50%;
   background-color: var(--accent-3);
-  overflow: hidden;
-  bottom: 65px; */
+  bottom: 65px;
 }
 
 /* styles for IDEs (padding for pages varies on config.host (vscode, jetbrains, web) */
