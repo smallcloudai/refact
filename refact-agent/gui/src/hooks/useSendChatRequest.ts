@@ -50,11 +50,9 @@ import {
   setChatMode,
   setIsWaitingForResponse,
   setLastUserMessageId,
-  upsertToolCall,
 } from "../features/Chat";
 
 import { v4 as uuidv4 } from "uuid";
-import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 type SubmitHandlerParams =
   | {
@@ -321,27 +319,16 @@ export const useSendChatRequest = () => {
     dispatch(setIsWaitingForResponse(false));
   }, [abort, dispatch]);
 
-  const rejectToolUsage = useCallback(
-    (toolCallIds: string[]) => {
-      abort();
-
-      toolCallIds.forEach((toolCallId) => {
-        dispatch(
-          upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }),
-        );
-        dispatch(upsertToolCall({ toolCallId, chatId, accepted: false }));
-      });
-
-      dispatch(
-        clearPauseReasonsAndHandleToolsStatus({
-          wasInteracted: true,
-          confirmationStatus: false,
-        }),
-      );
-      dispatch(setIsWaitingForResponse(false));
-    },
-    [abort, chatId, dispatch],
-  );
+  const rejectToolUsage = useCallback(() => {
+    abort();
+    dispatch(
+      clearPauseReasonsAndHandleToolsStatus({
+        wasInteracted: true,
+        confirmationStatus: false,
+      }),
+    );
+    dispatch(setIsWaitingForResponse(false));
+  }, [abort, dispatch]);
 
   const retryFromIndex = useCallback(
     (index: number, question: UserMessage["content"]) => {
