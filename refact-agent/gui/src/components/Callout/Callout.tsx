@@ -93,6 +93,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   onClick,
   children,
   preventRetry,
+  className,
   ...props
 }) => {
   const logout = useLogout();
@@ -106,11 +107,12 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
       timeout={timeout}
       itemType={props.itemType}
       preventRetry={isAuthError ?? preventRetry}
+      className={classNames(styles.callout_box_inner, className)}
       {...props}
     >
       Error: {children}
       {!isAuthError && (
-        <Text size="1" as="p">
+        <Text size="1" as="span" className={styles.retryText}>
           {preventRetry ? "Click to close" : "Click to retry"}
         </Text>
       )}
