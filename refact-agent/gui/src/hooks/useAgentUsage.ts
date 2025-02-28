@@ -13,9 +13,11 @@ import {
 } from "../features/Chat";
 import { useAppDispatch } from "./useAppDispatch";
 import { UNLIMITED_PRO_MODELS_LIST } from "./useCapsForToolUse";
+import { useGetCapsQuery } from "./useGetCapsQuery";
 
 export function useAgentUsage() {
   const dispatch = useAppDispatch();
+  const caps = useGetCapsQuery();
   const user = useGetUser();
   const agentUsage = useAppSelector(selectAgentUsage);
   const maxAgentUsageAmount = useAppSelector(selectMaxAgentUsageAmount);
@@ -86,11 +88,19 @@ export function useAgentUsage() {
       UNLIMITED_PRO_MODELS_LIST.includes(currentModel)
     )
       return false;
+    if (caps.data?.support_metadata === false) return false;
     if (isStreaming || isWaiting) return false;
     if (agentUsage === null) return false;
     if (agentUsage > 5) return false;
     return true;
-  }, [user.data?.inference, isStreaming, isWaiting, agentUsage, currentModel]);
+  }, [
+    user.data?.inference,
+    caps.data?.support_metadata,
+    isStreaming,
+    isWaiting,
+    agentUsage,
+    currentModel,
+  ]);
 
   const disableInput = useMemo(() => {
     return shouldShow && aboveUsageLimit;
