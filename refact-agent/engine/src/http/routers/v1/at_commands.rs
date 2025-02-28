@@ -149,18 +149,22 @@ pub async fn handle_v1_command_preview(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut messages = deserialize_messages_from_post(&post.messages)?;
     
-    let last_message = messages.pop().unwrap();
-    let mut query = match &last_message.content {
-        ChatContent::SimpleText(query) => query.clone(),
-        ChatContent::Multimodal(elements) => {
-            let mut query = String::new();
-            for element in elements {
-                if element.is_text() { // use last text, but expected to be only one
-                    query = element.m_content.clone();
-                }    
+    let last_message = messages.pop();
+    let mut query = if let Some(last_message) = &last_message {
+        match &last_message.content {
+            ChatContent::SimpleText(query) => query.clone(),
+            ChatContent::Multimodal(elements) => {
+                let mut query = String::new();
+                for element in elements {
+                    if element.is_text() { // use last text, but expected to be only one
+                        query = element.m_content.clone();
+                    }    
+                }
+                query
             }
-            query
         }
+    } else {
+        String::new()
     };
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
@@ -251,10 +255,9 @@ pub async fn handle_v1_command_preview(
         })
     }
     
-    let mut new_last_message = last_message.clone();
-    {
-        match &mut new_last_message.content {
-            ChatContent::SimpleText(_) => {new_last_message.content = ChatContent::SimpleText(query.clone());}
+    if let Some(mut last_message) = last_message {
+        match &mut last_message.content {
+            ChatContent::SimpleText(_) => {last_message.content = ChatContent::SimpleText(query.clone());}
             ChatContent::Multimodal(elements) => {
                 for elem in elements {
                     if elem.is_text() {
@@ -262,9 +265,12 @@ pub async fn handle_v1_command_preview(
                     }
                 }
             }
-        }
+        };
+        messages.push(last_message);
     }
-    let tokens_number = count_tokens(tokenizer_arc.clone(), &itertools::concat(vec![preview.clone(), vec![new_last_message]])).await?;
+    let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+        global_context.clone(), messages.clone(), &post.meta, &mut HasRagResults::new()).await;
+    let tokens_number = count_tokens(tokenizer_arc, &messages).await?;
     
     Ok(Response::builder()
         .status(StatusCode::OK)
