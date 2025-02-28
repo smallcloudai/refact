@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::collections::HashMap;
-use axum::Extension;
+use axum::{Extension, Json};
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use url::Url;
@@ -10,7 +10,6 @@ use crate::global_context::SharedGlobalContext;
 use crate::ast::ast_structs::AstDefinition;
 use crate::custom_error::ScratchError;
 use crate::ast::treesitter::structs::SymbolType;
-
 
 #[derive(Deserialize)]
 pub struct CodeLensPost {
@@ -51,15 +50,16 @@ impl CodeLensCache {
 
 pub async fn handle_v1_code_lens(
     Extension(global_context): Extension<SharedGlobalContext>,
-    body_bytes: hyper::body::Bytes,
+    Json(post): Json<CodeLensPost>,
 ) -> Result<Response<Body>, ScratchError> {
-    let post = serde_json::from_slice::<CodeLensPost>(&body_bytes).map_err(|e| {
-        tracing::info!("chat handler cannot parse input:\n{:?}", body_bytes);
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    })?;
     let codelens_cache = global_context.read().await.codelens_cache.clone();
 
-    let cpath = crate::files_correction::canonical_path(&post.uri.to_file_path().unwrap_or_default().to_string_lossy().to_string());
+    let cpath = crate::files_correction::canonical_path(
+        post.uri
+            .to_file_path()
+            .unwrap_or_default()
+            .to_string_lossy(),
+    );
     let cpath_str = cpath.to_string_lossy().to_string();
 
     let ast_service_opt = global_context.read().await.ast_service.clone();
