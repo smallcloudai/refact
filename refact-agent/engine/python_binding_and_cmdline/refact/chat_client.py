@@ -227,6 +227,7 @@ async def ask_using_http(
     callback: Optional[Callable] = None,
     chat_id: Optional[str] = None,
     chat_remote: bool = False,
+    boost_thinking: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -246,6 +247,10 @@ async def ask_using_http(
     }
     if postprocess_parameters is not None:
         post_me["postprocess_parameters"] = postprocess_parameters
+    if boost_thinking:
+        post_me["parameters"] = {
+            "boost_reasoning": True,
+        }
     meta = {}
     if chat_id is not None:
         meta["chat_id"] = chat_id
