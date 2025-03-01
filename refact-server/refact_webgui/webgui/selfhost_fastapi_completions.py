@@ -79,9 +79,9 @@ class NlpCompletion(NlpSamplingParams):
 class ChatMessage(BaseModel):
     role: str
     content: Union[str, List[Dict]]
-    # TODO: validate using pydantic
     tool_calls: Optional[List[Dict[str, Any]]] = None
     tool_call_id: Optional[str] = None
+    thinking_blocks: Optional[List[Dict]] = None
 
 
 class ChatContext(NlpSamplingParams):
