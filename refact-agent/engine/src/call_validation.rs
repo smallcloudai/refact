@@ -39,16 +39,25 @@ impl Default for ReasoningEffort {
     }
 }
 
+impl ReasoningEffort {
+    pub fn to_string(&self) -> String { format!("{:?}", self).to_lowercase() }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SamplingParameters {
     #[serde(default)]
     pub max_new_tokens: usize,  // TODO: rename it to `max_completion_tokens` everywhere, including chat-js
     pub temperature: Option<f32>,
-    pub top_p: Option<f32>,
+    pub top_p: Option<f32>,  // NOTE: deprecated
     #[serde(default)]
     pub stop: Vec<String>,
     pub n: Option<usize>,
-    pub reasoning_effort: Option<ReasoningEffort>
+    pub boost_reasoning: bool,
+    // NOTE: use the following arguments for direct API calls
+    #[serde(default)]
+    pub reasoning_effort: Option<ReasoningEffort>,  // OpenAI style reasoning
+    #[serde(default)]
+    pub thinking: Option<serde_json::Value>,  // Anthropic style reasoning
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -163,6 +172,8 @@ pub struct ChatMessage {
     pub usage: Option<ChatUsage>,
     #[serde(default, skip_serializing_if="Vec::is_empty")]
     pub checkpoints: Vec<Checkpoint>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub thinking_blocks: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -337,10 +348,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -368,10 +376,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -399,10 +404,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -430,10 +432,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
