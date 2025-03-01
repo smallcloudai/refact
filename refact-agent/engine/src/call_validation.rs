@@ -172,6 +172,8 @@ pub struct ChatMessage {
     pub usage: Option<ChatUsage>,
     #[serde(default, skip_serializing_if="Vec::is_empty")]
     pub checkpoints: Vec<Checkpoint>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub thinking_blocks: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
