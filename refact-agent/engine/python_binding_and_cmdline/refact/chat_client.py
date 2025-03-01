@@ -55,6 +55,7 @@ class Message(BaseModel):
     usage: Optional[Usage] = None
     subchats: Optional[DefaultDict[str, List[Message]]] = None
     model_config = ConfigDict()
+    thinking_blocks: Optional[List[Dict]] = None
 
 
 def format_multimodal(content: List[MultimodalElement]) -> str:
@@ -267,6 +268,7 @@ async def ask_using_http(
                     msg = Message(
                         role=ch["message"]["role"],
                         content=ch["message"]["content"],
+                        thinking_blocks=ch["message"].get("thinking_blocks"),
                         tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
                         finish_reason=ch["finish_reason"],
                         # NOTE: backend should send usage for each choice
