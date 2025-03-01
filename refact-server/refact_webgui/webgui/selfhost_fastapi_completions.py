@@ -547,11 +547,6 @@ class BaseCompletionsRouter(APIRouter):
         if post.thinking:
             completion_kwargs["thinking"] = post.thinking
 
-        log(f"{completion_kwargs}")
-        if model_name.startswith("claude"):
-            with open("completion_kwargs.json", "w") as f:
-                json.dump(completion_kwargs, f)
-
         async def litellm_streamer():
             generated_tokens_n = 0
             try:
