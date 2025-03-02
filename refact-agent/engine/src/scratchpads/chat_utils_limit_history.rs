@@ -3,6 +3,26 @@ use crate::call_validation::ChatMessage;
 use std::collections::{HashSet, HashMap};
 
 
+fn _check_invariant(messages: &Vec<ChatMessage>) -> Result<(), String> {
+    if messages.len() == 0 {
+        return Ok(());
+    }
+    if messages.len() > 0 && messages[0].role == "system" {
+        if messages.len() == 1 {
+            return Ok(());
+        }
+        if messages[1].role == "user" {
+            return Ok(());
+        }
+    }
+    let mut err_text = String::new();
+    for msg in messages.iter() {
+        err_text.push_str(format!("{}/", msg.role).as_str());
+    }
+    err_text = format!("invariant doesn't hold: {}", err_text);
+    return Err(err_text);
+}
+
 pub fn limit_messages_history(
     t: &HasTokenizerAndEot,
     messages: &Vec<ChatMessage>,
@@ -13,6 +33,7 @@ pub fn limit_messages_history(
     if n_ctx <= max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, max_new_tokens));
     }
+    _check_invariant(messages)?;
     let tokens_limit = (n_ctx - max_new_tokens) as i32;
 
     let token_counts: Vec<i32> = messages
@@ -20,6 +41,7 @@ pub fn limit_messages_history(
         .map(|msg| -> Result<i32, String> { Ok(3 + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
         .collect::<Result<Vec<_>, String>>()?;
 
+    // Always include messages from last_user_msg_starts to the end
     let mut included_indices: Vec<usize> = (last_user_msg_starts..messages.len()).collect();
     let mut tokens_used: i32 = included_indices.iter().map(|&i| token_counts[i]).sum();
     if tokens_used > tokens_limit {
@@ -31,22 +53,31 @@ pub fn limit_messages_history(
         tokens_used += token_counts[0];
     }
 
-    // Add earlier messages from end to beginning, respecting token limit
-    for i in (0..last_user_msg_starts).rev() {
-        let msg_tokens = token_counts[i];
-        if i==0 && messages[i].role == "system" {
-            continue;
+    // Find the most recent complete conversation blocks that fit within the token limit
+    // A complete block is: user -> assistant -> [tool -> assistant ->]*
+    let mut user_message_indices: Vec<usize> = Vec::new();
+    for i in (1 .. last_user_msg_starts).rev() {
+        if messages[i].role == "user" {
+            user_message_indices.push(i);
         }
-        if tokens_used + msg_tokens <= tokens_limit {
-            included_indices.push(i);
-            tokens_used += msg_tokens;
-            tracing::info!("take {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30), tokens_used, tokens_limit);
+    }
+
+    for &user_idx in &user_message_indices {
+        let next_user_idx = user_message_indices.iter().filter(|&&idx| idx > user_idx).min().copied().unwrap_or(last_user_msg_starts);
+        let block_indices: Vec<usize> = (user_idx .. next_user_idx).collect();
+        let block_tokens: i32 = block_indices.iter().map(|&i| token_counts[i]).sum();
+        if tokens_used + block_tokens <= tokens_limit {
+            for idx in block_indices {
+                included_indices.push(idx);
+                tokens_used += token_counts[idx];
+                tracing::info!("take {:?}, tokens_used={} < {}", crate::nicer_logs::first_n_chars(&messages[idx].content.content_text_only(), 30), tokens_used, tokens_limit);
+            }
         } else {
+            // If this block doesn't fit, earlier blocks won't fit either
             break;
         }
     }
 
-    // Handle tool call dependencies
     let mut tool_call_to_index: HashMap<String, usize> = HashMap::new();
     for (i, msg) in messages.iter().enumerate() {
         if let Some(tool_calls) = &msg.tool_calls {
@@ -56,14 +87,16 @@ pub fn limit_messages_history(
         }
     }
 
-    // Remove tool results if their tool calls aren’t included
+    // Remove tool results if their tool calls aren't included
     let mut included_set: HashSet<usize> = included_indices.iter().cloned().collect();
     let mut to_remove = Vec::new();
     for &i in &included_indices {
-        if let Some(call_index) = tool_call_to_index.get(&messages[i].tool_call_id) {
-            if !included_set.contains(call_index) {
-                tracing::info!("DROP TOOL RESULT {:?}", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30));
-                to_remove.push(i);
+        if !messages[i].tool_call_id.is_empty() {
+            if let Some(call_index) = tool_call_to_index.get(&messages[i].tool_call_id) {
+                if !included_set.contains(call_index) {
+                    tracing::info!("DROP TOOL RESULT {:?}", crate::nicer_logs::first_n_chars(&messages[i].content.content_text_only(), 30));
+                    to_remove.push(i);
+                }
             }
         }
     }
@@ -75,11 +108,7 @@ pub fn limit_messages_history(
     included_indices = included_set.into_iter().collect();
     included_indices.sort(); // Sort indices to match original order
 
-    let messages_out: Vec<ChatMessage> = included_indices
-        .iter()
-        .map(|&i| messages[i].clone())
-        .collect();
-
+    // Log dropped messages
     for (i, msg) in messages.iter().enumerate() {
         if !included_indices.contains(&i) {
             tracing::info!("DROP {:?} with {} tokens", crate::nicer_logs::first_n_chars(&msg.content.content_text_only(), 30), token_counts[i]);
@@ -91,6 +120,7 @@ pub fn limit_messages_history(
         .map(|&i| messages[i].clone())
         .collect();
 
+    _check_invariant(&messages_out)?;
     tracing::info!("original {} messages => keep {} messages with {} tokens", messages.len(), messages_out.len(), tokens_used);
     Ok(messages_out)
 }
@@ -140,8 +170,8 @@ mod tests {
     fn create_mock_chat_history() -> (Vec<ChatMessage>, usize) {
         let x = vec![
             create_test_message("system", "System prompt", None, None),
-            create_test_message("user", "First user message", None, None),
-            create_test_message("assistant", "First assistant response", None, Some(vec![
+            create_test_message("user", "block 1 user message", None, None),
+            create_test_message("assistant", "block 1 assistant response", None, Some(vec![
                 ChatToolCall {
                     id: "tool1".to_string(),
                     function: ChatToolFunction {
@@ -151,8 +181,8 @@ mod tests {
                     tool_type: "function".to_string()
                 }
             ])),
-            create_test_message("tool", "First tool result", Some("tool1".to_string()), None),
-            create_test_message("assistant", "Second assistant response", None, Some(vec![
+            create_test_message("tool", "block 1 tool result", Some("tool1".to_string()), None),
+            create_test_message("assistant", "block 1 another assistant response", None, Some(vec![
                 ChatToolCall {
                     id: "tool2".to_string(),
                     function: ChatToolFunction {
@@ -162,9 +192,9 @@ mod tests {
                     tool_type: "function".to_string()
                 }
             ])),
-            create_test_message("tool", "Second tool result", Some("tool2".to_string()), None),
-            create_test_message("user", "Second user message", None, None),
-            create_test_message("assistant", "Third assistant response", None, Some(vec![
+            create_test_message("tool", "block 1 another tool result", Some("tool2".to_string()), None),
+            create_test_message("user", "block 2 user message", None, None),
+            create_test_message("assistant", "block 2 assistant response", None, Some(vec![
                 ChatToolCall {
                     id: "tool3".to_string(),
                     function: ChatToolFunction {
@@ -174,8 +204,8 @@ mod tests {
                     tool_type: "function".to_string()
                 }
             ])),
-            create_test_message("tool", "Third tool result", Some("tool3".to_string()), None),
-            create_test_message("assistant", "Fourth assistant response", None, Some(vec![
+            create_test_message("tool", "block 2 tool result", Some("tool3".to_string()), None),
+            create_test_message("assistant", "block 2 assistant response", None, Some(vec![
                 ChatToolCall {
                     id: "tool4".to_string(),
                     function: ChatToolFunction {
@@ -185,30 +215,25 @@ mod tests {
                     tool_type: "function".to_string()
                 }
             ])),
-            create_test_message("tool", "Fourth tool result", Some("tool4".to_string()), None),
-            create_test_message("user", "Third user message", None, None),
-            create_test_message("user", "Fourth user message", None, None),
+            create_test_message("tool", "block 2 another tool result", Some("tool4".to_string()), None),
+            create_test_message("user", "block 3 user message A", None, None),
+            create_test_message("user", "block 3 user message B", None, None),
         ];
 
-        let last_user_msg_starts = 1 + x.iter().position(|msg| {
+        let last_user_msg_starts = x.iter().position(|msg| {
             if let ChatContent::SimpleText(text) = &msg.content {
-                text == "Third user message"
+                text == "block 3 user message A"
             } else {
                 false
             }
-        }).unwrap_or(0);
+        }).unwrap() + 1;   // note + 1
 
         (x, last_user_msg_starts)
     }
 
-    fn _msgdump(messages: &Vec<ChatMessage>, title: Option<&str>)
+    fn _msgdump(messages: &Vec<ChatMessage>, title: String) -> String
     {
-        if let Some(t) = title {
-            eprintln!("=== {} ===", t);
-        } else {
-            eprintln!("=== Message Dump ===");
-        }
-
+        let mut output = format!("=== {} ===\n", title);
         for (i, msg) in messages.iter().enumerate() {
             let content = msg.content.content_text_only();
             let tool_call_info = if !msg.tool_call_id.is_empty() {
@@ -216,22 +241,20 @@ mod tests {
             } else {
                 String::new()
             };
-
             let tool_calls_info = if let Some(tool_calls) = &msg.tool_calls {
                 format!(" [has {} tool calls]", tool_calls.len())
             } else {
                 String::new()
             };
-
-            eprintln!("{:2}: {:10} | {}{}{}",
+            output.push_str(&format!("{:2}: {:10} | {}{}{}\n",
                 i,
                 msg.role,
                 content.chars().take(50).collect::<String>(),
                 if content.len() > 50 { "..." } else { "" },
                 format!("{}{}", tool_call_info, tool_calls_info)
-            );
+            ));
         }
-        eprintln!("=== End of Message Dump ===");
+        output
     }
 
     fn init_tracing() {
@@ -243,68 +266,84 @@ mod tests {
     }
 
     #[test]
-    fn test_chatlimit_high_enough_to_fit_all() {
-        init_tracing();
-        let (messages, last_user_msg_starts) = create_mock_chat_history();
-        let max_new_tokens = 100;
-        let n_ctx = 1000; // High enough to fit all messages
-        let result = limit_messages_history(&HasTokenizerAndEot::mock(), &messages, last_user_msg_starts, max_new_tokens, n_ctx);
-        assert!(result.is_ok());
-        let limited_messages = result.unwrap();
-        _msgdump(&limited_messages, Some("test_chatlimit_doesnt_fit_last_user_message"));
-        assert_eq!(limited_messages.len(), messages.len());
-        assert_eq!(limited_messages[0].role, "system");
-        assert_eq!(limited_messages[limited_messages.len() - 1].role, "user");
-    }
-
-    #[test]
-    fn test_chatlimit_drop_first_user() {
-        init_tracing();
-        let (messages, last_user_msg_starts) = create_mock_chat_history();
-        let max_new_tokens = 1;
-        let n_ctx = 20; // Limited context size
-        let result = limit_messages_history(&HasTokenizerAndEot::mock(), &messages, last_user_msg_starts, max_new_tokens, n_ctx);
-        assert!(result.is_ok());
-        let limited_messages = result.unwrap();
-        _msgdump(&limited_messages, Some("test_chatlimit_doesnt_fit_last_user_message"));
-        assert_eq!(limited_messages[0].role, "system");
-        // drop first
-        let first_user_index = limited_messages.iter().position(|msg| msg.role == "user" && msg.content.content_text_only() == "First user message");
-        assert!(first_user_index.is_none());
-        // included last
-        assert_eq!(limited_messages[limited_messages.len() - 1].content.content_text_only(), "Fourth user message");
-    }
-
-    #[test]
-    fn test_chatlimit_doesnt_fit_last_user_message() {
-        init_tracing();
-        let (messages, last_user_msg_starts) = create_mock_chat_history();
-        let max_new_tokens = 1;
-        let n_ctx = 20;
-        let result = limit_messages_history(&HasTokenizerAndEot::mock(), &messages, last_user_msg_starts, max_new_tokens, n_ctx);
-        // eprintln!("test_chatlimit_doesnt_fit_last_user_message:\n{:?}", &result);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "User message exceeds token limit :/");
-    }
-
-    #[test]
     fn test_chatlimit_test_a_lot_of_limits() {
         init_tracing();
         let (messages, last_user_msg_starts) = create_mock_chat_history();
         let max_new_tokens = 5;
-        for n_ctx in (100..300).step_by(20) {
+        for n_ctx in (10..=50).step_by(10) {
             let result = limit_messages_history(&HasTokenizerAndEot::mock(), &messages, last_user_msg_starts, max_new_tokens, n_ctx);
-            assert!(result.is_ok());
-            let limited_messages = result.unwrap();
-            assert_eq!(limited_messages[0].role, "system");
-            let first_user_index = limited_messages.iter().position(|msg| msg.role == "user").unwrap_or(limited_messages.len());
-            for i in 1..first_user_index {
-                assert_eq!(limited_messages[i].role, "system");
+            let title = format!("n_ctx={}", n_ctx);
+            if result.is_err() {
+                eprintln!("{} => {}", title, result.clone().err().unwrap());
+                continue;
             }
-            assert_eq!(limited_messages[limited_messages.len() - 1].content.content_text_only(), "Third user message");
-            if n_ctx > 120 {
-                assert!(limited_messages.len() >= 3);
-            }
+            let dump = _msgdump(&result.unwrap(), title);
+            eprintln!("{}", dump);
+        }
+    }
+
+    #[test]
+    fn test_chatlimit_exact_outputs() {
+        init_tracing();
+        let (messages, last_user_msg_starts) = create_mock_chat_history();
+        let max_new_tokens = 5;
+
+        let expected_dumps = [
+            "\
+=== n_ctx=10 ===
+ 0: system     | System prompt
+ 1: user       | block 3 user message B
+",
+            "\
+=== n_ctx=20 ===
+ 0: system     | System prompt
+ 1: user       | block 3 user message A
+ 2: user       | block 3 user message B
+",
+            "\
+=== n_ctx=30 ===
+ 0: system     | System prompt
+ 1: user       | block 2 user message
+ 2: assistant  | block 2 assistant response [has 1 tool calls]
+ 3: tool       | block 2 tool result [tool_call_id: tool3]
+ 4: assistant  | block 2 assistant response [has 1 tool calls]
+ 5: tool       | block 2 another tool result [tool_call_id: tool4]
+ 6: user       | block 3 user message A
+ 7: user       | block 3 user message B
+",
+            "\
+=== n_ctx=40 ===
+ 0: system     | System prompt
+ 1: user       | block 2 user message
+ 2: assistant  | block 2 assistant response [has 1 tool calls]
+ 3: tool       | block 2 tool result [tool_call_id: tool3]
+ 4: assistant  | block 2 assistant response [has 1 tool calls]
+ 5: tool       | block 2 another tool result [tool_call_id: tool4]
+ 6: user       | block 3 user message A
+ 7: user       | block 3 user message B
+",
+            "\
+=== n_ctx=50 ===
+ 0: system     | System prompt
+ 1: user       | block 1 user message
+ 2: assistant  | block 1 assistant response [has 1 tool calls]
+ 3: tool       | block 1 tool result [tool_call_id: tool1]
+ 4: assistant  | block 1 another assistant response [has 1 tool calls]
+ 5: tool       | block 1 another tool result [tool_call_id: tool2]
+ 6: user       | block 2 user message
+ 7: assistant  | block 2 assistant response [has 1 tool calls]
+ 8: tool       | block 2 tool result [tool_call_id: tool3]
+ 9: assistant  | block 2 assistant response [has 1 tool calls]
+10: tool       | block 2 another tool result [tool_call_id: tool4]
+11: user       | block 3 user message A
+12: user       | block 3 user message B
+"
+        ];
+        for (i, n_ctx) in (10..=50).step_by(10).enumerate() {
+            let result = limit_messages_history(&HasTokenizerAndEot::mock(), &messages, last_user_msg_starts, max_new_tokens, n_ctx);
+            assert!(result.is_ok(), "Failed for n_ctx={}: {:?}", n_ctx, result.err());
+            let dump = _msgdump(&result.unwrap(), format!("n_ctx={}", n_ctx));
+            assert_eq!(dump, expected_dumps[i], "Output mismatch for n_ctx={}", n_ctx);
         }
     }
 }
