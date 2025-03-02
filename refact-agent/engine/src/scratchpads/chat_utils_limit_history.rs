@@ -130,7 +130,7 @@ pub fn limit_messages_history(
 mod tests {
     use super::*;
     use crate::call_validation::{ChatContent, ChatToolCall, ChatToolFunction};
-    use std::sync::{Arc, RwLock};
+    use std::sync::Arc;
     use tracing_subscriber;
     use std::io::stderr;
     use tracing_subscriber::fmt::format;
