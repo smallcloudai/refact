@@ -155,6 +155,7 @@ export async function sendChat({
     tools_confirmation: toolsConfirmed,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
+    parameters: model === "claude-3-7-sonnet" ? { boost_reasoning: true } : undefined,
     meta: {
       chat_id,
       request_attempt_id: last_user_message_id,
@@ -204,6 +205,7 @@ export async function generateChatTitle({
     max_tokens: 300,
     only_deterministic_messages,
     chat_id,
+    parameters: model === "claude-3-7-sonnet" ? { boost_reasoning: true } : undefined,
   });
 
   const headers = {
