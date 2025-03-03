@@ -10,18 +10,11 @@ import { useUsageCounter } from "./useUsageCounter";
 import styles from "./UsageCounter.module.css";
 import { useAppSelector } from "../../hooks";
 import { selectThreadMaximumTokens } from "../../features/Chat";
+import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 
 type UsageCounterProps = {
   isInline?: boolean;
 };
-
-function formatNumber(num: number): string {
-  return num >= 1_000_000
-    ? (num / 1_000_000).toFixed(1) + "M"
-    : num >= 1_000
-      ? (num / 1_000).toFixed(2) + "k"
-      : num.toString();
-}
 
 const TokenDisplay: React.FC<{ label: string; value: number }> = ({
   label,
@@ -92,8 +85,8 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   const outputValue = useMemo(
     () =>
       isInline
-        ? formatNumber(maximumThreadContextTokens ?? 0)
-        : formatNumber(outputTokens),
+        ? formatNumberToFixed(maximumThreadContextTokens ?? 0)
+        : formatNumberToFixed(outputTokens),
     [isInline, maximumThreadContextTokens, outputTokens],
   );
 
@@ -111,7 +104,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
         >
           <Flex align="center">
             <ArrowUpIcon width="12" height="12" />
-            <Text size="1">{formatNumber(inputTokens)}</Text>
+            <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
           </Flex>
           <Flex align="center">
             <ArrowDownIcon width="12" height="12" />

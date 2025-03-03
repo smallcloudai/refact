@@ -388,11 +388,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
       const currentModelMaximumContextTokens =
         action.payload.code_chat_models[model].n_ctx;
 
-      const inputTokensLimit = parseInt(
-        (currentModelMaximumContextTokens / 3).toFixed(0),
-      );
-
-      state.thread.currentMaximumContextTokens = inputTokensLimit;
+      state.thread.currentMaximumContextTokens =
+        currentModelMaximumContextTokens;
     },
   );
 
