@@ -84,6 +84,7 @@ export const historySlice = createSlice({
         updatedAt: now,
         // TODO: check if this integration may cause any issues
         integration: action.payload.integration,
+        currentMaximumContextTokens: action.payload.currentMaximumContextTokens,
         isTitleGenerated: action.payload.isTitleGenerated,
       };
 
