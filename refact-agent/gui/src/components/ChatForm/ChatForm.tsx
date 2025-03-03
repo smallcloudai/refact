@@ -14,7 +14,6 @@ import {
   useOnPressedEnter,
   useIsOnline,
   useConfig,
-  useAgentUsage,
   useCapsForToolUse,
   useSendChatRequest,
 } from "../../hooks";
@@ -32,7 +31,6 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
@@ -82,7 +80,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
-  const { disableInput, usageLimitExhaustedMessage } = useAgentUsage();
   const isOnline = useIsOnline();
   const { retry } = useSendChatRequest();
 
@@ -185,10 +182,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
-    if (disableInput) {
-      const action = setInformation(usageLimitExhaustedMessage);
-      dispatch(action);
-    } else if (!disableSend && trimmedValue.length > 0) {
+    if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(
         trimmedValue,
         checkboxes,
@@ -201,11 +195,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     }
   }, [
     value,
-    disableInput,
     disableSend,
     checkboxes,
-    usageLimitExhaustedMessage,
-    dispatch,
     setFileInteracted,
     setLineSelectionInteracted,
     onSubmit,
@@ -407,7 +398,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
               {/* TODO: Reserved space for microphone button coming later on */}
               <PaperPlaneButton
-                disabled={disableSend || disableInput}
+                disabled={disableSend}
                 title="Send message"
                 size="1"
                 type="submit"
