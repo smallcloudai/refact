@@ -397,6 +397,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     commandsApi.endpoints.getCommandPreview.matchFulfilled,
     (state, action) => {
       state.thread.currentMaximumContextTokens = action.payload.number_context;
+      state.thread.currentMessageContextTokens = action.payload.current_context; // assuming that this number is amount of tokens per current message
       const currentUsage = state.thread.usage;
       if (!currentUsage) {
         state.thread.usage = {
