@@ -47,7 +47,6 @@ export const patchesAndDiffsTrackerSlice = createSlice({
 
   extraReducers: (builder) => {
     builder.addCase(chatAskQuestionThunk.pending, (state, action) => {
-      if (!action.meta.arg.toolsConfirmed) return state;
       if (action.meta.arg.messages.length === 0) return state;
       const { messages, chatId } = action.meta.arg;
       const lastMessage = messages[messages.length - 1];

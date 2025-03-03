@@ -144,7 +144,6 @@ export async function sendChat({
   tools,
   port = 8001,
   apiKey,
-  toolsConfirmed = true,
   checkpointsEnabled = true,
   // isConfig = false,
   integration,
@@ -168,7 +167,6 @@ export async function sendChat({
     tools,
     max_tokens: max_new_tokens,
     only_deterministic_messages,
-    tools_confirmation: toolsConfirmed,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
     meta: {

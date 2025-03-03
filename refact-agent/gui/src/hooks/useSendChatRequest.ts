@@ -42,6 +42,7 @@ import {
   clearPauseReasonsAndHandleToolsStatus,
   getToolsConfirmationStatus,
   getToolsInteractionStatus,
+  resetConfirmationInteractedState,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
 import {
@@ -50,9 +51,11 @@ import {
   setChatMode,
   setIsWaitingForResponse,
   setLastUserMessageId,
+  upsertToolCall,
 } from "../features/Chat";
 
 import { v4 as uuidv4 } from "uuid";
+import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 type SubmitHandlerParams =
   | {
@@ -141,8 +144,6 @@ export const useSendChatRequest = () => {
 
       const lastMessage = messages.slice(-1)[0];
 
-      let isCurrentToolCallAPatch = false;
-
       if (
         !isWaiting &&
         !wasInteracted &&
@@ -165,8 +166,6 @@ export const useSendChatRequest = () => {
             dispatch(setPauseReasons(confirmationResponse.pause_reasons));
             return;
           }
-        } else {
-          isCurrentToolCallAPatch = true;
         }
       }
 
@@ -176,11 +175,6 @@ export const useSendChatRequest = () => {
       const mode =
         maybeMode ?? chatModeToLspMode({ toolUse, mode: threadMode });
 
-      const toolsConfirmed =
-        isCurrentToolCallAPatch && isPatchAutomatic
-          ? isPatchAutomatic
-          : areToolsConfirmed;
-
       const maybeLastUserMessageIsFromUser = isUserMessage(lastMessage);
       if (maybeLastUserMessageIsFromUser) {
         dispatch(setLastUserMessageId({ chatId: chatId, messageId: uuidv4() }));
@@ -189,7 +183,6 @@ export const useSendChatRequest = () => {
       const action = chatAskQuestionThunk({
         messages,
         tools,
-        toolsConfirmed,
         checkpointsEnabled,
         chatId,
         mode,
@@ -206,7 +199,6 @@ export const useSendChatRequest = () => {
       chatId,
       threadMode,
       wasInteracted,
-      areToolsConfirmed,
       checkpointsEnabled,
       abortControllers,
       triggerCheckForConfirmation,
@@ -319,16 +311,22 @@ export const useSendChatRequest = () => {
     dispatch(setIsWaitingForResponse(false));
   }, [abort, dispatch]);
 
-  const rejectToolUsage = useCallback(() => {
-    abort();
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: true,
-        confirmationStatus: false,
-      }),
-    );
-    dispatch(setIsWaitingForResponse(false));
-  }, [abort, dispatch]);
+  const rejectToolUsage = useCallback(
+    (toolCallIds: string[]) => {
+      abort();
+
+      toolCallIds.forEach((toolCallId) => {
+        dispatch(
+          upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }),
+        );
+        dispatch(upsertToolCall({ toolCallId, chatId, accepted: false }));
+      });
+
+      dispatch(resetConfirmationInteractedState());
+      dispatch(setIsWaitingForResponse(false));
+    },
+    [abort, chatId, dispatch],
+  );
 
   const retryFromIndex = useCallback(
     (index: number, question: UserMessage["content"]) => {
