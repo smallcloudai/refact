@@ -31,6 +31,7 @@ import { debugIntegrations, debugRefact } from "../debugConfig";
 import { telemetryApi } from "../services/refact/telemetry";
 import { isAbsolutePath } from "../utils";
 import { useAgentUsage } from "./useAgentUsage";
+import { useUsageCounter } from "../components/UsageCounter/useUsageCounter";
 
 export function useGetLinksFromLsp() {
   const dispatch = useAppDispatch();
@@ -49,6 +50,8 @@ export function useGetLinksFromLsp() {
   const model =
     useAppSelector(selectModel) || caps.data?.code_chat_default_model;
 
+  const { isOverflown: isCurrentAllowedContextExceeded } = useUsageCounter();
+
   const unCalledTools = React.useMemo(() => {
     if (messages.length === 0) return false;
     const last = messages[messages.length - 1];
@@ -58,9 +61,11 @@ export function useGetLinksFromLsp() {
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
   }, [messages]);
+
   const skipLinksRequest = useMemo(() => {
     const lastMessageIsUserMessage =
       messages.length > 0 && isUserMessage(messages[messages.length - 1]);
+    if (isCurrentAllowedContextExceeded) return true;
     if (!model) return true;
     if (!caps.data) return true;
     if (shouldShow && disableInput) return true;
@@ -76,6 +81,7 @@ export function useGetLinksFromLsp() {
     messages,
     model,
     unCalledTools,
+    isCurrentAllowedContextExceeded,
   ]);
 
   const linksResult = linksApi.useGetLinksForChatQuery(

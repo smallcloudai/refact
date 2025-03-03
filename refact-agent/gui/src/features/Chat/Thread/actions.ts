@@ -183,6 +183,11 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   //   return msg;
   // });
   debugApp(`[DEBUG TITLE]: messagesToSend: `, messagesToSend);
+  // const caps = useGetCapsQuery();
+  const model = state.chat.thread.model;
+  // const model =
+  //   (state.chat.thread.model || caps.data?.code_chat_default_model) ?? "";
+
   const messagesForLsp = formatMessagesForLsp([
     ...messagesToSend,
     {
@@ -197,6 +202,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
 
   return generateChatTitle({
     messages: messagesForLsp,
+    model,
     stream: true,
     abortSignal: thunkAPI.signal,
     chatId,
