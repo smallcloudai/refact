@@ -473,7 +473,7 @@ function messageForToolCall(
   toolCall?: ToolCall,
 ) {
   if (accepted === false && toolCall?.function.name) {
-    `Whoops the user didn't like the command ${toolCall.function.name}. Stop and ask for correction from the user.`;
+    return `Whoops the user didn't like the command ${toolCall.function.name}. Stop and ask for correction from the user.`;
   }
   if (accepted === false) return "The user rejected the changes.";
   if (accepted === true) return "The user accepted the changes.";
