@@ -7,18 +7,16 @@ import {
   type CommandCompletionResponse,
   commandsApi,
 } from "../../services/refact/commands";
+import { ChatContextFile, ChatMeta } from "../../services/refact/types";
+import type { LspChatMessage } from "../../services/refact";
 import {
-  ChatContextFile,
-  ChatMessages,
-  ChatMeta,
-} from "../../services/refact/types";
-import {
+  getSelectedChatModel,
   selectChatId,
   selectIsStreaming,
   selectMessages,
-  selectModel,
   selectThreadMode,
 } from "../../features/Chat";
+import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 function useGetCommandCompletionQuery(
   query: string,
@@ -84,11 +82,14 @@ function useGetCommandPreviewQuery(
   const chatId = useAppSelector(selectChatId);
   const isStreaming = useAppSelector(selectIsStreaming);
   const currentThreadMode = useAppSelector(selectThreadMode);
-  const currentModel = useAppSelector(selectModel);
+  const currentModel = useAppSelector(getSelectedChatModel);
 
   const userMessage = maybeAddImagesToQuestion(query);
 
-  const messagesToSend: ChatMessages = [...messages, userMessage];
+  const messagesToSend: LspChatMessage[] = formatMessagesForLsp([
+    ...messages,
+    userMessage,
+  ]);
 
   const metaToSend: ChatMeta = {
     chat_id: chatId,
@@ -130,7 +131,19 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
     checkboxes.file_upload.value,
   ]);
 
-  const previewFileResponse = useGetCommandPreviewQuery(previewQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState<string>(previewQuery);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(previewQuery);
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [previewQuery]);
+
+  const previewFileResponse = useGetCommandPreviewQuery(debouncedQuery);
   return previewFileResponse;
 }
 
