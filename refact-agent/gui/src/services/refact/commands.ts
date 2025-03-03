@@ -1,7 +1,8 @@
 import { RootState } from "../../app/store";
 import { parseOrElse } from "../../utils";
+import { LspChatMessage } from "./chat";
 import { AT_COMMAND_COMPLETION, AT_COMMAND_PREVIEW } from "./consts";
-import type { ChatMessages, ChatContextFile, ChatMeta } from "./types";
+import type { ChatContextFile, ChatMeta } from "./types";
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
@@ -183,7 +184,7 @@ function isCommandPreviewContent(json: unknown): json is CommandPreviewContent {
 }
 
 export type CommandPreviewRequest = {
-  messages: ChatMessages;
+  messages: LspChatMessage[];
   meta: ChatMeta;
   model: string;
 };
