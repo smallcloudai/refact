@@ -2,7 +2,12 @@ import React from "react";
 import { useAppSelector, useGetLinksFromLsp } from "../../hooks";
 import { Markdown } from "../Markdown";
 import { Flex, Separator } from "@radix-ui/themes";
-import { selectIsStreaming, selectIsWaiting } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+  selectThreadToolUse,
+} from "../../features/Chat";
 import { getErrorMessage } from "../../features/Errors/errorsSlice";
 import { getInformationMessage } from "../../features/Errors/informationSlice";
 
@@ -12,12 +17,16 @@ export const UncommittedChangesWarning: React.FC = () => {
   const linksRequest = useGetLinksFromLsp();
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
+  const toolUse = useAppSelector(selectThreadToolUse);
+  const messages = useAppSelector(selectMessages);
 
   const hasCallout = React.useMemo(() => {
     return !!error || !!information;
   }, [error, information]);
 
   if (
+    toolUse !== "agent" ||
+    messages.length !== 0 ||
     hasCallout ||
     isStreaming ||
     isWaiting ||
