@@ -59,6 +59,7 @@ pub async fn create_chat_post_and_scratchpad(
             stop: vec![],
             n: Some(n),
             reasoning_effort,
+            ..Default::default()  // TODO
         },
         model: model_name.to_string(),
         scratchpad: "".to_string(),

@@ -262,6 +262,9 @@ impl ChatMessage {
         dict.insert("content".to_string(), json!(chat_content_raw));
         dict.insert("tool_calls".to_string(), json!(self.tool_calls.clone()));
         dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
+        if let Some(thinking_blocks) = self.thinking_blocks.clone() {
+            dict.insert("thinking_blocks".to_string(), json!(thinking_blocks));
+        }
 
         Value::Object(dict)
     }
@@ -293,12 +296,18 @@ impl<'de> Deserialize<'de> for ChatMessage {
         let tool_call_id: Option<String> = value.get("tool_call_id")
             .and_then(|s| s.as_str()).map(|s| s.to_string());
 
+        let thinking_blocks: Option<Vec<Value>> = value.get("thinking_blocks")
+            .and_then(|v| v.as_array())
+            .map(|v| v.iter().map(|v| serde_json::from_value(v.clone()).map_err(serde::de::Error::custom)).collect::<Result<Vec<_>, _>>())
+            .transpose()?;
+
         Ok(ChatMessage {
             role,
             content,
             finish_reason,
             tool_calls,
             tool_call_id: tool_call_id.unwrap_or_default(),
+            thinking_blocks,
             ..Default::default()
         })
     }

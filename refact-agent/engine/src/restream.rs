@@ -31,11 +31,10 @@ async fn _get_endpoint_and_stuff_from_model_name(
         custom_endpoint_style,
         mut endpoint_template,
         custom_endpoint_template,
-        endpoint_chat_passthrough
+        endpoint_chat_passthrough,
     ) = {
         let caps_locked = caps.read().unwrap();
-        let is_chat = caps_locked.code_chat_models.contains_key(&model_name);
-        if is_chat {
+        if caps_locked.code_chat_models.contains_key(&model_name) {
             (
                 caps_locked.chat_apikey.clone(),
                 caps_locked.endpoint_style.clone(),      // abstract
@@ -62,7 +61,7 @@ async fn _get_endpoint_and_stuff_from_model_name(
     if !custom_endpoint_template.is_empty() {
         endpoint_template = custom_endpoint_template;
     }
-    return (
+    (
         api_key,
         endpoint_template,
         endpoint_style,
@@ -105,7 +104,7 @@ pub async fn scratchpad_interaction_not_stream_json(
     let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
-        Ok(serde_json::Value::Object(serde_json::Map::new()))
+        Ok(Value::Object(serde_json::Map::new()))
     } else if endpoint_style == "hf" {
         crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,

@@ -55,6 +55,7 @@ class Message(BaseModel):
     usage: Optional[Usage] = None
     subchats: Optional[DefaultDict[str, List[Message]]] = None
     model_config = ConfigDict()
+    thinking_blocks: Optional[List[Dict]] = None
 
 
 def format_multimodal(content: List[MultimodalElement]) -> str:
@@ -226,6 +227,7 @@ async def ask_using_http(
     callback: Optional[Callable] = None,
     chat_id: Optional[str] = None,
     chat_remote: bool = False,
+    boost_thinking: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -245,6 +247,10 @@ async def ask_using_http(
     }
     if postprocess_parameters is not None:
         post_me["postprocess_parameters"] = postprocess_parameters
+    if boost_thinking:
+        post_me["parameters"] = {
+            "boost_reasoning": True,
+        }
     meta = {}
     if chat_id is not None:
         meta["chat_id"] = chat_id
@@ -267,6 +273,7 @@ async def ask_using_http(
                     msg = Message(
                         role=ch["message"]["role"],
                         content=ch["message"]["content"],
+                        thinking_blocks=ch["message"].get("thinking_blocks"),
                         tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
                         finish_reason=ch["finish_reason"],
                         # NOTE: backend should send usage for each choice

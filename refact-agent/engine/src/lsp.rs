@@ -140,10 +140,7 @@ impl LspBackend {
             parameters: SamplingParameters {
                 max_new_tokens: params.parameters.max_new_tokens as usize,
                 temperature: Option::from(params.parameters.temperature),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
