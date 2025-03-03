@@ -25,7 +25,6 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 use crate::http::routers::v1::chat::deserialize_messages_from_post;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
@@ -252,7 +251,6 @@ pub async fn handle_v1_command_preview(
         })
     }
     
-    messages.extend(preview.clone());
     let mut new_last_message = last_message.clone();
     {
         match &mut new_last_message.content {
@@ -266,10 +264,7 @@ pub async fn handle_v1_command_preview(
             }
         }
     }
-    messages.push(new_last_message);
-    let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
-        global_context.clone(), messages.clone(), &post.meta, &mut HasRagResults::new()).await;
-    let tokens_number = count_tokens(tokenizer_arc, &messages).await?;
+    let tokens_number = count_tokens(tokenizer_arc.clone(), &itertools::concat(vec![preview.clone(), vec![new_last_message]])).await?;
     
     Ok(Response::builder()
         .status(StatusCode::OK)
