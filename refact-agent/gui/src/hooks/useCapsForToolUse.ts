@@ -108,16 +108,12 @@ export function useCapsForToolUse() {
   ]);
 
   useEffect(() => {
-    if (
-      usableModelsForPlan.length > 0 &&
-      usableModelsForPlan.some((elem) => elem.value === currentModel)
-      // !usableModelsForPlan.includes(currentModel)
-    ) {
+    if (usableModelsForPlan.length > 0) {
       const models: string[] = usableModelsForPlan.map(
         (elem) => elem.textValue,
       );
       const toChange =
-        models.find((elem) => currentModel === elem) ?? (models[0] || "");
+        models.find((elem) => currentModel === elem) ?? models[0];
 
       setCapModel(toChange);
     }
