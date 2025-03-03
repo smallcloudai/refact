@@ -65,7 +65,6 @@ type SendChatArgs = {
 
 type GetChatTitleArgs = {
   messages: LspChatMessage[];
-  model: string;
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
@@ -207,7 +206,6 @@ export async function sendChat({
 
 export async function generateChatTitle({
   messages,
-  model,
   stream,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
@@ -216,10 +214,10 @@ export async function generateChatTitle({
 }: GetChatTitleArgs): Promise<Response> {
   const body = JSON.stringify({
     messages,
-    model: model,
+    model: "gpt-4o-mini",
     stream,
     max_tokens: 300,
-    only_deterministic_messages,
+    only_deterministic_messages: only_deterministic_messages,
     chat_id,
   });
 

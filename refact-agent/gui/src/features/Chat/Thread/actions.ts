@@ -188,7 +188,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     {
       role: "user",
       content:
-        "Generate a short 2-3 word title for the current chat that reflects the context of the user's query. The title should be specific, avoiding generic terms, and should relate to relevant files, symbols, or objects. If user message contains filename, please make sure that filename remains inside of a generated title. Please ensure the answer is strictly 2-3 words, not paragraphs of text.\nOutput should be STRICTLY 2-3 words, not explanation.",
+        "Generate a title using exactly 2-3 words that captures the essence of the user's query. The title must be specific, include any mentioned filenames, and avoid generic terms. Examples: 'File Analysis', 'Code Review'. No additional text or explanation is allowed.",
       checkpoints: [],
     },
   ]);
@@ -197,7 +197,6 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
 
   return generateChatTitle({
     messages: messagesForLsp,
-    model: state.chat.thread.model,
     stream: true,
     abortSignal: thunkAPI.signal,
     chatId,
