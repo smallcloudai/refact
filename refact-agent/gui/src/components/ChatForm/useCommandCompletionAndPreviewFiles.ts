@@ -131,19 +131,7 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
     checkboxes.file_upload.value,
   ]);
 
-  const [debouncedQuery, setDebouncedQuery] = useState<string>(previewQuery);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(previewQuery);
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [previewQuery]);
-
-  const previewFileResponse = useGetCommandPreviewQuery(debouncedQuery);
+  const previewFileResponse = useGetCommandPreviewQuery(previewQuery);
   return previewFileResponse;
 }
 
