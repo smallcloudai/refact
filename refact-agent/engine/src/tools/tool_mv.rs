@@ -12,6 +12,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
+use crate::privacy::{FilePrivacyLevel, load_privacy_if_needed, check_file_privacy};
 
 pub struct ToolMv;
 
@@ -108,6 +109,22 @@ impl Tool for ToolMv {
 
         let src_true_path = canonical_path(&src_corrected_path);
         let dst_true_path = canonical_path(&dst_corrected_path);
+
+        let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+        if let Err(e) = check_file_privacy(
+            privacy_settings.clone(), 
+            &src_true_path, 
+            &FilePrivacyLevel::AllowToSendAnywhere
+        ) {
+            return Err(format!("Cannot move '{}': {}", src_str, e));
+        }
+        if let Err(e) = check_file_privacy(
+            privacy_settings.clone(), 
+            &dst_true_path, 
+            &FilePrivacyLevel::AllowToSendAnywhere
+        ) {
+            return Err(format!("Cannot move to '{}': {}", src_str, e));
+        }
 
         let src_within_project = project_dirs.iter().any(|p| src_true_path.starts_with(p));
         let dst_within_project = project_dirs.iter().any(|p| dst_true_path.starts_with(p));
