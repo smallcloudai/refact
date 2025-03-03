@@ -398,21 +398,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     (state, action) => {
       state.thread.currentMaximumContextTokens = action.payload.number_context;
       state.thread.currentMessageContextTokens = action.payload.current_context; // assuming that this number is amount of tokens per current message
-      const currentUsage = state.thread.usage;
-      if (!currentUsage) {
-        state.thread.usage = {
-          prompt_tokens: action.payload.current_context,
-          completion_tokens: 0,
-          completion_tokens_details: null,
-          prompt_tokens_details: null,
-          total_tokens: action.payload.current_context,
-        };
-      } else {
-        state.thread.usage = {
-          ...currentUsage,
-          prompt_tokens: action.payload.current_context,
-        };
-      }
     },
   );
 });

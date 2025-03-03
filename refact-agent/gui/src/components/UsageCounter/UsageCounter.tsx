@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
 import { ArrowDownIcon, ArrowUpIcon, ReaderIcon } from "@radix-ui/react-icons";
 import classNames from "classnames";
@@ -15,9 +15,15 @@ import {
 } from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 
-type UsageCounterProps = {
-  isInline?: boolean;
-};
+type UsageCounterProps =
+  | {
+      isInline?: boolean;
+      isMessageEmpty?: boolean;
+    }
+  | {
+      isInline: true;
+      isMessageEmpty: boolean;
+    };
 
 const TokenDisplay: React.FC<{ label: string; value: number }> = ({
   label,
@@ -31,9 +37,10 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
   </Flex>
 );
 
-const InlineHoverCard: React.FC = () => {
+const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
+  messageTokens,
+}) => {
   const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
-  const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
 
   return (
     <Flex direction="column" align="start" gap="2">
@@ -45,7 +52,7 @@ const InlineHoverCard: React.FC = () => {
       )}
       <TokenDisplay
         label="Potential tokens amount for current message"
-        value={currentMessageTokens ?? 0}
+        value={messageTokens}
       />
     </Flex>
   );
@@ -86,15 +93,16 @@ const DefaultHoverCard: React.FC<{
   );
 };
 
-const InlineHoverTriggerContent: React.FC = () => {
-  const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
+const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
+  messageTokens,
+}) => {
   const currentThreadMaximumTokens = useAppSelector(selectThreadMaximumTokens);
 
   return (
     <Flex align="center" gap="6px">
       <ReaderIcon width="12" height="12" />
       <Text size="1">
-        {formatNumberToFixed(currentMessageTokens ?? 0)} /{" "}
+        {formatNumberToFixed(messageTokens)} /{" "}
         {formatNumberToFixed(currentThreadMaximumTokens ?? 0)}
       </Text>
     </Flex>
@@ -121,8 +129,16 @@ const DefaultHoverTriggerContent: React.FC<{
 
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
+  isMessageEmpty,
 }) => {
   const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
+  const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
+
+  const messageTokens = useMemo(
+    () => (isMessageEmpty ? 0 : currentMessageTokens ?? 0),
+    [currentMessageTokens, isMessageEmpty],
+  );
+
   const inputTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
     keys: [
@@ -137,8 +153,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   });
   const outputValue = formatNumberToFixed(outputTokens);
 
-  if (!currentThreadUsage) return null;
-
   return (
     <HoverCard.Root>
       <HoverCard.Trigger>
@@ -150,7 +164,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           })}
         >
           {isInline ? (
-            <InlineHoverTriggerContent />
+            <InlineHoverTriggerContent messageTokens={messageTokens} />
           ) : (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
@@ -170,7 +184,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           side="top"
         >
           {isInline ? (
-            <InlineHoverCard />
+            <InlineHoverCard messageTokens={messageTokens} />
           ) : (
             <DefaultHoverCard
               inputTokens={inputTokens}
