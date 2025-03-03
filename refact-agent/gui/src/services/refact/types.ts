@@ -155,6 +155,7 @@ export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
   tool_calls?: ToolCall[] | null;
+  thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
 }
 
@@ -339,6 +340,31 @@ export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
   return Array.isArray(delta.tool_calls);
 }
 
+export type ThinkingBlock = {
+  type?: "thinking";
+  thinking?: string;
+  signature?: string;
+};
+
+// TODO: redacted_thinking, signature_delta etc. waiting for litellm streaming fixes
+export type ThinkingBlockDelta = {
+  type?: "thinking";
+  thinking?: string;
+  signature_delta?: string;
+};
+
+interface ThinkingBlocksDelta extends BaseDelta {
+  thinking_blocks?: ThinkingBlockDelta[];
+}
+
+export function isThinkingBlocksDelta(delta: unknown): delta is ThinkingBlocksDelta {
+  if (!delta) return false;
+  if (typeof delta !== "object") return false;
+  if (!("thinking_blocks" in delta)) return false;
+  if (delta.thinking_blocks === null) return false;
+  return Array.isArray(delta.thinking_blocks);
+}
+
 type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
 
 export type ChatChoice = {
@@ -471,6 +497,8 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   if (!("tool_call_id" in json)) return false;
   return json.role === "tool";
 }
+
+// TODO: isThinkingBlocksResponse
 
 export type DiffResponse = {
   role: "diff";

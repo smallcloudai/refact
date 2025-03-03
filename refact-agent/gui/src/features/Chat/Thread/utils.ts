@@ -26,6 +26,7 @@ import {
   isSubchatResponse,
   isSystemResponse,
   isToolCallDelta,
+  isThinkingBlocksDelta,
   isToolContent,
   isToolMessage,
   isToolResponse,
@@ -98,6 +99,33 @@ function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
 export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
   return add.reduce((acc, cur) => {
     return mergeToolCall(acc, cur);
+  }, prev);
+}
+
+function thinkingBlocksDeltaToThinkingBlocks(delta: ThinkingBlockDelta[]): ThinkingBlock[] {
+  return delta.map((item) => ({
+    type: "thinking",
+    thinking: item.thinking,
+    signature: item.signature_delta,
+  }));
+}
+
+function mergeThinkingBlock(prev: ThinkingBlock[], add: ThinkingBlockDelta): ThinkingBlock[] {
+  if (prev.length === 0) {
+    return thinkingBlocksDeltaToThinkingBlocks([add]);
+  } else {
+    // TODO: this is not final processing of thinking
+    // we're waiting for litellm specification and testing
+    const thinking_blocks = prev.slice();
+    thinking_blocks[0].thinking = thinking_blocks[0].thinking + add.thinking;
+    thinking_blocks[0].signature = thinking_blocks[0].signature + add.signature_delta;
+    return thinking_blocks;
+  }
+}
+
+export function mergeThinkingBlocks(prev: ThinkingBlock[], add: ThinkingBlockDelta[]): ThinkingBlock[] {
+  return add.reduce((acc, cur) => {
+    return mergeThinkingBlock(acc, cur);
   }, prev);
 }
 
@@ -227,6 +255,7 @@ export function formatChatResponse(
           role: cur.delta.role,
           content: cur.delta.content,
           tool_calls: cur.delta.tool_calls,
+          thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
         };
         return acc.concat([msg]);
@@ -249,6 +278,7 @@ export function formatChatResponse(
             role: "assistant",
             content: cur.delta.content ?? "",
             tool_calls: cur.delta.tool_calls,
+            thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
           },
         ]);
@@ -256,17 +286,53 @@ export function formatChatResponse(
 
       const last = acc.slice(0, -1);
       const collectedCalls = lastMessage.tool_calls ?? [];
-      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      const content = cur.delta.content;
-      const message = content
-        ? lastMessage.content + content
+      const tool_calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
+      const delta_content = cur.delta.content;
+      const content = delta_content
+        ? lastMessage.content + delta_content
         : lastMessage.content;
 
       return last.concat([
         {
           role: "assistant",
-          content: message,
-          tool_calls: calls,
+          content: content,
+          tool_calls: tool_calls,
+          thinking_blocks: lastMessage.thinking_blocks,
+          finish_reason: cur.finish_reason,
+        },
+      ]);
+    }
+
+    if (isThinkingBlocksDelta(cur.delta)) {
+      if (!isAssistantMessage(lastMessage)) {
+        const thinking_blocks = Array.isArray(cur.delta.thinking_blocks)
+          ? thinkingBlocksDeltaToThinkingBlocks(cur.delta.thinking_blocks)
+          : cur.delta.thinking_blocks;
+        return acc.concat([
+          {
+            role: "assistant",
+            content: cur.delta.content ?? "",
+            tool_calls: cur.delta.tool_calls,
+            thinking_blocks: thinking_blocks,
+            finish_reason: cur.finish_reason,
+          },
+        ]);
+      }
+
+      const last = acc.slice(0, -1);
+      const collectedThinkingBlocks = lastMessage.thinking_blocks ?? [];
+      const thinking_blocks = mergeThinkingBlocks(collectedThinkingBlocks, cur.delta.thinking_blocks);
+      const delta_content = cur.delta.content;
+      const content = delta_content
+        ? lastMessage.content + delta_content
+        : lastMessage.content;
+
+      return last.concat([
+        {
+          role: "assistant",
+          content: content,
+          tool_calls: lastMessage.tool_calls,
+          thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
         },
       ]);
@@ -279,12 +345,12 @@ export function formatChatResponse(
     ) {
       const last = acc.slice(0, -1);
       const currentMessage = lastMessage.content ?? "";
-      const toolCalls = lastMessage.tool_calls;
       return last.concat([
         {
           role: "assistant",
           content: currentMessage + cur.delta.content,
-          tool_calls: toolCalls,
+          tool_calls: lastMessage.tool_calls,
+          thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
         },
       ]);
@@ -404,6 +470,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
           role: message.role,
           content: message.content,
           tool_calls: message.tool_calls ?? undefined,
+          thinking_blocks: message.thinking_blocks ?? undefined,
           finish_reason: message.finish_reason,
         },
       ]);
