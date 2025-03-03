@@ -5,13 +5,20 @@
   padding: var(--space-2) var(--space-3);
   gap: 8px;
   max-width: max-content;
-  opacity: 0.7;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  transition-delay: 0.3s;
+  &:hover {
+    opacity: 0.7;
+    transition-delay: 0;
+  }
 }
 
 .usageCounterContainerInline {
   padding: calc(var(--space-1) * 1.5);
   --color-panel: transparent;
   --base-card-border-radius: 4px;
+  opacity: 0.7;
 }
 
 .isWarning {

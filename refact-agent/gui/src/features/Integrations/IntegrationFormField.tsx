@@ -115,8 +115,8 @@ const FieldContent: FC<{
       );
     }
     case "tool": {
-      const valuesForTable = values?.[fieldKey];
-      if (values && areToolParameters(valuesForTable)) {
+      const valuesForTable = values?.[fieldKey] ?? [];
+      if (areToolParameters(valuesForTable)) {
         return (
           <ParametersTable
             initialData={valuesForTable}

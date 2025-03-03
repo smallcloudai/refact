@@ -18,8 +18,16 @@ import { Flex } from "@radix-ui/themes";
 const MockedStore: React.FC<{
   usage: Usage;
   isInline?: boolean;
+  isMessageEmpty?: boolean;
   threadMaximumContextTokens?: number;
-}> = ({ usage, threadMaximumContextTokens, isInline = false }) => {
+  currentMessageContextTokens?: number;
+}> = ({
+  usage,
+  threadMaximumContextTokens,
+  currentMessageContextTokens,
+  isInline = false,
+  isMessageEmpty = false,
+}) => {
   const store = setUpStore({
     config: {
       themeProps: {
@@ -46,6 +54,7 @@ const MockedStore: React.FC<{
           wasSuggested: false,
         },
         currentMaximumContextTokens: threadMaximumContextTokens,
+        currentMessageContextTokens,
         usage,
       },
     },
@@ -56,7 +65,7 @@ const MockedStore: React.FC<{
       <AbortControllerProvider>
         <Theme accentColor="gray">
           <Flex align="center" justify="center" width="50dvw" height="100dvh">
-            <UsageCounter isInline={isInline} />
+            <UsageCounter isInline={isInline} isMessageEmpty={isMessageEmpty} />
           </Flex>
         </Theme>
       </AbortControllerProvider>
@@ -90,5 +99,6 @@ export const InlineUsageCounterInChatForm: StoryObj<typeof MockedStore> = {
     usage: USAGE_COUNTER_STUB_INLINE,
     isInline: true,
     threadMaximumContextTokens: 2000,
+    currentMessageContextTokens: 10,
   },
 };

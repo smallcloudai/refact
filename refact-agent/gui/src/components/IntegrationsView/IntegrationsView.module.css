@@ -34,7 +34,8 @@
 
 .popup {
   position: fixed;
-  max-width: 80%;
+  max-width: max-content;
+  width: 80%;
   left: 50%;
   transform: translateX(-50%);
   background-color: var(--accent-3);
@@ -43,5 +44,5 @@
 
 /* styles for IDEs (padding for pages varies on config.host (vscode, jetbrains, web) */
 .popup_ide {
-  max-width: 100vw;
+  width: calc(100vw - var(--space-2) * 2);
 }

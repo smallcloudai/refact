@@ -58,6 +58,7 @@ export function useGetLinksFromLsp() {
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
   }, [messages]);
+
   const skipLinksRequest = useMemo(() => {
     const lastMessageIsUserMessage =
       messages.length > 0 && isUserMessage(messages[messages.length - 1]);

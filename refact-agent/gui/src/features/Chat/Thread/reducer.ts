@@ -315,6 +315,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       integration: action.payload.integration,
       maybeMode: "CONFIGURE",
     });
+    next.thread.last_user_message_id = action.payload.request_attempt_id;
     next.thread.integration = action.payload.integration;
     next.thread.messages = action.payload.messages;
 
@@ -397,21 +398,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     commandsApi.endpoints.getCommandPreview.matchFulfilled,
     (state, action) => {
       state.thread.currentMaximumContextTokens = action.payload.number_context;
-      const currentUsage = state.thread.usage;
-      if (!currentUsage) {
-        state.thread.usage = {
-          prompt_tokens: action.payload.current_context,
-          completion_tokens: 0,
-          completion_tokens_details: null,
-          prompt_tokens_details: null,
-          total_tokens: action.payload.current_context,
-        };
-      } else {
-        state.thread.usage = {
-          ...currentUsage,
-          prompt_tokens: action.payload.current_context,
-        };
-      }
+      state.thread.currentMessageContextTokens = action.payload.current_context; // assuming that this number is amount of tokens per current message
     },
   );
 });

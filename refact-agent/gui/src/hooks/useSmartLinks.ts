@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
+
 import { LspChatMessage } from "../services/refact/chat";
 import { formatMessagesForChat } from "../features/Chat/Thread/utils";
 import { useAppDispatch } from "./useAppDispatch";
@@ -37,6 +39,7 @@ export function useSmartLinks() {
             project: integrationProject,
           },
           messages,
+          request_attempt_id: uuidv4(),
         }),
       );
       dispatch(push({ name: "chat" }));

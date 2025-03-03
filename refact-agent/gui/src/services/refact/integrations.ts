@@ -663,6 +663,7 @@ export function areToolParameters(
   json: unknown,
 ): json is ToolParameterEntity[] {
   if (!Array.isArray(json)) return false;
+  if (json.length === 0) return true;
   return json.every(
     (value) =>
       typeof value === "object" &&
