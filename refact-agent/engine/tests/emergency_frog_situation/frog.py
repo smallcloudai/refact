@@ -29,6 +29,17 @@ class Frog:
     def croak(self, n_times):
         for n in range(n_times):
             print("croak")
+    
+    def swim(self, pond_width, pond_height):
+        print("Swimming...")
+        print("Splash! The frog is moving through the water")
+        self.x += self.vx * DT
+        self.y += self.vy * DT
+        print("Ripple... ripple...")
+        self.bounce_off_banks(pond_width, pond_height)
+        self.x = np.clip(self.x, 0, pond_width)
+        self.y = np.clip(self.y, 0, pond_height)
+        print("The frog swam to position ({:.2f}, {:.2f})".format(self.x, self.y))
 
 
 class AlternativeFrog:
