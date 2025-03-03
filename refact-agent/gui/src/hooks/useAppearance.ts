@@ -3,6 +3,7 @@ import { useAppDispatch } from "./useAppDispatch";
 import { useConfig } from "./useConfig";
 import { setThemeMode } from "../features/Config/configSlice";
 import { useMutationObserver } from "./useMutationObserver";
+import { useEffectOnce } from "./useEffectOnce";
 
 export const useAppearance = () => {
   const config = useConfig();
@@ -32,6 +33,10 @@ export const useAppearance = () => {
     characterData: false,
     childList: false,
     subtree: false,
+  });
+
+  useEffectOnce(() => {
+    handleChange();
   });
 
   const toggle = useCallback(() => {
