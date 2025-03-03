@@ -26,6 +26,7 @@ export type ChatThread = {
   new_chat_suggested: SuggestedChat;
   usage?: Usage;
   currentMaximumContextTokens?: number;
+  currentMessageContextTokens?: number;
 };
 
 export type SuggestedChat = {
