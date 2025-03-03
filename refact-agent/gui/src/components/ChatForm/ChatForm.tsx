@@ -14,7 +14,6 @@ import {
   useOnPressedEnter,
   useIsOnline,
   useConfig,
-  useAgentUsage,
   useCapsForToolUse,
   useSendChatRequest,
 } from "../../hooks";
@@ -32,7 +31,6 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
@@ -47,7 +45,7 @@ import {
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
-  selectThreadMaximumTokens,
+  // selectThreadMaximumTokens,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
@@ -55,7 +53,7 @@ import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
-import { useUsageCounter } from "../UsageCounter/useUsageCounter";
+// import { useUsageCounter } from "../UsageCounter/useUsageCounter";
 import classNames from "classnames";
 
 export type ChatFormProps = {
@@ -82,7 +80,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
-  const { disableInput, usageLimitExhaustedMessage } = useAgentUsage();
   const isOnline = useIsOnline();
   const { retry } = useSendChatRequest();
 
@@ -90,12 +87,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
-  const currentThreadMaximumContextTokens = useAppSelector(
-    selectThreadMaximumTokens,
-  );
+  // const currentThreadMaximumContextTokens = useAppSelector(
+  //   selectThreadMaximumTokens,
+  // );
 
-  const { isOverflown: arePromptTokensBiggerThanContext, currentThreadUsage } =
-    useUsageCounter();
+  // const { isOverflown: arePromptTokensBiggerThanContext, currentThreadUsage } =
+  //   useUsageCounter();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent" && toolUse === "agent";
@@ -118,26 +115,16 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
-    if (
-      currentThreadMaximumContextTokens &&
-      currentThreadUsage?.prompt_tokens &&
-      currentThreadUsage.prompt_tokens > currentThreadMaximumContextTokens
-    )
-      return false;
-    if (arePromptTokensBiggerThanContext) return true;
+    // if (
+    //   currentThreadMaximumContextTokens &&
+    //   currentThreadUsage?.prompt_tokens &&
+    //   currentThreadUsage.prompt_tokens > currentThreadMaximumContextTokens
+    // )
+    //   return false;
+    // if (arePromptTokensBiggerThanContext) return true;
     if (messages.length === 0) return false;
     return isWaiting || isStreaming || !isOnline || preventSend;
-  }, [
-    isOnline,
-    isStreaming,
-    isWaiting,
-    arePromptTokensBiggerThanContext,
-    currentThreadMaximumContextTokens,
-    currentThreadUsage?.prompt_tokens,
-    preventSend,
-    messages,
-    allDisabled,
-  ]);
+  }, [isOnline, isStreaming, isWaiting, preventSend, messages, allDisabled]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
@@ -185,10 +172,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
-    if (disableInput) {
-      const action = setInformation(usageLimitExhaustedMessage);
-      dispatch(action);
-    } else if (!disableSend && trimmedValue.length > 0) {
+    if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(
         trimmedValue,
         checkboxes,
@@ -201,11 +185,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     }
   }, [
     value,
-    disableInput,
     disableSend,
     checkboxes,
-    usageLimitExhaustedMessage,
-    dispatch,
     setFileInteracted,
     setLineSelectionInteracted,
     onSubmit,
@@ -407,7 +388,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
               {/* TODO: Reserved space for microphone button coming later on */}
               <PaperPlaneButton
-                disabled={disableSend || disableInput}
+                disabled={disableSend}
                 title="Send message"
                 size="1"
                 type="submit"
