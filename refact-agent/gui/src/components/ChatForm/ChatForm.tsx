@@ -365,7 +365,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             align="center"
             justify="between"
           >
-            <TokensPreview />
+            <TokensPreview currentMessageQuery={value} />
             <Flex gap="2" className={styles.buttonGroup}>
               {toolUse === "agent" && (
                 <AgentIntegrationsButton
