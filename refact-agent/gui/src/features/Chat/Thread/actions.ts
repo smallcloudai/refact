@@ -41,6 +41,7 @@ export const newChatAction = createAction("chatThread/new");
 export const newIntegrationChat = createAction<{
   integration: IntegrationMeta;
   messages: ChatMessages;
+  request_attempt_id: string;
 }>("chatThread/newIntegrationChat");
 
 export const chatResponse = createAction<PayloadWithId & ChatResponse>(

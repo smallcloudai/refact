@@ -315,6 +315,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       integration: action.payload.integration,
       maybeMode: "CONFIGURE",
     });
+    next.thread.last_user_message_id = action.payload.request_attempt_id;
     next.thread.integration = action.payload.integration;
     next.thread.messages = action.payload.messages;
 
