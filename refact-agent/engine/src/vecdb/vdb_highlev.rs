@@ -76,32 +76,12 @@ async fn _create_vecdb(
         &base_dir_cache,
         &base_dir_config,
         cmdline.clone(),
-        constants.clone(),
+        constants,
         &api_key
     ).await {
         Ok(res) => Some(res),
         Err(err) => {
-            match crate::vecdb::vdb_sqlite::get_db_path(
-                &base_dir_cache, &constants.embedding_model, constants.embedding_size
-            ).await.map(|x| PathBuf::from(x)) {
-                Ok(db_path) => {
-                    if db_path.exists() {
-                        error!("Removing vecdb database: {:?} since it's malformed: {}", db_path, err);
-                        std::fs::remove_file(db_path).map_err(|x| format!("Couldn't remove the malformed vecdb: {x}. Vecdb initialization aborted: {}", err))?;
-                        VecDb::init(
-                            &base_dir_cache,
-                            &base_dir_config,
-                            cmdline.clone(),
-                            constants.clone(),
-                            &api_key
-                        ).await.map_err(|x| format!("Cannot initialize vecdb after removing a malformed db: {x}"))?;
-                    }
-                }
-                Err(_) => {
-                    error!("Vecdb cannot be initialized: {err}");
-                }
-            };
-            
+            error!("Error while database initialization. Error: {}", err);
             return Err(err);
         }
     };
