@@ -6,6 +6,7 @@ import {
   CHAT_WITH_TEXTDOC,
   CHAT_WITH_KNOWLEDGE_TOOL,
   CHAT_WITH_MULTI_MODAL,
+  CHAT_MESSAGE_NODE,
 } from "../../__fixtures__";
 import { makeMessageTree } from "../../features/ChatDB/makeMessageTree";
 import { Provider } from "react-redux";
@@ -89,5 +90,11 @@ export const MultiModal: StoryObj<typeof Template> = {
     node: makeMessageTree(
       chatMessagesToCMessages(CHAT_WITH_MULTI_MODAL.messages),
     ),
+  },
+};
+
+export const Updated: StoryObj<typeof Template> = {
+  args: {
+    node: makeMessageTree(chatMessagesToCMessages(CHAT_MESSAGE_NODE.messages)),
   },
 };

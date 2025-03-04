@@ -1496,3 +1496,179 @@ export const CHAT_WITH_KNOWLEDGE_TOOL: ChatThread = {
   createdAt: "2025-01-27T13:19:11.132Z",
   updatedAt: "2025-01-27T13:19:11.132Z",
 };
+
+export const CHAT_MESSAGE_NODE: ChatThread = {
+  id: "948c8c68-6928-4687-8b98-8dc346070007",
+  messages: [
+    {
+      role: "system",
+      content:
+        "[mode3] You are Refact Agent, an autonomous bot for coding tasks.\n\nCore Principles\n1. Use knowledge()\n  - Always use knowledge() first when you encounter an agentic (complex) task.\n  - This tool can access external data, including successful “trajectories” (examples of past solutions).\n  - External database records begin with the icon “🗃️” followed by a record identifier.\n  - Use these records to help solve your tasks by analogy.\n2. Use locate() with the Full Problem Statement\n  - Provide the entire user request in the problem_statement argument to avoid losing any details (“telephone game” effect).\n  - Include user’s emotional stance, code snippets, formatting, instructions—everything word-for-word.\n  - Only omit parts of the user’s request if they are unrelated to the final solution.\n  - Avoid using locate() if the problem is quite simple and can be solved without extensive project analysis.\n\nAnswering Strategy\n1. If the user’s question is unrelated to the project\n  - Answer directly without using any special calls.\n2. If the user’s question is related to the project\n  - First, call knowledge() for relevant information and best practices.\n3. Making Changes\n  - If a solution requires file changes, use `*_textdoc()` tools.\n  - It's a good practice to call cat() to track changes for changed files.\n\nImportant Notes\n1. Parallel Exploration\n  - When you explore different ideas, use multiple parallel methods.\n2. Project-Related Questions\n  - For any project question, always call knowledge() before taking any action.\n\nWhen running on user's laptop, you most likely have the shell() tool. It's for one-time dependency installations, or doing whatever\nuser is asking you to do. Tools the user can set up are better, because they don't require confimations when running on a laptop.\nWhen doing something typical for the project, offer the user to make a cmdline_* tool after you have run it.\nYou can do this by writing:\n\n🧩SETTINGS:cmdline_cargo_check\n\nfrom a new line, that will open (when clicked) a wizard that creates `cargo check` (in this example) command line tool.\n\nIn a similar way, service_* tools work. The difference is cmdline_* is designed for non-interactive blocking commands that immediately\nreturn text in stdout/stderr, and service_* is designed for blocking background commands, such as hypercorn server that runs forever until you hit Ctrl+C.\nHere is another example:\n\n🧩SETTINGS:service_hypercorn\n\n\nYou might receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate\nwell and they are always in English. Answer in the language the user has asked the question.\n\n\n- below general information about the current project -\n\nThe current IDE workspace has these project directories:\n/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation\n\nThe active IDE file is:\n/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation/frog.py\nThe project is under git version control, located at:\n/Users/marc/Projects/refact\n\nThe Refact Agent project is a Rust-based executable designed to integrate seamlessly with IDEs like VSCode and JetBrains. Its primary function is to maintain up-to-date AST and VecDB indexes, ensuring efficient code completion and project analysis. The agent acts as an LSP server, providing tools for code completion, chat functionalities, and integration with various external tools such as browsers, databases, and debuggers. It supports multiple programming languages for AST capabilities and can be used both as a standalone command-line tool and within a Python program.\nThe project is structured with a main Rust source directory src/ containing modules for background tasks, integrations, HTTP handling, and more. The tests/ directory includes various test scripts mostly written in python, while the examples/ directory provides usage examples.\n\n",
+    },
+    {
+      role: "user",
+      content: "add a swim method\n",
+      checkpoints: [
+        {
+          workspace_folder:
+            "/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation",
+          commit_hash: "854b2527d4bc1b480c53d57efb9d7931c94bc97d",
+        },
+      ],
+    },
+    {
+      role: "assistant",
+      content:
+        "I'll help add a swim method to the project. Let me first check the current state of the code and then make the necessary addition.",
+      tool_calls: [
+        {
+          id: "toolu_018RoVhrwy3w7RBU69sVLvTC",
+          function: {
+            arguments:
+              '{"goal": "Add a swim method to a Python class", "language_slash_framework": "python", "im_going_to_use_tools": "cat, update_textdoc", "im_going_to_apply_to": "emergency_frog_situation, frog.py"}',
+            name: "knowledge",
+          },
+          type: "function",
+          index: 0,
+        },
+      ],
+      finish_reason: "stop",
+    },
+    {
+      role: "tool",
+      content: {
+        tool_call_id: "toolu_018RoVhrwy3w7RBU69sVLvTC",
+        content:
+          '🗃️d7be14dd3c\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere\'s your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don\'t have direct access to the command line. Look if there\'s a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don\'t see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON\'T DO STUPID THINGS:\n* DON\'T SKIP MAKING SCREENSHOTS\n* DON\'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON\'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n\n🗃️8136f3b8d0\nAdditional instructions for django web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere\'s your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and locate(), looking into relevant files using cat(). If you see reference designs and sketches, read them using cat()\n2. Start django server\n3. Navigate to the place on the website that user wants to change, make a screenshot to make sure you understand what exactly needs to change\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it.\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place.\n\nDON\'T DO STUPID THINGS:\n* DON\'T SKIP MAKING SCREENSHOTS\n* DON\'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON\'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE YOU HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n🗃️ae072f138e\n[\n    ["goal", "Compress the chat above."],\n    ["thinking", "The user wants a summary of the chat with specific details and decision-making processes."],\n    ["outcome", "SUCCESS"]\n]\n\n🗃️81e825a188\n[\n["goal", "Add swim method to Frog class in frog.py"],\n["thinking", "Can add swim method directly using REWRITE_ONE_SYMBOL since the file is small and class structure is clear"],\n["coding", "📍REWRITE_ONE_SYMBOL 000 added swim(dx, dy, pond_width, pond_height) method with position updates and boundary checks"],\n["outcome", "SUCCESS"]\n]\n\n🗃️a2e397d445\n[\n["goal", "Rename \'frog\' to \'bird\' across all project files"],\n["knowledge(goal=\\"Rename \'frog\' to \'bird\' across the project\\", language_slash_framework=\\"python\\", im_going_to_apply_to=\\"refact-lsp, emergency_frog_situation\\", im_going_to_use_tools=\\"search, cat, patch\\")", "Found knowledge about web development and bird-related Python code"],\n["locate(problem_statement=\\"rename frog to bird\\")", "Found 3 files: set_as_avatar.py, work_day.py, jump_to_conclusions.py with frog references"],\n["cat(paths=\\"tests/emergency_frog_situation/frog.py\\", skeleton=false)", "Found base Frog class with methods jump(), croak(), and bounce_off_banks()"],\n["coding", "📍REWRITE_WHOLE_FILE 001 created bird.py replacing frog.py, changed class Frog to Bird, croak to chirp"],\n["patch(tickets=\\"001\\", path=\\"tests/emergency_frog_situation/bird.py\\")", "Created new bird.py file"],\n["coding", "📍REWRITE_WHOLE_FILE 002 updated set_as_avatar.py to use bird.Bird instead of frog.Frog"],\n["patch(tickets=\\"002\\", path=\\"tests/emergency_frog_situation/set_as_avatar.py\\")", "Updated 8 references to frog/Frog in set_as_avatar.py"],\n["coding", "📍REWRITE_WHOLE_FILE 003 updated work_day.py to use bird.Bird"],\n["patch(tickets=\\"003\\", path=\\"tests/emergency_frog_situation/work_day.py\\")", "Updated 2 references to frog in work_day.py"],\n["coding", "📍REWRITE_WHOLE_FILE 004 updated jump_to_conclusions.py, renamed draw_hello_frog to draw_hello_bird"],\n["patch(tickets=\\"004\\", path=\\"tests/emergency_frog_situation/jump_to_conclusions.py\\")", "Updated function name and type annotations"],\n["shell(command=\\"rm tests/emergency_frog_situation/frog.py\\", workdir=\\"/Users/marc/Projects/refact-lsp\\")", "Removed original frog.py file"],\n["outcome", "SUCCESS"]\n]\n\n🗃️36338b63b3\n[\n["goal", "Discuss whether birds are real, their software, programming, and Python usage"],\n["thinking", "User is asking about birds and software. Evidence: birds are biological creatures, but there\'s research into bird-inspired algorithms and robotics."],\n["thinking", "When asked about bird programming, focused on research projects like BirdBrain, Flocking, and RoboBird that simulate or interact with birds."],\n["thinking", "When asked about Python-using birds, clarified that birds don\'t use programming languages, but Python is used by researchers to study birds."],\n["coding", "Provided example of Boid algorithm simulation in Python showing flocking behavior"],\n["coding", "Provided finite state machine simulation of bird behavior states (perched, flying, eating)"],\n["coding", "Provided bird population growth simulation using simple mathematical model"],\n["coding", "Provided example of bird song classification using RandomForestClassifier"],\n["outcome", "SUCCESS"]\n]\n',
+      },
+    },
+    {
+      role: "assistant",
+      content:
+        "\n\nLet me first check the current content of frog.py to see where to add the swim method.",
+      tool_calls: [
+        {
+          id: "toolu_01DFnZT2heBEGkayXXVQwnrw",
+          function: {
+            arguments: '{"paths": "frog.py", "skeleton": false}',
+            name: "cat",
+          },
+          type: "function",
+          index: 0,
+        },
+      ],
+      finish_reason: "stop",
+    },
+    {
+      role: "tool",
+      content: {
+        tool_call_id: "toolu_01DFnZT2heBEGkayXXVQwnrw",
+        content:
+          "Paths found:\n/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation/frog.py\n",
+      },
+    },
+    {
+      role: "context_file",
+      content: [
+        {
+          file_name: "frog.py",
+          file_content:
+            'import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n    def croak(self, n_times):\n        for n in range(n_times):\n            print("croak")\n    \n\nclass AlternativeFrog:\n    def alternative_jump(self):\n        pass\n\n\ndef standalone_jumping_function():\n    print("I\'m a frog! Jump! Jump! Really!")\n    print("I\'m a frog! Jump! Jump! Really!")\n',
+          line1: 1,
+          line2: 40,
+        },
+      ],
+    },
+    {
+      role: "assistant",
+      content:
+        "I see the Frog class and I'll add a swim method to it. The class already has position (x, y) and velocity (vx, vy) attributes, and includes boundary checking with bounce_off_banks(). I'll add a swim method that allows controlled movement in the pond while maintaining the boundary constraints.",
+      tool_calls: [
+        {
+          id: "toolu_017vqpdmmgbzVfjk1F4wEEa3",
+          function: {
+            arguments:
+              '{"path": "/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation/frog.py", "old_str": "    def croak(self, n_times):\\n        for n in range(n_times):\\n            print(\\"croak\\")\\n    \\n\\nclass AlternativeFrog:", "replacement": "    def croak(self, n_times):\\n        for n in range(n_times):\\n            print(\\"croak\\")\\n    \\n    def swim(self, dx, dy, pond_width, pond_height):\\n        \\"\\"\\"Move the frog in the pond by the given displacement while respecting pond boundaries.\\n        \\n        Args:\\n            dx: Horizontal displacement\\n            dy: Vertical displacement\\n            pond_width: Width of the pond\\n            pond_height: Height of the pond\\n        \\"\\"\\"\\n        self.vx = dx / DT\\n        self.vy = dy / DT\\n        self.x += dx\\n        self.y += dy\\n        self.bounce_off_banks(pond_width, pond_height)\\n        self.x = np.clip(self.x, 0, pond_width)\\n        self.y = np.clip(self.y, 0, pond_height)\\n\\nclass AlternativeFrog:", "multiple": false}',
+            name: "update_textdoc",
+          },
+          type: "function",
+          index: 0,
+        },
+      ],
+      finish_reason: "stop",
+    },
+    {
+      role: "diff",
+      content: [
+        {
+          file_name:
+            "/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation/frog.py",
+          file_action: "edit",
+          line1: 33,
+          line2: 33,
+          lines_remove: "",
+          lines_add:
+            '    def swim(self, dx, dy, pond_width, pond_height):\n        """Move the frog in the pond by the given displacement while respecting pond boundaries.\n        \n        Args:\n            dx: Horizontal displacement\n            dy: Vertical displacement\n            pond_width: Width of the pond\n            pond_height: Height of the pond\n        """\n        self.vx = dx / DT\n        self.vy = dy / DT\n        self.x += dx\n        self.y += dy\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n',
+          file_name_rename: null,
+          application_details: "",
+        },
+      ],
+      tool_call_id: "toolu_017vqpdmmgbzVfjk1F4wEEa3",
+    },
+    {
+      role: "assistant",
+      content:
+        "\n\nI've added a swim method to the Frog class that:\n\n1. Takes displacement parameters (dx, dy) and pond dimensions\n2. Updates the frog's velocity based on the desired displacement\n3. Updates position directly with the displacement\n4. Ensures the frog stays within pond boundaries using existing bounce_off_banks() and clip functions\n5. Includes docstring documentation explaining the parameters\n\nThe swim method allows for controlled movement in the pond while maintaining all the safety checks that prevent the frog from leaving the pond boundaries. You can use it like this:\n\n```python\nfrog = Frog(x=5, y=5, vx=0, vy=0)\n# Swim right 2 units and up 1 unit\nfrog.swim(dx=2, dy=1, pond_width=10, pond_height=10)\n```\n\nLet me verify the changes by checking the file again:",
+      tool_calls: [
+        {
+          id: "toolu_01MJPJQZ6jUaLBvDMuFLLmxK",
+          function: {
+            arguments: '{"paths": "frog.py", "skeleton": false}',
+            name: "cat",
+          },
+          type: "function",
+          index: 0,
+        },
+      ],
+      finish_reason: "stop",
+    },
+    {
+      role: "tool",
+      content: {
+        tool_call_id: "toolu_01MJPJQZ6jUaLBvDMuFLLmxK",
+        content:
+          "Paths found:\n/Users/marc/Projects/refact/refact-agent/engine/tests/emergency_frog_situation/frog.py\n",
+      },
+    },
+    {
+      role: "context_file",
+      content: [
+        {
+          file_name: "frog.py",
+          file_content:
+            'import numpy as np\n\nDT = 0.01\n\nclass Frog:\n    def __init__(self, x, y, vx, vy):\n        self.x = x\n        self.y = y\n        self.vx = vx\n        self.vy = vy\n\n    def bounce_off_banks(self, pond_width, pond_height):\n        if self.x < 0:\n            self.vx = np.abs(self.vx)\n        elif self.x > pond_width:\n            self.vx = -np.abs(self.vx)\n        if self.y < 0:\n            self.vy = np.abs(self.vy)\n        elif self.y > pond_height:\n            self.vy = -np.abs(self.vy)\n\n    def jump(self, pond_width, pond_height):\n        self.x += self.vx * DT\n        self.y += self.vy * DT\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\n    def croak(self, n_times):\n        for n in range(n_times):\n            print("croak")\n    \n    def swim(self, dx, dy, pond_width, pond_height):\n        """Move the frog in the pond by the given displacement while respecting pond boundaries.\n        \n        Args:\n            dx: Horizontal displacement\n            dy: Vertical displacement\n            pond_width: Width of the pond\n            pond_height: Height of the pond\n        """\n        self.vx = dx / DT\n        self.vy = dy / DT\n        self.x += dx\n        self.y += dy\n        self.bounce_off_banks(pond_width, pond_height)\n        self.x = np.clip(self.x, 0, pond_width)\n        self.y = np.clip(self.y, 0, pond_height)\n\nclass AlternativeFrog:\n    def alternative_jump(self):\n        pass\n\n\ndef standalone_jumping_function():\n    print("I\'m a frog! Jump! Jump! Really!")\n    print("I\'m a frog! Jump! Jump! Really!")\n',
+          line1: 1,
+          line2: 56,
+        },
+      ],
+    },
+    {
+      role: "assistant",
+      content:
+        "The swim method has been successfully added to the Frog class. The implementation looks correct and includes:\n\n1. Proper docstring documentation\n2. Position and velocity updates\n3. Boundary checking using bounce_off_banks()\n4. Position clamping using np.clip()\n5. Consistent style with the rest of the class\n\nThe method integrates well with the existing code and maintains the same safety features as the jump method to keep the frog within the pond boundaries. The changes are complete and the code is ready to use.\n\nWould you like to test the new swim method or make any adjustments to its behavior?",
+      finish_reason: "stop",
+    },
+  ],
+  title: "Add Swim Method",
+  model: "",
+  last_user_message_id: "73810759-9f69-4f9b-a1de-7becd7648302",
+  tool_use: "agent",
+  mode: "AGENT",
+  new_chat_suggested: {
+    wasSuggested: false,
+  },
+  read: true,
+  isTitleGenerated: true,
+  createdAt: "2025-02-25T13:47:17.107Z",
+  updatedAt: "2025-02-25T13:47:17.107Z",
+};
