@@ -34,6 +34,8 @@ type InitialState = {
   messageList: CMessage[];
   loading: boolean;
   error: null | string;
+  endNumber: number;
+  endAlt: number;
 };
 
 const createChatThread = (): CThreadDefault => {
@@ -52,6 +54,8 @@ const initialState: InitialState = {
   messageList: [],
   loading: false,
   error: null,
+  endNumber: 0,
+  endAlt: 0,
 };
 
 function parseCMessageFromChatDBToCMessage(
@@ -97,6 +101,10 @@ export const chatDbMessageSlice = createSlice({
           return a.cmessage_num - b.cmessage_num;
         });
       }
+    },
+    setEnd: (state, action: PayloadAction<{ number: number; alt: number }>) => {
+      state.endNumber = action.payload.number;
+      state.endAlt = action.payload.alt;
     },
   },
 

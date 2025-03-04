@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import {
+  chatDbMessageSliceActions,
   CMessageNode,
   isUserCMessageNode,
   UserCMessageNode,
@@ -19,6 +20,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
 import { GroupedDiffs } from "../ChatContent/DiffContent";
+import { useAppDispatch } from "../../hooks";
 
 const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
   message,
@@ -57,6 +59,23 @@ const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
 
 export type MessageNodeProps = { children?: CMessageNode };
 export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (children?.children.length === 0) {
+      const action = chatDbMessageSliceActions.setEnd({
+        number: children.message.cmessage_num,
+        alt: children.message.cmessage_alt,
+      });
+      dispatch(action);
+    }
+  }, [
+    children?.children.length,
+    children?.message.cmessage_num,
+    children?.message.cmessage_alt,
+    dispatch,
+  ]);
+
   if (!children) return null;
   return (
     <>

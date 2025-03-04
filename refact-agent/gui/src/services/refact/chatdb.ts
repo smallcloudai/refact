@@ -1,11 +1,16 @@
 import { createAsyncThunk } from "@reduxjs/toolkit/react";
 import { AppDispatch, RootState } from "../../app/store";
-import { CHAT_DB_THREADS_SUB, CHAT_DB_MESSAGES_SUB } from "./consts";
+import {
+  CHAT_DB_THREADS_SUB,
+  CHAT_DB_MESSAGES_SUB,
+  CHAT_DB_MESSAGES_UPDATE,
+} from "./consts";
 import { consumeStream } from "../../features/Chat/Thread/utils";
 import {
   isCThreadSubResponseUpdate,
   isCThreadSubResponseDelete,
   isCMessageUpdateResponse,
+  CMessage,
 } from "./types";
 import { chatDbActions } from "../../features/ChatDB/chatDbSlice";
 import {
@@ -136,18 +141,20 @@ export const subscribeToThreadMessagesThunk = createAppAsyncThunk<
       if (!reader) return;
 
       const onAbort = () => {
-        // console.log("knowledge stream aborted");
+        console.log("message stream aborted");
       };
 
       const onChunk = (chunk: Record<string, unknown>) => {
-        // console.log("cmessages chunks");
-        // console.log({ chunk });
+        console.log("cmessages chunks");
+        console.log({ chunk });
         if (isCMessageUpdateResponse(chunk)) {
           const action = chatDbMessageSliceActions.updateMessage({
             threadId: cthreadId,
             message: chunk.cmessage_rec,
           });
           thunkApi.dispatch(action);
+        } else {
+          console.log("invalid chunk");
         }
       };
 
@@ -159,6 +166,28 @@ export const subscribeToThreadMessagesThunk = createAppAsyncThunk<
       // todo: handle error
     });
 });
+
+// How does this add a context file ? or images ?
+export function updateCMessage(
+  cmessages: CMessage[],
+  port = 8001,
+  apiKey?: string | null,
+) {
+  const url = `http://127.0.0.1:${port}${CHAT_DB_MESSAGES_UPDATE}`;
+  const headers = new Headers();
+  headers.append("Content-Type", "application/json");
+  if (apiKey) {
+    headers.append("Authorization", `Bearer ${apiKey}`);
+  }
+
+  return fetch(url, {
+    method: "POST",
+    headers,
+    redirect: "follow",
+    cache: "no-cache",
+    body: JSON.stringify(cmessages),
+  });
+}
 
 // Types for the API
 
