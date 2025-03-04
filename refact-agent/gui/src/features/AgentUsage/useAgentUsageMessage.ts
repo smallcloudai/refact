@@ -24,7 +24,7 @@ export const useAgentUsageMessage = ({
         ? ", or upgrade to PRO."
         : ", or increase daily limit.";
       return (
-        `You have reached your daily Agent usage limit of ${maxAgentUsageAmount} messages a day. ` +
+        `You have reached your daily usage limit of ${maxAgentUsageAmount} messages a day. ` +
         `You can ${
           toolUse === "agent" ? "use Agent" : "send messages"
         } again tomorrow${upgradeText}`
