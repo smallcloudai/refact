@@ -5,7 +5,6 @@ import React, { useMemo, useState } from "react";
 
 import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens";
 import { ScrollArea } from "../ScrollArea";
-import { Coin } from "../../images";
 import { useUsageCounter } from "./useUsageCounter";
 
 import { selectAllImages } from "../../features/AttachedImages";
@@ -102,9 +101,9 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
 }) => {
   return (
     <Flex align="center" gap="6px">
-      <Coin width="12" height="12" />
       <Text size="1" color="gray">
-        {formatNumberToFixed(messageTokens)}
+        {formatNumberToFixed(messageTokens)}{" "}
+        {messageTokens === 1 ? "token" : "tokens"}
       </Text>
     </Flex>
   );
