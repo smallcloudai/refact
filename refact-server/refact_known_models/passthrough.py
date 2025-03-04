@@ -142,7 +142,7 @@ passthrough_mini_db = {
         "tokenizer_path": "Xenova/claude-tokenizer",
         "resolve_as": "anthropic/claude-3-7-sonnet-20250219",
         "T": 200_000,
-        "T_out": 4096,
+        "T_out": 64_000,  # NOTE: supports 128_000 tokens
         "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2025 feb)
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2025 feb)
         "filter_caps": ["chat", "tools", "completion"],
