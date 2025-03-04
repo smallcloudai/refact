@@ -58,7 +58,7 @@ fn fields_ordered() -> String {
 async fn setup_db(conn: &Connection, pubsub_notifier: Arc<Notify>) -> Result<(), String> {
     extern "C" fn pubsub_trigger_hook(
         user_data: *mut c_void,
-        action: c_int,
+        _: c_int,
         db_name: *const std::os::raw::c_char,
         table_name: *const std::os::raw::c_char,
         _: i64,
@@ -67,22 +67,24 @@ async fn setup_db(conn: &Connection, pubsub_notifier: Arc<Notify>) -> Result<(),
         // Use c_char which is platform dependent (i8 or u8)
         let db_name = unsafe { std::ffi::CStr::from_ptr(db_name as *const std::os::raw::c_char).to_str().unwrap_or("unknown") };
         let table_name = unsafe { std::ffi::CStr::from_ptr(table_name as *const std::os::raw::c_char).to_str().unwrap_or("unknown") };
-        let operation = match action {
-            18 => "INSERT",
-            9 => "DELETE",
-            23 => "UPDATE",
-            _ => "UNKNOWN",
-        };
         if db_name != "main" && table_name != "pubsub_events" {
             return;
         }
-        info!("memdb pubsub {} action triggered", operation);
         notify.notify_one();
     }
     conn.call(move |conn| {
         conn.busy_timeout(std::time::Duration::from_secs(30))?;
-        conn.execute_batch("PRAGMA cache_size = 0; PRAGMA shared_cache = OFF;")?;
-        let _: String = conn.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0))?;
+        conn.execute_batch(
+        "PRAGMA cache_size = -2000;  -- 2MB per connection
+             PRAGMA page_size = 4096;
+             PRAGMA journal_mode = WAL;
+             PRAGMA synchronous = NORMAL;
+             PRAGMA wal_autocheckpoint = 1000;
+             PRAGMA mmap_size = 268435456;  -- 256MB
+             PRAGMA temp_store = MEMORY;
+             PRAGMA locking_mode = NORMAL;
+             PRAGMA busy_timeout = 60000;"
+        )?;
         unsafe {
             libsqlite3_sys::sqlite3_update_hook(
                 conn.handle(),

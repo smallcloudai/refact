@@ -19,11 +19,17 @@ fn _make_connection(
         | rusqlite::OpenFlags::SQLITE_OPEN_URI
     ).map_err(|err| format!("Failed to open database: {}", err))?;
     db.busy_timeout(std::time::Duration::from_secs(30)).map_err(|err| format!("Failed to set busy timeout: {}", err))?;
-    db.execute_batch("PRAGMA cache_size = 0; PRAGMA shared_cache = OFF;").map_err(|err| format!("Failed to set cache pragmas: {}", err))?;
-    let journal_mode: String = db.query_row("PRAGMA journal_mode=WAL", [], |row| row.get(0)).map_err(|err| format!("Failed to set journal mode: {}", err))?;
-    if journal_mode != "wal" {
-        return Err(format!("Failed to set WAL journal mode. Current mode: {}", journal_mode));
-    }
+    db.execute_batch(
+        "PRAGMA cache_size = -2000;  -- 2MB per connection
+             PRAGMA page_size = 4096;
+             PRAGMA journal_mode = WAL;
+             PRAGMA synchronous = NORMAL;
+             PRAGMA wal_autocheckpoint = 1000;
+             PRAGMA mmap_size = 268435456;  -- 256MB
+             PRAGMA temp_store = MEMORY;
+             PRAGMA locking_mode = NORMAL;
+             PRAGMA busy_timeout = 60000;"
+    ).map_err(|err| format!("Failed to set db params: {}", err))?;
     let db = ChoreDB {
         lite: Arc::new(ParkMutex::new(db)),
         chore_sleeping_point: Arc::new(ANotify::new()),
