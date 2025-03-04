@@ -157,7 +157,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   const outputValue = formatNumberToFixed(outputTokens);
 
   useEffectOnce(() => {
-    const handleScroll = () => setOpen(false);
+    const handleScroll = (event: WheelEvent) => {
+      // Checking if the event target is not in the ChatContent
+      const chatContent = document.querySelector(
+        "[data-element='ChatContent']",
+      );
+      if (chatContent && chatContent.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
     window.addEventListener("wheel", handleScroll);
     return () => {
       window.removeEventListener("wheel", handleScroll);
@@ -193,6 +201,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           avoidCollisions
           align={isInline ? "center" : "end"}
           side="top"
+          hideWhenDetached
         >
           {isInline ? (
             <InlineHoverCard messageTokens={messageTokens} />
