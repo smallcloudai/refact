@@ -1,6 +1,7 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import classNames from "classnames";
 
 import { clearPauseReasonsAndHandleToolsStatus } from "../../../features/ToolConfirmation/confirmationSlice";
 import { useAppDispatch, useAppSelector } from "../../../hooks";
@@ -16,7 +17,6 @@ import {
 import { Link } from "../../Link";
 
 import styles from "./SuggestNewChat.module.css";
-import classNames from "classnames";
 import { useUsageCounter } from "../../UsageCounter/useUsageCounter";
 
 type SuggestNewChatProps = {
@@ -90,7 +90,7 @@ export const SuggestNewChat = ({
       return "Long chats cause you to reach your usage limits faster.";
     if (isContextOverflown)
       return "Maximum available context for this chat is exceeded. Consider starting a new chat.";
-    return "Agent performs better for chats which don't switch topics often.";
+    return "Models perform better for chats which don't switch topics often.";
   }, [isWarning, isContextOverflown]);
 
   return (
