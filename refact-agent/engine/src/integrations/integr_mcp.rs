@@ -41,6 +41,42 @@ pub struct IntegrationMCP {
     pub config_path: String,
 }
 
+impl IntegrationMCP {
+    pub async fn get_logs(&self) -> Vec<String> {
+        let session_key = format!("{}", self.config_path);
+        let gcx = match self.upgrade_gcx().await {
+            Ok(g) => g,
+            Err(e) => return vec![e.to_string()],
+        };
+        
+        let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
+        if session_option.is_none() {
+            tracing::error!("No session for {:?}, strange (1)", session_key);
+            return vec![];
+        }
+        let session = session_option.unwrap();
+        let logs: Vec<String>;
+        
+        {
+            let mut session_locked = session.lock().await;
+            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            logs = session_downcasted.logs.clone();
+        }
+        
+        logs
+    }
+
+    async fn upgrade_gcx(&self) -> Result<Arc<ARwLock<GlobalContext>>, String> {
+        return match self.gcx_option.as_ref() {
+            Some(gcx) => match gcx.upgrade() {
+                Some(gcx) => Ok(gcx),
+                None => Err("Error: System is shutting down".to_string()),
+            },
+            None => Err("Error: MCP is not set up yet".to_string()),
+        }
+    }
+}
+
 pub struct SessionMCP {
     pub debug_name: String,
     pub config_path: String,        // to check if expired or not
@@ -48,6 +84,7 @@ pub struct SessionMCP {
     pub mcp_client: Option<Arc<AMutex<mcp_client_rs::client::Client>>>,
     pub mcp_tools: Vec<mcp_client_rs::Tool>,
     pub launched_coroutines: Vec<tokio::task::JoinHandle<()>>,
+    pub logs: Vec<String>,          // Store log messages
 }
 
 impl IntegrationSession for SessionMCP {
@@ -72,15 +109,37 @@ impl IntegrationSession for SessionMCP {
     }
 }
 
-async fn _session_kill_process(session: &SessionMCP) {
-    tracing::info!("MCP STOP {}", session.debug_name);
+fn _add_log_entry(session: &mut SessionMCP, entry: String) {
+    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
+    let log_entry = format!("[{}] {}", timestamp, entry);
+    
+    session.logs.extend(log_entry.lines().into_iter().map(|s| s.to_string()));
+
+    if session.logs.len() > 100 {
+        let excess = session.logs.len() - 100;
+        session.logs.drain(0..excess);
+    }
+}
+
+async fn _session_kill_process(session: &mut SessionMCP) {
+    let debug_name = session.debug_name.clone();
+    tracing::info!("Stopping MCP Server for {}", debug_name);
+    _add_log_entry(session, "Stopping MCP Server".to_string());
+    
     if let Some(mcp_client) = &session.mcp_client {
-        let mut mcp_client_locked = mcp_client.lock().await;
-        let maybe_err = mcp_client_locked.shutdown().await;
-        if let Err(e) = maybe_err {
-            tracing::error!("Failed to stop MCP {}:\n{:?}", session.debug_name, e);
+        let client_result = {
+            let mut mcp_client_locked = mcp_client.lock().await;
+            mcp_client_locked.shutdown().await
+        };
+        
+        if let Err(e) = client_result {
+            let error_msg = format!("Failed to stop MCP: {:?}", e);
+            tracing::error!("{} for {}", error_msg, debug_name);
+            _add_log_entry(session, error_msg);
         } else {
-            tracing::info!("{} stopped", session.debug_name);
+            let success_msg = "MCP server stopped".to_string();
+            tracing::info!("{} for {}", success_msg, debug_name);
+            _add_log_entry(session, success_msg);
         }
     }
 }
@@ -103,7 +162,9 @@ async fn _session_apply_settings(
                 mcp_client: None,
                 mcp_tools: vec![],
                 launched_coroutines: vec![],
+                logs: vec![],
             })));
+            tracing::info!("MCP START SESSION {:?}", session_key);
             gcx_write.integration_sessions.insert(session_key.clone(), new_session.clone());
             new_session
         } else {
@@ -129,19 +190,25 @@ async fn _session_apply_settings(
                 // tracing::info!("MCP NO UPDATE NEEDED {:?}", session_key);
                 return;
             }
+            
+            _add_log_entry(session_downcasted, "Applying new settings".to_string());
 
             _session_kill_process(session_downcasted).await;
 
             let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
                 Ok(args) => {
                     if args.is_empty() {
-                        tracing::info!("Empty command");
+                        let error_msg = "Empty command".to_string();
+                        tracing::info!("{error_msg}");
+                        _add_log_entry(session_downcasted, error_msg);
                         return;
                     }
                     args
                 }
                 Err(e) => {
-                    tracing::info!("Failed to parse command: {}", e);
+                    let error_msg = format!("Failed to parse command: {}", e);
+                    tracing::info!("{}", error_msg);
+                    _add_log_entry(session_downcasted, error_msg);
                     return;
                 }
             };
@@ -154,14 +221,24 @@ async fn _session_apply_settings(
                 client_builder = client_builder.env(key, value);
             }
 
-            let mut client = match client_builder.spawn_and_initialize().await {
-                Ok(client) => client,
-                Err(client_error) => {
-                    let err_msg = format!("Failed to initialize {}: {:?}", session_key_clone, client_error);
-                    tracing::error!("{}", err_msg);
+            let (mut client, imp, caps) = match client_builder.spawn().await {
+                Ok(r) => r,
+                Err(e) => {
+                    let err_msg = format!("Failed to init process: {}", e);
+                    tracing::error!("{err_msg} for {session_key_clone}");
+                    _add_log_entry(session_downcasted, err_msg);
                     return;
                 }
             };
+            if let Err(e) = client.initialize(imp, caps).await {
+                let err_msg = format!("Failed to init server: {}", e);
+                tracing::error!("{err_msg} for {session_key_clone}");
+                _add_log_entry(session_downcasted, err_msg);
+                if let Ok(error_log) = client.get_stderr(None).await {
+                    _add_log_entry(session_downcasted, error_log);
+                }
+                return;
+            }
 
             // let set_result = client.request(
             //     "logging/setLevel",
@@ -177,11 +254,21 @@ async fn _session_apply_settings(
             // }
 
             tracing::info!("MCP START SESSION (2) {:?}", session_key_clone);
+            _add_log_entry(session_downcasted, "Listing tools".to_string());
+            
             let tools_result = match client.list_tools().await {
-                Ok(result) => result,
+                Ok(result) => {
+                    let success_msg = format!("Successfully listed {} tools", result.tools.len());
+                    tracing::info!("{} for {}", success_msg, session_key_clone);
+                    result
+                },
                 Err(tools_error) => {
-                    let err_msg = format!("Failed to list tools for {}: {:?}", session_key_clone, tools_error);
-                    tracing::error!("{}", err_msg);
+                    let err_msg = format!("Failed to list tools: {:?}", tools_error);
+                    tracing::error!("{} for {}", err_msg, session_key_clone);
+                    _add_log_entry(session_downcasted, err_msg);
+                    if let Ok(error_log) = client.get_stderr(None).await {
+                        _add_log_entry(session_downcasted, error_log);
+                    }
                     return;
                 }
             };
@@ -191,6 +278,11 @@ async fn _session_apply_settings(
             session_downcasted.mcp_client = Some(mcp_client.clone());
             session_downcasted.mcp_tools = tools_result.tools.clone();
             session_downcasted.launched_cfg = new_cfg_clone.clone();
+            
+            let setup_msg = format!("MCP session setup complete with {} tools", 
+                session_downcasted.mcp_tools.len());
+            tracing::info!("{} for {}", setup_msg, session_key_clone);
+            _add_log_entry(session_downcasted, setup_msg);
         });
 
         session_downcasted.launched_coroutines.push(coroutine);
@@ -241,25 +333,18 @@ impl IntegrationTrait for IntegrationMCP {
 
     async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         let session_key = format!("{}", self.config_path);
-        let gcx = match self.gcx_option.as_ref() {
-            Some(gcx) => match gcx.upgrade() {
-                Some(gcx) => gcx,
-                None => {
-                    tracing::error!("Whoops the system is shutting down!");
-                    return vec![];
-                }
-            },
+        let gcx = match self.upgrade_gcx().await {
+            Ok(g) => g,
+            Err(e) => { tracing::error!(e); return vec![]; }
+        };
+        let session_maybe = gcx.read().await.integration_sessions.get(&session_key).cloned();
+        let session = match session_maybe {
+            Some(session) => session,
             None => {
-                tracing::error!("MCP is not set up yet");
+                tracing::error!("No session for {:?}, strange (1)", session_key);
                 return vec![];
             }
         };
-        let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
-        if session_option.is_none() {
-            tracing::error!("No session for {:?}, strange (1)", session_key);
-            return vec![];
-        }
-        let session = session_option.unwrap();
 
         _session_wait_coroutines(session.clone()).await;
 
@@ -313,28 +398,63 @@ impl Tool for ToolMCP {
 
         let json_args = serde_json::json!(args);
         tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args);
-        let tool_output = {
+        
+        {
+            let mut session_locked = session.lock().await;
+            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            _add_log_entry(session_downcasted, format!("Executing tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args));
+        }
+        
+        let result_probably = {
             let mut mcp_client_locked = self.mcp_client.lock().await;
-            let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_args).await;
-
-            match result_probably {
-                Ok(result) => {
-                    // tracing::info!("BBBBB result.is_error={:?}", result.is_error);
-                    // tracing::info!("BBBBB result.content={:?}", result.content);
-                    if result.is_error {
-                        return Err(format!("Tool execution error: {:?}", result.content));
+            mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_args).await
+        };
+        
+        let tool_output = match result_probably {
+            Ok(result) => {
+                if result.is_error {
+                    let error_msg = format!("Tool execution error: {:?}", result.content);
+                    {
+                        let mut session_locked = session.lock().await;
+                        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+                        _add_log_entry(session_downcasted, error_msg.clone());
                     }
-                    if let Some(mcp_client_rs::MessageContent::Text { text }) = result.content.get(0) {
-                        text.clone()
-                    } else {
-                        tracing::error!("Unexpected tool output format: {:?}", result.content);
-                        return Err("Unexpected tool output format".to_string());
+                    return Err(error_msg);
+                }
+                
+                if let Some(mcp_client_rs::MessageContent::Text { text }) = result.content.get(0) {
+                    let success_msg = format!("Tool '{}' executed successfully", self.mcp_tool.name);
+                    {
+                        let mut session_locked = session.lock().await;
+                        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+                        _add_log_entry(session_downcasted, success_msg);
+                    }
+                    text.clone()
+                } else {
+                    let error_msg = format!("Unexpected tool output format: {:?}", result.content);
+                    tracing::error!("{}", error_msg);
+                    {
+                        let mut session_locked = session.lock().await;
+                        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+                        _add_log_entry(session_downcasted, error_msg.clone());
+                    }
+                    return Err("Unexpected tool output format".to_string());
+                }
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to call tool: {:?}", e);
+                tracing::error!("{}", error_msg);
+                {
+                    let mut session_locked = session.lock().await;
+                    let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+                    _add_log_entry(session_downcasted, error_msg.clone());
+                    
+                    let error_log = self.mcp_client.lock().await.get_stderr(None).await;
+                    if let Ok(error_log) = error_log {
+                        _add_log_entry(session_downcasted, error_log);
                     }
                 }
-                Err(e) => {
-                    tracing::error!("Failed to call tool: {:?}", e);
-                    return Err(e.to_string());
-                }
+                return Err(e.to_string());
             }
         };
 
