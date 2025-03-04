@@ -2,6 +2,10 @@ use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::call_validation::ChatMessage;
 use std::collections::{HashSet, HashMap};
 
+fn _user_role(m: &ChatMessage) -> bool
+{
+    m.role == "user" || m.role == "context_file" || m.role == "plain_text" || m.role == "cd_instruction"
+}
 
 fn _check_invariant(messages: &Vec<ChatMessage>) -> Result<(), String> {
     if messages.len() == 0 {
@@ -11,7 +15,7 @@ fn _check_invariant(messages: &Vec<ChatMessage>) -> Result<(), String> {
         if messages.len() == 1 {
             return Ok(());
         }
-        if messages[1].role == "user" {
+        if _user_role(&messages[1]) {
             return Ok(());
         }
     }
@@ -33,7 +37,9 @@ pub fn limit_messages_history(
     if n_ctx <= max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, max_new_tokens));
     }
-    _check_invariant(messages)?;
+    if let Err(e) = _check_invariant(messages) {
+        tracing::error!("input problem: {}", e);
+    }
     let tokens_limit = (n_ctx - max_new_tokens) as i32;
 
     let token_counts: Vec<i32> = messages
@@ -57,7 +63,7 @@ pub fn limit_messages_history(
     // A complete block is: user -> assistant -> [tool -> assistant ->]*
     let mut user_message_indices: Vec<usize> = Vec::new();
     for i in (1 .. last_user_msg_starts).rev() {
-        if messages[i].role == "user" {
+        if _user_role(&messages[i]) {
             user_message_indices.push(i);
         }
     }
@@ -344,6 +350,48 @@ mod tests {
             assert!(result.is_ok(), "Failed for n_ctx={}: {:?}", n_ctx, result.err());
             let dump = _msgdump(&result.unwrap(), format!("n_ctx={}", n_ctx));
             assert_eq!(dump, expected_dumps[i], "Output mismatch for n_ctx={}", n_ctx);
+        }
+    }
+
+    #[test]
+    fn test_chatlimit_invalid_sequence() {
+        init_tracing();
+        let messages = vec![
+            create_test_message("system", "System prompt", None, None),
+            create_test_message("globglogabgalab", "Strange message", None, None),
+            create_test_message("user", "User message", None, None),
+        ];
+        let last_user_msg_starts = 2; // Index of the "user" message
+        let max_new_tokens = 5;
+        let n_ctx = 20;
+
+        let result = limit_messages_history(
+            &HasTokenizerAndEot::mock(),
+            &messages,
+            last_user_msg_starts,
+            max_new_tokens,
+            n_ctx,
+        );
+
+        assert!(result.is_ok(), "Expected Ok, got Err: {:?}", result.err());
+        let output = result.unwrap();
+
+        let dump = _msgdump(&output, format!("n_ctx={}", n_ctx));
+        tracing::info!("{}", dump);
+
+        assert_eq!(output.len(), 2, "Expected 2 messages, got {}", output.len());
+        assert_eq!(output[0].role, "system", "First message should be 'system'");
+        assert_eq!(output[1].role, "user", "Second message should be 'user'");
+
+        if let ChatContent::SimpleText(text) = &output[0].content {
+            assert_eq!(text, "System prompt", "System message content mismatch");
+        } else {
+            panic!("Expected SimpleText for system message");
+        }
+        if let ChatContent::SimpleText(text) = &output[1].content {
+            assert_eq!(text, "User message", "User message content mismatch");
+        } else {
+            panic!("Expected SimpleText for user message");
         }
     }
 }

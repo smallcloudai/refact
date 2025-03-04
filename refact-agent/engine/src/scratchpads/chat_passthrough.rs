@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -111,7 +111,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
         };
         let style = self.post.style.clone();
-        let mut at_tools = if !should_execute_remotely { 
+        let mut at_tools = if !should_execute_remotely {
             tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?
         } else {
             IndexMap::new()
@@ -153,7 +153,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         };
 
         let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
-            error!("error limiting messages: {}", e);
+            tracing::error!("error limiting messages: {}", e);
             vec![]
         });
 
@@ -303,7 +303,7 @@ fn _replace_broken_tool_call_messages(
             let incorrect_reasons = tool_calls.iter().map(|tc| {
                 match serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
                     Ok(_) => None,
-                    Err(err) => { 
+                    Err(err) => {
                         Some(format!("broken {}({}): {}", tc.function.name, tc.function.arguments, err))
                     }
                 }
@@ -323,7 +323,7 @@ fn _replace_broken_tool_call_messages(
                     } else {
                         format!("{tokens_msg} Change your strategy.")
                     }
-                } else {    
+                } else {
                     "".to_string()
                 };
 
@@ -332,7 +332,7 @@ fn _replace_broken_tool_call_messages(
                 message.content = ChatContent::SimpleText(format!("Previous tool calls are not valid: {incorrect_reasons_concat}.\n{extra_message}"));
                 message.tool_calls = None;
                 tracing::error!(
-                    "tool calls are broken, converting the tool call message to the `cd_instruction`:\n{:?}", 
+                    "tool calls are broken, converting the tool call message to the `cd_instruction`:\n{:?}",
                     message.content.content_text_only()
                 );
             }
