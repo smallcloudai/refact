@@ -1,21 +1,22 @@
-import React, { useMemo } from "react";
-import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
+import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
 import classNames from "classnames";
+import React, { useMemo, useState } from "react";
 
-import { ScrollArea } from "../ScrollArea";
 import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens";
+import { ScrollArea } from "../ScrollArea";
+import { Coin } from "../../images";
 import { useUsageCounter } from "./useUsageCounter";
 
-import styles from "./UsageCounter.module.css";
-import { useAppSelector } from "../../hooks";
+import { selectAllImages } from "../../features/AttachedImages";
 import {
   selectThreadCurrentMessageTokens,
   selectThreadMaximumTokens,
 } from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
-import { selectAllImages } from "../../features/AttachedImages";
-import { Coin } from "../../images";
+import { useAppSelector, useEffectOnce } from "../../hooks";
+
+import styles from "./UsageCounter.module.css";
 
 type UsageCounterProps =
   | {
@@ -131,6 +132,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
   isMessageEmpty,
 }) => {
+  const [open, setOpen] = useState(false);
   const maybeAttachedImages = useAppSelector(selectAllImages);
   const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
   const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
@@ -155,8 +157,16 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   });
   const outputValue = formatNumberToFixed(outputTokens);
 
+  useEffectOnce(() => {
+    const handleScroll = () => setOpen(false);
+    window.addEventListener("wheel", handleScroll);
+    return () => {
+      window.removeEventListener("wheel", handleScroll);
+    };
+  });
+
   return (
-    <HoverCard.Root>
+    <HoverCard.Root open={open} onOpenChange={setOpen}>
       <HoverCard.Trigger>
         <Card
           className={classNames(styles.usageCounterContainer, {
