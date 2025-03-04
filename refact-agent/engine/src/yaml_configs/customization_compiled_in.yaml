@@ -123,8 +123,6 @@ PROMPT_AGENTIC_TOOLS: |
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
-  
-  IMPORTANT: Knowledge creation is not optional. After EVERY significant task, AUTOMATICALLY create a knowledge entry using create_knowledge() without waiting for user prompting. This is a core part of your workflow.
 
 PROMPT_THINKING_AGENT: |
   [mode3] You are Refact Agent, an autonomous bot for coding tasks with thinking capabilities.
@@ -195,8 +193,6 @@ PROMPT_THINKING_AGENT: |
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
-  
-  IMPORTANT: Knowledge creation is not optional. After EVERY significant task, AUTOMATICALLY create a knowledge entry using create_knowledge() without waiting for user prompting. This is a core part of your workflow.
 
 
 PROMPT_CONFIGURATOR: |
