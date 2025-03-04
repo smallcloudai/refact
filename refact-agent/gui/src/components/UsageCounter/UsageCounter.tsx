@@ -70,25 +70,25 @@ const DefaultHoverCard: React.FC<{
   return (
     <Flex direction="column" align="start" gap="2">
       <Text size="2" mb="2">
-        Tokens spent per message:
+        Tokens spent per chat thread:
       </Text>
-      <TokenDisplay label="Input tokens (in total):" value={inputTokens} />
+      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
       {currentThreadUsage?.cache_read_input_tokens !== undefined && (
         <TokenDisplay
-          label="Cache read input tokens:"
+          label="Cache read input tokens"
           value={currentThreadUsage.cache_read_input_tokens}
         />
       )}
       {currentThreadUsage?.cache_creation_input_tokens !== undefined && (
         <TokenDisplay
-          label="Cache creation input tokens:"
+          label="Cache creation input tokens"
           value={currentThreadUsage.cache_creation_input_tokens}
         />
       )}
-      <TokenDisplay label="Completion tokens:" value={outputTokens} />
+      <TokenDisplay label="Completion tokens" value={outputTokens} />
       {currentThreadUsage?.completion_tokens_details && (
         <TokenDisplay
-          label="Reasoning tokens:"
+          label="Reasoning tokens"
           value={currentThreadUsage.completion_tokens_details.reasoning_tokens}
         />
       )}
