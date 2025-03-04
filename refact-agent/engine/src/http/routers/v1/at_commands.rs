@@ -255,7 +255,7 @@ pub async fn handle_v1_command_preview(
         })
     }
     
-    if let Some(mut last_message) = last_message {
+    let messages_to_count = if let Some(mut last_message) = last_message {
         match &mut last_message.content {
             ChatContent::SimpleText(_) => {last_message.content = ChatContent::SimpleText(query.clone());}
             ChatContent::Multimodal(elements) => {
@@ -266,11 +266,11 @@ pub async fn handle_v1_command_preview(
                 }
             }
         };
-        messages.push(last_message);
-    }
-    let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
-        global_context.clone(), messages.clone(), &post.meta, &mut HasRagResults::new()).await;
-    let tokens_number = count_tokens(tokenizer_arc, &messages).await?;
+        itertools::concat(vec![preview.clone(), vec![last_message]])
+    } else {
+        preview.clone()
+    };
+    let tokens_number = count_tokens(tokenizer_arc.clone(), &messages_to_count).await?;
     
     Ok(Response::builder()
         .status(StatusCode::OK)
