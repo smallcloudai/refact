@@ -212,10 +212,12 @@ async fn smart_compress_results(
         let remaining_files = file_paths.len() - used_files.len();
         content.push_str(&format!("... and {} more files with matches (not shown due to size limit)\n", remaining_files));
     }
-
-    info!("Compressing regex_search output: estimated {} bytes (exceeds 4KB limit)", estimated_size);
-    content.push_str("\nNote: Output has been compressed. Use more specific patterns or scopes for detailed results.");
-   
+    
+    if estimated_size > MAX_OUTPUT_SIZE {
+        info!("Compressing regex_search output: estimated {} bytes (exceeds 4KB limit)", estimated_size);
+        content.push_str("\nNote: Output has been compressed. Use more specific patterns or scopes for detailed results.");
+    }
+    
     content
 }
 
