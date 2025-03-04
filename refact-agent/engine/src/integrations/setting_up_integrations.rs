@@ -9,6 +9,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
 use crate::global_context::GlobalContext;
+use crate::files_correction::any_glob_matches_path;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
@@ -78,6 +79,7 @@ pub fn read_integrations_d(
     vars_for_replacements: &HashMap<String, String>,
     lst: &[&str],
     error_log: &mut Vec<YamlError>,
+    include_paths_matching: &[String],
 ) -> Vec<IntegrationRecord> {
     let mut result = Vec::new();
 
@@ -177,6 +179,10 @@ pub fn read_integrations_d(
         }
 
         let path = PathBuf::from(&path_str);
+        if !any_glob_matches_path(include_paths_matching, &path) {
+            continue;
+        }
+
         // let short_pp = if project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&project_path, 15) };
         let mut rec: IntegrationRecord = Default::default();
         rec.project_path = project_path.clone();
@@ -454,7 +460,7 @@ pub async fn integrations_all(
     let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut error_log: Vec<YamlError> = Vec::new();
     let vars_for_replacements = get_vars_for_replacements(gcx.clone(), &mut error_log).await;
-    let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log);
+    let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log, &["**/*".to_string()]);
     IntegrationResult { integrations, error_log }
 }
 
