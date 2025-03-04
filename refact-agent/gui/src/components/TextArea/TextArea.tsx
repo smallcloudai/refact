@@ -71,7 +71,7 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
         textArea.style.height = "1px";
 
         const contentHeight = value
-          ? 2 + INTERACTIVE_BUTTONS_CONTAINER_HEIGHT + textArea.scrollHeight
+          ? 1 + INTERACTIVE_BUTTONS_CONTAINER_HEIGHT + textArea.scrollHeight
           : MINIMAL_TEXTAREA_HEIGHT;
 
         textArea.style.height = contentHeight + "px";
