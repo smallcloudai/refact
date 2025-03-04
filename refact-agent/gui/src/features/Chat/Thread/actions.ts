@@ -35,6 +35,7 @@ import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
+import { capsApi } from "../../../services/refact";
 
 export const newChatAction = createAction("chatThread/new");
 
@@ -167,7 +168,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     messages: ChatMessages;
     chatId: string;
   }
->("chatThread/generateTitle", ({ messages, chatId }, thunkAPI) => {
+>("chatThread/generateTitle", async ({ messages, chatId }, thunkAPI) => {
   const state = thunkAPI.getState();
 
   const messagesToSend = messages.filter(
@@ -184,7 +185,11 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   //   return msg;
   // });
   debugApp(`[DEBUG TITLE]: messagesToSend: `, messagesToSend);
-  const model = state.chat.default_model ?? state.chat.thread.model;
+
+  const caps = await thunkAPI
+    .dispatch(capsApi.endpoints.getCaps.initiate(undefined))
+    .unwrap();
+  const model = caps.code_chat_default_model;
   const messagesForLsp = formatMessagesForLsp([
     ...messagesToSend,
     {
