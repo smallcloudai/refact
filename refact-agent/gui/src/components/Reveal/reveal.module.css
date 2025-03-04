@@ -36,6 +36,7 @@
 }
 
 .reveal_hidden_exposed {
+  color: var(--accent-11);
   background-color: var(--color-background);
   position: absolute;
   max-height: 6em;

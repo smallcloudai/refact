@@ -9,60 +9,70 @@ export type RevealProps = {
   isRevealingCode?: boolean;
 };
 
+const RevealButton: React.FC<{
+  onClick: () => void;
+  isInline: boolean;
+  children: React.ReactNode;
+}> = ({ onClick, isInline, children }) => (
+  <Button
+    variant="ghost"
+    onClick={onClick}
+    asChild
+    className={classNames(styles.reveal_button, {
+      [styles.reveal_button_inline]: isInline,
+    })}
+  >
+    {children}
+  </Button>
+);
+
+const RevealText: React.FC<{
+  isRevealingCode: boolean;
+  text: string;
+}> = ({ isRevealingCode, text }) => (
+  <Flex position="absolute" bottom="2" width="100%" justify="center">
+    {isRevealingCode ? (
+      text
+    ) : (
+      <Text className={styles.reveal_text}>{text}</Text>
+    )}
+  </Flex>
+);
+
 export const Reveal: React.FC<RevealProps> = ({
   children,
   defaultOpen,
   isRevealingCode = false,
 }) => {
   const [open, setOpen] = React.useState(defaultOpen);
-  if (open)
+
+  const handleClick = () => {
+    if (defaultOpen) return;
+    setOpen((v) => !v);
+  };
+
+  if (open) {
     return (
-      <Box width="100%" position="relative">
+      <Box width="100%" minWidth="max-content" position="relative">
         {children}
-        <Button
-          variant="ghost"
-          onClick={() => {
-            if (defaultOpen) return;
-            setOpen((v) => !v);
-          }}
-          asChild
-          className={classNames(styles.reveal_button, {
-            [styles.reveal_button_inline]: !isRevealingCode,
-          })}
-        >
+        <RevealButton onClick={handleClick} isInline={!isRevealingCode}>
           {!defaultOpen && (
             <Box
               className={`${styles.reveal_hidden} ${styles.reveal_hidden_exposed}`}
             >
-              <Flex
-                position="absolute"
-                bottom="2"
-                width="100%"
-                justify="center"
-              >
-                {isRevealingCode ? (
-                  "Hide details"
-                ) : (
-                  <Text className={styles.reveal_text}>Hide details</Text>
-                )}
-              </Flex>
+              <RevealText
+                isRevealingCode={isRevealingCode}
+                text="Hide details"
+              />
             </Box>
           )}
-        </Button>
+        </RevealButton>
       </Box>
     );
+  }
+
   return (
-    <Button
-      variant="ghost"
-      onClick={() => {
-        if (defaultOpen) return;
-        setOpen((v) => !v);
-      }}
-      asChild
-      className={classNames(styles.reveal_button, {
-        [styles.reveal_button_inline]: !isRevealingCode,
-      })}
-    >
+    <RevealButton onClick={handleClick} isInline={!isRevealingCode}>
       <Flex direction="column" position="relative" align="start">
         <Box
           className={classNames({
@@ -78,16 +88,13 @@ export const Reveal: React.FC<RevealProps> = ({
               [styles.reveal_button_box]: open,
             })}
           >
-            <Flex position="absolute" bottom="2" width="100%" justify="center">
-              {isRevealingCode ? (
-                "Click for more"
-              ) : (
-                <Text className={styles.reveal_text}>Click for more</Text>
-              )}
-            </Flex>
+            <RevealText
+              isRevealingCode={isRevealingCode}
+              text="Click for more"
+            />
           </Box>
         )}
       </Flex>
-    </Button>
+    </RevealButton>
   );
 };
