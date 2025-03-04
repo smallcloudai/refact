@@ -11,7 +11,7 @@ pub async fn load_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     allow_experimental: bool,
 ) -> IndexMap<String, Box<dyn Tool + Send>> {
-    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental).await;
+    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental, &["**/*".to_string()]).await;
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
         for tool in integr.integr_tools(&name).await {
@@ -28,9 +28,14 @@ pub async fn load_integration_tools(
     tools
 }
 
+/// Loads and set up integrations from config files.
+/// 
+/// If `include_paths_matching` is `None`, all integrations are loaded, 
+/// otherwise only those matching `include_paths_matching` glob patterns.
 pub async fn load_integrations(
     gcx: Arc<ARwLock<GlobalContext>>,
     allow_experimental: bool,
+    include_paths_matching: &[String],
 ) -> (IndexMap<String, Box<dyn IntegrationTrait + Send + Sync>>, Vec<crate::integrations::setting_up_integrations::YamlError>) {
     let active_project_path = crate::files_correction::get_active_project_path(gcx.clone()).await;
     let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone(), &active_project_path).await;
@@ -49,6 +54,7 @@ pub async fn load_integrations(
         &vars_for_replacements,
         &lst,
         &mut error_log,
+        include_paths_matching,
     );
 
     let mut integrations_map = IndexMap::new();

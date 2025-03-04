@@ -202,8 +202,8 @@ pub async fn handle_v1_integrations_mcp_logs(
     let post = serde_json::from_slice::<IntegrationsMcpLogsRequest>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e)))?;
 
-    let (integrations, _) = crate::integrations::running_integrations::load_integrations(gcx.clone(), true).await;
-    
+    let (integrations, error_log) = crate::integrations::running_integrations::load_integrations(gcx.clone(), true, &[post.config_path.clone()]).await;
+   
     let mcp_integration = integrations.values()
         .find_map(|i| {
             if let Some(mcp) = i.as_any().downcast_ref::<IntegrationMCP>() {
@@ -220,7 +220,10 @@ pub async fn handle_v1_integrations_mcp_logs(
         return Ok(Response::builder()
             .status(StatusCode::OK)
             .header("Content-Type", "application/json")
-            .body(Body::from(serde_json::to_string(&logs).unwrap()))
+            .body(Body::from(serde_json::json!({
+                "logs": logs,
+                "error_log": error_log,
+            }).to_string()))
             .unwrap());
     }
     
@@ -228,7 +231,8 @@ pub async fn handle_v1_integrations_mcp_logs(
         .status(StatusCode::NOT_FOUND)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::json!({
-            "error": format!("MCP integration with config path '{}' not found", post.config_path)
+            "error": format!("MCP integration with config path '{}' not found", post.config_path),
+            "error_log": error_log,
         }).to_string()))
         .unwrap())
 }
