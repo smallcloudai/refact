@@ -3,6 +3,8 @@ import { createSelector } from "@reduxjs/toolkit";
 import { isToolMessage } from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
+export const selectDefaultChatModel = (state: RootState) =>
+  state.chat.default_model;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
 export const selectModel = (state: RootState) => state.chat.thread.model;

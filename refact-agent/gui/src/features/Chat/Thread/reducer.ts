@@ -382,8 +382,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addMatcher(
     capsApi.endpoints.getCaps.matchFulfilled,
     (state, action) => {
-      const model =
-        state.thread.model || action.payload.code_chat_default_model;
+      const defaultModel = action.payload.code_chat_default_model;
+      state.default_model = defaultModel;
+
+      const model = state.thread.model || defaultModel;
       if (!(model in action.payload.code_chat_models)) return;
 
       const currentModelMaximumContextTokens =
