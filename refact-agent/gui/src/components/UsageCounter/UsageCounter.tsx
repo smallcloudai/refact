@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
-import { ArrowDownIcon, ArrowUpIcon, ReaderIcon } from "@radix-ui/react-icons";
+import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 import classNames from "classnames";
 
 import { ScrollArea } from "../ScrollArea";
@@ -14,6 +14,8 @@ import {
   selectThreadMaximumTokens,
 } from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
+import { selectAllImages } from "../../features/AttachedImages";
+import { Coin } from "../../images";
 
 type UsageCounterProps =
   | {
@@ -44,6 +46,7 @@ const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
 
   return (
     <Flex direction="column" align="start" gap="2">
+      {/* TODO: upsale logic might be implemented here to extend maximum context size */}
       {maximumThreadContextTokens && (
         <TokenDisplay
           label="Thread maximum context tokens amount"
@@ -96,14 +99,11 @@ const DefaultHoverCard: React.FC<{
 const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
   messageTokens,
 }) => {
-  const currentThreadMaximumTokens = useAppSelector(selectThreadMaximumTokens);
-
   return (
     <Flex align="center" gap="6px">
-      <ReaderIcon width="12" height="12" />
-      <Text size="1">
-        {formatNumberToFixed(messageTokens)} /{" "}
-        {formatNumberToFixed(currentThreadMaximumTokens ?? 0)}
+      <Coin width="12" height="12" />
+      <Text size="1" color="gray">
+        {formatNumberToFixed(messageTokens)}
       </Text>
     </Flex>
   );
@@ -131,13 +131,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
   isMessageEmpty,
 }) => {
+  const maybeAttachedImages = useAppSelector(selectAllImages);
   const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
   const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
 
-  const messageTokens = useMemo(
-    () => (isMessageEmpty ? 0 : currentMessageTokens ?? 0),
-    [currentMessageTokens, isMessageEmpty],
-  );
+  const messageTokens = useMemo(() => {
+    if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
+    if (!currentMessageTokens) return 0;
+    return currentMessageTokens;
+  }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
 
   const inputTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
@@ -180,7 +182,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           maxWidth="90vw"
           minWidth="300px"
           avoidCollisions
-          align={isInline ? "start" : "end"}
+          align={isInline ? "center" : "end"}
           side="top"
         >
           {isInline ? (
