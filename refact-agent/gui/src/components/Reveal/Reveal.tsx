@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Button, Flex, Text } from "@radix-ui/themes";
+import { Box, Button, Flex } from "@radix-ui/themes";
 import styles from "./reveal.module.css";
 import classNames from "classnames";
 
@@ -31,11 +31,7 @@ const RevealText: React.FC<{
   text: string;
 }> = ({ isRevealingCode, text }) => (
   <Flex position="absolute" bottom="2" width="100%" justify="center">
-    {isRevealingCode ? (
-      text
-    ) : (
-      <Text className={styles.reveal_text}>{text}</Text>
-    )}
+    {isRevealingCode ? text : <Box className={styles.reveal_text}>{text}</Box>}
   </Flex>
 );
 
@@ -53,12 +49,15 @@ export const Reveal: React.FC<RevealProps> = ({
 
   if (open) {
     return (
-      <Box width="100%" minWidth="max-content" position="relative">
+      <Box width="100%" position="relative">
         {children}
         <RevealButton onClick={handleClick} isInline={!isRevealingCode}>
           {!defaultOpen && (
             <Box
-              className={`${styles.reveal_hidden} ${styles.reveal_hidden_exposed}`}
+              className={classNames(
+                styles.reveal_hidden,
+                styles.reveal_hidden_exposed,
+              )}
             >
               <RevealText
                 isRevealingCode={isRevealingCode}
