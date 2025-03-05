@@ -16,7 +16,6 @@ import { Box, Card, Flex, Button } from "@radix-ui/themes";
 import { TruncateLeft } from "../Text";
 import { Link } from "../Link";
 import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
-import { Markdown } from "../Markdown";
 import { filename } from "../../utils/filename";
 import styles from "./Texdoc.module.css";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
@@ -25,10 +24,8 @@ import { useAppSelector } from "../../hooks";
 import { selectCanPaste, selectChatId } from "../../features/Chat";
 import { toolsApi } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
-import {
-  fenceBackTicks,
-  isRTKResponseErrorWithDetailMessage,
-} from "../../utils";
+import { isRTKResponseErrorWithDetailMessage } from "../../utils";
+import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 
 export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
   toolCall,
@@ -161,22 +158,26 @@ const TextDocHeader: React.FC<{
 const CreateTextDoc: React.FC<{
   toolCall: CreateTextDocToolCall;
 }> = ({ toolCall }) => {
-  const code = useMemo(() => {
-    return formatMarkdown(
-      toolCall.function.arguments.path,
-      toolCall.function.arguments.content,
-    );
-  }, [toolCall.function.arguments.content, toolCall.function.arguments.path]);
   const handleCopy = useCopyToClipboard();
 
-  const lineCount = useMemo(() => code.split("\n").length, [code]);
+  const className = useMemo(() => {
+    const extension = getFileExtension(toolCall.function.arguments.path);
+    return `language-${extension}`;
+  }, [toolCall.function.arguments.path]);
+
+  const lineCount = useMemo(
+    () => toolCall.function.arguments.content.split("\n").length,
+    [toolCall.function.arguments.content],
+  );
 
   return (
     // TODO: move this box up a bit, or make it generic
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
       <Reveal isRevealingCode defaultOpen={lineCount < 9}>
-        <Markdown onCopyClick={handleCopy}>{code}</Markdown>
+        <MarkdownCodeBlock onCopyClick={handleCopy} className={className}>
+          {toolCall.function.arguments.content}
+        </MarkdownCodeBlock>
       </Reveal>
     </Box>
   );
@@ -185,28 +186,29 @@ const CreateTextDoc: React.FC<{
 const ReplaceTextDoc: React.FC<{
   toolCall: ReplaceTextDocToolCall;
 }> = ({ toolCall }) => {
-  const code = useMemo(() => {
-    return formatMarkdown(
-      toolCall.function.arguments.path,
-      toolCall.function.arguments.replacement,
-    );
-  }, [
-    toolCall.function.arguments.path,
-    toolCall.function.arguments.replacement,
-  ]);
-
   const copyToClipBoard = useCopyToClipboard();
   const handleCopy = useCallback(() => {
     copyToClipBoard(toolCall.function.arguments.replacement);
   }, [copyToClipBoard, toolCall.function.arguments.replacement]);
 
-  const lineCount = useMemo(() => code.split("\n").length, [code]);
+  const className = useMemo(() => {
+    const extension = getFileExtension(toolCall.function.arguments.path);
+    return `language-${extension}`;
+  }, [toolCall.function.arguments.path]);
+
+  const lineCount = useMemo(
+    () => toolCall.function.arguments.replacement.split("\n").length,
+    [toolCall.function.arguments.replacement],
+  );
+
   return (
     // TODO: move this box up a bit, or make it generic
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
       <Reveal isRevealingCode defaultOpen={lineCount < 9}>
-        <Markdown onCopyClick={handleCopy}>{code}</Markdown>
+        <MarkdownCodeBlock onCopyClick={handleCopy} className={className}>
+          {toolCall.function.arguments.replacement}
+        </MarkdownCodeBlock>
       </Reveal>
     </Box>
   );
@@ -217,13 +219,13 @@ const UpdateRegexTextDoc: React.FC<{
 }> = ({ toolCall }) => {
   const code = useMemo(() => {
     return (
-      '```py\nre.sub("' +
+      're.sub("' +
       toolCall.function.arguments.pattern +
       '", "' +
       toolCall.function.arguments.replacement +
       '", open("' +
       toolCall.function.arguments.path +
-      '"))\n```'
+      '"))\n'
     );
   }, [
     toolCall.function.arguments.path,
@@ -237,7 +239,7 @@ const UpdateRegexTextDoc: React.FC<{
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
       <Reveal isRevealingCode defaultOpen={lineCount < 9}>
-        <Markdown>{code}</Markdown>
+        <MarkdownCodeBlock className="language-py">{code}</MarkdownCodeBlock>
       </Reveal>
     </Box>
   );
@@ -246,28 +248,28 @@ const UpdateRegexTextDoc: React.FC<{
 const UpdateTextDoc: React.FC<{
   toolCall: UpdateTextDocToolCall;
 }> = ({ toolCall }) => {
-  const code = useMemo(() => {
-    return formatMarkdown(
-      toolCall.function.arguments.path,
-      toolCall.function.arguments.replacement,
-    );
-  }, [
-    toolCall.function.arguments.path,
-    toolCall.function.arguments.replacement,
-  ]);
-
-  const lineCount = useMemo(() => code.split("\n").length, [code]);
-
   const copyToClipBoard = useCopyToClipboard();
   const handleCopy = useCallback(() => {
     copyToClipBoard(toolCall.function.arguments.replacement);
   }, [copyToClipBoard, toolCall.function.arguments.replacement]);
 
+  const className = useMemo(() => {
+    const extension = getFileExtension(toolCall.function.arguments.path);
+    return `language-${extension}`;
+  }, [toolCall.function.arguments.path]);
+
+  const lineCount = useMemo(
+    () => toolCall.function.arguments.replacement.split("\n").length,
+    [toolCall.function.arguments.replacement],
+  );
+
   return (
     <Box className={styles.textdoc}>
       <TextDocHeader toolCall={toolCall} />
       <Reveal isRevealingCode defaultOpen={lineCount < 9}>
-        <Markdown onCopyClick={handleCopy}>{code}</Markdown>
+        <MarkdownCodeBlock onCopyClick={handleCopy} className={className}>
+          {toolCall.function.arguments.replacement}
+        </MarkdownCodeBlock>
       </Reveal>
     </Box>
   );
@@ -279,12 +281,4 @@ function getFileExtension(filePath: string): string {
     return "dockerfile";
   const parts = fileName.split(".");
   return parts[parts.length - 1].toLocaleLowerCase();
-}
-
-function formatMarkdown(path: string, content: string): string {
-  const extension = getFileExtension(path);
-  const isMarkdown = extension === "md";
-  // eslint-disable-next-line no-useless-escape
-  const markdown = isMarkdown ? content.replace(/```/g, "'''") : content;
-  return "```" + extension + "\n" + markdown + "\n```";
 }
