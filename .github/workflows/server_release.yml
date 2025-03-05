@@ -2,7 +2,7 @@ name: Refact Server CICD Release
 on:
   push:
     tags:
-      - v*
+      - server/v*
   workflow_dispatch:
 
 defaults:
