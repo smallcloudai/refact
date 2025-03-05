@@ -25,7 +25,10 @@ import { useAppSelector } from "../../hooks";
 import { selectCanPaste, selectChatId } from "../../features/Chat";
 import { toolsApi } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
-import { isRTKResponseErrorWithDetailMessage } from "../../utils";
+import {
+  fenceBackTicks,
+  isRTKResponseErrorWithDetailMessage,
+} from "../../utils";
 
 export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
   toolCall,
@@ -159,9 +162,9 @@ const CreateTextDoc: React.FC<{
   toolCall: CreateTextDocToolCall;
 }> = ({ toolCall }) => {
   const code = useMemo(() => {
-    const extension = getFileExtension(toolCall.function.arguments.path);
-    return (
-      "```" + extension + "\n" + toolCall.function.arguments.content + "\n```"
+    return formatMarkdown(
+      toolCall.function.arguments.path,
+      toolCall.function.arguments.content,
     );
   }, [toolCall.function.arguments.content, toolCall.function.arguments.path]);
   const handleCopy = useCopyToClipboard();
@@ -183,13 +186,9 @@ const ReplaceTextDoc: React.FC<{
   toolCall: ReplaceTextDocToolCall;
 }> = ({ toolCall }) => {
   const code = useMemo(() => {
-    const extension = getFileExtension(toolCall.function.arguments.path);
-    return (
-      "```" +
-      extension +
-      "\n" +
-      toolCall.function.arguments.replacement +
-      "\n```"
+    return formatMarkdown(
+      toolCall.function.arguments.path,
+      toolCall.function.arguments.replacement,
     );
   }, [
     toolCall.function.arguments.path,
@@ -248,13 +247,9 @@ const UpdateTextDoc: React.FC<{
   toolCall: UpdateTextDocToolCall;
 }> = ({ toolCall }) => {
   const code = useMemo(() => {
-    const extension = getFileExtension(toolCall.function.arguments.path);
-    return (
-      "```" +
-      extension +
-      "\n" +
-      toolCall.function.arguments.replacement +
-      "\n```"
+    return formatMarkdown(
+      toolCall.function.arguments.path,
+      toolCall.function.arguments.replacement,
     );
   }, [
     toolCall.function.arguments.path,
@@ -284,4 +279,12 @@ function getFileExtension(filePath: string): string {
     return "dockerfile";
   const parts = fileName.split(".");
   return parts[parts.length - 1].toLocaleLowerCase();
+}
+
+function formatMarkdown(path: string, content: string): string {
+  const extension = getFileExtension(path);
+  const isMarkdown = extension === "md";
+  // eslint-disable-next-line no-useless-escape
+  const markdown = isMarkdown ? content.replace(/```/g, "'''") : content;
+  return "```" + extension + "\n" + markdown + "\n```";
 }
