@@ -8,3 +8,4 @@ export * from "./survey_questions";
 export * from "./chat_links_response";
 export * from "./chat_config_thread";
 export * from "./chat_textdoc";
+export * from "./markdown-issue";
