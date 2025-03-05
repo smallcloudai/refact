@@ -195,7 +195,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
     {
       role: "user",
       content:
-        "Generate a title using exactly 2-3 words that captures the essence of the user's query. The title must be specific, include any mentioned filenames, and avoid generic terms. Examples: 'File Analysis', 'Code Review'. No additional text or explanation is allowed.",
+        "Summarize the chat above in 2-3 words. Prefer filenames, classes, entities, and avoid generic terms. Example: 'Explain MyClass::f()'. Write nothing else, only the 2-3 words.",
       checkpoints: [],
     },
   ]);
