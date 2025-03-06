@@ -74,7 +74,7 @@ impl IntegrationSession for SessionMCP {
 }
 
 fn _add_log_entry(session: &mut SessionMCP, entry: String) {
-    let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
+    let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
     let log_entry = format!("[{}] {}", timestamp, entry);
     
     session.logs.extend(log_entry.lines().into_iter().map(|s| s.to_string()));
