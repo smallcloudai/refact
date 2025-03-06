@@ -11,6 +11,7 @@ import {
 import { v4 as uuid } from "uuid";
 import { parseOrElse } from "../../utils";
 import { makeMessageTree } from "./makeMessageTree";
+import { pagesSlice } from "../Pages/pagesSlice";
 
 export interface CMessageNode {
   message: CMessage;
@@ -108,8 +109,27 @@ export const chatDbMessageSlice = createSlice({
     },
   },
 
+  extraReducers(builder) {
+    // TODO: maybe move this
+    builder.addMatcher(pagesSlice.actions.push.match, (state, action) => {
+      if (action.payload.name !== "chat") return state;
+      if (action.payload.threadId !== undefined) return state;
+      // TODO: other data passed from previouly used chat.
+      const thread = createChatThread();
+      thread.cthread_model = state.thread.cthread_model;
+      thread.cthread_toolset = state.thread.cthread_toolset;
+      state = initialState;
+      state.thread = thread;
+    });
+  },
+
   selectors: {
     selectMessageTree: (state) => makeMessageTree(state.messageList),
+    selectThread: (state) => state.thread,
+    selectLeafEndPosition: (state) => ({
+      num: state.endNumber,
+      alt: state.endAlt,
+    }),
   },
 });
 

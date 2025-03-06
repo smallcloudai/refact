@@ -11,6 +11,7 @@ import {
   isCThreadSubResponseDelete,
   isCMessageUpdateResponse,
   CMessage,
+  CThread,
 } from "./types";
 import { chatDbActions } from "../../features/ChatDB/chatDbSlice";
 import {
@@ -101,6 +102,37 @@ export const subscribeToThreadsThunk = createAppAsyncThunk<
     });
 });
 
+export function updateThread(
+  thread: Partial<CThread> & Pick<CThread, "cthread_id">,
+  port = 8001,
+  apiKey?: string | null,
+): Promise<Response> {
+  const url = `http://127.0.0.1:${port}${CHAT_DB_THREADS_SUB}`;
+  const headers = new Headers();
+  headers.append("Content-Type", "application/json");
+  if (apiKey) {
+    headers.append("Authorization", `Bearer ${apiKey}`);
+  }
+
+  return fetch(url, {
+    method: "POST",
+    headers,
+    redirect: "follow",
+    cache: "no-cache",
+    body: JSON.stringify(thread),
+  });
+}
+
+export const updateThreadThunk = createAppAsyncThunk<
+  unknown,
+  Partial<CThread> & Pick<CThread, "cthread_id">
+>("chatDbApi/updateThread", (thread, thunkApi) => {
+  const state = thunkApi.getState() as unknown as RootState;
+  const port = state.config.lspPort;
+  const apiKey = state.config.apiKey;
+  return updateThread(thread, port, apiKey);
+});
+
 function subscribeToThreadMessages(
   cthreadId: string,
   port = 8001,
@@ -188,6 +220,34 @@ export function updateCMessage(
     body: JSON.stringify(cmessages),
   });
 }
+
+export const updateCMessagesThunk = createAppAsyncThunk<unknown, CMessage[]>(
+  "chatDbApi/updateCMessagesThunk",
+  (cmessages, thunkApi) => {
+    const state = thunkApi.getState() as unknown as RootState;
+    const port = state.config.lspPort;
+    const apiKey = state.config.apiKey;
+    return updateCMessage(cmessages, port, apiKey);
+  },
+);
+
+export const sendMessagesThunk = createAppAsyncThunk<
+  unknown,
+  {
+    messages: CMessage[];
+  }
+>("chatDbApi/sendThreadAndMessagesThunk", async (args, thunkApi) => {
+  if (args.messages.length === 0) return;
+  const id = args.messages.map((m) => m.cmessage_belongs_to_cthread_id)[0];
+  await thunkApi.dispatch(
+    updateThreadThunk({
+      cthread_id: id,
+      cthread_updated_ts: new Date().getTime(),
+    }),
+  );
+
+  await thunkApi.dispatch(updateCMessagesThunk(args.messages));
+});
 
 // Types for the API
 
