@@ -1,21 +1,24 @@
 import React, { useCallback } from "react";
 import { Markdown } from "../Markdown";
 
-import { Container, Box } from "@radix-ui/themes";
+import { Container, Box, Callout } from "@radix-ui/themes";
 import { ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { LikeButton } from "./LikeButton";
+import styles from "./ReasoningContent.module.css";
 
 type ChatInputProps = {
   message: string | null;
+  reasoningContent?: string | null;
   toolCalls?: ToolCall[] | null;
   isLast?: boolean;
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
   message,
+  reasoningContent,
   toolCalls,
   isLast,
 }) => {
@@ -59,6 +62,18 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
 
   return (
     <Container position="relative">
+      {reasoningContent && (
+        <Box py="2">
+          <div className={styles.reasoningCallout}>
+            <div className={styles.reasoningTitle}>Model Reasoning</div>
+            <div className={styles.reasoningContent}>
+              <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
+                {reasoningContent}
+              </Markdown>
+            </div>
+          </div>
+        </Box>
+      )}
       {message && (
         <Box py="4">
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
