@@ -23,6 +23,7 @@ use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
 
 
 const DEBUG: bool = false;
+const MIN_BUDGET_TOKENS: usize = 1024;
 
 
 pub struct DeltaSender {
@@ -383,12 +384,15 @@ fn _adapt_for_reasoning_models(
             }).collect()
         },
         "anthropic" => {
-            // TODO: anthropic models require thinking to be passed in case of tool message in the end
-            // also we should compute budget_tokens
-            if supports_boost_reasoning && sampling_parameters.boost_reasoning {
+            let budget_tokens = if sampling_parameters.max_new_tokens > MIN_BUDGET_TOKENS {
+                (sampling_parameters.max_new_tokens / 2).max(MIN_BUDGET_TOKENS)
+            } else {
+                0
+            };
+            if supports_boost_reasoning && sampling_parameters.boost_reasoning && budget_tokens > 0 {
                 sampling_parameters.thinking = Some(json!({
                     "type": "enabled",
-                    "budget_tokens": 1024,  // in range [1024, max max_completion_tokens]
+                    "budget_tokens": budget_tokens,
                 }));
             }
             messages.clone()
