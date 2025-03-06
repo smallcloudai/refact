@@ -1,9 +1,15 @@
-use crate::scratchpad_abstract::HasTokenizerAndEot;
-use crate::call_validation::ChatMessage;
 use std::collections::{HashSet, HashMap};
+use std::sync::Arc;
+use tokio::sync::RwLock as ARwLock;
 
-fn _user_role(m: &ChatMessage) -> bool
-{
+use crate::call_validation::ChatMessage;
+use crate::global_context::GlobalContext;
+use crate::scratchpad_abstract::HasTokenizerAndEot;
+
+static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
+
+
+fn _user_role(m: &ChatMessage) -> bool {
     m.role == "user" || m.role == "context_file" || m.role == "plain_text" || m.role == "cd_instruction"
 }
 
@@ -11,7 +17,7 @@ fn _check_invariant(messages: &Vec<ChatMessage>) -> Result<(), String> {
     if messages.len() == 0 {
         return Ok(());
     }
-    if messages.len() > 0 && messages[0].role == "system" {
+    if messages.len() > 0 && (messages[0].role == "system" || messages[0].role == "user") {
         if messages.len() == 1 {
             return Ok(());
         }
@@ -24,7 +30,7 @@ fn _check_invariant(messages: &Vec<ChatMessage>) -> Result<(), String> {
         err_text.push_str(format!("{}/", msg.role).as_str());
     }
     err_text = format!("invariant doesn't hold: {}", err_text);
-    return Err(err_text);
+    Err(err_text)
 }
 
 pub fn limit_messages_history(
@@ -40,13 +46,25 @@ pub fn limit_messages_history(
     if let Err(e) = _check_invariant(messages) {
         tracing::error!("input problem: {}", e);
     }
-    let tokens_limit = (n_ctx - max_new_tokens) as i32;
-
+    
     let token_counts: Vec<i32> = messages
         .iter()
         .map(|msg| -> Result<i32, String> { Ok(3 + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
         .collect::<Result<Vec<_>, String>>()?;
-
+    let occupied_tokens = token_counts.iter().sum::<i32>();
+    
+    // compensating for the error of the tokenizer
+    let tokens_extra_budget = (occupied_tokens as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
+    tracing::info!("set extra budget of {} tokens", tokens_extra_budget);
+    let tokens_limit = n_ctx.saturating_sub(max_new_tokens).saturating_sub(tokens_extra_budget) as i32;
+    if tokens_limit == 0 {
+        tracing::error!("n_ctx={} is too large for max_new_tokens={} with occupied_tokens={}", n_ctx, max_new_tokens, occupied_tokens);
+    }
+    if occupied_tokens <= tokens_limit {
+        tracing::info!("occupied_tokens={} <= tokens_limit={}", occupied_tokens, tokens_limit);
+        return Ok(messages.clone());
+    }
+    
     // Always include messages from last_user_msg_starts to the end
     let mut included_indices: Vec<usize> = (last_user_msg_starts..messages.len()).collect();
     let mut tokens_used: i32 = included_indices.iter().map(|&i| token_counts[i]).sum();
