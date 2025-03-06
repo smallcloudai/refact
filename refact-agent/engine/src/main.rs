@@ -83,6 +83,8 @@ async fn main() {
     let home_dir = canonical_path(home::home_dir().ok_or(()).expect("failed to find home dir").to_string_lossy().to_string());
     let cache_dir = home_dir.join(".cache").join("refact");
     let config_dir = home_dir.join(".config").join("refact");
+    tokio::fs::create_dir_all(&cache_dir).await.expect("failed to create cache dir");
+    tokio::fs::create_dir_all(&config_dir).await.expect("failed to create cache dir");
     let (gcx, ask_shutdown_receiver, cmdline) = global_context::create_global_context(cache_dir.clone(), config_dir.clone()).await;
     let mut writer_is_stderr = false;
     let (logs_writer, _guard) = if cmdline.logs_stderr {
