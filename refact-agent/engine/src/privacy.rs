@@ -8,6 +8,7 @@ use tracing::error;
 use glob::Pattern;
 use std::time::SystemTime;
 
+use crate::files_correction::canonical_path;
 use crate::global_context::GlobalContext;
 
 
@@ -70,13 +71,19 @@ async fn read_privacy_yaml(path: &Path) -> PrivacySettings
 pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<PrivacySettings>
 {
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-    let path = {
+    let (config_dir, privacy_yaml) = {
         let gcx_locked = gcx.read().await;
         let should_reload = gcx_locked.privacy_settings.loaded_ts + PRIVACY_TOO_OLD.as_secs() <= current_time;
         if !should_reload {
             return gcx_locked.privacy_settings.clone();
         }
-        gcx_locked.config_dir.join("privacy.yaml")
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.privacy_yaml.clone())
+    };
+
+    let path = if privacy_yaml.is_empty() {
+        config_dir.join("privacy.yaml")
+    } else {
+        canonical_path(privacy_yaml)
     };
 
     let mut new_privacy_settings = read_privacy_yaml(&path).await;

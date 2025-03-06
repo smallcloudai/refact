@@ -1,41 +1,63 @@
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
+use serde_inline_default::serde_inline_default;
 use serde_json::Value;
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::global_context::GlobalContext;
-use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports};
+use crate::integrations::utils::{
+    serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports,
+};
 use crate::integrations::docker::docker_container_manager::Port;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 
-
+#[serde_inline_default]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsIsolation {
     pub container_workspace_folder: String,
     pub docker_image_id: String,
+    #[serde(default)]
     pub docker_network: String,
-    #[serde(serialize_with = "serialize_ports", deserialize_with = "deserialize_ports")]
+    #[serde(
+        serialize_with = "serialize_ports",
+        deserialize_with = "deserialize_ports"
+    )]
+    #[serde(default)]
     pub ports: Vec<Port>,
-    #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
+    #[serde(
+        serialize_with = "serialize_num_to_str",
+        deserialize_with = "deserialize_str_to_num"
+    )]
     pub keep_containers_alive_for_x_minutes: u64,
+    #[serde_inline_default("sh".to_string())]
+    pub docker_entrypoint: String,
+    #[serde(default)]
+    pub docker_extra_params: Vec<String>,
 }
 
 #[derive(Clone, Default)]
 pub struct IntegrationIsolation {
-    pub common:  IntegrationCommon,
+    pub common: IntegrationCommon,
     pub settings_isolation: SettingsIsolation,
 }
 
 #[async_trait]
 impl IntegrationTrait for IntegrationIsolation {
-    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, _config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
-      self.settings_isolation = serde_json::from_value(value.clone())?;
-      self.common = serde_json::from_value(value.clone())?;
-      Ok(())
-  }
+    async fn integr_settings_apply(
+        &mut self,
+        _gcx: Arc<ARwLock<GlobalContext>>,
+        _config_path: String,
+        value: &serde_json::Value,
+    ) -> Result<(), serde_json::Error> {
+        self.settings_isolation = serde_json::from_value(value.clone())?;
+        self.common = serde_json::from_value(value.clone())?;
+        Ok(())
+    }
 
     fn integr_settings_as_json(&self) -> Value {
         serde_json::to_value(&self.settings_isolation).unwrap()
@@ -45,7 +67,10 @@ impl IntegrationTrait for IntegrationIsolation {
         self.common.clone()
     }
 
-    async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
+    async fn integr_tools(
+        &self,
+        _integr_name: &str,
+    ) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         vec![]
     }
 
@@ -73,6 +98,13 @@ fields:
   ports:
     f_type: string_long
     f_desc: "Comma separated published:target notation for ports to publish, example '8080:3000,5000:5432'"
+  docker_entrypoint:
+    f_type: string_long
+    f_desc: "The entrypoint to use in the Docker container. If empty, use the default entrypoint for the container."
+    f_default: "sh"
+  docker_extra_params:
+    f_type: string_array
+    f_desc: "Extra parameters to pass to the Docker command."
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false

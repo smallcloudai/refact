@@ -58,6 +58,7 @@ rust-embed = "8.5.0"
 percent-encoding = "2.3"
 serde = { version = "1", features = ["rc", "derive"] }
 serde_cbor = "0.11.2"
+serde-inline-default = "0.2.3"
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_yaml = "0.9.31"
 # all features = ["compression", "docs", "event_log", "failpoints", "io_uring", "lock_free_delays", "measure_allocs", "miri_optimizations", "mutex", "no_inline", "no_logs", "pretty_backtrace", "testing"]
