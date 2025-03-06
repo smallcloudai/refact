@@ -61,6 +61,7 @@ type SendChatArgs = {
   checkpointsEnabled?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode; // used for chat actions
+  boost_reasoning?: boolean;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -72,6 +73,7 @@ type GetChatTitleArgs = {
   chatId?: string;
   port?: number;
   apiKey?: string | null;
+  boost_reasoning?: boolean;
 } & StreamArgs;
 
 export type GetChatTitleResponse = {
@@ -150,6 +152,7 @@ export async function sendChat({
   integration,
   last_user_message_id = "",
   mode,
+  boost_reasoning,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -170,7 +173,7 @@ export async function sendChat({
     only_deterministic_messages,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
-    parameters: model === "claude-3-7-sonnet" ? { boost_reasoning: true } : undefined,
+    parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
     meta: {
       chat_id,
       request_attempt_id: last_user_message_id,
@@ -220,7 +223,8 @@ export async function generateChatTitle({
     max_tokens: 300,
     only_deterministic_messages: only_deterministic_messages,
     chat_id,
-    parameters: model === "claude-3-7-sonnet" ? { boost_reasoning: true } : undefined,
+    // NOTE: we don't want to use reasoning here, for example Anthropic requires at least max_tokens=1024 for thinking
+    // parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
   });
 
   const headers = {
