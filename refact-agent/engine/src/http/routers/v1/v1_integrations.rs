@@ -12,7 +12,7 @@ use rust_embed::RustEmbed;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
-use crate::integrations::integr_mcp::IntegrationMCP;
+use crate::integrations::integr_mcp::get_mcp_logs;
 
 
 pub async fn handle_v1_integrations(
@@ -200,39 +200,15 @@ pub async fn handle_v1_integrations_mcp_logs(
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<IntegrationsMcpLogsRequest>(&body_bytes)
-        .map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e)))?;
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let (integrations, error_log) = crate::integrations::running_integrations::load_integrations(gcx.clone(), true, &[post.config_path.clone()]).await;
-   
-    let mcp_integration = integrations.values()
-        .find_map(|i| {
-            if let Some(mcp) = i.as_any().downcast_ref::<IntegrationMCP>() {
-                if mcp.config_path == post.config_path {
-                    return Some(mcp);
-                }
-            }
-            None
-        });
-        
-    if let Some(mcp_integration) = mcp_integration {
-        let logs = mcp_integration.get_logs().await;
-        
-        return Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header("Content-Type", "application/json")
-            .body(Body::from(serde_json::json!({
-                "logs": logs,
-                "error_log": error_log,
-            }).to_string()))
-            .unwrap());
-    }
+    let logs = get_mcp_logs(gcx.clone(), &post.config_path).await;
     
-    Ok(Response::builder()
-        .status(StatusCode::NOT_FOUND)
+    return Ok(Response::builder()
+        .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::json!({
-            "error": format!("MCP integration with config path '{}' not found", post.config_path),
-            "error_log": error_log,
+            "logs": logs,
         }).to_string()))
         .unwrap())
 }
