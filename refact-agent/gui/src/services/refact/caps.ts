@@ -63,6 +63,7 @@ export type CodeChatModel = {
   supports_clicks?: boolean;
   // TODO: could be defined
   supports_agent?: boolean;
+  supports_boost_reasoning?: boolean;
 };
 
 export type CodeCompletionModel = {
