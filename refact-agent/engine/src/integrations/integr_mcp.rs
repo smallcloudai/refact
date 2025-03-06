@@ -41,42 +41,6 @@ pub struct IntegrationMCP {
     pub config_path: String,
 }
 
-impl IntegrationMCP {
-    pub async fn get_logs(&self) -> Vec<String> {
-        let session_key = format!("{}", self.config_path);
-        let gcx = match self.upgrade_gcx().await {
-            Ok(g) => g,
-            Err(e) => return vec![e.to_string()],
-        };
-        
-        let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
-        if session_option.is_none() {
-            tracing::error!("No session for {:?}, strange (1)", session_key);
-            return vec![];
-        }
-        let session = session_option.unwrap();
-        let logs: Vec<String>;
-        
-        {
-            let mut session_locked = session.lock().await;
-            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-            logs = session_downcasted.logs.clone();
-        }
-        
-        logs
-    }
-
-    async fn upgrade_gcx(&self) -> Result<Arc<ARwLock<GlobalContext>>, String> {
-        return match self.gcx_option.as_ref() {
-            Some(gcx) => match gcx.upgrade() {
-                Some(gcx) => Ok(gcx),
-                None => Err("Error: System is shutting down".to_string()),
-            },
-            None => Err("Error: MCP is not set up yet".to_string()),
-        }
-    }
-}
-
 pub struct SessionMCP {
     pub debug_name: String,
     pub config_path: String,        // to check if expired or not
@@ -107,6 +71,26 @@ impl IntegrationSession for SessionMCP {
             "".to_string()
         })
     }
+}
+
+pub async fn get_mcp_logs(gcx: Arc<ARwLock<GlobalContext>>, config_path: &str) -> Vec<String> {
+    let session_key = config_path;
+    
+    let session_option = gcx.read().await.integration_sessions.get(session_key).cloned();
+    if session_option.is_none() {
+        tracing::error!("No session for {:?}", session_key);
+        return vec![];
+    }
+    let session = session_option.unwrap();
+    let logs: Vec<String>;
+    
+    {
+        let mut session_locked = session.lock().await;
+        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+        logs = session_downcasted.logs.clone();
+    }
+    
+    logs
 }
 
 fn _add_log_entry(session: &mut SessionMCP, entry: String) {
@@ -333,10 +317,21 @@ impl IntegrationTrait for IntegrationMCP {
 
     async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         let session_key = format!("{}", self.config_path);
-        let gcx = match self.upgrade_gcx().await {
-            Ok(g) => g,
-            Err(e) => { tracing::error!(e); return vec![]; }
+        
+        let gcx = match self.gcx_option.clone() {
+            Some(gcx_weak) => match gcx_weak.upgrade() {
+                Some(gcx) => gcx,
+                None => {
+                    tracing::error!("Error: System is shutting down");
+                    return vec![];
+                }
+            },
+            None => {
+                tracing::error!("Error: MCP is not set up yet");
+                return vec![];
+            }
         };
+        
         let session_maybe = gcx.read().await.integration_sessions.get(&session_key).cloned();
         let session = match session_maybe {
             Some(session) => session,
