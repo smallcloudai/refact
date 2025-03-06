@@ -102,28 +102,18 @@ export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
   }, prev);
 }
 
-function thinkingBlocksDeltaToThinkingBlocks(delta: ThinkingBlockDelta[]): ThinkingBlock[] {
-  return delta.map((item) => ({
-    type: "thinking",
-    thinking: item.thinking,
-    signature: item.signature_delta,
-  }));
-}
-
-function mergeThinkingBlock(prev: ThinkingBlock[], add: ThinkingBlockDelta): ThinkingBlock[] {
+function mergeThinkingBlock(prev: ThinkingBlock[], add: ThinkingBlock): ThinkingBlock[] {
   if (prev.length === 0) {
-    return thinkingBlocksDeltaToThinkingBlocks([add]);
+    return [add];
   } else {
-    // TODO: this is not final processing of thinking
-    // we're waiting for litellm specification and testing
     const thinking_blocks = prev.slice();
-    thinking_blocks[0].thinking = thinking_blocks[0].thinking + add.thinking;
-    thinking_blocks[0].signature = thinking_blocks[0].signature + add.signature_delta;
+    thinking_blocks[0].thinking = (thinking_blocks[0].thinking ?? "") + (add.thinking ?? "");
+    thinking_blocks[0].signature = (thinking_blocks[0].signature ?? "") + (add.signature ?? "");
     return thinking_blocks;
   }
 }
 
-export function mergeThinkingBlocks(prev: ThinkingBlock[], add: ThinkingBlockDelta[]): ThinkingBlock[] {
+export function mergeThinkingBlocks(prev: ThinkingBlock[], add: ThinkingBlock[]): ThinkingBlock[] {
   return add.reduce((acc, cur) => {
     return mergeThinkingBlock(acc, cur);
   }, prev);
@@ -305,15 +295,12 @@ export function formatChatResponse(
 
     if (isThinkingBlocksDelta(cur.delta)) {
       if (!isAssistantMessage(lastMessage)) {
-        const thinking_blocks = Array.isArray(cur.delta.thinking_blocks)
-          ? thinkingBlocksDeltaToThinkingBlocks(cur.delta.thinking_blocks)
-          : cur.delta.thinking_blocks;
         return acc.concat([
           {
             role: "assistant",
             content: cur.delta.content ?? "",
             tool_calls: cur.delta.tool_calls,
-            thinking_blocks: thinking_blocks,
+            thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
           },
         ]);
