@@ -154,5 +154,6 @@ export function useCapsForToolUse() {
     setCapModel,
     isMultimodalitySupportedForCurrentModel,
     loading: !caps.data && (caps.isFetching || caps.isLoading),
+    data: caps.data,
   };
 }
