@@ -22,6 +22,7 @@ import {
 } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
+import { BoostReasoningSwitch } from "./BoostReasoningSwitch";
 import {
   ToolUse,
   selectAutomaticPatch,
@@ -32,6 +33,7 @@ import {
   selectMessages,
   selectThreadMode,
   selectToolUse,
+  selectBoostReasoning,
   setAutomaticPatch,
   setChatMode,
   setEnabledCheckpoints,
@@ -227,34 +229,45 @@ const CapsSelect: React.FC = () => {
     return option.disabled;
   });
 
+  // Check if the current model supports boost_reasoning
+  const supportsBoostReasoning = useMemo(() => {
+    const models = caps.data?.code_chat_models;
+    const item = models?.[caps.currentModel];
+    return item?.supports_boost_reasoning || false;
+  }, [caps.data?.code_chat_models, caps.currentModel]);
+
   return (
-    <Flex
-      gap="2"
-      align="center"
-      wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
-      width="100%"
-      ref={(x) => refs.setUseModel(x)}
-    >
-      <Text size="2">Use model:</Text>
-      <Skeleton loading={caps.loading}>
-        <Box>
-          {allDisabled ? (
-            <Text size="1" color="gray">
-              No models available
-            </Text>
-          ) : (
-            <Select
-              title="chat model"
-              options={caps.usableModelsForPlan}
-              value={caps.currentModel}
-              onChange={caps.setCapModel}
-            />
-          )}
-        </Box>
-      </Skeleton>
-    </Flex>
+    <>
+      <Flex
+        gap="2"
+        align="center"
+        wrap="wrap"
+        flexGrow="1"
+        flexShrink="0"
+        width="100%"
+        ref={(x) => refs.setUseModel(x)}
+      >
+        <Text size="2">Use model:</Text>
+        <Skeleton loading={caps.loading}>
+          <Box>
+            {allDisabled ? (
+              <Text size="1" color="gray">
+                No models available
+              </Text>
+            ) : (
+              <Select
+                title="chat model"
+                options={caps.usableModelsForPlan}
+                value={caps.currentModel}
+                onChange={caps.setCapModel}
+              />
+            )}
+          </Box>
+        </Skeleton>
+      </Flex>
+      
+      {supportsBoostReasoning && <BoostReasoningSwitch />}
+    </>
   );
 };
 
