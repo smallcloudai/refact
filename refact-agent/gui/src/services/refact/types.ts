@@ -350,19 +350,12 @@ export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
 
 export type ThinkingBlock = {
   type?: "thinking";
-  thinking?: string;
-  signature?: string;
-};
-
-// TODO: redacted_thinking, signature_delta etc. waiting for litellm streaming fixes
-export type ThinkingBlockDelta = {
-  type?: "thinking";
-  thinking?: string;
-  signature_delta?: string;
+  thinking: null | string;
+  signature: null | string;
 };
 
 interface ThinkingBlocksDelta extends BaseDelta {
-  thinking_blocks?: ThinkingBlockDelta[];
+  thinking_blocks?: ThinkingBlock[];
 }
 
 export function isThinkingBlocksDelta(delta: unknown): delta is ThinkingBlocksDelta {
