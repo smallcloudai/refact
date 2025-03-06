@@ -5,3 +5,4 @@ pub mod vdb_remote;
 pub mod vdb_sqlite;
 pub mod vdb_thread;
 pub mod vdb_emb_aux;
+pub mod vdb_error;
