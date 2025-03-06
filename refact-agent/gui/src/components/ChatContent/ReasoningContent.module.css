@@ -1,0 +1,30 @@
+.reasoningCallout {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-left: 3px solid #aaa;
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.reasoningTitle {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.reasoningContent {
+  font-size: 0.9em;
+  color: #555;
+}
+
+/* Dark mode styles */
+:global(.dark-theme) .reasoningCallout {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #666;
+}
+
+:global(.dark-theme) .reasoningTitle,
+:global(.dark-theme) .reasoningContent {
+  color: #aaa;
+}
