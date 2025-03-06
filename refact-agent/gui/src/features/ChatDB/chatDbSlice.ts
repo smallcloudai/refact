@@ -43,6 +43,10 @@ export const chatDbThreadsSlice = createSlice({
     getChats: (state) => Object.values(state.chats),
     getLoading: (state) => state.loading,
     getError: (state) => state.error,
+    getThreadById: (state, id: string) => {
+      if (id in state.chats) return state.chats[id];
+      return undefined;
+    },
   },
 });
 
