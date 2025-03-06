@@ -244,6 +244,7 @@ export function formatChatResponse(
         const msg: AssistantMessage = {
           role: cur.delta.role,
           content: cur.delta.content,
+          reasoning_content: cur.delta.reasoning_content,
           tool_calls: cur.delta.tool_calls,
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -254,6 +255,7 @@ export function formatChatResponse(
       const message = {
         role: cur.delta.role,
         content: cur.delta.content,
+        reasoning_content: cur.delta.reasoning_content,
         finish_reason: cur.finish_reason,
       } as ChatMessage;
       return acc.concat([message]);
@@ -266,7 +268,8 @@ export function formatChatResponse(
         return acc.concat([
           {
             role: "assistant",
-            content: cur.delta.content ?? "",
+            content: cur.delta.content,
+            reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
@@ -277,15 +280,12 @@ export function formatChatResponse(
       const last = acc.slice(0, -1);
       const collectedCalls = lastMessage.tool_calls ?? [];
       const tool_calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      const delta_content = cur.delta.content;
-      const content = delta_content
-        ? lastMessage.content + delta_content
-        : lastMessage.content;
 
       return last.concat([
         {
           role: "assistant",
-          content: content,
+          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -298,7 +298,8 @@ export function formatChatResponse(
         return acc.concat([
           {
             role: "assistant",
-            content: cur.delta.content ?? "",
+            content: cur.delta.content,
+            reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
@@ -309,15 +310,12 @@ export function formatChatResponse(
       const last = acc.slice(0, -1);
       const collectedThinkingBlocks = lastMessage.thinking_blocks ?? [];
       const thinking_blocks = mergeThinkingBlocks(collectedThinkingBlocks, cur.delta.thinking_blocks);
-      const delta_content = cur.delta.content;
-      const content = delta_content
-        ? lastMessage.content + delta_content
-        : lastMessage.content;
 
       return last.concat([
         {
           role: "assistant",
-          content: content,
+          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -331,11 +329,12 @@ export function formatChatResponse(
       typeof cur.delta.content === "string"
     ) {
       const last = acc.slice(0, -1);
-      const currentMessage = lastMessage.content ?? "";
+
       return last.concat([
         {
           role: "assistant",
-          content: currentMessage + cur.delta.content,
+          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -349,6 +348,8 @@ export function formatChatResponse(
         {
           role: "assistant",
           content: cur.delta.content,
+          reasoning_content: cur.delta.reasoning_content,
+          thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
         },
       ]);
