@@ -73,26 +73,6 @@ impl IntegrationSession for SessionMCP {
     }
 }
 
-pub async fn get_mcp_logs(gcx: Arc<ARwLock<GlobalContext>>, config_path: &str) -> Vec<String> {
-    let session_key = config_path;
-    
-    let session_option = gcx.read().await.integration_sessions.get(session_key).cloned();
-    if session_option.is_none() {
-        tracing::error!("No session for {:?}", session_key);
-        return vec![];
-    }
-    let session = session_option.unwrap();
-    let logs: Vec<String>;
-    
-    {
-        let mut session_locked = session.lock().await;
-        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-        logs = session_downcasted.logs.clone();
-    }
-    
-    logs
-}
-
 fn _add_log_entry(session: &mut SessionMCP, entry: String) {
     let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
     let log_entry = format!("[{}] {}", timestamp, entry);
