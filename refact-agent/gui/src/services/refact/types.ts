@@ -155,6 +155,7 @@ export type ProcessedUserMessageContentWithImages = {
 export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
+  reasoning_content?: string | null;  // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
