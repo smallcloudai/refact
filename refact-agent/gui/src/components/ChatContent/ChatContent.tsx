@@ -188,6 +188,7 @@ function renderMessages(
       <AssistantInput
         key={key}
         message={head.content}
+        reasoningContent={head.reasoning_content}
         toolCalls={head.tool_calls}
         isLast={isLast}
       />,

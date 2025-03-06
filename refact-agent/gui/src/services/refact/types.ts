@@ -302,7 +302,9 @@ interface BaseDelta {
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
+  reasoning_content?: string | null;  // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[];
+  thinking_blocks?: ThinkingBlock[] | null;
 }
 
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
@@ -312,6 +314,9 @@ export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
     return false;
   if (!("content" in delta)) return false;
   if (typeof delta.content !== "string") return false;
+  // reasoning_content is optional, but if present, must be a string
+  if ("reasoning_content" in delta && delta.reasoning_content !== null && typeof delta.reasoning_content !== "string")
+    return false;
   return true;
 }
 interface ChatContextFileDelta extends BaseDelta {
