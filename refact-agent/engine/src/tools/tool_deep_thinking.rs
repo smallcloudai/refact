@@ -83,7 +83,6 @@ async fn _make_prompt(
             false,
             &pp_settings,
         ).await {
-             
             files_context.push_str(
                 &format!("📎 {}:{}-{}\n```\n{}```\n\n",
                          context_file.file_name,

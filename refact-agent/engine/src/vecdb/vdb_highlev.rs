@@ -125,8 +125,8 @@ pub async fn vecdb_background_reload(
             // Use the fail-safe initialization with retries
             let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
                 max_attempts: 5,
-                initial_delay_ms: 500,
-                max_delay_ms: 10000,
+                initial_delay_ms: 10,
+                max_delay_ms: 1000,
                 backoff_factor: 2.0,
                 test_search_after_init: true,
             };
