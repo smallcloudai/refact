@@ -122,13 +122,12 @@ impl ScratchpadAbstract for ChatPassthrough {
         } else {
             self.messages.clone()
         };
-        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
+        let (mut messages, _any_context_produced) = if self.allow_at && !should_execute_remotely {
             run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else if self.allow_at {
             run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
         } else {
-            let messages_len = messages.len();
-            (messages, messages_len, false)
+            (messages, false)
         };
         if self.supports_tools {
             (messages, _) = if should_execute_remotely {
@@ -137,35 +136,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
-
-        _replace_broken_tool_call_messages(
-            &mut messages,
-            sampling_parameters_to_patch,
-            16000
-        );
-        _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
-
-        // Handle models that support reasoning
-        let messages = if model_supports_reasoning(&self.post.model) {
-            _adapt_for_reasoning_models(&messages, sampling_parameters_to_patch)
-        } else {
-            messages
-        };
-
-        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
-            tracing::error!("error limiting messages: {}", e);
-            vec![]
-        });
-
-        if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
-            assert_eq!(limited_msgs.first().unwrap().role, "system");
-        }
-        let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
-
-        let mut big_json = serde_json::json!({
-            "messages": converted_messages,
-        });
-
+        let mut big_json = serde_json::json!({});
         if self.supports_tools {
             let post_tools = self.post.tools.as_ref().and_then(|tools| {
                 if tools.is_empty() {
@@ -218,6 +189,34 @@ impl ScratchpadAbstract for ChatPassthrough {
         } else if DEBUG {
             info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
+        
+        _replace_broken_tool_call_messages(
+            &mut messages,
+            sampling_parameters_to_patch,
+            16000
+        );
+        _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
+
+        // Handle models that support reasoning
+        let messages = if model_supports_reasoning(&self.post.model) {
+            _adapt_for_reasoning_models(&messages, sampling_parameters_to_patch)
+        } else {
+            messages
+        };
+        let limited_msgs = limit_messages_history(
+            &self.t, &messages,
+            sampling_parameters_to_patch.max_new_tokens, n_ctx,
+            big_json.get("tools").map(|x| x.to_string())
+        ).unwrap_or_else(|e| {
+            tracing::error!("error limiting messages: {}", e);
+            vec![]
+        });
+        if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
+            assert_eq!(limited_msgs.first().unwrap().role, "system");
+        }
+        let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
+        big_json["messages"] = json!(converted_messages);
+
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         Ok(prompt.to_string())
     }
@@ -329,7 +328,7 @@ fn _replace_broken_tool_call_messages(
 
                 let incorrect_reasons_concat = incorrect_reasons.join("\n");
                 message.role = "cd_instruction".to_string();
-                message.content = ChatContent::SimpleText(format!("Previous tool calls are not valid: {incorrect_reasons_concat}.\n{extra_message}"));
+                message.content = ChatContent::SimpleText(format!("💿 Previous tool calls are not valid: {incorrect_reasons_concat}.\n{extra_message}"));
                 message.tool_calls = None;
                 tracing::error!(
                     "tool calls are broken, converting the tool call message to the `cd_instruction`:\n{:?}",
