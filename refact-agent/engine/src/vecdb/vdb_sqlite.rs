@@ -265,22 +265,45 @@ impl VecDBSqlite {
     }
 
     pub async fn vecdb_records_add(&mut self, records: &Vec<VecdbRecord>) -> Result<(), String> {
+        use crate::vecdb::vdb_error::with_retry;
+        use tokio::time::Duration;
+        
         let records_owned = records.clone();
         let emb_table_name = self.emb_table_name.clone();
-        self.conn.call(move |connection| {
-            let mut stmt = connection.prepare(&format!(
-                "INSERT INTO {}(embedding, scope, start_line, end_line) VALUES (?, ?, ?, ?)", emb_table_name
-            ))?;
-            for item in records_owned.iter() {
-                stmt.execute(rusqlite::params![
-                    item.vector.clone().expect("No embedding is provided").as_bytes(),
-                    item.file_path.to_string_lossy().to_string(),
-                    item.start_line,
-                    item.end_line
-                ])?;
-            }
-            Ok(())
-        }).await.map_err(|e| e.to_string())
+        
+        with_retry(
+            || {
+                let records_owned = records_owned.clone();
+                let emb_table_name = emb_table_name.clone();
+                
+                self.conn.call(move |connection| {
+                    // Use a transaction for better reliability
+                    let tx = connection.transaction()?;
+                    
+                    {
+                        let mut stmt = tx.prepare(&format!(
+                            "INSERT INTO {}(embedding, scope, start_line, end_line) VALUES (?, ?, ?, ?)", emb_table_name
+                        ))?;
+                        
+                        for item in records_owned.iter() {
+                            stmt.execute(rusqlite::params![
+                                item.vector.clone().expect("No embedding is provided").as_bytes(),
+                                item.file_path.to_string_lossy().to_string(),
+                                item.start_line,
+                                item.end_line
+                            ])?;
+                        }
+                    }
+                    
+                    // Commit the transaction
+                    tx.commit()?;
+                    Ok(())
+                })
+            },
+            3, // Max retries
+            Duration::from_millis(100), // Retry delay
+            "add vector records"
+        ).await
     }
 
     pub async fn vecdb_search(
@@ -289,68 +312,88 @@ impl VecDBSqlite {
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
     ) -> Result<Vec<VecdbRecord>, String> {
+        use crate::vecdb::vdb_error::with_retry;
+        use tokio::time::Duration;
+
         let scope_condition = vecdb_scope_filter_mb
             .clone()
             .map(|_| format!("AND scope = ?"))
             .unwrap_or_else(String::new);
         let embedding_owned = embedding.clone();
         let emb_table_name = self.emb_table_name.clone();
-        self.conn.call(move |connection| {
-            let mut stmt = connection.prepare(&format!(
-                r#"
-                SELECT
-                    scope,
-                    start_line,
-                    end_line,
-                    embedding,
-                    distance
-                FROM {}
-                WHERE embedding MATCH ?
-                    AND k = ?
-                    {}
-                ORDER BY distance
-                "#,
-                emb_table_name, scope_condition
-            ))?;
+        
+        // Wrap the database call in retry logic
+        with_retry(
+            || {
+                let embedding_owned = embedding_owned.clone();
+                let emb_table_name = emb_table_name.clone();
+                let scope_condition = scope_condition.clone();
+                let vecdb_scope_filter_mb = vecdb_scope_filter_mb.clone();
+                
+                self.conn.call(move |connection| {
+                    let mut stmt = connection.prepare(&format!(
+                        r#"
+                        SELECT
+                            scope,
+                            start_line,
+                            end_line,
+                            embedding,
+                            distance
+                        FROM {}
+                        WHERE embedding MATCH ?
+                            AND k = ?
+                            {}
+                        ORDER BY distance
+                        "#,
+                        emb_table_name, scope_condition
+                    ))?;
 
-            let embedding_bytes = embedding_owned.as_bytes();
-            let params = match &vecdb_scope_filter_mb {
-                Some(scope) => rusqlite::params![&embedding_bytes, top_n, scope.clone()],
-                None => rusqlite::params![&embedding_bytes, top_n],
-            };
+                    let embedding_bytes = embedding_owned.as_bytes();
+                    let params = match &vecdb_scope_filter_mb {
+                        Some(scope) => rusqlite::params![&embedding_bytes, top_n, scope.clone()],
+                        None => rusqlite::params![&embedding_bytes, top_n],
+                    };
 
-            let rows = stmt.query_map(
-                params,
-                |row| {
-                    let vector_blob: Vec<u8> = row.get(3)?;
-                    let vector: Vec<f32> = vector_blob
-                        .chunks_exact(4)
-                        .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
-                        .collect();
-                    Ok(VecdbRecord {
-                        vector: Some(vector),
-                        file_path: PathBuf::from(row.get::<_, String>(0)?),
-                        start_line: row.get(1)?,
-                        end_line: row.get(2)?,
-                        distance: row.get(4)?,
-                        usefulness: 0.0,
-                    })
-                },
-            )?;
+                    let rows = stmt.query_map(
+                        params,
+                        |row| {
+                            let vector_blob: Vec<u8> = row.get(3)?;
+                            let vector: Vec<f32> = vector_blob
+                                .chunks_exact(4)
+                                .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+                                .collect();
+                            Ok(VecdbRecord {
+                                vector: Some(vector),
+                                file_path: PathBuf::from(row.get::<_, String>(0)?),
+                                start_line: row.get(1)?,
+                                end_line: row.get(2)?,
+                                distance: row.get(4)?,
+                                usefulness: 0.0,
+                            })
+                        },
+                    )?;
 
-            let mut results = Vec::new();
-            for row in rows {
-                results.push(row?);
-            }
+                    let mut results = Vec::new();
+                    for row in rows {
+                        results.push(row?);
+                    }
 
-            Ok(results)
-        }).await.map_err(|e| e.to_string())
+                    Ok(results)
+                })
+            },
+            3, // Max retries
+            Duration::from_millis(100), // Retry delay
+            "vector search"
+        ).await
     }
 
     pub async fn vecdb_records_remove(
         &mut self,
         scopes_to_remove: Vec<String>,
     ) -> Result<(), String> {
+        use crate::vecdb::vdb_error::with_retry;
+        use tokio::time::Duration;
+        
         if scopes_to_remove.is_empty() {
             return Ok(());
         }
@@ -360,13 +403,33 @@ impl VecDBSqlite {
             .collect::<Vec<&str>>()
             .join(",");
         let emb_table_name = self.emb_table_name.clone();
-        self.conn.call(move |connection| {
-            let mut stmt = connection.prepare(
-                &format!("DELETE FROM {} WHERE scope IN ({})", emb_table_name, placeholders)
-            )?;
+        
+        with_retry(
+            || {
+                let scopes_to_remove = scopes_to_remove.clone();
+                let emb_table_name = emb_table_name.clone();
+                let placeholders = placeholders.clone();
+                
+                self.conn.call(move |connection| {
+                    // Use a transaction for better reliability
+                    let tx = connection.transaction()?;
+                    
+                    {
+                        let mut stmt = tx.prepare(
+                            &format!("DELETE FROM {} WHERE scope IN ({})", emb_table_name, placeholders)
+                        )?;
 
-            stmt.execute(rusqlite::params_from_iter(scopes_to_remove.iter()))?;
-            Ok(())
-        }).await.map_err(|e| e.to_string())
+                        stmt.execute(rusqlite::params_from_iter(scopes_to_remove.iter()))?;
+                    }
+                    
+                    // Commit the transaction
+                    tx.commit()?;
+                    Ok(())
+                })
+            },
+            3, // Max retries
+            Duration::from_millis(100), // Retry delay
+            "remove vector records"
+        ).await
     }
 }
