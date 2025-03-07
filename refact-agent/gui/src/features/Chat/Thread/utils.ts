@@ -346,7 +346,30 @@ export function formatChatResponse(
     }
 
     if (cur.delta.role === null || cur.finish_reason !== null) {
-      return acc;
+      // NOTE: deepseek for some reason doesn't send role in all deltas
+      if (!isAssistantMessage(lastMessage)) {
+        return acc.concat([
+          {
+            role: "assistant",
+            content: cur.delta.content,
+            reasoning_content: cur.delta.reasoning_content,
+            tool_calls: cur.delta.tool_calls,
+            thinking_blocks: cur.delta.thinking_blocks,
+            finish_reason: cur.finish_reason,
+          },
+        ]);
+      }
+
+      const last = acc.slice(0, -1);
+      return last.concat([
+        {
+          role: "assistant",
+          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
+          tool_calls: lastMessage.tool_calls,
+          finish_reason: cur.finish_reason,
+        },
+      ]);
     }
 
     // console.log("Fall though");
