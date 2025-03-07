@@ -33,7 +33,7 @@ import {
   selectMessages,
   selectThreadMode,
   selectToolUse,
-  selectBoostReasoning,
+  // selectBoostReasoning,
   setAutomaticPatch,
   setChatMode,
   setEnabledCheckpoints,
@@ -233,7 +233,7 @@ const CapsSelect: React.FC = () => {
   const supportsBoostReasoning = useMemo(() => {
     const models = caps.data?.code_chat_models;
     const item = models?.[caps.currentModel];
-    return item?.supports_boost_reasoning || false;
+    return item?.supports_boost_reasoning ?? false;
   }, [caps.data?.code_chat_models, caps.currentModel]);
 
   return (
@@ -265,7 +265,7 @@ const CapsSelect: React.FC = () => {
           </Box>
         </Skeleton>
       </Flex>
-      
+
       {supportsBoostReasoning && <BoostReasoningSwitch />}
     </>
   );
