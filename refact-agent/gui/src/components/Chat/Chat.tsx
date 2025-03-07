@@ -29,6 +29,7 @@ import { AgentUsage } from "../../features/AgentUsage";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+import { useThreadMessageSubmit } from "../../hooks/useThreadMessageSubmit";
 
 export type ChatProps = {
   // host: Config["host"];
@@ -48,12 +49,18 @@ export const Chat: React.FC<ChatProps> = () => {
   const caps = useGetCapsQuery();
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex } = useSendChatRequest();
+  const {
+    // submit,
+    abort,
+    retryFromIndex,
+  } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
 
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
+
+  const { submit } = useThreadMessageSubmit();
 
   // can be a selector
   const unCalledTools = React.useMemo(() => {
@@ -78,7 +85,7 @@ export const Chat: React.FC<ChatProps> = () => {
 
   const handleSummit = useCallback(
     (value: string) => {
-      submit({ question: value });
+      void submit(value);
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }

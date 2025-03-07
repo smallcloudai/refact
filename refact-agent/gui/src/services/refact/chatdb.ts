@@ -12,6 +12,7 @@ import {
   isCMessageUpdateResponse,
   CMessage,
   CThread,
+  CMessageFromChatDB,
 } from "./types";
 import { chatDbActions } from "../../features/ChatDB/chatDbSlice";
 import {
@@ -212,12 +213,16 @@ export function updateCMessage(
     headers.append("Authorization", `Bearer ${apiKey}`);
   }
 
+  const messages: CMessageFromChatDB[] = cmessages.map((message) => {
+    return { ...message, cmessage_json: JSON.stringify(message.cmessage_json) };
+  });
+
   return fetch(url, {
     method: "POST",
     headers,
     redirect: "follow",
     cache: "no-cache",
-    body: JSON.stringify(cmessages),
+    body: JSON.stringify(messages),
   });
 }
 

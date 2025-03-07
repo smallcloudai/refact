@@ -118,8 +118,7 @@ export const chatDbMessageSlice = createSlice({
       const thread = createChatThread();
       thread.cthread_model = state.thread.cthread_model;
       thread.cthread_toolset = state.thread.cthread_toolset;
-      state = initialState;
-      state.thread = thread;
+      state = { ...initialState, thread };
     });
   },
 
