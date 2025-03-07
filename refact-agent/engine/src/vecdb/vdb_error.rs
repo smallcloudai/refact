@@ -1,30 +1,6 @@
 use tokio::time::{sleep, Duration};
 use std::future::Future;
-use tracing::{warn, error};
-
-pub fn map_sqlite_error(e: tokio_rusqlite::Error, operation: &str) -> String {
-    match e {
-        tokio_rusqlite::Error::Rusqlite(rusqlite::Error::SqliteFailure(error, Some(msg))) => {
-            format!("SQLite error during {}: {} (extended code: {})", operation, msg, error.extended_code)
-        },
-        tokio_rusqlite::Error::Rusqlite(rusqlite::Error::SqliteFailure(error, None)) => {
-            format!("SQLite error during {}: code {}", operation, error.extended_code)
-        },
-        tokio_rusqlite::Error::Rusqlite(rusqlite::Error::QueryReturnedNoRows) => {
-            format!("SQLite query during {} returned no rows", operation)
-        },
-        tokio_rusqlite::Error::Rusqlite(e) => {
-            format!("SQLite error during {}: {}", operation, e)
-        },
-        tokio_rusqlite::Error::ConnectionClosed => {
-            format!("SQLite connection for operation {} was closed", operation)
-        },
-        tokio_rusqlite::Error::Other(_) => {
-            format!("SQLite operation {} encountered an error", operation)
-        },
-        _ => format!("Error during {}: {}", operation, e),
-    }
-}
+use tracing::warn;
 
 pub async fn with_retry<F, Fut, T, E>(
     operation: F, 
@@ -52,9 +28,4 @@ where
             }
         }
     }
-}
-
-pub fn log_and_fallback<T: Default>(err: impl std::fmt::Display, context: &str) -> T {
-    error!("{}: {}", context, err);
-    T::default()
 }

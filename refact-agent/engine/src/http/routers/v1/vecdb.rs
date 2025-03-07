@@ -16,9 +16,6 @@ struct VecDBPost {
     top_n: usize,
 }
 
-const NO_VECDB: &str = "Vector db is not running, check if you have --vecdb parameter and a vectorization model is running on server side.";
-
-
 pub async fn handle_v1_vecdb_search(
     Extension(gcx): Extension<SharedGlobalContext>,
     body_bytes: hyper::body::Bytes,
