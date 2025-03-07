@@ -301,7 +301,7 @@ impl VecDBSqlite {
                 })
             },
             3, // Max retries
-            Duration::from_millis(500), // Retry delay
+            Duration::from_millis(100), // Retry delay
             "add vector records"
         ).await
     }
@@ -382,7 +382,7 @@ impl VecDBSqlite {
                 })
             },
             3, // Max retries
-            Duration::from_millis(500), // Retry delay
+            Duration::from_millis(100), // Retry delay
             "vector search"
         ).await
     }
@@ -428,7 +428,7 @@ impl VecDBSqlite {
                 })
             },
             3, // Max retries
-            Duration::from_millis(500), // Retry delay
+            Duration::from_millis(100), // Retry delay
             "remove vector records"
         ).await
     }

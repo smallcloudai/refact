@@ -21,7 +21,7 @@ use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
-// filtering duplicates
+
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
     let (gcx, params_mb) = {
         let ccx_locked = ccx.lock().await;
