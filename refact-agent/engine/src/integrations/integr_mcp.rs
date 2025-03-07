@@ -154,6 +154,7 @@ async fn _session_apply_settings(
                 client_builder = client_builder.env(key, value);
             }
 
+            #[allow(unused_mut)]
             let mut client = match client_builder.spawn_and_initialize().await {
                 Ok(client) => client,
                 Err(client_error) => {
@@ -314,6 +315,7 @@ impl Tool for ToolMCP {
         let json_args = serde_json::json!(args);
         tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args);
         let tool_output = {
+            #[allow(unused_mut)]
             let mut mcp_client_locked = self.mcp_client.lock().await;
             let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_args).await;
 
