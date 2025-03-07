@@ -2,7 +2,10 @@ import React from "react";
 import { Flex, Text, Switch, HoverCard } from "@radix-ui/themes";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { useAppDispatch, useAppSelector } from "../../hooks";
-import { selectBoostReasoning, setBoostReasoning } from "../../features/Chat/Thread";
+import {
+  selectBoostReasoning,
+  setBoostReasoning,
+} from "../../features/Chat/Thread";
 
 export const BoostReasoningSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -38,7 +41,8 @@ export const BoostReasoningSwitch: React.FC = () => {
           </HoverCard.Trigger>
           <HoverCard.Content size="2" maxWidth="280px">
             <Text as="p" size="2">
-              When enabled, the model will use enhanced reasoning capabilities which may improve problem-solving for complex tasks.
+              When enabled, the model will use enhanced reasoning capabilities
+              which may improve problem-solving for complex tasks.
             </Text>
           </HoverCard.Content>
         </HoverCard.Root>

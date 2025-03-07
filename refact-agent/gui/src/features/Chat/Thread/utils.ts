@@ -32,6 +32,8 @@ import {
   isToolResponse,
   isUserMessage,
   isUserResponse,
+  ThinkingBlock,
+  isToolCallMessage,
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
@@ -102,18 +104,26 @@ export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
   }, prev);
 }
 
-function mergeThinkingBlock(prev: ThinkingBlock[], add: ThinkingBlock): ThinkingBlock[] {
+function mergeThinkingBlock(
+  prev: ThinkingBlock[],
+  add: ThinkingBlock,
+): ThinkingBlock[] {
   if (prev.length === 0) {
     return [add];
   } else {
     const thinking_blocks = prev.slice();
-    thinking_blocks[0].thinking = (thinking_blocks[0].thinking ?? "") + (add.thinking ?? "");
-    thinking_blocks[0].signature = (thinking_blocks[0].signature ?? "") + (add.signature ?? "");
+    thinking_blocks[0].thinking =
+      (thinking_blocks[0].thinking ?? "") + (add.thinking ?? "");
+    thinking_blocks[0].signature =
+      (thinking_blocks[0].signature ?? "") + (add.signature ?? "");
     return thinking_blocks;
   }
 }
 
-export function mergeThinkingBlocks(prev: ThinkingBlock[], add: ThinkingBlock[]): ThinkingBlock[] {
+export function mergeThinkingBlocks(
+  prev: ThinkingBlock[],
+  add: ThinkingBlock[],
+): ThinkingBlock[] {
   return add.reduce((acc, cur) => {
     return mergeThinkingBlock(acc, cur);
   }, prev);
@@ -226,7 +236,7 @@ export function formatChatResponse(
       typeof cur.delta.content === "string" &&
       cur.delta.role
     ) {
-      if (cur.delta.role === "assistant") {
+      if (cur.delta.role === "assistant" && isAssistantDelta(cur.delta)) {
         const msg: AssistantMessage = {
           role: cur.delta.role,
           content: cur.delta.content,
@@ -272,7 +282,9 @@ export function formatChatResponse(
         {
           role: "assistant",
           content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
-          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
+          reasoning_content:
+            (lastMessage.reasoning_content ?? "") +
+            (cur.delta.reasoning_content ?? ""),
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -296,13 +308,18 @@ export function formatChatResponse(
 
       const last = acc.slice(0, -1);
       const collectedThinkingBlocks = lastMessage.thinking_blocks ?? [];
-      const thinking_blocks = mergeThinkingBlocks(collectedThinkingBlocks, cur.delta.thinking_blocks);
+      const thinking_blocks = mergeThinkingBlocks(
+        collectedThinkingBlocks,
+        cur.delta.thinking_blocks ?? [],
+      );
 
       return last.concat([
         {
           role: "assistant",
           content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
-          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
+          reasoning_content:
+            (lastMessage.reasoning_content ?? "") +
+            (cur.delta.reasoning_content ?? ""),
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -320,8 +337,10 @@ export function formatChatResponse(
       return last.concat([
         {
           role: "assistant",
-          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
-          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
+          content: (lastMessage.content ?? "") + cur.delta.content,
+          reasoning_content:
+            (lastMessage.reasoning_content ?? "") +
+            (cur.delta.reasoning_content ?? ""),
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -347,11 +366,11 @@ export function formatChatResponse(
 
     if (cur.delta.role === null || cur.finish_reason !== null) {
       // NOTE: deepseek for some reason doesn't send role in all deltas
-      if (!isAssistantMessage(lastMessage)) {
+      if (!isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
         return acc.concat([
           {
             role: "assistant",
-            content: cur.delta.content,
+            content: cur.delta.content ?? "",
             reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
@@ -361,15 +380,19 @@ export function formatChatResponse(
       }
 
       const last = acc.slice(0, -1);
-      return last.concat([
-        {
-          role: "assistant",
-          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
-          reasoning_content: (lastMessage.reasoning_content ?? "") + (cur.delta.reasoning_content ?? ""),
-          tool_calls: lastMessage.tool_calls,
-          finish_reason: cur.finish_reason,
-        },
-      ]);
+      if (isAssistantDelta(cur.delta) && isToolCallMessage(lastMessage)) {
+        return last.concat([
+          {
+            role: "assistant",
+            content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+            reasoning_content:
+              (lastMessage.reasoning_content ?? "") +
+              (cur.delta.reasoning_content ?? ""),
+            tool_calls: lastMessage.tool_calls,
+            finish_reason: cur.finish_reason,
+          },
+        ]);
+      }
     }
 
     // console.log("Fall though");

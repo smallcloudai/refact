@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { Markdown } from "../Markdown";
 
-import { Container, Box, Callout } from "@radix-ui/themes";
+import { Container, Box } from "@radix-ui/themes";
 import { ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
@@ -67,7 +67,10 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
           <div className={styles.reasoningCallout}>
             <div className={styles.reasoningTitle}>Model Reasoning</div>
             <div className={styles.reasoningContent}>
-              <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
+              <Markdown
+                canHaveInteractiveElements={true}
+                onCopyClick={handleCopy}
+              >
                 {reasoningContent}
               </Markdown>
             </div>
