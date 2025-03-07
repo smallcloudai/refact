@@ -306,9 +306,10 @@ pub async fn handle_v1_at_command_execute(
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     let mut has_rag_results = HasRagResults::new();
-    let (messages, undroppable_msg_number, any_context_produced) = run_at_commands_locally(
+    let (messages, any_context_produced) = run_at_commands_locally(
         ccx_arc.clone(), tokenizer.clone(), post.maxgen, &post.messages, &mut has_rag_results).await;
     let messages_to_stream_back = has_rag_results.in_json;
+    let undroppable_msg_number = messages.iter().rposition(|msg| msg.role == "user").unwrap_or(0);
 
     let response = CommandExecuteResponse {
         messages, messages_to_stream_back, undroppable_msg_number, any_context_produced };
