@@ -1,7 +1,13 @@
 import { IntegrationMeta, LspChatMode } from "../../features/Chat";
 import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
-import { ChatRole, ToolCall, ToolResult, UserMessage } from "./types";
+import {
+  ChatRole,
+  ThinkingBlock,
+  ToolCall,
+  ToolResult,
+  UserMessage,
+} from "./types";
 
 export const DEFAULT_MAX_NEW_TOKENS = 4096;
 export const INCREASED_MAX_NEW_TOKENS = 16384;
@@ -14,6 +20,7 @@ export type LspChatMessage =
       finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
       // TBD: why was index omitted ?
       // tool_calls?: Omit<ToolCall, "index">[];
+      thinking_blocks?: ThinkingBlock[];
       tool_calls?: ToolCall[];
       tool_call_id?: string;
     }

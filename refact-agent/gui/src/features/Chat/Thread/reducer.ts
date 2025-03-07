@@ -248,7 +248,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
   });
-  
+
   builder.addCase(setBoostReasoning, (state, action) => {
     state.boost_reasoning = action.payload;
   });
