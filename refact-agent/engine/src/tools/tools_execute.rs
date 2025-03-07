@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use glob::Pattern;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -337,28 +338,20 @@ async fn pp_run_tools(
         ).await;
 
         if !context_file_vec.is_empty() {
-            let json_vec = context_file_vec.iter().map(|p| json!(p)).collect::<Vec<_>>();
+            let json_vec: Vec<_> = context_file_vec.iter().map(|p| json!(p)).collect();
+            let filenames = context_file_vec.iter().map(|x| &x.file_name).join("\n");
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap()
             );
-            let mut found_exact_same_message = false;
-            for original_msg in original_messages.iter().rev() {
-                if original_msg.role == "user" {
-                    break;
-                }
-                if original_msg.content == message.content {
-                    found_exact_same_message = true;
-                    break;
-                }
-            }
-            if !found_exact_same_message {
-                generated_other.push(message.clone());
-            } else {
+            let duplicate_found = original_messages.iter().any(|msg| msg.content == message.content);
+            if duplicate_found {
                 generated_other.push(ChatMessage::new(
                     "cd_instruction".to_string(),
-                    "💿 Whoops, you are running in circles. You already have those files. Try something other than exploring files. Follow the user request and the system prompt.".to_string(),
+                    format!("💿 You already have these files in the context:\n{filenames}"),
                 ));
+            } else {
+                generated_other.push(message);
             }
         }
 
