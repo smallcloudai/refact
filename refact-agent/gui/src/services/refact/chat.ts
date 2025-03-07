@@ -1,7 +1,13 @@
 import { IntegrationMeta, LspChatMode } from "../../features/Chat";
 import { CHAT_URL } from "./consts";
 import { ToolCommand } from "./tools";
-import { ChatRole, ToolCall, ToolResult, UserMessage } from "./types";
+import {
+  ChatRole,
+  ThinkingBlock,
+  ToolCall,
+  ToolResult,
+  UserMessage,
+} from "./types";
 
 export const DEFAULT_MAX_NEW_TOKENS = 4096;
 export const INCREASED_MAX_NEW_TOKENS = 16384;
@@ -14,6 +20,7 @@ export type LspChatMessage =
       finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
       // TBD: why was index omitted ?
       // tool_calls?: Omit<ToolCall, "index">[];
+      thinking_blocks?: ThinkingBlock[];
       tool_calls?: ToolCall[];
       tool_call_id?: string;
     }
@@ -61,6 +68,7 @@ type SendChatArgs = {
   checkpointsEnabled?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode; // used for chat actions
+  boost_reasoning?: boolean;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -72,6 +80,7 @@ type GetChatTitleArgs = {
   chatId?: string;
   port?: number;
   apiKey?: string | null;
+  boost_reasoning?: boolean;
 } & StreamArgs;
 
 export type GetChatTitleResponse = {
@@ -150,6 +159,7 @@ export async function sendChat({
   integration,
   last_user_message_id = "",
   mode,
+  boost_reasoning,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -170,6 +180,7 @@ export async function sendChat({
     only_deterministic_messages,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
+    parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
     meta: {
       chat_id,
       request_attempt_id: last_user_message_id,
@@ -219,6 +230,8 @@ export async function generateChatTitle({
     max_tokens: 300,
     only_deterministic_messages: only_deterministic_messages,
     chat_id,
+    // NOTE: we don't want to use reasoning here, for example Anthropic requires at least max_tokens=1024 for thinking
+    // parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
   });
 
   const headers = {

@@ -115,6 +115,7 @@ export function isSingleModelToolResult(toolResult: ToolResult) {
 
 interface BaseMessage {
   role: ChatRole;
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   content:
     | string
     | ChatContextFile[]
@@ -155,7 +156,9 @@ export type ProcessedUserMessageContentWithImages = {
 export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[] | null;
+  thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
 }
 
@@ -308,7 +311,9 @@ interface BaseDelta {
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[];
+  thinking_blocks?: ThinkingBlock[] | null;
 }
 
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
@@ -317,6 +322,14 @@ export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if ("role" in delta && delta.role !== null && delta.role !== "assistant")
     return false;
   if (!("content" in delta)) return false;
+  if ("reasoning_content" in delta) {
+    // reasoning_content is optional, but if present, must be a string
+    if (
+      delta.reasoning_content !== null &&
+      typeof delta.reasoning_content !== "string"
+    )
+      return false;
+  }
   if (typeof delta.content !== "string") return false;
   return true;
 }
@@ -336,15 +349,48 @@ export function isChatContextFileDelta(
 
 interface ToolCallDelta extends BaseDelta {
   tool_calls: ToolCall[];
-  content?: string | null;
+  content: string | null;
+  reasoning_content?: string | null;
+  thinking_blocks?: ThinkingBlock[] | null;
 }
 
 export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
   if (!("tool_calls" in delta)) return false;
+  if ("reasoning_content" in delta) {
+    // reasoning_content is optional, but if present, must be a string
+    if (
+      delta.reasoning_content !== null &&
+      typeof delta.reasoning_content !== "string"
+    )
+      return false;
+  }
   if (delta.tool_calls === null) return false;
   return Array.isArray(delta.tool_calls);
+}
+
+export type ThinkingBlock = {
+  type?: "thinking";
+  thinking: null | string;
+  signature: null | string;
+};
+
+interface ThinkingBlocksDelta extends BaseDelta {
+  tool_calls: ToolCall[];
+  thinking_blocks?: ThinkingBlock[];
+  content: string | null;
+  reasoning_content?: string | null;
+}
+
+export function isThinkingBlocksDelta(
+  delta: unknown,
+): delta is ThinkingBlocksDelta {
+  if (!delta) return false;
+  if (typeof delta !== "object") return false;
+  if (!("thinking_blocks" in delta)) return false;
+  if (delta.thinking_blocks === null) return false;
+  return Array.isArray(delta.thinking_blocks);
 }
 
 type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
@@ -479,6 +525,8 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   if (!("tool_call_id" in json)) return false;
   return json.role === "tool";
 }
+
+// TODO: isThinkingBlocksResponse
 
 export type DiffResponse = {
   role: "diff";

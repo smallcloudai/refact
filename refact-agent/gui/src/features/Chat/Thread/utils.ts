@@ -26,11 +26,14 @@ import {
   isSubchatResponse,
   isSystemResponse,
   isToolCallDelta,
+  isThinkingBlocksDelta,
   isToolContent,
   isToolMessage,
   isToolResponse,
   isUserMessage,
   isUserResponse,
+  ThinkingBlock,
+  isToolCallMessage,
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
@@ -98,6 +101,31 @@ function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
 export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
   return add.reduce((acc, cur) => {
     return mergeToolCall(acc, cur);
+  }, prev);
+}
+
+function mergeThinkingBlock(
+  prev: ThinkingBlock[],
+  add: ThinkingBlock,
+): ThinkingBlock[] {
+  if (prev.length === 0) {
+    return [add];
+  } else {
+    const thinking_blocks = prev.slice();
+    thinking_blocks[0].thinking =
+      (thinking_blocks[0].thinking ?? "") + (add.thinking ?? "");
+    thinking_blocks[0].signature =
+      (thinking_blocks[0].signature ?? "") + (add.signature ?? "");
+    return thinking_blocks;
+  }
+}
+
+export function mergeThinkingBlocks(
+  prev: ThinkingBlock[],
+  add: ThinkingBlock[],
+): ThinkingBlock[] {
+  return add.reduce((acc, cur) => {
+    return mergeThinkingBlock(acc, cur);
   }, prev);
 }
 
@@ -208,11 +236,13 @@ export function formatChatResponse(
       typeof cur.delta.content === "string" &&
       cur.delta.role
     ) {
-      if (cur.delta.role === "assistant") {
+      if (cur.delta.role === "assistant" && isAssistantDelta(cur.delta)) {
         const msg: AssistantMessage = {
           role: cur.delta.role,
           content: cur.delta.content,
+          reasoning_content: cur.delta.reasoning_content,
           tool_calls: cur.delta.tool_calls,
+          thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
         };
         return acc.concat([msg]);
@@ -221,6 +251,7 @@ export function formatChatResponse(
       const message = {
         role: cur.delta.role,
         content: cur.delta.content,
+        reasoning_content: cur.delta.reasoning_content,
         finish_reason: cur.finish_reason,
         usage: response.usage,
       } as ChatMessage;
@@ -234,8 +265,10 @@ export function formatChatResponse(
         return acc.concat([
           {
             role: "assistant",
-            content: cur.delta.content ?? "",
+            content: cur.delta.content,
+            reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
+            thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
           },
         ]);
@@ -243,17 +276,52 @@ export function formatChatResponse(
 
       const last = acc.slice(0, -1);
       const collectedCalls = lastMessage.tool_calls ?? [];
-      const calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
-      const content = cur.delta.content;
-      const message = content
-        ? lastMessage.content + content
-        : lastMessage.content;
+      const tool_calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
 
       return last.concat([
         {
           role: "assistant",
-          content: message,
-          tool_calls: calls,
+          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          reasoning_content:
+            (lastMessage.reasoning_content ?? "") +
+            (cur.delta.reasoning_content ?? ""),
+          tool_calls: tool_calls,
+          thinking_blocks: lastMessage.thinking_blocks,
+          finish_reason: cur.finish_reason,
+        },
+      ]);
+    }
+
+    if (isThinkingBlocksDelta(cur.delta)) {
+      if (!isAssistantMessage(lastMessage)) {
+        return acc.concat([
+          {
+            role: "assistant",
+            content: cur.delta.content,
+            reasoning_content: cur.delta.reasoning_content,
+            tool_calls: cur.delta.tool_calls,
+            thinking_blocks: cur.delta.thinking_blocks,
+            finish_reason: cur.finish_reason,
+          },
+        ]);
+      }
+
+      const last = acc.slice(0, -1);
+      const collectedThinkingBlocks = lastMessage.thinking_blocks ?? [];
+      const thinking_blocks = mergeThinkingBlocks(
+        collectedThinkingBlocks,
+        cur.delta.thinking_blocks ?? [],
+      );
+
+      return last.concat([
+        {
+          role: "assistant",
+          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          reasoning_content:
+            (lastMessage.reasoning_content ?? "") +
+            (cur.delta.reasoning_content ?? ""),
+          tool_calls: lastMessage.tool_calls,
+          thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
         },
       ]);
@@ -265,13 +333,16 @@ export function formatChatResponse(
       typeof cur.delta.content === "string"
     ) {
       const last = acc.slice(0, -1);
-      const currentMessage = lastMessage.content ?? "";
-      const toolCalls = lastMessage.tool_calls;
+
       return last.concat([
         {
           role: "assistant",
-          content: currentMessage + cur.delta.content,
-          tool_calls: toolCalls,
+          content: (lastMessage.content ?? "") + cur.delta.content,
+          reasoning_content:
+            (lastMessage.reasoning_content ?? "") +
+            (cur.delta.reasoning_content ?? ""),
+          tool_calls: lastMessage.tool_calls,
+          thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
         },
       ]);
@@ -283,6 +354,8 @@ export function formatChatResponse(
         {
           role: "assistant",
           content: cur.delta.content,
+          reasoning_content: cur.delta.reasoning_content,
+          thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
         },
       ]);
@@ -292,7 +365,34 @@ export function formatChatResponse(
     }
 
     if (cur.delta.role === null || cur.finish_reason !== null) {
-      return acc;
+      // NOTE: deepseek for some reason doesn't send role in all deltas
+      if (!isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
+        return acc.concat([
+          {
+            role: "assistant",
+            content: cur.delta.content ?? "",
+            reasoning_content: cur.delta.reasoning_content,
+            tool_calls: cur.delta.tool_calls,
+            thinking_blocks: cur.delta.thinking_blocks,
+            finish_reason: cur.finish_reason,
+          },
+        ]);
+      }
+
+      const last = acc.slice(0, -1);
+      if (isAssistantDelta(cur.delta) && isToolCallMessage(lastMessage)) {
+        return last.concat([
+          {
+            role: "assistant",
+            content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+            reasoning_content:
+              (lastMessage.reasoning_content ?? "") +
+              (cur.delta.reasoning_content ?? ""),
+            tool_calls: lastMessage.tool_calls,
+            finish_reason: cur.finish_reason,
+          },
+        ]);
+      }
     }
 
     // console.log("Fall though");
@@ -391,6 +491,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
           role: message.role,
           content: message.content,
           tool_calls: message.tool_calls ?? undefined,
+          thinking_blocks: message.thinking_blocks ?? undefined,
           finish_reason: message.finish_reason,
         },
       ]);

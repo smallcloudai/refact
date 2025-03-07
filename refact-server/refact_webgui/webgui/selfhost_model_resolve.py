@@ -39,7 +39,7 @@ def resolve_model_context_size(model_name: str, model_assigner: ModelAssigner) -
     if model_name in model_assigner.models_db:
         return model_assigner.model_assignment["model_assign"][model_name]["n_ctx"]
 
-    PASSTHROUGH_MAX_TOKENS_LIMIT = 64_000
+    PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
 
     if model_name in model_assigner.passthrough_mini_db:
         if max_tokens := model_assigner.passthrough_mini_db[model_name].get('T'):
