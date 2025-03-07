@@ -321,10 +321,14 @@ export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if ("role" in delta && delta.role !== null && delta.role !== "assistant")
     return false;
   if (!("content" in delta)) return false;
-  if (typeof delta.content !== "string") return false;
-  // reasoning_content is optional, but if present, must be a string
-  if ("reasoning_content" in delta && delta.reasoning_content !== null && typeof delta.reasoning_content !== "string")
-    return false;
+  if ("reasoning_content" in delta) {
+    // reasoning_content is optional, but if present, must be a string
+    if (delta.reasoning_content !== null && typeof delta.reasoning_content !== "string")
+      return false;
+  } else {
+    if (typeof delta.content !== "string")
+      return false;
+  }
   return true;
 }
 interface ChatContextFileDelta extends BaseDelta {
