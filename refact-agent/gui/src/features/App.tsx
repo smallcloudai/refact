@@ -175,7 +175,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             }}
           />
         )}
-        {page.name === "chat" && <Chat threadId={page.threadId} />}
+        {page.name === "chat" && <Chat />}
         {page.name === "fill in the middle debug page" && (
           <FIMDebug host={config.host} tabbed={config.tabbed} />
         )}

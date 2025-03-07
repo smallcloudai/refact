@@ -44,4 +44,4 @@ export const KNOWLEDGE_CREATE_URL = "/v1/trajectory-save";
 export const CHAT_DB_THREADS_SUB = "/db_v1/cthreads-sub";
 export const CHAT_DB_THREADS_UPDATE = "/db_v1/cthreads-update";
 export const CHAT_DB_MESSAGES_SUB = "/db_v1/cmessages-sub";
-export const CHAT_DB_MESSAGES_UPDATE = "/db_v1//cmessages-update";
+export const CHAT_DB_MESSAGES_UPDATE = "/db_v1/cmessages-update";
