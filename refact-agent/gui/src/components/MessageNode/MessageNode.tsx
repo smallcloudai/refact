@@ -57,7 +57,9 @@ const ElementForNodeMessage: React.FC<{ message: ChatMessage }> = ({
   return false;
 };
 
-export type MessageNodeProps = { children?: CMessageNode };
+export type MessageNodeProps = { children?: CMessageNode | null };
+
+// TODO: update tracking the end point
 export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   const dispatch = useAppDispatch();
 
@@ -104,9 +106,25 @@ const UserMessageNode: React.FC<{ children: UserCMessageNode[] }> = ({
   children,
 }) => {
   // info about the node may need to be shared with the user input
+  const dispatch = useAppDispatch();
   const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
 
   const selectedNode = children[selectedNodeIndex];
+
+  useEffect(() => {
+    if (selectedNode.children.length === 0) {
+      const action = chatDbMessageSliceActions.setEnd({
+        number: selectedNode.message.cmessage_num,
+        alt: selectedNode.message.cmessage_alt,
+      });
+      dispatch(action);
+    }
+  }, [
+    selectedNode.children.length,
+    selectedNode.message.cmessage_num,
+    selectedNode.message.cmessage_alt,
+    dispatch,
+  ]);
   return (
     <>
       <IconButton
