@@ -38,6 +38,7 @@ function useGetHistory() {
     const thunk = dispatch(subscribeToThreadsThunk());
     return () => {
       try {
+        thunk.catch(() => ({}));
         thunk.abort("unmounted");
       } catch {
         // noop

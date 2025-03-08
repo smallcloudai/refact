@@ -697,13 +697,7 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
 
 // ChatDB
 
-export type CThreadDefault = {
-  cthread_id: string;
-  cthread_title: string;
-  cthread_toolset: string;
-  cthread_model: string;
-};
-export type CThread = CThreadDefault & {
+export type CThread = {
   cthread_id: string;
   cthread_belongs_to_chore_event_id: string | null;
   cthread_title: string;
@@ -721,6 +715,13 @@ export type CThread = CThreadDefault & {
   cthread_locked_by: string;
   cthread_locked_ts: number;
 };
+
+// export type CThreadDefault = Partial<CThread> & {
+//   cthread_id: null | string;
+//   cthread_title: string;
+//   cthread_toolset: string;
+//   cthread_model: string;
+// };
 export function isCThread(value: unknown): value is CThread {
   if (!value || typeof value !== "object") {
     return false;

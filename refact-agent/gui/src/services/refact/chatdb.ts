@@ -4,6 +4,7 @@ import {
   CHAT_DB_THREADS_SUB,
   CHAT_DB_MESSAGES_SUB,
   CHAT_DB_MESSAGES_UPDATE,
+  CHAT_DB_THREADS_UPDATE,
 } from "./consts";
 import { consumeStream } from "../../features/Chat/Thread/utils";
 import {
@@ -15,10 +16,7 @@ import {
   CMessageFromChatDB,
 } from "./types";
 import { chatDbActions } from "../../features/ChatDB/chatDbSlice";
-import {
-  chatDbMessageSlice,
-  chatDbMessageSliceActions,
-} from "../../features/ChatDB/chatDbMessagesSlice";
+import { chatDbMessageSliceActions } from "../../features/ChatDB/chatDbMessagesSlice";
 
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
@@ -108,7 +106,7 @@ export function updateThread(
   port = 8001,
   apiKey?: string | null,
 ): Promise<Response> {
-  const url = `http://127.0.0.1:${port}${CHAT_DB_THREADS_SUB}`;
+  const url = `http://127.0.0.1:${port}${CHAT_DB_THREADS_UPDATE}`;
   const headers = new Headers();
   headers.append("Content-Type", "application/json");
   if (apiKey) {
@@ -131,7 +129,11 @@ export const updateThreadThunk = createAppAsyncThunk<
   const state = thunkApi.getState() as unknown as RootState;
   const port = state.config.lspPort;
   const apiKey = state.config.apiKey;
-  return updateThread(thread, port, apiKey);
+  console.log("calling updateThread");
+  return updateThread(thread, port, apiKey).then((res) => {
+    console.log("update tread done");
+    return res.json();
+  });
 });
 
 function subscribeToThreadMessages(
@@ -161,6 +163,7 @@ export const subscribeToThreadMessagesThunk = createAppAsyncThunk<
   unknown,
   string
 >("chatDbApi/subscribeToThreadMessages", (cthreadId, thunkApi) => {
+  if (!cthreadId) return;
   const state = thunkApi.getState() as unknown as RootState;
   const port = state.config.lspPort;
   const apiKey = state.config.apiKey;
@@ -232,27 +235,29 @@ export const updateCMessagesThunk = createAppAsyncThunk<unknown, CMessage[]>(
     const state = thunkApi.getState() as unknown as RootState;
     const port = state.config.lspPort;
     const apiKey = state.config.apiKey;
-    return updateCMessage(cmessages, port, apiKey);
+    return updateCMessage(cmessages, port, apiKey).then((res) => res.json());
   },
 );
 
-export const sendMessagesThunk = createAppAsyncThunk<
-  unknown,
-  {
-    messages: CMessage[];
-  }
->("chatDbApi/sendThreadAndMessagesThunk", async (args, thunkApi) => {
-  if (args.messages.length === 0) return;
-  const id = args.messages.map((m) => m.cmessage_belongs_to_cthread_id)[0];
-  await thunkApi.dispatch(
-    updateThreadThunk({
-      cthread_id: id,
-      cthread_updated_ts: new Date().getTime(),
-    }),
-  );
+// export const sendMessagesThunk = createAppAsyncThunk<
+//   unknown,
+//   {
+//     messages: CMessage[];
+//   }
+// >("chatDbApi/sendThreadAndMessagesThunk", async (args, thunkApi) => {
+//   if (args.messages.length === 0) return;
+//   const id = args.messages.map((m) => m.cmessage_belongs_to_cthread_id)[0];
+//   await thunkApi.dispatch(
+//     updateThreadThunk({
+//       cthread_id: id,
+//       cthread_updated_ts: new Date().getTime(),
+//     }),
+//   );
 
-  await thunkApi.dispatch(updateCMessagesThunk(args.messages));
-});
+//   await thunkApi.dispatch(updateCMessagesThunk(args.messages));
+// });
+
+// TODO: create thread an subscribe to messages
 
 // Types for the API
 
