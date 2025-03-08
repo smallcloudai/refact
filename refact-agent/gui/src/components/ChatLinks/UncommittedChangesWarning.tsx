@@ -5,7 +5,6 @@ import { Flex, Separator } from "@radix-ui/themes";
 import {
   selectIsStreaming,
   selectIsWaiting,
-  selectMessages,
   selectThreadToolUse,
 } from "../../features/Chat";
 import { getErrorMessage } from "../../features/Errors/errorsSlice";
@@ -18,7 +17,6 @@ export const UncommittedChangesWarning: React.FC = () => {
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
   const toolUse = useAppSelector(selectThreadToolUse);
-  const messages = useAppSelector(selectMessages);
 
   const hasCallout = React.useMemo(() => {
     return !!error || !!information;
@@ -26,7 +24,6 @@ export const UncommittedChangesWarning: React.FC = () => {
 
   if (
     toolUse !== "agent" ||
-    messages.length !== 0 ||
     hasCallout ||
     isStreaming ||
     isWaiting ||
