@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ChatForm, ChatFormProps } from "../ChatForm";
+import { ChatForm } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Card } from "@radix-ui/themes";
 import {

@@ -75,8 +75,8 @@ export function useThreadMessageSubmit() {
         const systemCMessage: CMessage = {
           cmessage_belongs_to_cthread_id: threadId,
           cmessage_alt: 0,
-          cmessage_num: -1,
-          cmessage_prev_alt: 0,
+          cmessage_num: 0,
+          cmessage_prev_alt: -1,
           cmessage_usage_model: threadModel, // could be default
           cmessage_usage_prompt: 0,
           cmessage_usage_completion: 0,

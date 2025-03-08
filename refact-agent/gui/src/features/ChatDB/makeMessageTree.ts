@@ -6,10 +6,17 @@ const isRoot = (message: CMessage): boolean => {
   return message.cmessage_prev_alt === -1;
 };
 
+export function sortMessageList(messages: CMessage[]): CMessage[] {
+  return messages.slice(0).sort((a, b) => {
+    if (a.cmessage_num === b.cmessage_num) {
+      return a.cmessage_alt - b.cmessage_alt;
+    }
+    return a.cmessage_num - b.cmessage_num;
+  });
+}
+
 export const makeMessageTree = (messages: CMessage[]): CMessageNode | null => {
-  const sortedMessages = messages
-    .slice()
-    .sort((a, b) => a.cmessage_num - b.cmessage_num);
+  const sortedMessages = sortMessageList(messages);
 
   const [nodes, roots] = partition(sortedMessages, isRoot);
   if (roots.length === 0) return null;

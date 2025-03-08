@@ -8,7 +8,7 @@ import {
   isUserCMessage,
 } from "../../services/refact";
 import { parseOrElse } from "../../utils";
-import { makeMessageTree } from "./makeMessageTree";
+import { makeMessageTree, sortMessageList } from "./makeMessageTree";
 import { pagesSlice } from "../Pages/pagesSlice";
 
 export interface CMessageNode {
@@ -91,12 +91,7 @@ export const chatDbMessageSlice = createSlice({
         state.messageList[updateIndex] = message;
       } else {
         state.messageList.push(message);
-        state.messageList.sort((a, b) => {
-          if (a.cmessage_num === b.cmessage_num) {
-            return a.cmessage_alt - b.cmessage_alt;
-          }
-          return a.cmessage_num - b.cmessage_num;
-        });
+        state.messageList = sortMessageList(state.messageList);
       }
     },
     setEnd: (state, action: PayloadAction<{ number: number; alt: number }>) => {
