@@ -1,19 +1,19 @@
 import { useEffect } from "react";
-import { useThreadId } from "./useThreadId";
 import { useAppDispatch } from "./useAppDispatch";
 import { subscribeToThreadMessagesThunk } from "../services/refact";
-// import { useAppSelector } from "./useAppSelector";
-// import { chatDbSelectors } from "../features/ChatDB/chatDbSlice";
+import { useAppSelector } from "./useAppSelector";
+import { chatDbMessagesSliceSelectors } from "../features/ChatDB/chatDbMessagesSlice";
 
 export function useThreadMessageSubscription() {
-  // looks like we need to create the thread before subscribing.
-  const threadId = useThreadId();
+  const threadId = useAppSelector(chatDbMessagesSliceSelectors.selectThreadId);
   const dispatch = useAppDispatch();
   useEffect(() => {
+    console.log("Subscribe to thread messages: " + threadId);
     const thunk = dispatch(subscribeToThreadMessagesThunk(threadId));
     return () => {
       try {
-        thunk.abort("useThreadMessageSubscription unmounted");
+        thunk.catch(() => ({}));
+        thunk.abort(`aborted: subscribeToThreadMessagesThunk(${threadId})`);
       } catch (e) {
         // no-op
       }

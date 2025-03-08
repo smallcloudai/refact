@@ -1,62 +1,83 @@
 import { useCallback, useMemo } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { useAppSelector } from "./useAppSelector";
-import { chatDbMessagesSliceSelectors } from "../features/ChatDB/chatDbMessagesSlice";
-import { chatDbSelectors } from "../features/ChatDB/chatDbSlice";
 import {
-  sendMessagesThunk,
+  chatDbMessageSliceActions,
+  chatDbMessagesSliceSelectors,
+} from "../features/ChatDB/chatDbMessagesSlice";
+import {
+  updateCMessagesThunk,
   updateThreadThunk,
 } from "../services/refact/chatdb";
 import { useAppDispatch } from "./useAppDispatch";
 import { useSendChatRequest } from "./useSendChatRequest";
-import { getSelectedSystemPrompt } from "../features/Chat/Thread/selectors";
+import {
+  getSelectedSystemPrompt,
+  selectThreadToolUse,
+} from "../features/Chat/Thread/selectors";
 import { CMessage, SystemMessage } from "../services/refact";
+import { useGetCapsQuery } from "./useGetCapsQuery";
+import { useGetPromptsQuery } from "./useGetPromptsQuery";
 
 export function useThreadMessageSubmit() {
   const dispatch = useAppDispatch();
   const { maybeAddImagesToQuestion } = useSendChatRequest();
-  const systemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const selectedSystemPrompt = useAppSelector(getSelectedSystemPrompt);
+  const prompts = useGetPromptsQuery();
+  const toolUse = useAppSelector(selectThreadToolUse);
+  const caps = useGetCapsQuery();
 
   const thread = useAppSelector(chatDbMessagesSliceSelectors.selectThread);
   const leafPosition = useAppSelector(
     chatDbMessagesSliceSelectors.selectLeafEndPosition,
   );
 
-  const maybeSavedThread = useAppSelector((state) =>
-    chatDbSelectors.getThreadById(state, thread.cthread_id),
-  );
+  const systemMessageText = useMemo(() => {
+    const defualtPropmpt = prompts.data?.default?.text ?? "";
+    const selected = Object.values(selectedSystemPrompt);
+    const prompt = selected.length > 0 ? selected[0].text : defualtPropmpt;
+    return prompt;
+  }, [prompts.data, selectedSystemPrompt]);
 
   const isNew = useMemo(() => {
-    return (
-      !!maybeSavedThread && leafPosition.num === 0 && leafPosition.alt === 0
-    );
-  }, [leafPosition.alt, leafPosition.num, maybeSavedThread]);
+    return !thread.cthread_id;
+  }, [thread.cthread_id]);
 
   // TODO: use the hooks from crateApi for submitting threads and messages
   const submit = useCallback(
     async (question: string) => {
-      if (isNew) {
-        const threadThunk = updateThreadThunk(thread);
-        await dispatch(threadThunk);
-      }
+      const threadId = thread.cthread_id || uuidv4();
+      const threadModel =
+        (thread.cthread_model || caps.data?.code_chat_default_model) ?? "";
+      const threadToolUse = (thread.cthread_toolset || toolUse) ?? "";
+      const newThread = {
+        ...thread,
+        cthread_id: threadId,
+        cthread_model: threadModel,
+        cthread_toolset: threadToolUse,
+      };
 
       const messagesToSend: CMessage[] = [];
 
-      if (
-        isNew &&
-        !("default" in systemPrompt) &&
-        Object.values(systemPrompt).length > 0
-      ) {
+      console.log({ thread, isNew });
+
+      if (isNew) {
+        const threadThunk = updateThreadThunk(newThread);
+        await dispatch(threadThunk); // .unwrap(); // TODO: handle errors
+        // this will subscribe to the thread's message list
+        dispatch(chatDbMessageSliceActions.setThread(newThread));
+
         const systemMessage: SystemMessage = {
           role: "system",
-          content: Object.values(systemPrompt)[0].text,
+          content: systemMessageText,
         };
 
         const systemCMessage: CMessage = {
-          cmessage_belongs_to_cthread_id: thread.cthread_id,
+          cmessage_belongs_to_cthread_id: threadId,
           cmessage_alt: 0,
           cmessage_num: -1,
           cmessage_prev_alt: 0,
-          cmessage_usage_model: thread.cthread_model,
+          cmessage_usage_model: threadModel, // could be default
           cmessage_usage_prompt: 0,
           cmessage_usage_completion: 0,
           cmessage_json: systemMessage,
@@ -65,15 +86,13 @@ export function useThreadMessageSubmit() {
         messagesToSend.push(systemCMessage);
       }
 
-      // TODO: add system message
-
       const userMessage = maybeAddImagesToQuestion(question);
       const userCMessage: CMessage = {
-        cmessage_belongs_to_cthread_id: thread.cthread_id,
+        cmessage_belongs_to_cthread_id: threadId,
         cmessage_alt: leafPosition.alt,
-        cmessage_num: leafPosition.num,
-        cmessage_prev_alt: leafPosition.alt, // TODO: add this
-        cmessage_usage_model: thread.cthread_model,
+        cmessage_num: leafPosition.num + 1,
+        cmessage_prev_alt: leafPosition.alt, // TODO: add this to end tracker
+        cmessage_usage_model: threadModel,
         cmessage_usage_prompt: 0,
         cmessage_usage_completion: 0,
         cmessage_json: userMessage,
@@ -81,20 +100,22 @@ export function useThreadMessageSubmit() {
 
       messagesToSend.push(userCMessage);
 
-      const thunk = await dispatch(
-        sendMessagesThunk({ messages: messagesToSend }),
-      );
+      console.log({ isNew, messagesToSend });
+
+      const thunk = await dispatch(updateCMessagesThunk(messagesToSend));
 
       return thunk;
     },
     [
+      caps.data?.code_chat_default_model,
       dispatch,
       isNew,
       leafPosition.alt,
       leafPosition.num,
       maybeAddImagesToQuestion,
-      systemPrompt,
+      systemMessageText,
       thread,
+      toolUse,
     ],
   );
 

@@ -2,13 +2,11 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
   CMessageFromChatDB,
   CThread,
-  CThreadDefault,
   CMessage,
   ChatMessage,
   UserCMessage,
   isUserCMessage,
 } from "../../services/refact";
-import { v4 as uuid } from "uuid";
 import { parseOrElse } from "../../utils";
 import { makeMessageTree } from "./makeMessageTree";
 import { pagesSlice } from "../Pages/pagesSlice";
@@ -31,7 +29,7 @@ export function isUserCMessageNode(
 }
 
 type InitialState = {
-  thread: CThread | CThreadDefault;
+  thread: Pick<CThread, "cthread_id" | "cthread_model" | "cthread_toolset">;
   messageList: CMessage[];
   loading: boolean;
   error: null | string;
@@ -39,14 +37,12 @@ type InitialState = {
   endAlt: number;
 };
 
-const createChatThread = (): CThreadDefault => {
-  const thread: CThreadDefault = {
-    cthread_id: uuid(),
-    cthread_title: "",
+const createChatThread = (): InitialState["thread"] => {
+  const thread = {
+    cthread_id: "",
     cthread_toolset: "",
     cthread_model: "",
   };
-
   return thread;
 };
 
@@ -75,7 +71,7 @@ export const chatDbMessageSlice = createSlice({
   name: "chatDbMessages",
   initialState,
   reducers: {
-    setThread: (state, action: PayloadAction<CThread>) => {
+    setThread: (state, action: PayloadAction<InitialState["thread"]>) => {
       state.thread = action.payload;
     },
     updateMessage: (
@@ -114,17 +110,17 @@ export const chatDbMessageSlice = createSlice({
     builder.addMatcher(pagesSlice.actions.push.match, (state, action) => {
       if (action.payload.name !== "chat") return state;
       if (action.payload.threadId !== undefined) return state;
-      // TODO: other data passed from previouly used chat.
       const thread = createChatThread();
       thread.cthread_model = state.thread.cthread_model;
       thread.cthread_toolset = state.thread.cthread_toolset;
-      state = { ...initialState, thread };
+      return { ...initialState, thread };
     });
   },
 
   selectors: {
     selectMessageTree: (state) => makeMessageTree(state.messageList),
     selectThread: (state) => state.thread,
+    selectThreadId: (state) => state.thread.cthread_id,
     selectLeafEndPosition: (state) => ({
       num: state.endNumber,
       alt: state.endAlt,
