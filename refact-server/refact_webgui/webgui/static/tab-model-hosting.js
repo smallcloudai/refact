@@ -926,10 +926,10 @@ export async function init(general_error) {
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
     });
-    const redirect2credentials = document.getElementById('redirect2credentials');
-    redirect2credentials.addEventListener('click', function() {
-        document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
-    });
+//    const redirect2credentials = document.getElementById('redirect2credentials');
+//    redirect2credentials.addEventListener('click', function() {
+//        document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
+//    });
     const weights_modal_submit = document.querySelector('.weights-modal-submit');
     weights_modal_submit.addEventListener('click', function() {
         const fileInput = document.querySelector('#model_weights');
