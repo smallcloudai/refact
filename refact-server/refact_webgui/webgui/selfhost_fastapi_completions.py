@@ -230,19 +230,27 @@ class BaseCompletionsRouter(APIRouter):
         integrations = {}
         if os.path.exists(env.CONFIG_INTEGRATIONS):
             integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
+        enabled_models = {}
+        if os.path.exists(env.CONFIG_ENABLED_MODELS):
+            enabled_models = json.load(open(env.CONFIG_ENABLED_MODELS, 'r'))
 
-        def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str):
-            os.environ[env_var_name] = integrations.get(api_key_name, "") if inference.get(api_enable_name, False) else ""
+        def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str, provider_id: str):
+            # Check if API key exists and if any models are enabled for this provider
+            has_api_key = api_key_name in integrations and integrations[api_key_name]
+            has_enabled_models = provider_id in enabled_models and len(enabled_models[provider_id]) > 0
+            
+            # Set environment variable if API key exists and models are enabled
+            os.environ[env_var_name] = integrations.get(api_key_name, "") if has_api_key and has_enabled_models else ""
 
         litellm.modify_params = True  # NOTE: for Anthropic API
         litellm.drop_params = True    # NOTE: for OpenAI API
-        _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
-        _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
-        _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable")
-        _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable")
-        _integrations_env_setup("GEMINI_API_KEY", "gemini_api_key", "gemini_api_enable")
-        _integrations_env_setup("XAI_API_KEY", "xai_api_key", "xai_api_enable")
-        _integrations_env_setup("DEEPSEEK_API_KEY", "deepseek_api_key", "deepseek_api_enable")
+        _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable", "openai")
+        _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable", "anthropic")
+        _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable", "groq")
+        _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable", "cerebras")
+        _integrations_env_setup("GEMINI_API_KEY", "gemini_api_key", "gemini_api_enable", "gemini")
+        _integrations_env_setup("XAI_API_KEY", "xai_api_key", "xai_api_enable", "xai")
+        _integrations_env_setup("DEEPSEEK_API_KEY", "deepseek_api_key", "deepseek_api_enable", "deepseek")
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
