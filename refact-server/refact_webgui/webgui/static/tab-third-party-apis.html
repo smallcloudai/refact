@@ -22,4 +22,60 @@
             </div>
         </div>
     </div>
+    
+    <!-- Add Provider Modal -->
+    <div class="modal fade" id="add-provider-modal" tabindex="-1" aria-labelledby="add-provider-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add-provider-modal-label">Add Provider</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="provider-id" class="form-label">Provider ID</label>
+                        <input type="text" class="form-control" id="provider-id" placeholder="e.g., openai, anthropic">
+                        <div class="form-text">Enter the provider ID as recognized by litellm.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider-name" class="form-label">Provider Name</label>
+                        <input type="text" class="form-control" id="provider-name" placeholder="e.g., OpenAI, Anthropic">
+                        <div class="form-text">Enter a display name for the provider.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="provider-api-key" class="form-label">API Key</label>
+                        <input type="text" class="form-control" id="provider-api-key" placeholder="Enter API key">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="add-provider-submit">Add Provider</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Model Modal -->
+    <div class="modal fade" id="add-model-modal" tabindex="-1" aria-labelledby="add-model-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add-model-modal-label">Add Model</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="model-id" class="form-label">Model ID</label>
+                        <input type="text" class="form-control" id="model-id" placeholder="e.g., gpt-4, claude-3-opus">
+                        <div class="form-text">Enter the model ID as recognized by the provider.</div>
+                    </div>
+                    <input type="hidden" id="model-provider-id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="add-model-submit">Add Model</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
