@@ -189,6 +189,12 @@ function addEventListeners() {
 
             if (this.checked) {
                 providerBody.style.display = 'block';
+
+                // Always make sure the models container is visible when provider is toggled on
+                const modelsContainer = document.getElementById(`${providerId}-models-container`);
+                if (modelsContainer) {
+                    modelsContainer.style.display = 'block';
+                }
             } else {
                 providerBody.style.display = 'none';
                 // Uncheck all models for this provider
@@ -208,11 +214,12 @@ function addEventListeners() {
             apiKeys[providerId] = this.value;
             saveApiKeys();
 
-            // If API key is provided, enable the models section
+            // Always show the models container when an API key is provided
+            const modelsContainer = document.getElementById(`${providerId}-models-container`);
             if (this.value) {
-                document.getElementById(`${providerId}-models-container`).style.display = 'block';
+                modelsContainer.style.display = 'block';
             } else {
-                document.getElementById(`${providerId}-models-container`).style.display = 'none';
+                modelsContainer.style.display = 'none';
             }
         });
     });
@@ -514,6 +521,12 @@ function addProvider() {
                 toggle.checked = true;
                 const event = new Event('change');
                 toggle.dispatchEvent(event);
+
+                // Make sure the models container is visible
+                const modelsContainer = document.getElementById(`${providerId}-models-container`);
+                if (modelsContainer) {
+                    modelsContainer.style.display = 'block';
+                }
             }
         }
 
