@@ -182,14 +182,7 @@ function render_devices(data) {
     });
 }
 
-function integration_switch_init(integration_checkbox_id, checked) {
-    const enable_switch = document.getElementById(integration_checkbox_id);
-    if (enable_switch) {
-        enable_switch.removeEventListener('change', save_model_assigned);
-        enable_switch.checked = checked;
-        enable_switch.addEventListener('change', save_model_assigned);
-    }
-}
+// Function removed as it's no longer needed
 
 function get_models()
 {
@@ -200,7 +193,8 @@ function get_models()
     .then(function(data) {
         models_data = data;
         render_models_assigned(data.model_assign);
-
+        
+        // Initialize switches for API providers
         integration_switch_init('enable_chat_gpt', models_data['openai_api_enable']);
         integration_switch_init('enable_anthropic', models_data['anthropic_api_enable']);
         integration_switch_init('enable_groq', models_data['groq_api_enable']);
@@ -208,6 +202,9 @@ function get_models()
         integration_switch_init('enable_gemini', models_data['gemini_api_enable']);
         integration_switch_init('enable_xai', models_data['xai_api_enable']);
         integration_switch_init('enable_deepseek', models_data['deepseek_api_enable']);
+        
+        // Update API providers display
+        render_api_providers();
 
         const more_gpus_notification = document.querySelector('.model-hosting-error');
         if(data.hasOwnProperty('more_models_than_gpus') && data.more_models_than_gpus) {
@@ -273,6 +270,60 @@ function save_model_assigned() {
     });
 }
 
+function render_api_providers() {
+    // Get all provider containers
+    const providerContainers = document.querySelectorAll('.api-provider-container');
+    
+    // Hide all providers initially
+    providerContainers.forEach(container => {
+        container.style.display = 'none';
+    });
+    
+    // Show only providers that have been enabled
+    if (models_data) {
+        // Only show providers that have been enabled
+        const providerSection = document.querySelector('.third-party-providers-section');
+        
+        // Check if any providers are enabled
+        const hasEnabledProviders = 
+            models_data.openai_api_enable || 
+            models_data.anthropic_api_enable || 
+            models_data.groq_api_enable || 
+            models_data.cerebras_api_enable || 
+            models_data.gemini_api_enable || 
+            models_data.xai_api_enable || 
+            models_data.deepseek_api_enable;
+            
+        // Show the section only if at least one provider is enabled
+        if (providerSection) {
+            providerSection.style.display = hasEnabledProviders ? 'block' : 'none';
+        }
+        
+        // Show individual enabled providers
+        if (models_data.openai_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="openai"]').style.display = 'block';
+        }
+        if (models_data.anthropic_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="anthropic"]').style.display = 'block';
+        }
+        if (models_data.groq_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="groq"]').style.display = 'block';
+        }
+        if (models_data.cerebras_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="cerebras"]').style.display = 'block';
+        }
+        if (models_data.gemini_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="gemini"]').style.display = 'block';
+        }
+        if (models_data.xai_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="xai"]').style.display = 'block';
+        }
+        if (models_data.deepseek_api_enable) {
+            document.querySelector('.api-provider-container[data-provider="deepseek"]').style.display = 'block';
+        }
+    }
+}
+
 function render_models_assigned(models) {
     const models_info = models_data.models.reduce(function(obj, item) {
       obj[item["name"]] = item;
@@ -285,6 +336,9 @@ function render_models_assigned(models) {
     }
     force_render_models_assigned = false;
     models_table.dataset.hash = CryptoJS.MD5(JSON.stringify(models));
+    
+    // Update API providers display
+    render_api_providers();
 
     models_table.innerHTML = '';
     let models_index = 0;
