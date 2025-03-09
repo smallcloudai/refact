@@ -23,8 +23,8 @@ class TabThirdPartyApisRouter(APIRouter):
         xai_api_key: Optional[str] = None
         deepseek_api_key: Optional[str] = None
 
-    class EnabledModels(BaseModel):
-        __root__: Dict[str, List[str]]
+    # class EnabledModels(BaseModel):
+    #     __root__: Dict[str, List[str]]
 
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
