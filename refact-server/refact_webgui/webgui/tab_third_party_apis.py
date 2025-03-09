@@ -4,7 +4,7 @@ import os
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
@@ -32,6 +32,8 @@ class TabThirdPartyApisRouter(APIRouter):
         self.add_api_route("/tab-third-party-apis-get", self._tab_third_party_apis_get, methods=["GET"])
         self.add_api_route("/tab-third-party-apis-save-keys", self._tab_third_party_apis_save_keys, methods=["POST"])
         self.add_api_route("/tab-third-party-apis-save-models", self._tab_third_party_apis_save_models, methods=["POST"])
+        self.add_api_route("/tab-third-party-apis-get-providers", self._tab_third_party_apis_get_providers, methods=["GET"])
+        self.add_api_route("/tab-third-party-apis-get-model-info", self._tab_third_party_apis_get_model_info, methods=["GET"])
 
     async def _tab_third_party_apis_get(self):
         # Get API keys
@@ -72,3 +74,41 @@ class TabThirdPartyApisRouter(APIRouter):
         self._models_assigner.models_to_watchdog_configs()
         
         return JSONResponse({"status": "OK"})
+    
+    async def _tab_third_party_apis_get_providers(self):
+        try:
+            import litellm
+            # Get all providers and their models
+            providers_models = litellm.models_by_provider
+            
+            # Filter models by mode = chat
+            filtered_providers_models = {}
+            for provider, models in providers_models.items():
+                chat_models = []
+                for model in models:
+                    try:
+                        model_info = litellm.get_model_info(model_name=model, provider_name=provider)
+                        if model_info and model_info.get("mode") == "chat":
+                            chat_models.append(model)
+                    except Exception:
+                        # Skip models that cause errors when getting info
+                        continue
+                
+                if chat_models:
+                    filtered_providers_models[provider] = chat_models
+            
+            return JSONResponse(filtered_providers_models)
+        except ImportError:
+            return JSONResponse({"error": "litellm is not installed"}, status_code=500)
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
+    
+    async def _tab_third_party_apis_get_model_info(self, model_name: str, provider_name: str):
+        try:
+            import litellm
+            model_info = litellm.get_model_info(model_name=model_name, provider_name=provider_name)
+            return JSONResponse(model_info)
+        except ImportError:
+            return JSONResponse({"error": "litellm is not installed"}, status_code=500)
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=500)
