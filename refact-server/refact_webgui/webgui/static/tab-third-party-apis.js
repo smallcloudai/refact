@@ -248,19 +248,19 @@ function addEventListeners() {
     });
 }
 
-// Get model information from litellm
-async function getModelInfo(providerId, modelName) {
-    try {
-        const response = await fetch(`/tab-third-party-apis-get-model-info?model_name=${encodeURIComponent(modelName)}&provider_name=${encodeURIComponent(providerId)}`);
-        if (!response.ok) {
-            throw new Error(`Failed to get model info for ${modelName}`);
-        }
-        return await response.json();
-    } catch (error) {
-        console.error(`Error getting model info for ${modelName}:`, error);
-        return null;
-    }
-}
+//// Get model information from litellm
+//async function getModelInfo(providerId, modelName) {
+//    try {
+//        const response = await fetch(`/tab-third-party-apis-get-model-info?model_name=${encodeURIComponent(modelName)}&provider_name=${encodeURIComponent(providerId)}`);
+//        if (!response.ok) {
+//            throw new Error(`Failed to get model info for ${modelName}`);
+//        }
+//        return await response.json();
+//    } catch (error) {
+//        console.error(`Error getting model info for ${modelName}:`, error);
+//        return null;
+//    }
+//}
 
 // Update the enabled models based on checkbox state
 function updateEnabledModels() {
@@ -544,9 +544,50 @@ function addProvider() {
 
 // Show Add Model Modal
 function showAddModelModal(providerId) {
-    // Clear previous values
-    document.getElementById('third-party-model-id').value = '';
+    // Set the provider ID
     document.getElementById('third-party-model-provider-id').value = providerId;
+    
+    // Get the model ID input container
+    const modelIdContainer = document.querySelector('.modal-body .mb-3');
+    
+    // Check if the provider has models
+    if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
+        // Provider has models, show a combobox with option for custom input
+        const selectHtml = `
+            <label for="third-party-model-id" class="form-label">Model ID</label>
+            <select class="form-select" id="third-party-model-id">
+                <option value="" selected>-- Select a model --</option>
+                ${PROVIDERS[providerId].models.map(model => `<option value="${model}">${model}</option>`).join('')}
+                <option value="custom">-- Enter custom model ID --</option>
+            </select>
+            <input type="text" class="form-control mt-2" id="third-party-model-custom" placeholder="Enter custom model ID" style="display: none;">
+            <div class="form-text">Select from available models or enter a custom model ID.</div>
+        `;
+        
+        modelIdContainer.innerHTML = selectHtml;
+        
+        // Add event listener to handle custom model input
+        const modelSelect = document.getElementById('third-party-model-id');
+        const customInput = document.getElementById('third-party-model-custom');
+        
+        modelSelect.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                customInput.style.display = 'block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+            }
+        });
+    } else {
+        // Provider has no models, show a simple text input
+        const inputHtml = `
+            <label for="third-party-model-id" class="form-label">Model ID</label>
+            <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
+            <div class="form-text">Enter the model ID as recognized by the provider.</div>
+        `;
+        
+        modelIdContainer.innerHTML = inputHtml;
+    }
 
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
@@ -560,8 +601,25 @@ function showAddModelModal(providerId) {
 
 // Add a new model to a provider
 function addModel() {
-    const modelId = document.getElementById('third-party-model-id').value.trim();
+    // Get the model ID from either the input field or the select dropdown
+    let modelId;
     const providerId = document.getElementById('third-party-model-provider-id').value;
+    const modelIdElement = document.getElementById('third-party-model-id');
+    
+    // Check if we're using a select element (combobox)
+    if (modelIdElement.tagName === 'SELECT') {
+        if (modelIdElement.value === 'custom') {
+            // Get the value from the custom input field
+            const customInput = document.getElementById('third-party-model-custom');
+            modelId = customInput ? customInput.value.trim() : '';
+        } else {
+            modelId = modelIdElement.value.trim();
+        }
+    } else {
+        // Using the regular input field
+        modelId = modelIdElement.value.trim();
+    }
+    
 
     if (!modelId) {
         general_error({ detail: "Model ID is required" });
@@ -619,8 +677,13 @@ function addModel() {
         });
 
         // Close the modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('add-model-modal'));
-        modal.hide();
+        const modalElement = document.getElementById('add-third-party-model-modal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        } else if (modalElement && modalElement._bsModal) {
+            modalElement._bsModal.hide();
+        }
         
         showSuccessToast("Model added successfully");
     } else {
