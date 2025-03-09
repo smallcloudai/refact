@@ -34,8 +34,11 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="provider-id" class="form-label">Provider ID</label>
-                        <input type="text" class="form-control" id="provider-id" placeholder="e.g., openai, anthropic">
-                        <div class="form-text">Enter the provider ID as recognized by litellm.</div>
+                        <select class="form-select" id="provider-id">
+                            <option value="" disabled selected>Select a provider</option>
+                            <!-- Available providers will be populated here -->
+                        </select>
+                        <div class="form-text">Select a provider from the available options.</div>
                     </div>
                     <div class="mb-3">
                         <label for="provider-name" class="form-label">Provider Name</label>
