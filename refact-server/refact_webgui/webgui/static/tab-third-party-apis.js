@@ -26,22 +26,22 @@ export async function init(general_error) {
     loadApiKeysAndEnabledModels();
 
     // Initialize modals
-    const addProviderModal = document.getElementById('add-provider-modal');
+    const addProviderModal = document.getElementById('add-third-party-provider-modal');
     if (addProviderModal) {
         addProviderModal._bsModal = new bootstrap.Modal(addProviderModal);
 
         // Add event listener for the submit button
-        document.getElementById('add-provider-submit').addEventListener('click', function() {
+        document.getElementById('add-third-party-provider-submit').addEventListener('click', function() {
             addProvider();
         });
     }
 
-    const addModelModal = document.getElementById('add-model-modal');
+    const addModelModal = document.getElementById('add-third-party-model-modal');
     if (addModelModal) {
         addModelModal._bsModal = new bootstrap.Modal(addModelModal);
 
         // Add event listener for the submit button
-        document.getElementById('add-model-submit').addEventListener('click', function() {
+        document.getElementById('add-third-party-model-submit').addEventListener('click', function() {
             addModel();
         });
     }
@@ -413,10 +413,10 @@ function showSuccessToast(message) {
 // Show Add Provider Modal
 function showAddProviderModal() {
     // Clear previous values
-    const providerIdSelect = document.getElementById('provider-id');
+    const providerIdSelect = document.getElementById('third-party-provider-id');
     providerIdSelect.innerHTML = '<option value="" disabled selected>Select a provider</option>';
-    document.getElementById('provider-name').value = '';
-    document.getElementById('provider-api-key').value = '';
+    document.getElementById('third-party-provider-name').value = '';
+    document.getElementById('third-party-provider-api-key').value = '';
 
     // Fetch all available providers from litellm
     fetch("/tab-third-party-apis-get-all-providers")
@@ -447,25 +447,25 @@ function showAddProviderModal() {
     providerIdSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption && selectedOption.dataset.name) {
-            document.getElementById('provider-name').value = selectedOption.dataset.name;
+            document.getElementById('third-party-provider-name').value = selectedOption.dataset.name;
         }
     });
 
     // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('add-provider-modal'));
+    const modal = new bootstrap.Modal(document.getElementById('add-third-party-provider-modal'));
     modal.show();
 
     // Add event listener for the submit button
-    document.getElementById('add-provider-submit').onclick = function() {
+    document.getElementById('add-third-party-provider-submit').onclick = function() {
         addProvider();
     };
 }
 
 // Add a new provider
 function addProvider() {
-    const providerId = document.getElementById('provider-id').value.trim().toLowerCase();
-    const providerName = document.getElementById('provider-name').value.trim();
-    const apiKey = document.getElementById('provider-api-key').value.trim();
+    const providerId = document.getElementById('third-party-provider-id').value.trim().toLowerCase();
+    const providerName = document.getElementById('third-party-provider-name').value.trim();
+    const apiKey = document.getElementById('third-party-provider-api-key').value.trim();
 
     if (!providerId) {
         general_error({ detail: "Provider ID is required" });
@@ -531,7 +531,7 @@ function addProvider() {
         }
 
         // Close the modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('add-provider-modal'));
+        const modal = bootstrap.Modal.getInstance(document.getElementById('add-third-party-provider-modal'));
         modal.hide();
 
         showSuccessToast("Provider added successfully");
@@ -545,23 +545,23 @@ function addProvider() {
 // Show Add Model Modal
 function showAddModelModal(providerId) {
     // Clear previous values
-    document.getElementById('model-id').value = '';
-    document.getElementById('model-provider-id').value = providerId;
+    document.getElementById('third-party-model-id').value = '';
+    document.getElementById('third-party-model-provider-id').value = providerId;
 
     // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('add-model-modal'));
+    const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
     modal.show();
 
     // Add event listener for the submit button
-    document.getElementById('add-model-submit').onclick = function() {
+    document.getElementById('add-third-party-model-submit').onclick = function() {
         addModel();
     };
 }
 
 // Add a new model to a provider
 function addModel() {
-    const modelId = document.getElementById('model-id').value.trim();
-    const providerId = document.getElementById('model-provider-id').value;
+    const modelId = document.getElementById('third-party-model-id').value.trim();
+    const providerId = document.getElementById('third-party-model-provider-id').value;
 
     if (!modelId) {
         general_error({ detail: "Model ID is required" });
@@ -643,12 +643,12 @@ export function tab_switched_here() {
     });
 
     // Make sure the modals are properly initialized
-    const addProviderModal = document.getElementById('add-provider-modal');
+    const addProviderModal = document.getElementById('add-third-party-provider-modal');
     if (addProviderModal && !addProviderModal._bsModal) {
         addProviderModal._bsModal = new bootstrap.Modal(addProviderModal);
     }
 
-    const addModelModal = document.getElementById('add-model-modal');
+    const addModelModal = document.getElementById('add-third-party-model-modal');
     if (addModelModal && !addModelModal._bsModal) {
         addModelModal._bsModal = new bootstrap.Modal(addModelModal);
     }
