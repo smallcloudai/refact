@@ -278,6 +278,12 @@ class ModelAssigner:
             "xai_api_enable": False,
             "deepseek_api_enable": False,
         }
+        
+        # Create default enabled models config
+        default_enabled_models = {}
+        with open(env.CONFIG_ENABLED_MODELS + ".tmp", "w") as f:
+            json.dump(default_enabled_models, f, indent=4)
+        os.rename(env.CONFIG_ENABLED_MODELS + ".tmp", env.CONFIG_ENABLED_MODELS)
         self.models_to_watchdog_configs(default_config)
 
     @property
