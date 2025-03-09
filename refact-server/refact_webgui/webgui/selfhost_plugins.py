@@ -11,6 +11,7 @@ class PluginsRouter(APIRouter):
             {"label": "Projects", "tab": "upload"},
             {"label": "Finetune", "tab": "finetune"},
             {"label": "Credentials", "tab": "settings", "hamburger": True},
+            {"label": "Third-Party APIs", "tab": "third-party-apis", "hamburger": True},
             {"label": "Server Logs", "tab": "server-logs", "hamburger": True},
             {"label": "About", "tab": "about", "hamburger": True},
         ]
