@@ -61,3 +61,25 @@
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     transform: translateY(-2px);
 }
+
+/* Add Provider Card */
+.add-provider-card {
+    border: 2px dashed rgba(0, 0, 0, 0.125);
+    background-color: rgba(0, 0, 0, 0.01);
+    transition: all 0.3s ease;
+}
+
+.add-provider-card:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Add Model Button */
+.add-model-btn {
+    margin-top: 10px;
+    transition: all 0.2s ease;
+}
+
+.add-model-btn:hover {
+    transform: translateY(-1px);
+}
