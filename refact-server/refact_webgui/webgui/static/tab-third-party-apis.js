@@ -3,36 +3,8 @@ import { general_error } from './error.js';
 let show_toast = false;
 
 // Provider configuration with their available models
-const PROVIDERS = {
-    openai: {
-        name: "OpenAI",
-        models: ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o"]
-    },
-    anthropic: {
-        name: "Anthropic",
-        models: ["claude-instant-1", "claude-2", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
-    },
-    groq: {
-        name: "Groq",
-        models: ["llama2-70b", "mixtral-8x7b", "gemma-7b"]
-    },
-    cerebras: {
-        name: "Cerebras",
-        models: ["cerebras-gpt-1.3b", "cerebras-gpt-2.7b", "cerebras-gpt-6.7b", "cerebras-gpt-13b"]
-    },
-    gemini: {
-        name: "Gemini",
-        models: ["gemini-pro", "gemini-ultra"]
-    },
-    xai: {
-        name: "xAI",
-        models: ["grok-1"]
-    },
-    deepseek: {
-        name: "DeepSeek",
-        models: ["deepseek-coder", "deepseek-llm"]
-    }
-};
+// This will be populated from litellm
+let PROVIDERS = {};
 
 // Store the enabled models
 let enabledModels = {};
@@ -44,11 +16,62 @@ export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
     document.querySelector('#third-party-apis').innerHTML = await req.text();
     
+    // Load providers and models from litellm
+    await loadProvidersFromLiteLLM();
+    
     // Initialize the providers list
     initializeProvidersList();
     
     // Load saved API keys and enabled models
     loadApiKeysAndEnabledModels();
+}
+
+// Load providers and models from litellm
+async function loadProvidersFromLiteLLM() {
+    try {
+        const response = await fetch("/tab-third-party-apis-get-providers");
+        if (!response.ok) {
+            throw new Error("Failed to load providers from litellm");
+        }
+        
+        const providersModels = await response.json();
+        
+        // Convert the response to the format expected by the UI
+        PROVIDERS = {};
+        for (const [providerId, models] of Object.entries(providersModels)) {
+            // Format provider name for display (capitalize first letter of each word)
+            const formattedName = providerId
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+                
+            PROVIDERS[providerId] = {
+                name: formattedName,
+                models: models
+            };
+        }
+        
+        console.log("Loaded providers from litellm:", PROVIDERS);
+    } catch (error) {
+        console.error("Error loading providers from litellm:", error);
+        general_error(error);
+        
+        // Fallback to default providers if litellm is not available
+        PROVIDERS = {
+            openai: {
+                name: "OpenAI",
+                models: ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o"]
+            },
+            anthropic: {
+                name: "Anthropic",
+                models: ["claude-instant-1", "claude-2", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
+            },
+            groq: {
+                name: "Groq",
+                models: ["llama2-70b", "mixtral-8x7b", "gemma-7b"]
+            }
+        };
+    }
 }
 
 // Initialize the providers list
@@ -74,7 +97,7 @@ function initializeProvidersList() {
                     <input type="text" class="form-control api-key-input" id="${providerId}-api-key" data-provider="${providerId}">
                 </div>
                 <div class="models-container" id="${providerId}-models-container">
-                    <label class="form-label">Available Models</label>
+                    <label class="form-label">Available Chat Models</label>
                     <div class="models-list" id="${providerId}-models-list">
                         ${provider.models.map(model => `
                             <div class="form-check mb-2">
@@ -139,6 +162,20 @@ function addEventListeners() {
             updateEnabledModels();
         });
     });
+}
+
+// Get model information from litellm
+async function getModelInfo(providerId, modelName) {
+    try {
+        const response = await fetch(`/tab-third-party-apis-get-model-info?model_name=${encodeURIComponent(modelName)}&provider_name=${encodeURIComponent(providerId)}`);
+        if (!response.ok) {
+            throw new Error(`Failed to get model info for ${modelName}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Error getting model info for ${modelName}:`, error);
+        return null;
+    }
 }
 
 // Update the enabled models based on checkbox state
@@ -269,7 +306,18 @@ function showSuccessToast(message) {
 }
 
 export function tab_switched_here() {
-    loadApiKeysAndEnabledModels();
+    // Reload providers from litellm and refresh the UI
+    loadProvidersFromLiteLLM().then(() => {
+        // Reinitialize the providers list with the updated data
+        initializeProvidersList();
+        // Load saved API keys and enabled models
+        loadApiKeysAndEnabledModels();
+    }).catch(error => {
+        console.error("Error reloading providers:", error);
+        general_error(error);
+        // Still load API keys and enabled models even if provider loading fails
+        loadApiKeysAndEnabledModels();
+    });
 }
 
 export function tab_switched_away() {
