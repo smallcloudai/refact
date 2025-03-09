@@ -406,9 +406,43 @@ function showSuccessToast(message) {
 // Show Add Provider Modal
 function showAddProviderModal() {
     // Clear previous values
-    document.getElementById('provider-id').value = '';
+    const providerIdSelect = document.getElementById('provider-id');
+    providerIdSelect.innerHTML = '<option value="" disabled selected>Select a provider</option>';
     document.getElementById('provider-name').value = '';
     document.getElementById('provider-api-key').value = '';
+
+    // Fetch all available providers from litellm
+    fetch("/tab-third-party-apis-get-all-providers")
+        .then(response => response.json())
+        .then(data => {
+            // Populate the provider dropdown
+            if (data && Array.isArray(data)) {
+                data.forEach(provider => {
+                    // Skip providers that are already added
+                    if (PROVIDERS[provider.id]) {
+                        return;
+                    }
+
+                    const option = document.createElement('option');
+                    option.value = provider.id;
+                    option.textContent = provider.name || provider.id;
+                    option.dataset.name = provider.name || '';
+                    providerIdSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching available providers:", error);
+            general_error(error);
+        });
+
+    // Add event listener for provider selection to auto-fill the name
+    providerIdSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption && selectedOption.dataset.name) {
+            document.getElementById('provider-name').value = selectedOption.dataset.name;
+        }
+    });
 
     // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('add-provider-modal'));
@@ -442,33 +476,57 @@ function addProvider() {
         models: []
     };
 
-    // Save the API key if provided
-    if (apiKey) {
-        apiKeys[providerId] = apiKey;
-        saveApiKeys();
-    }
-
-    // Reinitialize the providers list
-    initializeProvidersList();
-
-    // Update the UI to show the new provider
-    updateUI();
-
-    // If API key was provided, toggle the provider on
-    if (apiKey) {
-        const toggle = document.getElementById(`${providerId}-toggle`);
-        if (toggle) {
-            toggle.checked = true;
-            const event = new Event('change');
-            toggle.dispatchEvent(event);
+    // Save the provider to the server
+    fetch("/tab-third-party-apis-add-provider", {
+        method: "POST",
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            providerId: providerId,
+            providerName: providerName,
+            apiKey: apiKey
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Failed to save provider");
         }
-    }
+        return response.json();
+    })
+    .then(data => {
+        // Save the API key if provided
+        if (apiKey) {
+            apiKeys[providerId] = apiKey;
+            saveApiKeys();
+        }
 
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('add-provider-modal'));
-    modal.hide();
+        // Reinitialize the providers list
+        initializeProvidersList();
 
-    showSuccessToast("Provider added successfully");
+        // Update the UI to show the new provider
+        updateUI();
+
+        // If API key was provided, toggle the provider on
+        if (apiKey) {
+            const toggle = document.getElementById(`${providerId}-toggle`);
+            if (toggle) {
+                toggle.checked = true;
+                const event = new Event('change');
+                toggle.dispatchEvent(event);
+            }
+        }
+
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('add-provider-modal'));
+        modal.hide();
+
+        showSuccessToast("Provider added successfully");
+    })
+    .catch(error => {
+        console.error("Error saving provider:", error);
+        general_error(error);
+    });
 }
 
 // Show Add Model Modal
