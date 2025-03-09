@@ -1,5 +1,6 @@
 import json
 import os
+import litellm
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -45,7 +46,7 @@ class TabThirdPartyApisRouter(APIRouter):
         self.add_api_route("/tab-third-party-apis-get-all-providers", self._tab_third_party_apis_get_all_providers, methods=["GET"])
         self.add_api_route("/tab-third-party-apis-add-provider", self._tab_third_party_apis_add_provider, methods=["POST"])
         self.add_api_route("/tab-third-party-apis-add-model", self._tab_third_party_apis_add_model, methods=["POST"])
-        self.add_api_route("/tab-third-party-apis-get-model-info", self._tab_third_party_apis_get_model_info, methods=["GET"])
+        # self.add_api_route("/tab-third-party-apis-get-model-info", self._tab_third_party_apis_get_model_info, methods=["GET"])
 
     async def _tab_third_party_apis_get(self):
         # Get API keys
@@ -89,7 +90,6 @@ class TabThirdPartyApisRouter(APIRouter):
 
     async def _tab_third_party_apis_get_providers(self):
         try:
-            import litellm
             # Get all providers and their models
             providers_models = litellm.models_by_provider
 
@@ -99,7 +99,7 @@ class TabThirdPartyApisRouter(APIRouter):
                 chat_models = []
                 for model in models:
                     try:
-                        model_info = litellm.get_model_info(model_name=model, provider_name=provider)
+                        model_info = litellm.get_model_info(model=model, custom_llm_provider=provider)
                         if model_info and model_info.get("mode") == "chat":
                             chat_models.append(model)
                     except Exception:
@@ -110,14 +110,11 @@ class TabThirdPartyApisRouter(APIRouter):
                     filtered_providers_models[provider] = chat_models
 
             return JSONResponse(filtered_providers_models)
-        except ImportError:
-            return JSONResponse({"error": "litellm is not installed"}, status_code=500)
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
     async def _tab_third_party_apis_get_all_providers(self):
         try:
-            import litellm
             # Get all available providers from litellm
             all_providers = []
 
@@ -131,8 +128,6 @@ class TabThirdPartyApisRouter(APIRouter):
                 })
 
             return JSONResponse(all_providers)
-        except ImportError:
-            return JSONResponse({"error": "litellm is not installed"}, status_code=500)
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -192,12 +187,9 @@ class TabThirdPartyApisRouter(APIRouter):
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
-    async def _tab_third_party_apis_get_model_info(self, model_name: str, provider_name: str):
-        try:
-            import litellm
-            model_info = litellm.get_model_info(model_name=model_name, provider_name=provider_name)
-            return JSONResponse(model_info)
-        except ImportError:
-            return JSONResponse({"error": "litellm is not installed"}, status_code=500)
-        except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
+    # async def _tab_third_party_apis_get_model_info(self, model_name: str, provider_name: str):
+    #     try:
+    #         model_info = litellm.get_model_info(model_name=model_name, provider_name=provider_name)
+    #         return JSONResponse(model_info)
+    #     except Exception as e:
+    #         return JSONResponse({"error": str(e)}, status_code=500)

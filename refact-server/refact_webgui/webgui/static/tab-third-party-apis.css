@@ -1,0 +1,30 @@
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+#third-party-model-select {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.api-provider-container {
+    border-left: 4px solid #007bff;
+}
+
+.add-provider-card {
+    border: 2px dashed #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.models-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* Custom styling for the model selection dropdown */
+#third-party-model-select option[value="custom"] {
+    font-style: italic;
+    color: #6c757d;
+}
