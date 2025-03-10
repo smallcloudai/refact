@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
+use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -195,31 +195,19 @@ impl ScratchpadAbstract for ChatPassthrough {
         } else {
             messages
         };
-        let limited_msgs = fix_and_limit_messages_history(
+        let limited_msgs = match fix_and_limit_messages_history(
             &self.t, 
             &messages,
             sampling_parameters_to_patch, 
             n_ctx,
             big_json.get("tools").map(|x| x.to_string())
-        ).unwrap_or_else(|e| {
-            tracing::error!("error limiting messages: {}", e);
-            
-            // Create a system message to inform the user about the token limit issue
-            let error_msg = ChatMessage {
-                role: "system".to_string(),
-                content: ChatContent::SimpleText(
-                    format!("The chat history is too large to process with the current token limit. Error: {}. Please try breaking your message into smaller parts or reduce the size of any included code or files.", e)
-                ),
-                finish_reason: None,
-                tool_calls: None,
-                tool_call_id: "".to_string(),
-                usage: None,
-                checkpoints: Vec::new(),
-            };
-            
-            // Return just the error message
-            vec![error_msg]
-        });
+        ) {
+            Ok(limited_msgs) => limited_msgs,
+            Err(e) => {
+                tracing::error!("error limiting messages: {}", e);
+                return Err(format!("error limiting messages: {}", e));
+            }
+        };
         if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
             assert_eq!(limited_msgs.first().unwrap().role, "system");
         }
