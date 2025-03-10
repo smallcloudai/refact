@@ -18,6 +18,7 @@ class ThirdPartyProviderConfig(BaseModel):
     provider_name: str
     api_key: str
     enabled_models: List[str] = Field(default_factory=list)
+    enabled: bool
 
 
 class ThirdPartyApiConfig(BaseModel):
@@ -42,21 +43,14 @@ class TabThirdPartyApisRouter(APIRouter):
         config = self._load_config()
         return JSONResponse(config.dict())
 
-    async def _tab_third_party_apis_save(self, data: Dict[str, Any]):
+    async def _tab_third_party_apis_save(self, config: ThirdPartyApiConfig):
         """
         Save the third-party API configuration.
         Expects a dictionary that can be parsed into a ThirdPartyApiConfig.
         """
         try:
-            # Validate the data
-            config = ThirdPartyApiConfig.parse_obj(data)
-
-            # Save the configuration
             self._save_config(config)
-            
-            # Update model assigner
             self._models_assigner.models_to_watchdog_configs()
-
             return JSONResponse({"status": "OK"})
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=400)
