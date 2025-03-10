@@ -5,8 +5,46 @@ use tracing::error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 
+// Legacy static values - kept for backward compatibility
 pub static EXTRA_TOKENS_PER_MESSAGE: i32 = 150;
 pub static EXTRA_BUDGET_OFFSET_PERC: f32 = 0.2;
+
+/// Returns the appropriate token parameters for a given model.
+/// 
+/// # Model-Specific Token Parameters
+///
+/// Different models have different token overhead requirements for message formatting.
+/// This module provides a mapping of model names to their appropriate token parameters.
+///
+/// | Model                | EXTRA_TOKENS_PER_MESSAGE | EXTRA_BUDGET_OFFSET_PERC |
+/// |----------------------|--------------------------|--------------------------|
+/// | claude-3-7-sonnet    | 150                      | 0.2 (20%)                |
+/// | claude-3-5-sonnet    | 150                      | 0.2 (20%)                |
+/// | All other models     | 3                        | 0.0 (0%)                 |
+///
+/// The `EXTRA_TOKENS_PER_MESSAGE` parameter represents the token overhead added to each message
+/// in a conversation, accounting for formatting, role indicators, etc.
+///
+/// The `EXTRA_BUDGET_OFFSET_PERC` parameter represents an additional buffer percentage of the
+/// context window that is reserved to ensure there's enough space for both the conversation
+/// history and new generated tokens.
+/// 
+/// # Arguments
+/// 
+/// * `model_name` - The name of the model (e.g., "claude-3-7-sonnet")
+/// 
+/// # Returns
+/// 
+/// A tuple containing (EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC)
+pub fn get_model_token_params(model_name: &str) -> (i32, f32) {
+    match model_name {
+        // Claude 3 Sonnet models need higher token overhead
+        "claude-3-7-sonnet" | "claude-3-5-sonnet" => (150, 0.2),
+        
+        // Default values for all other models
+        _ => (3, 0.0),
+    }
+}
 
 // Recalculate overall token usage and limit
 fn recalculate_token_limits(
@@ -14,9 +52,16 @@ fn recalculate_token_limits(
     tools_description_tokens: i32,
     n_ctx: usize,
     max_new_tokens: usize,
+    model_name: Option<&str>,
 ) -> (i32, i32) {
     let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
-    let extra_budget = (n_ctx as f32 * EXTRA_BUDGET_OFFSET_PERC) as usize;
+    
+    // Get model-specific parameters or use legacy defaults
+    let (_, extra_budget_offset_perc) = model_name
+        .map(get_model_token_params)
+        .unwrap_or((EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC));
+    
+    let extra_budget = (n_ctx as f32 * extra_budget_offset_perc) as usize;
     let tokens_limit = n_ctx.saturating_sub(max_new_tokens).saturating_sub(extra_budget) as i32;
     (occupied_tokens, tokens_limit)
 }
@@ -27,6 +72,7 @@ fn compress_message_at_index(
     mutable_messages: &mut Vec<ChatMessage>,
     token_counts: &mut Vec<i32>,
     index: usize,
+    model_name: Option<&str>,
 ) -> Result<i32, String> {
     let role = &mutable_messages[index].role;
     let new_summary = if role == "context_file" {
@@ -65,8 +111,13 @@ fn compress_message_at_index(
     
     mutable_messages[index].content = ChatContent::SimpleText(new_summary);
     
+    // Get model-specific parameters or use legacy defaults
+    let (extra_tokens_per_message, _) = model_name
+        .map(get_model_token_params)
+        .unwrap_or((EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC));
+    
     // Recalculate token usage after compression
-    token_counts[index] = EXTRA_TOKENS_PER_MESSAGE + mutable_messages[index].content.count_tokens(t.tokenizer.clone(), &None)?;
+    token_counts[index] = extra_tokens_per_message + mutable_messages[index].content.count_tokens(t.tokenizer.clone(), &None)?;
     Ok(token_counts[index])
 }
 
@@ -81,12 +132,13 @@ fn process_compression_stage(
     start_idx: usize,
     end_idx: usize,
     stage_name: &str,
+    model_name: Option<&str>,
     message_filter: impl Fn(usize, &ChatMessage, i32) -> bool,
 ) -> Result<(i32, i32, bool), String> {
     tracing::info!("STAGE: {}", stage_name);
     
     let (mut occupied_tokens, mut tokens_limit) = 
-        recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens);
+        recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_name);
     
     let mut budget_reached = false;
     
@@ -103,9 +155,9 @@ fn process_compression_stage(
         };
         
         if should_process {
-            compress_message_at_index(t, mutable_messages, token_counts, i)?;
+            compress_message_at_index(t, mutable_messages, token_counts, i, model_name)?;
             
-            let recalculated = recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens);
+            let recalculated = recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_name);
             occupied_tokens = recalculated.0;
             tokens_limit = recalculated.1;
             
@@ -211,6 +263,7 @@ pub fn fix_and_limit_messages_history(
     sampling_parameters_to_patch: &mut SamplingParameters,
     n_ctx: usize,
     tools_description: Option<String>,
+    model_name: Option<&str>,
 ) -> Result<Vec<ChatMessage>, String> {
     if n_ctx <= sampling_parameters_to_patch.max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens));
@@ -224,10 +277,15 @@ pub fn fix_and_limit_messages_history(
         16000
     );
 
-    // Calculate initial token counts
+    // Get model-specific parameters or use legacy defaults
+    let (extra_tokens_per_message, extra_budget_offset_perc) = model_name
+        .map(get_model_token_params)
+        .unwrap_or((EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC));
+    
+    // Calculate initial token counts using model-specific parameters
     let mut token_counts: Vec<i32> = mutable_messages
         .iter()
-        .map(|msg| -> Result<i32, String> { Ok(EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
+        .map(|msg| -> Result<i32, String> { Ok(extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
         .collect::<Result<Vec<_>, String>>()?;
     
     let tools_description_tokens = if let Some(desc) = tools_description.clone() {
@@ -235,7 +293,7 @@ pub fn fix_and_limit_messages_history(
     } else { 0 };
     
     let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
-    let extra_budget = (n_ctx as f32 * EXTRA_BUDGET_OFFSET_PERC) as usize;
+    let extra_budget = (n_ctx as f32 * extra_budget_offset_perc) as usize;
     let tokens_limit = n_ctx.saturating_sub(sampling_parameters_to_patch.max_new_tokens).saturating_sub(extra_budget) as i32;
     tracing::info!("token limit: {} tokens", tokens_limit);
     
@@ -255,7 +313,7 @@ pub fn fix_and_limit_messages_history(
     
     // Update token limits with initial values
     let (mut occupied_tokens, mut tokens_limit) = 
-        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens);
+        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
     
     tracing::info!("Before compression: occupied_tokens={} vs tokens_limit={}", occupied_tokens, tokens_limit);
     
@@ -275,6 +333,7 @@ pub fn fix_and_limit_messages_history(
             1, // Start from index 1 to preserve the initial message
             stage1_end,
             "Stage 1: Compressing ContextFile messages before the last user message",
+            model_name,
             |i, msg, _| i != 0 && msg.role == "context_file" // Never compress the initial message
         )?;
         
@@ -302,6 +361,7 @@ pub fn fix_and_limit_messages_history(
             1, // Start from index 1 to preserve the initial message
             stage2_end,
             "Stage 2: Compressing Tool Result messages before the last user message",
+            model_name,
             |i, msg, _| i != 0 && msg.role == "tool" // Never compress the initial message
         )?;
         
@@ -329,6 +389,7 @@ pub fn fix_and_limit_messages_history(
             1, // Start from index 1 to preserve the initial message
             stage3_end,
             "Stage 3: Compressing outlier messages before the last user message",
+            model_name,
             |i, msg, token_count| {
                 i != 0 && 
                 token_count > outlier_threshold && 
@@ -391,17 +452,17 @@ pub fn fix_and_limit_messages_history(
                 }
             }
             
-            // Calculate the token count for just this block's messages
+            // Calculate the token count for just this block's messages using model-specific parameters
             let block_token_counts: Vec<i32> = block_messages
                 .iter()
-                .map(|msg| Ok(EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
+                .map(|msg| Ok(extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
                 .collect::<Result<Vec<_>, String>>()?;
             let block_tokens = block_token_counts.iter().sum::<i32>();
             
-            // Calculate current tokens used (without adding this block)
+            // Calculate current tokens used (without adding this block) using model-specific parameters
             let current_tokens: i32 = kept_messages
                 .iter()
-                .map(|msg| EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
+                .map(|msg| extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
                 .sum::<i32>() + tools_description_tokens;
             
             // Calculate what the total would be if we add this block
@@ -427,9 +488,9 @@ pub fn fix_and_limit_messages_history(
         
         tracing::info!("STAGE 4: All messages after the last user message preserved; kept_messages count = {}", kept_messages.len());
         
-        // Recalculate tokens for the final kept_messages
+        // Recalculate tokens for the final kept_messages using model-specific parameters
         let new_token_counts: Vec<i32> = kept_messages.iter()
-            .map(|msg| Ok(EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
+            .map(|msg| Ok(extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
             .collect::<Result<Vec<_>, String>>()?;
         let new_occupied_tokens = new_token_counts.iter().sum::<i32>() + tools_description_tokens;
         
@@ -453,7 +514,7 @@ pub fn fix_and_limit_messages_history(
         mutable_messages = kept_messages;
         token_counts = new_token_counts;
         
-        let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens);
+        let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
         occupied_tokens = recalculated.0;
         tokens_limit = recalculated.1;
     }
@@ -475,6 +536,7 @@ pub fn fix_and_limit_messages_history(
             undroppable_msg_n,
             msg_len,
             "Stage 5: Compressing ContextFile messages after the last user message (last resort)",
+            model_name,
             |_, msg, _| msg.role == "context_file"
         )?;
         
@@ -501,6 +563,7 @@ pub fn fix_and_limit_messages_history(
             undroppable_msg_n,
             msg_len,
             "Stage 6: Compressing Tool Result messages after the last user message (last resort)",
+            model_name,
             |_, msg, _| msg.role == "tool"
         )?;
         
@@ -528,6 +591,7 @@ pub fn fix_and_limit_messages_history(
             undroppable_msg_n,
             msg_len,
             "Stage 7: Compressing outlier messages in the last conversation block (last resort)",
+            model_name,
             |i, msg, token_count| {
                 i != undroppable_msg_n && // Don't compress the last user message yet
                 token_count > outlier_threshold && 
@@ -569,12 +633,12 @@ pub fn fix_and_limit_messages_history(
                 // Update the message with our custom compression
                 mutable_messages[undroppable_msg_n].content = ChatContent::SimpleText(new_summary);
                 
-                // Recalculate token usage
-                token_counts[undroppable_msg_n] = EXTRA_TOKENS_PER_MESSAGE + 
+                // Recalculate token usage using model-specific parameters
+                token_counts[undroppable_msg_n] = extra_tokens_per_message + 
                     mutable_messages[undroppable_msg_n].content.count_tokens(t.tokenizer.clone(), &None)?;
             }
             
-            let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens);
+            let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
             occupied_tokens = recalculated.0;
             tokens_limit = recalculated.1;
         }
@@ -590,7 +654,7 @@ pub fn fix_and_limit_messages_history(
     tracing::info!("Final occupied_tokens={} <= tokens_limit={}", occupied_tokens, tokens_limit);
     
     // Validate the chat history after compression
-    validate_chat_history(t, &mutable_messages, tools_description_tokens)
+    validate_chat_history(t, &mutable_messages, tools_description_tokens, model_name)
 }
 
 /// Validates the chat history after compression/truncation.
@@ -608,6 +672,7 @@ pub fn validate_chat_history(
     t: &HasTokenizerAndEot,
     messages: &Vec<ChatMessage>,
     tools_description_tokens: i32,
+    model_name: Option<&str>,
 ) -> Result<Vec<ChatMessage>, String> {
     // 1. Check that there is at least one message (and that at least one is "system" or "user")
     if messages.is_empty() {
@@ -665,10 +730,15 @@ pub fn validate_chat_history(
     }
 
     // 6. Calculate token counts using the common method and print only the sum.
-    // Use the same calculation as in fix_and_limit_messages_history with higher overhead per message
+    // Use the same calculation as in fix_and_limit_messages_history with model-specific parameters
+    // Get model-specific parameters or use legacy defaults
+    let (extra_tokens_per_message, _) = model_name
+        .map(get_model_token_params)
+        .unwrap_or((EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC));
+        
     let token_counts: Vec<i32> = messages
         .iter()
-        .map(|msg| EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
+        .map(|msg| extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
         .collect();
     
     let message_tokens = token_counts.iter().sum::<i32>();
@@ -861,7 +931,7 @@ mod compression_tests {
     ) -> Result<(i32, i32, bool), String> {
         // Calculate initial token limits
         let (mut occupied_tokens, tokens_limit) = 
-            recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens);
+            recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, None);
         
         let mut budget_reached = false;
         
@@ -1096,7 +1166,19 @@ mod tests {
     use tracing_subscriber;
     use std::io::stderr;
     use tracing_subscriber::fmt::format;
-    use super::{fix_and_limit_messages_history, validate_chat_history};
+    use super::{fix_and_limit_messages_history, validate_chat_history, get_model_token_params};
+    
+    #[test]
+    fn test_claude_models() {
+        assert_eq!(get_model_token_params("claude-3-7-sonnet"), (150, 0.2));
+        assert_eq!(get_model_token_params("claude-3-5-sonnet"), (150, 0.2));
+    }
+
+    #[test]
+    fn test_default_models() {
+        assert_eq!(get_model_token_params("gpt-4"), (3, 0.0));
+        assert_eq!(get_model_token_params("unknown-model"), (3, 0.0));
+    }
 
 
     impl HasTokenizerAndEot {
@@ -1264,7 +1346,7 @@ mod tests {
             ..Default::default()
         };
         for n_ctx in (10..=50).step_by(10) {
-            let result = fix_and_limit_messages_history(&HasTokenizerAndEot::mock(), &messages, &mut sampling_params, n_ctx, None);
+            let result = fix_and_limit_messages_history(&HasTokenizerAndEot::mock(), &messages, &mut sampling_params, n_ctx, None, None);
             let title = format!("n_ctx={}", n_ctx);
             if result.is_err() {
                 eprintln!("{} => {}", title, result.clone().err().unwrap());
@@ -1292,7 +1374,7 @@ mod tests {
         
         // Start with a larger context size to avoid token limit errors
         for n_ctx in (20..=50).step_by(10) {
-            let result = fix_and_limit_messages_history(&HasTokenizerAndEot::mock(), &messages, &mut sampling_params, n_ctx, None);
+            let result = fix_and_limit_messages_history(&HasTokenizerAndEot::mock(), &messages, &mut sampling_params, n_ctx, None, None);
             
             // For very small context sizes, we might get an error about not being able to compress enough
             if let Err(err) = &result {
@@ -1361,6 +1443,7 @@ mod tests {
             &mut sampling_params,
             n_ctx,
             None,
+            None,
         );
 
         // With the current implementation, we might get an error due to token limits
@@ -1402,6 +1485,95 @@ mod tests {
     }
     
     #[test]
+    fn test_model_specific_parameters() {
+        // Test that we get the correct parameters for different models
+        let (tokens_per_msg, budget_offset) = get_model_token_params("claude-3-7-sonnet");
+        assert_eq!(tokens_per_msg, 150);
+        assert_eq!(budget_offset, 0.2);
+        
+        let (tokens_per_msg, budget_offset) = get_model_token_params("claude-3-5-sonnet");
+        assert_eq!(tokens_per_msg, 150);
+        assert_eq!(budget_offset, 0.2);
+        
+        // Test default values for other models
+        let (tokens_per_msg, budget_offset) = get_model_token_params("gpt-4");
+        assert_eq!(tokens_per_msg, 3);
+        assert_eq!(budget_offset, 0.0);
+        
+        let (tokens_per_msg, budget_offset) = get_model_token_params("unknown-model");
+        assert_eq!(tokens_per_msg, 3);
+        assert_eq!(budget_offset, 0.0);
+    }
+    
+    #[test]
+    fn test_model_specific_compression() {
+        init_tracing();
+        let (messages, _) = create_mock_chat_history_with_context_files();
+        let mut sampling_params = SamplingParameters {
+            max_new_tokens: 5,
+            ..Default::default()
+        };
+        
+        // Test with different models to see different compression behavior
+        let n_ctx = 30; // Use a fixed context size
+        
+        // Test with Claude model (higher token overhead)
+        let result_claude = fix_and_limit_messages_history(
+            &HasTokenizerAndEot::mock(),
+            &messages,
+            &mut sampling_params,
+            n_ctx,
+            None,
+            Some("claude-3-7-sonnet")
+        );
+        
+        // Test with default model (lower token overhead)
+        let result_default = fix_and_limit_messages_history(
+            &HasTokenizerAndEot::mock(),
+            &messages,
+            &mut sampling_params,
+            n_ctx,
+            None,
+            Some("gpt-4")
+        );
+        
+        // Both should succeed with our test data
+        assert!(result_claude.is_ok(), "Claude model compression failed");
+        assert!(result_default.is_ok(), "Default model compression failed");
+        
+        let claude_messages = result_claude.unwrap();
+        let default_messages = result_default.unwrap();
+        
+        // The Claude model should have fewer messages due to higher token overhead
+        eprintln!(
+            "Claude model: {} messages, Default model: {} messages",
+            claude_messages.len(),
+            default_messages.len()
+        );
+        
+        // We can't make strong assertions about the exact number of messages
+        // since our mock tokenizer doesn't actually count tokens differently,
+        // but we can verify that both approaches preserved the essential messages
+        
+        // Both should preserve the system message
+        assert_eq!(claude_messages[0].role, "system");
+        assert_eq!(default_messages[0].role, "system");
+        
+        // Both should preserve the last user message
+        let claude_last_user = claude_messages.iter().rposition(|msg| msg.role == "user").unwrap();
+        let default_last_user = default_messages.iter().rposition(|msg| msg.role == "user").unwrap();
+        
+        assert_eq!(
+            claude_messages[claude_last_user].content.content_text_only(),
+            "block 3 user message"
+        );
+        assert_eq!(
+            default_messages[default_last_user].content.content_text_only(),
+            "block 3 user message"
+        );
+    }
+    
+    #[test]
     fn test_chatlimit_compression() {
         init_tracing();
         let (messages, _) = create_mock_chat_history_with_context_files();
@@ -1417,6 +1589,7 @@ mod tests {
                 &messages,
                 &mut sampling_params,
                 n_ctx,
+                None,
                 None
             );
             
