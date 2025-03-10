@@ -45,7 +45,7 @@ all_refact_packages = {
                   "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
                   "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
-                  "sentence-transformers", "huggingface-hub>=0.26.2",
+                  "sentence-transformers>=3.4.1", "huggingface-hub>=0.29.2",
                   "aiohttp", "setproctitle", "google-auth>=2.37.0"],
         optional=["ninja", "flash-attn"],
         requires_packages=["refact_known_models", "refact_data_pipeline",
