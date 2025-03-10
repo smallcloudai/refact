@@ -19,6 +19,10 @@ export type MarkdownCodeBlockProps = React.JSX.IntrinsicElements["code"] & {
   node?: Element | undefined;
   style?: Record<string, CSSProperties> | SyntaxHighlighterProps["style"];
   wrap?: boolean;
+  preOptions?: {
+    noMargin?: boolean;
+    widthMaxContent?: boolean;
+  };
   color?: CodeProps["color"];
 } & Pick<
     SyntaxHighlighterProps,
@@ -32,8 +36,10 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
   style = hljsStyle,
   onCopyClick,
   wrap = false,
+  preOptions = { widthMaxContent: false, noMargin: false },
   color = undefined,
   useInlineStyles,
+  showLineNumbers = false,
 }) => {
   const codeRef = React.useRef<HTMLElement | null>(null);
   const match = /language-(\w+)/.exec(className ?? "");
@@ -59,7 +65,16 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
         <SyntaxHighlighter
           style={style}
           className={className}
-          PreTag={(props) => <PreTag {...props} {...preTagProps} />}
+          PreTag={(props) => (
+            <PreTag
+              {...props}
+              className={classNames({
+                [styles.pre_width_max_content]: preOptions.widthMaxContent,
+                [styles.code_no_margin]: preOptions.noMargin,
+              })}
+              {...preTagProps}
+            />
+          )}
           CodeTag={(props) => (
             <Code
               {...props}
@@ -71,6 +86,7 @@ const _MarkdownCodeBlock: React.FC<MarkdownCodeBlockProps> = ({
               ref={codeRef}
             />
           )}
+          showLineNumbers={showLineNumbers}
           language={language}
           useInlineStyles={useInlineStyles}
         >

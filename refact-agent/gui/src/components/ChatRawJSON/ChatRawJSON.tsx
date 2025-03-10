@@ -45,7 +45,10 @@ export const ChatRawJSON = ({ thread, copyHandler }: ChatRawJSONProps) => {
         >
           <ScrollArea scrollbars="horizontal" style={{ width: "100%" }} asChild>
             <Box>
-              <MarkdownCodeBlock useInlineStyles={true}>
+              <MarkdownCodeBlock
+                useInlineStyles={true}
+                preOptions={{ noMargin: true }}
+              >
                 {JSON.stringify(thread, null, 2)}
               </MarkdownCodeBlock>
             </Box>
