@@ -7,7 +7,7 @@ import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { LikeButton } from "./LikeButton";
-import styles from "./ReasoningContent.module.css";
+import { ReasoningContent } from "./ReasoningContent";
 
 type ChatInputProps = {
   message: string | null;
@@ -63,19 +63,10 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
   return (
     <Container position="relative">
       {reasoningContent && (
-        <Box py="2">
-          <div className={styles.reasoningCallout}>
-            <div className={styles.reasoningTitle}>Model Reasoning</div>
-            <div className={styles.reasoningContent}>
-              <Markdown
-                canHaveInteractiveElements={true}
-                onCopyClick={handleCopy}
-              >
-                {reasoningContent}
-              </Markdown>
-            </div>
-          </div>
-        </Box>
+        <ReasoningContent
+          reasoningContent={reasoningContent}
+          onCopyClick={handleCopy}
+        />
       )}
       {message && (
         <Box py="4">
