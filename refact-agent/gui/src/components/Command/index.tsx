@@ -1,9 +1,5 @@
 import React from "react";
-export {
-  type CommandMarkdownProps,
-  type ResultMarkdownProps,
-  type MarkdownProps,
-} from "./Markdown";
+export { type CommandMarkdownProps, type MarkdownProps } from "./Markdown";
 
 import {
   CommandMarkdown as _CommandMarkdown,
