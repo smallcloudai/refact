@@ -67,13 +67,10 @@
                     <h5 class="modal-title" id="add-third-party-model-modal-label">Add Model</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="third-party-model-id" class="form-label">Model ID</label>
-                        <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
-                        <div class="form-text">Enter the model ID as recognized by the provider.</div>
-                    </div>
-                    <input type="hidden" id="third-party-model-provider-id">
+                <div class="modal-body mb-3" id="add-third-party-model-modal-id-container">
+                    <label for="third-party-model-id" class="form-label">Model ID</label>
+                    <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
+                    <div class="form-text">Enter the model ID as recognized by the provider.</div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
