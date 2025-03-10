@@ -4,17 +4,8 @@ import litellm
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from typing import Dict, List, Optional, Any
-
-class AddModelRequest(BaseModel):
-    providerId: str
-    modelId: str
-
-class AddProviderRequest(BaseModel):
-    providerId: str
-    providerName: str
-    apiKey: Optional[str] = None
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
@@ -23,68 +14,65 @@ from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 __all__ = ["TabThirdPartyApisRouter"]
 
 
-class TabThirdPartyApisRouter(APIRouter):
-    class ApiKeys(BaseModel):
-        openai_api_key: Optional[str] = None
-        anthropic_api_key: Optional[str] = None
-        groq_api_key: Optional[str] = None
-        cerebras_api_key: Optional[str] = None
-        gemini_api_key: Optional[str] = None
-        xai_api_key: Optional[str] = None
-        deepseek_api_key: Optional[str] = None
+class ThirdPartyProviderConfig(BaseModel):
+    provider: str
+    api_key: str
+    enabled_models: List[str] = Field(default_factory=list)
 
+
+class ThirdPartyApiConfig(BaseModel):
+    providers: List[ThirdPartyProviderConfig] = Field(default_factory=list)
+
+    @validator('providers')
+    def validate_unique_providers(cls, providers):
+        provider_ids = [p.provider for p in providers]
+        if len(provider_ids) != len(set(provider_ids)):
+            raise ValueError("Duplicate provider IDs found")
+        return providers
+
+
+class TabThirdPartyApisRouter(APIRouter):
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._models_assigner = models_assigner
+
+        # Add API routes
         self.add_api_route("/tab-third-party-apis-get", self._tab_third_party_apis_get, methods=["GET"])
-        self.add_api_route("/tab-third-party-apis-save-keys", self._tab_third_party_apis_save_keys, methods=["POST"])
-        self.add_api_route("/tab-third-party-apis-save-models", self._tab_third_party_apis_save_models, methods=["POST"])
+        self.add_api_route("/tab-third-party-apis-save", self._tab_third_party_apis_save, methods=["POST"])
         self.add_api_route("/tab-third-party-apis-get-providers", self._tab_third_party_apis_get_providers, methods=["GET"])
-        self.add_api_route("/tab-third-party-apis-get-all-providers", self._tab_third_party_apis_get_all_providers, methods=["GET"])
-        self.add_api_route("/tab-third-party-apis-add-provider", self._tab_third_party_apis_add_provider, methods=["POST"])
-        self.add_api_route("/tab-third-party-apis-add-model", self._tab_third_party_apis_add_model, methods=["POST"])
 
     async def _tab_third_party_apis_get(self):
-        # Get API keys
-        api_keys = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS):
-            with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
-                api_keys = json.load(f)
+        """
+        Get the current third-party API configuration.
+        Returns a list of providers with their API keys and enabled models.
+        """
+        config = self._load_config()
+        return JSONResponse(config.dict())
 
-        # Get enabled models
-        enabled_models = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
-            with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
-                enabled_models = json.load(f)
+    async def _tab_third_party_apis_save(self, data: Dict[str, Any]):
+        """
+        Save the third-party API configuration.
+        Expects a dictionary that can be parsed into a ThirdPartyApiConfig.
+        """
+        try:
+            # Validate the data
+            config = ThirdPartyApiConfig.parse_obj(data)
 
-        return JSONResponse({
-            "apiKeys": api_keys,
-            "enabledModels": enabled_models
-        })
+            # Save the configuration
+            self._save_config(config)
+            
+            # Update model assigner
+            self._models_assigner.models_to_watchdog_configs()
 
-    async def _tab_third_party_apis_save_keys(self, data: Dict[str, str]):
-        # Save API keys
-        with open(env.CONFIG_INTEGRATIONS + ".tmp", "w") as f:
-            json.dump(data, f, indent=4)
-        os.rename(env.CONFIG_INTEGRATIONS + ".tmp", env.CONFIG_INTEGRATIONS)
-
-        # Update model assigner
-        self._models_assigner.models_to_watchdog_configs()
-
-        return JSONResponse({"status": "OK"})
-
-    async def _tab_third_party_apis_save_models(self, data: Dict[str, List[str]]):
-        # Save enabled models
-        with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
-            json.dump(data, f, indent=4)
-        os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
-
-        # Update model assigner
-        self._models_assigner.models_to_watchdog_configs()
-
-        return JSONResponse({"status": "OK"})
+            return JSONResponse({"status": "OK"})
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
 
     async def _tab_third_party_apis_get_providers(self):
+        """
+        Get all available providers and their models from litellm.
+        Filters models to only include chat models.
+        """
         try:
             # Get all providers and their models
             providers_models = litellm.models_by_provider
@@ -105,16 +93,8 @@ class TabThirdPartyApisRouter(APIRouter):
                 if chat_models:
                     filtered_providers_models[provider] = chat_models
 
-            return JSONResponse(filtered_providers_models)
-        except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
-
-    async def _tab_third_party_apis_get_all_providers(self):
-        try:
-            # Get all available providers from litellm
+            # Get the list of all providers from litellm for display names
             all_providers = []
-
-            # Get the list of all providers from litellm
             for provider_id in litellm.provider_list:
                 # Format provider name for display (capitalize first letter of each word)
                 provider_name = provider_id.replace('_', ' ').title()
@@ -123,62 +103,79 @@ class TabThirdPartyApisRouter(APIRouter):
                     "name": provider_name
                 })
 
-            return JSONResponse(all_providers)
+            return JSONResponse({
+                "providers": all_providers,
+                "models": filtered_providers_models
+            })
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
-    async def _tab_third_party_apis_add_provider(self, request: AddProviderRequest):
-        try:
-            provider_id = request.providerId
-            provider_name = request.providerName
-            api_key = request.apiKey
+    def _load_config(self) -> ThirdPartyApiConfig:
+        """
+        Load the third-party API configuration from the file.
+        If the file doesn't exist or is invalid, return an empty configuration.
+        """
+        # Check if the old config exists and migrate it
+        if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+            self._migrate_old_config()
 
-            # Save the API key if provided
-            if api_key:
-                # Get existing API keys
-                api_keys = {}
-                if os.path.exists(env.CONFIG_INTEGRATIONS):
-                    with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
-                        api_keys = json.load(f)
-
-                # Add the new API key
-                api_keys[provider_id] = api_key
-
-                # Save the updated API keys
-                with open(env.CONFIG_INTEGRATIONS + ".tmp", "w") as f:
-                    json.dump(api_keys, f, indent=4)
-                os.rename(env.CONFIG_INTEGRATIONS + ".tmp", env.CONFIG_INTEGRATIONS)
-
-                # Update model assigner
-                self._models_assigner.models_to_watchdog_configs()
-
-            # Return success
-            return JSONResponse({"status": "OK", "message": "Provider added successfully"})
-        except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
-
-    async def _tab_third_party_apis_add_model(self, request: AddModelRequest):
-        try:
-            provider_id = request.providerId
-            model_id = request.modelId
-
-            # Get the current provider models
-            providers_models = {}
+        # Load the configuration
+        if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
             try:
-                import litellm
-                providers_models = litellm.models_by_provider
-            except (ImportError, Exception):
-                # If litellm is not available, use an empty dict
-                pass
+                with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
+                    data = json.load(f)
+                    return ThirdPartyApiConfig.parse_obj({"providers": data})
+            except (json.JSONDecodeError, ValueError):
+                # If the file is invalid, return an empty configuration
+                return ThirdPartyApiConfig()
 
-            # Add the model to the provider's models if it doesn't exist
-            if provider_id not in providers_models:
-                providers_models[provider_id] = []
+        return ThirdPartyApiConfig()
 
-            if model_id not in providers_models[provider_id]:
-                providers_models[provider_id].append(model_id)
+    def _save_config(self, config: ThirdPartyApiConfig):
+        """
+        Save the third-party API configuration to the file.
+        """
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(env.CONFIG_INTEGRATIONS_MODELS), exist_ok=True)
 
-            # Return success
-            return JSONResponse({"status": "OK", "message": "Model added successfully"})
+        # Save the configuration
+        with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
+            json.dump(config.dict()["providers"], f, indent=4)
+        os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
+
+    def _migrate_old_config(self):
+        """
+        Migrate from the old configuration format to the new one.
+        """
+        try:
+            # Load the old API keys
+            api_keys = {}
+            if os.path.exists(env.CONFIG_INTEGRATIONS):
+                with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
+                    api_keys = json.load(f)
+
+            # Load the old enabled models
+            enabled_models = {}
+            if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+                with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
+                    enabled_models = json.load(f)
+
+            # Create the new configuration
+            providers = []
+            for provider, api_key in api_keys.items():
+                providers.append({
+                    "provider": provider,
+                    "api_key": api_key,
+                    "enabled_models": enabled_models.get(provider, [])
+                })
+
+            # Save the new configuration
+            config = ThirdPartyApiConfig(providers=providers)
+            self._save_config(config)
+
+            # Rename the old configuration file to .bak
+            if os.path.exists(env.CONFIG_INTEGRATIONS):
+                os.rename(env.CONFIG_INTEGRATIONS, env.CONFIG_INTEGRATIONS + ".bak")
         except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
+            # If migration fails, log the error and continue
+            print(f"Error migrating old configuration: {e}")

@@ -6,10 +6,10 @@ let show_toast = false;
 // This will be populated from litellm
 let PROVIDERS = {};
 
-// Store the enabled models
-let enabledModels = {};
-// Store API keys
-let apiKeys = {};
+// Store the configuration
+let apiConfig = {
+    providers: []
+};
 
 // Initialize the third-party API widget
 export async function init(general_error) {
@@ -22,8 +22,8 @@ export async function init(general_error) {
     // Initialize the providers list
     initializeProvidersList();
 
-    // Load saved API keys and enabled models
-    loadApiKeysAndEnabledModels();
+    // Load saved configuration
+    loadConfiguration();
 
     // Initialize modals
     const addProviderModal = document.getElementById('add-third-party-provider-modal');
@@ -55,27 +55,21 @@ async function loadProvidersFromLiteLLM() {
             throw new Error("Failed to load providers from litellm");
         }
 
-        const providersModels = await response.json();
+        const data = await response.json();
+        const providersInfo = data.providers || [];
+        const providersModels = data.models || {};
 
         // Convert the response to the format expected by the UI
         PROVIDERS = {};
-        for (const [providerId, models] of Object.entries(providersModels)) {
-            // Skip providers with no models
-            if (!models || models.length === 0) {
-                continue;
-            }
 
-            // Format provider name for display (capitalize first letter of each word)
-            const formattedName = providerId
-                .split('_')
-                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' ');
-
+        // First add all providers from the available providers list
+        providersInfo.forEach(provider => {
+            const providerId = provider.id;
             PROVIDERS[providerId] = {
-                name: formattedName,
-                models: models
+                name: provider.name || providerId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                models: providersModels[providerId] || []
             };
-        }
+        });
 
         console.log("Loaded providers from litellm:", PROVIDERS);
     } catch (error) {
@@ -185,9 +179,10 @@ function addEventListeners() {
                 document.querySelectorAll(`#${providerId}-models-list .model-checkbox`).forEach(checkbox => {
                     checkbox.checked = false;
                 });
-                // Update enabled models
-                updateEnabledModels();
             }
+
+            // Update configuration
+            updateConfiguration();
         });
     });
     
@@ -195,8 +190,8 @@ function addEventListeners() {
     document.querySelectorAll('.api-key-input').forEach(input => {
         input.addEventListener('blur', function() {
             const providerId = this.dataset.provider;
-            apiKeys[providerId] = this.value;
-            saveApiKeys();
+            // Update and save configuration
+            updateConfiguration();
 
             // Always show the models container when an API key is provided
             const modelsContainer = document.getElementById(`${providerId}-models-container`);
@@ -211,7 +206,7 @@ function addEventListeners() {
     // Model checkboxes
     document.querySelectorAll('.model-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
-            updateEnabledModels();
+            updateConfiguration();
         });
     });
 
@@ -232,148 +227,134 @@ function addEventListeners() {
     });
 }
 
-//// Get model information from litellm
-//async function getModelInfo(providerId, modelName) {
-//    try {
-//        const response = await fetch(`/tab-third-party-apis-get-model-info?model_name=${encodeURIComponent(modelName)}&provider_name=${encodeURIComponent(providerId)}`);
-//        if (!response.ok) {
-//            throw new Error(`Failed to get model info for ${modelName}`);
-//        }
-//        return await response.json();
-//    } catch (error) {
-//        console.error(`Error getting model info for ${modelName}:`, error);
-//        return null;
-//    }
-//}
+// Update the configuration based on UI state
+function updateConfiguration() {
+    // Start with a fresh configuration
+    apiConfig.providers = [];
 
-// Update the enabled models based on checkbox state
-function updateEnabledModels() {
-    enabledModels = {};
+    // Get all providers that are toggled on
+    document.querySelectorAll('.provider-toggle:checked').forEach(toggle => {
+        const providerId = toggle.dataset.provider;
+        const apiKeyInput = document.getElementById(`${providerId}-api-key`);
 
-    document.querySelectorAll('.model-checkbox:checked').forEach(checkbox => {
-        const providerId = checkbox.dataset.provider;
-        const model = checkbox.dataset.model;
+        if (apiKeyInput && apiKeyInput.value) {
+            // Get enabled models for this provider
+            const enabledModels = [];
+            document.querySelectorAll(`#${providerId}-models-list .model-checkbox:checked`).forEach(checkbox => {
+                enabledModels.push(checkbox.dataset.model);
+            });
 
-        if (!enabledModels[providerId]) {
-            enabledModels[providerId] = [];
+            // Add provider to configuration
+            apiConfig.providers.push({
+                provider: providerId,
+                api_key: apiKeyInput.value,
+                enabled_models: enabledModels
+            });
         }
-
-        enabledModels[providerId].push(model);
     });
 
-    saveEnabledModels();
+    // Save the configuration
+    saveConfiguration();
 }
 
-// Load API keys and enabled models from the server
-function loadApiKeysAndEnabledModels() {
+// Load configuration from the server
+function loadConfiguration() {
     fetch("/tab-third-party-apis-get")
         .then(response => response.json())
         .then(data => {
-            // Set API keys
-            apiKeys = data.apiKeys || {};
-
-            // Set enabled models
-            enabledModels = data.enabledModels || {};
+            // Set configuration
+            apiConfig = data || { providers: [] };
 
             // Update UI
             updateUI();
         })
         .catch(error => {
-            console.error("Error loading API keys and enabled models:", error);
+            console.error("Error loading configuration:", error);
             general_error(error);
         });
 }
 
 // Update the UI based on loaded data
 function updateUI() {
-    // Update API key inputs
-    Object.keys(apiKeys).forEach(providerId => {
+    // First, uncheck all toggles and checkboxes
+    document.querySelectorAll('.provider-toggle').forEach(toggle => {
+        toggle.checked = false;
+        const providerId = toggle.dataset.provider;
+        document.getElementById(`${providerId}-body`).style.display = 'none';
+    });
+
+    document.querySelectorAll('.model-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    // Update UI based on configuration
+    apiConfig.providers.forEach(providerConfig => {
+        const providerId = providerConfig.provider;
+        const apiKey = providerConfig.api_key;
+        const enabledModels = providerConfig.enabled_models || [];
+
+        // Update API key input
         const input = document.getElementById(`${providerId}-api-key`);
         if (input) {
-            input.value = apiKeys[providerId];
+            input.value = apiKey;
 
-            // If API key exists, show the provider toggle and body
-            if (apiKeys[providerId]) {
-                const toggle = document.getElementById(`${providerId}-toggle`);
-                if (toggle) {
-                    toggle.checked = true;
-                    document.getElementById(`${providerId}-body`).style.display = 'block';
+            // Toggle provider on
+            const toggle = document.getElementById(`${providerId}-toggle`);
+            if (toggle) {
+                toggle.checked = true;
+                document.getElementById(`${providerId}-body`).style.display = 'block';
 
-                    // Only show models container if the provider has models
-                    const modelsContainer = document.getElementById(`${providerId}-models-container`);
-                    if (modelsContainer) {
-                        // Check if provider exists in PROVIDERS and has models
-                        if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
-                            modelsContainer.style.display = 'block';
-                        } else {
-                            modelsContainer.style.display = 'none';
+                // Only show models container if the provider has models
+                const modelsContainer = document.getElementById(`${providerId}-models-container`);
+                if (modelsContainer) {
+                    // Check if provider exists in PROVIDERS and has models
+                    if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
+                        modelsContainer.style.display = 'block';
 
-                            // Add a message if there are no models
-                            const noModelsMsg = document.createElement('div');
-                            noModelsMsg.className = 'alert alert-info mt-3';
-                            noModelsMsg.textContent = 'No models available for this provider. Use the "Add Model" button to add models.';
-
-                            // Check if message already exists
-                            if (!document.getElementById(`${providerId}-no-models-msg`)) {
-                                noModelsMsg.id = `${providerId}-no-models-msg`;
-                                document.getElementById(`${providerId}-body`).appendChild(noModelsMsg);
+                        // Check enabled models
+                        enabledModels.forEach(model => {
+                            const checkbox = document.getElementById(`${providerId}-${model}`);
+                            if (checkbox) {
+                                checkbox.checked = true;
                             }
+                        });
+                    } else {
+                        modelsContainer.style.display = 'none';
+
+                        // Add a message if there are no models
+                        const noModelsMsg = document.createElement('div');
+                        noModelsMsg.className = 'alert alert-info mt-3';
+                        noModelsMsg.textContent = 'No models available for this provider. Use the "Add Model" button to add models.';
+
+                        // Check if message already exists
+                        if (!document.getElementById(`${providerId}-no-models-msg`)) {
+                            noModelsMsg.id = `${providerId}-no-models-msg`;
+                            document.getElementById(`${providerId}-body`).appendChild(noModelsMsg);
                         }
                     }
                 }
             }
         }
     });
-
-    // Update model checkboxes
-    Object.keys(enabledModels).forEach(providerId => {
-        enabledModels[providerId].forEach(model => {
-            const checkbox = document.getElementById(`${providerId}-${model}`);
-            if (checkbox) {
-                checkbox.checked = true;
-            }
-        });
-    });
 }
 
-// Save API keys to the server
-function saveApiKeys() {
-    fetch("/tab-third-party-apis-save-keys", {
+// Save configuration to the server
+function saveConfiguration() {
+    fetch("/tab-third-party-apis-save", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(apiKeys)
+        body: JSON.stringify(apiConfig)
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error("Failed to save API keys");
+            throw new Error("Failed to save configuration");
         }
-        showSuccessToast("API keys saved successfully");
+        showSuccessToast("Configuration saved successfully");
     })
     .catch(error => {
-        console.error("Error saving API keys:", error);
-        general_error(error);
-    });
-}
-
-// Save enabled models to the server
-function saveEnabledModels() {
-    fetch("/tab-third-party-apis-save-models", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(enabledModels)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("Failed to save enabled models");
-        }
-        showSuccessToast("Models configuration saved successfully");
-    })
-    .catch(error => {
-        console.error("Error saving enabled models:", error);
+        console.error("Error saving configuration:", error);
         general_error(error);
     });
 }
@@ -403,12 +384,12 @@ function showAddProviderModal() {
     document.getElementById('third-party-provider-api-key').value = '';
 
     // Fetch all available providers from litellm
-    fetch("/tab-third-party-apis-get-all-providers")
+    fetch("/tab-third-party-apis-get-providers")
         .then(response => response.json())
         .then(data => {
             // Populate the provider dropdown
-            if (data && Array.isArray(data)) {
-                data.forEach(provider => {
+            if (data && data.providers && Array.isArray(data.providers)) {
+                data.providers.forEach(provider => {
                     // Skip providers that are already added
                     if (PROVIDERS[provider.id]) {
                         return;
@@ -461,69 +442,38 @@ function addProvider() {
         return;
     }
 
+    if (!apiKey) {
+        general_error({ detail: "API Key is required" });
+        return;
+    }
+
     // Add the provider to the PROVIDERS object
     PROVIDERS[providerId] = {
         name: providerName,
         models: []
     };
 
-    // Save the provider to the server
-    fetch("/tab-third-party-apis-add-provider", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            providerId: providerId,
-            providerName: providerName,
-            apiKey: apiKey
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("Failed to save provider");
-        }
-        return response.json();
-    })
-    .then(data => {
-        // Save the API key if provided
-        if (apiKey) {
-            apiKeys[providerId] = apiKey;
-            saveApiKeys();
-        }
-
-        // Reinitialize the providers list
-        initializeProvidersList();
-
-        // Update the UI to show the new provider
-        updateUI();
-
-        // If API key was provided, toggle the provider on
-        if (apiKey) {
-            const toggle = document.getElementById(`${providerId}-toggle`);
-            if (toggle) {
-                toggle.checked = true;
-                const event = new Event('change');
-                toggle.dispatchEvent(event);
-
-                // Make sure the models container is visible
-                const modelsContainer = document.getElementById(`${providerId}-models-container`);
-                if (modelsContainer) {
-                    modelsContainer.style.display = 'block';
-                }
-            }
-        }
-
-        // Close the modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('add-third-party-provider-modal'));
-        modal.hide();
-
-        showSuccessToast("Provider added successfully");
-    })
-    .catch(error => {
-        console.error("Error saving provider:", error);
-        general_error(error);
+    // Add the provider to the configuration
+    apiConfig.providers.push({
+        provider: providerId,
+        api_key: apiKey,
+        enabled_models: []
     });
+
+    // Save the configuration
+    saveConfiguration();
+
+    // Reinitialize the providers list
+    initializeProvidersList();
+
+    // Update the UI to show the new provider
+    updateUI();
+
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('add-third-party-provider-modal'));
+    modal.hide();
+
+    showSuccessToast("Provider added successfully");
 }
 
 // Show Add Model Modal
@@ -603,7 +553,6 @@ function addModel() {
         // Using the regular input field
         modelId = modelIdElement.value.trim();
     }
-    
 
     if (!modelId) {
         general_error({ detail: "Model ID is required" });
@@ -657,7 +606,7 @@ function addModel() {
         // Add event listener to the new checkbox
         const checkbox = modelCheckbox.querySelector('.model-checkbox');
         checkbox.addEventListener('change', function() {
-            updateEnabledModels();
+            updateConfiguration();
         });
 
         // Close the modal
@@ -680,13 +629,13 @@ export function tab_switched_here() {
     loadProvidersFromLiteLLM().then(() => {
         // Reinitialize the providers list with the updated data
         initializeProvidersList();
-        // Load saved API keys and enabled models
-        loadApiKeysAndEnabledModels();
+        // Load saved configuration
+        loadConfiguration();
     }).catch(error => {
         console.error("Error reloading providers:", error);
         general_error(error);
-        // Still load API keys and enabled models even if provider loading fails
-        loadApiKeysAndEnabledModels();
+        // Still load configuration even if provider loading fails
+        loadConfiguration();
     });
 
     // Make sure the modals are properly initialized
