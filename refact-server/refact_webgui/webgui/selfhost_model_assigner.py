@@ -366,11 +366,6 @@ class ModelAssigner:
     def model_assignment(self):
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, "r"))
-            j["groq_api_enable"] = j.get("groq_api_enable", False)
-            j["cerebras_api_enable"] = j.get("cerebras_api_enable", False)
-            j["gemini_api_enable"] = j.get("gemini_api_enable", False)
-            j["xai_api_enable"] = j.get("xai_api_enable", False)
-            j["deepseek_api_enable"] = j.get("deepseek_api_enable", False)
         else:
             j = {"model_assign": {}}
 
