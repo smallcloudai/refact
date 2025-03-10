@@ -13,7 +13,7 @@ from refact_webgui.webgui.tab_loras import write_to_file
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from pathlib import Path
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from pydantic import field_validator
 from typing import Dict, Optional
 
