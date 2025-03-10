@@ -820,8 +820,22 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         }
     }
 
+    // if event.paths.iter()
+    // .filter(|p| p.ends_with(".git/logs") || p.ends_with(".git\\logs"))
+    // .next().is_some() {
+    //     tracing::info!("woooha {:?}", event);
+    // }
+
     match event.kind {
         EventKind::Any => {},
+        EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter()
+            .any(|p| p.ends_with(".git/logs") || p.ends_with(".git\\logs")) => 
+        {
+            tracing::info!("Detected .git dir change, reindexing all files {:?}", event);
+            if let Some(gcx) = gcx_weak.clone().upgrade() {
+                enqueue_all_files_from_workspace_folders(gcx, false, false).await;
+            }
+        },
         EventKind::Access(_) => {},
         EventKind::Create(CreateKind::File) => on_create_modify(gcx_weak.clone(), event).await,
         EventKind::Remove(RemoveKind::File) => on_remove(gcx_weak.clone(), event).await,
