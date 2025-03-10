@@ -66,7 +66,7 @@ import { checkForDetailMessage } from "./types";
 //   "POINT2 HOW_INSIGHTFUL_IS_THIS_NOTE: ...",
 // ].join("\n");
 
-export const TAKE_NOTE_MESSAGE = `How many times did you used a tool incorrectly, so it didn't produce the indended result? Call remember_how_to_use_tools() with this exact format:
+export const TAKE_NOTE_MESSAGE = `How many times did you used a tool incorrectly, so it didn't produce the indented result? Call remember_how_to_use_tools() with this exact format:
 
 CORRECTION_POINTS: N
 
@@ -236,26 +236,15 @@ export function formatChatResponse(
       typeof cur.delta.content === "string" &&
       cur.delta.role
     ) {
-      if (cur.delta.role === "assistant" && isAssistantDelta(cur.delta)) {
-        const msg: AssistantMessage = {
-          role: cur.delta.role,
-          content: cur.delta.content,
-          reasoning_content: cur.delta.reasoning_content,
-          tool_calls: cur.delta.tool_calls,
-          thinking_blocks: cur.delta.thinking_blocks,
-          finish_reason: cur.finish_reason,
-        };
-        return acc.concat([msg]);
-      }
-      // TODO: narrow this
-      const message = {
+      const msg: AssistantMessage = {
         role: cur.delta.role,
         content: cur.delta.content,
         reasoning_content: cur.delta.reasoning_content,
+        tool_calls: cur.delta.tool_calls,
+        thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
-        usage: response.usage,
-      } as ChatMessage;
-      return acc.concat([message]);
+      };
+      return acc.concat([msg]);
     }
 
     const lastMessage = acc[acc.length - 1];
@@ -265,10 +254,8 @@ export function formatChatResponse(
         return acc.concat([
           {
             role: "assistant",
-            content: cur.delta.content,
-            reasoning_content: cur.delta.reasoning_content,
+            content: "", // should be like that?
             tool_calls: cur.delta.tool_calls,
-            thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
           },
         ]);
@@ -281,10 +268,8 @@ export function formatChatResponse(
       return last.concat([
         {
           role: "assistant",
-          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
-          reasoning_content:
-            (lastMessage.reasoning_content ?? "") +
-            (cur.delta.reasoning_content ?? ""),
+          content: lastMessage.content ?? "",
+          reasoning_content: lastMessage.reasoning_content ?? "",
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -297,10 +282,9 @@ export function formatChatResponse(
         return acc.concat([
           {
             role: "assistant",
-            content: cur.delta.content,
-            reasoning_content: cur.delta.reasoning_content,
-            tool_calls: cur.delta.tool_calls,
+            content: "", // should it be like this?
             thinking_blocks: cur.delta.thinking_blocks,
+            reasoning_content: cur.delta.reasoning_content,
             finish_reason: cur.finish_reason,
           },
         ]);
@@ -316,10 +300,9 @@ export function formatChatResponse(
       return last.concat([
         {
           role: "assistant",
-          content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+          content: lastMessage.content ?? "",
           reasoning_content:
-            (lastMessage.reasoning_content ?? "") +
-            (cur.delta.reasoning_content ?? ""),
+            (lastMessage.reasoning_content ?? "") + cur.delta.reasoning_content,
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,

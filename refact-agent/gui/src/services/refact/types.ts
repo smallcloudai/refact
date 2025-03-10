@@ -115,7 +115,6 @@ export function isSingleModelToolResult(toolResult: ToolResult) {
 
 interface BaseMessage {
   role: ChatRole;
-  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   content:
     | string
     | ChatContextFile[]
@@ -349,23 +348,12 @@ export function isChatContextFileDelta(
 
 interface ToolCallDelta extends BaseDelta {
   tool_calls: ToolCall[];
-  content: string | null;
-  reasoning_content?: string | null;
-  thinking_blocks?: ThinkingBlock[] | null;
 }
 
 export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
   if (!("tool_calls" in delta)) return false;
-  if ("reasoning_content" in delta) {
-    // reasoning_content is optional, but if present, must be a string
-    if (
-      delta.reasoning_content !== null &&
-      typeof delta.reasoning_content !== "string"
-    )
-      return false;
-  }
   if (delta.tool_calls === null) return false;
   return Array.isArray(delta.tool_calls);
 }
@@ -377,10 +365,8 @@ export type ThinkingBlock = {
 };
 
 interface ThinkingBlocksDelta extends BaseDelta {
-  tool_calls: ToolCall[];
   thinking_blocks?: ThinkingBlock[];
-  content: string | null;
-  reasoning_content?: string | null;
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
 }
 
 export function isThinkingBlocksDelta(
@@ -388,9 +374,19 @@ export function isThinkingBlocksDelta(
 ): delta is ThinkingBlocksDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  if (!("thinking_blocks" in delta)) return false;
-  if (delta.thinking_blocks === null) return false;
-  return Array.isArray(delta.thinking_blocks);
+  if ("reasoning_content" in delta) {
+    // reasoning_content is optional, but if present, must be a string
+    if (
+      delta.reasoning_content !== null &&
+      typeof delta.reasoning_content !== "string"
+    )
+      return false;
+  }
+  if ("thinking_blocks" in delta) {
+    if (delta.thinking_blocks === null) return false;
+    return Array.isArray(delta.thinking_blocks);
+  }
+  return false;
 }
 
 type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
