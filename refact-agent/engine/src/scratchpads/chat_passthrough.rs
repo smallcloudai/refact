@@ -146,6 +146,15 @@ impl ScratchpadAbstract for ChatPassthrough {
         );
         _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
 
+        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
+            tracing::error!("error limiting messages: {}", e);
+            vec![]
+        });
+
+        if self.prepend_system_prompt {
+            assert_eq!(limited_msgs.first().unwrap().role, "system");
+        }
+
         let caps = {
             let gcx_locked = gcx.write().await;
             gcx_locked.caps.clone().unwrap()
@@ -161,28 +170,20 @@ impl ScratchpadAbstract for ChatPassthrough {
             false
         };
 
-        let messages = if supports_reasoning {
+        let limited_adapted_msgs = if supports_reasoning {
             let model_record = model_record_mb.unwrap();
             _adapt_for_reasoning_models(
-                &messages,
+                &limited_msgs,
                 sampling_parameters_to_patch,
                 model_record.supports_reasoning.unwrap(),
                 model_record.default_temperature.clone(),
                 model_record.supports_boost_reasoning.clone(),
             )
         } else {
-            messages
+            limited_msgs
         };
 
-        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
-            tracing::error!("error limiting messages: {}", e);
-            vec![]
-        });
-
-        if self.prepend_system_prompt && !supports_reasoning {
-            assert_eq!(limited_msgs.first().unwrap().role, "system");
-        }
-        let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
+        let converted_messages = convert_messages_to_openai_format(limited_adapted_msgs, &style);
 
         let mut big_json = serde_json::json!({
             "messages": converted_messages,
