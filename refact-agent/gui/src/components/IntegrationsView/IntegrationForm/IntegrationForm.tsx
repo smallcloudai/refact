@@ -23,6 +23,7 @@ import { FormAvailabilityAndDelete } from "./FormAvailabilityAndDelete";
 import { FormFields } from "./FormFields";
 import { FormSmartlinks } from "./FormSmartlinks";
 import styles from "./IntegrationForm.module.css";
+import { MCPLogs } from "./MCPLogs";
 
 type IntegrationFormProps = {
   integrationPath: string;
@@ -261,6 +262,10 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           </Flex>
         </Flex>
       </form>
+
+      {integration.data.integr_name.includes("mcp") && (
+        <MCPLogs integrationPath={integration.data.integr_config_path} />
+      )}
 
       {integration.data.integr_schema.docker && (
         <Flex mt="6" direction="column" align="start" gap="5">

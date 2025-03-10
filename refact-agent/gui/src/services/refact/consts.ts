@@ -22,6 +22,7 @@ export const CHAT_COMMIT_LINK_URL = "/v1/git-commit";
 // Integrations
 export const INTEGRATIONS_URL = "/v1/integrations";
 export const INTEGRATION_GET_URL = "/v1/integration-get";
+export const INTEGRATION_MCP_LOGS_PATH = "/v1/integrations-mcp-logs";
 export const INTEGRATION_SAVE_URL = "/v1/integration-save";
 export const INTEGRATION_DELETE_URL = "/v1/integration-delete";
 // Docker endpoints
