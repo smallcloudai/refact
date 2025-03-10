@@ -94,3 +94,5 @@ jobs:
             smallcloud/refact_self_hosting:${{ needs.setup-vars.outputs.now_tag }}
           platforms: |
             linux/amd64
+          build-args: |
+            GIT_COMMIT_HASH=${{ github.sha }}
