@@ -119,3 +119,8 @@
 }
 
 /** TODO: it seems the background doesn't grow inside of the scroll area */
+
+.tool_result {
+  margin-top: var(--space-1);
+  box-sizing: border-box;
+}
