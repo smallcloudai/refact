@@ -236,7 +236,10 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
       const title = chatResponseChunks.reduce<string>((acc, chunk) => {
         if (isChatResponseChoice(chunk)) {
           if (isAssistantDelta(chunk.choices[0].delta)) {
-            return acc + chunk.choices[0].delta.content;
+            const deltaContent = chunk.choices[0].delta.content;
+            if (deltaContent) {
+              return acc + deltaContent;
+            }
           }
         }
         return acc;

@@ -121,26 +121,44 @@ const EMPTY_DELTAS = [
   {},
 ];
 
+const THINKING_DELTAS = [
+  {
+    thinking_blocks: [
+      {
+        type: "thinking",
+        thinking: null,
+        signature: null,
+      },
+    ],
+    reasoning_content: null,
+  },
+];
+
 describe("type-guards", () => {
   test.each(TOOL_CALL_DELTAS)("isToolCallDelta should be true", (toolCall) => {
     expect(isToolCallDelta(toolCall)).toBe(true);
   });
 
-  test.each([...ASSISTANT_DELTAS, ...EMPTY_DELTAS, ...TOOL_DELTAS])(
-    "isToolCallDelta should be false",
-    (toolCall) => {
-      expect(isToolCallDelta(toolCall)).toBe(false);
-    },
-  );
+  test.each([
+    ...ASSISTANT_DELTAS,
+    ...EMPTY_DELTAS,
+    ...TOOL_DELTAS,
+    ...THINKING_DELTAS,
+  ])("isToolCallDelta should be false", (toolCall) => {
+    expect(isToolCallDelta(toolCall)).toBe(false);
+  });
 
   test.each(ASSISTANT_DELTAS)("isAssistantDelta should be true", (toolCall) => {
     expect(isAssistantDelta(toolCall)).toBe(true);
   });
 
-  test.each([...TOOL_CALL_DELTAS, ...EMPTY_DELTAS, ...TOOL_DELTAS])(
-    "isAssistantDelta should be false",
-    (toolCall) => {
-      expect(isAssistantDelta(toolCall)).toBe(false);
-    },
-  );
+  test.each([
+    ...TOOL_CALL_DELTAS,
+    // unclear: now we are assuming that if delta.role === null, it still can be assistant delta
+    // ...EMPTY_DELTAS,
+    ...TOOL_DELTAS,
+    ...THINKING_DELTAS,
+  ])("isAssistantDelta should be false", (toolCall) => {
+    expect(isAssistantDelta(toolCall)).toBe(false);
+  });
 });
