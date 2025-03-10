@@ -5,7 +5,8 @@ use tracing::error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 
-pub static TOKENS_PER_MESSAGE: i32 = 150;
+pub static EXTRA_TOKENS_PER_MESSAGE: i32 = 150;
+pub static EXTRA_BUDGET_OFFSET_PERC: f32 = 0.2;
 
 // Recalculate overall token usage and limit
 fn recalculate_token_limits(
@@ -15,7 +16,8 @@ fn recalculate_token_limits(
     max_new_tokens: usize,
 ) -> (i32, i32) {
     let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
-    let tokens_limit = n_ctx.saturating_sub(max_new_tokens) as i32;
+    let extra_budget = (n_ctx as f32 * EXTRA_BUDGET_OFFSET_PERC) as usize;
+    let tokens_limit = n_ctx.saturating_sub(max_new_tokens).saturating_sub(extra_budget) as i32;
     (occupied_tokens, tokens_limit)
 }
 
@@ -64,7 +66,7 @@ fn compress_message_at_index(
     mutable_messages[index].content = ChatContent::SimpleText(new_summary);
     
     // Recalculate token usage after compression
-    token_counts[index] = TOKENS_PER_MESSAGE + mutable_messages[index].content.count_tokens(t.tokenizer.clone(), &None)?;
+    token_counts[index] = EXTRA_TOKENS_PER_MESSAGE + mutable_messages[index].content.count_tokens(t.tokenizer.clone(), &None)?;
     Ok(token_counts[index])
 }
 
@@ -225,7 +227,7 @@ pub fn fix_and_limit_messages_history(
     // Calculate initial token counts
     let mut token_counts: Vec<i32> = mutable_messages
         .iter()
-        .map(|msg| -> Result<i32, String> { Ok(TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
+        .map(|msg| -> Result<i32, String> { Ok(EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
         .collect::<Result<Vec<_>, String>>()?;
     
     let tools_description_tokens = if let Some(desc) = tools_description.clone() {
@@ -233,8 +235,8 @@ pub fn fix_and_limit_messages_history(
     } else { 0 };
     
     let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
-    
-    let tokens_limit = n_ctx.saturating_sub(sampling_parameters_to_patch.max_new_tokens) as i32;
+    let extra_budget = (n_ctx as f32 * EXTRA_BUDGET_OFFSET_PERC) as usize;
+    let tokens_limit = n_ctx.saturating_sub(sampling_parameters_to_patch.max_new_tokens).saturating_sub(extra_budget) as i32;
     tracing::info!("token limit: {} tokens", tokens_limit);
     
     if tokens_limit == 0 {
@@ -378,7 +380,6 @@ pub fn fix_and_limit_messages_history(
             }
             
             // Look for the last assistant message in the block
-            let mut added_assistant = false;
             for i in (start_idx + 1..end_idx).rev() {
                 if mutable_messages[i].role == "assistant" {
                     let mut assistant_msg = mutable_messages[i].clone();
@@ -386,43 +387,21 @@ pub fn fix_and_limit_messages_history(
                     assistant_msg.tool_calls = None;
                     assistant_msg.tool_call_id = "".to_string();
                     block_messages.push(assistant_msg);
-                    added_assistant = true;
                     break;
-                }
-            }
-            
-            // If no assistant message was found, we might need to keep tool results
-            // that are directly related to the user message
-            if !added_assistant {
-                for i in start_idx + 1..end_idx {
-                    if mutable_messages[i].role == "tool" && 
-                       !mutable_messages[i].tool_call_id.is_empty() {
-                        // Check if this tool result is directly related to a tool call in the user message
-                        let user_msg = &mutable_messages[start_idx];
-                        let is_related = if let Some(tool_calls) = &user_msg.tool_calls {
-                            tool_calls.iter().any(|call| call.id == mutable_messages[i].tool_call_id)
-                        } else {
-                            false
-                        };
-                        
-                        if is_related {
-                            block_messages.push(mutable_messages[i].clone());
-                        }
-                    }
                 }
             }
             
             // Calculate the token count for just this block's messages
             let block_token_counts: Vec<i32> = block_messages
                 .iter()
-                .map(|msg| Ok(TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
+                .map(|msg| Ok(EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
                 .collect::<Result<Vec<_>, String>>()?;
             let block_tokens = block_token_counts.iter().sum::<i32>();
             
             // Calculate current tokens used (without adding this block)
             let current_tokens: i32 = kept_messages
                 .iter()
-                .map(|msg| TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
+                .map(|msg| EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
                 .sum::<i32>() + tools_description_tokens;
             
             // Calculate what the total would be if we add this block
@@ -450,7 +429,7 @@ pub fn fix_and_limit_messages_history(
         
         // Recalculate tokens for the final kept_messages
         let new_token_counts: Vec<i32> = kept_messages.iter()
-            .map(|msg| Ok(TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
+            .map(|msg| Ok(EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
             .collect::<Result<Vec<_>, String>>()?;
         let new_occupied_tokens = new_token_counts.iter().sum::<i32>() + tools_description_tokens;
         
@@ -591,7 +570,7 @@ pub fn fix_and_limit_messages_history(
                 mutable_messages[undroppable_msg_n].content = ChatContent::SimpleText(new_summary);
                 
                 // Recalculate token usage
-                token_counts[undroppable_msg_n] = TOKENS_PER_MESSAGE + 
+                token_counts[undroppable_msg_n] = EXTRA_TOKENS_PER_MESSAGE + 
                     mutable_messages[undroppable_msg_n].content.count_tokens(t.tokenizer.clone(), &None)?;
             }
             
@@ -689,7 +668,7 @@ pub fn validate_chat_history(
     // Use the same calculation as in fix_and_limit_messages_history with higher overhead per message
     let token_counts: Vec<i32> = messages
         .iter()
-        .map(|msg| TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
+        .map(|msg| EXTRA_TOKENS_PER_MESSAGE + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
         .collect();
     
     let message_tokens = token_counts.iter().sum::<i32>();
@@ -707,7 +686,7 @@ pub fn validate_chat_history(
 mod compression_tests {
     use crate::call_validation::{ChatMessage, ChatToolCall, SamplingParameters, ChatContent};
     use crate::scratchpad_abstract::HasTokenizerAndEot;
-    use super::{recalculate_token_limits, fix_and_limit_messages_history, TOKENS_PER_MESSAGE};
+    use super::{recalculate_token_limits, fix_and_limit_messages_history, EXTRA_TOKENS_PER_MESSAGE};
 
     // For testing, we'll use a simplified approach
     // Instead of mocking HasTokenizerAndEot, we'll just create test messages and token counts directly
@@ -790,7 +769,7 @@ mod compression_tests {
         
         // Update token count with higher overhead per message
         let content_tokens = mock_count_tokens(&message.content.content_text_only());
-        token_counts[index] = TOKENS_PER_MESSAGE + content_tokens;
+        token_counts[index] = EXTRA_TOKENS_PER_MESSAGE + content_tokens;
         
         Ok(token_counts[index])
     }
