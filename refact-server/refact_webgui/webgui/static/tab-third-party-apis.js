@@ -8,7 +8,7 @@ let PROVIDERS = {};
 
 // Store the configuration
 let apiConfig = {
-    providers: []
+    providers: {}
 };
 
 // Initialize the third-party API widget
@@ -71,7 +71,6 @@ async function loadProvidersFromLiteLLM() {
             };
         });
 
-        console.log("Loaded providers from litellm:", PROVIDERS);
     } catch (error) {
         console.error("Error loading providers from litellm:", error);
         general_error(error);
@@ -219,7 +218,7 @@ function addEventListeners() {
 // Update the configuration based on UI state
 function updateConfiguration() {
     // Start with a fresh configuration
-    const newProviders = [];
+    const newProviders = {};
 
     // Get all providers that are toggled on
     document.querySelectorAll('.provider-toggle:checked').forEach(toggle => {
@@ -228,14 +227,14 @@ function updateConfiguration() {
 
         if (apiKeyInput && apiKeyInput.value) {
             // Find existing provider config to preserve enabled models
-            const existingProvider = apiConfig.providers.find(p => p.provider === providerId);
+            const existingProvider = apiConfig.providers[providerId];
 
             // Add provider to configuration
-            newProviders.push({
-                provider: providerId,
+            newProviders[providerId] = {
+                provider_name: PROVIDERS[providerId]?.name || providerId,
                 api_key: apiKeyInput.value,
                 enabled_models: existingProvider ? [...existingProvider.enabled_models] : []
-            });
+            };
         }
     });
 
@@ -273,8 +272,7 @@ function updateUI() {
     });
 
     // Update UI based on configuration
-    apiConfig.providers.forEach(providerConfig => {
-        const providerId = providerConfig.provider;
+    Object.entries(apiConfig.providers).forEach(([providerId, providerConfig]) => {
         const apiKey = providerConfig.api_key;
         const enabledModels = providerConfig.enabled_models || [];
 
@@ -453,11 +451,11 @@ function addProvider() {
     };
 
     // Add the provider to the configuration
-    apiConfig.providers.push({
-        provider: providerId,
+    apiConfig.providers[providerId] = {
+        provider_name: providerName,
         api_key: apiKey,
         enabled_models: []
-    });
+    };
 
     // Save the configuration
     saveConfiguration();
@@ -477,11 +475,9 @@ function addProvider() {
 
 // Show Add Model Modal
 function showAddModelModal(providerId) {
-    // Set the provider ID
-    document.getElementById('third-party-model-provider-id').value = providerId;
-
     // Get the model ID input container
-    const modelIdContainer = document.querySelector('.modal-body .mb-3');
+    const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
+    modelIdContainer.dataset.providerId = providerId;
 
     // Check if the provider has models
     if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
@@ -536,7 +532,7 @@ function showAddModelModal(providerId) {
 function addModel() {
     // Get the model ID from either the input field or the select dropdown
     let modelId;
-    const providerId = document.getElementById('third-party-model-provider-id').value;
+    const providerId = document.getElementById('add-third-party-model-modal-id-container').dataset.providerId;
     const modelIdElement = document.getElementById('third-party-model-id');
 
     // Check if we're using a select element (combobox)
@@ -569,7 +565,7 @@ function addModel() {
     }
 
     // Find the provider in the configuration
-    const providerConfig = apiConfig.providers.find(p => p.provider === providerId);
+    const providerConfig = apiConfig.providers[providerId];
     if (providerConfig) {
         // Check if the model is already enabled
         if (!providerConfig.enabled_models.includes(modelId)) {
@@ -603,7 +599,7 @@ function addModel() {
 // Remove a model from the enabled models list
 function removeModel(providerId, modelId) {
     // Find the provider in the configuration
-    const providerConfig = apiConfig.providers.find(p => p.provider === providerId);
+    const providerConfig = apiConfig.providers[providerId];
     if (providerConfig) {
         // Remove the model from the enabled models
         const modelIndex = providerConfig.enabled_models.indexOf(modelId);

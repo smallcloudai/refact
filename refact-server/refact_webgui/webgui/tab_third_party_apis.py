@@ -15,20 +15,13 @@ __all__ = ["TabThirdPartyApisRouter"]
 
 
 class ThirdPartyProviderConfig(BaseModel):
-    provider: str
+    provider_name: str
     api_key: str
     enabled_models: List[str] = Field(default_factory=list)
 
 
 class ThirdPartyApiConfig(BaseModel):
-    providers: List[ThirdPartyProviderConfig] = Field(default_factory=list)
-
-    @validator('providers')
-    def validate_unique_providers(cls, providers):
-        provider_ids = [p.provider for p in providers]
-        if len(provider_ids) != len(set(provider_ids)):
-            raise ValueError("Duplicate provider IDs found")
-        return providers
+    providers: Dict[str, ThirdPartyProviderConfig] = Field(default_factory=dict)
 
 
 class TabThirdPartyApisRouter(APIRouter):
@@ -44,7 +37,7 @@ class TabThirdPartyApisRouter(APIRouter):
     async def _tab_third_party_apis_get(self):
         """
         Get the current third-party API configuration.
-        Returns a list of providers with their API keys and enabled models.
+        Returns a dictionary of providers with their API keys and enabled models.
         """
         config = self._load_config()
         return JSONResponse(config.dict())
@@ -124,7 +117,22 @@ class TabThirdPartyApisRouter(APIRouter):
             try:
                 with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
                     data = json.load(f)
-                    return ThirdPartyApiConfig.parse_obj({"providers": data})
+                    # Convert from list to dict if needed (for backward compatibility)
+                    if isinstance(data, list):
+                        providers_dict = {}
+                        for provider_config in data:
+                            provider_id = provider_config.pop("provider", None)
+                            if provider_id:
+                                # Rename provider to provider_name if it exists
+                                provider_config["provider_name"] = provider_config.get("provider_name", provider_id)
+                                providers_dict[provider_id] = provider_config
+                        return ThirdPartyApiConfig(providers=providers_dict)
+                    else:
+                        # If already a dict, ensure provider_name is set
+                        for provider_id, config in data.items():
+                            if "provider_name" not in config:
+                                config["provider_name"] = provider_id
+                        return ThirdPartyApiConfig(providers=data)
             except (json.JSONDecodeError, ValueError):
                 # If the file is invalid, return an empty configuration
                 return ThirdPartyApiConfig()
@@ -161,16 +169,16 @@ class TabThirdPartyApisRouter(APIRouter):
                     enabled_models = json.load(f)
 
             # Create the new configuration
-            providers = []
-            for provider, api_key in api_keys.items():
-                providers.append({
-                    "provider": provider,
+            providers_dict = {}
+            for provider_id, api_key in api_keys.items():
+                providers_dict[provider_id] = {
+                    "provider_name": provider_id,
                     "api_key": api_key,
-                    "enabled_models": enabled_models.get(provider, [])
-                })
+                    "enabled_models": enabled_models.get(provider_id, [])
+                }
 
             # Save the new configuration
-            config = ThirdPartyApiConfig(providers=providers)
+            config = ThirdPartyApiConfig(providers=providers_dict)
             self._save_config(config)
 
             # Rename the old configuration file to .bak
