@@ -50,15 +50,14 @@ async function loadProvidersFromLiteLLM() {
         }
 
         const data = await response.json();
-        const providersInfo = data.providers || [];
+        const providers = data.providers || [];
         const providersModels = data.models || {};
 
         PROVIDERS = {};
-        providersInfo.forEach(provider => {
-            const providerId = provider.id;
+        Object.entries(data).forEach(([providerId, providerModels]) => {
             PROVIDERS[providerId] = {
-                name: provider.name || providerId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-                models: providersModels[providerId] || []
+                name: providerId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                models: providerModels
             };
         });
 
@@ -127,43 +126,32 @@ function initializeProvidersList() {
     addEventListeners();
 }
 
-// Add event listeners to the UI elements
 function addEventListeners() {
-    // Provider toggle switches
     document.querySelectorAll('.provider-toggle').forEach(toggle => {
         toggle.addEventListener('change', function() {
             const providerId = this.dataset.provider;
             const providerBody = document.getElementById(`${providerId}-body`);
-
             if (this.checked) {
                 providerBody.style.display = 'block';
-
-                // Always make sure the models container is visible when provider is toggled on
                 const modelsContainer = document.getElementById(`${providerId}-models-container`);
                 if (modelsContainer) {
                     modelsContainer.style.display = 'block';
                 }
             } else {
                 providerBody.style.display = 'none';
-                // Uncheck all models for this provider
                 document.querySelectorAll(`#${providerId}-models-list .model-checkbox`).forEach(checkbox => {
                     checkbox.checked = false;
                 });
             }
-
-            // Update configuration
             updateConfiguration();
         });
     });
 
-    // API key inputs
     document.querySelectorAll('.api-key-input').forEach(input => {
         input.addEventListener('blur', function() {
             const providerId = this.dataset.provider;
-            // Update and save configuration
             updateConfiguration();
 
-            // Always show the models container when an API key is provided
             const modelsContainer = document.getElementById(`${providerId}-models-container`);
             if (this.value) {
                 modelsContainer.style.display = 'block';
@@ -173,14 +161,12 @@ function addEventListeners() {
         });
     });
 
-    // Model checkboxes
     document.querySelectorAll('.model-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             updateConfiguration();
         });
     });
 
-    // Add Provider button
     const addProviderBtn = document.querySelector('.add-provider-btn');
     if (addProviderBtn) {
         addProviderBtn.addEventListener('click', function() {
@@ -188,7 +174,6 @@ function addEventListeners() {
         });
     }
 
-    // Add Model buttons
     document.querySelectorAll('.add-model-btn').forEach(button => {
         button.addEventListener('click', function() {
             const providerId = this.dataset.provider;
@@ -208,7 +193,7 @@ function updateConfiguration() {
             const existingProvider = apiConfig.providers[providerId];
 
             newProviders[providerId] = {
-                provider_name: PROVIDERS[providerId]?.name || providerId,
+                provider_name: PROVIDERS[providerId].name || providerId,
                 api_key: apiKeyInput.value,
                 enabled_models: existingProvider ? [...existingProvider.enabled_models] : []
             };
@@ -566,7 +551,6 @@ export function tab_switched_here() {
         loadConfiguration();
     });
 
-    // Make sure the modals are properly initialized
     const addProviderModal = document.getElementById('add-third-party-provider-modal');
     if (addProviderModal && !addProviderModal._bsModal) {
         addProviderModal._bsModal = new bootstrap.Modal(addProviderModal);
