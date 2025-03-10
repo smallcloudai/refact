@@ -32,12 +32,12 @@ pub fn convert_edit_to_diffchunks(
 
         let lines_remove = lines_remove.join("");
         let lines_add = lines_add.join("");
-        
+
         let line1 = line_nums.iter()
             .min()
             .map(|&x| x + 1)
             .unwrap_or(1);
-            
+
         let line2 = line_nums.iter()
             .zip(is_plus.iter())
             .map(|(&num, &is_plus)| {
@@ -173,8 +173,9 @@ pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_t
 }
 
 fn _clean_whitespace_only_lines(content: &str) -> String {
-    let re = Regex::new(r"(?m)^[ \t]+$").unwrap();
-    re.replace_all(content, "").to_string()
+    // Remove trailing whitespace from all lines (this also handles lines with only whitespace)
+    let whitespace_re = Regex::new(r"(?m)[ \t]+$").unwrap();
+    whitespace_re.replace_all(content, "").to_string()
 }
 
 pub async fn str_replace(
