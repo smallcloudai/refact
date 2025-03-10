@@ -4,10 +4,11 @@ import litellm
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
-from typing import Dict, List, Optional, Any
+from pydantic import BaseModel, Field
+from typing import Dict, List
 
 from refact_utils.scripts import env
+from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 
@@ -112,7 +113,7 @@ class TabThirdPartyApisRouter(APIRouter):
                                 config["provider_name"] = provider_id
                         return ThirdPartyApiConfig(providers=data)
             except (json.JSONDecodeError, ValueError):
-                # If the file is invalid, return an empty configuration
+                log("Can't read third-party providers config, fallback to empty")
                 return ThirdPartyApiConfig()
 
         return ThirdPartyApiConfig()
@@ -126,7 +127,7 @@ class TabThirdPartyApisRouter(APIRouter):
 
         # Save the configuration
         with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
-            json.dump(config.dict()["providers"], f, indent=4)
+            json.dump(config["providers"], f, indent=4)
         os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
 
     def _migrate_old_config(self):
