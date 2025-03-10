@@ -42,8 +42,8 @@ class NlpSamplingParams(BaseModel):
     max_tokens: Optional[int] = None
     max_completion_tokens: Optional[int] = 500
     temperature: float = 0.2
-    top_p: float = 1.0
-    top_n: int = 0
+    top_p: float = 1.0  # TODO: deprecated field
+    top_n: int = 0  # TODO: deprecated field
     stop: Union[List[str], str] = []
 
     @property
@@ -79,19 +79,20 @@ class NlpCompletion(NlpSamplingParams):
 class ChatMessage(BaseModel):
     role: str
     content: Union[str, List[Dict]]
-    # TODO: validate using pydantic
     tool_calls: Optional[List[Dict[str, Any]]] = None
     tool_call_id: Optional[str] = None
+    thinking_blocks: Optional[List[Dict]] = None
 
 
 class ChatContext(NlpSamplingParams):
-    model: str = Query(pattern="^[a-z/A-Z0-9_\.\-]+$")
+    model: str = Query(pattern="^[a-z/A-Z0-9_\.\-\:]+$")
     messages: List[ChatMessage]
-    # TODO: validate using pydantic
     tools: Optional[List[Dict[str, Any]]] = None
     tool_choice: Optional[str] = None
     stream: Optional[bool] = True
     n: int = 1
+    reasoning_effort: Optional[str] = None  # OpenAI style reasoning
+    thinking: Optional[Dict] = None  # Anthropic style reasoning
 
 
 class EmbeddingsStyleOpenAI(BaseModel):
@@ -515,18 +516,42 @@ class BaseCompletionsRouter(APIRouter):
         model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
         assert model_dict.get('backend') == 'litellm'
 
+        model_name = model_dict.get('resolve_as', post.model)
+        if model_name not in litellm.model_list:
+            log(f"warning: requested model {model_name} is not in the litellm.model_list (this might not be the issue for some providers)")
+        log(f"chat/completions: model resolve {post.model} -> {model_name}")
+        prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
+        if post.tools:
+            prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
+
+        max_tokens = min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens)
+        completion_kwargs = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": post.temperature,
+            "top_p": post.top_p,
+            "max_tokens": max_tokens,
+            "tools": post.tools,
+            "tool_choice": post.tool_choice,
+            "stop": post.stop if post.stop else None,
+            "n": post.n,
+        }
+
+        if post.reasoning_effort or post.thinking:
+            del completion_kwargs["temperature"]
+            del completion_kwargs["top_p"]
+
+        if post.reasoning_effort:
+            completion_kwargs["reasoning_effort"] = post.reasoning_effort
+        if post.thinking:
+            completion_kwargs["thinking"] = post.thinking
+
         async def litellm_streamer():
             generated_tokens_n = 0
             try:
                 self._integrations_env_setup()
                 response = await litellm.acompletion(
-                    model=model_name, messages=messages, stream=True,
-                    temperature=post.temperature, top_p=post.top_p,
-                    max_tokens=min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens),
-                    tools=post.tools,
-                    tool_choice=post.tool_choice,
-                    stop=post.stop if post.stop else None,
-                    n=post.n,
+                    **completion_kwargs, stream=True,
                 )
                 finish_reason = None
                 async for model_response in response:
@@ -559,13 +584,7 @@ class BaseCompletionsRouter(APIRouter):
             try:
                 self._integrations_env_setup()
                 model_response = await litellm.acompletion(
-                    model=model_name, messages=messages, stream=False,
-                    temperature=post.temperature, top_p=post.top_p,
-                    max_tokens=min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens),
-                    tools=post.tools,
-                    tool_choice=post.tool_choice,
-                    stop=post.stop if post.stop else None,
-                    n=post.n,
+                    **completion_kwargs, stream=False,
                 )
                 finish_reason = None
                 try:
@@ -584,13 +603,6 @@ class BaseCompletionsRouter(APIRouter):
                 log(err_msg)
                 yield json.dumps(_patch_caps_version({"error": err_msg}))
 
-        model_name = model_dict.get('resolve_as', post.model)
-        if model_name not in litellm.model_list:
-            log(f"warning: requested model {model_name} is not in the litellm.model_list (this might not be the issue for some providers)")
-        log(f"chat/completions: model resolve {post.model} -> {model_name}")
-        prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
-        if post.tools:
-            prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
         response_streamer = litellm_streamer() if post.stream else litellm_non_streamer()
 
         return StreamingResponse(response_streamer, media_type="text/event-stream")
