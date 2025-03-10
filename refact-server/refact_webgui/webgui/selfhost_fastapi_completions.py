@@ -232,8 +232,8 @@ class BaseCompletionsRouter(APIRouter):
         if os.path.exists(env.CONFIG_INTEGRATIONS):
             integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
         enabled_models = {}
-        if os.path.exists(env.CONFIG_ENABLED_MODELS):
-            enabled_models = json.load(open(env.CONFIG_ENABLED_MODELS, 'r'))
+        if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+            enabled_models = json.load(open(env.CONFIG_INTEGRATIONS_MODELS, 'r'))
 
         def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str, provider_id: str):
             # Check if API key exists and if any models are enabled for this provider

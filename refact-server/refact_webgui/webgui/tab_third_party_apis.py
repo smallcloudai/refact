@@ -33,9 +33,6 @@ class TabThirdPartyApisRouter(APIRouter):
         xai_api_key: Optional[str] = None
         deepseek_api_key: Optional[str] = None
 
-    # class EnabledModels(BaseModel):
-    #     __root__: Dict[str, List[str]]
-
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._models_assigner = models_assigner
@@ -46,7 +43,6 @@ class TabThirdPartyApisRouter(APIRouter):
         self.add_api_route("/tab-third-party-apis-get-all-providers", self._tab_third_party_apis_get_all_providers, methods=["GET"])
         self.add_api_route("/tab-third-party-apis-add-provider", self._tab_third_party_apis_add_provider, methods=["POST"])
         self.add_api_route("/tab-third-party-apis-add-model", self._tab_third_party_apis_add_model, methods=["POST"])
-        # self.add_api_route("/tab-third-party-apis-get-model-info", self._tab_third_party_apis_get_model_info, methods=["GET"])
 
     async def _tab_third_party_apis_get(self):
         # Get API keys
@@ -57,8 +53,8 @@ class TabThirdPartyApisRouter(APIRouter):
 
         # Get enabled models
         enabled_models = {}
-        if os.path.exists(env.CONFIG_ENABLED_MODELS):
-            with open(str(env.CONFIG_ENABLED_MODELS), "r") as f:
+        if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+            with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
                 enabled_models = json.load(f)
 
         return JSONResponse({
@@ -79,9 +75,9 @@ class TabThirdPartyApisRouter(APIRouter):
 
     async def _tab_third_party_apis_save_models(self, data: Dict[str, List[str]]):
         # Save enabled models
-        with open(env.CONFIG_ENABLED_MODELS + ".tmp", "w") as f:
+        with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
             json.dump(data, f, indent=4)
-        os.rename(env.CONFIG_ENABLED_MODELS + ".tmp", env.CONFIG_ENABLED_MODELS)
+        os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
 
         # Update model assigner
         self._models_assigner.models_to_watchdog_configs()
@@ -186,10 +182,3 @@ class TabThirdPartyApisRouter(APIRouter):
             return JSONResponse({"status": "OK", "message": "Model added successfully"})
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
-
-    # async def _tab_third_party_apis_get_model_info(self, model_name: str, provider_name: str):
-    #     try:
-    #         model_info = litellm.get_model_info(model_name=model_name, provider_name=provider_name)
-    #         return JSONResponse(model_info)
-    #     except Exception as e:
-    #         return JSONResponse({"error": str(e)}, status_code=500)

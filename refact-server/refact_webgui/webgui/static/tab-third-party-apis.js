@@ -81,22 +81,6 @@ async function loadProvidersFromLiteLLM() {
     } catch (error) {
         console.error("Error loading providers from litellm:", error);
         general_error(error);
-
-        // Fallback to default providers if litellm is not available
-        PROVIDERS = {
-            openai: {
-                name: "OpenAI",
-                models: ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o"]
-            },
-            anthropic: {
-                name: "Anthropic",
-                models: ["claude-instant-1", "claude-2", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku"]
-            },
-            groq: {
-                name: "Groq",
-                models: ["llama2-70b", "mixtral-8x7b", "gemma-7b"]
-            }
-        };
     }
 }
 
