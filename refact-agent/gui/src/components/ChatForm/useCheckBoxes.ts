@@ -122,7 +122,7 @@ const useAttachSelectedSnippet = (
     });
 
   useEffect(() => {
-    if (!interacted) {
+    if (!interacted || !attachedSelectedSnippet.checked) {
       setAttachedSelectedSnippet((prev) => {
         return {
           ...prev,
@@ -134,7 +134,14 @@ const useAttachSelectedSnippet = (
         };
       });
     }
-  }, [snippet.code, host, label, markdown, interacted]);
+  }, [
+    snippet.code,
+    host,
+    label,
+    markdown,
+    interacted,
+    attachedSelectedSnippet.checked,
+  ]);
 
   const onToggleAttachedSelectedSnippet = useCallback(() => {
     setAttachedSelectedSnippet((prev) => {
@@ -195,7 +202,7 @@ export const useCheckboxes = () => {
         case "selected_lines":
           onToggleAttachedSelectedSnippet();
           setFileInteracted(true);
-          setLineSelectionInteracted((prev) => !prev);
+          setLineSelectionInteracted(true);
           break;
       }
     },
