@@ -67,10 +67,8 @@ class TabThirdPartyApisRouter(APIRouter):
         Filters models to only include chat models.
         """
         try:
-            # Get all providers and their models
             providers_models = litellm.models_by_provider
 
-            # Filter models by mode = chat
             filtered_providers_models = {}
             for provider, models in providers_models.items():
                 chat_models = []
@@ -80,26 +78,12 @@ class TabThirdPartyApisRouter(APIRouter):
                         if model_info and model_info.get("mode") == "chat":
                             chat_models.append(model)
                     except Exception:
-                        # Skip models that cause errors when getting info
                         continue
 
                 if chat_models:
                     filtered_providers_models[provider] = chat_models
 
-            # Get the list of all providers from litellm for display names
-            all_providers = []
-            for provider_id in litellm.provider_list:
-                # Format provider name for display (capitalize first letter of each word)
-                provider_name = provider_id.replace('_', ' ').title()
-                all_providers.append({
-                    "id": provider_id,
-                    "name": provider_name
-                })
-
-            return JSONResponse({
-                "providers": all_providers,
-                "models": filtered_providers_models
-            })
+            return JSONResponse(filtered_providers_models)
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=500)
 
