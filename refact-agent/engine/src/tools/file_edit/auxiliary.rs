@@ -172,6 +172,11 @@ pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_t
     Ok((before_text, file_text.to_string()))
 }
 
+fn _clean_whitespace_only_lines(content: &str) -> String {
+    let re = Regex::new(r"(?m)^[ \t]+$").unwrap();
+    re.replace_all(content, "").to_string()
+}
+
 pub async fn str_replace(
     gcx: Arc<ARwLock<GlobalContext>>,
     path: &PathBuf,
@@ -208,7 +213,9 @@ pub async fn str_replace(
     }
 
     let normalized_new_str = normalize_line_endings(new_str);
-    let new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
+    let mut new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
+
+    new_content = _clean_whitespace_only_lines(&new_content);
 
     let new_file_content = restore_line_endings(&new_content, has_crlf);
     write_file(gcx.clone(), path, &new_file_content, dry).await?;
@@ -241,7 +248,7 @@ pub async fn str_replace_regex(
             pattern.to_string()
         ));
     }
-    let new_content = if multiple && occurrences > 1 {
+    let mut new_content = if multiple && occurrences > 1 {
         pattern
             .replace_all(&normalized_content, replacement)
             .to_string()
@@ -250,6 +257,9 @@ pub async fn str_replace_regex(
             .replace(&normalized_content, replacement)
             .to_string()
     };
+
+    new_content = _clean_whitespace_only_lines(&new_content);
+
     let new_file_content = restore_line_endings(&new_content, has_crlf);
     write_file(gcx.clone(), path, &new_file_content, dry).await?;
     Ok((file_content, new_file_content))
