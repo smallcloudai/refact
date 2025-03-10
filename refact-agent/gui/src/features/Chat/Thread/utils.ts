@@ -377,6 +377,7 @@ export function formatChatResponse(
               (lastMessage.reasoning_content ?? "") +
               (cur.delta.reasoning_content ?? ""),
             tool_calls: lastMessage.tool_calls,
+            thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
           },
         ]);

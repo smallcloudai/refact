@@ -126,8 +126,8 @@ export const setEnabledCheckpoints = createAction<boolean>(
   "chat/setEnabledCheckpoints",
 );
 
-export const setBoostReasoning = createAction<boolean>(
-  "chat/setBoostReasoning",
+export const setBoostReasoning = createAction<PayloadWithChatAndBoolean>(
+  "chatThread/setBoostReasoning",
 );
 
 export const saveTitle = createAction<PayloadWithIdAndTitle>(
@@ -331,7 +331,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const messagesForLsp = formatMessagesForLsp(messages);
     const realMode = mode ?? thread?.mode;
     const maybeLastUserMessageId = thread?.last_user_message_id;
-    const boostReasoning = state.chat.boost_reasoning;
+    const boostReasoning = thread?.boost_reasoning ?? false;
 
     return sendChat({
       messages: messagesForLsp,

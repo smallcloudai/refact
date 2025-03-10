@@ -7,7 +7,8 @@ import {
   PaperPlaneButton,
   BackToSideBarButton,
   AgentIntegrationsButton,
-} from "../Buttons/Buttons";
+  ThinkingButton,
+} from "../Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import {
@@ -365,6 +366,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             align="center"
             justify="between"
           >
+            <ThinkingButton />
             <Flex gap="2" align="center" className={styles.buttonGroup}>
               <TokensPreview currentMessageQuery={value} />
               {toolUse === "agent" && (

@@ -73,6 +73,7 @@ const createChatThread = (
     new_chat_suggested: {
       wasSuggested: false,
     },
+    boost_reasoning: false,
   };
   return chat;
 };
@@ -116,7 +117,6 @@ const createInitialState = ({
     system_prompt: {},
     tool_use,
     checkpoints_enabled: true,
-    boost_reasoning: false,
     send_immediately: false,
   };
 };
@@ -166,7 +166,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.system_prompt = state.system_prompt;
     next.automatic_patch = state.automatic_patch;
     next.checkpoints_enabled = state.checkpoints_enabled;
-    next.boost_reasoning = state.boost_reasoning;
+    next.thread.boost_reasoning = state.thread.boost_reasoning;
     return next;
   });
 
@@ -250,7 +250,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setBoostReasoning, (state, action) => {
-    state.boost_reasoning = action.payload;
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.boost_reasoning = action.payload.value;
   });
 
   builder.addCase(setLastUserMessageId, (state, action) => {
