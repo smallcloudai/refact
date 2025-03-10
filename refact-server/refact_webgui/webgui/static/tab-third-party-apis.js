@@ -94,27 +94,16 @@ function initializeProvidersList() {
         providerCard.classList.add('api-provider-container');
 
         let modelsHtml = '';
-        if (provider.models && provider.models.length > 0) {
-            modelsHtml = `
-                <label class="form-label">Available Chat Models</label>
-                <div class="models-list" id="${providerId}-models-list">
-                    ${provider.models.map(model => `
-                        <div class="form-check mb-2">
-                            <input class="form-check-input model-checkbox" type="checkbox" id="${providerId}-${model}" data-provider="${providerId}" data-model="${model}">
-                            <label class="form-check-label" for="${providerId}-${model}">
-                                ${model}
-                            </label>
-                        </div>
-                    `).join('')}
+        // We'll show enabled models section instead of available models
+        modelsHtml = `
+            <label class="form-label">Enabled Models</label>
+            <div class="models-list" id="${providerId}-models-list">
+                <!-- Enabled models will be populated here when configuration is loaded -->
+                <div class="alert alert-info" id="${providerId}-no-enabled-models-msg">
+                    No models enabled for this provider. Use the "Add Model" button below to add and enable models.
                 </div>
-            `;
-        } else {
-            modelsHtml = `
-                <div class="alert alert-info" id="${providerId}-no-models-msg">
-                    No models available for this provider. Use the "Add Model" button to add models.
-                </div>
-            `;
-        }
+            </div>
+        `;
 
         providerCard.innerHTML = `
             <div class="card-header d-flex justify-content-between align-items-center">
@@ -185,7 +174,7 @@ function addEventListeners() {
             updateConfiguration();
         });
     });
-    
+
     // API key inputs
     document.querySelectorAll('.api-key-input').forEach(input => {
         input.addEventListener('blur', function() {
@@ -230,7 +219,7 @@ function addEventListeners() {
 // Update the configuration based on UI state
 function updateConfiguration() {
     // Start with a fresh configuration
-    apiConfig.providers = [];
+    const newProviders = [];
 
     // Get all providers that are toggled on
     document.querySelectorAll('.provider-toggle:checked').forEach(toggle => {
@@ -238,20 +227,20 @@ function updateConfiguration() {
         const apiKeyInput = document.getElementById(`${providerId}-api-key`);
 
         if (apiKeyInput && apiKeyInput.value) {
-            // Get enabled models for this provider
-            const enabledModels = [];
-            document.querySelectorAll(`#${providerId}-models-list .model-checkbox:checked`).forEach(checkbox => {
-                enabledModels.push(checkbox.dataset.model);
-            });
+            // Find existing provider config to preserve enabled models
+            const existingProvider = apiConfig.providers.find(p => p.provider === providerId);
 
             // Add provider to configuration
-            apiConfig.providers.push({
+            newProviders.push({
                 provider: providerId,
                 api_key: apiKeyInput.value,
-                enabled_models: enabledModels
+                enabled_models: existingProvider ? [...existingProvider.enabled_models] : []
             });
         }
     });
+
+    // Update the configuration
+    apiConfig.providers = newProviders;
 
     // Save the configuration
     saveConfiguration();
@@ -276,15 +265,11 @@ function loadConfiguration() {
 
 // Update the UI based on loaded data
 function updateUI() {
-    // First, uncheck all toggles and checkboxes
+    // First, uncheck all toggles and reset provider displays
     document.querySelectorAll('.provider-toggle').forEach(toggle => {
         toggle.checked = false;
         const providerId = toggle.dataset.provider;
         document.getElementById(`${providerId}-body`).style.display = 'none';
-    });
-
-    document.querySelectorAll('.model-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
     });
 
     // Update UI based on configuration
@@ -304,33 +289,47 @@ function updateUI() {
                 toggle.checked = true;
                 document.getElementById(`${providerId}-body`).style.display = 'block';
 
-                // Only show models container if the provider has models
-                const modelsContainer = document.getElementById(`${providerId}-models-container`);
-                if (modelsContainer) {
-                    // Check if provider exists in PROVIDERS and has models
-                    if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
-                        modelsContainer.style.display = 'block';
+                // Get the models list container
+                const modelsList = document.getElementById(`${providerId}-models-list`);
+                if (modelsList) {
+                    // Clear existing models
+                    modelsList.innerHTML = '';
 
-                        // Check enabled models
+                    // Display enabled models
+                    if (enabledModels.length > 0) {
+                        // Hide the "no enabled models" message if it exists
+                        const noEnabledModelsMsg = document.getElementById(`${providerId}-no-enabled-models-msg`);
+                        if (noEnabledModelsMsg) {
+                            noEnabledModelsMsg.style.display = 'none';
+                        }
+
+                        // Add each enabled model to the list
                         enabledModels.forEach(model => {
-                            const checkbox = document.getElementById(`${providerId}-${model}`);
-                            if (checkbox) {
-                                checkbox.checked = true;
-                            }
+                            const modelItem = document.createElement('div');
+                            modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
+                            modelItem.innerHTML = `
+                                <span class="model-name">${model}</span>
+                                <button class="btn btn-sm btn-outline-danger remove-model-btn" 
+                                        data-provider="${providerId}" 
+                                        data-model="${model}">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            `;
+                            modelsList.appendChild(modelItem);
+
+                            // Add event listener for remove button
+                            const removeBtn = modelItem.querySelector('.remove-model-btn');
+                            removeBtn.addEventListener('click', function() {
+                                removeModel(this.dataset.provider, this.dataset.model);
+                            });
                         });
                     } else {
-                        modelsContainer.style.display = 'none';
-
-                        // Add a message if there are no models
-                        const noModelsMsg = document.createElement('div');
-                        noModelsMsg.className = 'alert alert-info mt-3';
-                        noModelsMsg.textContent = 'No models available for this provider. Use the "Add Model" button to add models.';
-
-                        // Check if message already exists
-                        if (!document.getElementById(`${providerId}-no-models-msg`)) {
-                            noModelsMsg.id = `${providerId}-no-models-msg`;
-                            document.getElementById(`${providerId}-body`).appendChild(noModelsMsg);
-                        }
+                        // Show the "no enabled models" message
+                        const noEnabledModelsMsg = document.createElement('div');
+                        noEnabledModelsMsg.className = 'alert alert-info';
+                        noEnabledModelsMsg.id = `${providerId}-no-enabled-models-msg`;
+                        noEnabledModelsMsg.textContent = 'No models enabled for this provider. Use the "Add Model" button below to add and enable models.';
+                        modelsList.appendChild(noEnabledModelsMsg);
                     }
                 }
             }
@@ -480,10 +479,10 @@ function addProvider() {
 function showAddModelModal(providerId) {
     // Set the provider ID
     document.getElementById('third-party-model-provider-id').value = providerId;
-    
+
     // Get the model ID input container
     const modelIdContainer = document.querySelector('.modal-body .mb-3');
-    
+
     // Check if the provider has models
     if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
         // Provider has models, show a combobox with option for custom input
@@ -497,13 +496,13 @@ function showAddModelModal(providerId) {
             <input type="text" class="form-control mt-2" id="third-party-model-custom" placeholder="Enter custom model ID" style="display: none;">
             <div class="form-text">Select from available models or enter a custom model ID.</div>
         `;
-        
+
         modelIdContainer.innerHTML = selectHtml;
-        
+
         // Add event listener to handle custom model input
         const modelSelect = document.getElementById('third-party-model-id');
         const customInput = document.getElementById('third-party-model-custom');
-        
+
         modelSelect.addEventListener('change', function() {
             if (this.value === 'custom') {
                 customInput.style.display = 'block';
@@ -519,7 +518,7 @@ function showAddModelModal(providerId) {
             <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
             <div class="form-text">Enter the model ID as recognized by the provider.</div>
         `;
-        
+
         modelIdContainer.innerHTML = inputHtml;
     }
 
@@ -539,7 +538,7 @@ function addModel() {
     let modelId;
     const providerId = document.getElementById('third-party-model-provider-id').value;
     const modelIdElement = document.getElementById('third-party-model-id');
-    
+
     // Check if we're using a select element (combobox)
     if (modelIdElement.tagName === 'SELECT') {
         if (modelIdElement.value === 'custom') {
@@ -567,60 +566,58 @@ function addModel() {
     // Add the model to the provider's models array if it doesn't already exist
     if (!PROVIDERS[providerId].models.includes(modelId)) {
         PROVIDERS[providerId].models.push(modelId);
+    }
 
-        // Remove the "no models" message if it exists
-        const noModelsMsg = document.getElementById(`${providerId}-no-models-msg`);
-        if (noModelsMsg) {
-            noModelsMsg.remove();
-        }
+    // Find the provider in the configuration
+    const providerConfig = apiConfig.providers.find(p => p.provider === providerId);
+    if (providerConfig) {
+        // Check if the model is already enabled
+        if (!providerConfig.enabled_models.includes(modelId)) {
+            // Add the model to the enabled models
+            providerConfig.enabled_models.push(modelId);
 
-        // Create the models list container if it doesn't exist
-        let modelsList = document.getElementById(`${providerId}-models-list`);
-        if (!modelsList) {
-            const modelsContainer = document.getElementById(`${providerId}-models-container`);
-
-            // Add the label
-            const label = document.createElement('label');
-            label.className = 'form-label';
-            label.textContent = 'Available Chat Models';
-            modelsContainer.insertBefore(label, modelsContainer.firstChild);
-
-            // Create the models list
-            modelsList = document.createElement('div');
-            modelsList.id = `${providerId}-models-list`;
-            modelsList.className = 'models-list';
-            modelsContainer.insertBefore(modelsList, modelsContainer.querySelector('.mt-3'));
-        }
-
-        // Add the new model to the list
-        const modelCheckbox = document.createElement('div');
-        modelCheckbox.className = 'form-check mb-2';
-        modelCheckbox.innerHTML = `
-            <input class="form-check-input model-checkbox" type="checkbox" id="${providerId}-${modelId}" data-provider="${providerId}" data-model="${modelId}">
-            <label class="form-check-label" for="${providerId}-${modelId}">
-                ${modelId}
-            </label>
-        `;
-        modelsList.appendChild(modelCheckbox);
-
-        // Add event listener to the new checkbox
-        const checkbox = modelCheckbox.querySelector('.model-checkbox');
-        checkbox.addEventListener('change', function() {
+            // Update the configuration
             updateConfiguration();
-        });
 
-        // Close the modal
-        const modalElement = document.getElementById('add-third-party-model-modal');
-        const modal = bootstrap.Modal.getInstance(modalElement);
-        if (modal) {
-            modal.hide();
-        } else if (modalElement && modalElement._bsModal) {
-            modalElement._bsModal.hide();
+            // Update the UI
+            updateUI();
+
+            // Close the modal
+            const modalElement = document.getElementById('add-third-party-model-modal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            } else if (modalElement && modalElement._bsModal) {
+                modalElement._bsModal.hide();
+            }
+
+            showSuccessToast("Model added successfully");
+        } else {
+            general_error({ detail: "Model is already enabled for this provider" });
         }
-        
-        showSuccessToast("Model added successfully");
     } else {
-        general_error({ detail: "Model already exists for this provider" });
+        general_error({ detail: "Provider configuration not found" });
+    }
+}
+
+// Remove a model from the enabled models list
+function removeModel(providerId, modelId) {
+    // Find the provider in the configuration
+    const providerConfig = apiConfig.providers.find(p => p.provider === providerId);
+    if (providerConfig) {
+        // Remove the model from the enabled models
+        const modelIndex = providerConfig.enabled_models.indexOf(modelId);
+        if (modelIndex !== -1) {
+            providerConfig.enabled_models.splice(modelIndex, 1);
+
+            // Update the configuration
+            updateConfiguration();
+
+            // Update the UI
+            updateUI();
+
+            showSuccessToast("Model removed successfully");
+        }
     }
 }
 
