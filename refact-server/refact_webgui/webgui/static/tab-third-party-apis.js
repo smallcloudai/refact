@@ -11,6 +11,9 @@ let apiConfig = {
     providers: {}
 };
 
+// Track expanded/collapsed state of providers
+let expandedProviders = {};
+
 // Initialize the third-party API widget
 export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
@@ -50,9 +53,6 @@ async function loadProvidersFromLiteLLM() {
         }
 
         const data = await response.json();
-        const providers = data.providers || [];
-        const providersModels = data.models || {};
-
         PROVIDERS = {};
         Object.entries(data).forEach(([providerId, providerModels]) => {
             PROVIDERS[providerId] = {
@@ -64,6 +64,22 @@ async function loadProvidersFromLiteLLM() {
     } catch (error) {
         console.error("Error loading providers from litellm:", error);
         general_error(error);
+    }
+}
+
+// Helper function to set the collapsed state of a provider
+function setProviderCollapsedState(providerId, isExpanded) {
+    const header = document.querySelector(`.provider-header[data-provider="${providerId}"]`);
+    const body = document.getElementById(`${providerId}-body`);
+
+    if (header && body) {
+        body.style.display = isExpanded ? 'block' : 'none';
+
+        if (isExpanded) {
+            header.classList.remove('collapsed');
+        } else {
+            header.classList.add('collapsed');
+        }
     }
 }
 
@@ -88,10 +104,15 @@ function initializeProvidersList() {
         `;
 
         providerCard.innerHTML = `
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">${providerConfig.provider_name}</h5>
-                <div class="form-check form-switch">
-                    <input class="form-check-input provider-toggle" type="checkbox" id="${providerId}-toggle" data-provider="${providerId}">
+            <div class="card-header d-flex justify-content-between align-items-center provider-header" data-provider="${providerId}">
+                <h5 class="mb-0 provider-title" data-provider="${providerId}">${providerConfig.provider_name}</h5>
+                <div class="d-flex align-items-center">
+                    <div class="form-check form-switch me-2">
+                        <input class="form-check-input provider-toggle" type="checkbox" id="${providerId}-toggle" data-provider="${providerId}">
+                    </div>
+                    <button class="btn btn-sm btn-outline-danger remove-provider-btn" data-provider="${providerId}">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
             <div class="card-body provider-body" id="${providerId}-body" style="display: none;">
@@ -127,26 +148,56 @@ function initializeProvidersList() {
 }
 
 function addEventListeners() {
+    // Provider toggle switch (enable/disable)
     document.querySelectorAll('.provider-toggle').forEach(toggle => {
         toggle.addEventListener('change', function() {
             const providerId = this.dataset.provider;
-            const providerBody = document.getElementById(`${providerId}-body`);
-            if (this.checked) {
-                providerBody.style.display = 'block';
-                const modelsContainer = document.getElementById(`${providerId}-models-container`);
-                if (modelsContainer) {
-                    modelsContainer.style.display = 'block';
-                }
-            } else {
-                providerBody.style.display = 'none';
-                document.querySelectorAll(`#${providerId}-models-list .model-checkbox`).forEach(checkbox => {
-                    checkbox.checked = false;
-                });
-            }
             updateConfiguration();
         });
     });
 
+    // Provider header click for collapse/expand
+    document.querySelectorAll('.provider-header, .provider-title').forEach(header => {
+        header.addEventListener('click', function(event) {
+            // Don't trigger if clicking on toggle switch or remove button
+            if (event.target.classList.contains('provider-toggle') || 
+                event.target.classList.contains('remove-provider-btn') ||
+                event.target.closest('.remove-provider-btn') ||
+                event.target.closest('.form-check')) {
+                return;
+            }
+
+            const providerId = this.dataset.provider;
+            const providerBody = document.getElementById(`${providerId}-body`);
+            
+            // Toggle visibility
+            const isVisible = providerBody.style.display !== 'none';
+            const newExpandedState = !isVisible;
+
+            // Use our helper function to set the collapsed state
+            setProviderCollapsedState(providerId, newExpandedState);
+
+            // Store expanded state
+            expandedProviders[providerId] = newExpandedState;
+        });
+    });
+
+    // Remove provider button
+    document.querySelectorAll('.remove-provider-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const providerId = this.dataset.provider;
+            if (confirm(`Are you sure you want to remove the ${apiConfig.providers[providerId].provider_name} provider?`)) {
+                delete apiConfig.providers[providerId];
+                delete expandedProviders[providerId];
+                saveConfiguration();
+                initializeProvidersList();
+                updateUI();
+                showSuccessToast("Provider removed successfully");
+            }
+        });
+    });
+
+    // API key input
     document.querySelectorAll('.api-key-input').forEach(input => {
         input.addEventListener('blur', function() {
             const providerId = this.dataset.provider;
@@ -161,12 +212,14 @@ function addEventListeners() {
         });
     });
 
+    // Model checkboxes
     document.querySelectorAll('.model-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             updateConfiguration();
         });
     });
 
+    // Add provider button
     const addProviderBtn = document.querySelector('.add-provider-btn');
     if (addProviderBtn) {
         addProviderBtn.addEventListener('click', function() {
@@ -174,6 +227,7 @@ function addEventListeners() {
         });
     }
 
+    // Add model buttons
     document.querySelectorAll('.add-model-btn').forEach(button => {
         button.addEventListener('click', function() {
             const providerId = this.dataset.provider;
@@ -183,24 +237,22 @@ function addEventListeners() {
 }
 
 function updateConfiguration() {
-    const newProviders = {};
-
-    document.querySelectorAll('.provider-toggle:checked').forEach(toggle => {
-        const providerId = toggle.dataset.provider;
+    // Iterate through all providers in the current configuration
+    Object.keys(apiConfig.providers).forEach(providerId => {
+        const toggle = document.getElementById(`${providerId}-toggle`);
         const apiKeyInput = document.getElementById(`${providerId}-api-key`);
 
-        if (apiKeyInput && apiKeyInput.value) {
-            const existingProvider = apiConfig.providers[providerId];
+        if (toggle && apiKeyInput) {
+            // Update the enabled state based on the toggle
+            apiConfig.providers[providerId].enabled = toggle.checked;
 
-            newProviders[providerId] = {
-                provider_name: PROVIDERS[providerId].name || providerId,
-                api_key: apiKeyInput.value,
-                enabled_models: existingProvider ? [...existingProvider.enabled_models] : []
-            };
+            // Update the API key if it has changed
+            if (apiKeyInput.value) {
+                apiConfig.providers[providerId].api_key = apiKeyInput.value;
+            }
         }
     });
 
-    apiConfig.providers = newProviders;
     saveConfiguration();
 }
 
@@ -230,17 +282,23 @@ function updateUI() {
     Object.entries(apiConfig.providers).forEach(([providerId, providerConfig]) => {
         const apiKey = providerConfig.api_key;
         const enabledModels = providerConfig.enabled_models || [];
+        const isEnabled = providerConfig.enabled !== undefined ? providerConfig.enabled : true;
 
         // Update API key input
         const input = document.getElementById(`${providerId}-api-key`);
         if (input) {
             input.value = apiKey;
 
-            // Toggle provider on
+            // Set toggle state based on enabled property
             const toggle = document.getElementById(`${providerId}-toggle`);
             if (toggle) {
-                toggle.checked = true;
-                document.getElementById(`${providerId}-body`).style.display = 'block';
+                toggle.checked = isEnabled;
+
+                // Show body content if expanded in UI or if this is a new provider
+                const isExpanded = expandedProviders[providerId] !== undefined ? expandedProviders[providerId] : true;
+
+                // Use our helper function to set the collapsed state
+                setProviderCollapsedState(providerId, isExpanded);
 
                 // Get the models list container
                 const modelsList = document.getElementById(`${providerId}-models-list`);
@@ -331,23 +389,13 @@ function showAddProviderModal() {
     document.getElementById('third-party-provider-name').value = '';
     document.getElementById('third-party-provider-api-key').value = '';
 
-    fetch("/tab-third-party-apis-get-providers")
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.providers && Array.isArray(data.providers)) {
-                data.providers.forEach(provider => {
-                    const option = document.createElement('option');
-                    option.value = provider.id;
-                    option.textContent = provider.name || provider.id;
-                    option.dataset.name = provider.name || '';
-                    providerIdSelect.appendChild(option);
-                });
-            }
-        })
-        .catch(error => {
-            console.error("Error fetching available providers:", error);
-            general_error(error);
-        });
+    Object.entries(PROVIDERS).forEach(([providerId, providerInfo]) => {
+        const option = document.createElement('option');
+        option.value = providerId;
+        option.textContent = providerInfo.name;
+        option.dataset.name = providerInfo.name;
+        providerIdSelect.appendChild(option);
+    });
 
     providerIdSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
@@ -392,7 +440,8 @@ function addProvider() {
     apiConfig.providers[providerId] = {
         provider_name: providerName,
         api_key: apiKey,
-        enabled_models: []
+        enabled_models: [],
+        enabled: true
     };
 
     saveConfiguration();
