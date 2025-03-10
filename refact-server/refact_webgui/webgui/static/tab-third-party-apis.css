@@ -28,3 +28,27 @@
     font-style: italic;
     color: #6c757d;
 }
+
+/* Styling for enabled models list */
+.enabled-model-item {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.enabled-model-item .model-name {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.enabled-model-item .remove-model-btn {
+    padding: 2px 6px;
+    font-size: 0.8rem;
+}
+
+/* Styling for API key input */
+.api-key-input {
+    font-family: monospace;
+}
