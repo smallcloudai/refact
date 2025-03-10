@@ -19,7 +19,7 @@ export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
     document.querySelector('#third-party-apis').innerHTML = await req.text();
 
-    await loadProvidersFromLiteLLM();
+    loadProvidersFromLiteLLM();
     loadConfiguration();
     initializeProvidersList();
 
@@ -45,26 +45,22 @@ export async function init(general_error) {
     }
 }
 
-async function loadProvidersFromLiteLLM() {
-    try {
-        const response = await fetch("/tab-third-party-apis-get-providers");
-        if (!response.ok) {
-            throw new Error("Failed to load providers from litellm");
-        }
-
-        const data = await response.json();
-        PROVIDERS = {};
-        Object.entries(data).forEach(([providerId, providerModels]) => {
-            PROVIDERS[providerId] = {
-                name: providerId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-                models: providerModels
-            };
+function loadProvidersFromLiteLLM() {
+    fetch("/tab-third-party-apis-get-providers")
+        .then(response => response.json())
+        .then(data => {
+            PROVIDERS = {};
+            Object.entries(data).forEach(([providerId, providerModels]) => {
+                PROVIDERS[providerId] = {
+                    name: providerId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                    models: providerModels
+                };
+            });
+        })
+        .catch(error => {
+            console.error("Error loading providers from litellm:", error);
+            general_error(error);
         });
-
-    } catch (error) {
-        console.error("Error loading providers from litellm:", error);
-        general_error(error);
-    }
 }
 
 // Helper function to set the collapsed state of a provider
@@ -418,24 +414,25 @@ function addProvider() {
     const apiKey = document.getElementById('third-party-provider-api-key').value.trim();
 
     if (!providerId) {
-        general_error({ detail: "Provider ID is required" });
+        const error_message = "Provider ID is required"
+        console.error(error_message);
+        general_error(error_message);
         return;
     }
 
     if (!providerName) {
-        general_error({ detail: "Provider Name is required" });
+        const error_message = "Provider Name is required"
+        console.error(error_message);
+        general_error(error_message);
         return;
     }
 
     if (!apiKey) {
-        general_error({ detail: "API Key is required" });
+        const error_message = "API Key is required"
+        console.error(error_message);
+        general_error(error_message);
         return;
     }
-
-    PROVIDERS[providerId] = {
-        name: providerName,
-        models: []
-    };
 
     apiConfig.providers[providerId] = {
         provider_name: providerName,
@@ -495,10 +492,6 @@ function showAddModelModal(providerId) {
 
     const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
     modal.show();
-
-    document.getElementById('add-third-party-model-submit').onclick = function() {
-        addModel();
-    };
 }
 
 // Add a new model to a provider
@@ -523,18 +516,10 @@ function addModel() {
     }
 
     if (!modelId) {
-        general_error({ detail: "Model ID is required" });
+        const error_message = "Model ID is required";
+        console.error(error_message);
+        general_error(error_message);
         return;
-    }
-
-    // Initialize models array if it doesn't exist
-    if (!PROVIDERS[providerId].models) {
-        PROVIDERS[providerId].models = [];
-    }
-
-    // Add the model to the provider's models array if it doesn't already exist
-    if (!PROVIDERS[providerId].models.includes(modelId)) {
-        PROVIDERS[providerId].models.push(modelId);
     }
 
     // Find the provider in the configuration
@@ -562,10 +547,14 @@ function addModel() {
 
             showSuccessToast("Model added successfully");
         } else {
-            general_error({ detail: "Model is already enabled for this provider" });
+            const error_message = "Model is already enabled for this provider";
+            console.error(error_message);
+            general_error(error_message);
         }
     } else {
-        general_error({ detail: "Provider configuration not found" });
+        const error_message = "Provider configuration not found"
+        console.error(error_message);
+        general_error(error_message);
     }
 }
 
@@ -591,14 +580,14 @@ function removeModel(providerId, modelId) {
 }
 
 export function tab_switched_here() {
-    loadProvidersFromLiteLLM().then(() => {
+    try {
         loadConfiguration();
         initializeProvidersList();
-    }).catch(error => {
+    } catch (error) {
         console.error("Error reloading providers:", error);
         general_error(error);
         loadConfiguration();
-    });
+    };
 
     const addProviderModal = document.getElementById('add-third-party-provider-modal');
     if (addProviderModal && !addProviderModal._bsModal) {
