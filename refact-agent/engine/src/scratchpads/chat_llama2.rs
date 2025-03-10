@@ -83,7 +83,7 @@ impl ScratchpadAbstract for ChatLlama2 {
         } else {
             (self.messages.clone(), false)
         };
-        let limited_msgs: Vec<ChatMessage> = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None)?;
+        let limited_msgs: Vec<ChatMessage> = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None, Some(self.post.model.as_str()))?;
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();
         // loosely adapted from https://huggingface.co/spaces/huggingface-projects/llama-2-13b-chat/blob/main/model.py#L24
         let mut prompt = "".to_string();
