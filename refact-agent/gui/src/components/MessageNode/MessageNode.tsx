@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
   chatDbMessageSliceActions,
   CMessageNode,
   isUserCMessageNode,
-  UserCMessageNode,
 } from "../../features/ChatDB/chatDbMessagesSlice";
 import { UserInput } from "../ChatContent/UserInput";
 import { AssistantInput } from "../ChatContent/AssistantInput";
@@ -15,7 +14,7 @@ import {
   isPlainTextMessage,
   isUserMessage,
 } from "../../services/refact";
-import { IconButton } from "@radix-ui/themes";
+import { Box, Flex, IconButton } from "@radix-ui/themes";
 import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
@@ -87,74 +86,93 @@ export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   );
 };
 
+function makeDummyNode(lastMessage?: CMessageNode): CMessageNode {
+  return {
+    message: {
+      cmessage_usage_model: lastMessage?.message.cmessage_usage_model ?? "",
+      cmessage_usage_prompt: lastMessage?.message.cmessage_usage_prompt ?? 0,
+      cmessage_usage_completion:
+        lastMessage?.message.cmessage_usage_completion ?? 0,
+      cmessage_belongs_to_cthread_id:
+        lastMessage?.message.cmessage_belongs_to_cthread_id ?? "",
+      cmessage_num: lastMessage?.message.cmessage_num ?? 0,
+
+      cmessage_alt: (lastMessage?.message.cmessage_alt ?? 0) + 1,
+      cmessage_prev_alt: lastMessage?.message.cmessage_alt ?? 0,
+      cmessage_json: {
+        role: "user",
+        content: "dummy text about making a new message",
+      }, // TODO: use a different type of message
+    },
+    children: [],
+  };
+}
+
 const MessageNodeChildren: React.FC<{ children: CMessageNode[] }> = ({
   children,
 }) => {
-  const userMessages: UserCMessageNode[] = children.filter(isUserCMessageNode);
-
-  if (userMessages.length === 0) {
-    return children.map((node, index) => {
-      const key = `${node.message.cmessage_belongs_to_cthread_id}_${node.message.cmessage_num}_${node.message.cmessage_alt}_${index}`;
-      return <MessageNode key={key}>{node}</MessageNode>;
-    });
-  } else {
-    return <UserMessageNode>{userMessages}</UserMessageNode>;
-  }
-};
-
-const UserMessageNode: React.FC<{ children: UserCMessageNode[] }> = ({
-  children,
-}) => {
-  // info about the node may need to be shared with the user input
-  const dispatch = useAppDispatch();
   const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
 
-  const selectedNode = children[selectedNodeIndex];
+  const goBack = useCallback(() => {
+    setSelectedNodeIndex((prev) => {
+      if (prev === 0) return prev;
+      return prev - 1;
+    });
+  }, []);
 
-  useEffect(() => {
-    if (selectedNode.children.length === 0) {
-      const action = chatDbMessageSliceActions.setEnd({
-        number: selectedNode.message.cmessage_num,
-        alt: selectedNode.message.cmessage_alt,
-      });
-      dispatch(action);
+  const goForward = useCallback(() => {
+    setSelectedNodeIndex((prev) => {
+      if (prev === children.length) return prev;
+      return prev + 1;
+    });
+  }, [children.length]);
+
+  const canBranch = useMemo(() => {
+    if (children.length > 1) return true;
+    if (selectedNodeIndex >= children.length && selectedNodeIndex > 0) {
+      return true;
     }
-  }, [
-    selectedNode.children.length,
-    selectedNode.message.cmessage_num,
-    selectedNode.message.cmessage_alt,
-    dispatch,
-  ]);
+    if (
+      children[selectedNodeIndex] &&
+      isUserCMessageNode(children[selectedNodeIndex])
+    ) {
+      return true;
+    }
+    return false;
+  }, [children, selectedNodeIndex]);
+
+  const nodeToRender = useMemo(() => {
+    return (
+      children[selectedNodeIndex] ??
+      makeDummyNode(children[children.length - 1])
+    );
+  }, [children, selectedNodeIndex]);
+
+  if (!canBranch) {
+    return <MessageNode>{children[selectedNodeIndex]}</MessageNode>;
+  }
+
   return (
-    <>
-      <IconButton
-        variant="outline"
-        size="1"
-        disabled={selectedNodeIndex === 0}
-        onClick={() =>
-          setSelectedNodeIndex((prev) => {
-            if (prev === 0) return prev;
-            return prev - 1;
-          })
-        }
-      >
-        <ArrowLeftIcon />
-      </IconButton>
-      <IconButton
-        variant="outline"
-        size="1"
-        disabled={selectedNodeIndex === children.length - 1}
-        onClick={() => {
-          setSelectedNodeIndex((prev) => {
-            if (prev === children.length - 1) return prev;
-            return prev + 1;
-          });
-        }}
-      >
-        <ArrowRightIcon />
-      </IconButton>
-      <UserInput>{selectedNode.message.cmessage_json.content}</UserInput>
-      <MessageNodeChildren>{selectedNode.children}</MessageNodeChildren>
-    </>
+    <Box>
+      <Flex gap="4" justify="end">
+        <IconButton
+          variant="outline"
+          size="1"
+          disabled={selectedNodeIndex === 0}
+          onClick={goBack}
+        >
+          <ArrowLeftIcon />
+        </IconButton>
+        <IconButton
+          variant="outline"
+          size="1"
+          disabled={selectedNodeIndex === children.length}
+          onClick={goForward}
+        >
+          <ArrowRightIcon />
+        </IconButton>
+      </Flex>
+      <MessageNode>{nodeToRender}</MessageNode>
+    </Box>
   );
 };
