@@ -19,8 +19,6 @@ export const PAID_AGENT_LIST = [
   "claude-3-7-sonnet",
 ];
 
-const THINKING_MODELS_LIST = ["o3-mini"];
-
 // TODO: hard coded for now. Unlimited usage models
 export const UNLIMITED_PRO_MODELS_LIST = ["gpt-4o-mini"];
 
@@ -71,7 +69,6 @@ export function useCapsForToolUse() {
     const models = caps.data?.code_chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
       (acc, [key, value]) => {
-        if (THINKING_MODELS_LIST.includes(key)) return acc;
         if (toolUse === "explore" && value.supports_tools) {
           return [...acc, key];
         }
