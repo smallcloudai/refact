@@ -190,8 +190,8 @@ pub async fn str_replace(
     let occurrences = normalized_content.matches(&normalized_old_str).count();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, old_str \n```\n{}\n```\ndid not appear verbatim in {:?}. Consider checking the file content using `cat()`",
-            old_str, path
+            "No replacement was performed, `old_str` did not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            path
         ));
     }
     if !replace_multiple && occurrences > 1 {
@@ -202,8 +202,8 @@ pub async fn str_replace(
             .map(|(idx, _)| idx + 1)
             .collect();
         return Err(format!(
-            "No replacement was performed. Multiple occurrences of old_str `{}` in lines {:?}. Please ensure it is unique or set `replace_multiple` to true.",
-            old_str, lines
+            "No replacement was performed. Multiple occurrences of `old_str` in lines {:?}. Please ensure it is unique or set `replace_multiple` to true.",
+            lines
         ));
     }
 
@@ -231,15 +231,14 @@ pub async fn str_replace_regex(
     let occurrences = matches.len();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, `pattern` \n```\n{}\n```\ndid not appear verbatim in {:?}. Consider checking the file content using `cat()`",
-            pattern.to_string(), path
+            "No replacement was performed, `pattern` did not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            path
         ));
     }
     if !multiple && occurrences > 1 {
-        return Err(format!(
-            "No replacement was performed. Multiple occurrences of `pattern` `{}`. Please ensure the `pattern` is unique or set `multiple` to true.",
-            pattern.to_string()
-        ));
+        return Err(
+            "No replacement was performed. Multiple occurrences of `pattern`. Please ensure the `pattern` is unique or set `multiple` to true.".to_string()
+        );
     }
     let new_content = if multiple && occurrences > 1 {
         pattern
