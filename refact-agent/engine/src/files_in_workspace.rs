@@ -796,7 +796,6 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
     }
 
     async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
-        let mut never_mind = true;
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
             indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
@@ -804,20 +803,14 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
             // the program is shutting down
             return;
         }
+        let mut docs = vec![];
         for p in &event.paths {
             let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
-            never_mind &= is_blocklisted(&indexing_settings, &p);
-        }
-        let mut docs = vec![];
-        if !never_mind {
-            for p in &event.paths {
-                let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
-                if is_blocklisted(&indexing_settings, &p) {
-                    continue;
-                }
-                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-                docs.push(cpath.to_string_lossy().to_string());
+            if is_blocklisted(&indexing_settings, &p) {
+                continue;
             }
+            let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
+            docs.push(cpath.to_string_lossy().to_string());
         }
         if docs.is_empty() {
             return;
