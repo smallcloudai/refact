@@ -16,8 +16,8 @@ export const selectAutomaticPatch = (state: RootState) =>
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;
 
-export const selectBoostReasoning = (state: RootState) =>
-  state.chat.boost_reasoning;
+export const selectThreadBoostReasoning = (state: RootState) =>
+  state.chat.thread.boost_reasoning;
 
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;

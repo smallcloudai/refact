@@ -1,5 +1,5 @@
-import React, { forwardRef, useCallback } from "react";
-import { IconButton, Button, Flex } from "@radix-ui/themes";
+import React, { forwardRef, useCallback, useMemo } from "react";
+import { IconButton, Button, Flex, Text, HoverCard } from "@radix-ui/themes";
 import {
   PaperPlaneIcon,
   ExitIcon,
@@ -9,9 +9,15 @@ import {
 import classNames from "classnames";
 import styles from "./button.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import { useAppSelector } from "../../hooks";
+import { useAppDispatch, useAppSelector, useCapsForToolUse } from "../../hooks";
 import { selectApiKey } from "../../features/Config/configSlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
+import {
+  selectThreadBoostReasoning,
+  selectMessages,
+  setBoostReasoning,
+  selectChatId,
+} from "../../features/Chat";
 
 type IconButtonProps = React.ComponentProps<typeof IconButton>;
 type ButtonProps = React.ComponentProps<typeof Button>;
@@ -166,5 +172,66 @@ export const AgentUsageLinkButton: React.FC<AgentUsageLinkButtonProps> = ({
       </Button>
       {error && <div className={styles.error}>{error}</div>}
     </form>
+  );
+};
+
+export const ThinkingButton: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
+  const messages = useAppSelector(selectMessages);
+  const isBoostReasoningEnabled = useAppSelector(selectThreadBoostReasoning);
+  const caps = useCapsForToolUse();
+
+  const supportsBoostReasoning = useMemo(() => {
+    const models = caps.data?.code_chat_models;
+    const item = models?.[caps.currentModel];
+    return item?.supports_boost_reasoning ?? false;
+  }, [caps.data?.code_chat_models, caps.currentModel]);
+
+  const shouldBeDisabled = useMemo(() => {
+    return !supportsBoostReasoning || messages.length > 0;
+  }, [supportsBoostReasoning, messages]);
+
+  const handleReasoningChange = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>, checked: boolean) => {
+      event.stopPropagation();
+      event.preventDefault();
+      dispatch(setBoostReasoning({ chatId, value: checked }));
+    },
+    [dispatch, chatId],
+  );
+
+  return (
+    <Flex gap="2" align="center">
+      <HoverCard.Root>
+        <HoverCard.Trigger>
+          <Button
+            size="1"
+            onClick={(event) =>
+              handleReasoningChange(event, !isBoostReasoningEnabled)
+            }
+            variant={isBoostReasoningEnabled ? "solid" : "outline"}
+            disabled={shouldBeDisabled}
+          >
+            💡 Think
+          </Button>
+        </HoverCard.Trigger>
+        <HoverCard.Content size="2" maxWidth="280px" side="top">
+          <Text as="p" size="2">
+            When enabled, the model will use enhanced reasoning capabilities
+            which may improve problem-solving for complex tasks.
+          </Text>
+          {shouldBeDisabled && (
+            <>
+              <Text as="p" color="gray" size="1" mt="1">
+                {!supportsBoostReasoning
+                  ? `Note: ${caps.currentModel} doesn't support thinking`
+                  : "Note: thinking cannot be disabled for already started conversation"}
+              </Text>
+            </>
+          )}
+        </HoverCard.Content>
+      </HoverCard.Root>
+    </Flex>
   );
 };

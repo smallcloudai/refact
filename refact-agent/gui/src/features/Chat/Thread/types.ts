@@ -19,6 +19,7 @@ export type ChatThread = {
   tool_use?: ToolUse;
   read?: boolean;
   isTitleGenerated?: boolean;
+  boost_reasoning?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode;
   project_name?: string;
@@ -44,7 +45,6 @@ export type Chat = {
   prevent_send: boolean;
   automatic_patch?: boolean;
   checkpoints_enabled?: boolean;
-  boost_reasoning?: boolean;
   waiting_for_response: boolean;
   max_new_tokens?: number;
   cache: Record<string, ChatThread>;
@@ -93,8 +93,7 @@ export type LspChatMode =
   | "EXPLORE"
   | "AGENT"
   | "CONFIGURE"
-  | "PROJECT_SUMMARY"
-  | "THINKING_AGENT";
+  | "PROJECT_SUMMARY";
 
 export function chatModeToLspMode({
   toolUse,
@@ -106,8 +105,6 @@ export function chatModeToLspMode({
   defaultMode?: LspChatMode;
 }): LspChatMode {
   if (defaultMode) {
-    if (defaultMode === "AGENT" || defaultMode === "THINKING_AGENT")
-      return "AGENT";
     return defaultMode;
   }
   if (mode) {

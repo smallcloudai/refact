@@ -1,0 +1,5 @@
+.reasoningCallout {
+  border-left: 3px solid var(--gray-a11);
+  padding: 12px;
+  border-radius: 4px;
+}

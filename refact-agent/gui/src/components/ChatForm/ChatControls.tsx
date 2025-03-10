@@ -1,4 +1,4 @@
-import React, { CSSProperties, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Text,
   Flex,
@@ -22,25 +22,19 @@ import {
 } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
-import { BoostReasoningSwitch } from "./BoostReasoningSwitch";
 import {
   ToolUse,
   selectAutomaticPatch,
-  selectChatId,
   selectCheckpointsEnabled,
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
-  selectThreadMode,
   selectToolUse,
-  // selectBoostReasoning,
   setAutomaticPatch,
-  setChatMode,
   setEnabledCheckpoints,
   setToolUse,
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
-import { getChatById } from "../../features/History/historySlice";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -162,64 +156,6 @@ export const AgentRollbackSwitch: React.FC = () => {
   );
 };
 
-export const ReasoningModeSwitch: React.FC = () => {
-  const DEFAULT_MODE = "AGENT";
-  const ALLOWED_MODES_TO_DISPLAY_SWITCH = ["AGENT", "THINKING_AGENT"];
-  const dispatch = useAppDispatch();
-  const chatId = useAppSelector(selectChatId);
-  const currentMode = useAppSelector(selectThreadMode);
-  const modeFromHistory = useAppSelector(
-    (state) => getChatById(state, chatId)?.mode ?? DEFAULT_MODE,
-    { devModeChecks: { stabilityCheck: "never" } },
-  );
-
-  const isReasoningEnabled = currentMode === "THINKING_AGENT";
-
-  const handleReasoningModeChange = (checked: boolean) => {
-    // TODO: if default mode wasn't agent, but configure or project summary, what should we do?
-    const newMode = checked
-      ? "THINKING_AGENT"
-      : modeFromHistory === "THINKING_AGENT"
-        ? DEFAULT_MODE
-        : modeFromHistory;
-
-    dispatch(setChatMode(newMode));
-  };
-
-  const tooltipStyles: CSSProperties = {
-    marginLeft: 4,
-    visibility: "hidden",
-    opacity: 0,
-  };
-
-  if (currentMode && !ALLOWED_MODES_TO_DISPLAY_SWITCH.includes(currentMode)) {
-    return null;
-  }
-
-  return (
-    <Flex
-      gap="2"
-      align="center"
-      wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
-      justify="between"
-      width="100%"
-    >
-      <Text size="2">Use a o3-mini reasoning model for planning</Text>
-      <Flex gap="2" align="center">
-        <Switch
-          size="1"
-          title="Enable/disable reasoner for Agent"
-          checked={isReasoningEnabled}
-          onCheckedChange={handleReasoningModeChange}
-        />
-        <QuestionMarkCircledIcon style={tooltipStyles} />
-      </Flex>
-    </Flex>
-  );
-};
-
 const CapsSelect: React.FC = () => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
@@ -228,13 +164,6 @@ const CapsSelect: React.FC = () => {
     if (typeof option === "string") return false;
     return option.disabled;
   });
-
-  // Check if the current model supports boost_reasoning
-  const supportsBoostReasoning = useMemo(() => {
-    const models = caps.data?.code_chat_models;
-    const item = models?.[caps.currentModel];
-    return item?.supports_boost_reasoning ?? false;
-  }, [caps.data?.code_chat_models, caps.currentModel]);
 
   return (
     <>
@@ -265,8 +194,6 @@ const CapsSelect: React.FC = () => {
           </Box>
         </Skeleton>
       </Flex>
-
-      {supportsBoostReasoning && <BoostReasoningSwitch />}
     </>
   );
 };
