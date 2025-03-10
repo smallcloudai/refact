@@ -58,7 +58,7 @@ async fn _make_prompt(
                 format!("📎:\n{}\n\n", &message.content.content_text_only())
             }
             _ => {
-                tracing::error!("unknown role in message: {:?}, skipped", message);
+                tracing::info!("skip adding message to the context: {}", message.content.content_text_only());
                 continue;
             }
         };
