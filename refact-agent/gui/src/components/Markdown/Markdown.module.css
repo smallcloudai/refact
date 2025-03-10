@@ -16,6 +16,14 @@
   max-width: 100%;
 }
 
+.code_no_margin {
+  margin-top: 0;
+}
+
+.pre_width_max_content {
+  width: max-content;
+}
+
 .code_inline {
   word-break: break-word;
   word-wrap: break-word;
