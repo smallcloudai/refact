@@ -6,8 +6,8 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingPara
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 
 // Legacy static values - kept for backward compatibility
-pub static EXTRA_TOKENS_PER_MESSAGE: i32 = 150;
-pub static EXTRA_BUDGET_OFFSET_PERC: f32 = 0.2;
+pub static EXTRA_TOKENS_PER_MESSAGE: i32 = 3;
+pub static EXTRA_BUDGET_OFFSET_PERC: f32 = 0.0;
 
 /// Returns the appropriate token parameters for a given model.
 /// 
