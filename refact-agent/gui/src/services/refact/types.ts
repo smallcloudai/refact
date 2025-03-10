@@ -318,8 +318,10 @@ interface AssistantDelta extends BaseDelta {
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  if ("role" in delta && delta.role !== null && delta.role !== "assistant")
-    return false;
+  if ("role" in delta) {
+    if (delta.role === null) return true;
+    if (delta.role !== "assistant") return false;
+  }
   if (!("content" in delta)) return false;
   if ("reasoning_content" in delta) {
     // reasoning_content is optional, but if present, must be a string
@@ -389,7 +391,12 @@ export function isThinkingBlocksDelta(
   return false;
 }
 
-type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
+type Delta =
+  | ThinkingBlocksDelta
+  | AssistantDelta
+  | ChatContextFileDelta
+  | ToolCallDelta
+  | BaseDelta;
 
 export type ChatChoice = {
   delta: Delta;
