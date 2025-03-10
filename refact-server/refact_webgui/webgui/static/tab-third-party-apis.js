@@ -16,14 +16,9 @@ export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
     document.querySelector('#third-party-apis').innerHTML = await req.text();
 
-    // Load providers and models from litellm
     await loadProvidersFromLiteLLM();
-
-    // Initialize the providers list
-    initializeProvidersList();
-
-    // Load saved configuration
     loadConfiguration();
+    initializeProvidersList();
 
     // Initialize modals
     const addProviderModal = document.getElementById('add-third-party-provider-modal');
@@ -47,7 +42,6 @@ export async function init(general_error) {
     }
 }
 
-// Load providers and models from litellm
 async function loadProvidersFromLiteLLM() {
     try {
         const response = await fetch("/tab-third-party-apis-get-providers");
@@ -59,10 +53,7 @@ async function loadProvidersFromLiteLLM() {
         const providersInfo = data.providers || [];
         const providersModels = data.models || {};
 
-        // Convert the response to the format expected by the UI
         PROVIDERS = {};
-
-        // First add all providers from the available providers list
         providersInfo.forEach(provider => {
             const providerId = provider.id;
             PROVIDERS[providerId] = {
@@ -77,24 +68,17 @@ async function loadProvidersFromLiteLLM() {
     }
 }
 
-// Initialize the providers list
 function initializeProvidersList() {
     const providersContainer = document.querySelector('#providers-container');
     providersContainer.innerHTML = '';
 
-    // Create a card for each provider
-    Object.keys(PROVIDERS).forEach(providerId => {
-        const provider = PROVIDERS[providerId];
+    Object.entries(apiConfig.providers).forEach(([providerId, providerConfig]) => {
         const providerCard = document.createElement('div');
         providerCard.className = 'card mb-3';
         providerCard.dataset.provider = providerId;
-
-        // Add provider-specific styling class
         providerCard.classList.add('api-provider-container');
 
-        let modelsHtml = '';
-        // We'll show enabled models section instead of available models
-        modelsHtml = `
+        let modelsHtml = `
             <label class="form-label">Enabled Models</label>
             <div class="models-list" id="${providerId}-models-list">
                 <!-- Enabled models will be populated here when configuration is loaded -->
@@ -106,7 +90,7 @@ function initializeProvidersList() {
 
         providerCard.innerHTML = `
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">${provider.name}</h5>
+                <h5 class="mb-0">${providerConfig.provider_name}</h5>
                 <div class="form-check form-switch">
                     <input class="form-check-input provider-toggle" type="checkbox" id="${providerId}-toggle" data-provider="${providerId}">
                 </div>
@@ -129,7 +113,6 @@ function initializeProvidersList() {
         providersContainer.appendChild(providerCard);
     });
 
-    // Add "Add Provider" button
     const addProviderCard = document.createElement('div');
     addProviderCard.className = 'card mb-3 add-provider-card';
     addProviderCard.innerHTML = `
@@ -141,7 +124,6 @@ function initializeProvidersList() {
     `;
     providersContainer.appendChild(addProviderCard);
 
-    // Add event listeners
     addEventListeners();
 }
 
@@ -215,21 +197,16 @@ function addEventListeners() {
     });
 }
 
-// Update the configuration based on UI state
 function updateConfiguration() {
-    // Start with a fresh configuration
     const newProviders = {};
 
-    // Get all providers that are toggled on
     document.querySelectorAll('.provider-toggle:checked').forEach(toggle => {
         const providerId = toggle.dataset.provider;
         const apiKeyInput = document.getElementById(`${providerId}-api-key`);
 
         if (apiKeyInput && apiKeyInput.value) {
-            // Find existing provider config to preserve enabled models
             const existingProvider = apiConfig.providers[providerId];
 
-            // Add provider to configuration
             newProviders[providerId] = {
                 provider_name: PROVIDERS[providerId]?.name || providerId,
                 api_key: apiKeyInput.value,
@@ -238,22 +215,15 @@ function updateConfiguration() {
         }
     });
 
-    // Update the configuration
     apiConfig.providers = newProviders;
-
-    // Save the configuration
     saveConfiguration();
 }
 
-// Load configuration from the server
 function loadConfiguration() {
     fetch("/tab-third-party-apis-get")
         .then(response => response.json())
         .then(data => {
-            // Set configuration
             apiConfig = data || { providers: [] };
-
-            // Update UI
             updateUI();
         })
         .catch(error => {
@@ -335,7 +305,6 @@ function updateUI() {
     });
 }
 
-// Save configuration to the server
 function saveConfiguration() {
     fetch("/tab-third-party-apis-save", {
         method: "POST",
@@ -356,7 +325,6 @@ function saveConfiguration() {
     });
 }
 
-// Show success toast
 function showSuccessToast(message) {
     let toastDiv = document.querySelector('.third-party-apis-toast');
     const toast = bootstrap.Toast.getOrCreateInstance(toastDiv);
@@ -372,26 +340,17 @@ function showSuccessToast(message) {
     }
 }
 
-// Show Add Provider Modal
 function showAddProviderModal() {
-    // Clear previous values
     const providerIdSelect = document.getElementById('third-party-provider-id');
     providerIdSelect.innerHTML = '<option value="" disabled selected>Select a provider</option>';
     document.getElementById('third-party-provider-name').value = '';
     document.getElementById('third-party-provider-api-key').value = '';
 
-    // Fetch all available providers from litellm
     fetch("/tab-third-party-apis-get-providers")
         .then(response => response.json())
         .then(data => {
-            // Populate the provider dropdown
             if (data && data.providers && Array.isArray(data.providers)) {
                 data.providers.forEach(provider => {
-                    // Skip providers that are already added
-                    if (PROVIDERS[provider.id]) {
-                        return;
-                    }
-
                     const option = document.createElement('option');
                     option.value = provider.id;
                     option.textContent = provider.name || provider.id;
@@ -405,7 +364,6 @@ function showAddProviderModal() {
             general_error(error);
         });
 
-    // Add event listener for provider selection to auto-fill the name
     providerIdSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption && selectedOption.dataset.name) {
@@ -413,17 +371,14 @@ function showAddProviderModal() {
         }
     });
 
-    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('add-third-party-provider-modal'));
     modal.show();
 
-    // Add event listener for the submit button
     document.getElementById('add-third-party-provider-submit').onclick = function() {
         addProvider();
     };
 }
 
-// Add a new provider
 function addProvider() {
     const providerId = document.getElementById('third-party-provider-id').value.trim().toLowerCase();
     const providerName = document.getElementById('third-party-provider-name').value.trim();
@@ -444,44 +399,32 @@ function addProvider() {
         return;
     }
 
-    // Add the provider to the PROVIDERS object
     PROVIDERS[providerId] = {
         name: providerName,
         models: []
     };
 
-    // Add the provider to the configuration
     apiConfig.providers[providerId] = {
         provider_name: providerName,
         api_key: apiKey,
         enabled_models: []
     };
 
-    // Save the configuration
     saveConfiguration();
-
-    // Reinitialize the providers list
     initializeProvidersList();
-
-    // Update the UI to show the new provider
     updateUI();
 
-    // Close the modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('add-third-party-provider-modal'));
     modal.hide();
 
     showSuccessToast("Provider added successfully");
 }
 
-// Show Add Model Modal
 function showAddModelModal(providerId) {
-    // Get the model ID input container
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
 
-    // Check if the provider has models
     if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
-        // Provider has models, show a combobox with option for custom input
         const selectHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <select class="form-select" id="third-party-model-id">
@@ -495,7 +438,6 @@ function showAddModelModal(providerId) {
 
         modelIdContainer.innerHTML = selectHtml;
 
-        // Add event listener to handle custom model input
         const modelSelect = document.getElementById('third-party-model-id');
         const customInput = document.getElementById('third-party-model-custom');
 
@@ -508,7 +450,6 @@ function showAddModelModal(providerId) {
             }
         });
     } else {
-        // Provider has no models, show a simple text input
         const inputHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
@@ -518,11 +459,9 @@ function showAddModelModal(providerId) {
         modelIdContainer.innerHTML = inputHtml;
     }
 
-    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
     modal.show();
 
-    // Add event listener for the submit button
     document.getElementById('add-third-party-model-submit').onclick = function() {
         addModel();
     };
@@ -618,16 +557,12 @@ function removeModel(providerId, modelId) {
 }
 
 export function tab_switched_here() {
-    // Reload providers from litellm and refresh the UI
     loadProvidersFromLiteLLM().then(() => {
-        // Reinitialize the providers list with the updated data
-        initializeProvidersList();
-        // Load saved configuration
         loadConfiguration();
+        initializeProvidersList();
     }).catch(error => {
         console.error("Error reloading providers:", error);
         general_error(error);
-        // Still load configuration even if provider loading fails
         loadConfiguration();
     });
 
