@@ -349,6 +349,8 @@ export function formatChatResponse(
 
     if (cur.delta.role === null || cur.finish_reason !== null) {
       // NOTE: deepseek for some reason doesn't send role in all deltas
+      // If cur.delta.role === 'assistant' || cur.delta.role === null, then if last message's role is not assistant, then creating a new assistant message
+      // TODO: if cur.delta.role === 'assistant', then taking out from cur.delta all possible fields and values, attaching to current assistant message, sending back this one
       if (!isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
         return acc.concat([
           {
@@ -363,7 +365,10 @@ export function formatChatResponse(
       }
 
       const last = acc.slice(0, -1);
-      if (isAssistantDelta(cur.delta) && isToolCallMessage(lastMessage)) {
+      if (
+        (isAssistantMessage(lastMessage) || isToolCallMessage(lastMessage)) &&
+        isAssistantDelta(cur.delta)
+      ) {
         return last.concat([
           {
             role: "assistant",
