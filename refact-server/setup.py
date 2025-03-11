@@ -92,7 +92,7 @@ else:
 
 setup(
     name="refact-self-hosting",
-    version="1.9.1",
+    version="1.9.3",
     py_modules=list(setup_packages.keys()),
     package_data={
         name: py_package.data
