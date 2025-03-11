@@ -63,6 +63,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     handleWheel,
     handleScrollButtonClick,
     showFollowButton,
+    scrollElementToTop,
   } = useAutoScroll({
     scrollRef,
   });
@@ -122,10 +123,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         gap="1"
       >
         {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages, onRetryWrapper)}
+        {renderMessages(messages, onRetryWrapper, scrollElementToTop)}
         <UncommittedChangesWarning />
         {threadUsage && messages.length > 0 && <UsageCounter />}
-
         <Container py="4">
           <Spinner
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
@@ -179,19 +179,26 @@ ChatContent.displayName = "ChatContent";
 function renderMessages(
   messages: ChatMessages,
   onRetry: (index: number, question: UserMessage["content"]) => void,
+  scrollElementToTop: (elem: HTMLElement) => void,
   memo: React.ReactNode[] = [],
   index = 0,
 ) {
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, onRetry, memo, index + 1);
+    return renderMessages(tail, onRetry, scrollElementToTop, memo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(
+      tail,
+      onRetry,
+      scrollElementToTop,
+      nextMemo,
+      index + 1,
+    );
   }
 
   if (head.role === "assistant") {
@@ -207,25 +214,49 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(
+      tail,
+      onRetry,
+      scrollElementToTop,
+      nextMemo,
+      index + 1,
+    );
   }
 
   if (head.role === "user") {
     const key = "user-input-" + index;
-
+    // if last message scroll this message to the top of the bar
     const nextMemo = [
       ...memo,
-      <UserInput onRetry={onRetry} key={key} messageIndex={index}>
+      <UserInput
+        onRetry={onRetry}
+        key={key}
+        messageIndex={index}
+        forceScroll={tail.length === 0}
+        scrollElementToTop={scrollElementToTop}
+      >
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(
+      tail,
+      onRetry,
+      scrollElementToTop,
+      nextMemo,
+      index + 1,
+    );
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(
+      tail,
+      onRetry,
+      scrollElementToTop,
+      nextMemo,
+      index + 1,
+    );
   }
 
   if (isDiffMessage(head)) {
@@ -242,10 +273,11 @@ function renderMessages(
     return renderMessages(
       nextTail,
       onRetry,
+      scrollElementToTop,
       nextMemo,
       index + diffMessages.length,
     );
   }
 
-  return renderMessages(tail, onRetry, memo, index + 1);
+  return renderMessages(tail, onRetry, scrollElementToTop, memo, index + 1);
 }

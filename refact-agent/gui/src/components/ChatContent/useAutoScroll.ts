@@ -38,6 +38,22 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
     }
   }, [scrollRef]);
 
+  const scrollElementToTop = useCallback((elem: HTMLElement) => {
+    // if (scrollRef.current) {
+    //   console.log("scrolling");
+    //   const elementRect = elem.getBoundingClientRect();
+    //   const scrollRect = scrollRef.current.getBoundingClientRect();
+    //   const heightWithoutElement =
+    //     scrollRect.height - scrollRect.x - elementRect.height;
+
+    //   elem.style.height = `${heightWithoutElement}px`;
+
+    //   console.log(scrollRef.current, elem);
+    // }
+
+    elem.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, []);
+
   useEffect(() => {
     scrollIntoView();
   }, [scrollRef, scrollIntoView]);
@@ -98,5 +114,6 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
     handleWheel,
     handleScrollButtonClick,
     showFollowButton,
+    scrollElementToTop,
   };
 }

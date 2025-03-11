@@ -1,9 +1,23 @@
 import { Pencil2Icon } from "@radix-ui/react-icons";
-import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
-import React, { useCallback, useMemo, useState } from "react";
+import {
+  Box,
+  Button,
+  Container,
+  Flex,
+  IconButton,
+  Text,
+} from "@radix-ui/themes";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { selectMessages } from "../../features/Chat";
 import { CheckpointButton } from "../../features/Checkpoints";
-import { useAppSelector } from "../../hooks";
+import { useAppSelector, useEffectOnce } from "../../hooks";
 import {
   isUserMessage,
   ProcessedUserMessageContentWithImages,
@@ -15,6 +29,8 @@ import { RetryForm } from "../ChatForm";
 import { DialogImage } from "../DialogImage";
 import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
+import classNames from "classnames";
+import { use } from "echarts";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -22,18 +38,45 @@ export type UserInputProps = {
   // maybe add images argument ?
   onRetry: (index: number, question: UserMessage["content"]) => void;
   // disableRetry?: boolean;
+  forceScroll?: boolean;
+  scrollElementToTop?: (elem: HTMLElement) => void;
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
   messageIndex,
   children,
   onRetry,
+  forceScroll = false,
+  scrollElementToTop,
 }) => {
+  const ref = useRef<HTMLDivElement>(null);
   const messages = useAppSelector(selectMessages);
 
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
+  const [spaceSize, setSpaceSize] = useState(0);
   // const ref = React.useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    if (forceScroll && scrollElementToTop && ref.current) {
+      console.log("Scrolling");
+      // scrollRef
+      const scrollarea =
+        ref.current.parentElement?.parentElement?.parentElement;
+      const scrollRect = scrollarea?.getBoundingClientRect();
+      const elemRect = ref.current.getBoundingClientRect();
+      const scrollHeight =
+        (scrollRect?.height ?? elemRect.height) -
+        (scrollRect?.y ?? 0) -
+        elemRect.height;
+      setSpaceSize(scrollHeight);
+    }
+  }, [forceScroll, scrollElementToTop]);
+
+  useEffect(() => {
+    ref.current &&
+      ref.current.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [spaceSize]);
 
   const handleSubmit = useCallback(
     (value: UserMessage["content"]) => {
@@ -65,7 +108,7 @@ export const UserInput: React.FC<UserInputProps> = ({
   }, [messageIndex, messages]);
 
   return (
-    <Container position="relative" pt="1">
+    <Container position="relative" pt="1" ref={ref}>
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
@@ -122,6 +165,7 @@ export const UserInput: React.FC<UserInputProps> = ({
           </Flex>
         </Flex>
       )}
+      {forceScroll && <Box minHeight={`${spaceSize}px`} />}
     </Container>
   );
 };
