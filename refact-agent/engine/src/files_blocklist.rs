@@ -26,31 +26,6 @@ use crate::files_correction::any_glob_matches_path;
 
 const INDEXING_TOO_OLD: Duration = Duration::from_secs(3);
 
-pub const DEFAULT_BLOCKLIST_DIRS: &[&str] = &[
-    "*/.*",     // hidden files start with dot
-    "*/target/*",
-    "*/node_modules/*",
-    "*/vendor/*",
-    "*/build/*",
-    "*/dist/*",
-    "*/bin/*",
-    "*/pkg/*",
-    "*/lib/*",
-    "*/obj/*",
-    "*/out/*",
-    "*/venv/*",
-    "*/env/*",
-    "*/tmp/*",
-    "*/temp/*",
-    "*/logs/*",
-    "*/coverage/*",
-    "*/backup/*",
-    "*/__pycache__/*",
-    "*/_trajectories/*",
-    "*/.gradle/*",
-];
-
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct IndexingSettings {
     #[serde(default)]
@@ -61,10 +36,8 @@ pub struct IndexingSettings {
 
 impl Default for IndexingSettings {
     fn default() -> Self {
-        IndexingSettings {
-            blocklist: vec![],
-            additional_indexing_dirs: vec![],
-        }
+        serde_yaml::from_str(include_str!("yaml_configs/default_indexing.yaml"))
+            .expect("src/yaml_configs/default_indexing.yaml to be valid IndexingSettings")
     }
 }
 
@@ -88,7 +61,6 @@ impl IndexingEverywhere {
     pub fn indexing_for_path(&self, path: &Path) -> IndexingSettings {
         assert!(path.is_absolute());
         let mut result: IndexingSettings = self.global.clone();
-        result.blocklist.extend(DEFAULT_BLOCKLIST_DIRS.iter().map(|s| s.to_string()));
 
         let mut best_vcs: Option<IndexingSettings> = None;
         let mut best_pathbuf: Option<PathBuf> = None;
@@ -112,28 +84,18 @@ impl IndexingEverywhere {
 }
 
 pub async fn load_indexing_yaml(
-    indexing_yaml_path: &PathBuf,
+    indexing_yaml_path: &Path,
     relative_path_base: Option<&PathBuf>,
 ) -> Result<IndexingSettings, String> {
-    match fs::read_to_string(&indexing_yaml_path.as_path()).await.map_err(|e| e.to_string()) {
-        Ok(content) => {
-            match _load_indexing_yaml_str(&content.as_str(), relative_path_base) {
-                Ok(indexing_settings) => {
-                    return Ok(indexing_settings)
-                }
-                Err(e) => {
-                    return Err(format!("load {} failed\n{}", indexing_yaml_path.display(), e));
-                }
-            }
-        }
-        Err(e) => {
-            return Err(format!("load {} failed\n{}", indexing_yaml_path.display(), e));
-        }
-    }
+    let content = fs::read_to_string(&indexing_yaml_path)
+        .await
+        .map_err(|e| format!("load {} failed\n{}", indexing_yaml_path.display(), e))?;
+
+    _load_indexing_yaml_str(&content, relative_path_base)
+        .map_err(|e| format!("load {} failed\n{}", indexing_yaml_path.display(), e))
 }
 
-pub async fn reload_global_indexing_only(gcx: Arc<ARwLock<GlobalContext>>) -> IndexingEverywhere
-{
+pub async fn reload_global_indexing_only(gcx: Arc<ARwLock<GlobalContext>>) -> IndexingEverywhere {
     let (config_dir, indexing_yaml) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.config_dir.clone(), gcx_locked.cmdline.indexing_yaml.clone())
@@ -150,8 +112,9 @@ pub async fn reload_global_indexing_only(gcx: Arc<ARwLock<GlobalContext>>) -> In
     }
 }
 
-pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<IndexingEverywhere>
-{
+pub async fn reload_indexing_everywhere_if_needed(
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Arc<IndexingEverywhere> {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
     // Initially this is loaded in _ls_files_under_version_control_recursive()
     let (config_dir, indexing_yaml, workspace_vcs_roots) = {
@@ -208,8 +171,8 @@ pub async fn reload_indexing_everywhere_if_needed(gcx: Arc<ARwLock<GlobalContext
 //     is_blocklisted(&indexing_settings, &path)
 // }
 
-pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &PathBuf) -> bool {
-    let block = any_glob_matches_path(&indexing_settings.blocklist, &path);
+pub fn is_blocklisted(indexing_settings: &IndexingSettings, path: &Path) -> bool {
+    let block = any_glob_matches_path(&indexing_settings.blocklist, path);
     // tracing::info!("is_blocklisted {:?} {:?} block={}", indexing_settings, path, block);
     block
 }
@@ -218,7 +181,7 @@ fn _load_indexing_yaml_str(
     indexing_yaml_str: &str,
     relative_path_base: Option<&PathBuf>,
 ) -> Result<IndexingSettings, String> {
-    match serde_yaml::from_str::<IndexingSettings>(&indexing_yaml_str) {
+    match serde_yaml::from_str::<IndexingSettings>(indexing_yaml_str) {
         Ok(indexing_settings) => {
             let mut additional_indexing_dirs = vec![];
             for indexing_dir in indexing_settings.additional_indexing_dirs.iter() {
@@ -255,7 +218,7 @@ fn _load_indexing_yaml_str(
             }
             return Ok(IndexingSettings {
                 blocklist: indexing_settings.blocklist,
-                additional_indexing_dirs
+                additional_indexing_dirs,
             })
         }
         Err(e) => {
