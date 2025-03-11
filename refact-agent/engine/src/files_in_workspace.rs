@@ -757,14 +757,13 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
 
 pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalContext>>)
 {
-    async fn on_create_modify(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
+    async fn on_file_change(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
             indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
         } else {
-            // the program is shutting down
-            return;
+            return; // the program is shutting down
         }
         for p in &event.paths {
             let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
@@ -772,56 +771,18 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                 continue;
             }
 
-            let mut go_ahead = true;
-            {
-                let is_it_good = is_valid_file(p, false, false);
-                if is_it_good.is_err() {
-                    // info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
-                    go_ahead = false;
-                }
-            }
-
-            if go_ahead {
-                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
+            if !p.exists() || is_valid_file(p, false, false).is_ok() {
+                let cpath = crate::files_correction::canonical_path(p.to_string_lossy());
                 docs.push(cpath.to_string_lossy().to_string());
             }
         }
         if docs.is_empty() {
             return;
         }
-        // info!("EventKind::Create/Modify {} paths", event.paths.len());
+        // info!("EventKind::Create/Modify/Remove {} paths", event.paths.len());
         if let Some(gcx) = gcx_weak.clone().upgrade() {
             enqueue_some_docs(gcx, &docs, false).await;
         }
-    }
-
-    async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
-        let indexing_everywhere_arc;
-        if let Some(gcx) = gcx_weak.clone().upgrade() {
-            indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
-        } else {
-            // the program is shutting down
-            return;
-        }
-        let mut docs = vec![];
-        for p in &event.paths {
-            let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
-            if is_blocklisted(&indexing_settings, &p) {
-                continue;
-            }
-            let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-            docs.push(cpath.to_string_lossy().to_string());
-        }
-        if docs.is_empty() {
-            return;
-        }
-        if let Some(gcx) = gcx_weak.clone().upgrade() {
-            enqueue_some_docs(gcx, &docs, false).await;
-        }
-    }
-
-    if event.kind.is_modify() {
-        tracing::info!("woooha {:?}", event);
     }
 
     match event.kind {
@@ -833,11 +794,8 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                 enqueue_all_files_from_workspace_folders(gcx, false, false).await;
             }
         },
-        EventKind::Create(_) | EventKind::Modify(ModifyKind::Data(_)) | EventKind::Modify(ModifyKind::Any) |
-            EventKind::Modify(ModifyKind::Name(RenameMode::To)) => 
-            on_create_modify(gcx_weak.clone(), event).await,
-        EventKind::Remove(_) | EventKind::Modify(ModifyKind::Name(RenameMode::From)) => 
-            on_remove(gcx_weak.clone(), event).await,
-        EventKind::Other | EventKind::Modify(_) | EventKind::Access(_) | EventKind::Any => {}
+        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
+            on_file_change(gcx_weak.clone(), event).await,
+        EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
 }
