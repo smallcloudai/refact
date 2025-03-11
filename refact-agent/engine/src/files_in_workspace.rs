@@ -6,13 +6,14 @@ use std::sync::{Arc, Weak, Mutex as StdMutex};
 use std::time::Instant;
 use indexmap::IndexSet;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind, RenameMode};
+use notify::event::{CreateKind, ModifyKind, RemoveKind};
 use ropey::Rope;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use walkdir::WalkDir;
 use which::which;
 use tracing::info;
 
+use crate::files_correction::canonical_path;
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
@@ -794,17 +795,57 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         }
     }
 
-    match event.kind {
-        EventKind::Create(_) | EventKind::Remove(_) if event.paths.iter()
-            .any(|p| p.ends_with(".git/logs") || p.ends_with(".git\\logs")) => 
-        {
-            tracing::info!("Detected .git dir change, reindexing all files {:?}", event);
-            if let Some(gcx) = gcx_weak.clone().upgrade() {
+    async fn on_dot_git_dir_change(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
+        if let Some(gcx) = gcx_weak.clone().upgrade() {
+            let repo_paths = event.paths.iter()
+                .filter_map(|p| {
+                    p.components()
+                        .position(|c| c == Component::Normal(".git".as_ref()))
+                        .map(|i| canonical_path(p.components().take(i).collect::<PathBuf>().to_string_lossy()))
+                })
+                .map(|p| { let exists = p.exists(); (p, exists) })
+                .collect::<Vec<_>>();
+            
+            if repo_paths.is_empty() {
+                return;
+            }
+            
+            let workspace_vcs_roots = gcx.read().await.documents_state.workspace_vcs_roots.clone();
+            
+            let mut should_reindex = false;
+            {
+                let mut workspace_vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
+                for (repo_path, exists_in_disk) in repo_paths {
+                    if exists_in_disk && !workspace_vcs_roots_locked.contains(&repo_path) {
+                        tracing::info!("Found .git folder in workspace: {}", repo_path.to_string_lossy());
+                        should_reindex = true;
+                        workspace_vcs_roots_locked.push(repo_path);
+                    } else if !exists_in_disk && workspace_vcs_roots_locked.contains(&repo_path) {
+                        tracing::info!("Removed .git folder from workspace: {}", repo_path.to_string_lossy());
+                        should_reindex = true;
+                        workspace_vcs_roots_locked.retain(|p| p != &repo_path);
+                    }
+                }
+            }
+
+            if should_reindex {
+                tracing::info!("Reindexing all files");
                 enqueue_all_files_from_workspace_folders(gcx, false, false).await;
             }
-        },
+        }
+    }
+
+    match event.kind {
+        EventKind::Create(CreateKind::Folder | CreateKind::Any) | EventKind::Modify(ModifyKind::Any) |
+        EventKind::Remove(RemoveKind::Folder | RemoveKind::Any)
+            if event.paths.iter().any(
+                |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
+            ) => 
+                on_dot_git_dir_change(gcx_weak.clone(), event).await,
+        
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
             on_file_change(gcx_weak.clone(), event).await,
+        
         EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
 }
