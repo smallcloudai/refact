@@ -129,9 +129,13 @@ export const updateThreadThunk = createAppAsyncThunk<
   const state = thunkApi.getState() as unknown as RootState;
   const port = state.config.lspPort;
   const apiKey = state.config.apiKey;
-  console.log("calling updateThread");
-  return updateThread(thread, port, apiKey).then((res) => {
-    console.log("update tread done");
+  const updatedThread = {
+    ...thread,
+    cthread_updated_ts: Date.now(),
+    cthread_created_ts: thread.cthread_created_ts ?? Date.now(),
+    cthread_title: "hello",
+  };
+  return updateThread(updatedThread, port, apiKey).then((res) => {
     return res.json();
   });
 });

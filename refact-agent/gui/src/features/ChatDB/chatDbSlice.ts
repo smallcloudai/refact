@@ -40,7 +40,10 @@ export const chatDbThreadsSlice = createSlice({
     },
   },
   selectors: {
-    getChats: (state) => Object.values(state.chats),
+    getChats: (state) =>
+      Object.values(state.chats).sort(
+        (a, b) => b.cthread_updated_ts - a.cthread_updated_ts,
+      ),
     getLoading: (state) => state.loading,
     getError: (state) => state.error,
     getThreadById: (state, id: string) => {
