@@ -781,7 +781,8 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                 continue;
             }
 
-            if !p.exists() || is_valid_file(p, false, false).is_ok() {
+            // If it's a removed file or a valid existing file, then we can enqueue it
+            if (!p.exists() && p.extension().is_some()) || is_valid_file(p, false, false).is_ok() {
                 let cpath = crate::files_correction::canonical_path(p.to_string_lossy());
                 docs.push(cpath.to_string_lossy().to_string());
             }
@@ -797,13 +798,20 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
     async fn on_dot_git_dir_change(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         if let Some(gcx) = gcx_weak.clone().upgrade() {
+            // Get the path before .git component, and check if repo associated exists
             let repo_paths = event.paths.iter()
                 .filter_map(|p| {
                     p.components()
                         .position(|c| c == Component::Normal(".git".as_ref()))
-                        .map(|i| canonical_path(p.components().take(i).collect::<PathBuf>().to_string_lossy()))
+                        .map(|i| {
+                            let repo_p = p.components().take(i).collect::<PathBuf>();
+                            canonical_path(repo_p.to_string_lossy())
+                        })
                 })
-                .map(|p| { let exists = p.exists(); (p, exists) })
+                .map(|p| { 
+                    let exists = p.join(".git").exists(); 
+                    (p.clone(), exists) 
+                })
                 .collect::<Vec<_>>();
             
             if repo_paths.is_empty() {
@@ -836,13 +844,16 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
     }
 
     match event.kind {
-        EventKind::Create(CreateKind::Folder | CreateKind::Any) | EventKind::Modify(ModifyKind::Any) |
-        EventKind::Remove(RemoveKind::Folder | RemoveKind::Any)
-            if event.paths.iter().any(
-                |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
-            ) => 
-                on_dot_git_dir_change(gcx_weak.clone(), event).await,
+        // We may receive specific event that a folder is being added/removed, but not the .git itself, this happens on Unix systems
+        EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter().any(
+            |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
+        ) => on_dot_git_dir_change(gcx_weak.clone(), event).await,
         
+        // In Windows, we receive generic events (Any subtype), but we receive them about each exact folder
+        EventKind::Create(CreateKind::Any) | EventKind::Modify(ModifyKind::Any) | EventKind::Remove(RemoveKind::Any)
+            if event.paths.iter().any(|p| p.ends_with(".git")) =>
+            on_dot_git_dir_change(gcx_weak, event).await,
+
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
             on_file_change(gcx_weak.clone(), event).await,
         
