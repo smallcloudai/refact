@@ -427,9 +427,8 @@ async fn docker_container_sync_workspace(
     let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
         vec![workspace_folder.clone()],
         &mut indexing_everywhere,
-        false,
-<<<<<<< HEAD
-        false,
+        true,
+        true,
     )
     .await;
 
