@@ -264,12 +264,13 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         </Flex>
       </form>
 
-      {integration.data.integr_name.includes("mcp") && (
-        <MCPLogs
-          integrationPath={integration.data.integr_config_path}
-          integrationName={toPascalCase(integration.data.integr_name)}
-        />
-      )}
+      {integration.data.integr_name.includes("mcp") &&
+        integration.data.integr_values !== null && (
+          <MCPLogs
+            integrationPath={integration.data.integr_config_path}
+            integrationName={toPascalCase(integration.data.integr_name)}
+          />
+        )}
 
       {integration.data.integr_schema.docker && (
         <Flex mt="6" direction="column" align="start" gap="5">
