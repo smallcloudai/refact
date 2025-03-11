@@ -572,7 +572,9 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
-            "similar_models": []
+            "similar_models": [
+                "qwen-qwq/32b/awq/vllm"
+            ]
         },
         "wizardlm/7b": {
             "n_ctx": 2048,
