@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useMemo } from "react";
+import React, { forwardRef, useCallback } from "react";
 import { IconButton, Button, Flex, Text, HoverCard } from "@radix-ui/themes";
 import {
   PaperPlaneIcon,
@@ -10,14 +10,10 @@ import {
 import classNames from "classnames";
 import styles from "./button.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import { useAppDispatch, useAppSelector, useCapsForToolUse } from "../../hooks";
+import { useAppSelector } from "../../hooks";
 import { selectApiKey } from "../../features/Config/configSlice";
-import {
-  selectThreadBoostReasoning,
-  selectMessages,
-  setBoostReasoning,
-  selectChatId,
-} from "../../features/Chat";
+import { selectThreadBoostReasoning } from "../../features/Chat";
+import { useThinking } from "../../hooks/useThinking";
 
 type IconButtonProps = React.ComponentProps<typeof IconButton>;
 type ButtonProps = React.ComponentProps<typeof Button>;
@@ -176,30 +172,13 @@ export const AgentUsageLinkButton: React.FC<AgentUsageLinkButtonProps> = ({
 };
 
 export const ThinkingButton: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const chatId = useAppSelector(selectChatId);
-  const messages = useAppSelector(selectMessages);
   const isBoostReasoningEnabled = useAppSelector(selectThreadBoostReasoning);
-  const caps = useCapsForToolUse();
-
-  const supportsBoostReasoning = useMemo(() => {
-    const models = caps.data?.code_chat_models;
-    const item = models?.[caps.currentModel];
-    return item?.supports_boost_reasoning ?? false;
-  }, [caps.data?.code_chat_models, caps.currentModel]);
-
-  const shouldBeDisabled = useMemo(() => {
-    return !supportsBoostReasoning || messages.length > 0;
-  }, [supportsBoostReasoning, messages]);
-
-  const handleReasoningChange = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>, checked: boolean) => {
-      event.stopPropagation();
-      event.preventDefault();
-      dispatch(setBoostReasoning({ chatId, value: checked }));
-    },
-    [dispatch, chatId],
-  );
+  const {
+    handleReasoningChange,
+    shouldBeDisabled,
+    supportsBoostReasoning,
+    currentModelFromCaps,
+  } = useThinking();
 
   return (
     <Flex gap="2" align="center">
@@ -225,7 +204,7 @@ export const ThinkingButton: React.FC = () => {
             <>
               <Text as="p" color="gray" size="1" mt="1">
                 {!supportsBoostReasoning
-                  ? `Note: ${caps.currentModel} doesn't support thinking`
+                  ? `Note: ${currentModelFromCaps} doesn't support thinking`
                   : "Note: thinking cannot be disabled for already started conversation"}
               </Text>
             </>
