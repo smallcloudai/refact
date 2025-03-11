@@ -133,7 +133,6 @@ export const updateThreadThunk = createAppAsyncThunk<
     ...thread,
     cthread_updated_ts: Date.now(),
     cthread_created_ts: thread.cthread_created_ts ?? Date.now(),
-    cthread_title: "hello",
   };
   return updateThread(updatedThread, port, apiKey).then((res) => {
     return res.json();
