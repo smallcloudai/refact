@@ -26,33 +26,33 @@ export type UserInputProps = {
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
-  messageIndex,
+  // messageIndex,
   children,
-  onRetry,
+  // onRetry,
 }) => {
   // const messages = useAppSelector(selectMessages);
 
-  const [showTextArea, setShowTextArea] = useState(false);
+  // const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
   // const ref = React.useRef<HTMLButtonElement>(null);
 
-  const handleSubmit = useCallback(
-    (value: UserMessage["content"]) => {
-      onRetry && messageIndex && onRetry(messageIndex, value);
-      setShowTextArea(false);
-    },
-    [messageIndex, onRetry],
-  );
+  // const handleSubmit = useCallback(
+  //   (value: UserMessage["content"]) => {
+  //     onRetry && messageIndex && onRetry(messageIndex, value);
+  //     setShowTextArea(false);
+  //   },
+  //   [messageIndex, onRetry],
+  // );
 
-  const handleShowTextArea = useCallback(
-    (value: boolean) => {
-      setShowTextArea(value);
-      if (isEditButtonVisible) {
-        setIsEditButtonVisible(false);
-      }
-    },
-    [isEditButtonVisible],
-  );
+  // const handleShowTextArea = useCallback(
+  //   (value: boolean) => {
+  //     setShowTextArea(value);
+  //     if (isEditButtonVisible) {
+  //       setIsEditButtonVisible(false);
+  //     }
+  //   },
+  //   [isEditButtonVisible],
+  // );
 
   // const lines = children.split("\n"); // won't work if it's an array
   const elements = process(children);
@@ -69,7 +69,7 @@ export const UserInput: React.FC<UserInputProps> = ({
 
   return (
     <Container position="relative" pt="1">
-      {showTextArea ? (
+      {/* {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
           // TODO
@@ -77,54 +77,54 @@ export const UserInput: React.FC<UserInputProps> = ({
           value={children}
           onClose={() => handleShowTextArea(false)}
         />
-      ) : (
-        <Flex
-          direction="row"
-          // checking for the length of the lines to determine the position of the edit button
-          gap={linesLength <= 2 ? "2" : "1"}
-          // TODO: what is it's a really long sentence or word with out new lines?
-          align={linesLength <= 2 ? "center" : "end"}
-          my="1"
-          onMouseEnter={() => setIsEditButtonVisible(true)}
-          onMouseLeave={() => setIsEditButtonVisible(false)}
+      ) : ( */}
+      <Flex
+        direction="row"
+        // checking for the length of the lines to determine the position of the edit button
+        gap={linesLength <= 2 ? "2" : "1"}
+        // TODO: what is it's a really long sentence or word with out new lines?
+        align={linesLength <= 2 ? "center" : "end"}
+        my="1"
+        onMouseEnter={() => setIsEditButtonVisible(true)}
+        onMouseLeave={() => setIsEditButtonVisible(false)}
+      >
+        <Button
+          // ref={ref}
+          variant="soft"
+          size="4"
+          className={styles.userInput}
+          // TODO: should this work?
+          // onClick={() => handleShowTextArea(true)}
+          asChild
         >
-          <Button
-            // ref={ref}
-            variant="soft"
-            size="4"
-            className={styles.userInput}
-            // TODO: should this work?
-            // onClick={() => handleShowTextArea(true)}
-            asChild
-          >
-            <div>{elements}</div>
-          </Button>
-          <Flex
-            direction={linesLength <= 3 ? "row" : "column"}
-            gap="1"
-            style={{
-              opacity: isEditButtonVisible ? 1 : 0,
-              visibility: isEditButtonVisible ? "visible" : "hidden",
-              transition: "opacity 0.15s, visibility 0.15s",
-            }}
-          >
-            {/* {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
+          <div>{elements}</div>
+        </Button>
+        <Flex
+          direction={linesLength <= 3 ? "row" : "column"}
+          gap="1"
+          style={{
+            opacity: isEditButtonVisible ? 1 : 0,
+            visibility: isEditButtonVisible ? "visible" : "hidden",
+            transition: "opacity 0.15s, visibility 0.15s",
+          }}
+        >
+          {/* {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
               <CheckpointButton
                 checkpoints={checkpointsFromMessage}
                 messageIndex={messageIndex}
               />
             )} */}
-            <IconButton
+          {/* <IconButton
               title="Edit message"
               variant="soft"
               size={"2"}
               onClick={() => handleShowTextArea(true)}
             >
               <Pencil2Icon width={15} height={15} />
-            </IconButton>
-          </Flex>
+            </IconButton> */}
         </Flex>
-      )}
+      </Flex>
+      {/* )} */}
     </Container>
   );
 };
