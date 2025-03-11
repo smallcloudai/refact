@@ -245,9 +245,15 @@ async fn docker_container_create(
         String::new()
     };
     let container_name = get_container_name(chat_id);
+    let extra_params: String = isolation.docker_extra_params.join(" ");
+    let entrypoint = if isolation.docker_entrypoint.is_empty() {
+        String::new()
+    } else {
+        format!("--entrypoint={0}", isolation.docker_entrypoint)
+    };
     let run_command = format!(
         "container create --name={container_name} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
-        {ports_to_forward_as_arg_list} {network_if_set} --entrypoint sh {docker_image_id} -c '{lsp_command}'",
+        {ports_to_forward_as_arg_list} {network_if_set} {extra_params} {entrypoint} {docker_image_id} -c '{lsp_command}'",
     );
 
     info!("Executing docker command: {}", &run_command);
@@ -290,13 +296,15 @@ async fn docker_container_sync_config_folder(
     container_id: &str,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(), String> {
-    let (config_dir, integrations_yaml, variables_yaml, secrets_yaml) = {
+    let (config_dir, integrations_yaml, variables_yaml, secrets_yaml, indexing_yaml, privacy_yaml) = {
         let gcx_locked = gcx.read().await;
         (
             gcx_locked.config_dir.clone(), 
             gcx_locked.cmdline.integrations_yaml.clone(), 
             gcx_locked.cmdline.variables_yaml.clone(),
             gcx_locked.cmdline.secrets_yaml.clone(),
+            gcx_locked.cmdline.indexing_yaml.clone(),
+            gcx_locked.cmdline.privacy_yaml.clone(),
         )
     };
     let config_dir_string = config_dir.to_string_lossy().to_string();
@@ -323,6 +331,14 @@ async fn docker_container_sync_config_folder(
     if !secrets_yaml.is_empty() {
         docker_container_copy(docker, gcx.clone(), container_id, &secrets_yaml, 
             &format!("{container_home_dir}/.config/refact/secrets.yaml")).await?;
+    }
+    if !indexing_yaml.is_empty() {
+        docker_container_copy(docker, gcx.clone(), container_id, &indexing_yaml, 
+            &format!("{container_home_dir}/.config/refact/indexing.yaml")).await?;
+    }
+    if !privacy_yaml.is_empty() {
+        docker_container_copy(docker, gcx.clone(), container_id, &privacy_yaml, 
+            &format!("{container_home_dir}/.config/refact/privacy.yaml")).await?;
     }
 
     Ok(())
@@ -411,9 +427,10 @@ async fn docker_container_sync_workspace(
     let (all_files, _vcs_folders) = crate::files_in_workspace::retrieve_files_in_workspace_folders(
         vec![workspace_folder.clone()],
         &mut indexing_everywhere,
-        false,
-        false,
-    ).await;
+        true,
+        true,
+    )
+    .await;
 
     for file in &all_files {
         let relative_path = file.strip_prefix(&workspace_folder)

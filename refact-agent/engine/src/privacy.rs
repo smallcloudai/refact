@@ -7,9 +7,8 @@ use tokio::fs;
 use tracing::error;
 use std::time::SystemTime;
 
-use crate::files_correction::any_glob_matches_path;
+use crate::files_correction::{any_glob_matches_path, canonical_path};
 use crate::global_context::GlobalContext;
-
 
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum FilePrivacyLevel {
@@ -46,20 +45,15 @@ impl Default for PrivacySettings {
 
 const PRIVACY_TOO_OLD: Duration = Duration::from_secs(3);
 
-async fn read_privacy_yaml(path: &Path) -> PrivacySettings
-{
+async fn read_privacy_yaml(path: &Path) -> PrivacySettings {
     match fs::read_to_string(&path).await {
-        Ok(content) => {
-            match serde_yaml::from_str(&content) {
-                Ok(privacy_settings) => {
-                    privacy_settings
-                }
-                Err(e) => {
-                    error!("parsing {} failed\n{}", path.display(), e);
-                    return PrivacySettings::default();
-                }
+        Ok(content) => match serde_yaml::from_str(&content) {
+            Ok(privacy_settings) => privacy_settings,
+            Err(e) => {
+                error!("parsing {} failed\n{}", path.display(), e);
+                return PrivacySettings::default();
             }
-        }
+        },
         Err(e) => {
             error!("unable to read content from {}\n{}", path.display(), e);
             return PrivacySettings::default();
@@ -67,16 +61,24 @@ async fn read_privacy_yaml(path: &Path) -> PrivacySettings
     }
 }
 
-pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<PrivacySettings>
-{
+pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<PrivacySettings> {
     let current_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs();
-    let path = {
+    let (config_dir, privacy_yaml) = {
         let gcx_locked = gcx.read().await;
         let should_reload = gcx_locked.privacy_settings.loaded_ts + PRIVACY_TOO_OLD.as_secs() <= current_time;
         if !should_reload {
             return gcx_locked.privacy_settings.clone();
         }
-        gcx_locked.config_dir.join("privacy.yaml")
+        (
+            gcx_locked.config_dir.clone(),
+            gcx_locked.cmdline.privacy_yaml.clone(),
+        )
+    };
+
+    let path = if privacy_yaml.is_empty() {
+        config_dir.join("privacy.yaml")
+    } else {
+        canonical_path(privacy_yaml)
     };
 
     let mut new_privacy_settings = read_privacy_yaml(&path).await;
@@ -89,8 +91,7 @@ pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<Pri
     }
 }
 
-fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -> FilePrivacyLevel
-{
+fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -> FilePrivacyLevel {
     if any_glob_matches_path(&privacy_settings.privacy_rules.blocked, path) {
         FilePrivacyLevel::Blocked
     } else if any_glob_matches_path(&privacy_settings.privacy_rules.only_send_to_servers_I_control, path) {
@@ -100,15 +101,17 @@ fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -
     }
 }
 
-pub fn check_file_privacy(privacy_settings: Arc<PrivacySettings>, path: &Path, min_allowed_privacy_level: &FilePrivacyLevel) -> Result<(), String>
-{
+pub fn check_file_privacy(
+    privacy_settings: Arc<PrivacySettings>,
+    path: &Path,
+    min_allowed_privacy_level: &FilePrivacyLevel,
+) -> Result<(), String> {
     let file_privacy_level = get_file_privacy_level(privacy_settings.clone(), path);
     if file_privacy_level < *min_allowed_privacy_level {
         return Err(format!("privacy level {:?}", file_privacy_level));
     }
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -120,8 +123,15 @@ mod tests {
         // Arrange
         let privacy_settings = Arc::new(PrivacySettings {
             privacy_rules: FilePrivacySettings {
-                only_send_to_servers_I_control: vec!["*.pem".to_string(), "*/semi_private_dir/*.md".to_string()],
-                blocked: vec!["*.pem".to_string(), "*/secret_dir/*".to_string(), "secret_passwords.txt".to_string()],
+                only_send_to_servers_I_control: vec![
+                    "*.pem".to_string(),
+                    "*/semi_private_dir/*.md".to_string(),
+                ],
+                blocked: vec![
+                    "*.pem".to_string(),
+                    "*/secret_dir/*".to_string(),
+                    "secret_passwords.txt".to_string(),
+                ],
             },
             loaded_ts: 0,
         });
@@ -197,11 +207,3 @@ mod tests {
         }
     }
 }
-
-
-
-
-
-
-
-
