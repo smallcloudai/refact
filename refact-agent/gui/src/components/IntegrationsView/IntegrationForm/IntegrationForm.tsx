@@ -264,8 +264,8 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         </Flex>
       </form>
 
-      {integration.data.integr_name.includes("mcp") &&
-        integration.data.integr_values !== null && (
+      {integration.data.integr_values !== null &&
+        integration.data.integr_name.includes("mcp") && (
           <MCPLogs
             integrationPath={integration.data.integr_config_path}
             integrationName={toPascalCase(integration.data.integr_name)}
