@@ -157,7 +157,10 @@ pub const KNOWN_MODELS: &str = r####"
                 "qwen2.5/coder/3b/instruct/vllm",
                 "qwen2.5/coder/7b/instruct/vllm",
                 "qwen2.5/coder/14b/instruct/vllm",
-                "qwen2.5/coder/32b/instruct/vllm"
+                "qwen2.5/coder/32b/instruct/vllm",
+                "qwen2.5/7b/instruct/vllm",
+                "qwen2.5/14b/instruct/vllm",
+                "qwen2.5/32b/instruct/vllm"
             ]
         },
         "gpt-4o": {
