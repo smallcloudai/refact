@@ -562,6 +562,15 @@ pub const KNOWN_MODELS: &str = r####"
                 "qwen2.5/32b/instruct/vllm"
             ]
         },
+        "qwen-qwq/32b/vllm": {
+            "n_ctx": 32768,
+            "supports_tools": true,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": []
+        },
         "wizardlm/7b": {
             "n_ctx": 2048,
             "supports_scratchpads": {
