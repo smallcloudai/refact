@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::hash::Hash;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Weak, Mutex as StdMutex};
 use std::time::Instant;
 use indexmap::IndexSet;
@@ -327,24 +327,32 @@ pub fn ls_files(
     Ok(paths)
 }
 
-pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf, &'static str)> {
-    let mut dir = file_path.clone();
+pub async fn detect_vcs_for_a_file_path(file_path: &Path) -> Option<(PathBuf, &'static str)> {
+    let mut dir = file_path.to_path_buf();
     if dir.is_file() {
         dir.pop();
     }
     loop {
-        if dir.join(".git").is_dir() {
-            return Some((dir.clone(), "git"));
-        } else if dir.join(".svn").is_dir() {
-            return Some((dir.clone(), "svn"));
-        } else if dir.join(".hg").is_dir() {
-            return Some((dir.clone(), "hg"));
+        if let Some(vcs_type) = get_vcs_type(&dir) {
+            return Some((dir, vcs_type));
         }
         if !dir.pop() {
             break;
         }
     }
     None
+}
+
+pub fn get_vcs_type(path: &Path) -> Option<&'static str> {
+    if path.join(".git").is_dir() {
+        Some("git")
+    } else if path.join(".svn").is_dir() {
+        Some("svn")
+    } else if path.join(".hg").is_dir() {
+        Some("hg")
+    } else {
+        None
+    }
 }
 
 // Slow version of version control detection:
@@ -410,10 +418,11 @@ async fn _ls_files_under_version_control_recursive(
                 continue;
             }
             avoid_dups.insert(checkme.clone());
-            let maybe_files = ls_files_under_version_control(&checkme).await;
-            if let Some(v) = maybe_files {
-                // Have version control
+            if get_vcs_type(&checkme).is_some() {
                 vcs_folders.push(checkme.clone());
+            }
+            if let Some(v) = ls_files_under_version_control(&checkme).await {
+                // Has version control
                 let indexing_yaml_path = checkme.join(".refact").join("indexing.yaml");
                 if indexing_yaml_path.exists() {
                     match crate::files_blocklist::load_indexing_yaml(&indexing_yaml_path, Some(&checkme)).await {
