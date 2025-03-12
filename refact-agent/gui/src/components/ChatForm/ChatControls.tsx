@@ -166,35 +166,33 @@ const CapsSelect: React.FC = () => {
   });
 
   return (
-    <>
-      <Flex
-        gap="2"
-        align="center"
-        wrap="wrap"
-        flexGrow="1"
-        flexShrink="0"
-        width="100%"
-        ref={(x) => refs.setUseModel(x)}
-      >
-        <Text size="2">Use model:</Text>
-        <Skeleton loading={caps.loading}>
-          <Box>
-            {allDisabled ? (
-              <Text size="1" color="gray">
-                No models available
-              </Text>
-            ) : (
-              <Select
-                title="chat model"
-                options={caps.usableModelsForPlan}
-                value={caps.currentModel}
-                onChange={caps.setCapModel}
-              />
-            )}
-          </Box>
-        </Skeleton>
-      </Flex>
-    </>
+    <Flex
+      gap="2"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      ref={(x) => refs.setUseModel(x)}
+    >
+      <Text size="2">Use model:</Text>
+      <Skeleton loading={caps.loading}>
+        <Box>
+          {allDisabled ? (
+            <Text size="1" color="gray">
+              No models available
+            </Text>
+          ) : (
+            <Select
+              title="chat model"
+              options={caps.usableModelsForPlan}
+              value={caps.currentModel}
+              onChange={caps.setCapModel}
+            />
+          )}
+        </Box>
+      </Skeleton>
+    </Flex>
   );
 };
 
