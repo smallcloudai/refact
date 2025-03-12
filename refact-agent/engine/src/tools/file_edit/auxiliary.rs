@@ -142,26 +142,27 @@ pub async fn sync_documents_ast(
 }
 
 pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_text: &String, dry: bool) -> Result<(String, String), String> {
-    if !path.exists() {
-        let parent = path.parent().ok_or(format!(
-            "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
-            path
-        ))?;
-        if !parent.exists() {
-            if !dry {
-                fs::create_dir_all(&parent).map_err(|e| {
-                    let err = format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
-                    warn!("{err}");
-                    err
-                })?;
-            }
+    let parent = path.parent().ok_or(format!(
+        "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
+        path
+    ))?;
+    
+    if !parent.exists() {
+        if !dry {
+            fs::create_dir_all(&parent).map_err(|e| {
+                let err = format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
+                warn!("{err}");
+                err
+            })?;
         }
     }
+    
     let before_text = if path.exists() {
         get_file_text_from_memory_or_disk(gcx.clone(), path).await?
     } else {
         "".to_string()
     };
+    
     if !dry {
         fs::write(&path, file_text).map_err(|e| {
             let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
@@ -169,6 +170,7 @@ pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_t
             err
         })?;
     }
+    
     Ok((before_text, file_text.to_string()))
 }
 
