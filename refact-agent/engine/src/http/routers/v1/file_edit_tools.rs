@@ -43,15 +43,6 @@ pub async fn handle_v1_file_edit_tool_dry_run(
             .await
             .map_err(|x| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, x))?
         }
-        "replace_textdoc" => {
-            crate::tools::file_edit::tool_replace_textdoc::tool_replace_text_doc_exec(
-                global_context.clone(),
-                &post.tool_args,
-                true,
-            )
-            .await
-            .map_err(|x| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, x))?
-        }
         "update_textdoc" => {
             crate::tools::file_edit::tool_update_textdoc::tool_update_text_doc_exec(
                 global_context.clone(),
