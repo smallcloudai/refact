@@ -1,4 +1,11 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ChatMessages,
   isAssistantMessage,
@@ -64,6 +71,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     handleScrollButtonClick,
     showFollowButton,
     scrollElementToTop,
+    bottomSpace,
   } = useAutoScroll({
     scrollRef,
   });
@@ -114,6 +122,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       onScroll={handleScroll}
       onWheel={handleWheel}
       type={isWaiting || isStreaming ? "auto" : "hover"}
+      fullHeight
     >
       <Flex
         direction="column"
@@ -121,6 +130,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         data-element="ChatContent"
         p="2"
         gap="1"
+        // height="100%"
       >
         {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper, scrollElementToTop)}
@@ -131,6 +141,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
           />
         </Container>
+        <ExtraSpace scrollRef={scrollRef} />
       </Flex>
       {showFollowButton && (
         <ScrollToBottomButton onClick={handleScrollButtonClick} />
@@ -281,3 +292,41 @@ function renderMessages(
 
   return renderMessages(tail, onRetry, scrollElementToTop, memo, index + 1);
 }
+
+const ExtraSpace: React.FC<{ scrollRef: React.RefObject<HTMLDivElement> }> = ({
+  scrollRef,
+}) => {
+  const userMessages = scrollRef.current?.querySelectorAll(
+    "[data-element='UserInput']",
+  );
+  const flexContainer = scrollRef.current?.querySelector(
+    "[data-element='ChatContent']",
+  );
+
+  const [height, setHeight] = useState<number>(0);
+
+  // top will be minus if off screen
+
+  useLayoutEffect(() => {
+    if (
+      !scrollRef.current ||
+      !userMessages ||
+      !flexContainer ||
+      userMessages.length === 0
+    ) {
+      return;
+    }
+
+    const lastUserMessage = userMessages[userMessages.length - 1];
+    // const userMessageRect = lastUserMessage.getBoundingClientRect();
+    // extends the height of the flex area
+    if (flexContainer.clientHeight + height < scrollRef.current.clientHeight) {
+      const h = scrollRef.current.clientHeight - flexContainer.clientHeight;
+      const scrollTop = Math.max(lastUserMessage.scrollTop, 0);
+      setHeight(h + scrollTop);
+      return;
+    }
+  }, [flexContainer, height, scrollRef, userMessages]);
+
+  return <Box style={{ height: `${height}px` }} />;
+};

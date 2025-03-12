@@ -1,5 +1,6 @@
 .content {
   /* max-width: calc(100% - 12px); */
+  flex-grow: 1;
 }
 
 .file {

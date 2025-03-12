@@ -1,4 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useLayoutEffect,
+} from "react";
 import { useAppSelector } from "../../hooks";
 import {
   selectIsStreaming,
@@ -27,6 +32,8 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
 
   const [isScrolledTillBottom, setIsScrolledTillBottom] = useState(true);
 
+  const [bottomSpace, setBottomSpace] = useState(0);
+
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
@@ -38,21 +45,28 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
     }
   }, [scrollRef]);
 
-  const scrollElementToTop = useCallback((elem: HTMLElement) => {
-    // if (scrollRef.current) {
-    //   console.log("scrolling");
-    //   const elementRect = elem.getBoundingClientRect();
-    //   const scrollRect = scrollRef.current.getBoundingClientRect();
-    //   const heightWithoutElement =
-    //     scrollRect.height - scrollRect.x - elementRect.height;
+  const scrollElementToTop = useCallback(
+    (elem: HTMLElement) => {
+      if (scrollRef.current) {
+        console.log("scrolling");
+        const elementRect = elem.getBoundingClientRect();
+        const scrollRect = scrollRef.current.getBoundingClientRect();
+        const heightWithoutElement =
+          scrollRect.height - scrollRect.y - elementRect.height;
 
-    //   elem.style.height = `${heightWithoutElement}px`;
+        setBottomSpace(heightWithoutElement);
+        // add space
+        elem.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    },
+    [scrollRef],
+  );
 
-    //   console.log(scrollRef.current, elem);
-    // }
-
-    elem.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, []);
+  useLayoutEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [bottomSpace, scrollRef]);
 
   useEffect(() => {
     scrollIntoView();
@@ -115,5 +129,6 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
     handleScrollButtonClick,
     showFollowButton,
     scrollElementToTop,
+    bottomSpace,
   };
 }

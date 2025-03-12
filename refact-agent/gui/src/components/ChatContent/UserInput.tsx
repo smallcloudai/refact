@@ -54,29 +54,13 @@ export const UserInput: React.FC<UserInputProps> = ({
 
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
-  const [spaceSize, setSpaceSize] = useState(0);
-  // const ref = React.useRef<HTMLButtonElement>(null);
-
-  useLayoutEffect(() => {
-    if (forceScroll && scrollElementToTop && ref.current) {
-      console.log("Scrolling");
-      // scrollRef
-      const scrollarea =
-        ref.current.parentElement?.parentElement?.parentElement;
-      const scrollRect = scrollarea?.getBoundingClientRect();
-      const elemRect = ref.current.getBoundingClientRect();
-      const scrollHeight =
-        (scrollRect?.height ?? elemRect.height) -
-        (scrollRect?.y ?? 0) -
-        elemRect.height;
-      setSpaceSize(scrollHeight);
-    }
-  }, [forceScroll, scrollElementToTop]);
 
   useEffect(() => {
-    ref.current &&
-      ref.current.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [spaceSize]);
+    if (forceScroll && ref.current) {
+      console.log("scrolling");
+      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [forceScroll, scrollElementToTop]);
 
   const handleSubmit = useCallback(
     (value: UserMessage["content"]) => {
@@ -108,7 +92,7 @@ export const UserInput: React.FC<UserInputProps> = ({
   }, [messageIndex, messages]);
 
   return (
-    <Container position="relative" pt="1" ref={ref}>
+    <Container position="relative" pt="1" ref={ref} data-element="UserInput">
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
@@ -165,7 +149,7 @@ export const UserInput: React.FC<UserInputProps> = ({
           </Flex>
         </Flex>
       )}
-      {forceScroll && <Box minHeight={`${spaceSize}px`} />}
+      {/* {forceScroll && <Box minHeight={`${spaceSize}px`} />} */}
     </Container>
   );
 };
