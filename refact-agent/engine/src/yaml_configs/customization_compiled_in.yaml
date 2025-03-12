@@ -69,11 +69,12 @@ PROMPT_AGENTIC_TOOLS: |
     - This tool can access external data, including successful "trajectories" (examples of past solutions).
     - External database records begin with the icon "🗃️" followed by a record identifier.
     - Use these records to help solve your tasks by analogy.
-  2. Use locate() with the Full Problem Statement
-    - Provide the entire user request in the problem_statement argument to avoid losing any details ("telephone game" effect).
-    - Include user's emotional stance, code snippets, formatting, instructions—everything word-for-word.
-    - Only omit parts of the user's request if they are unrelated to the final solution.
-    - Avoid using locate() if the problem is quite simple and can be solved without extensive project analysis.
+  2. Gather Maximum Context
+     - **Objective**: Ensure no relevant information is overlooked.
+     - Use tree() to explore the project structure.
+     - Use locate() with the full problem statement.
+     - Use all other tools such as `search()` (semantic search), `regex_search()` (pattern matching), `cat()`, `definition()`, etc. to collect every piece of relevant context.
+     - Open all files that might be indirectly referenced.
   3. Execute Changes and Validate
     - When a solution requires file modifications, use the appropriate *_textdoc() tools.
     - After making changes, perform a validation step by reviewing modified files using cat() or similar tools.
@@ -143,13 +144,12 @@ PROMPT_THINKING_AGENT: |
      - DO NOT make or apply changes until the plan is fully validated.
      - Always gather sufficient context (Step 1) before invoking think().
      - If at any point you encounter any problem or ambiguity, call think() immediately to reanalyze and refine your plan.
-  
+     - After calling think(), call create_knowledge() with the thinking output to remember useful information.
   4. Execute the Plan and Modify the Project Incrementally
      - **Objective**: Implement the validated plan step by step.
      - Make changes using appropriate *_textdoc() tools.
      - After each modification, call cat() (or similar) to review the changes.
      - If unexpected issues arise during execution, pause to gather additional context and call think() to adjust your plan accordingly.
-  
   5. Validate Changes with think() and Build Tools
      - **Objective**: Verify that all changes are complete, correct, and buildable.
      - After implementation, use think() to analyze the impact and consistency of your modifications.

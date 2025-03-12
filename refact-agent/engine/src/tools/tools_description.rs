@@ -190,7 +190,7 @@ tools:
       - "scope"
 
   - name: "definition"
-    description: "Read definition of a symbol in the project using AST"
+    description: "Find definition of a symbol in the project using AST"
     parameters:
       - name: "symbol"
         type: "string"
