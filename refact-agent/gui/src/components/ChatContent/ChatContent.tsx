@@ -326,6 +326,23 @@ const ExtraSpace: React.FC<{ scrollRef: React.RefObject<HTMLDivElement> }> = ({
       setHeight(h + scrollTop);
       return;
     }
+
+    // flex is as big as it needs to be.
+    // check that the top of the user message is at least client height from the bottom of th scroll
+    const lastUserMessageRect = lastUserMessage.getBoundingClientRect();
+    const scrollRect = scrollRef.current.getBoundingClientRect();
+
+    // Calculate the distance from the top of the last user message to the bottom of the scroll area
+    const distanceToBottom = scrollRect.bottom - lastUserMessageRect.top;
+
+    // If the distance is less than the client height, add more space
+    if (distanceToBottom + height < scrollRef.current.clientHeight) {
+      const additionalHeight =
+        scrollRef.current.clientHeight - distanceToBottom;
+      // setHeight(height + additionalHeight);
+      setHeight(additionalHeight);
+      return;
+    }
   }, [flexContainer, height, scrollRef, userMessages]);
 
   return <Box style={{ height: `${height}px` }} />;
