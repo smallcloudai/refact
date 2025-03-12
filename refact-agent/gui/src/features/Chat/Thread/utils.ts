@@ -111,12 +111,14 @@ function mergeThinkingBlock(
   if (prev.length === 0) {
     return [add];
   } else {
-    const thinking_blocks = prev.slice();
-    thinking_blocks[0].thinking =
-      (thinking_blocks[0].thinking ?? "") + (add.thinking ?? "");
-    thinking_blocks[0].signature =
-      (thinking_blocks[0].signature ?? "") + (add.signature ?? "");
-    return thinking_blocks;
+    return [
+      {
+        ...prev[0],
+        thinking: (prev[0].thinking ?? "") + (add.thinking ?? ""),
+        signature: (prev[0].signature ?? "") + (add.signature ?? ""),
+      },
+      ...prev.slice(1),
+    ];
   }
 }
 
