@@ -155,7 +155,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
-          <PuzzleIcon stroke="var(--accent-a11)" /> Set up Agent Integrations
+          <PuzzleIcon /> Set up Agent Integrations
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("knowledge list")}>
