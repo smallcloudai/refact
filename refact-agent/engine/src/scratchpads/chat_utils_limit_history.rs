@@ -123,6 +123,7 @@ fn process_compression_stage(
     stage_name: &str,
     model_name: &str,
     message_filter: impl Fn(usize, &ChatMessage, i32) -> bool,
+    sort_by_size: bool,
 ) -> Result<(i32, i32, bool), String> {
     tracing::info!("STAGE: {}", stage_name);
     let (mut occupied_tokens, tokens_limit) = 
@@ -131,22 +132,35 @@ fn process_compression_stage(
     let messages_len = mutable_messages.len();
     let end = std::cmp::min(end_idx, messages_len);
     
+    let mut indices_to_process: Vec<(usize, i32)> = Vec::new();
     for i in start_idx..end {
         let should_process = {
             let msg = &mutable_messages[i];
             let token_count = token_counts[i];
             message_filter(i, msg, token_count)
         };
+        
         if should_process {
-            let original_tokens = token_counts[i];
-            compress_message_at_index(t, mutable_messages, token_counts, token_cache, i, model_name)?;
-            let token_delta = token_counts[i] - original_tokens;
-            occupied_tokens += token_delta;
-            if occupied_tokens <= tokens_limit {
-                tracing::info!("Token budget reached after {} compression.", stage_name);
-                budget_reached = true;
-                break;
-            }
+            indices_to_process.push((i, token_counts[i]));
+        }
+    }
+    
+    // Sort indices by token count in descending order if requested
+    if sort_by_size && indices_to_process.len() > 1 {
+        indices_to_process.sort_by(|a, b| b.1.cmp(&a.1));
+        tracing::info!("Sorted {} messages by token count for compression", indices_to_process.len());
+    }
+    
+    for (i, original_tokens) in indices_to_process {
+        compress_message_at_index(t, mutable_messages, token_counts, token_cache, i, model_name)?;
+        let token_delta = token_counts[i] - original_tokens;
+        occupied_tokens += token_delta;
+        tracing::info!("Compressed message at index {}: token count {} -> {} (saved {})", 
+                      i, original_tokens, token_counts[i], original_tokens - token_counts[i]);
+        if occupied_tokens <= tokens_limit {
+            tracing::info!("Token budget reached after {} compression.", stage_name);
+            budget_reached = true;
+            break;
         }
     }
     
@@ -381,7 +395,8 @@ pub fn fix_and_limit_messages_history(
             stage1_end,
             "Stage 1: Compressing ContextFile messages before the last user message",
             model_name,
-            |i, msg, _| i != 0 && msg.role == "context_file"
+            |i, msg, _| i != 0 && msg.role == "context_file",
+            true
         )?;
         
         occupied_tokens = result.0;
@@ -408,7 +423,8 @@ pub fn fix_and_limit_messages_history(
             stage2_end,
             "Stage 2: Compressing Tool Result messages before the last user message",
             model_name,
-            |i, msg, _| i != 0 && msg.role == "tool"
+            |i, msg, _| i != 0 && msg.role == "tool",
+            true
         )?;
         
         occupied_tokens = result.0;
@@ -440,7 +456,8 @@ pub fn fix_and_limit_messages_history(
                 token_count > outlier_threshold && 
                 msg.role != "context_file" && 
                 msg.role != "tool"
-            }
+            },
+            true
         )?;
         
         occupied_tokens = result.0;
@@ -576,7 +593,8 @@ pub fn fix_and_limit_messages_history(
             msg_len,
             "Stage 5: Compressing ContextFile messages after the last user message (last resort)",
             model_name,
-            |_, msg, _| msg.role == "context_file"
+            |_, msg, _| msg.role == "context_file",
+            true
         )?;
         
         occupied_tokens = result.0;
@@ -602,7 +620,8 @@ pub fn fix_and_limit_messages_history(
             msg_len,
             "Stage 6: Compressing Tool Result messages after the last user message (last resort)",
             model_name,
-            |_, msg, _| msg.role == "tool"
+            |_, msg, _| msg.role == "tool",
+            true
         )?;
         
         occupied_tokens = result.0;
@@ -633,7 +652,8 @@ pub fn fix_and_limit_messages_history(
                 token_count > outlier_threshold && 
                 msg.role != "context_file" && 
                 msg.role != "tool"
-            }
+            },
+            false
         )?;
         
         occupied_tokens = result.0;
