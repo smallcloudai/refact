@@ -39,7 +39,7 @@ pub fn count_tokens(
     tokenizer: &Tokenizer,
     text: &str,
 ) -> usize {
-    match tokenizer.encode(text, false) {
+    match tokenizer.encode_fast(text, false) {
         Ok(tokens) => tokens.len(),
         Err(_) => 0,
     }
