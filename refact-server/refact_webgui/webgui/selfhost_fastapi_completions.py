@@ -22,6 +22,7 @@ from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
+from refact_webgui.webgui.tab_third_party_apis import load_third_party_config
 
 from pathlib import Path
 from pydantic import BaseModel
@@ -222,36 +223,6 @@ class BaseCompletionsRouter(APIRouter):
 
     async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
-
-    @staticmethod
-    def _integrations_env_setup():
-        inference = {}
-        if os.path.exists(env.CONFIG_INFERENCE):
-            inference = json.load(open(env.CONFIG_INFERENCE, 'r'))
-        integrations = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS):
-            integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
-        enabled_models = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
-            enabled_models = json.load(open(env.CONFIG_INTEGRATIONS_MODELS, 'r'))
-
-        def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str, provider_id: str):
-            # Check if API key exists and if any models are enabled for this provider
-            has_api_key = api_key_name in integrations and integrations[api_key_name]
-            has_enabled_models = provider_id in enabled_models and len(enabled_models[provider_id]) > 0
-            
-            # Set environment variable if API key exists and models are enabled
-            os.environ[env_var_name] = integrations.get(api_key_name, "") if has_api_key and has_enabled_models else ""
-
-        litellm.modify_params = True  # NOTE: for Anthropic API
-        litellm.drop_params = True    # NOTE: for OpenAI API
-        _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable", "openai")
-        _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable", "anthropic")
-        _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable", "groq")
-        _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable", "cerebras")
-        _integrations_env_setup("GEMINI_API_KEY", "gemini_api_key", "gemini_api_enable", "gemini")
-        _integrations_env_setup("XAI_API_KEY", "xai_api_key", "xai_api_enable", "xai")
-        _integrations_env_setup("DEEPSEEK_API_KEY", "deepseek_api_key", "deepseek_api_enable", "deepseek")
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
@@ -492,14 +463,6 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
-        def compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n) -> Dict[str, Any]:
-            usage_dict = dict()
-            usage_dict["pp1000t_prompt"] = model_dict.get("pp1000t_prompt", 0)
-            usage_dict["pp1000t_generated"] = model_dict.get("pp1000t_generated", 0)
-            usage_dict["metering_prompt_tokens_n"] = prompt_tokens_n
-            usage_dict["metering_generated_tokens_n"] = generated_tokens_n
-            return usage_dict
-
         _account = await self._account_from_bearer(authorization)
         caps_version = self._caps_version
 
@@ -521,20 +484,40 @@ class BaseCompletionsRouter(APIRouter):
         def _wrap_output(output: str) -> str:
             return prefix + output + postfix
 
-        model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
-        assert model_dict.get('backend') == 'litellm'
+        def _compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n) -> Dict[str, Any]:
+            def _pp1000t(cost_entry_name: str) -> int:
+                cost = litellm.model_cost.get(model_name, {}).get(cost_entry_name, 0)
+                return int(cost * 1_000_000 * 1_000)
 
-        model_name = model_dict.get('resolve_as', post.model)
-        if model_name not in litellm.model_list:
-            log(f"warning: requested model {model_name} is not in the litellm.model_list (this might not be the issue for some providers)")
-        log(f"chat/completions: model resolve {post.model} -> {model_name}")
+            return {
+                "pp1000t_prompt": _pp1000t("input_cost_per_token"),
+                "pp1000t_generated": _pp1000t("output_cost_per_token"),
+                "metering_prompt_tokens_n": prompt_tokens_n,
+                "metering_generated_tokens_n": generated_tokens_n,
+            }
+
+        # TODO: self._model_assigner.models_db_with_passthrough -> new mechanism
+        config = load_third_party_config()
+        for provider_id, provider_config in config.providers.items():
+            log(f"{provider_id}: {provider_config.enabled_models}")
+            if provider_config.enabled and post.model in provider_config.enabled_models:
+                model_name = post.model
+                api_key = provider_config.api_key
+                log(f"chat/completions: provider resolve {model_name} -> {provider_id}")
+                break
+        else:
+            model_name = post.model
+            log(f"chat/completions: provider for {model_name} not found on server")
+            raise HTTPException(status_code=400, detail=f"model {model_name} is not running")
+
         prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
         if post.tools:
             prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
 
-        max_tokens = min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens)
+        max_tokens = min(litellm.get_max_tokens(model_name) or post.actual_max_tokens, post.actual_max_tokens)
         completion_kwargs = {
             "model": model_name,
+            "api_key": api_key,
             "messages": messages,
             "temperature": post.temperature,
             "top_p": post.top_p,
@@ -557,7 +540,6 @@ class BaseCompletionsRouter(APIRouter):
         async def litellm_streamer():
             generated_tokens_n = 0
             try:
-                self._integrations_env_setup()
                 response = await litellm.acompletion(
                     **completion_kwargs, stream=True,
                 )
@@ -576,7 +558,7 @@ class BaseCompletionsRouter(APIRouter):
                     yield _wrap_output(json.dumps(_patch_caps_version(data)))
 
                 final_msg = {"choices": []}
-                usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                usage_dict = _compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
                 final_msg.update(usage_dict)
                 yield _wrap_output(json.dumps(_patch_caps_version(final_msg)))
 
@@ -590,7 +572,6 @@ class BaseCompletionsRouter(APIRouter):
         async def litellm_non_streamer():
             generated_tokens_n = 0
             try:
-                self._integrations_env_setup()
                 model_response = await litellm.acompletion(
                     **completion_kwargs, stream=False,
                 )
@@ -601,7 +582,7 @@ class BaseCompletionsRouter(APIRouter):
                         if text := choice.get("message", {}).get("content"):
                             generated_tokens_n += litellm.token_counter(model_name, text=text)
                         finish_reason = choice.get("finish_reason")
-                    usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                    usage_dict = _compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
