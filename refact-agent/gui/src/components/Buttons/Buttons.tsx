@@ -26,7 +26,7 @@ export const AgentIntegrationsButton = forwardRef<
   IconButtonProps
 >((props, ref) => (
   <IconButton variant="ghost" {...props} ref={ref}>
-    <PuzzleIcon stroke="var(--accent-a11)" />
+    <PuzzleIcon />
   </IconButton>
 ));
 
