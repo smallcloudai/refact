@@ -270,13 +270,6 @@ class ModelAssigner:
                     'share_gpu': False,
                 },
             },
-            "openai_api_enable": False,
-            "anthropic_api_enable": False,
-            "groq_api_enable": False,
-            "cerebras_api_enable": False,
-            "gemini_api_enable": False,
-            "xai_api_enable": False,
-            "deepseek_api_enable": False,
         }
         
         # Create default enabled models config
