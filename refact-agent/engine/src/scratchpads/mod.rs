@@ -5,7 +5,6 @@ use tokenizers::Tokenizer;
 
 pub mod code_completion_fim;
 pub mod chat_generic;
-pub mod chat_llama2;
 pub mod chat_passthrough;
 pub mod chat_utils_deltadelta;
 pub mod chat_utils_limit_history;
@@ -86,11 +85,7 @@ pub async fn create_chat_scratchpad(
     let tokenizer_arc = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
     if scratchpad_name == "CHAT-GENERIC" {
         result = Box::new(chat_generic::GenericChatScratchpad::new(
-            tokenizer_arc.clone(), post, messages, allow_at
-        ));
-    } else if scratchpad_name == "CHAT-LLAMA2" {
-        result = Box::new(chat_llama2::ChatLlama2::new(
-            tokenizer_arc.clone(), post, messages, allow_at
+            tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at
         ));
     } else if scratchpad_name == "PASSTHROUGH" {
         result = Box::new(chat_passthrough::ChatPassthrough::new(
