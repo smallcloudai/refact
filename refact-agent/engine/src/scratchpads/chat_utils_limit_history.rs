@@ -832,6 +832,7 @@ mod compression_tests {
             tool_call_id: tool_call_id.unwrap_or_default(),
             usage: None,
             checkpoints: Vec::new(),
+            thinking_blocks: None,
         }
     }
 
@@ -1252,6 +1253,7 @@ mod tests {
             tool_call_id: tool_call_id_str,
             usage: None,
             checkpoints: Vec::new(),
+            thinking_blocks: None,
         }
     }
 
