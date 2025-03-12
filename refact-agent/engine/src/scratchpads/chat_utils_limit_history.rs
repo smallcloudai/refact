@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use itertools::Itertools;
 use serde_json::Value;
 use tracing::error;
+use std::time::Instant;
 use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::token_count_cache::TokenCountCache;
@@ -200,6 +201,78 @@ fn remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessa
     });
 }
 
+/// Stage 0: Compress duplicate ContextFiles with overlapping line ranges
+fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<usize, String> {
+    // Map: filename -> Vec<(index, line1, line2)>
+    let mut file_occurrences: HashMap<String, Vec<(usize, usize, usize)>> = HashMap::new();
+    
+    // First pass: collect information about all context files
+    for (idx, msg) in messages.iter().enumerate() {
+        if msg.role != "context_file" {
+            continue;
+        }
+        
+        let content_text = msg.content.content_text_only();
+        let context_files: Vec<ContextFile> = match serde_json::from_str(&content_text) {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::warn!("Stage 0: Failed to parse ContextFile JSON at index {}: {}. Skipping.", idx, e);
+                continue;
+            }
+        };
+        
+        for cf in &context_files {
+            let entry = file_occurrences.entry(cf.file_name.clone()).or_insert_with(Vec::new);
+            entry.push((idx, cf.line1, cf.line2));
+        }
+    }
+    
+    // Second pass: identify which messages need to be compressed
+    let mut to_compress: Vec<(usize, Vec<String>)> = Vec::new();
+    
+    for (filename, occurrences) in &file_occurrences {
+        // Sort occurrences by index (oldest to newest)
+        let mut sorted_occurrences = occurrences.clone();
+        sorted_occurrences.sort_by_key(|&(idx, _, _)| idx);
+        
+        for i in 0..sorted_occurrences.len().saturating_sub(1) {
+            let (idx, line1, line2) = sorted_occurrences[i];
+            
+            // Check if any later occurrence includes this one's line range
+            let is_duplicate = sorted_occurrences.iter().skip(i + 1).any(|&(_, later_line1, later_line2)| {
+                later_line1 <= line1 && later_line2 >= line2
+            });
+            
+            if is_duplicate {
+                let entry_idx = to_compress.iter().position(|&(compress_idx, _)| compress_idx == idx);
+                
+                if let Some(pos) = entry_idx {
+                    to_compress[pos].1.push(format!("{}:{}-{}", filename, line1, line2));
+                } else {
+                    to_compress.push((idx, vec![format!("{}:{}-{}", filename, line1, line2)]));
+                }
+            }
+        }
+    }
+    
+    // Third pass: compress the messages
+    let mut compressed_count = 0;
+    
+    for (idx, filenames) in to_compress {
+        if !filenames.is_empty() {
+            let filenames_str = filenames.join(", ");
+            let summary = format!("💿 Duplicate ContextFile(s) compressed: '{}' files with overlapping line ranges appear later in the conversation. Ask for these files again if needed.", filenames_str);
+            
+            tracing::info!("Stage 0: Compressing duplicate ContextFile at index {}: {}", idx, filenames_str);
+            messages[idx].role = "cd_instruction".to_string();
+            messages[idx].content = ChatContent::SimpleText(summary);
+            compressed_count += 1;
+        }
+    }
+    
+    Ok(compressed_count)
+}
+
 fn replace_broken_tool_call_messages(
     messages: &mut Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
@@ -263,10 +336,7 @@ fn replace_broken_tool_call_messages(
 ///
 /// Returns Ok(the validated chat messages) or Err(a descriptive error message).
 fn validate_chat_history(
-    t: &HasTokenizerAndEot,
     messages: &Vec<ChatMessage>,
-    tools_description_tokens: i32,
-    model_name: &str,
 ) -> Result<Vec<ChatMessage>, String> {
     // 1. Check that there is at least one message (and that at least one is "system" or "user")
     if messages.is_empty() {
@@ -322,21 +392,6 @@ fn validate_chat_history(
             }
         }
     }
-
-    // 6. Calculate token counts using the token cache and print only the sum.
-    let (extra_tokens_per_message, _) = get_model_token_params(model_name);
-    let mut token_cache = TokenCountCache::new();
-    let mut message_tokens = 0;
-    for msg in messages {
-        let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
-        message_tokens += count;
-    }
-    let total_tokens = message_tokens + tools_description_tokens;
-    tracing::info!("Validation: Total tokens: {} = messages({}) + tools_description({})", 
-                  total_tokens, message_tokens, tools_description_tokens);
-    let (hits, misses, hit_rate) = token_cache.stats();
-    tracing::info!("Validation token cache stats: {} hits, {} misses, {:.2}% hit rate", 
-                  hits, misses, hit_rate * 100.0);
     Ok(messages.clone())
 }
 
@@ -348,10 +403,25 @@ pub fn fix_and_limit_messages_history(
     tools_description: Option<String>,
     model_name: &str,
 ) -> Result<Vec<ChatMessage>, String> {
+    let start_time = Instant::now();
+    
     if n_ctx <= sampling_parameters_to_patch.max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens));
     }
     let mut mutable_messages = messages.clone();
+    
+    // STAGE 0: Compress old and duplicated ContextFiles
+    // This is done before token calculation to reduce the number of messages that need to be tokenized
+    let stage0_start = Instant::now();
+    let stage0_result = compress_duplicate_context_files(&mut mutable_messages);
+    let stage0_duration = stage0_start.elapsed();
+    
+    if let Err(e) = stage0_result {
+        tracing::warn!("Stage 0 compression failed: {}", e);
+    } else if let Ok(count) = stage0_result {
+        tracing::info!("Stage 0: Compressed {} duplicate ContextFile messages in {:?}", count, stage0_duration);
+    }
+    
     replace_broken_tool_call_messages(
         &mut mutable_messages,
         sampling_parameters_to_patch,
@@ -409,6 +479,8 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 2: Compress Tool Result messages before the last user message
     if occupied_tokens > tokens_limit {
+        let stage2_start = Instant::now();
+        
         let msg_len = mutable_messages.len();
         let stage2_end = std::cmp::min(undroppable_msg_n, msg_len);
         let result = process_compression_stage(
@@ -430,8 +502,11 @@ pub fn fix_and_limit_messages_history(
         occupied_tokens = result.0;
         tokens_limit = result.1;
         
+        let stage2_duration = stage2_start.elapsed();
         if result.2 { // If budget reached
-            tracing::info!("Token budget reached after Stage 2 compression.");
+            tracing::info!("Token budget reached after Stage 2 compression in {:?}.", stage2_duration);
+        } else {
+            tracing::info!("Stage 2 compression completed in {:?}.", stage2_duration);
         }
     }
     
@@ -565,8 +640,9 @@ pub fn fix_and_limit_messages_history(
             }
         }
         
-        tracing::info!("Stage 4 complete: {} -> {} tokens ({} messages -> {} messages)", 
-                      occupied_tokens, new_occupied_tokens, mutable_messages.len(), kept_messages.len());
+        let stage4_duration = Instant::now().elapsed();
+        tracing::info!("Stage 4 complete: {} -> {} tokens ({} messages -> {} messages) in {:?}", 
+                      occupied_tokens, new_occupied_tokens, mutable_messages.len(), kept_messages.len(), stage4_duration);
         
         mutable_messages = kept_messages;
         token_counts = new_token_counts;
@@ -691,6 +767,9 @@ pub fn fix_and_limit_messages_history(
                     t.tokenizer.clone(), 
                     extra_tokens_per_message
                 )?;
+                
+                let last_msg_duration = Instant::now().elapsed();
+                tracing::info!("Last user message compression completed in {:?}.", last_msg_duration);
             }
             
             let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
@@ -712,7 +791,10 @@ pub fn fix_and_limit_messages_history(
     tracing::info!("Token cache stats: {} hits, {} misses, {:.2}% hit rate", 
                   hits, misses, hit_rate * 100.0);
     
-    validate_chat_history(t, &mutable_messages, tools_description_tokens, model_name)
+    let total_duration = start_time.elapsed();
+    tracing::info!("Total compression time: {:?}", total_duration);
+    
+    validate_chat_history(&mutable_messages)
 }
 
 #[cfg(test)]
