@@ -3,7 +3,9 @@ import { useCapsForToolUse } from "./useCapsForToolUse";
 import { useAppSelector } from "./useAppSelector";
 import {
   selectChatId,
-  selectMessages,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectThreadBoostReasoning,
   setBoostReasoning,
 } from "../features/Chat";
 import { useAppDispatch } from "./useAppDispatch";
@@ -11,8 +13,11 @@ import { useAppDispatch } from "./useAppDispatch";
 export function useThinking() {
   const dispatch = useAppDispatch();
 
-  const messages = useAppSelector(selectMessages);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
   const chatId = useAppSelector(selectChatId);
+
+  const isBoostReasoningEnabled = useAppSelector(selectThreadBoostReasoning);
 
   const caps = useCapsForToolUse();
 
@@ -23,8 +28,23 @@ export function useThinking() {
   }, [caps.data?.code_chat_models, caps.currentModel]);
 
   const shouldBeDisabled = useMemo(() => {
-    return !supportsBoostReasoning || messages.length > 0;
-  }, [supportsBoostReasoning, messages]);
+    return !supportsBoostReasoning || isStreaming || isWaiting;
+  }, [supportsBoostReasoning, isStreaming, isWaiting]);
+
+  const noteText = useMemo(() => {
+    if (!supportsBoostReasoning)
+      return `Note: ${caps.currentModel} doesn't support thinking`;
+    if (isStreaming || isWaiting)
+      return `Note: you can't ${
+        isBoostReasoningEnabled ? "disable" : "enable"
+      } reasoning while stream is in process`;
+  }, [
+    supportsBoostReasoning,
+    isStreaming,
+    isWaiting,
+    isBoostReasoningEnabled,
+    caps.currentModel,
+  ]);
 
   const handleReasoningChange = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, checked: boolean) => {
@@ -36,7 +56,7 @@ export function useThinking() {
   );
 
   useEffect(() => {
-    if (shouldBeDisabled) {
+    if (!supportsBoostReasoning) {
       dispatch(setBoostReasoning({ chatId, value: supportsBoostReasoning }));
     }
   }, [dispatch, chatId, supportsBoostReasoning, shouldBeDisabled]);
@@ -44,7 +64,7 @@ export function useThinking() {
   return {
     handleReasoningChange,
     shouldBeDisabled,
-    supportsBoostReasoning,
-    currentModelFromCaps: caps.currentModel,
+    noteText,
+    areCapsInitialized: !caps.uninitialized,
   };
 }

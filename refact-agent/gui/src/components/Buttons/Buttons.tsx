@@ -1,5 +1,12 @@
 import React, { forwardRef, useCallback } from "react";
-import { IconButton, Button, Flex, Text, HoverCard } from "@radix-ui/themes";
+import {
+  IconButton,
+  Button,
+  Flex,
+  Text,
+  HoverCard,
+  Skeleton,
+} from "@radix-ui/themes";
 import {
   PaperPlaneIcon,
   ExitIcon,
@@ -176,9 +183,17 @@ export const ThinkingButton: React.FC = () => {
   const {
     handleReasoningChange,
     shouldBeDisabled,
-    supportsBoostReasoning,
-    currentModelFromCaps,
+    noteText,
+    areCapsInitialized,
   } = useThinking();
+
+  if (!areCapsInitialized) {
+    return (
+      <Skeleton>
+        <Button size="1">💡 Think</Button>
+      </Skeleton>
+    );
+  }
 
   return (
     <Flex gap="2" align="center">
@@ -200,14 +215,10 @@ export const ThinkingButton: React.FC = () => {
             When enabled, the model will use enhanced reasoning capabilities
             which may improve problem-solving for complex tasks.
           </Text>
-          {shouldBeDisabled && (
-            <>
-              <Text as="p" color="gray" size="1" mt="1">
-                {!supportsBoostReasoning
-                  ? `Note: ${currentModelFromCaps} doesn't support thinking`
-                  : "Note: thinking cannot be disabled for already started conversation"}
-              </Text>
-            </>
+          {noteText && (
+            <Text as="p" color="gray" size="1" mt="1">
+              {noteText}
+            </Text>
           )}
         </HoverCard.Content>
       </HoverCard.Root>
