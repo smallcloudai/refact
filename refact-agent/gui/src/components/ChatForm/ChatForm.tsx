@@ -95,8 +95,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   //   useUsageCounter();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
-    return threadToolUse === "agent" && toolUse === "agent";
-  }, [toolUse, threadToolUse]);
+    return threadToolUse === "agent";
+  }, [threadToolUse]);
 
   const onClearError = useCallback(() => {
     if (messages.length > 0 && chatError) {
