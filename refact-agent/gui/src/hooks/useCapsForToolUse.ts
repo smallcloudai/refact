@@ -154,6 +154,7 @@ export function useCapsForToolUse() {
     setCapModel,
     isMultimodalitySupportedForCurrentModel,
     loading: !caps.data && (caps.isFetching || caps.isLoading),
+    uninitialized: caps.isUninitialized,
     data: caps.data,
   };
 }
