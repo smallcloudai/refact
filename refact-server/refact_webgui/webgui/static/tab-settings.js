@@ -131,27 +131,27 @@ export async function init(general_error) {
     });
 }
 
-function mask_integrations_input(el) {
-    function mask_string(string) {
-        if (string.length > 6 ) {
-            return string.substring(0, 6) + '*'.repeat(string.length - 6);
-        } else {
-            return '*'.repeat(string.length)
-        }
-    }
-    if (!el.getAttribute('data-masked')) {
-        el.setAttribute('data-value', el.value);
-        el.value = mask_string(el.getAttribute('data-value'));
-        el.setAttribute('data-masked', 'true')
-    }
-}
-
-function unmask_integrations_input(el) {
-    if (el.getAttribute('data-masked') === 'true') {
-        el.value = el.getAttribute('data-value');
-        el.removeAttribute('data-masked');
-    }
-}
+//function mask_integrations_input(el) {
+//    function mask_string(string) {
+//        if (string.length > 6 ) {
+//            return string.substring(0, 6) + '*'.repeat(string.length - 6);
+//        } else {
+//            return '*'.repeat(string.length)
+//        }
+//    }
+//    if (!el.getAttribute('data-masked')) {
+//        el.setAttribute('data-value', el.value);
+//        el.value = mask_string(el.getAttribute('data-value'));
+//        el.setAttribute('data-masked', 'true')
+//    }
+//}
+//
+//function unmask_integrations_input(el) {
+//    if (el.getAttribute('data-masked') === 'true') {
+//        el.value = el.getAttribute('data-value');
+//        el.removeAttribute('data-masked');
+//    }
+//}
 
 
 function throw_int_saved_success_toast(msg) {
@@ -170,14 +170,14 @@ function throw_int_saved_success_toast(msg) {
 }
 
 function save_integration_api_keys() {
-    const openai_api_key = document.getElementById('openai_api_key');
-    const anthropic_api_key = document.getElementById('anthropic_api_key');
-    const groq_api_key = document.getElementById('groq_api_key');
-    const cerebras_api_key = document.getElementById('cerebras_api_key');
-    const gemini_api_key = document.getElementById("gemini_api_key");
-    const xai_api_key = document.getElementById('xai_api_key');
-    const deepseek_api_key = document.getElementById('deepseek_api_key');
-
+//    const openai_api_key = document.getElementById('openai_api_key');
+//    const anthropic_api_key = document.getElementById('anthropic_api_key');
+//    const groq_api_key = document.getElementById('groq_api_key');
+//    const cerebras_api_key = document.getElementById('cerebras_api_key');
+//    const gemini_api_key = document.getElementById("gemini_api_key");
+//    const xai_api_key = document.getElementById('xai_api_key');
+//    const deepseek_api_key = document.getElementById('deepseek_api_key');
+//
     const huggingface_api_key = document.getElementById('huggingface_api_key');
     fetch("/tab-settings-integrations-save", {
         method: "POST",
@@ -185,28 +185,28 @@ function save_integration_api_keys() {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            openai_api_key: openai_api_key.getAttribute('data-value'),
-            anthropic_api_key: anthropic_api_key.getAttribute('data-value'),
-            groq_api_key: groq_api_key.getAttribute('data-value'),
-            cerebras_api_key: cerebras_api_key.getAttribute('data-value'),
-            gemini_api_key: gemini_api_key.getAttribute("data-value"),
-            xai_api_key: xai_api_key.getAttribute('data-value'),
-            deepseek_api_key: deepseek_api_key.getAttribute('data-value'),
-
+//            openai_api_key: openai_api_key.getAttribute('data-value'),
+//            anthropic_api_key: anthropic_api_key.getAttribute('data-value'),
+//            groq_api_key: groq_api_key.getAttribute('data-value'),
+//            cerebras_api_key: cerebras_api_key.getAttribute('data-value'),
+//            gemini_api_key: gemini_api_key.getAttribute("data-value"),
+//            xai_api_key: xai_api_key.getAttribute('data-value'),
+//            deepseek_api_key: deepseek_api_key.getAttribute('data-value'),
+//
             huggingface_api_key: huggingface_api_key.getAttribute('data-value'),
         })
     })
     .then(function(response) {
         console.log(response);
         throw_int_saved_success_toast('API Key saved')
-        openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
-        anthropic_api_key.setAttribute('data-saved-value', anthropic_api_key.getAttribute('data-value'))
-        groq_api_key.setAttribute('data-saved-value', groq_api_key.getAttribute('data-value'))
-        cerebras_api_key.setAttribute('data-saved-value', cerebras_api_key.getAttribute('data-value'))
-        gemini_api_key.setAttribute('data-saved-value', gemini_api_key.getAttribute('data-value'))
-        xai_api_key.setAttribute('data-saved-value', xai_api_key.getAttribute('data-value'))
-        deepseek_api_key.setAttribute('data-saved-value', deepseek_api_key.getAttribute('data-value'))
-
+//        openai_api_key.setAttribute('data-saved-value', openai_api_key.getAttribute('data-value'))
+//        anthropic_api_key.setAttribute('data-saved-value', anthropic_api_key.getAttribute('data-value'))
+//        groq_api_key.setAttribute('data-saved-value', groq_api_key.getAttribute('data-value'))
+//        cerebras_api_key.setAttribute('data-saved-value', cerebras_api_key.getAttribute('data-value'))
+//        gemini_api_key.setAttribute('data-saved-value', gemini_api_key.getAttribute('data-value'))
+//        xai_api_key.setAttribute('data-saved-value', xai_api_key.getAttribute('data-value'))
+//        deepseek_api_key.setAttribute('data-saved-value', deepseek_api_key.getAttribute('data-value'))
+//
         huggingface_api_key.setAttribute('data-saved-value', huggingface_api_key.getAttribute('data-value'))
     });
 }
@@ -238,14 +238,14 @@ export function tab_settings_integrations_get() {
             return response.json();
         })
         .then(function(data) {
-            integrations_input_init(document.getElementById('openai_api_key'), data['openai_api_key']);
-            integrations_input_init(document.getElementById('anthropic_api_key'), data['anthropic_api_key']);
-            integrations_input_init(document.getElementById('groq_api_key'), data['groq_api_key']);
-            integrations_input_init(document.getElementById('cerebras_api_key'), data['cerebras_api_key']);
-            integrations_input_init(document.getElementById('gemini_api_key'), data['gemini_api_key']);
-            integrations_input_init(document.getElementById('xai_api_key'), data['xai_api_key']);
-            integrations_input_init(document.getElementById('deepseek_api_key'), data['deepseek_api_key']);
-
+//            integrations_input_init(document.getElementById('openai_api_key'), data['openai_api_key']);
+//            integrations_input_init(document.getElementById('anthropic_api_key'), data['anthropic_api_key']);
+//            integrations_input_init(document.getElementById('groq_api_key'), data['groq_api_key']);
+//            integrations_input_init(document.getElementById('cerebras_api_key'), data['cerebras_api_key']);
+//            integrations_input_init(document.getElementById('gemini_api_key'), data['gemini_api_key']);
+//            integrations_input_init(document.getElementById('xai_api_key'), data['xai_api_key']);
+//            integrations_input_init(document.getElementById('deepseek_api_key'), data['deepseek_api_key']);
+//
             integrations_input_init(document.getElementById('huggingface_api_key'), data['huggingface_api_key']);
         });
 }
