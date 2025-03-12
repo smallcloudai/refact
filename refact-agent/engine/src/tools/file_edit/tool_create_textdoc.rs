@@ -32,14 +32,7 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<ToolCreateTextDocArgs, St
                     s.trim()
                 ));
             }
-            let path = canonicalize_normalized_path(path);
-            if path.exists() {
-                return Err(format!(
-                    "Error: Cannot create file at '{:?}' because it already exists. Please choose a different path or use update_textdoc/replace_textdoc to modify existing files.",
-                    path
-                ));
-            }
-            path
+            canonicalize_normalized_path(path)
         }
         Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
         None => return Err("Error: The 'path' argument is required but was not provided.".to_string()),

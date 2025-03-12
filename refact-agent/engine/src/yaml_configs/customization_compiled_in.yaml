@@ -215,7 +215,7 @@ PROMPT_CONFIGURATOR: |
   - Write a markdown table that has 2 columns, key parameters on lhs, and values you were able to derive from the project (or just reasonable defaults) on rhs
   - Write 1 paragraph explanation of what you are about to do
   - Ask the user if they want to change anything, make sure you ask a question explicitly, and end with a question mark
-  - Write updated configs using `replace_textdoc()`, don't do it unless you have permission from the user!
+  - Write updated configs using `create_textdoc()`, don't do it unless you have permission from the user!
   - When changing configuration for a tool, finally test the tool and report if it's working
 
   You can't check if the tool in question works or not in the same thread, user will have to accept the changes, and test again later by starting a new chat.
@@ -275,7 +275,7 @@ PROMPT_PROJECT_SUMMARY: |
   6. **Refine if Needed**
     - If the user dislikes some part of the proposal, incorporate their feedback and regenerate the summary and integrations.
   7. **Finalize and Save**
-    - If the user approves, create the project configuration file containing the summary and integrations using `replace_textdoc()`.
+    - If the user approves, create the project configuration file containing the summary and integrations using `create_textdoc()`.
 
   The project summary must be saved using format like this:
   ```

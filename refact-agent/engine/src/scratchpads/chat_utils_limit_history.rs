@@ -278,7 +278,7 @@ fn replace_broken_tool_call_messages(
     sampling_parameters: &mut SamplingParameters,
     new_max_new_tokens: usize
 ) {
-    let high_budget_tools = vec!["create_textdoc", "replace_textdoc"];
+    let high_budget_tools = vec!["create_textdoc"];
     let last_index = messages.len().saturating_sub(1);
 
     for (i, message) in messages.iter_mut().enumerate() {
