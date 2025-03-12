@@ -4,7 +4,7 @@ use serde_json::Value;
 use tracing::error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::HasTokenizerAndEot;
-
+use crate::scratchpads::token_count_cache::TokenCountCache;
 
 
 /// Returns the appropriate token parameters for a given model.
@@ -44,7 +44,6 @@ pub fn get_model_token_params(model_name: &str) -> (i32, f32) {
     }
 }
 
-// Recalculate overall token usage and limit
 fn recalculate_token_limits(
     token_counts: &Vec<i32>,
     tools_description_tokens: i32,
@@ -54,7 +53,6 @@ fn recalculate_token_limits(
 ) -> (i32, i32) {
     let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
     
-    // Get model-specific parameters
     let (_, extra_budget_offset_perc) = get_model_token_params(model_name);
     
     let extra_budget = (n_ctx as f32 * extra_budget_offset_perc) as usize;
@@ -62,11 +60,11 @@ fn recalculate_token_limits(
     (occupied_tokens, tokens_limit)
 }
 
-// Compress a message at index i and return its new token count
 fn compress_message_at_index(
     t: &HasTokenizerAndEot,
     mutable_messages: &mut Vec<ChatMessage>,
     token_counts: &mut Vec<i32>,
+    token_cache: &mut TokenCountCache,
     index: usize,
     model_name: &str,
 ) -> Result<i32, String> {
@@ -97,7 +95,6 @@ fn compress_message_at_index(
         tracing::info!("Compressing Tool message at index {}: {}", index, &preview);
         format!("💿 Tool result {} compressed: {}", tool_info, preview_with_ellipsis)
     } else {
-        // For other message types (outliers)
         let content = mutable_messages[index].content.content_text_only();
         let preview_start = content.chars().take(50).collect::<String>();
         let preview_end = content.chars().rev().take(50).collect::<String>().chars().rev().collect::<String>();
@@ -106,20 +103,18 @@ fn compress_message_at_index(
     };
     
     mutable_messages[index].content = ChatContent::SimpleText(new_summary);
-    
-    // Get model-specific parameters
+    token_cache.invalidate(&mutable_messages[index]);
     let (extra_tokens_per_message, _) = get_model_token_params(model_name);
-    
-    // Recalculate token usage after compression
-    token_counts[index] = extra_tokens_per_message + mutable_messages[index].content.count_tokens(t.tokenizer.clone(), &None)?;
+    // Recalculate token usage after compression using the cache
+    token_counts[index] = token_cache.get_token_count(&mutable_messages[index], t.tokenizer.clone(), extra_tokens_per_message)?;
     Ok(token_counts[index])
 }
 
-// Process a specific compression stage
 fn process_compression_stage(
     t: &HasTokenizerAndEot,
     mutable_messages: &mut Vec<ChatMessage>,
     token_counts: &mut Vec<i32>,
+    token_cache: &mut TokenCountCache,
     tools_description_tokens: i32,
     n_ctx: usize,
     max_new_tokens: usize,
@@ -130,31 +125,23 @@ fn process_compression_stage(
     message_filter: impl Fn(usize, &ChatMessage, i32) -> bool,
 ) -> Result<(i32, i32, bool), String> {
     tracing::info!("STAGE: {}", stage_name);
-    
-    let (mut occupied_tokens, mut tokens_limit) = 
+    let (mut occupied_tokens, tokens_limit) = 
         recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_name);
-    
     let mut budget_reached = false;
-    
-    // Store the length before the loop to avoid borrow checker issues
     let messages_len = mutable_messages.len();
     let end = std::cmp::min(end_idx, messages_len);
     
     for i in start_idx..end {
-        // Check if we should process this message
         let should_process = {
             let msg = &mutable_messages[i];
             let token_count = token_counts[i];
             message_filter(i, msg, token_count)
         };
-        
         if should_process {
-            compress_message_at_index(t, mutable_messages, token_counts, i, model_name)?;
-            
-            let recalculated = recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_name);
-            occupied_tokens = recalculated.0;
-            tokens_limit = recalculated.1;
-            
+            let original_tokens = token_counts[i];
+            compress_message_at_index(t, mutable_messages, token_counts, token_cache, i, model_name)?;
+            let token_delta = token_counts[i] - original_tokens;
+            occupied_tokens += token_delta;
             if occupied_tokens <= tokens_limit {
                 tracing::info!("Token budget reached after {} compression.", stage_name);
                 budget_reached = true;
@@ -166,8 +153,7 @@ fn process_compression_stage(
     Ok((occupied_tokens, tokens_limit, budget_reached))
 }
 
-
-fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessage>) {
+fn remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessage>) {
     let tool_call_ids: HashSet<_> = messages.iter()
         .filter(|m| !m.tool_call_id.is_empty())
         .map(|m| &m.tool_call_id)
@@ -200,7 +186,7 @@ fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMess
     });
 }
 
-fn _replace_broken_tool_call_messages(
+fn replace_broken_tool_call_messages(
     messages: &mut Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
     new_max_new_tokens: usize
@@ -251,6 +237,95 @@ fn _replace_broken_tool_call_messages(
     }
 }
 
+/// Validates the chat history after compression/truncation.
+///
+/// This function checks:
+/// 1. There is at least one message that is either "system" or "user".
+/// 2. The first message's role is either "system" or "user".
+/// 3. Every tool call's arguments (if present in tool_calls) can be parsed as a HashMap.
+/// 4. For every tool call in the chat history there must be a corresponding tool result (i.e. a message that has a matching nonempty tool_call_id).
+/// 5. Any assistant message with nonempty tool_calls must be followed by one (or more) tool messages that respond to each listed tool_call_id.
+/// 6. Prints total token count including messages, tools descriptions.
+///
+/// Returns Ok(the validated chat messages) or Err(a descriptive error message).
+fn validate_chat_history(
+    t: &HasTokenizerAndEot,
+    messages: &Vec<ChatMessage>,
+    tools_description_tokens: i32,
+    model_name: &str,
+) -> Result<Vec<ChatMessage>, String> {
+    // 1. Check that there is at least one message (and that at least one is "system" or "user")
+    if messages.is_empty() {
+        return Err("Invalid chat history: no messages present".to_string());
+    }
+    let has_system_or_user = messages.iter()
+        .any(|msg| msg.role == "system" || msg.role == "user");
+    if !has_system_or_user {
+        return Err("Invalid chat history: must have at least one message of role 'system' or 'user'".to_string());
+    }
+
+    // 2. The first message must be system or user.
+    if messages[0].role != "system" && messages[0].role != "user" {
+        return Err(format!("Invalid chat history: first message must be 'system' or 'user', got '{}'", messages[0].role));
+    }
+
+    // 3. For every tool call in any message, verify its function arguments are parseable.
+    for (msg_idx, msg) in messages.iter().enumerate() {
+        if let Some(tool_calls) = &msg.tool_calls {
+            for tc in tool_calls {
+                if let Err(e) = serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
+                    return Err(format!(
+                        "Message at index {} has an unparseable tool call arguments for tool '{}': {} (arguments: {})",
+                        msg_idx, tc.function.name, e, tc.function.arguments));
+                }
+            }
+        }
+    }
+
+    // 4. For each assistant message with nonempty tool_calls,
+    //    check that every tool call id mentioned is later (i.e. at a higher index) answered by a tool message.
+    for (idx, msg) in messages.iter().enumerate() {
+        if msg.role == "assistant" {
+            if let Some(tool_calls) = &msg.tool_calls {
+                if !tool_calls.is_empty() {
+                    for tc in tool_calls {
+                        // Look for a following "tool" message whose tool_call_id equals tc.id
+                        let mut found = false;
+                        for later_msg in messages.iter().skip(idx + 1).take(1) {
+                            if later_msg.tool_call_id == tc.id {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if !found {
+                            return Err(format!(
+                                "Assistant message at index {} has a tool call id '{}' that is unresponded (no following tool message with that id)",
+                                idx, tc.id
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 6. Calculate token counts using the token cache and print only the sum.
+    let (extra_tokens_per_message, _) = get_model_token_params(model_name);
+    let mut token_cache = TokenCountCache::new();
+    let mut message_tokens = 0;
+    for msg in messages {
+        let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
+        message_tokens += count;
+    }
+    let total_tokens = message_tokens + tools_description_tokens;
+    tracing::info!("Validation: Total tokens: {} = messages({}) + tools_description({})", 
+                  total_tokens, message_tokens, tools_description_tokens);
+    let (hits, misses, hit_rate) = token_cache.stats();
+    tracing::info!("Validation token cache stats: {} hits, {} misses, {:.2}% hit rate", 
+                  hits, misses, hit_rate * 100.0);
+    Ok(messages.clone())
+}
+
 pub fn fix_and_limit_messages_history(
     t: &HasTokenizerAndEot,
     messages: &Vec<ChatMessage>,
@@ -262,63 +337,43 @@ pub fn fix_and_limit_messages_history(
     if n_ctx <= sampling_parameters_to_patch.max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens));
     }
-    
-    // Work on a mutable copy of the messages
     let mut mutable_messages = messages.clone();
-    _replace_broken_tool_call_messages(
+    replace_broken_tool_call_messages(
         &mut mutable_messages,
         sampling_parameters_to_patch,
         16000
     );
 
-    // Get model-specific parameters
     let (extra_tokens_per_message, extra_budget_offset_perc) = get_model_token_params(model_name);
-    
-    // Calculate initial token counts using model-specific parameters
-    let mut token_counts: Vec<i32> = mutable_messages
-        .iter()
-        .map(|msg| -> Result<i32, String> { Ok(extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None)?) })
-        .collect::<Result<Vec<_>, String>>()?;
-    
+    let mut token_cache = TokenCountCache::new();
+    let mut token_counts: Vec<i32> = Vec::with_capacity(mutable_messages.len());
+    for msg in &mutable_messages {
+        let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
+        token_counts.push(count);
+    }
     let tools_description_tokens = if let Some(desc) = tools_description.clone() {
         t.count_tokens(&desc).unwrap_or(0)
     } else { 0 };
-    
-    let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
     let extra_budget = (n_ctx as f32 * extra_budget_offset_perc) as usize;
     let tokens_limit = n_ctx.saturating_sub(sampling_parameters_to_patch.max_new_tokens).saturating_sub(extra_budget) as i32;
-    tracing::info!("token limit: {} tokens", tokens_limit);
-    
-    if tokens_limit == 0 {
-        tracing::error!("n_ctx={} is too large for max_new_tokens={} with occupied_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens, occupied_tokens);
-    }
-    
-    // Calculate undroppable_msg_n on the fly - find the last user message
     let undroppable_msg_n = mutable_messages.iter()
         .rposition(|msg| msg.role == "user")
         .unwrap_or(0);
-    
     tracing::info!("Calculated undroppable_msg_n = {} (last user message)", undroppable_msg_n);
-    
-    // Define a threshold for "outlier" messages (messages with unusually high token counts)
     let outlier_threshold = (tokens_limit as f32 * 0.1) as i32; // 10% of token limit
-    
-    // Update token limits with initial values
     let (mut occupied_tokens, mut tokens_limit) = 
         recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
-    
     tracing::info!("Before compression: occupied_tokens={} vs tokens_limit={}", occupied_tokens, tokens_limit);
     
     // STAGE 1: Compress ContextFile messages before the last user message
     if occupied_tokens > tokens_limit {
-        // Store the length before calling the function
         let msg_len = mutable_messages.len();
         let stage1_end = std::cmp::min(undroppable_msg_n, msg_len);
-        
         let result = process_compression_stage(
             t, 
             &mut mutable_messages, 
             &mut token_counts,
+            &mut token_cache,
             tools_description_tokens,
             n_ctx,
             sampling_parameters_to_patch.max_new_tokens,
@@ -326,7 +381,7 @@ pub fn fix_and_limit_messages_history(
             stage1_end,
             "Stage 1: Compressing ContextFile messages before the last user message",
             model_name,
-            |i, msg, _| i != 0 && msg.role == "context_file" // Never compress the initial message
+            |i, msg, _| i != 0 && msg.role == "context_file"
         )?;
         
         occupied_tokens = result.0;
@@ -339,14 +394,13 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 2: Compress Tool Result messages before the last user message
     if occupied_tokens > tokens_limit {
-        // Store the length before calling the function
         let msg_len = mutable_messages.len();
         let stage2_end = std::cmp::min(undroppable_msg_n, msg_len);
-        
         let result = process_compression_stage(
             t, 
             &mut mutable_messages, 
             &mut token_counts,
+            &mut token_cache,
             tools_description_tokens,
             n_ctx,
             sampling_parameters_to_patch.max_new_tokens,
@@ -354,7 +408,7 @@ pub fn fix_and_limit_messages_history(
             stage2_end,
             "Stage 2: Compressing Tool Result messages before the last user message",
             model_name,
-            |i, msg, _| i != 0 && msg.role == "tool" // Never compress the initial message
+            |i, msg, _| i != 0 && msg.role == "tool"
         )?;
         
         occupied_tokens = result.0;
@@ -367,14 +421,13 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 3: Compress "outlier" messages before the last user message
     if occupied_tokens > tokens_limit {
-        // Store the length before calling the function
         let msg_len = mutable_messages.len();
         let stage3_end = std::cmp::min(undroppable_msg_n, msg_len);
-        
         let result = process_compression_stage(
             t, 
             &mut mutable_messages, 
             &mut token_counts,
+            &mut token_cache,
             tools_description_tokens,
             n_ctx,
             sampling_parameters_to_patch.max_new_tokens,
@@ -401,8 +454,6 @@ pub fn fix_and_limit_messages_history(
     // STAGE 4: Drop non-essential messages block by block
     if occupied_tokens > tokens_limit {
         tracing::info!("STAGE 4: Iterating conversation blocks to drop non-essential messages");
-        
-        // Identify user-message indices to split conversation blocks
         let user_indices: Vec<usize> = 
             mutable_messages.iter().enumerate().filter_map(|(i, m)| {
                 if m.role == "user" { Some(i) } else { None }
@@ -420,8 +471,6 @@ pub fn fix_and_limit_messages_history(
         for block_idx in 0..user_indices.len().saturating_sub(1) {
             let start_idx = user_indices[block_idx];
             let end_idx = user_indices[block_idx + 1];
-            
-            // Stop before processing the block that contains the undroppable message
             if end_idx >= undroppable_msg_n {
                 break;
             }
@@ -444,22 +493,22 @@ pub fn fix_and_limit_messages_history(
                 }
             }
             
-            // Calculate the token count for just this block's messages using model-specific parameters
-            let block_token_counts: Vec<i32> = block_messages
-                .iter()
-                .map(|msg| Ok(extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
-                .collect::<Result<Vec<_>, String>>()?;
-            let block_tokens = block_token_counts.iter().sum::<i32>();
+            // Calculate the token count for just this block's messages
+            let mut block_tokens = 0;
+            for msg in &block_messages {
+                let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
+                block_tokens += count;
+            }
             
-            // Calculate current tokens used (without adding this block) using model-specific parameters
-            let current_tokens: i32 = kept_messages
-                .iter()
-                .map(|msg| extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
-                .sum::<i32>() + tools_description_tokens;
+            // Calculate current tokens used (without adding this block)
+            let mut current_tokens = tools_description_tokens;
+            for msg in &kept_messages {
+                let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
+                current_tokens += count;
+            }
             
             // Calculate what the total would be if we add this block
             let projected_total = current_tokens + block_tokens;
-        
             tracing::info!("Block {}: {} tokens, Current: {} tokens, Projected: {} tokens (limit: {})", 
                           block_idx, block_tokens, current_tokens, projected_total, tokens_limit);
         
@@ -480,19 +529,18 @@ pub fn fix_and_limit_messages_history(
         
         tracing::info!("STAGE 4: All messages after the last user message preserved; kept_messages count = {}", kept_messages.len());
         
-        // Recalculate tokens for the final kept_messages using model-specific parameters
-        let new_token_counts: Vec<i32> = kept_messages.iter()
-            .map(|msg| Ok(extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None)?))
-            .collect::<Result<Vec<_>, String>>()?;
-        let new_occupied_tokens = new_token_counts.iter().sum::<i32>() + tools_description_tokens;
+        let mut new_token_counts: Vec<i32> = Vec::with_capacity(kept_messages.len());
+        let mut new_occupied_tokens = tools_description_tokens;
+        for msg in &kept_messages {
+            let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
+            new_token_counts.push(count);
+            new_occupied_tokens += count;
+        }
         
-        // Log dropped messages
         for (_i, msg) in mutable_messages.iter().enumerate() {
             let is_kept = kept_messages.iter().any(|kept| {
-                // Simple content comparison to identify the same message
                 kept.role == msg.role && kept.content.content_text_only() == msg.content.content_text_only()
             });
-
             if !is_kept {
                 tracing::info!("DROP {:?} with role {}", 
                               crate::nicer_logs::first_n_chars(&msg.content.content_text_only(), 30), 
@@ -515,13 +563,12 @@ pub fn fix_and_limit_messages_history(
     if occupied_tokens > tokens_limit {
         tracing::warn!("Starting to compress messages in the last conversation block - this is a last resort measure");
         tracing::warn!("This may affect the quality of responses as we're now modifying the most recent context");
-        // Store the length before calling the function
         let msg_len = mutable_messages.len();
-        
         let result = process_compression_stage(
             t, 
             &mut mutable_messages, 
             &mut token_counts,
+            &mut token_cache,
             tools_description_tokens,
             n_ctx,
             sampling_parameters_to_patch.max_new_tokens,
@@ -542,13 +589,12 @@ pub fn fix_and_limit_messages_history(
 
     // STAGE 6: Compress Tool Result messages after the last user message (last resort)
     if occupied_tokens > tokens_limit {
-        // Store the length before calling the function
         let msg_len = mutable_messages.len();
-
         let result = process_compression_stage(
             t,
             &mut mutable_messages,
             &mut token_counts,
+            &mut token_cache,
             tools_description_tokens,
             n_ctx,
             sampling_parameters_to_patch.max_new_tokens,
@@ -569,14 +615,12 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 7: Compress "outlier" messages after the last user message, including the last user message (last resort)
     if occupied_tokens > tokens_limit {
-        // First compress outliers in the last conversation block (except the last user message)
-        // Store the length before calling the function
         let msg_len = mutable_messages.len();
-        
         let result = process_compression_stage(
             t, 
             &mut mutable_messages, 
             &mut token_counts,
+            &mut token_cache,
             tools_description_tokens,
             n_ctx,
             sampling_parameters_to_patch.max_new_tokens,
@@ -618,16 +662,15 @@ pub fn fix_and_limit_messages_history(
                 } else {
                     ""
                 };
-                
                 tracing::info!("Compressing last user message");
                 let new_summary = format!("💿 Message compressed: {}... (truncated) ...{}", preview_start, preview_end);
-                
-                // Update the message with our custom compression
                 mutable_messages[undroppable_msg_n].content = ChatContent::SimpleText(new_summary);
-                
-                // Recalculate token usage using model-specific parameters
-                token_counts[undroppable_msg_n] = extra_tokens_per_message + 
-                    mutable_messages[undroppable_msg_n].content.count_tokens(t.tokenizer.clone(), &None)?;
+                token_cache.invalidate(&mutable_messages[undroppable_msg_n]);
+                token_counts[undroppable_msg_n] = token_cache.get_token_count(
+                    &mutable_messages[undroppable_msg_n], 
+                    t.tokenizer.clone(), 
+                    extra_tokens_per_message
+                )?;
             }
             
             let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
@@ -642,111 +685,20 @@ pub fn fix_and_limit_messages_history(
     }
 
     // If we've made it here, we've successfully compressed the messages
-    _remove_invalid_tool_calls_and_tool_calls_results(&mut mutable_messages);
+    remove_invalid_tool_calls_and_tool_calls_results(&mut mutable_messages);
     tracing::info!("Final occupied_tokens={} <= tokens_limit={}", occupied_tokens, tokens_limit);
     
-    // Validate the chat history after compression
+    let (hits, misses, hit_rate) = token_cache.stats();
+    tracing::info!("Token cache stats: {} hits, {} misses, {:.2}% hit rate", 
+                  hits, misses, hit_rate * 100.0);
+    
     validate_chat_history(t, &mutable_messages, tools_description_tokens, model_name)
-}
-
-/// Validates the chat history after compression/truncation.
-/// 
-/// This function checks:
-/// 1. There is at least one message that is either "system" or "user".
-/// 2. The first message's role is either "system" or "user".
-/// 3. Every tool call's arguments (if present in tool_calls) can be parsed as a HashMap.
-/// 4. For every tool call in the chat history there must be a corresponding tool result (i.e. a message that has a matching nonempty tool_call_id).
-/// 5. Any assistant message with nonempty tool_calls must be followed by one (or more) tool messages that respond to each listed tool_call_id.
-/// 6. Prints total token count including messages, tools descriptions.
-/// 
-/// Returns Ok(the validated chat messages) or Err(a descriptive error message).
-pub fn validate_chat_history(
-    t: &HasTokenizerAndEot,
-    messages: &Vec<ChatMessage>,
-    tools_description_tokens: i32,
-    model_name: &str,
-) -> Result<Vec<ChatMessage>, String> {
-    // 1. Check that there is at least one message (and that at least one is "system" or "user")
-    if messages.is_empty() {
-        return Err("Invalid chat history: no messages present".to_string());
-    }
-    let has_system_or_user = messages.iter()
-        .any(|msg| msg.role == "system" || msg.role == "user");
-    if !has_system_or_user {
-        return Err("Invalid chat history: must have at least one message of role 'system' or 'user'".to_string());
-    }
-
-    // 2. The first message must be system or user.
-    if messages[0].role != "system" && messages[0].role != "user" {
-        return Err(format!("Invalid chat history: first message must be 'system' or 'user', got '{}'", messages[0].role));
-    }
-
-    // 3. For every tool call in any message, verify its function arguments are parseable.
-    for (msg_idx, msg) in messages.iter().enumerate() {
-        if let Some(tool_calls) = &msg.tool_calls {
-            for tc in tool_calls {
-                if let Err(e) = serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
-                    return Err(format!(
-                        "Message at index {} has an unparseable tool call arguments for tool '{}': {} (arguments: {})", 
-                        msg_idx, tc.function.name, e, tc.function.arguments));
-                }
-            }
-        }
-    }
-
-    // 4. For each assistant message with nonempty tool_calls,
-    //    check that every tool call id mentioned is later (i.e. at a higher index) answered by a tool message.
-    for (idx, msg) in messages.iter().enumerate() {
-        if msg.role == "assistant" {
-            if let Some(tool_calls) = &msg.tool_calls {
-                if !tool_calls.is_empty() {
-                    for tc in tool_calls {
-                        // Look for a following "tool" message whose tool_call_id equals tc.id
-                        let mut found = false;
-                        for later_msg in messages.iter().skip(idx + 1).take(1) {
-                            if later_msg.tool_call_id == tc.id {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if !found {
-                            return Err(format!(
-                                "Assistant message at index {} has a tool call id '{}' that is unresponded (no following tool message with that id)",
-                                idx, tc.id
-                            ));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // 6. Calculate token counts using the common method and print only the sum.
-    // Use the same calculation as in fix_and_limit_messages_history with model-specific parameters
-    // Get model-specific parameters
-    let (extra_tokens_per_message, _) = get_model_token_params(model_name);
-        
-    let token_counts: Vec<i32> = messages
-        .iter()
-        .map(|msg| extra_tokens_per_message + msg.content.count_tokens(t.tokenizer.clone(), &None).unwrap_or(0))
-        .collect();
-    
-    let message_tokens = token_counts.iter().sum::<i32>();
-    let total_tokens = message_tokens + tools_description_tokens;
-    
-    // Log the total with all components
-    tracing::info!("Validation: Total tokens: {} = messages({}) + tools_description({})", 
-                  total_tokens, message_tokens, tools_description_tokens);
-
-    // All invariants hold.
-    Ok(messages.clone())
 }
 
 #[cfg(test)]
 mod compression_tests {
-    use crate::call_validation::{ChatMessage, ChatToolCall, SamplingParameters, ChatContent};
-    use crate::scratchpad_abstract::HasTokenizerAndEot;
-    use super::{recalculate_token_limits, fix_and_limit_messages_history};
+    use crate::call_validation::{ChatMessage, ChatToolCall, ChatContent};
+    use super::recalculate_token_limits;
 
     // For testing, we'll use a simplified approach
     // Instead of mocking HasTokenizerAndEot, we'll just create test messages and token counts directly
@@ -787,7 +739,7 @@ mod compression_tests {
         message: &mut ChatMessage,
         token_counts: &mut Vec<i32>,
         index: usize,
-        model_name: &str
+        _: &str
     ) -> Result<i32, String> {
         let role = &message.role;
         let content_text = message.content.content_text_only();
@@ -1148,7 +1100,6 @@ mod compression_tests {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::call_validation::{ChatMessage, ChatToolCall, SamplingParameters, ChatContent, ChatToolFunction};
@@ -1157,7 +1108,7 @@ mod tests {
     use tracing_subscriber;
     use std::io::stderr;
     use tracing_subscriber::fmt::format;
-    use super::{fix_and_limit_messages_history, validate_chat_history, get_model_token_params};
+    use super::{fix_and_limit_messages_history, get_model_token_params};
     
     #[test]
     fn test_claude_models() {
@@ -1170,7 +1121,6 @@ mod tests {
         assert_eq!(get_model_token_params("gpt-4"), (3, 0.0));
         assert_eq!(get_model_token_params("unknown-model"), (3, 0.0));
     }
-
 
     impl HasTokenizerAndEot {
         fn mock() -> Arc<Self> {
@@ -1294,8 +1244,7 @@ mod tests {
         (x, last_user_msg_starts)
     }
 
-    fn _msgdump(messages: &Vec<ChatMessage>, title: String) -> String
-    {
+    fn _msgdump(messages: &Vec<ChatMessage>, title: String) -> String {
         let mut output = format!("=== {} ===\n", title);
         for (i, msg) in messages.iter().enumerate() {
             let content = msg.content.content_text_only();
