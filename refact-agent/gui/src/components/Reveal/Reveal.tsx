@@ -49,7 +49,7 @@ export const Reveal: React.FC<RevealProps> = ({
 
   if (open) {
     return (
-      <Box width="100%" position="relative">
+      <Box width="100%" position="relative" pb="5">
         {children}
         <RevealButton onClick={handleClick} isInline={!isRevealingCode}>
           {!defaultOpen && (

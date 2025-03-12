@@ -185,12 +185,12 @@ async fn _session_apply_settings(
                 client_builder = client_builder.env(key, value);
             }
 
-            let (mut client, imp, caps) = match client_builder.spawn().await {
-                Ok(r) => r,
-                Err(e) => {
-                    let err_msg = format!("Failed to init process: {}", e);
-                    tracing::error!("{err_msg} for {session_key_clone}");
-                    _add_log_entry(session_downcasted, err_msg);
+            #[allow(unused_mut)]
+            let mut client = match client_builder.spawn_and_initialize().await {
+                Ok(client) => client,
+                Err(client_error) => {
+                    let err_msg = format!("Failed to initialize {}: {:?}", session_key_clone, client_error);
+                    tracing::error!("{}", err_msg);
                     return;
                 }
             };

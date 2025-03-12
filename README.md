@@ -35,7 +35,7 @@ Refact Agent works effortlessly with the tools and databases you already use:
 ### ⚡ Why Choose Refact Agent?  
 
 - ✅ **Deploy On-Premise:** Maintain **100% control** over your codebase.  
-- 🧠 **Access State-of-the-Art Models:** Supports Claude 3.5 Sonnet, GPT-4o, o3-mini, and more.  
+- 🧠 **Access State-of-the-Art Models:** Supports Claude 3.7 Sonnet, GPT-4o, o3-mini, and more.  
 - 🔑 **Bring Your Own Key (BYOK):** Use your own API keys for external LLMs.  
 - 💬 **Integrated IDE Chat:** Stay in your workflow, no need to switch between tools!  
 - ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions.  
@@ -72,7 +72,7 @@ Refact Agent works effortlessly with the tools and databases you already use:
 
 ![integrations](https://lh7-rt.googleusercontent.com/docsz/AD_4nXc4DWYXF73AgPWAaFFGLTqEprWwA0im8R_A1QMo4QW4pTnSi1MCoP9L8udMZb5FPyN-CdgefaxJFGpX2ndn5nkjGBF2b_hZBNHogM7IM6SPvUIvUd9iE1lYIq7q-TB2qKzSGLk00A?key=zllGjEBckkx13bRZ6JIqX6qr)
 
- ✅ **State-of-the-Art Models** – Supports Claude 3.5 Sonnet, GPT-4o, o3-mini, and more.  
+ ✅ **State-of-the-Art Models** – Supports Claude 3.7 Sonnet, GPT-4o, o3-mini, and more.  
 
  ✅ **Bring Your Own Key (BYOK)** – Use your own API keys for external LLMs.  
 

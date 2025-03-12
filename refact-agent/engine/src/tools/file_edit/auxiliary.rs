@@ -142,26 +142,27 @@ pub async fn sync_documents_ast(
 }
 
 pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_text: &String, dry: bool) -> Result<(String, String), String> {
-    if !path.exists() {
-        let parent = path.parent().ok_or(format!(
-            "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
-            path
-        ))?;
-        if !parent.exists() {
-            if !dry {
-                fs::create_dir_all(&parent).map_err(|e| {
-                    let err = format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
-                    warn!("{err}");
-                    err
-                })?;
-            }
+    let parent = path.parent().ok_or(format!(
+        "Failed to Add: {:?}. Path is invalid.\nReason: path must have had a parent directory",
+        path
+    ))?;
+    
+    if !parent.exists() {
+        if !dry {
+            fs::create_dir_all(&parent).map_err(|e| {
+                let err = format!("Failed to Add: {:?}; Its parent dir {:?} did not exist and attempt to create it failed.\nERROR: {}", path, parent, e);
+                warn!("{err}");
+                err
+            })?;
         }
     }
+    
     let before_text = if path.exists() {
         get_file_text_from_memory_or_disk(gcx.clone(), path).await?
     } else {
         "".to_string()
     };
+    
     if !dry {
         fs::write(&path, file_text).map_err(|e| {
             let err = format!("Failed to write file: {:?}\nERROR: {}", path, e);
@@ -169,6 +170,7 @@ pub async fn write_file(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf, file_t
             err
         })?;
     }
+    
     Ok((before_text, file_text.to_string()))
 }
 
@@ -190,8 +192,8 @@ pub async fn str_replace(
     let occurrences = normalized_content.matches(&normalized_old_str).count();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, old_str \n```\n{}\n```\ndid not appear verbatim in {:?}. Consider checking the file content using `cat()`",
-            old_str, path
+            "No replacement was performed, `old_str` did not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            path
         ));
     }
     if !replace_multiple && occurrences > 1 {
@@ -202,8 +204,8 @@ pub async fn str_replace(
             .map(|(idx, _)| idx + 1)
             .collect();
         return Err(format!(
-            "No replacement was performed. Multiple occurrences of old_str `{}` in lines {:?}. Please ensure it is unique or set `replace_multiple` to true.",
-            old_str, lines
+            "No replacement was performed. Multiple occurrences of `old_str` in lines {:?}. Please ensure it is unique or set `replace_multiple` to true.",
+            lines
         ));
     }
 
@@ -231,15 +233,14 @@ pub async fn str_replace_regex(
     let occurrences = matches.len();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, `pattern` \n```\n{}\n```\ndid not appear verbatim in {:?}. Consider checking the file content using `cat()`",
-            pattern.to_string(), path
+            "No replacement was performed, `pattern` did not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            path
         ));
     }
     if !multiple && occurrences > 1 {
-        return Err(format!(
-            "No replacement was performed. Multiple occurrences of `pattern` `{}`. Please ensure the `pattern` is unique or set `multiple` to true.",
-            pattern.to_string()
-        ));
+        return Err(
+            "No replacement was performed. Multiple occurrences of `pattern`. Please ensure the `pattern` is unique or set `multiple` to true.".to_string()
+        );
     }
     let new_content = if multiple && occurrences > 1 {
         pattern

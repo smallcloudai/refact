@@ -8,7 +8,6 @@ import { type SyntaxHighlighterProps } from "react-syntax-highlighter";
 import classNames from "classnames";
 import type { Element } from "hast";
 import hljsStyle from "react-syntax-highlighter/dist/esm/styles/hljs/agate";
-import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 import {
   MarkdownCodeBlock,
   type MarkdownCodeBlockProps,
@@ -78,9 +77,3 @@ export type CommandMarkdownProps = Omit<MarkdownProps, "style">;
 export const CommandMarkdown: React.FC<CommandMarkdownProps> = (props) => (
   <Markdown {...props} />
 );
-
-export type ResultMarkdownProps = Omit<MarkdownProps, "style">;
-export const ResultMarkdown: React.FC<ResultMarkdownProps> = (props) => {
-  const style = resultStyle;
-  return <Markdown {...props} style={style} />;
-};

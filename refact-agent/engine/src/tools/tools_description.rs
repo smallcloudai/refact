@@ -131,7 +131,6 @@ pub async fn tools_merged_and_filtered(
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
         ("create_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
-        ("replace_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_replace_textdoc::ToolReplaceTextDoc{}) as Box<dyn Tool + Send>),
         ("update_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
         ("update_textdoc_regex".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex {}) as Box<dyn Tool + Send>),
         ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
@@ -191,7 +190,7 @@ tools:
       - "scope"
 
   - name: "definition"
-    description: "Read definition of a symbol in the project using AST"
+    description: "Find definition of a symbol in the project using AST"
     parameters:
       - name: "symbol"
         type: "string"
@@ -285,7 +284,7 @@ tools:
 
   - name: "create_textdoc"
     agentic: false
-    description: "Creates a new text document or code"
+    description: "Creates a new text document or code or completely replaces the content of an existing document"
     parameters:
       - name: "path"
         type: "string"
@@ -299,7 +298,7 @@ tools:
 
   - name: "update_textdoc"
     agentic: false
-    description: "Updates an existing document by replacing specific text. Optimized for large files or small changes where simple string replacement is sufficient. Prefer this over replace_textdoc for large files."
+    description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient."
     parameters:
       - name: "path"
         type: "string"
@@ -316,6 +315,28 @@ tools:
     parameters_required:
       - "path"
       - "old_str"
+      - "replacement"
+      - "multiple"
+
+  - name: "update_textdoc_regex"
+    agentic: false
+    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns."
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Absolute path to the file to change."
+      - name: "pattern"
+        type: "string"
+        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance."
+      - name: "replacement"
+        type: "string"
+        description: "The new text that will replace the matched pattern."
+      - name: "multiple"
+        type: "boolean"
+        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."
+    parameters_required:
+      - "path"
+      - "pattern"
       - "replacement"
       - "multiple"
 
@@ -339,42 +360,6 @@ tools:
         description: "What's the topic and what kind of result do you want?"
     parameters_required:
       - "problem_statement"
-
-  - name: "update_textdoc_regex"
-    agentic: true
-    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. May be slower than update_textdoc for large files."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute path to the file to change."
-      - name: "pattern"
-        type: "string"
-        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance."
-      - name: "replacement"
-        type: "string"
-        description: "The new text that will replace the matched pattern."
-      - name: "multiple"
-        type: "boolean"
-        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."
-    parameters_required:
-      - "path"
-      - "pattern"
-      - "replacement"
-      - "multiple"
-
-  - name: "replace_textdoc"
-    agentic: true
-    description: "Completely replaces the content of an existing document. Use ONLY for small files, as it rewrites the entire file. For large files or small changes, use update_textdoc instead."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute path to existing file. File must be small."
-      - name: "replacement"
-        type: "string"
-        description: "The complete replacement text or code that will overwrite the entire file."
-    parameters_required:
-      - "path"
-      - "replacement"
 
   - name: "github"
     agentic: true
