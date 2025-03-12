@@ -55,7 +55,7 @@ export const UserInput: React.FC<UserInputProps> = ({
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (forceScroll && ref.current) {
       console.log("scrolling");
       ref.current.scrollIntoView({ behavior: "smooth", block: "start" });

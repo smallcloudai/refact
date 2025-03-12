@@ -1,6 +1,7 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -307,7 +308,7 @@ const ExtraSpace: React.FC<{ scrollRef: React.RefObject<HTMLDivElement> }> = ({
 
   // top will be minus if off screen
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (
       !scrollRef.current ||
       !userMessages ||
