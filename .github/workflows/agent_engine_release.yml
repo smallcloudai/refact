@@ -137,7 +137,7 @@ jobs:
         with:
           repo_token: ${{ github.token }}
           asset_name: whl-${{ matrix.target }}
-          file: artefacts/*.whl
+          file: refact-agent/engine/artefacts/*.whl
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
@@ -169,7 +169,7 @@ jobs:
         with:
           repo_token: ${{ github.token }}
           asset_name: dist-${{ matrix.target }}
-          file: dist-${{ matrix.target }}.zip
+          file: refact-agent/engine/dist-${{ matrix.target }}.zip
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true
