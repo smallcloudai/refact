@@ -15,6 +15,7 @@ import { Button, DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
 import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
+import { PuzzleIcon } from "../../images/PuzzleIcon";
 //import { Coin } from "../../images";
 
 export type DropdownNavigationOptions =
@@ -154,7 +155,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
-          Setup Agent Integrations
+          <PuzzleIcon stroke="var(--accent-a11)" /> Set up Agent Integrations
         </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("knowledge list")}>
