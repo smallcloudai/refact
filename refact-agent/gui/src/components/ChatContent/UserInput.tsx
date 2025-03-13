@@ -1,23 +1,9 @@
 import { Pencil2Icon } from "@radix-ui/react-icons";
-import {
-  Box,
-  Button,
-  Container,
-  Flex,
-  IconButton,
-  Text,
-} from "@radix-ui/themes";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { selectMessages } from "../../features/Chat";
 import { CheckpointButton } from "../../features/Checkpoints";
-import { useAppSelector, useEffectOnce } from "../../hooks";
+import { useAppSelector } from "../../hooks";
 import {
   isUserMessage,
   ProcessedUserMessageContentWithImages,
@@ -29,8 +15,6 @@ import { RetryForm } from "../ChatForm";
 import { DialogImage } from "../DialogImage";
 import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
-import classNames from "classnames";
-import { use } from "echarts";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -38,29 +22,18 @@ export type UserInputProps = {
   // maybe add images argument ?
   onRetry: (index: number, question: UserMessage["content"]) => void;
   // disableRetry?: boolean;
-  forceScroll?: boolean;
-  scrollElementToTop?: (elem: HTMLElement) => void;
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
   messageIndex,
   children,
   onRetry,
-  forceScroll = false,
-  scrollElementToTop,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const messages = useAppSelector(selectMessages);
 
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
-
-  useLayoutEffect(() => {
-    if (forceScroll && ref.current) {
-      console.log("scrolling");
-      ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [forceScroll, scrollElementToTop]);
 
   const handleSubmit = useCallback(
     (value: UserMessage["content"]) => {

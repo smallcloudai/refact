@@ -1,7 +1,9 @@
 import React, {
   createContext,
+  forwardRef,
   useContext,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
@@ -75,8 +77,15 @@ function scrollAreaWithAnchorReducer(state: State, action: Action) {
   }
 }
 
-const Provider: React.FC<ScrollAreaProps> = ({ children, ...props }) => {
+const Provider: React.FC<ScrollAreaProps> = forwardRef<
+  HTMLDivElement,
+  ScrollAreaProps
+>(({ children, ...props }, ref) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  useImperativeHandle<HTMLDivElement | null, HTMLDivElement | null>(
+    ref,
+    () => scrollRef.current,
+  );
   const innerRef = React.useRef<HTMLDivElement>(null);
   const [state, dispatch] = React.useReducer(scrollAreaWithAnchorReducer, {
     // mutable dom refs
@@ -94,7 +103,8 @@ const Provider: React.FC<ScrollAreaProps> = ({ children, ...props }) => {
       </BaseScrollArea>
     </ScrollAreaWithAnchorContext.Provider>
   );
-};
+});
+Provider.displayName = "ScrollAreaWithAnchor.Provider";
 
 function useScrollContext() {
   const context = useContext(ScrollAreaWithAnchorContext);
@@ -104,14 +114,17 @@ function useScrollContext() {
   return context;
 }
 
-const ScrollArea: React.FC<ScrollAreaProps> = ({ children, ...props }) => {
-  return (
-    <Provider {...props}>
-      {children}
-      <BottomSpace />
-    </Provider>
-  );
-};
+const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
+  ({ children, ...props }, ref) => {
+    return (
+      <Provider {...props} ref={ref}>
+        {children}
+        <BottomSpace />
+      </Provider>
+    );
+  },
+);
+ScrollArea.displayName = "ScrollAreaWithAnchor.ScrollArea";
 
 const BottomSpace: React.FC = () => {
   const { state, dispatch } = useScrollContext();
@@ -127,13 +140,6 @@ const BottomSpace: React.FC = () => {
       return;
     }
 
-    // console.log(
-    //   state.scrollRef.current.clientHeight,
-    //   state.innerRef.current.clientHeight,
-    //   height,
-    // );
-
-    // case viewport isn't big enough to scroll
     if (
       state.innerRef.current.clientHeight + height <
       state.scrollRef.current.clientHeight
@@ -147,13 +153,9 @@ const BottomSpace: React.FC = () => {
       return;
     }
 
-    // case viewport is big enough to scroll, but there's not enough room at the end
-    // anchor ref and this should be client height away from each other
     const scrollViewportHeight = state.scrollRef.current.clientHeight;
     const anchorPosition = state.anchorRef.current.offsetTop;
     const contentHeight = state.innerRef.current.clientHeight;
-
-    // Calculate the distance from the anchor to the bottom of the content
     const distanceToBottom = contentHeight - anchorPosition;
 
     // If the distance from anchor to bottom is less than viewport height,
@@ -175,7 +177,8 @@ const BottomSpace: React.FC = () => {
     state.scrolled,
   ]);
 
-  return <Box ref={bottomSpaceRef} style={{ height: height }} />;
+  //TODO: 8px extra space somewhere
+  return <Box ref={bottomSpaceRef} style={{ height: height - 8 }} />;
 };
 
 export type ScrollAnchorProps = React.PropsWithChildren<ScrollIntoViewOptions>;

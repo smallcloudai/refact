@@ -1,22 +1,15 @@
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   ChatMessages,
   isAssistantMessage,
   isChatContextFileMessage,
   isDiffMessage,
   isToolMessage,
+  isUserMessage,
   UserMessage,
 } from "../../services/refact";
 import { UserInput } from "./UserInput";
-import { ScrollArea } from "../ScrollArea";
+import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
 import { Spinner } from "../Spinner";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
@@ -72,7 +65,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     handleScrollButtonClick,
     showFollowButton,
     scrollElementToTop,
-    bottomSpace,
   } = useAutoScroll({
     scrollRef,
   });
@@ -116,7 +108,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   }, [isConfig, integrationMeta?.path]);
 
   return (
-    <ScrollArea
+    <ScrollAreaWithAnchor.ScrollArea
       ref={scrollRef}
       style={{ flexGrow: 1, height: "auto", position: "relative" }}
       scrollbars="vertical"
@@ -131,10 +123,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         data-element="ChatContent"
         p="2"
         gap="1"
-        // height="100%"
       >
         {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages, onRetryWrapper, scrollElementToTop)}
+        {renderMessages(messages, onRetryWrapper)}
         <UncommittedChangesWarning />
         {threadUsage && messages.length > 0 && <UsageCounter />}
         <Container py="4">
@@ -142,7 +133,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
           />
         </Container>
-        <ExtraSpace scrollRef={scrollRef} />
       </Flex>
       {showFollowButton && (
         <ScrollToBottomButton onClick={handleScrollButtonClick} />
@@ -182,7 +172,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
           </Flex>
         </ScrollArea>
       </Box>
-    </ScrollArea>
+    </ScrollAreaWithAnchor.ScrollArea>
   );
 };
 
@@ -191,26 +181,19 @@ ChatContent.displayName = "ChatContent";
 function renderMessages(
   messages: ChatMessages,
   onRetry: (index: number, question: UserMessage["content"]) => void,
-  scrollElementToTop: (elem: HTMLElement) => void,
   memo: React.ReactNode[] = [],
   index = 0,
 ) {
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, onRetry, scrollElementToTop, memo, index + 1);
+    return renderMessages(tail, onRetry, memo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(
-      tail,
-      onRetry,
-      scrollElementToTop,
-      nextMemo,
-      index + 1,
-    );
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "assistant") {
@@ -226,49 +209,29 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(
-      tail,
-      onRetry,
-      scrollElementToTop,
-      nextMemo,
-      index + 1,
-    );
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "user") {
     const key = "user-input-" + index;
     // if last message scroll this message to the top of the bar
+    const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
-      <UserInput
-        onRetry={onRetry}
-        key={key}
-        messageIndex={index}
-        forceScroll={tail.length === 0}
-        scrollElementToTop={scrollElementToTop}
-      >
+      isLastUserMessage && (
+        <ScrollAreaWithAnchor.ScrollAnchor key={`${key}-anchor`} />
+      ),
+      <UserInput onRetry={onRetry} key={key} messageIndex={index}>
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(
-      tail,
-      onRetry,
-      scrollElementToTop,
-      nextMemo,
-      index + 1,
-    );
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(
-      tail,
-      onRetry,
-      scrollElementToTop,
-      nextMemo,
-      index + 1,
-    );
+    return renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (isDiffMessage(head)) {
@@ -285,66 +248,10 @@ function renderMessages(
     return renderMessages(
       nextTail,
       onRetry,
-      scrollElementToTop,
       nextMemo,
       index + diffMessages.length,
     );
   }
 
-  return renderMessages(tail, onRetry, scrollElementToTop, memo, index + 1);
+  return renderMessages(tail, onRetry, memo, index + 1);
 }
-
-const ExtraSpace: React.FC<{ scrollRef: React.RefObject<HTMLDivElement> }> = ({
-  scrollRef,
-}) => {
-  const userMessages = scrollRef.current?.querySelectorAll(
-    "[data-element='UserInput']",
-  );
-  const flexContainer = scrollRef.current?.querySelector(
-    "[data-element='ChatContent']",
-  );
-
-  const [height, setHeight] = useState<number>(0);
-
-  // top will be minus if off screen
-
-  useEffect(() => {
-    if (
-      !scrollRef.current ||
-      !userMessages ||
-      !flexContainer ||
-      userMessages.length === 0
-    ) {
-      return;
-    }
-
-    const lastUserMessage = userMessages[userMessages.length - 1];
-    // const userMessageRect = lastUserMessage.getBoundingClientRect();
-    // extends the height of the flex area
-    if (flexContainer.clientHeight + height < scrollRef.current.clientHeight) {
-      const h = scrollRef.current.clientHeight - flexContainer.clientHeight;
-      const scrollTop = Math.max(lastUserMessage.scrollTop, 0);
-      setHeight(h + scrollTop);
-      return;
-    }
-
-    // flex is as big as it needs to be.
-    // check that the top of the user message is at least client height from the bottom of th scroll
-    const lastUserMessageRect = lastUserMessage.getBoundingClientRect();
-    const scrollRect = scrollRef.current.getBoundingClientRect();
-
-    // Calculate the distance from the top of the last user message to the bottom of the scroll area
-    const distanceToBottom = scrollRect.bottom - lastUserMessageRect.top;
-
-    // If the distance is less than the client height, add more space
-    if (distanceToBottom + height < scrollRef.current.clientHeight) {
-      const additionalHeight =
-        scrollRef.current.clientHeight - distanceToBottom;
-      // setHeight(height + additionalHeight);
-      setHeight(additionalHeight);
-      return;
-    }
-  }, [flexContainer, height, scrollRef, userMessages]);
-
-  return <Box style={{ height: `${height}px` }} />;
-};

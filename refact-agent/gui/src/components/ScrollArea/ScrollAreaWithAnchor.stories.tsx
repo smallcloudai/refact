@@ -73,7 +73,7 @@ export const Short: Story = {
 export const InTheMiddle: Story = {
   args: {
     children: [
-      <Text as="p" key="ipsum-1" wrap="wrap">
+      <Text as="p" key="ipsum-1" wrap="wrap" mb="8">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam lacinia
         pulvinar tortor nec facilisis. Pellentesque dapibus efficitur laoreet.
         Nam risus ante, dapibus a molestie consequat, ultrices ac magna. Fusce
@@ -95,15 +95,15 @@ export const InTheMiddle: Story = {
         voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam
         corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.
       </Text>,
-      <Text as="p" key="end" my="8">
-        <ScrollAreaWithAnchor.ScrollAnchor
-          key="anchor"
-          behavior="smooth"
-          block="start"
-        />
+      <ScrollAreaWithAnchor.ScrollAnchor
+        key="anchor"
+        behavior="smooth"
+        block="start"
+      />,
+      <Text as="div" key="end">
         👋
       </Text>,
-      <Text as="p" key="ipsum-2" wrap="wrap">
+      <Text as="p" key="ipsum-2" wrap="wrap" mt="8">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam lacinia
         pulvinar tortor nec facilisis. Pellentesque dapibus efficitur laoreet.
         Nam risus ante, dapibus a molestie consequat, ultrices ac magna. Fusce
