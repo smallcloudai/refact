@@ -8,7 +8,7 @@ use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 
 use crate::global_context::GlobalContext;
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
@@ -27,7 +27,7 @@ pub async fn enqueue_all_docs_from_jsonl(
     for d in paths.iter() {
         docs.push(d.to_string_lossy().to_string());
     }
-    let (vec_db_module, ast_service) = {
+    let (vectorizer_service, ast_service) = {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
         let gcx_locked = gcx.write().await;
         *gcx_locked.documents_state.cache_dirty.lock().await = now;
@@ -35,10 +35,8 @@ pub async fn enqueue_all_docs_from_jsonl(
         jsonl_files.clear();
         jsonl_files.extend(paths);
         #[cfg(feature="vecdb")]
-        let vec_db_module = gcx_locked.vec_db.clone();
-        #[cfg(not(feature="vecdb"))]
-        let vec_db_module = false;
-        (vec_db_module, gcx_locked.ast_service.clone())
+        let vectorizer_service = gcx_locked.vectorizer_service.clone();
+        (vectorizer_service, gcx_locked.ast_service.clone())
     };
     if let Some(ast) = &ast_service {
         if !vecdb_only {
@@ -46,14 +44,12 @@ pub async fn enqueue_all_docs_from_jsonl(
         }
     }
     #[cfg(feature="vecdb")]
-    if let Some(_) = *vec_db_module.lock().await {
-        if let Some(service) = &*gcx.read().await.vectorizer_service.lock().await {
-            crate::vecdb::vectorizer_service::vectorizer_enqueue_files(
-                gcx.read().await.vectorizer_service.clone(), 
-                &docs, 
-                false
-            ).await;
-        }
+    if let Some(vs) = &*vectorizer_service.lock().await {
+        crate::vecdb::vectorizer_service::vectorizer_enqueue_files(
+            Arc::new(AMutex::new(vs.clone())), 
+            &docs, 
+            false
+        ).await;
     };
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;

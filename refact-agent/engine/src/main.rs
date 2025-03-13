@@ -222,6 +222,32 @@ async fn main() {
         let memdb = crate::memdb::db_init::memdb_init(&config_dir, &constants, cmdline.reset_memory).await;
         let mut gcx_locked = gcx.write().await;
         gcx_locked.memdb = Some(memdb.clone());
+        
+        // Initialize vectorizer service if not already initialized
+        if gcx_locked.vectorizer_service.lock().await.is_none() {
+            if let Some(vec_db) = &*gcx_locked.vec_db.lock().await {
+                let api_key = match crate::caps::get_custom_embedding_api_key(gcx.clone()).await {
+                    Ok(key) => key,
+                    Err(err) => {
+                        tracing::error!("Failed to get API key for vectorizer service: {}", err);
+                        String::new() // Return empty string instead of continue
+                    }
+                };
+                
+                // Only proceed if we have a valid API key
+                if !api_key.is_empty() {
+                    info!("Initializing vectorizer service");
+                    let vectorizer_service = crate::vecdb::vectorizer_service::FileVectorizerService::new(
+                        vec_db.vecdb_handler.clone(),
+                        constants.clone(),
+                        api_key,
+                        memdb.clone()
+                    ).await;
+                    
+                    *gcx_locked.vectorizer_service.lock().await = Some(vectorizer_service);
+                }
+            }
+        }
     }
     
     // vector db will spontaneously start if the downloaded caps and command line parameters are right

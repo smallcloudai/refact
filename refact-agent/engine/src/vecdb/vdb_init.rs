@@ -51,7 +51,7 @@ impl std::fmt::Display for VecDbInitError {
 
 pub async fn init_vecdb_fail_safe(
     cache_dir: &PathBuf,
-    config_dir: &PathBuf,
+    _config_dir: &PathBuf,
     cmdline: CommandLine,
     constants: VecdbConstants,
     api_key: &String,
@@ -64,7 +64,7 @@ pub async fn init_vecdb_fail_safe(
         attempt += 1;
         info!("VecDb init attempt {}/{}", attempt, init_config.max_attempts);
         
-        match VecDb::init(cache_dir, config_dir, cmdline.clone(), constants.clone(), api_key).await {
+        match VecDb::init(cache_dir, cmdline.clone(), constants.clone()).await {
             Ok(vecdb) => {
                 info!("Successfully initialized VecDb on attempt {}", attempt);
                 
@@ -162,8 +162,25 @@ pub async fn initialize_vecdb_with_context(
     {
         let vec_db_locked = vec_db_arc.lock().await;
         if let Some(ref vec_db) = *vec_db_locked {
-            let tasks = vec_db.vecdb_start_background_tasks(gcx.clone()).await;
-            let _background_tasks = BackgroundTasksHolder::new(tasks);
+            if let Some(vs) = &*gcx.read().await.vectorizer_service.lock().await {
+                let tasks = crate::vecdb::vectorizer_service::start_vectorizer_background_tasks(
+                    vec_db.vecdb_emb_client.clone(),
+                    Arc::new(AMutex::new(vs.clone())),
+                    gcx.clone()
+                ).await;
+                // Store the tasks in the global context to prevent them from being dropped
+                let mut gcx_locked = gcx.write().await;
+                if let Some(ref mut bg_tasks) = gcx_locked.background_tasks {
+                    bg_tasks.extend(tasks);
+                } else {
+                    gcx_locked.background_tasks = Some(BackgroundTasksHolder::new(tasks));
+                }
+                info!("Vectorizer background tasks started successfully");
+            } else {
+                warn!("Vectorizer service is not initialized, cannot start background tasks");
+            }
+        } else {
+            warn!("VecDB is not initialized, cannot start vectorizer background tasks");
         }
     }
     

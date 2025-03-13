@@ -173,6 +173,7 @@ pub struct GlobalContext {
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
     #[cfg(feature="vecdb")]
     pub memdb: Option<Arc<ParkMutex<crate::memdb::db_structs::MemDB>>>,
+    pub background_tasks: Option<crate::background_tasks::BackgroundTasksHolder>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -391,6 +392,7 @@ pub async fn create_global_context(
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
         #[cfg(feature="vecdb")]
         memdb: None,
+        background_tasks: None,
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;

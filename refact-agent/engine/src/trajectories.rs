@@ -68,11 +68,13 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     if vec_db.lock().await.is_none() {
         return Err("vecdb is not initialized".to_string());        
     }
-    if let Some(service) = &*gcx.read().await.vectorizer_service.lock().await {
-        crate::vecdb::vdb_highlev::memories_block_until_vectorized(
-            gcx.read().await.vectorizer_service.clone(), 
-            20_000
-        ).await?;
+    if let Some(_service) = &*gcx.read().await.vectorizer_service.lock().await {
+        if let Some(vs) = &*gcx.read().await.vectorizer_service.lock().await {
+            crate::vecdb::vdb_highlev::memories_block_until_vectorized(
+                Arc::new(AMutex::new(vs.clone())), 
+                20_000
+            ).await?;
+        }
     }
 
     info!("starting to download trajectories...");

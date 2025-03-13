@@ -6,7 +6,6 @@ use tracing::{error, info};
 use indexmap::IndexMap;
 
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::trajectories::try_to_download_trajectories;
@@ -153,9 +152,9 @@ pub async fn vecdb_background_reload(
             background_tasks = BackgroundTasksHolder::new(vec![]);
 
             // Initialize MemDb first if not already present
-            let config_dir = gcx.read().await.config_dir.clone();
-            let constants = consts.unwrap();
-            let reset_memory = gcx.read().await.cmdline.reset_memory;
+            let _config_dir = gcx.read().await.config_dir.clone();
+            let _constants = consts.clone().unwrap();
+            let _reset_memory = gcx.read().await.cmdline.reset_memory;
 
             // Use the fail-safe initialization with retries
             let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
@@ -167,7 +166,6 @@ pub async fn vecdb_background_reload(
             };
             match crate::vecdb::vdb_init::initialize_vecdb_with_context(
                 gcx.clone(),
-                &mut background_tasks,
                 consts.unwrap(),
                 Some(init_config),
             ).await {
