@@ -297,14 +297,12 @@ class ModelAssigner:
         for k, rec in self.models_db.items():
             if rec.get("hidden", False):
                 continue
-            finetune_info = None
-            if k in active_loras:
-                finetune_info = [
-                    {
-                        "run_id": l["run_id"],
-                        "checkpoint": l["checkpoint"],
-                    } for l in active_loras[k].get('loras', [])
-                ]
+            finetune_info = [
+                {
+                    "run_id": l["run_id"],
+                    "checkpoint": l["checkpoint"],
+                } for l in active_loras.get(k, {}).get('loras', [])
+            ]
             has_finetune = bool("finetune" in rec["filter_caps"])
             finetune_model = rec.get("finetune_model", k if has_finetune else None)
             default_n_ctx = get_default_n_ctx(k, rec)
