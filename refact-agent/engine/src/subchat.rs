@@ -295,7 +295,7 @@ pub async fn subchat_single(
         error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });
-    let tools = tools_desclist.into_iter().map(|x|x.into_openai_style()).collect::<Vec<_>>();
+    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_name)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
     info!("tools_subset {:?}", tools_subset);
     info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
     info!("tools_on_intersection {:?}", tools_on_intersection);
@@ -365,6 +365,7 @@ pub async fn subchat(
     temperature: Option<f32>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
+    prepend_system_prompt: Option<bool>,
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let mut messages = messages.clone();
     let mut usage_collector = ChatUsage { ..Default::default() };
@@ -400,7 +401,7 @@ pub async fn subchat(
                 None,
                 1,
                 None,
-                true,
+                prepend_system_prompt.unwrap_or(false),
                 Some(&mut usage_collector),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
@@ -423,7 +424,7 @@ pub async fn subchat(
                 None,
                 1,
                 None,
-                true,
+                prepend_system_prompt.unwrap_or(false),
                 Some(&mut usage_collector),
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
@@ -435,18 +436,42 @@ pub async fn subchat(
         ccx.clone(),
         model_name,
         messages,
-        Some(vec![]),
-        Some("none".to_string()),
+        Some(tools_subset.clone()),
+        Some("auto".to_string()),
         false,
         temperature,
         None,
         wrap_up_n,
         None,
-        true,
+        prepend_system_prompt.unwrap_or(false),
         Some(&mut usage_collector),
         tx_toolid_mb.clone(),
         tx_chatid_mb.clone(),
     ).await?;
+    for messages in choices.iter() {
+        let last_message = messages.last().unwrap();
+        if let Some(tool_calls) = &last_message.tool_calls {
+            if !tool_calls.is_empty() {
+                _ = subchat_single(
+                    ccx.clone(),
+                    model_name,
+                    messages.clone(),
+                    Some(vec![]),
+                    Some("none".to_string()),
+                    true,   // <-- only runs tool calls
+                    temperature,
+                    None,
+                    1,
+                    None,
+                    prepend_system_prompt.unwrap_or(false),
+                    Some(&mut usage_collector),
+                    tx_toolid_mb.clone(),
+                    tx_chatid_mb.clone(),
+                ).await?[0].clone();
+            }
+        }
+
+    }
     // if let Some(last_message) = messages.last_mut() {
     //     last_message.usage = Some(usage_collector);
     // }

@@ -10,6 +10,8 @@ import {
 import classNames from "classnames";
 import styles from "./button.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
+import { useAppSelector } from "../../hooks";
+import { selectApiKey } from "../../features/Config/configSlice";
 
 type IconButtonProps = React.ComponentProps<typeof IconButton>;
 type ButtonProps = React.ComponentProps<typeof Button>;
@@ -77,23 +79,92 @@ export const RightButtonGroup: React.FC<React.PropsWithChildren & FlexProps> = (
   );
 };
 
-export const LinkButton: React.FC<
-  ButtonProps & {
-    href?: string;
-    target?: HTMLFormElement["target"];
-    onClick?: () => void;
-  }
-> = ({ href, target, onClick, ...rest }) => {
+type AgentUsageLinkButtonProps = ButtonProps & {
+  href?: string;
+  onClick?: () => void;
+  target?: HTMLFormElement["target"];
+  isPlanFree?: boolean;
+  children?: React.ReactNode;
+  disabled?: boolean;
+};
+
+const SUBSCRIPTION_URL =
+  "https://refact.smallcloud.ai/refact/update-subscription";
+
+const SUBSCRIPTION_FALLBACK_URL = "https://refact.smallcloud.ai/";
+
+export const AgentUsageLinkButton: React.FC<AgentUsageLinkButtonProps> = ({
+  href,
+  isPlanFree,
+  children,
+  onClick,
+  disabled,
+  ...rest
+}) => {
   const openUrl = useOpenUrl();
-  const handleClick = useCallback(() => {
-    if (onClick) onClick();
-    if (href) openUrl(href);
-  }, [href, onClick, openUrl]);
+  const apiKey = useAppSelector(selectApiKey);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const fetchSubscriptionUrl = useCallback(async (): Promise<string | null> => {
+    try {
+      const response = await fetch(SUBSCRIPTION_URL, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        openUrl(SUBSCRIPTION_FALLBACK_URL);
+        return null;
+      }
+
+      const data = (await response.json()) as { url: string };
+      return data.url;
+    } catch (e) {
+      openUrl(SUBSCRIPTION_FALLBACK_URL);
+      return null;
+    }
+  }, [apiKey, openUrl]);
+
+  const handleClick = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
+
+      if (isLoading) return;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        if (href && isPlanFree) {
+          openUrl(href);
+        } else if (isPlanFree !== undefined && !isPlanFree) {
+          const url = await fetchSubscriptionUrl();
+          if (url) {
+            openUrl(url);
+          }
+        }
+
+        onClick?.();
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error("Error in LinkButton:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [href, isPlanFree, onClick, openUrl, fetchSubscriptionUrl, isLoading],
+  );
+
   return (
-    <form action={href} target={target} onSubmit={handleClick}>
-      <Button type="submit" {...rest}>
-        Upgrade to our pro plan
+    <form onSubmit={(event) => void handleClick(event)}>
+      <Button type="submit" disabled={disabled ?? isLoading} {...rest}>
+        {isLoading ? "Loading..." : children}
       </Button>
+      {error && <div className={styles.error}>{error}</div>}
     </form>
   );
 };

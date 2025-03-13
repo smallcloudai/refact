@@ -35,7 +35,7 @@ all_refact_packages = {
     "refact_webgui": PyPackage(
         requires=["aiohttp", "aiofiles", "cryptography", "fastapi>=0.111.0", "giturlparse", "pydantic>=2",
                   "starlette==0.37.2", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
-                  "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.61.15"],
+                  "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.63.2"],
         requires_packages=["refact_known_models", "refact_utils"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
@@ -45,7 +45,7 @@ all_refact_packages = {
                   "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
                   "bitsandbytes", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
-                  "sentence-transformers", "huggingface-hub>=0.26.2",
+                  "sentence-transformers>=3.4.1", "huggingface-hub>=0.29.2",
                   "aiohttp", "setproctitle", "google-auth>=2.37.0"],
         optional=["ninja", "flash-attn"],
         requires_packages=["refact_known_models", "refact_data_pipeline",
@@ -92,7 +92,7 @@ else:
 
 setup(
     name="refact-self-hosting",
-    version="1.9.1",
+    version="1.9.3",
     py_modules=list(setup_packages.keys()),
     package_data={
         name: py_package.data

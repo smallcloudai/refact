@@ -2,6 +2,8 @@
 
 INCLUDE Dockerfile.base
 
+ARG GIT_COMMIT_HASH=""
+
 RUN apt-get update
 RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y \
     curl \
@@ -36,7 +38,7 @@ RUN apt-get install cassandra -y
 RUN apt-get install -y iputils-ping
 
 COPY . /tmp/app
-RUN echo "refact $(git -C /tmp/app rev-parse HEAD)" >> /refact-build-info.txt
+RUN echo "refact ${GIT_COMMIT_HASH}" >> /refact-build-info.txt
 RUN pip install ninja
 RUN pip install -U cython
 RUN pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app

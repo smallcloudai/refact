@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { ToolConfirmationPauseReason } from "../../services/refact";
+import { ideToolCallResponse } from "../../hooks/useEventBusForIDE";
 
 export type ConfirmationState = {
   pauseReasons: ToolConfirmationPauseReason[];
@@ -48,6 +49,19 @@ export const confirmationSlice = createSlice({
       state.pauseReasons = [];
       state.status = action.payload;
     },
+
+    updateConfirmationAfterIdeToolUse(
+      state,
+      action: PayloadAction<Parameters<typeof ideToolCallResponse>[0]>,
+    ) {
+      const pauseReasons = state.pauseReasons.filter(
+        (reason) => reason.tool_call_id !== action.payload.toolCallId,
+      );
+      if (pauseReasons.length === 0) {
+        state.status.wasInteracted = true; // work around for auto send.
+      }
+      state.pauseReasons = pauseReasons;
+    },
   },
   selectors: {
     getPauseReasonsWithPauseStatus: (state) => state,
@@ -61,6 +75,7 @@ export const {
   setPauseReasons,
   resetConfirmationInteractedState,
   clearPauseReasonsAndHandleToolsStatus,
+  updateConfirmationAfterIdeToolUse,
 } = confirmationSlice.actions;
 export const {
   getPauseReasonsWithPauseStatus,

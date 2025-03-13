@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { v4 as uuidv4 } from "uuid";
+
 import { LspChatMessage } from "../services/refact/chat";
 import { formatMessagesForChat } from "../features/Chat/Thread/utils";
 import { useAppDispatch } from "./useAppDispatch";
@@ -9,11 +11,11 @@ import {
 import { newIntegrationChat } from "../features/Chat/Thread/actions";
 import { push } from "../features/Pages/pagesSlice";
 import { useGoToLink } from "./useGoToLink";
-import { USAGE_LIMIT_EXHAUSTED_MESSAGE, useAgentUsage } from "./useAgentUsage";
+import { useAgentUsage } from "./useAgentUsage";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();
-  const { aboveUsageLimit } = useAgentUsage();
+  const { aboveUsageLimit, usageLimitExhaustedMessage } = useAgentUsage();
   const { handleGoTo } = useGoToLink();
   const handleSmartLink = useCallback(
     (
@@ -24,7 +26,7 @@ export function useSmartLinks() {
     ) => {
       const messages = formatMessagesForChat(sl_chat);
       if (aboveUsageLimit) {
-        const action = setInformation(USAGE_LIMIT_EXHAUSTED_MESSAGE);
+        const action = setInformation(usageLimitExhaustedMessage);
         dispatch(action);
         return;
       }
@@ -37,11 +39,12 @@ export function useSmartLinks() {
             project: integrationProject,
           },
           messages,
+          request_attempt_id: uuidv4(),
         }),
       );
       dispatch(push({ name: "chat" }));
     },
-    [dispatch, aboveUsageLimit],
+    [dispatch, aboveUsageLimit, usageLimitExhaustedMessage],
   );
 
   return {

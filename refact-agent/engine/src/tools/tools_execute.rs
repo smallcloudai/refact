@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use glob::Pattern;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -66,7 +67,6 @@ pub async fn run_tools_remotely(
     original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
-    tools_confirmation: bool,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let (n_ctx, subchat_tool_parameters, postprocess_parameters, gcx, chat_id) = {
         let ccx_locked = ccx.lock().await;
@@ -91,7 +91,6 @@ pub async fn run_tools_remotely(
         model_name: model_name.to_string(),
         chat_id,
         style: style.clone(),
-        tools_confirmation,
     };
 
     let url = format!("http://localhost:{port}/v1/tools-execute");
@@ -116,10 +115,9 @@ pub async fn run_tools_locally(
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
     style: &Option<String>,
-    tools_confirmation: bool,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let (new_messages, tools_ran) = run_tools(
-        ccx, tools, tokenizer, maxgen, original_messages, style, tools_confirmation
+        ccx, tools, tokenizer, maxgen, original_messages, style
     ).await?;
 
     let mut all_messages = original_messages.to_vec();
@@ -138,7 +136,6 @@ pub async fn run_tools(
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     style: &Option<String>,
-    tools_confirmation: bool,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let n_ctx = ccx.lock().await.n_ctx;
     let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
@@ -197,13 +194,6 @@ pub async fn run_tools(
                             .command_to_match_against_confirm_deny(&args)
                             .unwrap_or("<error_command>".to_string());
                         generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
-                        continue;
-                    }
-                    MatchConfirmDenyResult::CONFIRMATION if !tools_confirmation => {
-                        let command_to_match = cmd
-                            .command_to_match_against_confirm_deny(&args)
-                            .unwrap_or("<error_command>".to_string());
-                        generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' has been denied by the user"), t_call.id.to_string()));
                         continue;
                     }
                     _ => {}
@@ -348,28 +338,20 @@ async fn pp_run_tools(
         ).await;
 
         if !context_file_vec.is_empty() {
-            let json_vec = context_file_vec.iter().map(|p| json!(p)).collect::<Vec<_>>();
+            let json_vec: Vec<_> = context_file_vec.iter().map(|p| json!(p)).collect();
+            let filenames = context_file_vec.iter().map(|x| &x.file_name).join("\n");
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap()
             );
-            let mut found_exact_same_message = false;
-            for original_msg in original_messages.iter().rev() {
-                if original_msg.role == "user" {
-                    break;
-                }
-                if original_msg.content == message.content {
-                    found_exact_same_message = true;
-                    break;
-                }
-            }
-            if !found_exact_same_message {
-                generated_other.push(message.clone());
-            } else {
+            let duplicate_found = original_messages.iter().any(|msg| msg.content == message.content);
+            if duplicate_found {
                 generated_other.push(ChatMessage::new(
                     "cd_instruction".to_string(),
-                    "💿 Whoops, you are running in circles. You already have those files. Try something other than exploring files. Follow the user request and the system prompt.".to_string(),
+                    format!("💿 You already have these files in the context:\n{filenames}"),
                 ));
+            } else {
+                generated_other.push(message);
             }
         }
 

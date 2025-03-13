@@ -19,7 +19,7 @@ import {
   ToolUsage,
 } from "../../services/refact";
 import styles from "./ChatContent.module.css";
-import { CommandMarkdown, ResultMarkdown } from "../Command";
+import { CommandMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector } from "../../hooks";
@@ -28,43 +28,34 @@ import {
   selectToolResultById,
 } from "../../features/Chat/Thread/selectors";
 import { ScrollArea } from "../ScrollArea";
-import { takeWhile, fenceBackTicks } from "../../utils";
+import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
 import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { RootState } from "../../app/store";
 import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
 import { TextDocTool } from "../Tools/Textdoc";
-
+import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
+import classNames from "classnames";
+import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
 };
 
-const Result: React.FC<ResultProps> = ({
-  children,
-  isInsideScrollArea = false,
-}) => {
+const Result: React.FC<ResultProps> = ({ children }) => {
   const lines = children.split("\n");
   return (
     <Reveal defaultOpen={lines.length < 9} isRevealingCode>
-      <ResultMarkdown
-        className={styles.tool_result}
-        isInsideScrollArea={isInsideScrollArea}
+      <MarkdownCodeBlock
+        className={classNames(styles.tool_result)}
+        style={resultStyle}
       >
         {children}
-      </ResultMarkdown>
+      </MarkdownCodeBlock>
     </Reveal>
   );
 };
-
-function resultToMarkdown(content?: string): string {
-  if (!content) return "";
-
-  const escapedBackticks = fenceBackTicks(content);
-
-  return "```\n" + escapedBackticks + "\n```";
-}
 
 function toolCallArgsToString(toolCallArgs: string) {
   try {
@@ -103,8 +94,6 @@ const ToolMessage: React.FC<{
     return null;
   }
 
-  const results = resultToMarkdown(maybeResult?.content);
-
   const functionCalled = "```python\n" + name + "(" + argsString + ")\n```";
 
   return (
@@ -114,11 +103,9 @@ const ToolMessage: React.FC<{
           <CommandMarkdown isInsideScrollArea>{functionCalled}</CommandMarkdown>
         </Box>
       </ScrollArea>
-      <ScrollArea scrollbars="horizontal" style={{ width: "100%" }} asChild>
-        <Box>
-          <Result isInsideScrollArea>{results}</Result>
-        </Box>
-      </ScrollArea>
+      {maybeResult?.content && (
+        <Result isInsideScrollArea>{maybeResult.content}</Result>
+      )}
     </Flex>
   );
 };
@@ -371,8 +358,6 @@ const MultiModalToolContent: React.FC<{
                 toolCall.function.arguments,
               );
 
-              const md = resultToMarkdown(texts);
-
               const functionCalled =
                 "```python\n" + name + "(" + argsString + ")\n```";
 
@@ -390,15 +375,9 @@ const MultiModalToolContent: React.FC<{
                       </CommandMarkdown>
                     </Box>
                   </ScrollArea>
-                  <ScrollArea
-                    scrollbars="horizontal"
-                    style={{ width: "100%" }}
-                    asChild
-                  >
-                    <Box>
-                      <Result>{md}</Result>
-                    </Box>
-                  </ScrollArea>
+                  <Box>
+                    <Result>{texts}</Result>
+                  </Box>
                 </Flex>
               );
             })}

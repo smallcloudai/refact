@@ -157,7 +157,10 @@ pub const KNOWN_MODELS: &str = r####"
                 "qwen2.5/coder/3b/instruct/vllm",
                 "qwen2.5/coder/7b/instruct/vllm",
                 "qwen2.5/coder/14b/instruct/vllm",
-                "qwen2.5/coder/32b/instruct/vllm"
+                "qwen2.5/coder/32b/instruct/vllm",
+                "qwen2.5/7b/instruct/vllm",
+                "qwen2.5/14b/instruct/vllm",
+                "qwen2.5/32b/instruct/vllm"
             ]
         },
         "gpt-4o": {
@@ -560,6 +563,17 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "qwen2.5/14b/instruct/vllm",
                 "qwen2.5/32b/instruct/vllm"
+            ]
+        },
+        "qwen-qwq/32b/vllm": {
+            "n_ctx": 32768,
+            "supports_tools": true,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {}
+            },
+            "similar_models": [
+                "qwen-qwq/32b/awq/vllm"
             ]
         },
         "wizardlm/7b": {

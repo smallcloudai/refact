@@ -17,7 +17,9 @@ export const attachedImagesSlice = createSlice({
   initialState: initialState,
   reducers: {
     addImage: (state, action: PayloadAction<ImageFile>) => {
-      state.images = state.images.concat(action.payload);
+      if (state.images.length < 10) {
+        state.images = state.images.concat(action.payload);
+      }
     },
     removeImageByIndex: (state, action: PayloadAction<number>) => {
       state.images = state.images.filter(

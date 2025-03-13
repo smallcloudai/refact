@@ -1,0 +1,34 @@
+.usageCounterContainer {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  gap: 8px;
+  max-width: max-content;
+  opacity: 0.7;
+}
+
+.usageCounterContainerInline {
+  padding: calc(var(--space-1) * 1.5);
+  --color-panel: transparent;
+  --base-card-border-radius: 4px;
+  opacity: 0.7;
+}
+
+.isWarning {
+  --base-card-surface-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--yellow-a5), var(--yellow-5) 25%);
+  --base-card-surface-hover-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--yellow-a7), var(--yellow-7) 25%);
+  --base-card-surface-active-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--yellow-a6), var(--yellow-6) 25%);
+}
+
+.isOverflown {
+  --base-card-surface-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--red-a5), var(--red-5) 25%);
+  --base-card-surface-hover-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--red-a7), var(--red-7) 25%);
+  --base-card-surface-active-box-shadow: 0 0 0 1px
+    color-mix(in oklab, var(--red-a6), var(--red-6) 25%);
+}

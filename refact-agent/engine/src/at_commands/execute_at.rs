@@ -24,7 +24,7 @@ pub async fn run_at_commands_locally(
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
-) -> (Vec<ChatMessage>, usize, bool) {
+) -> (Vec<ChatMessage>, bool) {
     let (n_ctx, top_n, is_preview, gcx) = {
         let ccx_locked = ccx.lock().await;
         (ccx_locked.n_ctx, ccx_locked.top_n, ccx_locked.is_preview, ccx_locked.global_context.clone())
@@ -161,7 +161,7 @@ pub async fn run_at_commands_locally(
 
     ccx.lock().await.pp_skeleton = false;
 
-    return (rebuilt_messages, user_msg_starts, any_context_produced)
+    return (rebuilt_messages, any_context_produced)
 }
 
 pub async fn run_at_commands_remotely(
@@ -170,7 +170,7 @@ pub async fn run_at_commands_remotely(
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
-) -> Result<(Vec<ChatMessage>, usize, bool), String> {
+) -> Result<(Vec<ChatMessage>, bool), String> {
     let (gcx, n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id) = {
         let ccx_locked = ccx.lock().await;
         (
@@ -202,7 +202,7 @@ pub async fn run_at_commands_remotely(
         stream_back_to_user.push_in_json(msg);
     }
 
-    Ok((response.messages, response.undroppable_msg_number, response.any_context_produced))
+    Ok((response.messages, response.any_context_produced))
 }
 
 pub async fn correct_at_arg(

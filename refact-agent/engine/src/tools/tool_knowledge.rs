@@ -31,35 +31,17 @@ impl Tool for ToolGetKnowledge {
             (ccx_locked.global_context.clone(), ccx_locked.top_n)
         };
 
-        let im_going_to_use_tools = match args.get("im_going_to_use_tools") {
+        let search_key = match args.get("search_key") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => { return Err(format!("argument `im_going_to_use_tools` is not a string: {:?}", v)) },
-            None => { return Err("argument `im_going_to_use_tools` is missing".to_string()) }
-        };
-        let im_going_to_apply_to = match args.get("im_going_to_apply_to") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => { return Err(format!("argument `im_going_to_apply_to` is not a string: {:?}", v)) },
-            None => { return Err("argument `im_going_to_apply_to` is missing".to_string()) }
-        };
-        let goal = match args.get("goal") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => { return Err(format!("argument `goal` is not a string: {:?}", v)) },
-            None => { return Err("argument `goal` is missing".to_string()) }
-        };
-        let language_slash_framework = match args.get("language_slash_framework") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => { return Err(format!("argument `language_slash_framework` is not a string: {:?}", v)) },
-            None => { return Err("argument `language_slash_framework` is missing".to_string()) }
+            Some(v) => { return Err(format!("argument `search_key` is not a string: {:?}", v)) },
+            None => { return Err("argument `search_key` is missing".to_string()) }
         };
 
-        let mem_top_n = 3;
-        let memories1: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &im_going_to_use_tools, mem_top_n).await?;
-        let memories2: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &im_going_to_apply_to, mem_top_n).await?;
-        let memories3: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &goal, mem_top_n).await?;
-        let memories4: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &language_slash_framework, mem_top_n).await?;
-        let combined_memories = [memories1.results, memories2.results, memories3.results, memories4.results].concat();
+        let mem_top_n = 5;
+        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
+        
         let mut seen_memids = HashSet::new();
-        let unique_memories: Vec<_> = combined_memories.into_iter()
+        let unique_memories: Vec<_> = memories.results.into_iter()
             .filter(|m| seen_memids.insert(m.memid.clone()))
             .collect();
 

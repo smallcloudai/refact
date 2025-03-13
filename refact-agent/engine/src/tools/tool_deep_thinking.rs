@@ -18,6 +18,9 @@ use crate::scratchpads::scratchpad_utils::count_tokens;
 pub struct ToolDeepThinking;
 
 
+static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
+
+
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
     subchat_params: &SubchatParameters,
@@ -28,7 +31,8 @@ async fn _make_prompt(
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
     let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), subchat_params.subchat_model.to_string()).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
-    let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag) as i64;
+    let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
+    let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
     let final_message = format!("***Problem:***\n{problem_statement}\n\n***Problem context:***\n");
     tokens_budget -= count_tokens(&tokenizer.read().unwrap(), &final_message) as i64;
     let mut context = "".to_string(); 
@@ -54,7 +58,7 @@ async fn _make_prompt(
                 format!("📎:\n{}\n\n", &message.content.content_text_only())
             }
             _ => {
-                tracing::error!("unknown role in message: {:?}, skipped", message);
+                tracing::info!("skip adding message to the context: {}", message.content.content_text_only());
                 continue;
             }
         };

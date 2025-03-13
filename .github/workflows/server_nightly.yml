@@ -1,12 +1,10 @@
 name: Refact Server CICD Nightly
 on:
   push:
-    branches: [dev]
+    branches: [main] # must be dev
+    paths:
+      - 'refact-server/**'
   workflow_dispatch:
-
-defaults:
-  run:
-    working-directory: refact-server
 
 jobs:
   build:
@@ -82,3 +80,5 @@ jobs:
             smallcloud/refact_self_hosting:nightly
           platforms: |
             linux/amd64
+          build-args: |
+            GIT_COMMIT_HASH=${{ github.sha }}

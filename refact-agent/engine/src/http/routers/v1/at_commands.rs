@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use strsim::jaro_winkler;
@@ -17,12 +17,13 @@ use crate::at_commands::execute_at::run_at_commands_locally;
 use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
-use crate::call_validation::{PostprocessSettings, SubchatParameters};
+use crate::call_validation::{ChatMeta, PostprocessSettings, SubchatParameters};
 use crate::custom_error::ScratchError;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
+use crate::http::routers::v1::chat::deserialize_messages_from_post;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -43,9 +44,12 @@ struct CommandCompletionResponse {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct CommandPreviewPost {
-    query: String,
+    #[serde(default)]
+    pub messages: Vec<Value>,
     #[serde(default)]
     model: String,
+    #[serde(default)]
+    pub meta: ChatMeta,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -124,13 +128,44 @@ pub async fn handle_v1_command_completion(
         .unwrap())
 }
 
+async fn count_tokens(tokenizer_arc: Arc<StdRwLock<Tokenizer>>, messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
+    let mut accum: u64 = 0;
+
+    for message in messages {
+        accum += message.content.count_tokens(tokenizer_arc.clone(), &None)
+            .map_err(|e| ScratchError {
+                status_code: StatusCode::INTERNAL_SERVER_ERROR,
+                message: format!("v1_chat_token_counter: count_tokens failed: {}", e),
+                telemetry_skip: false})? as u64;
+    }
+    Ok(accum)
+}
+
 pub async fn handle_v1_command_preview(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<CommandPreviewPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    let mut query = post.query.clone();
+    let mut messages = deserialize_messages_from_post(&post.messages)?;
+    
+    let last_message = messages.pop();
+    let mut query = if let Some(last_message) = &last_message {
+        match &last_message.content {
+            ChatContent::SimpleText(query) => query.clone(),
+            ChatContent::Multimodal(elements) => {
+                let mut query = String::new();
+                for element in elements {
+                    if element.is_text() { // use last text, but expected to be only one
+                        query = element.m_content.clone();
+                    }    
+                }
+                query
+            }
+        }
+    } else {
+        String::new()
+    };
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (model_name, recommended_model_record) = {
@@ -219,10 +254,29 @@ pub async fn handle_v1_command_preview(
             reason: h.reason.unwrap_or_default(),
         })
     }
+    
+    let messages_to_count = if let Some(mut last_message) = last_message {
+        match &mut last_message.content {
+            ChatContent::SimpleText(_) => {last_message.content = ChatContent::SimpleText(query.clone());}
+            ChatContent::Multimodal(elements) => {
+                for elem in elements {
+                    if elem.is_text() {
+                        elem.m_content = query.clone();
+                    }
+                }
+            }
+        };
+        itertools::concat(vec![preview.clone(), vec![last_message]])
+    } else {
+        preview.clone()
+    };
+    let tokens_number = count_tokens(tokenizer_arc.clone(), &messages_to_count).await?;
+    
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(
-            &json!({"messages": preview, "model": model_name, "highlight": highlights})
+            &json!({"messages": preview, "model": model_name, "highlight": highlights, 
+                "current_context": tokens_number, "number_context": recommended_model_record.n_ctx})
         ).unwrap()))
         .unwrap())
 }
@@ -252,9 +306,10 @@ pub async fn handle_v1_at_command_execute(
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
     let mut has_rag_results = HasRagResults::new();
-    let (messages, undroppable_msg_number, any_context_produced) = run_at_commands_locally(
+    let (messages, any_context_produced) = run_at_commands_locally(
         ccx_arc.clone(), tokenizer.clone(), post.maxgen, &post.messages, &mut has_rag_results).await;
     let messages_to_stream_back = has_rag_results.in_json;
+    let undroppable_msg_number = messages.iter().rposition(|msg| msg.role == "user").unwrap_or(0);
 
     let response = CommandExecuteResponse {
         messages, messages_to_stream_back, undroppable_msg_number, any_context_produced };

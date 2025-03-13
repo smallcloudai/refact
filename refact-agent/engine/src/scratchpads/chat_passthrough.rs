@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use indexmap::IndexMap;
@@ -6,15 +5,15 @@ use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, SamplingParameters};
+use crate::call_validation::{ChatMessage, ChatPost, SamplingParameters};
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
-use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
+use crate::scratchpads::chat_utils_limit_history::fix_and_limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::passthrough_convert_messages::convert_messages_to_openai_format;
@@ -111,7 +110,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
         };
         let style = self.post.style.clone();
-        let mut at_tools = if !should_execute_remotely { 
+        let mut at_tools = if !should_execute_remotely {
             tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?
         } else {
             IndexMap::new()
@@ -122,50 +121,21 @@ impl ScratchpadAbstract for ChatPassthrough {
         } else {
             self.messages.clone()
         };
-        let (mut messages, undroppable_msg_n, _any_context_produced) = if self.allow_at && !should_execute_remotely {
+        let (mut messages, _any_context_produced) = if self.allow_at && !should_execute_remotely {
             run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else if self.allow_at {
             run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
         } else {
-            let messages_len = messages.len();
-            (messages, messages_len, false)
+            (messages, false)
         };
         if self.supports_tools {
             (messages, _) = if should_execute_remotely {
-                run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style, self.post.tools_confirmation).await?
+                run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             } else {
-                run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style, self.post.tools_confirmation).await?
+                run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
-
-        _replace_broken_tool_call_messages(
-            &mut messages,
-            sampling_parameters_to_patch,
-            16000
-        );
-        _remove_invalid_tool_calls_and_tool_calls_results(&mut messages);
-
-        // Handle models that support reasoning
-        let messages = if model_supports_reasoning(&self.post.model) {
-            _adapt_for_reasoning_models(&messages, sampling_parameters_to_patch)
-        } else {
-            messages
-        };
-
-        let limited_msgs = limit_messages_history(&self.t, &messages, undroppable_msg_n, sampling_parameters_to_patch.max_new_tokens, n_ctx).unwrap_or_else(|e| {
-            error!("error limiting messages: {}", e);
-            vec![]
-        });
-
-        if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
-            assert_eq!(limited_msgs.first().unwrap().role, "system");
-        }
-        let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
-
-        let mut big_json = serde_json::json!({
-            "messages": converted_messages,
-        });
-
+        let mut big_json = serde_json::json!({});
         if self.supports_tools {
             let post_tools = self.post.tools.as_ref().and_then(|tools| {
                 if tools.is_empty() {
@@ -195,7 +165,7 @@ impl ScratchpadAbstract for ChatPassthrough {
                 } else {
                     let allow_experimental = gcx.read().await.cmdline.experimental;
                     let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
-                    Some(tool_descriptions.into_iter().map(|x: crate::tools::tools_description::ToolDesc|x.into_openai_style()).collect::<Vec<_>>())
+                    Some(tool_descriptions.into_iter().filter(|x| x.is_supported_by(&self.post.model)).map(|x| x.into_openai_style()).collect::<Vec<_>>())
                 }
             } else {
                 None
@@ -218,6 +188,33 @@ impl ScratchpadAbstract for ChatPassthrough {
         } else if DEBUG {
             info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
+
+        // Handle models that support reasoning
+        let messages = if model_supports_reasoning(&self.post.model) {
+            _adapt_for_reasoning_models(&messages, sampling_parameters_to_patch)
+        } else {
+            messages
+        };
+        let limited_msgs = match fix_and_limit_messages_history(
+            &self.t, 
+            &messages,
+            sampling_parameters_to_patch, 
+            n_ctx,
+            big_json.get("tools").map(|x| x.to_string()),
+            self.post.model.as_str()
+        ) {
+            Ok(limited_msgs) => limited_msgs,
+            Err(e) => {
+                tracing::error!("error limiting messages: {}", e);
+                return Err(format!("error limiting messages: {}", e));
+            }
+        };
+        if self.prepend_system_prompt && !model_supports_reasoning(&self.post.model) {
+            assert_eq!(limited_msgs.first().unwrap().role, "system");
+        }
+        let converted_messages = convert_messages_to_openai_format(limited_msgs, &style);
+        big_json["messages"] = json!(converted_messages);
+
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         Ok(prompt.to_string())
     }
@@ -259,86 +256,6 @@ impl ScratchpadAbstract for ChatPassthrough {
     }
 }
 
-fn _remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessage>) {
-    let tool_call_ids: HashSet<_> = messages.iter()
-        .filter(|m| !m.tool_call_id.is_empty())
-        .map(|m| &m.tool_call_id)
-        .cloned()
-        .collect();
-    messages.retain(|m| {
-        if let Some(tool_calls) = &m.tool_calls {
-            let should_retain = tool_calls.iter().all(|tc| tool_call_ids.contains(&tc.id));
-            if !should_retain {
-                tracing::error!("removing assistant message with unanswered tool tool_calls: {:?}", tool_calls);
-            }
-            should_retain
-        } else {
-            true
-        }
-    });
-
-    let tool_call_ids: HashSet<_> = messages.iter()
-        .filter_map(|x| x.tool_calls.clone())
-        .flatten()
-        .map(|x| x.id)
-        .collect();
-    messages.retain(|m| {
-        if !m.tool_call_id.is_empty() && !tool_call_ids.contains(&m.tool_call_id) {
-            tracing::error!("removing tool result with no tool_call: {:?}", m);
-            false
-        } else {
-            true
-        }
-    });
-}
-
-fn _replace_broken_tool_call_messages(
-    messages: &mut Vec<ChatMessage>,
-    sampling_parameters: &mut SamplingParameters,
-    new_max_new_tokens: usize
-) {
-    let high_budget_tools = vec!["create_textdoc", "replace_textdoc"];
-    for message in messages.iter_mut() {
-        if let Some(tool_calls) = &mut message.tool_calls {
-            let incorrect_reasons = tool_calls.iter().map(|tc| {
-                match serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
-                    Ok(_) => None,
-                    Err(err) => { 
-                        Some(format!("broken {}({}): {}", tc.function.name, tc.function.arguments, err))
-                    }
-                }
-            }).filter_map(|x| x).collect::<Vec<_>>();
-            let has_high_budget_tools = tool_calls.iter().any(|tc| high_budget_tools.contains(&tc.function.name.as_str()));
-            if !incorrect_reasons.is_empty() {
-                let extra_message = if message.finish_reason == Some("length".to_string()) {
-                    tracing::warn!("increasing `max_new_tokens` from {} to {}", sampling_parameters.max_new_tokens, new_max_new_tokens);
-                    let tokens_msg = if sampling_parameters.max_new_tokens < new_max_new_tokens {
-                        sampling_parameters.max_new_tokens = new_max_new_tokens;
-                        format!("The message was stripped (finish_reason=`length`), the tokens budget was too small for the tool calls. Increasing `max_new_tokens` to {new_max_new_tokens}.")
-                    } else {
-                        "The message was stripped (finish_reason=`length`), the tokens budget cannot fit those tool calls.".to_string()
-                    };
-                    if has_high_budget_tools {
-                        format!("{tokens_msg} Try to make changes one by one (ie using `update_textdoc()`).")
-                    } else {
-                        format!("{tokens_msg} Change your strategy.")
-                    }
-                } else {    
-                    "".to_string()
-                };
-
-                let incorrect_reasons_concat = incorrect_reasons.join("\n");
-                message.role = "cd_instruction".to_string();
-                message.content = ChatContent::SimpleText(format!("Previous tool calls are not valid: {incorrect_reasons_concat}.\n{extra_message}"));
-                message.tool_calls = None;
-                tracing::error!(
-                    "tool calls are broken, converting the tool call message to the `cd_instruction`:\n{:?}", 
-                    message.content.content_text_only()
-                );
-            }
-        }
-    }
-}
 
 pub fn model_supports_reasoning(model_name: &str) -> bool {
     let known_models: serde_json::Value = serde_json::from_str(crate::known_models::KNOWN_MODELS)

@@ -12,7 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
-use crate::scratchpads::chat_utils_limit_history::limit_messages_history;
+use crate::scratchpads::chat_utils_limit_history::fix_and_limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -22,6 +22,7 @@ const DEBUG: bool = true;
 pub struct GenericChatScratchpad {
     pub t: HasTokenizerAndEot,
     pub dd: DeltaDeltaChatStreamer,
+    #[allow(dead_code)]
     pub post: ChatPost,
     pub messages: Vec<ChatMessage>,
     pub token_bos: String,
@@ -97,12 +98,12 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
         let n_ctx = ccx.lock().await.n_ctx;
-        let (messages, undroppable_msg_n, _any_context_produced) = if self.allow_at {
+        let (messages, _any_context_produced) = if self.allow_at {
             run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
         } else {
-            (self.messages.clone(), self.messages.len(), false)
+            (self.messages.clone(), false)
         };
-        let limited_msgs: Vec<ChatMessage> = limit_messages_history(&self.t, &messages, undroppable_msg_n, self.post.parameters.max_new_tokens, n_ctx)?;
+        let limited_msgs: Vec<ChatMessage> = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None, self.post.model.as_str())?;
         // if self.supports_tools {
         // };
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();

@@ -17,6 +17,8 @@ import { IntegrationsHeader } from "./Header/IntegrationsHeader";
 import styles from "./IntegrationsView.module.css";
 import { IntermediateIntegration } from "./IntermediateIntegration";
 import { useIntegrations } from "./hooks/useIntegrations";
+import classNames from "classnames";
+import { selectConfig } from "../../features/Config/configSlice";
 
 type IntegrationViewProps = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -36,6 +38,8 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   const dispatch = useAppDispatch();
   const globalError = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
+
+  const config = useAppSelector(selectConfig);
 
   const {
     currentIntegration,
@@ -95,7 +99,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     );
   };
 
-  const renderIntegrationForm = (): ReactNode => {
+  const renderIntegrationForm = ({
+    currentHost,
+  }: {
+    currentHost: string;
+  }): ReactNode => {
     if (!currentIntegration) return null;
 
     return (
@@ -128,7 +136,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             timeout={isDeletingIntegration ? 1000 : 3000}
             mx="0"
             onClick={() => dispatch(clearInformation())}
-            className={styles.popup}
+            className={classNames(styles.popup, {
+              [styles.popup_ide]: currentHost !== "web",
+            })}
           >
             {information}
           </InformationCallout>
@@ -138,7 +148,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             mx="0"
             timeout={3000}
             onClick={() => dispatch(clearError())}
-            className={styles.popup}
+            className={classNames(styles.popup, {
+              [styles.popup_ide]: currentHost !== "web",
+            })}
           >
             {globalError}
           </ErrorCallout>
@@ -167,7 +179,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   if (!integrationsMap) {
     return (
       <ErrorCallout
-        className={styles.popup}
+        className={classNames(styles.popup, {
+          [styles.popup_ide]: config.host !== "web",
+        })}
         mx="0"
         onClick={goBackAndClearError}
       >
@@ -182,7 +196,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     }
 
     if (currentIntegration) {
-      return renderIntegrationForm();
+      return renderIntegrationForm({ currentHost: config.host });
     }
 
     return (
@@ -205,7 +219,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
             mx="0"
             timeout={3000}
             onClick={() => dispatch(clearError())}
-            className={styles.popup}
+            className={classNames(styles.popup, {
+              [styles.popup_ide]: config.host !== "web",
+            })}
             preventRetry
           >
             {globalError}

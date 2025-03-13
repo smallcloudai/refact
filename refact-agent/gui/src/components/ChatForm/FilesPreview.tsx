@@ -41,9 +41,9 @@ const Preview: React.FC<{ file: string | ChatContextFile }> = ({ file }) => {
 };
 
 export const FilesPreview: React.FC<{
-  files: (ChatContextFile | string)[];
+  files?: (ChatContextFile | string)[];
 }> = ({ files }) => {
-  if (files.length === 0) return null;
+  if (!files || files.length === 0) return null;
   return (
     <Box p="2" pb="0">
       {files.map((file, i) => {

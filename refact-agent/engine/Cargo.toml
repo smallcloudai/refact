@@ -6,7 +6,7 @@ lto = true
 
 [package]
 name = "refact-lsp"
-version = "0.10.13"
+version = "0.10.14"
 edition = "2021"
 build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -99,6 +99,6 @@ zerocopy = "0.8.14"
 
 # There you can use a local copy:
 mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
-#mcp_client_rs = { path = "../mcp_client_rust" }
+#mcp_client_rs = { path = "../../../mcp_client_rust" }
 
 

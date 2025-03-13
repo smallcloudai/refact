@@ -11,19 +11,23 @@ const PROMPT: &str = r#"
 Your task is to do two things for a conversation between a user and an assistant:
 
 1. **Follow-Up Messages:**
-   - Create up to 3 short follow-up messages that the user might send after the assistant’s last message.
-   - The first message should invite the assistant to keep talking.
+   - Create up to 3 follow-up messages that the user might send after the assistant's last message.
+   - Maximum 3 words each, preferably 1 or 2 words.
    - Each message should have a different meaning.
-   - If there is no clear follow-up or the conversation isn’t asking a question, return an empty list.
+   - If the assistant's last message contains a question, generate different replies that address that question.
+   - If there is no clear follow-up, return an empty list.
+   - If assistant's work looks completed, return an empty list.
+   - If there is nothing but garbage in the text you see, return an empty list.
+   - If not sure, return an empty list.
 
 2. **Topic Change Detection:**
-   - Decide if the user’s latest message is about a different topic from the previous conversation.
+   - Decide if the user's latest message is about a different topic or a different project or a different problem from the previous conversation.
    - A topic change means the new topic is not related to the previous discussion.
 
 Return the result in this JSON format (without extra formatting):
 
 {
-  "follow_ups": ["Follow-up 1", "Follow-up 2"],
+  "follow_ups": ["Follow-up 1", "Follow-up 2", "Follow-up 3", "Follow-up 4", "Follow-up 5"],
   "topic_changed": true
 }
 "#;
@@ -38,13 +42,20 @@ fn _make_conversation(
     messages: &Vec<ChatMessage>
 ) -> Vec<ChatMessage> {
     let mut history_message = "*Conversation:*\n".to_string();
-    for m in messages.iter().rev().take(10) {
+    for m in messages.iter().rev().take(2) {
+        let content = m.content.content_text_only();
+        let limited_content = if content.chars().count() > 5000 {
+            let skip_count = content.chars().count() - 5000;
+            format!("...{}", content.chars().skip(skip_count).collect::<String>())
+        } else {
+            content
+        };
         let message_row = match m.role.as_str() {
             "user" => {
-                format!("👤:{}\n\n", &m.content.content_text_only())
+                format!("👤:{}\n\n", limited_content)
             }
             "assistant" => {
-                format!("🤖:{}\n\n", &m.content.content_text_only())
+                format!("🤖:{}\n\n", limited_content)
             }
             _ => {
                 continue;

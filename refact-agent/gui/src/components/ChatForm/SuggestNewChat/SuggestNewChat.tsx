@@ -1,6 +1,7 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import classNames from "classnames";
 
 import { clearPauseReasonsAndHandleToolsStatus } from "../../../features/ToolConfirmation/confirmationSlice";
 import { useAppDispatch, useAppSelector } from "../../../hooks";
@@ -9,13 +10,14 @@ import { telemetryApi } from "../../../services/refact";
 import {
   newChatAction,
   selectChatId,
+  selectThreadNewChatSuggested,
   setIsNewChatSuggestionRejected,
 } from "../../../features/Chat";
 
 import { Link } from "../../Link";
 
 import styles from "./SuggestNewChat.module.css";
-import classNames from "classnames";
+import { useUsageCounter } from "../../UsageCounter/useUsageCounter";
 
 type SuggestNewChatProps = {
   shouldBeVisible?: boolean;
@@ -26,8 +28,12 @@ export const SuggestNewChat = ({
 }: SuggestNewChatProps) => {
   const dispatch = useAppDispatch();
   const chatId = useAppSelector(selectChatId);
+  const { isMandatory } = useAppSelector(selectThreadNewChatSuggested);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
+
+  const { isWarning, isOverflown: isContextOverflown } = useUsageCounter();
+
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -79,6 +85,14 @@ export const SuggestNewChat = ({
     });
   }, [dispatch, sendTelemetryEvent]);
 
+  const tipText = useMemo(() => {
+    if (isWarning)
+      return "Long chats cause you to reach your usage limits faster.";
+    if (isContextOverflown)
+      return "Maximum available context for this chat is exceeded. Consider starting a new chat.";
+    return "Models perform better for chats which don't switch topics often.";
+  }, [isWarning, isContextOverflown]);
+
   return (
     <Box
       py="3"
@@ -92,22 +106,23 @@ export const SuggestNewChat = ({
     >
       <Flex align="center" justify="between" gap="2">
         <Text size="1">
-          <Text weight="bold">Tip:</Text> Long chats cause you to reach your
-          usage limits faster.
+          <Text weight="bold">Tip:</Text> {tipText}
         </Text>
         <Flex align="center" gap="3" flexShrink="0">
-          <Link size="1" onClick={onCreateNewChat}>
+          <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          <IconButton
-            asChild
-            variant="ghost"
-            color="violet"
-            size="1"
-            onClick={handleClose}
-          >
-            <Cross2Icon />
-          </IconButton>
+          {!isMandatory && (
+            <IconButton
+              asChild
+              variant="ghost"
+              color="violet"
+              size="1"
+              onClick={handleClose}
+            >
+              <Cross2Icon />
+            </IconButton>
+          )}
         </Flex>
       </Flex>
     </Box>

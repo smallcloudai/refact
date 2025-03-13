@@ -22,13 +22,10 @@ use crate::integrations::sessions::IntegrationSession;
 pub struct SettingsMCP {
     #[serde(rename = "command")]
     pub mcp_command: String,
-    #[serde(rename = "args")]
-    pub mcp_args: Vec<String>,
     #[serde(default, rename = "env")]
     pub mcp_env: HashMap<String, String>,
 }
 
-// #[derive(PartialEq)]
 pub struct ToolMCP {
     pub common: IntegrationCommon,
     pub config_path: String,
@@ -44,7 +41,6 @@ pub struct IntegrationMCP {
     pub config_path: String,
 }
 
-// #[derive(Default)]
 pub struct SessionMCP {
     pub debug_name: String,
     pub config_path: String,        // to check if expired or not
@@ -119,69 +115,85 @@ async fn _session_apply_settings(
     let new_cfg_clone = new_cfg.clone();
     let session_arc_clone = session_arc.clone();
 
-    let coroutine = tokio::spawn(async move {
-        tracing::info!("MCP START SESSION LOCK {:?}", session_key_clone);
-        let mut session_locked = session_arc_clone.lock().await;
-        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-        tracing::info!("MCP START SESSION /LOCK {:?}", session_key_clone);
-
-        if session_downcasted.mcp_client.is_some() && new_cfg == session_downcasted.launched_cfg {
-            tracing::info!("MCP NO UPDATE NEEDED {:?}", session_key);
-            return;
-        }
-
-        _session_kill_process(session_downcasted).await;
-
-        let mut client_builder = ClientBuilder::new(new_cfg_clone.mcp_command.as_str());
-        for arg in &new_cfg_clone.mcp_args {
-            client_builder = client_builder.arg(arg);
-        }
-        for (key, value) in &new_cfg_clone.mcp_env {
-            client_builder = client_builder.env(key, value);
-        }
-
-        let client = match client_builder.spawn_and_initialize().await {
-            Ok(client) => client,
-            Err(client_error) => {
-                let err_msg = format!("Failed to initialize {}: {:?}", session_key_clone, client_error);
-                tracing::error!("{}", err_msg);
-                return;
-            }
-        };
-
-        // let set_result = client.request(
-        //     "logging/setLevel",
-        //     Some(serde_json::json!({ "level": "debug" })),
-        // ).await;
-        // match set_result {
-        //     Ok(_) => {
-        //         tracing::info!("MCP START SESSION (2) set log level success");
-        //     }
-        //     Err(e) => {
-        //         tracing::info!("MCP START SESSION (2) failed to set log level: {:?}", e);
-        //     }
-        // }
-
-        tracing::info!("MCP START SESSION (2) {:?}", session_key_clone);
-        let tools_result = match client.list_tools().await {
-            Ok(result) => result,
-            Err(tools_error) => {
-                let err_msg = format!("Failed to list tools for {}: {:?}", session_key_clone, tools_error);
-                tracing::error!("{}", err_msg);
-                return;
-            }
-        };
-
-        tracing::info!("MCP START SESSION (3) {:?}", session_key_clone);
-        let mcp_client = Arc::new(AMutex::new(client));
-        session_downcasted.mcp_client = Some(mcp_client.clone());
-        session_downcasted.mcp_tools = tools_result.tools.clone();
-        session_downcasted.launched_cfg = new_cfg_clone.clone();
-    });
-
     {
         let mut session_locked = session_arc.lock().await;
         let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+
+        let coroutine = tokio::spawn(async move {
+            // tracing::info!("MCP START SESSION LOCK {:?}", session_key_clone);
+            let mut session_locked = session_arc_clone.lock().await;
+            let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+            // tracing::info!("MCP START SESSION /LOCK {:?}", session_key_clone);
+
+            if session_downcasted.mcp_client.is_some() && new_cfg == session_downcasted.launched_cfg {
+                // tracing::info!("MCP NO UPDATE NEEDED {:?}", session_key);
+                return;
+            }
+
+            _session_kill_process(session_downcasted).await;
+
+            let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
+                Ok(args) => {
+                    if args.is_empty() {
+                        tracing::info!("Empty command");
+                        return;
+                    }
+                    args
+                }
+                Err(e) => {
+                    tracing::info!("Failed to parse command: {}", e);
+                    return;
+                }
+            };
+
+            let mut client_builder = ClientBuilder::new(&parsed_args[0]);
+            for arg in parsed_args.iter().skip(1) {
+                client_builder = client_builder.arg(arg);
+            }
+            for (key, value) in &new_cfg_clone.mcp_env {
+                client_builder = client_builder.env(key, value);
+            }
+
+            #[allow(unused_mut)]
+            let mut client = match client_builder.spawn_and_initialize().await {
+                Ok(client) => client,
+                Err(client_error) => {
+                    let err_msg = format!("Failed to initialize {}: {:?}", session_key_clone, client_error);
+                    tracing::error!("{}", err_msg);
+                    return;
+                }
+            };
+
+            // let set_result = client.request(
+            //     "logging/setLevel",
+            //     Some(serde_json::json!({ "level": "debug" })),
+            // ).await;
+            // match set_result {
+            //     Ok(_) => {
+            //         tracing::info!("MCP START SESSION (2) set log level success");
+            //     }
+            //     Err(e) => {
+            //         tracing::info!("MCP START SESSION (2) failed to set log level: {:?}", e);
+            //     }
+            // }
+
+            tracing::info!("MCP START SESSION (2) {:?}", session_key_clone);
+            let tools_result = match client.list_tools().await {
+                Ok(result) => result,
+                Err(tools_error) => {
+                    let err_msg = format!("Failed to list tools for {}: {:?}", session_key_clone, tools_error);
+                    tracing::error!("{}", err_msg);
+                    return;
+                }
+            };
+
+            tracing::info!("MCP START SESSION (3) {:?}", session_key_clone);
+            let mcp_client = Arc::new(AMutex::new(client));
+            session_downcasted.mcp_client = Some(mcp_client.clone());
+            session_downcasted.mcp_tools = tools_result.tools.clone();
+            session_downcasted.launched_cfg = new_cfg_clone.clone();
+        });
+
         session_downcasted.launched_coroutines.push(coroutine);
     }
 }
@@ -300,50 +312,12 @@ impl Tool for ToolMCP {
         let session = session_option.unwrap();
         _session_wait_coroutines(session.clone()).await;
 
-        let mut json_arguments: serde_json::Value = serde_json::json!({});
-        if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {
-            if let Some(serde_json::Value::Object(properties)) = schema.get("properties") {
-                for (name, prop) in properties {
-                    if let Some(prop_type) = prop.get("type") {
-                        match prop_type.as_str().unwrap_or("") {
-                            "string" => {
-                                if let Some(arg_value) = args.get(name) {
-                                    json_arguments[name] = serde_json::Value::String(arg_value.as_str().unwrap_or("").to_string());
-                                }
-                            },
-                            "integer" => {
-                                if let Some(arg_value) = args.get(name) {
-                                    json_arguments[name] = serde_json::Value::Number(arg_value.as_i64().unwrap_or(0).into());
-                                }
-                            },
-                            "boolean" => {
-                                if let Some(arg_value) = args.get(name) {
-                                    json_arguments[name] = serde_json::Value::Bool(arg_value.as_bool().unwrap_or(false));
-                                }
-                            },
-                            _ => {
-                                tracing::warn!("Unsupported argument type: {}", prop_type);
-                            }
-                        }
-                    }
-                }
-            }
-            if let Some(serde_json::Value::Array(required)) = schema.get("required") {
-                for req in required {
-                    if let Some(req_str) = req.as_str() {
-                        if !json_arguments.as_object().unwrap().contains_key(req_str) {
-                            return Err(format!("Missing required argument: {}", req_str));
-                        }
-                    }
-                }
-            }
-        }
-
-        tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_arguments);
-
+        let json_args = serde_json::json!(args);
+        tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args);
         let tool_output = {
-            let mcp_client_locked = self.mcp_client.lock().await;
-            let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_arguments).await;
+            #[allow(unused_mut)]
+            let mut mcp_client_locked = self.mcp_client.lock().await;
+            let result_probably: Result<mcp_client_rs::CallToolResult, mcp_client_rs::Error> = mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_args).await;
 
             match result_probably {
                 Ok(result) => {
@@ -427,9 +401,9 @@ impl Tool for ToolMCP {
         }
 
         ToolDesc {
-            name: self.mcp_tool.name.clone(),
+            name: self.tool_name(),
             agentic: true,
-            experimental: true,
+            experimental: false,
             description: self.mcp_tool.description.clone(),
             parameters,
             parameters_required,
@@ -437,7 +411,15 @@ impl Tool for ToolMCP {
     }
 
     fn tool_name(&self) -> String  {
-        self.mcp_tool.name.clone()
+        let yaml_name = std::path::Path::new(&self.config_path)
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .unwrap_or("unknown");
+        let sanitized_yaml_name = format!("{}_{}", yaml_name, self.mcp_tool.name)
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>();
+        sanitized_yaml_name
     }
 
     fn command_to_match_against_confirm_deny(
@@ -462,9 +444,7 @@ pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:
   command:
     f_type: string
-    f_desc: "The MCP command to execute, typically `npx`, `/my/path/venv/python`, or `docker`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
-  args:
-    f_type: string_array
+    f_desc: "The MCP command to execute, like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
   env:
     f_type: string_to_string_map
 description: |
@@ -477,4 +457,12 @@ available:
 confirmation:
   ask_user_default: ["*"]
   deny_default: []
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: >
+          🔧 Your job is to test %CURRENT_CONFIG%. Tools that this MCP server has created should be visible to you. Don't search anything, it should be visible as
+          a tools already. Run one and express happiness. If something does wrong, or you don't see the tools, ask user if they want to fix it by rewriting the config.
+    sl_enable_only_with_tool: true
 "#;

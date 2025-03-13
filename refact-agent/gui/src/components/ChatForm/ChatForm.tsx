@@ -14,9 +14,7 @@ import {
   useOnPressedEnter,
   useIsOnline,
   useConfig,
-  useAgentUsage,
   useCapsForToolUse,
-  USAGE_LIMIT_EXHAUSTED_MESSAGE,
   useSendChatRequest,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
@@ -33,7 +31,6 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
@@ -48,12 +45,16 @@ import {
   selectIsWaiting,
   selectMessages,
   selectPreventSend,
+  // selectThreadMaximumTokens,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
+import { TokensPreview } from "./TokensPreview";
+// import { useUsageCounter } from "../UsageCounter/useUsageCounter";
+import classNames from "classnames";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -79,7 +80,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
-  const { disableInput } = useAgentUsage();
   const isOnline = useIsOnline();
   const { retry } = useSendChatRequest();
 
@@ -87,6 +87,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
+  // const currentThreadMaximumContextTokens = useAppSelector(
+  //   selectThreadMaximumTokens,
+  // );
+
+  // const { isOverflown: arePromptTokensBiggerThanContext, currentThreadUsage } =
+  //   useUsageCounter();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent" && toolUse === "agent";
@@ -109,6 +115,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
+    // if (
+    //   currentThreadMaximumContextTokens &&
+    //   currentThreadUsage?.prompt_tokens &&
+    //   currentThreadUsage.prompt_tokens > currentThreadMaximumContextTokens
+    // )
+    //   return false;
+    // if (arePromptTokensBiggerThanContext) return true;
     if (messages.length === 0) return false;
     return isWaiting || isStreaming || !isOnline || preventSend;
   }, [isOnline, isStreaming, isWaiting, preventSend, messages, allDisabled]);
@@ -159,10 +172,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
-    if (disableInput) {
-      const action = setInformation(USAGE_LIMIT_EXHAUSTED_MESSAGE);
-      dispatch(action);
-    } else if (!disableSend && trimmedValue.length > 0) {
+    if (!disableSend && trimmedValue.length > 0) {
       const valueIncludingChecks = addCheckboxValuesToInput(
         trimmedValue,
         checkboxes,
@@ -175,9 +185,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     }
   }, [
     value,
-    disableInput,
     disableSend,
-    dispatch,
     checkboxes,
     setFileInteracted,
     setLineSelectionInteracted,
@@ -323,7 +331,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         {shouldAgentCapabilitiesBeShown && <AgentCapabilities />}
         <Form
           disabled={disableSend}
-          className={className}
+          className={classNames(styles.chatForm__form, className)}
           onSubmit={handleSubmit}
         >
           <FilesPreview files={previewFiles} />
@@ -352,33 +360,40 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex gap="2" className={styles.buttonGroup}>
-            {toolUse === "agent" && (
-              <AgentIntegrationsButton
-                title="Set up Agent Integrations"
+          <Flex
+            className={styles.textareaInteractive}
+            align="center"
+            justify="between"
+          >
+            <Flex gap="2" align="center" className={styles.buttonGroup}>
+              <TokensPreview currentMessageQuery={value} />
+              {toolUse === "agent" && (
+                <AgentIntegrationsButton
+                  title="Set up Agent Integrations"
+                  size="1"
+                  type="button"
+                  onClick={handleAgentIntegrationsClick}
+                  ref={(x) => refs.setSetupIntegrations(x)}
+                />
+              )}
+              {onClose && (
+                <BackToSideBarButton
+                  disabled={isStreaming}
+                  title="Return to sidebar"
+                  size="1"
+                  onClick={onClose}
+                />
+              )}
+              {config.features?.images !== false &&
+                isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
+              {/* TODO: Reserved space for microphone button coming later on */}
+              <PaperPlaneButton
+                disabled={disableSend}
+                title="Send message"
                 size="1"
-                type="button"
-                onClick={handleAgentIntegrationsClick}
-                ref={(x) => refs.setSetupIntegrations(x)}
+                type="submit"
               />
-            )}
-            {onClose && (
-              <BackToSideBarButton
-                disabled={isStreaming}
-                title="Return to sidebar"
-                size="1"
-                onClick={onClose}
-              />
-            )}
-            {config.features?.images !== false &&
-              isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
-            {/* TODO: Reserved space for microphone button coming later on */}
-            <PaperPlaneButton
-              disabled={disableSend || disableInput}
-              title="Send message"
-              size="1"
-              type="submit"
-            />
+            </Flex>
           </Flex>
         </Form>
       </Flex>

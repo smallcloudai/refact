@@ -1,4 +1,4 @@
-import { createReducer } from "@reduxjs/toolkit";
+import { createReducer, Draft } from "@reduxjs/toolkit";
 import {
   Chat,
   ChatThread,
@@ -35,13 +35,25 @@ import {
   fixBrokenToolMessages,
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
+  upsertToolCall,
+  setIsNewChatCreationMandatory,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
+  ChatMessages,
+  commandsApi,
   DEFAULT_MAX_NEW_TOKENS,
+  isAssistantMessage,
+  isChatResponseChoice,
+  isDiffMessage,
+  isMultiModalToolResult,
   isToolCallMessage,
+  isToolMessage,
+  ToolCall,
+  ToolMessage,
   validateToolCall,
 } from "../../../services/refact";
+import { capsApi } from "../../../services/refact";
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -82,7 +94,7 @@ const getThreadMode = ({
     return maybeMode === "CONFIGURE" ? "AGENT" : maybeMode;
   }
 
-  return chatModeToLspMode(tool_use);
+  return chatModeToLspMode({ toolUse: tool_use });
 };
 
 const createInitialState = ({
@@ -113,7 +125,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setToolUse, (state, action) => {
     state.thread.tool_use = action.payload;
     state.tool_use = action.payload;
-    state.thread.mode = chatModeToLspMode(action.payload);
+    state.thread.mode = chatModeToLspMode({ toolUse: action.payload });
   });
 
   builder.addCase(setPreventSend, (state, action) => {
@@ -176,6 +188,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = true;
     state.waiting_for_response = false;
     state.thread.messages = messages;
+    // maybe update thread usage here.
+    if (isChatResponseChoice(action.payload) && action.payload.usage) {
+      state.thread.usage = action.payload.usage;
+    }
   });
 
   builder.addCase(backUpMessages, (state, action) => {
@@ -215,6 +231,14 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.new_chat_suggested = {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
+    };
+  });
+
+  builder.addCase(setIsNewChatCreationMandatory, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.new_chat_suggested = {
+      ...state.thread.new_chat_suggested,
+      isMandatory: action.payload.value,
     };
   });
 
@@ -291,6 +315,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       integration: action.payload.integration,
       maybeMode: "CONFIGURE",
     });
+    next.thread.last_user_message_id = action.payload.request_attempt_id;
     next.thread.integration = action.payload.integration;
     next.thread.messages = action.payload.messages;
 
@@ -334,4 +359,124 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const newMessage = { ...lastMessage, tool_calls: validToolCalls };
     state.thread.messages = [...messages, newMessage];
   });
+
+  builder.addCase(upsertToolCall, (state, action) => {
+    // if (action.payload.toolCallId !== state.thread.id && !(action.payload.chatId in state.cache)) return state;
+    if (action.payload.chatId === state.thread.id) {
+      maybeAppendToolCallResultFromIdeToMessages(
+        state.thread.messages,
+        action.payload.toolCallId,
+        action.payload.accepted,
+      );
+    } else if (action.payload.chatId in state.cache) {
+      const thread = state.cache[action.payload.chatId];
+      maybeAppendToolCallResultFromIdeToMessages(
+        thread.messages,
+        action.payload.toolCallId,
+        action.payload.accepted,
+        action.payload.replaceOnly,
+      );
+    }
+  });
+
+  builder.addMatcher(
+    capsApi.endpoints.getCaps.matchFulfilled,
+    (state, action) => {
+      const defaultModel = action.payload.code_chat_default_model;
+
+      const model = state.thread.model || defaultModel;
+      if (!(model in action.payload.code_chat_models)) return;
+
+      const currentModelMaximumContextTokens =
+        action.payload.code_chat_models[model].n_ctx;
+
+      state.thread.currentMaximumContextTokens =
+        currentModelMaximumContextTokens;
+    },
+  );
+
+  builder.addMatcher(
+    commandsApi.endpoints.getCommandPreview.matchFulfilled,
+    (state, action) => {
+      state.thread.currentMaximumContextTokens = action.payload.number_context;
+      state.thread.currentMessageContextTokens = action.payload.current_context; // assuming that this number is amount of tokens per current message
+    },
+  );
 });
+
+export function maybeAppendToolCallResultFromIdeToMessages(
+  messages: Draft<ChatMessages>,
+  toolCallId: string,
+  accepted: boolean | "indeterminate",
+  replaceOnly = false,
+) {
+  const hasDiff = messages.find(
+    (d) => isDiffMessage(d) && d.tool_call_id === toolCallId,
+  );
+  if (hasDiff) return;
+
+  const maybeToolResult = messages.find(
+    (d) => isToolMessage(d) && d.content.tool_call_id === toolCallId,
+  );
+
+  const toolCalls = messages.reduce<ToolCall[]>((acc, message) => {
+    if (!isAssistantMessage(message)) return acc;
+    if (!message.tool_calls) return acc;
+    return acc.concat(message.tool_calls);
+  }, []);
+
+  const maybeToolCall = toolCalls.find(
+    (toolCall) => toolCall.id === toolCallId,
+  );
+
+  const message = messageForToolCall(accepted, maybeToolCall);
+
+  if (replaceOnly && !maybeToolResult) return;
+
+  if (
+    maybeToolResult &&
+    isToolMessage(maybeToolResult) &&
+    typeof maybeToolResult.content.content === "string"
+  ) {
+    maybeToolResult.content.content = message;
+    return;
+  } else if (
+    maybeToolResult &&
+    isToolMessage(maybeToolResult) &&
+    isMultiModalToolResult(maybeToolResult.content)
+  ) {
+    maybeToolResult.content.content.push({
+      m_type: "text",
+      m_content: message,
+    });
+    return;
+  }
+
+  const assistantMessageIndex = messages.findIndex((message) => {
+    if (!isAssistantMessage(message)) return false;
+    return message.tool_calls?.find((toolCall) => toolCall.id === toolCallId);
+  });
+
+  if (assistantMessageIndex === -1) return;
+  const toolMessage: ToolMessage = {
+    role: "tool",
+    content: {
+      content: message,
+      tool_call_id: toolCallId,
+    },
+  };
+
+  messages.splice(assistantMessageIndex + 1, 0, toolMessage);
+}
+
+function messageForToolCall(
+  accepted: boolean | "indeterminate",
+  toolCall?: ToolCall,
+) {
+  if (accepted === false && toolCall?.function.name) {
+    return `Whoops the user didn't like the command ${toolCall.function.name}. Stop and ask for correction from the user.`;
+  }
+  if (accepted === false) return "The user rejected the changes.";
+  if (accepted === true) return "The user accepted the changes.";
+  return "The user may have made modifications to changes.";
+}

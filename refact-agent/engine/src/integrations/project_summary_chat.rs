@@ -9,7 +9,7 @@ use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 pub async fn mix_project_summary_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
-    chat_meta: &ChatMeta,
+    _chat_meta: &ChatMeta,
     messages: &mut Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
 ) {
@@ -29,7 +29,6 @@ pub async fn mix_project_summary_messages(
 
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("project_summary").unwrap();
     let mut sp_text = sp.text.clone();
-    sp_text = sp_text.replace("%CONFIG_PATH%", &chat_meta.current_config_file);
 
     if sp_text.contains("%ALL_INTEGRATIONS%") {
         let allow_experimental = gcx.read().await.cmdline.experimental;

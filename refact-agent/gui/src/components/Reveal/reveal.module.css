@@ -34,3 +34,21 @@
     transparent 100%
   );
 }
+
+.reveal_hidden_exposed {
+  color: var(--accent-11);
+  background-color: var(--color-background);
+  position: absolute;
+  max-height: 6em;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  mask-image: linear-gradient(
+    to top,
+    var(--color-background) 0%,
+    transparent 100%
+  );
+  &:hover {
+    background-color: var(--accent-a3);
+  }
+}

@@ -18,6 +18,7 @@ import {
   CHAT_CONFIG_THREAD,
   STUB_LINKS_FOR_CHAT_RESPONSE,
   CHAT_WITH_TEXTDOC,
+  MARKDOWN_ISSUE,
 } from "../../__fixtures__";
 import { http, HttpResponse } from "msw";
 import { CHAT_LINKS_URL } from "../../services/refact/consts";
@@ -161,6 +162,28 @@ export const IntegrationChat: Story = {
 export const TextDoc: Story = {
   args: {
     thread: CHAT_WITH_TEXTDOC,
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        // noChatLinks,
+        noTools,
+        makeKnowledgeFromChat,
+        ToolConfirmation,
+        noCompletions,
+        noCommandPreview,
+      ],
+    },
+  },
+};
+
+export const MarkdownIssue: Story = {
+  args: {
+    thread: MARKDOWN_ISSUE,
   },
   parameters: {
     msw: {

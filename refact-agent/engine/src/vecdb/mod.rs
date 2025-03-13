@@ -4,4 +4,6 @@ pub mod vdb_structs;
 pub mod vdb_remote;
 pub mod vdb_sqlite;
 pub mod vdb_emb_aux;
+pub mod vdb_error;
+pub mod vdb_init;
 pub mod vectorizer_service;

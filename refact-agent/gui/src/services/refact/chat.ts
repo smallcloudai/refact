@@ -109,11 +109,28 @@ export type DeterministicMessage = {
   usage: unknown;
 };
 
+type CompletionTokenDetails = {
+  accepted_prediction_tokens: number;
+  audio_tokens: number;
+  reasoning_tokens: number;
+  rejected_prediction_tokens: number;
+};
+
+type PromptTokenDetails = {
+  audio_tokens: number;
+  cached_tokens: number;
+};
+
 export type Usage = {
   completion_tokens: number;
   prompt_tokens: number;
   total_tokens: number;
+  completion_tokens_details: CompletionTokenDetails | null;
+  prompt_tokens_details: PromptTokenDetails | null;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 };
+
 // TODO: add config url
 export async function sendChat({
   messages,
@@ -128,7 +145,6 @@ export async function sendChat({
   tools,
   port = 8001,
   apiKey,
-  toolsConfirmed = true,
   checkpointsEnabled = true,
   // isConfig = false,
   integration,
@@ -152,7 +168,6 @@ export async function sendChat({
     tools,
     max_tokens: max_new_tokens,
     only_deterministic_messages,
-    tools_confirmation: toolsConfirmed,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
     meta: {
@@ -190,8 +205,8 @@ export async function sendChat({
 
 export async function generateChatTitle({
   messages,
-  model,
   stream,
+  model,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
   port = 8001,
@@ -199,10 +214,10 @@ export async function generateChatTitle({
 }: GetChatTitleArgs): Promise<Response> {
   const body = JSON.stringify({
     messages,
-    model: model,
+    model,
     stream,
     max_tokens: 300,
-    only_deterministic_messages,
+    only_deterministic_messages: only_deterministic_messages,
     chat_id,
   });
 

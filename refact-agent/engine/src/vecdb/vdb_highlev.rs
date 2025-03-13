@@ -65,115 +65,6 @@ pub struct VecDb {
     pub constants: VecdbConstants,
 }
 
-async fn vecdb_test_request(
-    vecdb: &VecDb,
-    api_key: &String,
-) -> Result<(), String> {
-    let search_result = vecdb.vecdb_search("test query".to_string(), 3, None, api_key).await;
-    match search_result {
-        Ok(_) => {
-            Ok(())
-        }
-        Err(e) => {
-            error!("vecdb: test search failed: {}", e);
-            Err("test search failed".to_string())
-        }
-    }
-}
-
-async fn _create_vecdb( 
-    gcx: Arc<ARwLock<GlobalContext>>,
-    background_tasks: &mut BackgroundTasksHolder,
-    constants: VecdbConstants,
-) -> Result<(), String> {
-    info!("vecdb: attempting to launch");
-    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
-    if let Err(err) = api_key {
-        return Err(err.message);
-    }
-
-    let (cache_dir, config_dir, cmdline) = {
-        let gcx_locked = gcx.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
-    };
-    let api_key = api_key.unwrap();
-
-    let (base_dir_cache, _) = match cmdline.vecdb_force_path.as_str() {
-        "" => (cache_dir, config_dir.clone()),
-        path => (PathBuf::from(path), PathBuf::from(path)),
-    };
-    
-    // Get the memdb from global context - it should be initialized before this function is called
-    let memdb = match gcx.read().await.memdb.clone() {
-        Some(db) => db.clone(),
-        None => {
-            return Err("MemDb should be initialized before VecDb".to_string());
-        }
-    };
-    
-    // Step 2: Initialize VecDb
-    let vec_db_mb = match VecDb::init(
-        &base_dir_cache,
-        cmdline.clone(),
-        constants.clone(),
-    ).await {
-        Ok(res) => Some(res),
-        Err(err) => {
-            error!("Ooops database is broken!
-                Last error message: {}
-                You can report this issue here:
-                https://github.com/smallcloudai/refact-lsp/issues
-                Also, you can run this to erase your db:
-                `rm -rf ~/.cache/refact/refact_vecdb_cache`
-                After that restart this LSP server or your IDE.", err);
-            
-            return Err(err);
-        }
-    };
-    let vec_db = vec_db_mb.unwrap();
-
-    match vecdb_test_request(&vec_db, &api_key).await {
-        Ok(_) => {}
-        Err(s) => { return Err(s); }
-    }
-    info!("vecdb: test request complete");
-
-    // Step 3: Initialize FileVectorizerService
-    info!("Initializing FileVectorizerService");
-    use crate::vecdb::vectorizer_service::FileVectorizerService;
-    let vectorizer_service = FileVectorizerService::new(
-        vec_db.vecdb_handler.clone(),
-        constants.clone(),
-        api_key.clone(),
-        memdb.clone(),
-    ).await;
-
-    // Store VecDb and FileVectorizerService in global context
-    let vec_db_arc = Arc::new(AMutex::new(Some(vec_db)));
-    {
-        let mut gcx_locked = gcx.write().await;
-        gcx_locked.vec_db = vec_db_arc.clone();
-        gcx_locked.vectorizer_service = Arc::new(AMutex::new(Some(vectorizer_service.clone())));
-    }
-    
-    // Step 4: Start vectorizer background tasks
-    info!("Starting vectorizer background tasks");
-    let vectorizer_service_arc = Arc::new(AMutex::new(vectorizer_service));
-    use crate::vecdb::vectorizer_service::start_vectorizer_background_tasks;
-    let tasks = start_vectorizer_background_tasks(
-        vec_db_arc.lock().await.as_ref().unwrap().vecdb_emb_client.clone(),
-        vectorizer_service_arc.clone(),
-        gcx.clone()
-    ).await;
-    background_tasks.extend(tasks);
-    
-    // Enqueue files for vectorization
-    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, true).await;
-    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, true).await;
-
-    Ok(())
-}
-
 async fn do_i_need_to_reload_vecdb(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (bool, Option<VecdbConstants>) {
@@ -260,31 +151,34 @@ pub async fn vecdb_background_reload(
         }
         if need_reload && consts.is_some() {
             background_tasks = BackgroundTasksHolder::new(vec![]);
-            
+
             // Initialize MemDb first if not already present
             let config_dir = gcx.read().await.config_dir.clone();
             let constants = consts.unwrap();
             let reset_memory = gcx.read().await.cmdline.reset_memory;
-            
-            if gcx.read().await.memdb.is_none() {
-                info!("Initializing memdb in vecdb_background_reload");
-                let memdb = crate::memdb::db_init::memdb_init(&config_dir, &constants, reset_memory).await;
-                let mut gcx_locked = gcx.write().await;
-                gcx_locked.memdb = Some(memdb.clone());
-            }
-            
-            // Then initialize VecDb and FileVectorizerService
-            match _create_vecdb(
+
+            // Use the fail-safe initialization with retries
+            let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
+                max_attempts: 5,
+                initial_delay_ms: 10,
+                max_delay_ms: 1000,
+                backoff_factor: 2.0,
+                test_search_after_init: true,
+            };
+            match crate::vecdb::vdb_init::initialize_vecdb_with_context(
                 gcx.clone(),
                 &mut background_tasks,
-                constants,
+                consts.unwrap(),
+                Some(init_config),
             ).await {
                 Ok(_) => {
                     gcx.write().await.vec_db_error = "".to_string();
+                    info!("vecdb: initialization successful");
                 }
                 Err(err) => {
-                    gcx.write().await.vec_db_error = err.clone();
-                    error!("vecdb init failed: {}", err);
+                    let err_msg = err.to_string();
+                    gcx.write().await.vec_db_error = err_msg.clone();
+                    error!("vecdb init failed: {}", err_msg);
                     // gcx.vec_db stays None, the rest of the system continues working
                 }
             }
