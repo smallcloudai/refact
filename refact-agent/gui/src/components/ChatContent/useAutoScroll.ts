@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useLayoutEffect,
-} from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useAppSelector } from "../../hooks";
 import {
   selectIsStreaming,

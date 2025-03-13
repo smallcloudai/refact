@@ -3,7 +3,7 @@ import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 
 import { ScrollAreaWithAnchor } from ".";
-import { Flex, Text, Container, Theme, Card } from "@radix-ui/themes";
+import { Text, Container, Theme, Card } from "@radix-ui/themes";
 
 const meta = {
   title: "Scroll Area Anchor",
