@@ -17,6 +17,7 @@ type State = {
   scrollRef: RefObject<HTMLDivElement> | null;
   anchorRef: RefObject<HTMLDivElement> | null;
   scroll: boolean;
+  scrolled: boolean;
 };
 
 type Action =
@@ -31,7 +32,8 @@ type Action =
   | {
       type: "set_scroll";
       payload: boolean;
-    };
+    }
+  | { type: "set_scrolled"; payload: boolean };
 
 type Dispatch = (action: Action) => void;
 
@@ -61,6 +63,13 @@ function scrollAreaWithAnchorReducer(state: State, action: Action) {
       };
     }
 
+    case "set_scrolled": {
+      return {
+        ...state,
+        scrolled: action.payload,
+      };
+    }
+
     default:
       return state;
   }
@@ -75,6 +84,7 @@ const Provider: React.FC<ScrollAreaProps> = ({ children, ...props }) => {
     innerRef: innerRef,
     anchorRef: null,
     scroll: false,
+    scrolled: false,
   });
 
   return (
@@ -108,13 +118,14 @@ const BottomSpace: React.FC = () => {
   const [height, setHeight] = useState<number>(0);
   const bottomSpaceRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // TODO: calculate space needed from anchor to bottom
     if (
       !state.scrollRef?.current ||
       !state.innerRef?.current ||
-      !state.anchorRef?.current
-    )
+      !state.anchorRef?.current ||
+      state.scrolled
+    ) {
       return;
+    }
 
     // console.log(
     //   state.scrollRef.current.clientHeight,
@@ -138,7 +149,31 @@ const BottomSpace: React.FC = () => {
 
     // case viewport is big enough to scroll, but there's not enough room at the end
     // anchor ref and this should be client height away from each other
-  }, [state.scrollRef, state.innerRef, height, state.anchorRef, dispatch]);
+    const scrollViewportHeight = state.scrollRef.current.clientHeight;
+    const anchorPosition = state.anchorRef.current.offsetTop;
+    const contentHeight = state.innerRef.current.clientHeight;
+
+    // Calculate the distance from the anchor to the bottom of the content
+    const distanceToBottom = contentHeight - anchorPosition;
+
+    // If the distance from anchor to bottom is less than viewport height,
+    // we need to add extra space to ensure the anchor can be properly scrolled to
+    if (distanceToBottom < scrollViewportHeight) {
+      const additionalSpace = scrollViewportHeight - distanceToBottom;
+      setHeight(height + additionalSpace);
+      dispatch({ type: "set_scroll", payload: true });
+    } else {
+      // There's already enough space, just enable scrolling
+      dispatch({ type: "set_scroll", payload: true });
+    }
+  }, [
+    state.scrollRef,
+    state.innerRef,
+    height,
+    state.anchorRef,
+    dispatch,
+    state.scrolled,
+  ]);
 
   return <Box ref={bottomSpaceRef} style={{ height: height }} />;
 };
@@ -157,11 +192,11 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
   }, [dispatch, anchorRef]);
 
   useLayoutEffect(() => {
-    if (state.anchorRef?.current && state.scroll) {
+    if (state.anchorRef?.current && state.scroll && !state.scrolled) {
       state.anchorRef.current.scrollIntoView(scrollTo);
-      dispatch({ type: "set_scroll", payload: false });
+      dispatch({ type: "set_scrolled", payload: true });
     }
-  }, [state.anchorRef, scrollTo, state.scroll, dispatch]);
+  }, [state.anchorRef, scrollTo, state.scroll, dispatch, state.scrolled]);
 
   return (
     <Box ref={anchorRef} title="anchor">
