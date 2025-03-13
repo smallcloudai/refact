@@ -343,8 +343,7 @@ class BaseCompletionsRouter(APIRouter):
             if model_info := self._model_assigner.models_db.get(model_name):
                 # convert into ModelRecord (see lsp)
                 pass
-            else:
-                model = ThirdPartyModel(model_name)
+            elif model := available_third_party_models().get(model_name):
                 completion_models.append(model.to_completion_model_record())
 
         # chat models
@@ -402,7 +401,7 @@ class BaseCompletionsRouter(APIRouter):
                 "endpoint": "/v1/completions",
                 "models": completion_models,
                 "default_model": completion_default_model,
-                "default_multiline_model": chat_default_model,
+                "default_multiline_model": completion_default_model,
             },
 
             "chat": {
