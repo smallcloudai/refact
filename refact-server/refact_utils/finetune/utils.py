@@ -8,7 +8,6 @@ from typing import List
 
 from refact_utils.scripts import env
 from refact_utils.third_party.utils import available_third_party_models
-from refact_utils.third_party.utils import get_third_party_model_capabilities
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 from typing import Any, Dict, Union
@@ -112,12 +111,11 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
                 val = f"{k}:{run['run_id']}:{run['checkpoint']}"
                 add_result(val, model_dict)
 
-    for mode_name in available_third_party_models():
-        caps = get_third_party_model_capabilities(mode_name)
-        if "chat" in caps:
-            result["chat"].append(mode_name)
-        if "completion" in caps:
-            result["completion"].append(mode_name)
+    for model in available_third_party_models().values():
+        if model.supports_chat:
+            result["chat"].append(model.name)
+        if model.supports_completion:
+            result["completion"].append(model.name)
 
     return result
 
