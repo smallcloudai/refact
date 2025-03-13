@@ -15,12 +15,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_utils.third_party.utils import resolve_third_party_model
 from refact_utils.third_party.utils import available_third_party_models
-from refact_utils.third_party.utils import get_third_party_model_path
-from refact_utils.third_party.utils import get_third_party_context_size
-from refact_utils.third_party.utils import is_third_party_supports_tools
-from refact_utils.third_party.utils import compose_usage_dict
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -230,18 +225,26 @@ class BaseCompletionsRouter(APIRouter):
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
+
         for model_name in models_available:
+            if model_name not in self._model_assigner.models_db:
+                continue
             d = {}
-            if model_name in self._model_assigner.models_db:
-                if n_ctx := self._model_assigner.model_assignment["model_assign"][model_name].get("n_ctx"):
-                    d["n_ctx"] = n_ctx
-                if filter_caps := self._model_assigner.models_db[model_name].get("filter_caps", []):
-                    d["supports_tools"] = "tools" in filter_caps
-            elif model_name in available_third_party_models():
-                if n_ctx := get_third_party_context_size(model_name):
-                    d["n_ctx"] = n_ctx
-                d["supports_tools"] = is_third_party_supports_tools(model_name)
+            if n_ctx := self._model_assigner.model_assignment["model_assign"][model_name].get("n_ctx"):
+                d["n_ctx"] = n_ctx
+            if filter_caps := self._model_assigner.models_db[model_name].get("filter_caps", []):
+                d["supports_tools"] = "tools" in filter_caps
             rewrite_dict[model_name] = d
+
+        for model in available_third_party_models().values():
+            if model.name not in models_available:
+                continue
+            d = {}
+            if n_ctx := model.n_ctx:
+                d["n_ctx"] = n_ctx
+            d["supports_tools"] = model.supports_tools
+            rewrite_dict[model.name] = d
+
         return rewrite_dict
 
     def _caps_base_data(self) -> Dict[str, Any]:
@@ -332,23 +335,21 @@ class BaseCompletionsRouter(APIRouter):
 
         return data
 
-    async def _passthrough_tokenizer(self, model_path: str) -> str:
+    async def _passthrough_tokenizer(self, uri: str) -> str:
         try:
             async with aiohttp.ClientSession() as session:
-                tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
-                async with session.get(tokenizer_url) as resp:
+                async with session.get(uri) as resp:
                     return await resp.text()
         except:
-            raise HTTPException(404, detail=f"can't load tokenizer.json for passthrough {model_path}")
+            raise HTTPException(404, detail=f"can't load tokenizer.json from `{uri}`")
 
     async def _tokenizer(self, model_name: str):
         model_name = model_name.replace("--", "/")
         if model_name in self._model_assigner.models_db:
             model_path = self._model_assigner.models_db[model_name]["model_path"]
             data = await self._local_tokenizer(model_path)
-        elif model_name in available_third_party_models():
-            model_path = get_third_party_model_path(model_name)
-            data = await self._passthrough_tokenizer(model_path)
+        elif model := available_third_party_models().get(model_name):
+            data = await self._passthrough_tokenizer(model.tokenizer_uri)
         else:
             raise HTTPException(404, detail=f"model '{model_name}' does not exists in db")
         return Response(content=data, media_type='application/json')
@@ -493,21 +494,22 @@ class BaseCompletionsRouter(APIRouter):
         def _wrap_output(output: str) -> str:
             return prefix + output + postfix
 
-        try:
-            model_name, api_key = resolve_third_party_model(post.model)
-            log(f"chat/completions: resolve {post.model} -> {model_name}")
-        except Exception as e:
-            log(f"chat/completions: {e}")
-            raise HTTPException(status_code=400, detail=e)
+        model = available_third_party_models().get(post.model)
+        if model:
+            log(f"chat/completions: resolve {post.model} -> {model.name}")
+        else:
+            err_message = f"model {model.name} is not running on server"
+            log(f"chat/completions: {err_message}")
+            raise HTTPException(status_code=400, detail=err_message)
 
-        prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
+        prompt_tokens_n = litellm.token_counter(model.name, messages=messages)
         if post.tools:
-            prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
+            prompt_tokens_n += litellm.token_counter(model.name, text=json.dumps(post.tools))
 
-        max_tokens = min(litellm.get_max_tokens(model_name) or post.actual_max_tokens, post.actual_max_tokens)
+        max_tokens = min(litellm.get_max_tokens(model.name) or post.actual_max_tokens, post.actual_max_tokens)
         completion_kwargs = {
-            "model": model_name,
-            "api_key": api_key,
+            "model": model.name,
+            "api_key": model.api_key,
             "messages": messages,
             "temperature": post.temperature,
             "top_p": post.top_p,
@@ -541,14 +543,14 @@ class BaseCompletionsRouter(APIRouter):
                         finish_reason = choice0["finish_reason"]
                         if delta := choice0.get("delta"):
                             if text := delta.get("content"):
-                                generated_tokens_n += litellm.token_counter(model_name, text=text)
+                                generated_tokens_n += litellm.token_counter(model.name, text=text)
 
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
                     yield _wrap_output(json.dumps(_patch_caps_version(data)))
 
                 final_msg: Dict[str, Any] = {"choices": []}
-                usage_dict = compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
+                usage_dict = model.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                 final_msg.update(usage_dict)
                 yield _wrap_output(json.dumps(_patch_caps_version(final_msg)))
 
@@ -570,9 +572,9 @@ class BaseCompletionsRouter(APIRouter):
                     data = model_response.dict()
                     for choice in data.get("choices", []):
                         if text := choice.get("message", {}).get("content"):
-                            generated_tokens_n += litellm.token_counter(model_name, text=text)
+                            generated_tokens_n += litellm.token_counter(model.name, text=text)
                         finish_reason = choice.get("finish_reason")
-                    usage_dict = compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
+                    usage_dict = model.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
