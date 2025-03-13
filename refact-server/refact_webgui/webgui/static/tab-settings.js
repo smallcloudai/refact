@@ -131,28 +131,27 @@ export async function init(general_error) {
     });
 }
 
-//function mask_integrations_input(el) {
-//    function mask_string(string) {
-//        if (string.length > 6 ) {
-//            return string.substring(0, 6) + '*'.repeat(string.length - 6);
-//        } else {
-//            return '*'.repeat(string.length)
-//        }
-//    }
-//    if (!el.getAttribute('data-masked')) {
-//        el.setAttribute('data-value', el.value);
-//        el.value = mask_string(el.getAttribute('data-value'));
-//        el.setAttribute('data-masked', 'true')
-//    }
-//}
-//
-//function unmask_integrations_input(el) {
-//    if (el.getAttribute('data-masked') === 'true') {
-//        el.value = el.getAttribute('data-value');
-//        el.removeAttribute('data-masked');
-//    }
-//}
+function mask_integrations_input(el) {
+    function mask_string(string) {
+        if (string.length > 6 ) {
+            return string.substring(0, 6) + '*'.repeat(string.length - 6);
+        } else {
+            return '*'.repeat(string.length)
+        }
+    }
+    if (!el.getAttribute('data-masked')) {
+        el.setAttribute('data-value', el.value);
+        el.value = mask_string(el.getAttribute('data-value'));
+        el.setAttribute('data-masked', 'true')
+    }
+}
 
+function unmask_integrations_input(el) {
+    if (el.getAttribute('data-masked') === 'true') {
+        el.value = el.getAttribute('data-value');
+        el.removeAttribute('data-masked');
+    }
+}
 
 function throw_int_saved_success_toast(msg) {
     let int_saved_success_toast_div = document.querySelector('.int-saved-success-toast');

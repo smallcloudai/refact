@@ -10,6 +10,7 @@ import uuid
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
+from refact_webgui.webgui.tab_third_party_apis import load_third_party_config
 
 
 class Ticket:
@@ -74,6 +75,12 @@ class InferenceQueue:
             #     _add_models_for_passthrough_provider('xai')
             # if j.get("deepseek_api_enable"):
             #     _add_models_for_passthrough_provider('deepseek')
+
+        # TODO: self._model_assigner.models_db_with_passthrough -> new mechanism
+        config = load_third_party_config()
+        for provider_id, provider_config in config.providers.items():
+            if provider_config.enabled:
+                self._models_available.extend(provider_config.enabled_models)
 
         return self._models_available
 
