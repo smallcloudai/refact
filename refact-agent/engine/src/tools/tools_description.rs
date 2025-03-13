@@ -137,7 +137,7 @@ pub async fn tools_merged_and_filtered(
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
-        ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
+        ("deep_think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
         ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
@@ -351,9 +351,9 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "think"
+  - name: "deep_think"
     agentic: true
-    description: "Think about a complex problem to make a plan."
+    description: "Think about a complex problem to make a good solution or a plan"
     parameters:
       - name: "problem_statement"
         type: "string"

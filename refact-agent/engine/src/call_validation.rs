@@ -186,6 +186,8 @@ pub struct SubchatParameters {
     pub subchat_temperature: Option<f32>,
     #[serde(default)]
     pub subchat_max_new_tokens: usize,
+    #[serde(default)]
+    pub subchat_reasoning_effort: Option<ReasoningEffort>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -243,21 +245,19 @@ pub enum ChatMode {
     AGENT,
     CONFIGURE,
     PROJECT_SUMMARY,
-    THINKING_AGENT,
 }
 
 impl ChatMode {
     pub fn supports_checkpoints(self) -> bool {
         match self {
             ChatMode::NO_TOOLS | ChatMode::EXPLORE => false,
-            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | 
-                ChatMode::THINKING_AGENT => true,
+            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY => true,
         }
     }
 
     pub fn is_agentic(self) -> bool {
         match self {
-            ChatMode::AGENT | ChatMode::THINKING_AGENT => true,
+            ChatMode::AGENT => true,
             ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE | 
                 ChatMode::PROJECT_SUMMARY => false,
         }
