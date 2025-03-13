@@ -1,9 +1,6 @@
-from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
-from refact_utils.third_party.utils import available_third_party_models
-from refact_utils.third_party.utils import get_third_party_context_size
 
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 
 
 def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
