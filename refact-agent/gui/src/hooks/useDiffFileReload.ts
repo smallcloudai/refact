@@ -15,8 +15,15 @@ export function useDiffFileReload() {
   const { setForceReloadFileByPath } = useEventsBusForIDE();
 
   const processedMessageIds = useRef(new Set<string>());
+  const prevMessageCount = useRef(0);
 
   useEffect(() => {
+    if (messages.length < prevMessageCount.current) {
+      processedMessageIds.current.clear();
+    }
+
+    prevMessageCount.current = messages.length;
+
     if (messages.length === 0 || configIdeHost !== "jetbrains") return;
     const lastMessage = messages[messages.length - 1];
 
