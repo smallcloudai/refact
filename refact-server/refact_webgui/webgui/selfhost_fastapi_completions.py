@@ -242,75 +242,6 @@ class BaseCompletionsRouter(APIRouter):
 
         return rewrite_dict
 
-    # def _caps_base_data(self) -> Dict[str, Any]:
-    #     # TODO: we need completely rebuild this API
-    #     running = running_models_and_loras(self._model_assigner)
-    #     models_available = self._inference_queue.models_available(force_read=True)
-    #     code_completion_default_model, _ = self._inference_queue.completion_model()
-    #     multiline_code_completion_default_model, _ = self._inference_queue.multiline_completion_default_model()
-    #     code_chat_default_model = ""
-    #     embeddings_default_model = ""
-    #     for model_name in models_available:
-    #         if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) or model_name in litellm.model_list:
-    #             if not code_chat_default_model:
-    #                 code_chat_default_model = model_name
-    #         if "embeddings" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []):
-    #             if not embeddings_default_model:
-    #                 embeddings_default_model = model_name
-    #     data = {
-    #         "cloud_name": "Refact Self-Hosted",
-    #         "endpoint_template": "/v1/completions",
-    #         "endpoint_chat_passthrough": "/v1/chat/completions",
-    #         "endpoint_style": "openai",
-    #         "telemetry_basic_dest": "/stats/telemetry-basic",
-    #         "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
-    #         "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
-    #         "running_models": list(set(r for r in [*running['completion'], *running['chat']])),
-    #         "code_completion_default_model": code_completion_default_model,
-    #         "multiline_code_completion_default_model": multiline_code_completion_default_model,
-    #         "code_chat_default_model": code_chat_default_model,
-    #         "models_dict_patch": self._models_available_dict_rewrite(models_available),
-    #
-    #         "default_embeddings_model": embeddings_default_model,
-    #         "endpoint_embeddings_template": "v1/embeddings",
-    #         "endpoint_embeddings_style": "openai",
-    #         "size_embeddings": 768,
-    #
-    #         "tokenizer_path_template": "/tokenizer/$MODEL",
-    #         "tokenizer_rewrite_path": {model: model.replace("/", "--") for model in models_available},
-    #         "caps_version": self._caps_version,
-    #     }
-    #
-    #     return data
-    #
-    # async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
-    #     if isinstance(user_agent, str):
-    #         m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
-    #         if m:
-    #             major, minor, patch = map(int, m.groups())
-    #             log("user version %d.%d.%d" % (major, minor, patch))
-    #     data = self._caps_base_data()
-    #     running = running_models_and_loras(self._model_assigner)
-    #
-    #     def _select_default_lora_if_exists(model_name: str, running_models: List[str]):
-    #         model_variants = [r for r in running_models if r.split(":")[0] == model_name and r != model_name]
-    #         return model_variants[0] if model_variants else model_name
-    #
-    #     data["code_completion_default_model"] = _select_default_lora_if_exists(
-    #         data["code_completion_default_model"],
-    #         running['completion'],
-    #     )
-    #     data["multiline_code_completion_default_model"] = _select_default_lora_if_exists(
-    #         data["multiline_code_completion_default_model"],
-    #         running['completion'],
-    #     )
-    #     data["code_chat_default_model"] = _select_default_lora_if_exists(
-    #         data["code_chat_default_model"],
-    #         running['chat'],
-    #     )
-    #
-    #     return Response(content=json.dumps(data, indent=4), media_type="application/json")
-
     async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
         # TODO: this is new caps! it shouldn't be used by old refact-lsp
         if isinstance(user_agent, str):
@@ -321,6 +252,9 @@ class BaseCompletionsRouter(APIRouter):
 
         # NOTE: we need completely rewrite all about running models
         running_models = running_models_and_loras(self._model_assigner)
+
+        def _get_base_model_info(model_name: str) -> str:
+            return model_name.split(":")[0]
 
         def _select_default_model(models: List[str]) -> str:
             if not models:
@@ -337,7 +271,7 @@ class BaseCompletionsRouter(APIRouter):
         # completion models
         completion_models = {}
         for model_name in running_models.get("completion", []):
-            if model_info := self._model_assigner.models_db.get(model_name.split(":")[0]):
+            if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
                 completion_models[model_name] = {
                     "n_ctx": model_info["T"],
                     "supports_scratchpads": model_info["supports_scratchpads"]["completion"],
@@ -351,7 +285,7 @@ class BaseCompletionsRouter(APIRouter):
         # chat models
         chat_models = {}
         for model_name in running_models.get("chat", []):
-            if model_info := self._model_assigner.models_db.get(model_name.split(":")[0]):
+            if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
                 chat_models[model_name] = {
                     "n_ctx": model_info["T"],
                     "supports_scratchpads": model_info["supports_scratchpads"]["chat"],
@@ -366,40 +300,14 @@ class BaseCompletionsRouter(APIRouter):
         embeddings_models = running_models.get("embeddings", [])
         embeddings_default_model = _select_default_model(embeddings_models)
 
-        # models_available = self._inference_queue.models_available(force_read=True)
-        # code_completion_default_model, _ = self._inference_queue.completion_model()
-        # multiline_code_completion_default_model, _ = self._inference_queue.multiline_completion_default_model()
-        # code_chat_default_model = ""
-        # embeddings_default_model = ""
-        # for model_name in models_available:
-        #     if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) or model_name in litellm.model_list:
-        #         if not code_chat_default_model:
-        #             code_chat_default_model = model_name
-        #     if "embeddings" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []):
-        #         if not embeddings_default_model:
-        #             embeddings_default_model = model_name
-        #
-        # def _select_default_lora_if_exists(model_name: str, running_models: List[str]):
-        #     model_variants = [r for r in running_models if r.split(":")[0] == model_name and r != model_name]
-        #     return model_variants[0] if model_variants else model_name
-        #
-        # data["code_completion_default_model"] = _select_default_lora_if_exists(
-        #     data["code_completion_default_model"],
-        #     running['completion'],
-        # )
-        # data["multiline_code_completion_default_model"] = _select_default_lora_if_exists(
-        #     data["multiline_code_completion_default_model"],
-        #     running['completion'],
-        # )
-        # data["code_chat_default_model"] = _select_default_lora_if_exists(
-        #     data["code_chat_default_model"],
-        #     running['chat'],
-        # )
+        # tokenizer endpoints
+        tokenizer_endpoints = {}
+        for model_list in running_models.values():
+            for model_name in model_list:
+                tokenizer_endpoints[model_name] = "/tokenizer/" + _get_base_model_info(model_name).replace("/", "--")
 
         data = {
             "cloud_name": "Refact Self-Hosted",
-
-            "runn": running_models,
 
             "completion": {
                 "endpoint": "/v1/completions",
@@ -426,23 +334,7 @@ class BaseCompletionsRouter(APIRouter):
                 "telemetry_basic_retrieve_my_own_endpoint": "/stats/rh-stats",
             },
 
-            # TODO: default for openai style, I'm not sure that we need it here
-            # "inference_endpoints": {
-            #     "style": "openai",
-            #     "completions": "/v1/completions",  # default for openai style
-            #     "chat_completions": "/v1/chat/completions",  # default for openai style
-            #     "embeddings": "v1/embeddings",  # default for openai style
-            # },
-
-            # "running_models": list(set(r for r in [*running['completion'], *running['chat']])),
-            # "code_completion_default_model": code_completion_default_model,
-            # "multiline_code_completion_default_model": multiline_code_completion_default_model,
-            # "code_chat_default_model": code_chat_default_model,
-            # "models_dict_patch": self._models_available_dict_rewrite(models_available),
-            # "default_embeddings_model": embeddings_default_model,
-            # "size_embeddings": 768,
-            # "tokenizer_path_template": "/tokenizer/$MODEL",
-            # "tokenizer_rewrite_path": {model: model.replace("/", "--") for model in models_available},
+            "tokenizer_endpoints": tokenizer_endpoints,
 
             "caps_version": self._caps_version,
         }
