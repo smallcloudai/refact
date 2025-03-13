@@ -86,31 +86,31 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         **model_assigner.models_info,
         **model_assigner.model_assignment,
     }
+
     result = {
         "completion": [],
         "chat": [],
+        "embeddings": [],
     }
 
-    def add_result(k: str, model_dict: Dict):
-        if model_dict.get('has_completion'):
-            result['completion'].append(k)
-        if model_dict.get('has_chat'):
-            result['chat'].append(k)
+    # local hosted models
+    def _add_result(model_name: str, model_dict: Dict):
+        if model_dict.get("has_completion"):
+            result["completion"].append(model_name)
+        if model_dict.get("has_chat"):
+            result["chat"].append(model_name)
+        if model_dict.get("has_embeddings"):
+            result["embeddings"].append(model_name)
 
-    for k, v in data.get("model_assign", {}).items():
-        if model_dict := [d for d in data['models'] if d['name'] == k]:
+    for model_name, v in data.get("model_assign", {}).items():
+        if model_dict := [d for d in data["models"] if d["name"] == model_name]:
             model_dict = model_dict[0]
+            _add_result(model_name, model_dict)
+            for run in model_dict.get("finetune_info", []):
+                run_id, checkpoint_id = run["run_id"], run["checkpoint"]
+                _add_result(f"{model_name}:{run_id}:{checkpoint_id}", model_dict)
 
-            add_result(k, model_dict)
-
-            if not model_dict.get('has_finetune'):
-                continue
-
-            finetune_info = model_dict.get('finetune_info', []) or []
-            for run in finetune_info:
-                val = f"{k}:{run['run_id']}:{run['checkpoint']}"
-                add_result(val, model_dict)
-
+    # third party models
     for model in available_third_party_models().values():
         if model.supports_chat:
             result["chat"].append(model.name)
