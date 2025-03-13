@@ -1,8 +1,9 @@
 import json
 import os
+import litellm
 
 from pydantic import BaseModel, Field
-from typing import Dict, List
+from typing import Dict, List, Tuple, Optional
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
@@ -90,3 +91,77 @@ def save_third_party_config(config: ThirdPartyApiConfig):
     with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
         json.dump(config.model_dump(), f, indent=4)
     os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
+
+
+def resolve_third_party_model(model_name: str) -> Tuple[str, str]:
+    config = load_third_party_config()
+    for provider_id, provider_config in config.providers.items():
+        if provider_config.enabled and model_name in provider_config.enabled_models:
+            return model_name, provider_config.api_key
+    else:
+        raise RuntimeError(f"model {model_name} is not running")
+
+
+def compose_usage_dict(model_name: str, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
+    def _pp1000t(cost_entry_name: str) -> int:
+        cost = litellm.model_cost.get(model_name, {}).get(cost_entry_name, 0)
+        return int(cost * 1_000_000 * 1_000)
+
+    return {
+        "pp1000t_prompt": _pp1000t("input_cost_per_token"),
+        "pp1000t_generated": _pp1000t("output_cost_per_token"),
+        "metering_prompt_tokens_n": prompt_tokens_n,
+        "metering_generated_tokens_n": generated_tokens_n,
+    }
+
+
+def available_third_party_models():
+    config = load_third_party_config()
+    models_available = []
+    for provider_id, provider_config in config.providers.items():
+        if not provider_config.enabled:
+            continue
+        for model_name in provider_config.enabled_models:
+            if model_name not in models_available:
+                models_available.append(model_name)
+    return models_available
+
+
+def get_third_party_model_path(model_name: str) -> str:
+    return "Xenova/gpt-4o"  # TODO: tokenizer paths should be static in the code
+
+
+def get_third_party_context_size(model_name: str) -> Optional[int]:
+    PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
+    if max_input_tokens := litellm.get_model_info(model_name).get("max_input_tokens"):
+        return min(PASSTHROUGH_MAX_TOKENS_LIMIT, max_input_tokens)
+
+
+def is_third_party_supports_tools(model_name: str) -> bool:
+    return litellm.supports_function_calling(model_name)
+
+
+COMPLETION_READY_MODELS = []
+
+
+def get_third_party_model_capabilities(model_name: str) -> List[str]:
+    capabilities = ["chat"]  # NOTE: all available models must support chat
+    if model_name in COMPLETION_READY_MODELS:
+        capabilities.append("completion")
+    return capabilities
+
+
+# TODO:
+# 1. tokenizer resolve
+# 2. token counting
+# 3. model config
+
+# "backend": "litellm",
+# "provider": "openai",
+# "tokenizer_path": "Xenova/gpt-4o",
+# "resolve_as": "o1-2024-12-17",
+# "T": 200_000,
+# "T_out": 32_000,
+# "pp1000t_prompt": 15_000,  # $15.00 / 1M tokens (2025 january)
+# "pp1000t_generated": 60_000,  # $60.00 / 1M tokens (2025 january)
+# "filter_caps": ["chat", "tools"],
