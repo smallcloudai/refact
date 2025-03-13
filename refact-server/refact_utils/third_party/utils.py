@@ -97,7 +97,7 @@ class ThirdPartyModel:
     PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
     COMPLETION_READY_MODELS = []
 
-    def __init__(self, model_name: str, api_key: str):
+    def __init__(self, model_name: str, api_key: Optional[str] = None):
         self._model_name = model_name
         self._api_key = api_key
 
