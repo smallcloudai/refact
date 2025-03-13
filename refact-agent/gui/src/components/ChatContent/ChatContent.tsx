@@ -22,7 +22,6 @@ import {
   selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
-  selectMessages,
   selectThread,
   selectThreadUsage,
 } from "../../features/Chat/Thread/selectors";
@@ -35,6 +34,8 @@ import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+import { MessageNode } from "../MessageNode";
+import { chatDbMessagesSliceSelectors } from "../../features/ChatDB/chatDbMessagesSlice";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -43,11 +44,9 @@ export type ChatContentProps = {
 
 export const ChatContent: React.FC<ChatContentProps> = ({
   onStopStreaming,
-  onRetry,
 }) => {
   const dispatch = useAppDispatch();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
   const threadUsage = useAppSelector(selectThreadUsage);
@@ -57,6 +56,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const integrationMeta = useAppSelector(selectIntegration);
   const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
+  const messageTree = useAppSelector(
+    chatDbMessagesSliceSelectors.selectMessageTree,
+  );
 
   const {
     handleScroll,
@@ -66,10 +68,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   } = useAutoScroll({
     scrollRef,
   });
-
-  const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
-    onRetry(index, question);
-  };
 
   const handleReturnToConfigurationClick = useCallback(() => {
     // console.log(`[DEBUG]: going back to configuration page`);
@@ -121,10 +119,11 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         p="2"
         gap="1"
       >
-        {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages, onRetryWrapper)}
-        <UncommittedChangesWarning />
-        {threadUsage && messages.length > 0 && <UsageCounter />}
+        {!messageTree && <PlaceHolderText />}
+        {/* {renderMessages(messages, onRetryWrapper)} */}
+        <MessageNode>{messageTree}</MessageNode>
+        {!messageTree && <UncommittedChangesWarning />}
+        {threadUsage && messageTree && <UsageCounter />}
 
         <Container py="4">
           <Spinner
@@ -176,7 +175,8 @@ export const ChatContent: React.FC<ChatContentProps> = ({
 
 ChatContent.displayName = "ChatContent";
 
-function renderMessages(
+// TODO: can delete
+function _renderMessages(
   messages: ChatMessages,
   onRetry: (index: number, question: UserMessage["content"]) => void,
   memo: React.ReactNode[] = [],
@@ -185,18 +185,18 @@ function renderMessages(
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, onRetry, memo, index + 1);
+    return _renderMessages(tail, onRetry, memo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return _renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "assistant") {
     const key = "assistant-input-" + index;
-    const isLast = !tail.some(isAssistantMessage);
+    const isLast = !tail.some(isAssistantMessage); // TODO: this is for knowledge
     const nextMemo = [
       ...memo,
       <AssistantInput
@@ -207,7 +207,7 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return _renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (head.role === "user") {
@@ -219,16 +219,17 @@ function renderMessages(
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return _renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return _renderMessages(tail, onRetry, nextMemo, index + 1);
   }
 
   if (isDiffMessage(head)) {
+    // TODO: do we still need to group diffs?
     const restInTail = takeWhile(tail, (message) => {
       return isDiffMessage(message) || isToolMessage(message);
     });
@@ -239,7 +240,7 @@ function renderMessages(
 
     const nextMemo = [...memo, <GroupedDiffs key={key} diffs={diffMessages} />];
 
-    return renderMessages(
+    return _renderMessages(
       nextTail,
       onRetry,
       nextMemo,
@@ -247,5 +248,5 @@ function renderMessages(
     );
   }
 
-  return renderMessages(tail, onRetry, memo, index + 1);
+  return _renderMessages(tail, onRetry, memo, index + 1);
 }

@@ -124,6 +124,15 @@ interface BaseMessage {
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
 }
 
+function isBaseMessage(json: unknown): json is BaseMessage {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("role" in json)) return false;
+  if (typeof json.role !== "string") return false;
+  if (!("content" in json)) return false;
+  return true;
+}
+
 export interface ChatContextFileMessage extends BaseMessage {
   role: "context_file";
   content: ChatContextFile[];
@@ -220,7 +229,7 @@ export interface DiffMessage extends BaseMessage {
   tool_call_id: string;
 }
 
-export function isUserMessage(message: ChatMessage): message is UserMessage {
+export function isUserMessage(message: BaseMessage): message is UserMessage {
   return message.role === "user";
 }
 
@@ -300,6 +309,20 @@ export function isCDInstructionMessage(
 ): message is CDInstructionMessage {
   return message.role === "cd_instruction";
 }
+
+export function isAChatMessage(value: unknown) {
+  if (!value) return false;
+  if (typeof value !== "object") return false;
+}
+
+// function isChatMessage(json: unknown): json is ChatMessage {
+//   if (!json) return false;
+//   if (typeof json !== "object") return false;
+//   if (!("role" in json)) return false;
+//   if(typeof json.role !== "string") return false;
+//   if(isChatContextFileMessage(json)) return false;
+
+// }
 
 interface BaseDelta {
   role?: ChatRole | null;
@@ -670,4 +693,246 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
   if (Array.isArray(json)) return false;
 
   return Object.values(json).every((value) => typeof value === "string");
+}
+
+// ChatDB
+
+export type CThread = {
+  cthread_id: string;
+  cthread_belongs_to_chore_event_id: string | null;
+  cthread_title: string;
+  cthread_toolset: string;
+  cthread_model: string;
+  cthread_temperature: number;
+  cthread_n_ctx: number;
+  cthread_max_new_tokens: number;
+  cthread_n: number;
+  cthread_error: string;
+  cthread_anything_new: boolean;
+  cthread_created_ts: number;
+  cthread_updated_ts: number;
+  cthread_archived_ts: number;
+  cthread_locked_by: string;
+  cthread_locked_ts: number;
+};
+
+// export type CThreadDefault = Partial<CThread> & {
+//   cthread_id: null | string;
+//   cthread_title: string;
+//   cthread_toolset: string;
+//   cthread_model: string;
+// };
+export function isCThread(value: unknown): value is CThread {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if (!("cthread_id" in value) || typeof value.cthread_id !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_belongs_to_chore_event_id" in value) ||
+    (value.cthread_belongs_to_chore_event_id !== null &&
+      typeof value.cthread_belongs_to_chore_event_id !== "string")
+  ) {
+    return false;
+  }
+
+  if (!("cthread_title" in value) || typeof value.cthread_title !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_toolset" in value) ||
+    typeof value.cthread_toolset !== "string"
+  ) {
+    return false;
+  }
+
+  if (!("cthread_model" in value) || typeof value.cthread_model !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_temperature" in value) ||
+    typeof value.cthread_temperature !== "number"
+  ) {
+    return false;
+  }
+
+  if (!("cthread_n_ctx" in value) || typeof value.cthread_n_ctx !== "number") {
+    return false;
+  }
+
+  if (
+    !("cthread_max_new_tokens" in value) ||
+    typeof value.cthread_max_new_tokens !== "number"
+  ) {
+    return false;
+  }
+
+  if (!("cthread_n" in value) || typeof value.cthread_n !== "number") {
+    return false;
+  }
+
+  if (!("cthread_error" in value) || typeof value.cthread_error !== "string") {
+    return false;
+  }
+
+  if (
+    !("cthread_anything_new" in value) ||
+    typeof value.cthread_anything_new !== "boolean"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_created_ts" in value) ||
+    typeof value.cthread_created_ts !== "number"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_updated_ts" in value) ||
+    typeof value.cthread_updated_ts !== "number"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_archived_ts" in value) ||
+    typeof value.cthread_archived_ts !== "number"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_locked_by" in value) ||
+    typeof value.cthread_locked_by !== "string"
+  ) {
+    return false;
+  }
+
+  if (
+    !("cthread_locked_ts" in value) ||
+    typeof value.cthread_locked_ts !== "number"
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+type CThreadSubResponseUpdate = {
+  sub_event: "cthread_update";
+  cthread_rec: CThread;
+};
+
+export function isCThreadSubResponseUpdate(
+  value: unknown,
+): value is CThreadSubResponseUpdate {
+  if (!value || typeof value !== "object") return false;
+  if (!("sub_event" in value)) return false;
+  if (typeof value.sub_event !== "string") return false;
+  if (!("cthread_rec" in value)) return false;
+  return isCThread(value.cthread_rec);
+}
+
+type CThreadSubResponseDelete = {
+  sub_event: "cthread_delete";
+  cthread_id: string;
+};
+
+export function isCThreadSubResponseDelete(
+  value: unknown,
+): value is CThreadSubResponseDelete {
+  if (!value || typeof value !== "object") return false;
+  if (!("sub_event" in value)) return false;
+  if (typeof value.sub_event !== "string") return false;
+  if (!("cthread_id" in value)) return false;
+  if (typeof value.cthread_id !== "string") return false;
+  return true;
+}
+
+export type CMessageFromChatDB = {
+  cmessage_belongs_to_cthread_id: string;
+  cmessage_alt: number;
+  cmessage_num: number;
+  cmessage_prev_alt: number;
+  cmessage_usage_model: string;
+  cmessage_usage_prompt: number;
+  cmessage_usage_completion: number;
+  cmessage_json: string; // stringified json ChatMessage
+};
+
+export function isCMessageFromChatDB(
+  value: unknown,
+): value is CMessageFromChatDB {
+  if (!value || typeof value !== "object") return false;
+  if (!("cmessage_belongs_to_cthread_id" in value)) return false;
+  if (typeof value.cmessage_belongs_to_cthread_id !== "string") return false;
+  if (!("cmessage_alt" in value)) return false;
+  if (typeof value.cmessage_alt !== "number") return false;
+  if (!("cmessage_num" in value)) return false;
+  if (typeof value.cmessage_num !== "number") return false;
+  if (!("cmessage_prev_alt" in value)) return false;
+  if (typeof value.cmessage_prev_alt !== "number") return false;
+  if (!("cmessage_usage_model" in value)) return false;
+  if (typeof value.cmessage_usage_model !== "string") return false;
+  if (!("cmessage_usage_prompt" in value)) return false;
+  if (typeof value.cmessage_usage_prompt !== "number") return false;
+  if (!("cmessage_usage_completion" in value)) return false;
+  if (typeof value.cmessage_usage_completion !== "number") return false;
+  if (!("cmessage_json" in value)) return false;
+  if (typeof value.cmessage_json !== "string") return false;
+  return true;
+}
+
+export type CMessage = Omit<CMessageFromChatDB, "cmessage_json"> & {
+  cmessage_json: ChatMessage;
+};
+
+export type UserCMessage = Omit<CMessage, "cmessage_json"> & {
+  cmessage_json: UserMessage;
+};
+
+export function isUserCMessage(value: unknown): value is UserCMessage {
+  if (!value || typeof value !== "object") return false;
+  if (!("cmessage_belongs_to_cthread_id" in value)) return false;
+  if (typeof value.cmessage_belongs_to_cthread_id !== "string") return false;
+  if (!("cmessage_alt" in value)) return false;
+  if (typeof value.cmessage_alt !== "number") return false;
+  if (!("cmessage_num" in value)) return false;
+  if (typeof value.cmessage_num !== "number") return false;
+  if (!("cmessage_prev_alt" in value)) return false;
+  if (typeof value.cmessage_prev_alt !== "number") return false;
+  if (!("cmessage_usage_model" in value)) return false;
+  if (typeof value.cmessage_usage_model !== "string") return false;
+  if (!("cmessage_usage_prompt" in value)) return false;
+  if (typeof value.cmessage_usage_prompt !== "number") return false;
+  if (!("cmessage_usage_completion" in value)) return false;
+  if (typeof value.cmessage_usage_completion !== "number") return false;
+  if (!("cmessage_json" in value)) return false;
+  if (!value.cmessage_json) return false;
+  if (!isBaseMessage(value.cmessage_json)) return false;
+  if (!isUserMessage(value.cmessage_json)) return false;
+  return true;
+}
+
+export type CMessageUpdateResponse = {
+  sub_event: "cmessage_update";
+  cmessage_rec: CMessageFromChatDB;
+};
+
+export function isCMessageUpdateResponse(
+  value: unknown,
+): value is CMessageUpdateResponse {
+  if (!value || typeof value !== "object") return false;
+  if (!("sub_event" in value)) return false;
+  if (typeof value.sub_event !== "string") return false;
+  if (value.sub_event !== "cmessage_update") return false;
+  if (!("cmessage_rec" in value)) return false;
+  return isCMessageFromChatDB(value.cmessage_rec);
 }
