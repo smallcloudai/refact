@@ -36,6 +36,7 @@ export function useDiffFileReload() {
     const uniqueFilePaths = new Set<string>();
     lastMessage.content.forEach((diff) => {
       uniqueFilePaths.add(diff.file_name);
+      diff.file_name_rename && uniqueFilePaths.add(diff.file_name_rename);
     });
 
     uniqueFilePaths.forEach((filePath) => {
