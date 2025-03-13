@@ -117,7 +117,7 @@ impl Tool for ToolDeepThinking {
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
-        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "think").await?;
+        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_think").await?;
 
         let external_messages = {
             let ccx_lock = ccx.lock().await;
@@ -152,7 +152,7 @@ impl Tool for ToolDeepThinking {
             subchat_params.subchat_temperature,
             Some(subchat_params.subchat_max_new_tokens),
             1,
-            None,  // TODO: pass ReasoningEffort when is supported in litellm
+            subchat_params.subchat_reasoning_effort,
             false,
             Some(&mut usage_collector),
             Some(tool_call_id.clone()),
