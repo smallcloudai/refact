@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import List
 
 from refact_utils.scripts import env
+from refact_utils.third_party.utils import available_third_party_models
+from refact_utils.third_party.utils import get_third_party_model_capabilities
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 from typing import Any, Dict, Union
@@ -96,13 +98,6 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         if model_dict.get('has_chat'):
             result['chat'].append(k)
 
-    # def _add_results_for_passthrough_provider(provider: str) -> None:
-    #     for k, v in model_assigner.passthrough_mini_db.items():
-    #         if v.get('provider') == provider:
-    #             result['chat'].append(k)
-    #             if 'completion' in v.get('filter_caps', []):
-    #                 result['completion'].append(k)
-
     for k, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data['models'] if d['name'] == k]:
             model_dict = model_dict[0]
@@ -117,26 +112,12 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
                 val = f"{k}:{run['run_id']}:{run['checkpoint']}"
                 add_result(val, model_dict)
 
-    # if data.get("openai_api_enable"):
-    #     _add_results_for_passthrough_provider('openai')
-    #
-    # if data.get('anthropic_api_enable'):
-    #     _add_results_for_passthrough_provider('anthropic')
-    #
-    # if data.get('cerebras_api_enable'):
-    #     _add_results_for_passthrough_provider('cerebras')
-    #
-    # if data.get('gemini_api_enable'):
-    #     _add_results_for_passthrough_provider('gemini')
-    #
-    # if data.get('groq_api_enable'):
-    #     _add_results_for_passthrough_provider('groq')
-    #
-    # if data.get('xai_api_enable'):
-    #     _add_results_for_passthrough_provider('xai')
-    #
-    # if data.get('deepseek_api_enable'):
-    #     _add_results_for_passthrough_provider('deepseek')
+    for mode_name in available_third_party_models():
+        caps = get_third_party_model_capabilities(mode_name)
+        if "chat" in caps:
+            result["chat"].append(mode_name)
+        if "completion" in caps:
+            result["completion"].append(mode_name)
 
     return result
 

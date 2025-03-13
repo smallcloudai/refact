@@ -15,8 +15,12 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_utils.third_party.utils import load_third_party_config
-from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
+from refact_utils.third_party.utils import resolve_third_party_model
+from refact_utils.third_party.utils import available_third_party_models
+from refact_utils.third_party.utils import get_third_party_model_path
+from refact_utils.third_party.utils import get_third_party_context_size
+from refact_utils.third_party.utils import is_third_party_supports_tools
+from refact_utils.third_party.utils import compose_usage_dict
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -226,17 +230,22 @@ class BaseCompletionsRouter(APIRouter):
 
     def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
         rewrite_dict = {}
-        for model in models_available:
+        for model_name in models_available:
             d = {}
-            if n_ctx := resolve_model_context_size(model, self._model_assigner):
-                d["n_ctx"] = n_ctx
-            if "tools" in self._model_assigner.models_db_with_passthrough.get(model, {}).get("filter_caps", []):
-                d["supports_tools"] = True
-
-            rewrite_dict[model] = d
+            if model_name in self._model_assigner.models_db:
+                if n_ctx := self._model_assigner.model_assignment["model_assign"][model_name].get("n_ctx"):
+                    d["n_ctx"] = n_ctx
+                if filter_caps := self._model_assigner.models_db[model_name].get("filter_caps", []):
+                    d["supports_tools"] = "tools" in filter_caps
+            elif model_name in available_third_party_models():
+                if n_ctx := get_third_party_context_size(model_name):
+                    d["n_ctx"] = n_ctx
+                d["supports_tools"] = is_third_party_supports_tools(model_name)
+            rewrite_dict[model_name] = d
         return rewrite_dict
 
     def _caps_base_data(self) -> Dict[str, Any]:
+        # TODO: we need completely rebuild this API
         running = running_models_and_loras(self._model_assigner)
         models_available = self._inference_queue.models_available(force_read=True)
         code_completion_default_model, _ = self._inference_queue.completion_model()
@@ -337,8 +346,8 @@ class BaseCompletionsRouter(APIRouter):
         if model_name in self._model_assigner.models_db:
             model_path = self._model_assigner.models_db[model_name]["model_path"]
             data = await self._local_tokenizer(model_path)
-        elif model_name in self._model_assigner.passthrough_mini_db:
-            model_path = self._model_assigner.passthrough_mini_db[model_name]["tokenizer_path"]
+        elif model_name in available_third_party_models():
+            model_path = get_third_party_model_path(model_name)
             data = await self._passthrough_tokenizer(model_path)
         else:
             raise HTTPException(404, detail=f"model '{model_name}' does not exists in db")
@@ -484,31 +493,12 @@ class BaseCompletionsRouter(APIRouter):
         def _wrap_output(output: str) -> str:
             return prefix + output + postfix
 
-        def _compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n) -> Dict[str, Any]:
-            def _pp1000t(cost_entry_name: str) -> int:
-                cost = litellm.model_cost.get(model_name, {}).get(cost_entry_name, 0)
-                return int(cost * 1_000_000 * 1_000)
-
-            return {
-                "pp1000t_prompt": _pp1000t("input_cost_per_token"),
-                "pp1000t_generated": _pp1000t("output_cost_per_token"),
-                "metering_prompt_tokens_n": prompt_tokens_n,
-                "metering_generated_tokens_n": generated_tokens_n,
-            }
-
-        # TODO: self._model_assigner.models_db_with_passthrough -> new mechanism
-        config = load_third_party_config()
-        for provider_id, provider_config in config.providers.items():
-            log(f"{provider_id}: {provider_config.enabled_models}")
-            if provider_config.enabled and post.model in provider_config.enabled_models:
-                model_name = post.model
-                api_key = provider_config.api_key
-                log(f"chat/completions: provider resolve {model_name} -> {provider_id}")
-                break
-        else:
-            model_name = post.model
-            log(f"chat/completions: provider for {model_name} not found on server")
-            raise HTTPException(status_code=400, detail=f"model {model_name} is not running")
+        try:
+            model_name, api_key = resolve_third_party_model(post.model)
+            log(f"chat/completions: resolve {post.model} -> {model_name}")
+        except Exception as e:
+            log(f"chat/completions: {e}")
+            raise HTTPException(status_code=400, detail=e)
 
         prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
         if post.tools:
@@ -557,8 +547,8 @@ class BaseCompletionsRouter(APIRouter):
                         data = {"choices": [{"finish_reason": finish_reason}]}
                     yield _wrap_output(json.dumps(_patch_caps_version(data)))
 
-                final_msg = {"choices": []}
-                usage_dict = _compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
+                final_msg: Dict[str, Any] = {"choices": []}
+                usage_dict = compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
                 final_msg.update(usage_dict)
                 yield _wrap_output(json.dumps(_patch_caps_version(final_msg)))
 
@@ -582,7 +572,7 @@ class BaseCompletionsRouter(APIRouter):
                         if text := choice.get("message", {}).get("content"):
                             generated_tokens_n += litellm.token_counter(model_name, text=text)
                         finish_reason = choice.get("finish_reason")
-                    usage_dict = _compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
+                    usage_dict = compose_usage_dict(model_name, prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}

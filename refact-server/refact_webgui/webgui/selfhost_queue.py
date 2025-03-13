@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Tuple
 import uuid
 
 from refact_utils.scripts import env
-from refact_utils.third_party.utils import load_third_party_config
+from refact_utils.third_party.utils import available_third_party_models
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
 
@@ -56,32 +56,22 @@ class InferenceQueue:
             for model in j["model_assign"]:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
-
-        # TODO: self._model_assigner.models_db_with_passthrough -> new mechanism
-        config = load_third_party_config()
-        for provider_id, provider_config in config.providers.items():
-            if provider_config.enabled:
-                self._models_available.extend(provider_config.enabled_models)
-
+        self._models_available.extend(available_third_party_models())
         return self._models_available
 
     def completion_model(self) -> Tuple[str, str]:
-
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, 'r'))
             for model in j["model_assign"]:
                 if "completion" in self._model_assigner.models_db.get(model, {}).get("filter_caps", {}):
                     return model, ""
-
         return "", f"completion model is not set"
 
 
     def multiline_completion_default_model(self) -> Tuple[str, str]:
-
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, 'r'))
             for model in j["model_assign"]:
                 if "completion" in self._model_assigner.models_db.get(model, {}).get("filter_caps", {}):
                     return model, ""
-
         return "", f"completion model is not set"
