@@ -59,8 +59,11 @@ pub async fn handle_v1_vecdb_status(
     Extension(gcx): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let vec_db = gcx.read().await.vec_db.clone();
-    let status_str = match crate::vecdb::vdb_highlev::get_status(vec_db).await {
+    let gcx_locked = gcx.read().await;
+    let vec_db = gcx_locked.vec_db.clone();
+    let vectorizer_service = gcx_locked.vectorizer_service.clone();
+    
+    let status_str = match crate::vecdb::vdb_highlev::get_status(vec_db, vectorizer_service).await {
         Ok(Some(status)) => serde_json::to_string_pretty(&status).unwrap(),
         Ok(None) => "{\"success\": 0, \"detail\": \"turned_off\"}".to_string(),
         Err(err) => {

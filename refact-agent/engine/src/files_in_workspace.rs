@@ -518,13 +518,17 @@ async fn enqueue_some_docs(
     if paths.len() > 5 {
         info!("    ...");
     }
-    let (vec_db_module, ast_service) = {
+    let (vectorizer_service, ast_service) = {
         let cx = gcx.read().await;
-        (cx.vec_db.clone(), cx.ast_service.clone())
+        (cx.vectorizer_service.clone(), cx.ast_service.clone())
     };
     #[cfg(feature="vecdb")]
-    if let Some(ref mut db) = *vec_db_module.lock().await {
-        db.vectorizer_enqueue_files(&paths, force).await;
+    if let Some(vs) = &*vectorizer_service.lock().await {
+        crate::vecdb::vectorizer_service::vectorizer_enqueue_files(
+            Arc::new(AMutex::new(vs.clone())), 
+            &paths, 
+            force
+        ).await;
     }
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;
@@ -598,8 +602,16 @@ pub async fn enqueue_all_files_from_workspace_folders(
     let paths_nodups: Vec<String> = updated_or_removed.into_iter().collect();
 
     #[cfg(feature="vecdb")]
-    if let Some(ref mut db) = *vec_db_module.lock().await {
-        db.vectorizer_enqueue_files(&paths_nodups, wake_up_indexers).await;
+    if let Some(_) = *vec_db_module.lock().await {
+        if let Some(_service) = &*gcx.read().await.vectorizer_service.lock().await {
+            if let Some(vs) = &*gcx.read().await.vectorizer_service.lock().await {
+                crate::vecdb::vectorizer_service::vectorizer_enqueue_files(
+                    Arc::new(AMutex::new(vs.clone())), 
+                    &paths_nodups, 
+                    wake_up_indexers
+                ).await;
+            }
+        }
     }
     #[cfg(not(feature="vecdb"))]
     let _ = vec_db_module;
