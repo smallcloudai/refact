@@ -15,6 +15,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
+from refact_utils.third_party.utils import ThirdPartyModel
 from refact_utils.third_party.utils import available_third_party_models
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
@@ -322,11 +323,45 @@ class BaseCompletionsRouter(APIRouter):
         # NOTE: we need completely rewrite all about running models
         running_models = running_models_and_loras(self._model_assigner)
 
+        def _select_default_model(models: List[str]) -> str:
+            if not models:
+                return ""
+            default_model = models[0]
+            default_model_loras = [
+                model_name for model_name in models
+                if model_name.startswith(f"{default_model}:")
+            ]
+            if default_model_loras:
+                return default_model_loras[0]
+            return default_model
+
         # completion models
+        completion_running_models = running_models.get("completion", [])
+        completion_default_model = _select_default_model(completion_running_models)
+        completion_models = []
+        for model_name in completion_running_models:
+            if model_info := self._model_assigner.models_db.get(model_name):
+                # convert into ModelRecord (see lsp)
+                pass
+            else:
+                model = ThirdPartyModel(model_name)
+                completion_models.append(model.to_completion_model_record())
 
         # chat models
+        chat_running_models = running_models.get("chat", [])
+        chat_default_model = _select_default_model(chat_running_models)
+        chat_models = []
+        for model_name in chat_running_models:
+            if model_info := self._model_assigner.models_db.get(model_name):
+                # convert into ModelRecord (see lsp)
+                pass
+            else:
+                model = ThirdPartyModel(model_name)
+                chat_models.append(model.to_chat_model_record())
 
         # embedding models
+        embeddings_models = running_models.get("embeddings", [])
+        embeddings_default_model = _select_default_model(embeddings_models)
 
         # models_available = self._inference_queue.models_available(force_read=True)
         # code_completion_default_model, _ = self._inference_queue.completion_model()
@@ -365,21 +400,21 @@ class BaseCompletionsRouter(APIRouter):
 
             "completion": {
                 "endpoint": "/v1/completions",
-                "models": [],
-                "default_model": "",
-                "default_multiline_model": "",
+                "models": completion_models,
+                "default_model": completion_default_model,
+                "default_multiline_model": chat_default_model,
             },
 
             "chat": {
                 "endpoint": "/v1/chat/completions",
-                "models": [],
-                "default_model": "",
+                "models": chat_models,
+                "default_model": chat_default_model,
             },
 
             "embeddings": {
                 "endpoint": "v1/embeddings",
-                "models": [],
-                "default_model": "",
+                "models": embeddings_models,
+                "default_model": embeddings_default_model,
             },
 
             "telemetry": {
