@@ -528,6 +528,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {}
             },
             "similar_models": [
+                "llama3.2/3b/instruct/vllm",
                 "llama3.3/70b/instruct/vllm"
             ]
         },
