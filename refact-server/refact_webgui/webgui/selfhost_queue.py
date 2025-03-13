@@ -8,9 +8,9 @@ from typing import Dict, List, Any, Tuple
 import uuid
 
 from refact_utils.scripts import env
+from refact_utils.third_party.utils import load_third_party_config
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
-from refact_webgui.webgui.tab_third_party_apis import load_third_party_config
 
 
 class Ticket:
@@ -47,10 +47,6 @@ class InferenceQueue:
         return self._user2gpu_queue[model_name]
 
     def models_available(self, force_read: bool = False) -> List[str]:
-
-        # def _add_models_for_passthrough_provider(provider):
-        #     self._models_available.extend(k for k, v in self._model_assigner.passthrough_mini_db.items() if v.get('provider') == provider)
-
         t1 = time.time()
         if not force_read and self._models_available_ts + self.CACHE_MODELS_AVAILABLE > t1:
             return self._models_available
@@ -60,21 +56,6 @@ class InferenceQueue:
             for model in j["model_assign"]:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
-
-            # if j.get("openai_api_enable"):
-            #     _add_models_for_passthrough_provider('openai')
-            # if j.get("anthropic_api_enable"):
-            #     _add_models_for_passthrough_provider('anthropic')
-            # if j.get("groq_api_enable"):
-            #     _add_models_for_passthrough_provider('groq')
-            # if j.get("cerebras_api_enable"):
-            #     _add_models_for_passthrough_provider('cerebras')
-            # if j.get("gemini_api_enable"):
-            #     _add_models_for_passthrough_provider('gemini')
-            # if j.get("xai_api_enable"):
-            #     _add_models_for_passthrough_provider('xai')
-            # if j.get("deepseek_api_enable"):
-            #     _add_models_for_passthrough_provider('deepseek')
 
         # TODO: self._model_assigner.models_db_with_passthrough -> new mechanism
         config = load_third_party_config()

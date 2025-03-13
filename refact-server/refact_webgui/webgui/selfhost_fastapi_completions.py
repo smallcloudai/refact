@@ -15,6 +15,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
+from refact_utils.third_party.utils import load_third_party_config
 from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
@@ -22,7 +23,6 @@ from refact_webgui.webgui.selfhost_webutils import log
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_login import RefactSession
-from refact_webgui.webgui.tab_third_party_apis import load_third_party_config
 
 from pathlib import Path
 from pydantic import BaseModel
