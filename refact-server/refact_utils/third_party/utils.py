@@ -3,7 +3,7 @@ import os
 import litellm
 
 from pydantic import BaseModel, Field
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Any, Optional
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
@@ -119,6 +119,10 @@ class ThirdPartyModel:
         return litellm.supports_function_calling(self._model_name)
 
     @property
+    def supports_multimodality(self) -> bool:
+        return litellm.supports_vision(self._model_name)
+
+    @property
     def supports_chat(self) -> bool:
         return True
 
@@ -133,8 +137,8 @@ class ThirdPartyModel:
         tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
         return tokenizer_url
 
+    # NOTE: weird function for backward compatibility
     def compose_usage_dict(self, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
-        # NOTE: weird function for backward compatibility
         def _pp1000t(cost_entry_name: str) -> int:
             cost = litellm.model_cost.get(self._model_name, {}).get(cost_entry_name, 0)
             return int(cost * 1_000_000 * 1_000)
@@ -144,6 +148,32 @@ class ThirdPartyModel:
             "metering_prompt_tokens_n": prompt_tokens_n,
             "metering_generated_tokens_n": generated_tokens_n,
         }
+
+    def to_completion_model_record(self) -> Dict[str, Any]:
+        assert self.supports_completion
+        return {
+            "n_ctx": self.n_ctx,
+            "supports_scratchpads": {
+                "REPLACE_PASSTHROUGH": {
+                    "context_format": "chat",
+                    "rag_ratio": 0.5,
+                }
+            },
+        }
+
+    def to_chat_model_record(self) -> Dict[str, Any]:
+        return {
+            "n_ctx": self.n_ctx,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {},
+            },
+            "supports_tools": self.supports_tools,
+            "supports_multimodality": self.supports_multimodality,
+            # TODO: another list of supported models / setup in UI
+            "supports_clicks": False,  # TODO
+            "supports_agent": False,  # TODO
+        }
+
 
 def available_third_party_models() -> Dict[str, ThirdPartyModel]:
     config = load_third_party_config()
