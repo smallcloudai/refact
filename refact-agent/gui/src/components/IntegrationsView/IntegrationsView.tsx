@@ -1,4 +1,4 @@
-import { Box, Flex } from "@radix-ui/themes";
+import { Box, Container, Flex } from "@radix-ui/themes";
 import { FC, ReactNode } from "react";
 import { clearError, getErrorMessage } from "../../features/Errors/errorsSlice";
 import {
@@ -210,24 +210,26 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
   };
 
   return (
-    <Box style={{ width: "inherit", height: "100%" }}>
-      <Flex direction="column" style={{ width: "100%", height: "100%" }}>
-        {renderHeader()}
-        {renderContent()}
-        {globalError && (
-          <ErrorCallout
-            mx="0"
-            timeout={3000}
-            onClick={() => dispatch(clearError())}
-            className={classNames(styles.popup, {
-              [styles.popup_ide]: config.host !== "web",
-            })}
-            preventRetry
-          >
-            {globalError}
-          </ErrorCallout>
-        )}
-      </Flex>
-    </Box>
+    <Container px="1">
+      <Box style={{ width: "inherit", height: "100%" }}>
+        <Flex direction="column" style={{ width: "100%", height: "100%" }}>
+          {renderHeader()}
+          {renderContent()}
+          {globalError && (
+            <ErrorCallout
+              mx="0"
+              timeout={3000}
+              onClick={() => dispatch(clearError())}
+              className={classNames(styles.popup, {
+                [styles.popup_ide]: config.host !== "web",
+              })}
+              preventRetry
+            >
+              {globalError}
+            </ErrorCallout>
+          )}
+        </Flex>
+      </Box>
+    </Container>
   );
 };

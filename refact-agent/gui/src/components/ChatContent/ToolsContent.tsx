@@ -229,7 +229,7 @@ function processToolCalls(
   // TODO: handle knowledge differently.
   // memories are split in content with 🗃️019957b6ff
 
-  if (features.knowledge && result && head.function.name === "knowledge") {
+  if (head.function.name === "knowledge") {
     const elem = (
       <Knowledge key={`knowledge-tool-${processed.length}`} toolCall={head} />
     );

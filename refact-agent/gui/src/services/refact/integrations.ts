@@ -4,6 +4,7 @@ import { isLspChatMessage, LspChatMessage } from "./chat";
 import {
   INTEGRATION_DELETE_URL,
   INTEGRATION_GET_URL,
+  INTEGRATION_MCP_LOGS_PATH,
   INTEGRATION_SAVE_URL,
   INTEGRATIONS_URL,
 } from "./consts";
@@ -51,6 +52,53 @@ export const integrationsApi = createApi({
           };
         }
         return { data: response.data };
+      },
+    }),
+
+    getMCPLogsByPath: builder.query<MCPLogsResponse, string>({
+      providesTags: (_result, _error, arg) => [
+        { type: "INTEGRATION", id: arg },
+      ],
+      async queryFn(pathArg, api, extraOptions, baseQuery) {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${INTEGRATION_MCP_LOGS_PATH}`;
+        const response = await baseQuery({
+          url,
+          method: "POST",
+          body: {
+            config_path: pathArg,
+          },
+          ...extraOptions,
+        });
+
+        if (response.error) {
+          return { error: response.error };
+        }
+
+        if (isDetailMessage(response.data)) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: response.data.detail,
+              data: response.data,
+            },
+          };
+        }
+
+        if (!isMCPLogsResponse(response.data)) {
+          return {
+            error: {
+              status: "CUSTOM_ERROR",
+              error: "Failed to get MCP logs for integration: " + pathArg,
+              data: response.data,
+            },
+          };
+        }
+
+        return {
+          data: response.data,
+        };
       },
     }),
 
@@ -269,6 +317,17 @@ function isIntegration(json: unknown): json is Integration {
   }
 
   return true;
+}
+
+type MCPLogsResponse = {
+  logs: string[];
+};
+
+function isMCPLogsResponse(data: unknown): data is MCPLogsResponse {
+  if (!data || typeof data !== "object") return false;
+  if (!("logs" in data)) return false;
+  if (!Array.isArray(data.logs)) return false;
+  return data.logs.every((l) => typeof l === "string");
 }
 
 type DockerFilter = {

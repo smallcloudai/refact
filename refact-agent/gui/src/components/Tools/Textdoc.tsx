@@ -26,6 +26,7 @@ import { toolsApi } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
 import { isRTKResponseErrorWithDetailMessage } from "../../utils";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
+import classNames from "classnames";
 
 export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
   toolCall,
@@ -130,9 +131,10 @@ const TextDocHeader: React.FC<{
           size="1"
           onClick={handleApplyToolResult}
           disabled={dryRunResult.isLoading}
-          title={`Apply`}
+          // title={`Apply`}
+          className={classNames(styles.apply_button)}
         >
-          ➕ Apply
+          ➕ Diff
         </Button>
         {replaceContent && (
           <Button
@@ -140,7 +142,7 @@ const TextDocHeader: React.FC<{
             // this one can directly dismiss the tool confirmation.
             onClick={() => handleReplace(replaceContent)}
             disabled={dryRunResult.isLoading || !canPaste}
-            title="Replace the current selection in the ide."
+            // title="Replace the current selection in the ide."
           >
             ➕ Replace Selection
           </Button>

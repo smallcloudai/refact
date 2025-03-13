@@ -12,6 +12,7 @@ use rust_embed::RustEmbed;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
+use crate::integrations::integr_mcp::SessionMCP;
 
 
 pub async fn handle_v1_integrations(
@@ -186,5 +187,37 @@ pub async fn handle_v1_integration_delete(
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from("{}"))
+        .unwrap())
+}
+
+#[derive(Deserialize)]
+pub struct IntegrationsMcpLogsRequest {
+    pub config_path: String,
+}
+
+pub async fn handle_v1_integrations_mcp_logs(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> axum::response::Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<IntegrationsMcpLogsRequest>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    let session_key = post.config_path;
+    let session = gcx.read().await.integration_sessions.get(&session_key).cloned()
+        .ok_or(ScratchError::new(StatusCode::NOT_FOUND, format!("session {} not found", session_key)))?;
+
+    let logs = {
+        let mut session_locked = session.lock().await;
+        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>()
+            .ok_or(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "Session is not a MCP session".to_string()))?;
+        session_downcasted.logs.clone()
+    };
+    
+    return Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::json!({
+            "logs": logs,
+        }).to_string()))
         .unwrap())
 }

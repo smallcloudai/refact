@@ -5,9 +5,9 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::time::Duration;
 use tokio::fs;
 use tracing::error;
-use glob::Pattern;
 use std::time::SystemTime;
 
+use crate::files_correction::any_glob_matches_path;
 use crate::global_context::GlobalContext;
 
 
@@ -87,15 +87,6 @@ pub async fn load_privacy_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> Arc<Pri
         gcx_locked.privacy_settings = Arc::new(new_privacy_settings);
         gcx_locked.privacy_settings.clone()
     }
-}
-
-pub fn any_glob_matches_path(globs: &Vec<String>, path: &Path) -> bool {
-    globs.iter().any(|glob| {
-        let pattern = Pattern::new(glob).unwrap();
-        let mut matches = pattern.matches_path(path);
-        matches |= path.to_str().map_or(false, |s: &str| s.ends_with(glob));
-        matches
-    })
 }
 
 fn get_file_privacy_level(privacy_settings: Arc<PrivacySettings>, path: &Path) -> FilePrivacyLevel
