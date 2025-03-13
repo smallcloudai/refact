@@ -1,0 +1,17 @@
+---
+import { ViewTransitions } from 'astro:transitions';
+---
+
+<ViewTransitions />
+
+<script>
+  // This script runs once and persists across page navigations
+  document.addEventListener('astro:page-load', () => {
+    // Your initialization code here
+  }, { once: true });
+
+  // This script runs on every page navigation
+  document.addEventListener('astro:page-load', () => {
+    // Your per-page update code here
+  });
+</script>

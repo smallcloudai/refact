@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  refact:
+    image: smallcloud/refact_self_hosting_enterprise:latest
+    volumes:
+      - perm_storage:/perm_storage
+    ports:
+      - 8008:8008
+    shm_size: "256m"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+    environment:
+      - REFACT_DATABASE_HOST=refact_db
+      - ENTERPRISE_ADMIN_TOKEN=12345  # change this token to restrict access to the admin panel
+    links:
+      - refact_db
+    depends_on:
+      - refact_db
+  refact_db:
+    image: scylladb/scylla
+    volumes:
+      - refact_database:/var/lib/scylla
+
+volumes:
+  perm_storage:
+  refact_database:
