@@ -56,7 +56,7 @@ class InferenceQueue:
             for model in j["model_assign"]:
                 self._models_available.append(model)
             self._models_available_ts = time.time()
-        self._models_available.extend(available_third_party_models())
+        self._models_available.extend(list(available_third_party_models().keys()))
         return self._models_available
 
     def completion_model(self) -> Tuple[str, str]:

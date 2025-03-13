@@ -93,62 +93,71 @@ def save_third_party_config(config: ThirdPartyApiConfig):
     os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
 
 
-def resolve_third_party_model(model_name: str) -> Tuple[str, str]:
+class ThirdPartyModel:
+    PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
+    COMPLETION_READY_MODELS = []
+
+    def __init__(self, model_name: str, api_key: str):
+        self._model_name = model_name
+        self._api_key = api_key
+
+    @property
+    def name(self) -> str:
+        return self._model_name
+
+    @property
+    def api_key(self) -> str:
+        return self._api_key
+
+    @property
+    def n_ctx(self) -> Optional[int]:
+        if max_input_tokens := litellm.get_model_info(self._model_name).get("max_input_tokens"):
+            return min(self.PASSTHROUGH_MAX_TOKENS_LIMIT, max_input_tokens)
+
+    @property
+    def supports_tools(self) -> bool:
+        return litellm.supports_function_calling(self._model_name)
+
+    @property
+    def supports_chat(self) -> bool:
+        return True
+
+    @property
+    def supports_completion(self) -> bool:
+        return self._model_name in self.COMPLETION_READY_MODELS
+
+    @property
+    def tokenizer_uri(self) -> str:
+        # TODO: get tokenizer uri according to the provider/model
+        model_path = "Xenova/gpt-4o"
+        tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
+        return tokenizer_url
+
+    def compose_usage_dict(self, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
+        # NOTE: weird function for backward compatibility
+        def _pp1000t(cost_entry_name: str) -> int:
+            cost = litellm.model_cost.get(self._model_name, {}).get(cost_entry_name, 0)
+            return int(cost * 1_000_000 * 1_000)
+        return {
+            "pp1000t_prompt": _pp1000t("input_cost_per_token"),
+            "pp1000t_generated": _pp1000t("output_cost_per_token"),
+            "metering_prompt_tokens_n": prompt_tokens_n,
+            "metering_generated_tokens_n": generated_tokens_n,
+        }
+
+def available_third_party_models() -> Dict[str, ThirdPartyModel]:
     config = load_third_party_config()
-    for provider_id, provider_config in config.providers.items():
-        if provider_config.enabled and model_name in provider_config.enabled_models:
-            return model_name, provider_config.api_key
-    else:
-        raise RuntimeError(f"model {model_name} is not running")
-
-
-def compose_usage_dict(model_name: str, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
-    def _pp1000t(cost_entry_name: str) -> int:
-        cost = litellm.model_cost.get(model_name, {}).get(cost_entry_name, 0)
-        return int(cost * 1_000_000 * 1_000)
-
-    return {
-        "pp1000t_prompt": _pp1000t("input_cost_per_token"),
-        "pp1000t_generated": _pp1000t("output_cost_per_token"),
-        "metering_prompt_tokens_n": prompt_tokens_n,
-        "metering_generated_tokens_n": generated_tokens_n,
-    }
-
-
-def available_third_party_models():
-    config = load_third_party_config()
-    models_available = []
+    models_available = {}
     for provider_id, provider_config in config.providers.items():
         if not provider_config.enabled:
             continue
         for model_name in provider_config.enabled_models:
             if model_name not in models_available:
-                models_available.append(model_name)
+                models_available[model_name] = ThirdPartyModel(
+                    model_name,
+                    provider_config.api_key,
+                )
     return models_available
-
-
-def get_third_party_model_path(model_name: str) -> str:
-    return "Xenova/gpt-4o"  # TODO: tokenizer paths should be static in the code
-
-
-def get_third_party_context_size(model_name: str) -> Optional[int]:
-    PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
-    if max_input_tokens := litellm.get_model_info(model_name).get("max_input_tokens"):
-        return min(PASSTHROUGH_MAX_TOKENS_LIMIT, max_input_tokens)
-
-
-def is_third_party_supports_tools(model_name: str) -> bool:
-    return litellm.supports_function_calling(model_name)
-
-
-COMPLETION_READY_MODELS = []
-
-
-def get_third_party_model_capabilities(model_name: str) -> List[str]:
-    capabilities = ["chat"]  # NOTE: all available models must support chat
-    if model_name in COMPLETION_READY_MODELS:
-        capabilities.append("completion")
-    return capabilities
 
 
 # TODO:
