@@ -140,19 +140,6 @@ const BottomSpace: React.FC = () => {
       return;
     }
 
-    if (
-      state.innerRef.current.clientHeight + height <
-      state.scrollRef.current.clientHeight
-    ) {
-      const fillSize =
-        state.scrollRef.current.clientHeight -
-        state.innerRef.current.clientHeight;
-      const anchorTop = Math.max(state.anchorRef.current.offsetTop, 0);
-      setHeight(fillSize + anchorTop);
-      dispatch({ type: "set_scroll", payload: true });
-      return;
-    }
-
     const scrollViewportHeight = state.scrollRef.current.clientHeight;
     const anchorPosition = state.anchorRef.current.offsetTop;
     const contentHeight = state.innerRef.current.clientHeight;
@@ -186,7 +173,6 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
   children,
   ...scrollTo
 }) => {
-  // const [scrolled, setScrolled] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
   const { state, dispatch } = useScrollContext();
 

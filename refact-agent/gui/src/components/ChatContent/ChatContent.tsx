@@ -64,7 +64,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     handleWheel,
     handleScrollButtonClick,
     showFollowButton,
-    scrollElementToTop,
   } = useAutoScroll({
     scrollRef,
   });
@@ -218,8 +217,12 @@ function renderMessages(
     const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
-      isLastUserMessage && (
-        <ScrollAreaWithAnchor.ScrollAnchor key={`${key}-anchor`} />
+      isLastUserMessage && memo.length !== 0 && (
+        <ScrollAreaWithAnchor.ScrollAnchor
+          key={`${key}-anchor`}
+          behavior="smooth"
+          block="start"
+        />
       ),
       <UserInput onRetry={onRetry} key={key} messageIndex={index}>
         {head.content}
