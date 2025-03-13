@@ -29,7 +29,6 @@ export const UserInput: React.FC<UserInputProps> = ({
   children,
   onRetry,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
   const messages = useAppSelector(selectMessages);
 
   const [showTextArea, setShowTextArea] = useState(false);
@@ -65,7 +64,7 @@ export const UserInput: React.FC<UserInputProps> = ({
   }, [messageIndex, messages]);
 
   return (
-    <Container position="relative" pt="1" ref={ref} data-element="UserInput">
+    <Container position="relative" pt="1">
       {showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
@@ -122,7 +121,6 @@ export const UserInput: React.FC<UserInputProps> = ({
           </Flex>
         </Flex>
       )}
-      {/* {forceScroll && <Box minHeight={`${spaceSize}px`} />} */}
     </Container>
   );
 };

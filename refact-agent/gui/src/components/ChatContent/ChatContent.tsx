@@ -213,7 +213,6 @@ function renderMessages(
 
   if (head.role === "user") {
     const key = "user-input-" + index;
-    // if last message scroll this message to the top of the bar
     const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
