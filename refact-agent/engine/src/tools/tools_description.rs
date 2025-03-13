@@ -353,7 +353,7 @@ tools:
 
   - name: "deep_think"
     agentic: true
-    description: "Think about a complex problem to make a good solution or a plan"
+    description: "Think thoroughly about a complex problem to make a good solution or a plan to follow"
     parameters:
       - name: "problem_statement"
         type: "string"
