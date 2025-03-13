@@ -15,7 +15,6 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_utils.third_party.utils import ThirdPartyModel
 from refact_utils.third_party.utils import available_third_party_models
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
@@ -336,27 +335,28 @@ class BaseCompletionsRouter(APIRouter):
             return default_model
 
         # completion models
-        completion_running_models = running_models.get("completion", [])
-        completion_default_model = _select_default_model(completion_running_models)
-        completion_models = []
-        for model_name in completion_running_models:
+        completion_models = {}
+        for model_name in running_models.get("completion", []):
             if model_info := self._model_assigner.models_db.get(model_name):
                 # convert into ModelRecord (see lsp)
                 pass
             elif model := available_third_party_models().get(model_name):
-                completion_models.append(model.to_completion_model_record())
+                completion_models[model_name] = model.to_completion_model_record()
+            else:
+                log(f"completion model `{model_name}` is listed as running but not found in configs, skip")
+        completion_default_model = _select_default_model(list(completion_models.keys()))
 
         # chat models
-        chat_running_models = running_models.get("chat", [])
-        chat_default_model = _select_default_model(chat_running_models)
-        chat_models = []
-        for model_name in chat_running_models:
+        chat_models = {}
+        for model_name in running_models.get("chat", []):
             if model_info := self._model_assigner.models_db.get(model_name):
                 # convert into ModelRecord (see lsp)
                 pass
+            elif model := available_third_party_models().get(model_name):
+                chat_models[model_name] = model.to_chat_model_record()
             else:
-                model = ThirdPartyModel(model_name)
-                chat_models.append(model.to_chat_model_record())
+                log(f"chat model `{model_name}` is listed as running but not found in configs, skip")
+        chat_default_model = _select_default_model(list(chat_models.keys()))
 
         # embedding models
         embeddings_models = running_models.get("embeddings", [])
