@@ -5,10 +5,6 @@ on:
       - server/v*
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: refact-server
-
 jobs:
   build:
     name: Build
