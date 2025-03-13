@@ -16,7 +16,7 @@ import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
 import { useAutoScroll } from "./useAutoScroll";
 import { PlainText } from "./PlainText";
-import { useAppDispatch } from "../../hooks";
+import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
   selectIntegration,
@@ -104,6 +104,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const shouldConfigButtonBeVisible = useMemo(() => {
     return isConfig && !integrationMeta?.path?.includes("project_summary");
   }, [isConfig, integrationMeta?.path]);
+
+  // Dedicated hook for handling file reloads
+  useDiffFileReload();
 
   return (
     <ScrollArea
