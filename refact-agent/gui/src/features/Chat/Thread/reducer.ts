@@ -112,6 +112,7 @@ const createInitialState = ({
     error: null,
     prevent_send: false,
     waiting_for_response: false,
+    // TBD: should be safe to remove?
     max_new_tokens: DEFAULT_MAX_NEW_TOKENS,
     cache: {},
     system_prompt: {},
@@ -352,6 +353,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.waiting_for_response = action.payload;
   });
 
+  // TBD: should be safe to remove?
   builder.addCase(setMaxNewTokens, (state, action) => {
     state.max_new_tokens = action.payload;
   });
