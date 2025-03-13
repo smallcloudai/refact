@@ -194,15 +194,6 @@ async fn _session_apply_settings(
                     return;
                 }
             };
-            if let Err(e) = client.initialize(imp, caps).await {
-                let err_msg = format!("Failed to init server: {}", e);
-                tracing::error!("{err_msg} for {session_key_clone}");
-                _add_log_entry(session_downcasted, err_msg);
-                if let Ok(error_log) = client.get_stderr(None).await {
-                    _add_log_entry(session_downcasted, error_log);
-                }
-                return;
-            }
 
             // let set_result = client.request(
             //     "logging/setLevel",
