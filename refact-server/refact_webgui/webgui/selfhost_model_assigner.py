@@ -8,7 +8,7 @@ from refact_utils.finetune.utils import get_active_loras
 from refact_utils.huggingface.utils import is_hf_hub_offline
 from refact_utils.huggingface.utils import get_repo_status
 from refact_webgui.webgui.selfhost_webutils import log
-from refact_known_models import models_mini_db, passthrough_mini_db
+from refact_known_models import models_mini_db
 
 from pathlib import Path
 from typing import List, Dict, Any, Set, Optional
@@ -108,14 +108,6 @@ class ModelAssigner:
     @property
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
-
-    @property
-    def passthrough_mini_db(self) -> Dict[str, Any]:
-        return passthrough_mini_db
-
-    @property
-    def models_db_with_passthrough(self) -> Dict[str, Any]:
-        return {**self.models_db, **self.passthrough_mini_db}
 
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
