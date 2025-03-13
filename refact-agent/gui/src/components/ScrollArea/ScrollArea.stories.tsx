@@ -2,7 +2,8 @@ import React from "react";
 
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { ScrollArea } from "./ScrollArea";
+import { ScrollArea } from ".";
+
 import { Flex, Text } from "@radix-ui/themes";
 
 const Content: React.ReactNode = (
