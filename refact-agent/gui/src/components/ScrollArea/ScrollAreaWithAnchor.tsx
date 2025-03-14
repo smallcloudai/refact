@@ -6,7 +6,6 @@ import React, {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -215,6 +214,12 @@ const BottomSpace: React.FC = () => {
       return;
     }
 
+    if (state.follow) {
+      state.scrollRef.current.scrollTop =
+        state.scrollRef.current.scrollHeight -
+        state.scrollRef.current.clientHeight;
+    }
+
     const anchorPosition = state.anchorRef.current.offsetTop;
     const topOfBottom = bottomSpaceRef.current.offsetTop;
     const spaceBetween = topOfBottom - anchorPosition;
@@ -230,6 +235,7 @@ const BottomSpace: React.FC = () => {
     state.innerRef,
     state.scrollRef,
     state.scrolled,
+    state.follow,
   ]);
 
   useResizeObserverOnRef(state.innerRef, calculateAndSetSpace);
@@ -307,13 +313,12 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
 
 const FollowButton: React.FC = () => {
   const { state, dispatch } = useScrollContext();
-  console.log(state);
 
   const handleClick = useCallback(() => {
     dispatch({ type: "set_follow", payload: true });
   }, [dispatch]);
 
-  const shouldShow = !state.at_the_bottom;
+  const shouldShow = !state.at_the_bottom && !state.follow;
 
   if (!shouldShow) return false;
   return <ScrollToBottomButton onClick={handleClick} />;
