@@ -13,7 +13,8 @@ type useAutoScrollProps = {
 function isAtBottom(element: HTMLDivElement | null) {
   if (element === null) return true;
   const { scrollHeight, scrollTop, clientHeight } = element;
-  return Math.abs(scrollHeight - (scrollTop + clientHeight)) <= 1;
+  // TODO: quick fix for the follow button flickering near the bottom of the screen
+  return Math.abs(scrollHeight - (scrollTop + clientHeight)) <= 100;
 }
 
 function isOverflowing(element: HTMLDivElement | null) {
