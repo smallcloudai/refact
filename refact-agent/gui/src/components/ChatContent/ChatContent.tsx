@@ -124,7 +124,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         gap="1"
       >
         {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages, onRetryWrapper)}
+        {renderMessages(messages, onRetryWrapper, isWaiting)}
         <UncommittedChangesWarning />
         {threadUsage && messages.length > 0 && <UsageCounter />}
         <Container py="4">
@@ -180,19 +180,20 @@ ChatContent.displayName = "ChatContent";
 function renderMessages(
   messages: ChatMessages,
   onRetry: (index: number, question: UserMessage["content"]) => void,
+  waiting: boolean,
   memo: React.ReactNode[] = [],
   index = 0,
 ) {
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, onRetry, memo, index + 1);
+    return renderMessages(tail, onRetry, waiting, memo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (head.role === "assistant") {
@@ -208,7 +209,7 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (head.role === "user") {
@@ -216,7 +217,7 @@ function renderMessages(
     const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
-      isLastUserMessage && (
+      isLastUserMessage && !waiting && (
         <ScrollAreaWithAnchor.ScrollAnchor
           key={`${key}-anchor`}
           behavior="smooth"
@@ -228,13 +229,13 @@ function renderMessages(
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (isDiffMessage(head)) {
@@ -251,10 +252,11 @@ function renderMessages(
     return renderMessages(
       nextTail,
       onRetry,
+      waiting,
       nextMemo,
       index + diffMessages.length,
     );
   }
 
-  return renderMessages(tail, onRetry, memo, index + 1);
+  return renderMessages(tail, onRetry, waiting, memo, index + 1);
 }

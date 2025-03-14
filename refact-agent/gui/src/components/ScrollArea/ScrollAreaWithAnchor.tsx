@@ -146,11 +146,8 @@ const BottomSpace: React.FC = () => {
     const topOfBottom = bottomSpaceRef.current.offsetTop;
     const spaceBetween = topOfBottom - anchorPosition;
     const maxSpace = state.scrollRef.current.clientHeight;
-    if (spaceBetween >= maxSpace) {
-      setHeight(0);
-    } else {
-      setHeight(maxSpace - spaceBetween);
-    }
+    setHeight(Math.max(maxSpace - spaceBetween, 0));
+
     if (!state.scrolled) {
       dispatch({ type: "set_scroll", payload: true });
     }
@@ -168,14 +165,7 @@ const BottomSpace: React.FC = () => {
     calculateAndSetSpace();
   }, [calculateAndSetSpace, dispatch]);
 
-  return (
-    <Box
-      ref={bottomSpaceRef}
-      height={height + "px"}
-      // make this a prop because an extra 8px is added somehow
-      mt="-2"
-    />
-  );
+  return <Box ref={bottomSpaceRef} height={height + "px"} mt="-2" />;
 };
 
 export type ScrollAnchorProps = React.PropsWithChildren<
