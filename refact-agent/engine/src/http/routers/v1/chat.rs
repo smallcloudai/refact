@@ -225,7 +225,7 @@ async fn _chat(
     }
 
     let meta = {
-        if is_metadata_supported(caps.clone(), "").await {
+        if is_metadata_supported(caps.clone(), &chat_post.provider).await {
             Some(chat_post.meta.clone())
         } else {
             None

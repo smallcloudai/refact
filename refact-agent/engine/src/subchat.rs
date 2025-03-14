@@ -119,7 +119,7 @@ async fn chat_interaction_non_stream(
         let gcx = ccx.lock().await.global_context.clone();
         let caps = gcx.read().await.caps.clone();
         if let Some(caps) = caps {
-            if is_metadata_supported(caps, "").await {
+            if is_metadata_supported(caps, &chat_post.provider).await {
                 Some(chat_post.meta.clone())
             } else {
                 None

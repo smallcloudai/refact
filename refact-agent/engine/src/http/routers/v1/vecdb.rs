@@ -26,7 +26,13 @@ pub async fn handle_v1_vecdb_search(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), "").await
+    let caps_opt = gcx.read().await.caps.clone();
+    let provider_name = if let Some(caps) = caps_opt {
+        caps.read().unwrap().embedding_provider.clone()
+    } else {
+        "".to_string()
+    };
+    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), &provider_name).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     let cx_locked = gcx.read().await;
 
