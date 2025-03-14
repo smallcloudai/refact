@@ -3,17 +3,30 @@ import os
 import litellm
 
 from pydantic import BaseModel, Field
+from pydantic import computed_field
 from typing import Dict, List, Any, Optional
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
 
 
+class ModelConfig(BaseModel):
+    model_name: str
+    supports_agentic: bool = False
+    supports_clicks: bool = False
+    @computed_field
+    def supports_tools(self) -> bool:
+        return litellm.supports_function_calling(self.model_name)
+    @computed_field
+    def supports_multimodality(self) -> bool:
+        return litellm.supports_vision(self.model_name)
+
+
 class ThirdPartyProviderConfig(BaseModel):
     provider_name: str
     api_key: str
     enabled: bool
-    enabled_models: List[str] = Field(default_factory=list)
+    enabled_models: List[ModelConfig] = Field(default_factory=list)
 
 
 class ThirdPartyApiConfig(BaseModel):
@@ -21,43 +34,43 @@ class ThirdPartyApiConfig(BaseModel):
 
 
 # TODO: migration logic
-def _migrate_third_party_config():
-    """
-    Migrate from the old configuration format to the new one.
-    """
-    try:
-        # Load the old API keys
-        api_keys = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS):
-            with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
-                api_keys = json.load(f)
-
-        # Load the old enabled models
-        enabled_models = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
-            with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
-                enabled_models = json.load(f)
-
-        # Create the new configuration
-        providers_dict = {}
-        for provider_id, api_key in api_keys.items():
-            providers_dict[provider_id] = ThirdPartyProviderConfig(
-                provider_name=provider_id,
-                api_key=api_key,
-                enabled=True,
-                enabled_models=enabled_models.get(provider_id, []),
-            )
-
-        # Save the new configuration
-        config = ThirdPartyApiConfig(providers=providers_dict)
-        save_third_party_config(config)
-
-        # Rename the old configuration file to .bak
-        if os.path.exists(env.CONFIG_INTEGRATIONS):
-            os.rename(env.CONFIG_INTEGRATIONS, env.CONFIG_INTEGRATIONS + ".bak")
-    except Exception as e:
-        # If migration fails, log the error and continue
-        log(f"Error migrating old configuration: {e}")
+# def _migrate_third_party_config():
+#     """
+#     Migrate from the old configuration format to the new one.
+#     """
+#     try:
+#         # Load the old API keys
+#         api_keys = {}
+#         if os.path.exists(env.CONFIG_INTEGRATIONS):
+#             with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
+#                 api_keys = json.load(f)
+#
+#         # Load the old enabled models
+#         enabled_models = {}
+#         if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+#             with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
+#                 enabled_models = json.load(f)
+#
+#         # Create the new configuration
+#         providers_dict = {}
+#         for provider_id, api_key in api_keys.items():
+#             providers_dict[provider_id] = ThirdPartyProviderConfig(
+#                 provider_name=provider_id,
+#                 api_key=api_key,
+#                 enabled=True,
+#                 enabled_models=enabled_models.get(provider_id, []),
+#             )
+#
+#         # Save the new configuration
+#         config = ThirdPartyApiConfig(providers=providers_dict)
+#         save_third_party_config(config)
+#
+#         # Rename the old configuration file to .bak
+#         if os.path.exists(env.CONFIG_INTEGRATIONS):
+#             os.rename(env.CONFIG_INTEGRATIONS, env.CONFIG_INTEGRATIONS + ".bak")
+#     except Exception as e:
+#         # If migration fails, log the error and continue
+#         log(f"Error migrating old configuration: {e}")
 
 
 def load_third_party_config() -> ThirdPartyApiConfig:
@@ -97,13 +110,17 @@ class ThirdPartyModel:
     PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
     COMPLETION_READY_MODELS = []
 
-    def __init__(self, model_name: str, api_key: Optional[str] = None):
-        self._model_name = model_name
+    def __init__(
+            self,
+            model_config: ModelConfig,
+            api_key: Optional[str] = None,
+    ):
+        self._model_config = model_config
         self._api_key = api_key
 
     @property
     def name(self) -> str:
-        return self._model_name
+        return self._model_config.model_name
 
     @property
     def api_key(self) -> str:
@@ -111,16 +128,8 @@ class ThirdPartyModel:
 
     @property
     def n_ctx(self) -> Optional[int]:
-        if max_input_tokens := litellm.get_model_info(self._model_name).get("max_input_tokens"):
+        if max_input_tokens := litellm.get_model_info(self.name).get("max_input_tokens"):
             return min(self.PASSTHROUGH_MAX_TOKENS_LIMIT, max_input_tokens)
-
-    @property
-    def supports_tools(self) -> bool:
-        return litellm.supports_function_calling(self._model_name)
-
-    @property
-    def supports_multimodality(self) -> bool:
-        return litellm.supports_vision(self._model_name)
 
     @property
     def supports_chat(self) -> bool:
@@ -128,7 +137,7 @@ class ThirdPartyModel:
 
     @property
     def supports_completion(self) -> bool:
-        return self._model_name in self.COMPLETION_READY_MODELS
+        return self._model_config.model_name in self.COMPLETION_READY_MODELS
 
     @property
     def tokenizer_uri(self) -> str:
@@ -140,7 +149,7 @@ class ThirdPartyModel:
     # NOTE: weird function for backward compatibility
     def compose_usage_dict(self, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
         def _pp1000t(cost_entry_name: str) -> int:
-            cost = litellm.model_cost.get(self._model_name, {}).get(cost_entry_name, 0)
+            cost = litellm.model_cost.get(self._model_config.model_name, {}).get(cost_entry_name, 0)
             return int(cost * 1_000_000 * 1_000)
         return {
             "pp1000t_prompt": _pp1000t("input_cost_per_token"),
@@ -167,11 +176,10 @@ class ThirdPartyModel:
             "supports_scratchpads": {
                 "PASSTHROUGH": {},
             },
-            "supports_tools": self.supports_tools,
-            "supports_multimodality": self.supports_multimodality,
-            # TODO: another list of supported models / setup in UI
-            "supports_clicks": False,  # TODO
-            "supports_agent": False,  # TODO
+            "supports_tools": self._model_config.supports_tools(),
+            "supports_multimodality": self._model_config.supports_multimodality(),
+            "supports_clicks": self._model_config.supports_clicks,
+            "supports_agent": self._model_config.supports_agentic,
         }
 
 
@@ -181,10 +189,10 @@ def available_third_party_models() -> Dict[str, ThirdPartyModel]:
     for provider_id, provider_config in config.providers.items():
         if not provider_config.enabled:
             continue
-        for model_name in provider_config.enabled_models:
-            if model_name not in models_available:
-                models_available[model_name] = ThirdPartyModel(
-                    model_name,
+        for model_config in provider_config.enabled_models:
+            if model_config.model_name not in models_available:
+                models_available[model_config.model_name] = ThirdPartyModel(
+                    model_config,
                     provider_config.api_key,
                 )
     return models_available
