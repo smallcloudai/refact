@@ -1,4 +1,5 @@
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommand, AtCommandsContext, AtParam};
+use crate::caps::{get_api_key, ModelType};
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
@@ -7,7 +8,6 @@ use crate::nicer_logs::last_n_chars;
 
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextEnum, ContextFile};
-use crate::caps::get_custom_embedding_api_key;
 use crate::vecdb;
 use crate::vecdb::vdb_structs::VecdbSearch;
 
@@ -69,9 +69,16 @@ pub async fn execute_at_search(
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
 
-    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
+    let caps_opt = gcx.read().await.caps.clone();
+    let provider_name = if let Some(caps) = caps_opt {
+        let caps_locked = caps.read().unwrap();
+        caps_locked.embedding_provider.clone()
+    } else {
+        "".to_string()
+    };
+    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), &provider_name).await;
     if let Err(err) = api_key {
-        return Err(err.message);
+        return Err(err);
     }
     let api_key = api_key.unwrap();
 

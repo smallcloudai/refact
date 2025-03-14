@@ -12,17 +12,18 @@ use tracing::info;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::custom_error::ScratchError;
+use crate::global_context::is_metadata_supported;
 use crate::nicer_logs;
 use crate::scratchpad_abstract::{FinishReason, ScratchpadAbstract};
 use crate::telemetry::telemetry_structs;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::caps::get_api_key;
 
 
-async fn _get_endpoint_and_stuff_from_model_name(
+async fn _resolve_model_connection_details(
     gcx: Arc<ARwLock<crate::global_context::GlobalContext>>,
     caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
-    model_name: String,
+    model_name: &str,
+    provider_name: &str,
 ) -> (String, String, String, String)
 {
     let (
@@ -34,27 +35,45 @@ async fn _get_endpoint_and_stuff_from_model_name(
         endpoint_chat_passthrough,
     ) = {
         let caps_locked = caps.read().unwrap();
-        if caps_locked.code_chat_models.contains_key(&model_name) {
+        let provider = if provider_name.is_empty() {
+            caps_locked.providers.first().map(|(_, p)| p)
+        } else {
+            caps_locked.providers.get(provider_name)
+        };
+        let provider = provider.unwrap();
+        if provider.code_chat_models.contains_key(model_name) {
             (
-                caps_locked.chat_apikey.clone(),
-                caps_locked.endpoint_style.clone(),      // abstract
-                caps_locked.chat_endpoint_style.clone(), // chat-specific
-                caps_locked.endpoint_template.clone(),   // abstract
-                caps_locked.chat_endpoint.clone(),       // chat-specific
-                caps_locked.endpoint_chat_passthrough.clone(),
+                provider.chat_apikey.clone(),
+                provider.endpoint_style.clone(),      // abstract
+                provider.chat_endpoint_style.clone(), // chat-specific
+                provider.endpoint_template.clone(),   // abstract
+                provider.chat_endpoint.clone(),       // chat-specific
+                provider.endpoint_chat_passthrough.clone(),
             )
         } else {
             (
-                caps_locked.completion_apikey.clone(),
-                caps_locked.endpoint_style.clone(),             // abstract
-                caps_locked.completion_endpoint_style.clone(),  // completion-specific
-                caps_locked.endpoint_template.clone(),          // abstract
-                caps_locked.completion_endpoint.clone(),        // completion-specific
+                provider.completion_apikey.clone(),
+                provider.endpoint_style.clone(),             // abstract
+                provider.completion_endpoint_style.clone(),  // completion-specific
+                provider.endpoint_template.clone(),          // abstract
+                provider.completion_endpoint.clone(),        // completion-specific
                 "".to_string(),
             )
         }
     };
-    let api_key = get_api_key(gcx, custom_apikey).await;
+    let api_key = match custom_apikey {
+        s if s.is_empty() => gcx.read().await.cmdline.api_key.clone(),
+        s if s.starts_with("$") => {
+            match std::env::var(s.trim_start_matches('$')) {
+                Ok(v) => v,
+                Err(e) => {
+                    tracing::error!("Failed to get API key from env var {s}: {e}");
+                    gcx.read().await.cmdline.api_key.clone()
+                }
+            }
+        },
+        _ => custom_apikey,
+    };
     if !custom_endpoint_style.is_empty() {
         endpoint_style = custom_endpoint_style;
     }
@@ -75,6 +94,7 @@ pub async fn scratchpad_interaction_not_stream_json(
     scope: String,
     prompt: &str,
     model_name: String,
+    provider_name: String,
     parameters: &SamplingParameters,  // includes n
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
@@ -97,11 +117,11 @@ pub async fn scratchpad_interaction_not_stream_json(
         endpoint_template,
         endpoint_style,
         endpoint_chat_passthrough,
-    ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
+    ) = _resolve_model_connection_details(gcx.clone(), caps.clone(), &model_name, &provider_name).await;
 
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
-    let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
+    let metadata_supported = is_metadata_supported(caps.clone(), &provider_name).await;
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
         Ok(Value::Object(serde_json::Map::new()))
@@ -254,6 +274,7 @@ pub async fn scratchpad_interaction_not_stream(
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
     model_name: String,
+    provider_name: String,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
@@ -274,6 +295,7 @@ pub async fn scratchpad_interaction_not_stream(
         scope,
         prompt.as_str(),
         model_name,
+        provider_name,
         parameters,
         only_deterministic_messages,
         meta
@@ -297,6 +319,7 @@ pub async fn scratchpad_interaction_stream(
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
     mut model_name: String,
+    provider_name: String,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
@@ -323,7 +346,7 @@ pub async fn scratchpad_interaction_stream(
             endpoint_template,
             endpoint_style,
             endpoint_chat_passthrough,
-        ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
+        ) = _resolve_model_connection_details(gcx.clone(), caps.clone(), &model_name, &provider_name).await;
 
         let t0 = std::time::Instant::now();
         let mut prompt = String::new();
@@ -398,7 +421,7 @@ pub async fn scratchpad_interaction_stream(
                 break;
             }
             // info!("prompt: {:?}", prompt);
-            let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
+            let metadata_supported = is_metadata_supported(caps.clone(), &provider_name).await;
             let event_source_maybe = if endpoint_style == "hf" {
                 crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
                     &mut save_url,

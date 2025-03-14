@@ -10,6 +10,7 @@ use tracing::info;
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ReasoningEffort, SamplingParameters};
+use crate::caps::get_caps_provider;
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -125,13 +126,13 @@ impl ScratchpadAbstract for ChatPassthrough {
         let (mut messages, _any_context_produced) = if self.allow_at && !should_execute_remotely {
             run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else if self.allow_at {
-            run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
+            run_at_commands_remotely(ccx.clone(), &self.post.model, &self.post.provider, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
         } else {
             (messages, false)
         };
         if self.supports_tools {
             (messages, _) = if should_execute_remotely {
-                run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
+                run_tools_remotely(ccx.clone(), &self.post.model, &self.post.provider, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             } else {
                 run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
@@ -217,7 +218,8 @@ impl ScratchpadAbstract for ChatPassthrough {
         };
         let model_record_mb = {
             let caps_locked = caps.read().unwrap();
-            caps_locked.code_chat_models.get(&self.post.model).cloned()
+            let provider = get_caps_provider(&caps_locked, &self.post.provider)?;
+            provider.code_chat_models.get(&self.post.model).cloned()
         };
 
         let supports_reasoning = if let Some(model_record) = model_record_mb.clone() {
