@@ -90,11 +90,7 @@ export const Diff: React.FC<DiffProps> = ({ diff }) => {
       style={{ minWidth: "min-content" }}
     >
       {isRename && (
-        <Flex
-          py="1"
-          px="2"
-          // style={{ backgroundColor: "rgba(255, 165, 0, 0.2)" }}
-        >
+        <Flex py="1" px="2">
           <Text size="1" color="orange">
             {filename(diff.file_name)} was renamed to{" "}
             {filename(diff.file_name_rename ?? "")}
@@ -146,41 +142,94 @@ export const DiffTitle: React.FC<{
     const adds = "+".repeat(addLength);
     const removes = "-".repeat(removeLength);
 
-    let element;
+    // Directly return the element based on condition
     if (renameAction?.file_name_rename) {
       // Display rename information
       const newName = filename(renameAction.file_name_rename);
-      element = (
-        <Text
-          style={{ display: "inline-block" }}
-          key={fullPath + "-" + diffForFile.length}
-        >
-          {name}{" "}
-          <Text color="orange" style={{ fontStyle: "italic" }}>
-            → {newName}
-          </Text>
-        </Text>
+      return process(
+        tail,
+        memo.length > 0
+          ? [
+              ...memo,
+              ", ",
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text color="orange" style={{ fontStyle: "italic" }}>
+                  → {newName}
+                </Text>
+              </Text>,
+            ]
+          : [
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text color="orange" style={{ fontStyle: "italic" }}>
+                  → {newName}
+                </Text>
+              </Text>,
+            ],
       );
     } else {
-      element = (
-        <Text
-          style={{ display: "inline-block" }}
-          key={fullPath + "-" + diffForFile.length}
-        >
-          {name}{" "}
-          <Text color="red" wrap="wrap" style={{ wordBreak: "break-all" }}>
-            {removes}
-          </Text>
-          <Text color="green" wrap="wrap" style={{ wordBreak: "break-all" }}>
-            {adds}
-          </Text>
-        </Text>
+      return process(
+        tail,
+        memo.length > 0
+          ? [
+              ...memo,
+              ", ",
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text
+                  color="red"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {removes}
+                </Text>
+                <Text
+                  color="green"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {adds}
+                </Text>
+              </Text>,
+            ]
+          : [
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text
+                  color="red"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {removes}
+                </Text>
+                <Text
+                  color="green"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {adds}
+                </Text>
+              </Text>,
+            ],
       );
     }
 
-    const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
+    // const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
 
-    return process(tail, nextMemo);
+    // return process(tail, nextMemo);
   }
 
   return process(entries);
@@ -252,7 +301,6 @@ export const DiffForm: React.FC<{
                     });
                   }}
                 >
-                  {}
                   <Text
                     as="span"
                     color={
