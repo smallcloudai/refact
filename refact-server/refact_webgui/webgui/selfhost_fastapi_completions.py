@@ -218,30 +218,6 @@ class BaseCompletionsRouter(APIRouter):
     async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
 
-    def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
-        rewrite_dict = {}
-
-        for model_name in models_available:
-            if model_name not in self._model_assigner.models_db:
-                continue
-            d = {}
-            if n_ctx := self._model_assigner.model_assignment["model_assign"][model_name].get("n_ctx"):
-                d["n_ctx"] = n_ctx
-            if filter_caps := self._model_assigner.models_db[model_name].get("filter_caps", []):
-                d["supports_tools"] = "tools" in filter_caps
-            rewrite_dict[model_name] = d
-
-        for model in available_third_party_models().values():
-            if model.name not in models_available:
-                continue
-            d = {}
-            if n_ctx := model.n_ctx:
-                d["n_ctx"] = n_ctx
-            d["supports_tools"] = model.supports_tools
-            rewrite_dict[model.name] = d
-
-        return rewrite_dict
-
     async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
         # TODO: this is new caps! it shouldn't be used by old refact-lsp
         if isinstance(user_agent, str):
