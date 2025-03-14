@@ -328,7 +328,7 @@ class BaseCompletionsRouter(APIRouter):
                 "default_model": embeddings_default_model,
             },
 
-            "telemetry": {
+            "telemetry_endpoints": {
                 "telemetry_basic_endpoint": "/stats/telemetry-basic",
                 "telemetry_corrected_snippets_endpoint": "/stats/telemetry-snippets",
                 "telemetry_basic_retrieve_my_own_endpoint": "/stats/rh-stats",
