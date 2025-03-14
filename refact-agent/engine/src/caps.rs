@@ -308,8 +308,10 @@ fn load_caps_from_buf_v2(
         code_chat_default_model: caps_v2.chat.default_model.clone(),
 
         // Embeddings related fields
-        endpoint_embeddings_template: relative_to_full_url(&caps_url, &caps_v2.embeddings.endpoint)?,
-        embedding_model: caps_v2.embeddings.default_model.clone(),
+        endpoint_embeddings_template: relative_to_full_url(&caps_url, &caps_v2.embedding.endpoint)?,
+        embedding_model: caps_v2.embedding.default_model.clone(),
+        embedding_n_ctx: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx,
+        embedding_size: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx as i32,
 
         // Telemetry endpoints
         telemetry_basic_dest: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
@@ -333,7 +335,7 @@ fn load_caps_from_buf_v2(
             let mut models = std::collections::HashSet::new();
             models.extend(caps_v2.completion.models.keys().cloned());
             models.extend(caps_v2.chat.models.keys().cloned());
-            models.extend(caps_v2.embeddings.models.iter().cloned());
+            models.extend(caps_v2.embedding.models.keys().cloned());
             models.into_iter().collect()
         },
 
