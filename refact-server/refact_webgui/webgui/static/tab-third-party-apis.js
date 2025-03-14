@@ -312,13 +312,30 @@ function updateUI() {
 
                         // Add each enabled model to the list
                         enabledModels.forEach(model => {
+                            // Handle both string models and ModelConfig objects
+                            const modelName = typeof model === 'string' ? model : model.model_name;
+                            const supportsAgentic = typeof model === 'object' && model.supports_agentic;
+                            const supportsClicks = typeof model === 'object' && model.supports_clicks;
+
+                            // Create capability badges if needed
+                            let capabilitiesBadges = '';
+                            if (supportsAgentic) {
+                                capabilitiesBadges += '<span class="badge bg-info me-1" title="Supports Agentic Mode">Agent</span>';
+                            }
+                            if (supportsClicks) {
+                                capabilitiesBadges += '<span class="badge bg-success me-1" title="Supports Click Interactions">Clicks</span>';
+                            }
+
                             const modelItem = document.createElement('div');
                             modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
                             modelItem.innerHTML = `
-                                <span class="model-name">${model}</span>
+                                <div class="d-flex align-items-center">
+                                    <span class="model-name">${modelName}</span>
+                                    <div class="ms-2">${capabilitiesBadges}</div>
+                                </div>
                                 <button class="btn btn-sm btn-outline-danger remove-model-btn" 
                                         data-provider="${providerId}" 
-                                        data-model="${model}">
+                                        data-model="${modelName}">
                                     <i class="bi bi-x"></i>
                                 </button>
                             `;
@@ -464,7 +481,23 @@ function showAddModelModal(providerId) {
                 <option value="custom">-- Enter custom model ID --</option>
             </select>
             <input type="text" class="form-control mt-2" id="third-party-model-custom" placeholder="Enter custom model ID" style="display: none;">
-            <div class="form-text">Select from available models or enter a custom model ID.</div>
+            <div class="form-text mb-3">Select from available models or enter a custom model ID.</div>
+
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
+                <label class="form-check-label" for="third-party-model-supports-agentic">
+                    Supports Agentic Mode
+                </label>
+                <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+            </div>
+
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks">
+                <label class="form-check-label" for="third-party-model-supports-clicks">
+                    Supports Clicks
+                </label>
+                <div class="form-text">Enable if this model supports click interactions.</div>
+            </div>
         `;
 
         modelIdContainer.innerHTML = selectHtml;
@@ -484,11 +517,35 @@ function showAddModelModal(providerId) {
         const inputHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
-            <div class="form-text">Enter the model ID as recognized by the provider.</div>
+            <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
+
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
+                <label class="form-check-label" for="third-party-model-supports-agentic">
+                    Supports Agentic Mode
+                </label>
+                <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+            </div>
+
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks">
+                <label class="form-check-label" for="third-party-model-supports-clicks">
+                    Supports Clicks
+                </label>
+                <div class="form-text">Enable if this model supports click interactions.</div>
+            </div>
         `;
 
         modelIdContainer.innerHTML = inputHtml;
     }
+
+    // Reset checkboxes
+    setTimeout(() => {
+        const agenticCheckbox = document.getElementById('third-party-model-supports-agentic');
+        const clicksCheckbox = document.getElementById('third-party-model-supports-clicks');
+        if (agenticCheckbox) agenticCheckbox.checked = false;
+        if (clicksCheckbox) clicksCheckbox.checked = false;
+    }, 100);
 
     const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
     modal.show();
@@ -500,6 +557,10 @@ function addModel() {
     let modelId;
     const providerId = document.getElementById('add-third-party-model-modal-id-container').dataset.providerId;
     const modelIdElement = document.getElementById('third-party-model-id');
+
+    // Get the values of the capability checkboxes
+    const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
+    const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
 
     // Check if we're using a select element (combobox)
     if (modelIdElement.tagName === 'SELECT') {
@@ -525,10 +586,21 @@ function addModel() {
     // Find the provider in the configuration
     const providerConfig = apiConfig.providers[providerId];
     if (providerConfig) {
-        // Check if the model is already enabled
-        if (!providerConfig.enabled_models.includes(modelId)) {
-            // Add the model to the enabled models
-            providerConfig.enabled_models.push(modelId);
+        // Check if the model is already enabled (by model name)
+        const modelExists = providerConfig.enabled_models.some(model =>
+            typeof model === 'string' ? model === modelId : model.model_name === modelId
+        );
+
+        if (!modelExists) {
+            // Create a ModelConfig object with the selected capabilities
+            const modelConfig = {
+                model_name: modelId,
+                supports_agentic: supportsAgentic,
+                supports_clicks: supportsClicks
+            };
+
+            // Add the model config to the enabled models
+            providerConfig.enabled_models.push(modelConfig);
 
             // Update the configuration
             updateConfiguration();
@@ -563,8 +635,11 @@ function removeModel(providerId, modelId) {
     // Find the provider in the configuration
     const providerConfig = apiConfig.providers[providerId];
     if (providerConfig) {
-        // Remove the model from the enabled models
-        const modelIndex = providerConfig.enabled_models.indexOf(modelId);
+        // Find the model index, handling both string models and ModelConfig objects
+        const modelIndex = providerConfig.enabled_models.findIndex(model =>
+            typeof model === 'string' ? model === modelId : model.model_name === modelId
+        );
+
         if (modelIndex !== -1) {
             providerConfig.enabled_models.splice(modelIndex, 1);
 
