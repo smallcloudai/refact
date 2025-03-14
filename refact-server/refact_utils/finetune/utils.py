@@ -90,7 +90,7 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
     result = {
         "completion": [],
         "chat": [],
-        "embeddings": [],
+        "embedding": [],
     }
 
     # local hosted models
