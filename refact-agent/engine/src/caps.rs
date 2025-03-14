@@ -302,6 +302,7 @@ fn load_caps_from_buf_v2(
 
         // Chat related fields
         chat_endpoint: relative_to_full_url(&caps_url, &caps_v2.chat.endpoint)?,
+        endpoint_chat_passthrough: relative_to_full_url(&caps_url, &caps_v2.chat.endpoint)?,
         code_chat_models: caps_v2.chat.models.clone(),
         code_chat_default_model: caps_v2.chat.default_model.clone(),
 
@@ -313,28 +314,26 @@ fn load_caps_from_buf_v2(
         telemetry_basic_dest: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
         telemetry_basic_retrieve_my_own: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_retrieve_my_own_endpoint)?,
 
-        // TODO: Tokenizer related
-        tokenizer_rewrite_path: caps_v2.tokenizer_endpoints.clone(),
+        tokenizer_path_template: "".to_string(),
+        tokenizer_rewrite_path: {
+            let mut rewritten_paths = HashMap::new();
+            for (key, endpoint) in caps_v2.tokenizer_endpoints {
+                let full_url = relative_to_full_url(&caps_url, &endpoint)?;
+                rewritten_paths.insert(key, full_url);
+            }
+            rewritten_paths
+        },
 
         // Version
         caps_version: caps_v2.caps_version,
 
-        // TODO: Running models - collect from all models
+        // Collect all models from completion, chat and embeddings sections
         running_models: {
-            let mut models = Vec::new();
-            if !caps_v2.chat.default_model.is_empty() {
-                models.push(caps_v2.chat.default_model.clone());
-            }
-            if !caps_v2.completion.default_model.is_empty() {
-                models.push(caps_v2.completion.default_model.clone());
-            }
-            if !caps_v2.completion.default_multiline_model.is_empty() {
-                models.push(caps_v2.completion.default_multiline_model.clone());
-            }
-            if !caps_v2.embeddings.default_model.is_empty() {
-                models.push(caps_v2.embeddings.default_model.clone());
-            }
-            models
+            let mut models = std::collections::HashSet::new();
+            models.extend(caps_v2.completion.models.keys().cloned());
+            models.extend(caps_v2.chat.models.keys().cloned());
+            models.extend(caps_v2.embeddings.models.iter().cloned());
+            models.into_iter().collect()
         },
 
         ..Default::default()
