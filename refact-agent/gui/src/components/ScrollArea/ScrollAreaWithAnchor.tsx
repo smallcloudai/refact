@@ -1,6 +1,7 @@
 import React, {
   createContext,
   forwardRef,
+  useCallback,
   useContext,
   useEffect,
   useImperativeHandle,
@@ -9,11 +10,12 @@ import React, {
   useState,
   type RefObject,
 } from "react";
-import { Box } from "@radix-ui/themes";
+import { Box, BoxProps } from "@radix-ui/themes";
 import {
   ScrollArea as BaseScrollArea,
   type ScrollAreaProps,
 } from "./ScrollArea";
+import { useResizeObserverOnRef } from "../../hooks";
 type State = {
   innerRef: RefObject<HTMLDivElement> | null;
   scrollRef: RefObject<HTMLDivElement> | null;
@@ -130,68 +132,102 @@ const BottomSpace: React.FC = () => {
   const { state, dispatch } = useScrollContext();
   const [height, setHeight] = useState<number>(0);
   const bottomSpaceRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+
+  const calculateAndSetSpace = useCallback(() => {
     if (
       !state.scrollRef?.current ||
       !state.innerRef?.current ||
       !state.anchorRef?.current ||
-      state.scrolled
+      !bottomSpaceRef.current
     ) {
       return;
     }
 
-    const scrollViewportHeight = state.scrollRef.current.clientHeight;
     const anchorPosition = state.anchorRef.current.offsetTop;
-    const contentHeight = state.innerRef.current.clientHeight;
-    const distanceToBottom = contentHeight - anchorPosition;
-
-    // If the distance from anchor to bottom is less than viewport height,
-    // we need to add extra space to ensure the anchor can be properly scrolled to
-    if (distanceToBottom < scrollViewportHeight) {
-      const additionalSpace = scrollViewportHeight - distanceToBottom;
-      setHeight(height + additionalSpace);
-      dispatch({ type: "set_scroll", payload: true });
+    const topOfBottom = bottomSpaceRef.current.offsetTop;
+    const spaceBetween = topOfBottom - anchorPosition;
+    const maxSpace = state.scrollRef.current.clientHeight;
+    if (spaceBetween >= maxSpace) {
+      setHeight(0);
     } else {
-      // There's already enough space, just enable scrolling
+      setHeight(maxSpace - spaceBetween);
+    }
+    if (!state.scrolled) {
       dispatch({ type: "set_scroll", payload: true });
     }
   }, [
-    state.scrollRef,
-    state.innerRef,
-    height,
-    state.anchorRef,
     dispatch,
+    state.anchorRef,
+    state.innerRef,
+    state.scrollRef,
     state.scrolled,
   ]);
 
-  //TODO: 8px extra space somewhere
-  return <Box ref={bottomSpaceRef} style={{ height: height - 8 }} />;
+  useResizeObserverOnRef(state.innerRef, calculateAndSetSpace);
+
+  useEffect(() => {
+    calculateAndSetSpace();
+  }, [calculateAndSetSpace, dispatch]);
+
+  return (
+    <Box
+      ref={bottomSpaceRef}
+      height={height + "px"}
+      // make this a prop because an extra 8px is added somehow
+      mt="-2"
+    />
+  );
 };
 
-export type ScrollAnchorProps = React.PropsWithChildren<ScrollIntoViewOptions>;
+export type ScrollAnchorProps = React.PropsWithChildren<
+  ScrollIntoViewOptions & BoxProps
+>;
 const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
-  children,
-  ...scrollTo
+  behavior,
+  block,
+  inline,
+  ...props
 }) => {
   const anchorRef = useRef<HTMLDivElement>(null);
   const { state, dispatch } = useScrollContext();
 
   useEffect(() => {
     dispatch({ type: "add_anchor", payload: anchorRef });
+    // dispatch({ type: "set_scrolled", payload: false });
   }, [dispatch, anchorRef]);
 
-  useLayoutEffect(() => {
-    if (state.anchorRef?.current && state.scroll && !state.scrolled) {
-      state.anchorRef.current.scrollIntoView(scrollTo);
-      dispatch({ type: "set_scrolled", payload: true });
-    }
-  }, [state.anchorRef, scrollTo, state.scroll, dispatch, state.scrolled]);
+  useEffect(() => {
+    return () => {
+      dispatch({ type: "set_scrolled", payload: false });
+      dispatch({ type: "set_scroll", payload: false });
+    };
+  }, [dispatch]);
 
-  return (
-    <Box ref={anchorRef} title="anchor">
-      {children}
-    </Box>
-  );
+  useEffect(() => {
+    if (
+      !state.scrollRef?.current ||
+      !state.anchorRef?.current ||
+      state.scrolled ||
+      !state.scroll
+    ) {
+      return;
+    }
+
+    state.anchorRef.current.scrollIntoView({ behavior, block, inline });
+
+    dispatch({ type: "set_scrolled", payload: true });
+  }, [
+    state.anchorRef,
+    state.scroll,
+    dispatch,
+    state.scrolled,
+    behavior,
+    block,
+    inline,
+    state.scrollRef,
+  ]);
+
+  return <Box {...props} ref={anchorRef} />;
 };
 
 export { ScrollArea, ScrollAnchor };

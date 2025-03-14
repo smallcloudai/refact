@@ -216,11 +216,12 @@ function renderMessages(
     const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
-      isLastUserMessage && memo.length !== 0 && (
+      isLastUserMessage && (
         <ScrollAreaWithAnchor.ScrollAnchor
           key={`${key}-anchor`}
           behavior="smooth"
           block="start"
+          mt="-2"
         />
       ),
       <UserInput onRetry={onRetry} key={key} messageIndex={index}>
