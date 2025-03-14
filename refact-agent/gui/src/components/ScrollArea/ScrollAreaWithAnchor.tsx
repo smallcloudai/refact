@@ -5,7 +5,6 @@ import React, {
   useContext,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useRef,
   useState,
   type RefObject,

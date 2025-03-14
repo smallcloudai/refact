@@ -1,6 +1,6 @@
 import { Pencil2Icon } from "@radix-ui/react-icons";
 import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { selectMessages } from "../../features/Chat";
 import { CheckpointButton } from "../../features/Checkpoints";
 import { useAppSelector } from "../../hooks";
