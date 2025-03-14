@@ -289,8 +289,7 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
       !state.scrollRef?.current ||
       !state.anchorRef?.current ||
       state.scrolled ||
-      !state.scroll ||
-      state.follow
+      !state.scroll
     ) {
       return;
     }
@@ -307,7 +306,6 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
     block,
     inline,
     state.scrollRef,
-    state.follow,
   ]);
 
   return <Box {...props} ref={anchorRef} />;
