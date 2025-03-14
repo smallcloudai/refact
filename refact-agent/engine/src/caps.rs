@@ -301,7 +301,7 @@ fn load_caps_from_buf_v2(
         multiline_code_completion_default_model: caps_v2.completion.default_multiline_model.clone(),
 
         // Chat related fields
-        chat_endpoint: relative_to_full_url(&caps_url, &caps_v2.chat.endpoint)?,
+        chat_endpoint: relative_to_full_url(&caps_url, &caps_v2.completion.endpoint)?,  // for completion-based chat
         endpoint_chat_passthrough: relative_to_full_url(&caps_url, &caps_v2.chat.endpoint)?,
         code_chat_models: caps_v2.chat.models.clone(),
         code_chat_default_model: caps_v2.chat.default_model.clone(),
