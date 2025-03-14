@@ -15,7 +15,7 @@ import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-import { useAutoScroll } from "./useAutoScroll";
+// import { useAutoScroll } from "./useAutoScroll";
 import { PlainText } from "./PlainText";
 import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
@@ -29,7 +29,7 @@ import {
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
-import { ScrollToBottomButton } from "./ScrollToBottomButton";
+// import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
@@ -47,7 +47,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   onRetry,
 }) => {
   const dispatch = useAppDispatch();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // const scrollRef = useRef<HTMLDivElement>(null);
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
@@ -59,14 +59,14 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const integrationMeta = useAppSelector(selectIntegration);
   const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
 
-  const {
-    handleScroll,
-    handleWheel,
-    handleScrollButtonClick,
-    showFollowButton,
-  } = useAutoScroll({
-    scrollRef,
-  });
+  // const {
+  //   handleScroll,
+  //   handleWheel,
+  //   handleScrollButtonClick,
+  //   showFollowButton,
+  // } = useAutoScroll({
+  //   scrollRef,
+  // });
 
   const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
     onRetry(index, question);
@@ -111,11 +111,11 @@ export const ChatContent: React.FC<ChatContentProps> = ({
 
   return (
     <ScrollAreaWithAnchor.ScrollArea
-      ref={scrollRef}
+      // ref={scrollRef}
       style={{ flexGrow: 1, height: "auto", position: "relative" }}
       scrollbars="vertical"
-      onScroll={handleScroll}
-      onWheel={handleWheel}
+      // onScroll={handleScroll}
+      // onWheel={handleWheel}
       type={isWaiting || isStreaming ? "auto" : "hover"}
       fullHeight
     >
@@ -136,9 +136,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
           />
         </Container>
       </Flex>
-      {showFollowButton && (
+      {/* {showFollowButton && (
         <ScrollToBottomButton onClick={handleScrollButtonClick} />
-      )}
+      )} */}
 
       <Box
         style={{
