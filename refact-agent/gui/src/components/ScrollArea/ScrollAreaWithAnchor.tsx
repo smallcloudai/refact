@@ -203,7 +203,6 @@ const BottomSpace: React.FC = () => {
   const [height, setHeight] = useState<number>(0);
   const bottomSpaceRef = useRef<HTMLDivElement>(null);
 
-  // TODO: extract to a function
   const calculateAndSetSpace = useCallback(() => {
     if (
       !state.scrollRef?.current ||
@@ -274,7 +273,6 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
 
   useEffect(() => {
     dispatch({ type: "add_anchor", payload: anchorRef });
-    // dispatch({ type: "set_scrolled", payload: false });
   }, [dispatch, anchorRef]);
 
   useEffect(() => {
