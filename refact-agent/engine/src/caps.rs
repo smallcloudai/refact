@@ -180,9 +180,9 @@ pub struct CodeAssistantCapsChat {
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
-pub struct CodeAssistantCapsEmbeddings {
+pub struct CodeAssistantCapsEmbedding {
     pub endpoint: String,
-    pub models: Vec<String>,
+    pub models: IndexMap<String, ModelRecord>,
     pub default_model: String,
 }
 
@@ -199,7 +199,7 @@ pub struct CodeAssistantCapsV2 {
 
     pub completion: CodeAssistantCapsCompletion,
     pub chat: CodeAssistantCapsChat,
-    pub embeddings: CodeAssistantCapsEmbeddings,
+    pub embedding: CodeAssistantCapsEmbedding,
 
     pub telemetry_endpoints: CodeAssistantCapsTelemetryEndpoints,
     pub tokenizer_endpoints: HashMap<String, String>,
@@ -293,6 +293,7 @@ fn load_caps_from_buf_v2(
         endpoint_style: "openai".to_string(),
         chat_endpoint_style: "openai".to_string(),
         completion_endpoint_style: "openai".to_string(),
+        endpoint_embeddings_style: "openai".to_string(),
 
         // Completion related fields
         completion_endpoint: relative_to_full_url(&caps_url, &caps_v2.completion.endpoint)?,
