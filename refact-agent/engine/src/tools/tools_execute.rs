@@ -43,7 +43,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     };
 
     // check if the models exist otherwise use the external chat model
-    match get_model_record(gcx, &params.subchat_model).await {
+    match get_model_record(gcx, &params.subchat_model, &params.subchat_provider).await {
         Ok(_) => {}
         Err(err) => {
             let current_model = ccx.lock().await.current_model.clone();
@@ -57,6 +57,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
+    provider_name: &str,
     maxgen: usize,
     original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
@@ -83,6 +84,7 @@ pub async fn run_tools_remotely(
         subchat_tool_parameters,
         postprocess_parameters,
         model_name: model_name.to_string(),
+        provider_name: provider_name.to_string(),
         chat_id,
         style: style.clone(),
     };

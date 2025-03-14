@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
 use crate::caps::CodeAssistantCaps;
+use crate::caps::ModelType;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::git::checkpoints::create_workspace_checkpoint;
@@ -59,11 +60,12 @@ pub const CHAT_TOP_N: usize = 12;
 pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     chat_post: &ChatPost,
-) -> Result<(String, String, serde_json::Value, usize, bool, bool, bool), String> {
+) -> Result<(String, String, String, serde_json::Value, usize, bool, bool, bool), String> {
     let caps_locked = caps.read().unwrap();
-    let (model_name, recommended_model_record) =
+    let (model_name, recommended_model_record, _) =
         crate::caps::which_model_to_use(
-            &caps_locked.code_chat_models,
+            ModelType::Chat,
+            &caps_locked,
             &chat_post.model,
             &caps_locked.code_chat_default_model,
         )?;
@@ -74,7 +76,8 @@ pub async fn lookup_chat_scratchpad(
     )?;
     Ok((
         model_name,
-        sname.clone(),
+        chat_post.provider.clone(),
+        sname,
         patch.clone(),
         recommended_model_record.n_ctx,
         recommended_model_record.supports_tools,
@@ -163,7 +166,7 @@ async fn _chat(
     }
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
+    let (model_name, provider_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await.map_err(|e| {
@@ -222,7 +225,7 @@ async fn _chat(
     }
 
     let meta = {
-        if is_metadata_supported(gcx.clone()).await {
+        if is_metadata_supported(caps.clone(), "").await {
             Some(chat_post.meta.clone())
         } else {
             None
@@ -255,6 +258,7 @@ async fn _chat(
         gcx.clone(),
         caps,
         model_name.clone(),
+        provider_name.clone(),
         &mut chat_post,
         &messages,
         true,
@@ -298,6 +302,7 @@ async fn _chat(
             &mut scratchpad,
             "chat".to_string(),
             model_name,
+            provider_name,
             &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
             meta
@@ -308,6 +313,7 @@ async fn _chat(
             scratchpad,
             "chat-stream".to_string(),
             model_name,
+            provider_name,
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
             meta

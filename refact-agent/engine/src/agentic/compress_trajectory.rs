@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
-use crate::caps::strip_model_from_finetune;
+use crate::caps::{get_caps_provider, strip_model_from_finetune};
 
 const COMPRESSION_MESSAGE: &str = r#"
 Compress the chat above.
@@ -93,12 +93,13 @@ pub async fn compress_trajectory(
         Ok(caps) => {
             let caps_locked = caps.read().unwrap();
             let model_name = caps_locked.code_chat_default_model.clone();
-            if let Some(model_rec) = caps_locked.code_completion_models.get(&strip_model_from_finetune(&model_name)) {
+            let provider = get_caps_provider(&caps_locked, &caps_locked.code_chat_default_provider)?;
+            if let Some(model_rec) = provider.code_completion_models.get(&strip_model_from_finetune(&model_name)) {
                 Ok((model_name, model_rec.n_ctx))
             } else {
                 Err(format!(
-                    "Model '{}' not found. Server has these models: {:?}",
-                    model_name, caps_locked.code_completion_models.keys()
+                    "Model '{}' not found for specified provider. It has these models: {:?}",
+                    model_name, provider.code_completion_models.keys()
                 ))
             }
         },
