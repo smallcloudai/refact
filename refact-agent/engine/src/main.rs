@@ -151,12 +151,7 @@ async fn main() {
         let mut error_log = Vec::new();
         let cust = load_customization(gcx.clone(), false, &mut error_log).await;
         for e in error_log.iter() {
-            eprintln!(
-                "{}:{} {:?}",
-                crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-                e.error_line,
-                e.error_msg,
-            );
+            eprintln!("{e}");
         }
         println!("{}", serde_json::to_string_pretty(&cust).unwrap());
         std::process::exit(0);

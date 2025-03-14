@@ -7,7 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::integrations::setting_up_integrations::YamlError;
+use crate::custom_error::YamlError;
 
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -131,7 +131,7 @@ pub fn load_and_mix_with_users_config(
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
         .map_err(|e| {
             error_log.push(YamlError {
-                integr_config_path: "customization.yaml".to_string(),
+                path: "customization.yaml".to_string(),
                 error_line: 0,
                 error_msg: e.to_string(),
             });
@@ -146,7 +146,7 @@ pub fn load_and_mix_with_users_config(
     let mut user_config: CustomizationYaml = serde_yaml::from_str(user_yaml)
         .map_err(|e| {
             error_log.push(YamlError {
-                integr_config_path: "customization.yaml".to_string(),
+                path: "customization.yaml".to_string(),
                 error_line: 0,
                 error_msg: e.to_string(),
             });
@@ -155,7 +155,7 @@ pub fn load_and_mix_with_users_config(
     let caps_config: CustomizationYaml = serde_yaml::from_str(caps_yaml)
         .map_err(|e| {
             error_log.push(YamlError {
-                integr_config_path: "caps.yaml".to_string(),
+                path: "caps.yaml".to_string(),
                 error_line: 0,
                 error_msg: e.to_string(),
             });
@@ -208,7 +208,7 @@ pub async fn load_customization(
         Ok(caps) => caps,
         Err(e) => {
             error_log.push(YamlError {
-                integr_config_path: "bring-your-own-key.yaml".to_string(),
+                path: "bring-your-own-key.yaml".to_string(),
                 error_line: 0,
                 error_msg: format!("error loading caps: {e}"),
             });
@@ -247,12 +247,7 @@ mod tests {
             "", "", true, true, &mut error_log,
         );
         for e in error_log.iter() {
-            eprintln!(
-                "{}:{} {:?}",
-                crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-                e.error_line,
-                e.error_msg,
-            );
+            eprintln!("{e}");
         }
         assert!(error_log.is_empty(), "There were errors in the error_log");
         assert_eq!(config.system_prompts.get("default").is_some(), true);
