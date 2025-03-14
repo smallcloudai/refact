@@ -176,8 +176,8 @@ class ThirdPartyModel:
             "supports_scratchpads": {
                 "PASSTHROUGH": {},
             },
-            "supports_tools": self._model_config.supports_tools(),
-            "supports_multimodality": self._model_config.supports_multimodality(),
+            "supports_tools": self._model_config.supports_tools,
+            "supports_multimodality": self._model_config.supports_multimodality,
             "supports_clicks": self._model_config.supports_clicks,
             "supports_agent": self._model_config.supports_agentic,
         }

@@ -67,10 +67,26 @@
                     <h5 class="modal-title" id="add-third-party-model-modal-label">Add Model</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body mb-3" id="add-third-party-model-modal-id-container">
+                <div class="modal-body" id="add-third-party-model-modal-id-container">
                     <label for="third-party-model-id" class="form-label">Model ID</label>
                     <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
-                    <div class="form-text">Enter the model ID as recognized by the provider.</div>
+                    <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
+                        <label class="form-check-label" for="third-party-model-supports-agentic">
+                            Supports Agentic Mode
+                        </label>
+                        <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks">
+                        <label class="form-check-label" for="third-party-model-supports-clicks">
+                            Supports Clicks
+                        </label>
+                        <div class="form-text">Enable if this model supports click interactions.</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
