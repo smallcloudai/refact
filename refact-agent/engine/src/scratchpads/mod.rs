@@ -35,6 +35,7 @@ pub async fn create_code_completion_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,
+    provider_name_for_tokenizer: String,
     post: &CodeCompletionPost,
     scratchpad_name: &str,
     scratchpad_patch: &serde_json::Value,
@@ -43,7 +44,7 @@ pub async fn create_code_completion_scratchpad(
     ast_module: Option<Arc<AMutex<AstIndexService>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer, provider_name_for_tokenizer).await?;
     if scratchpad_name == "FIM-PSM" {
         result = Box::new(code_completion_fim::FillInTheMiddleScratchpad::new(
             tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()
@@ -72,6 +73,7 @@ pub async fn create_chat_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     model_name_for_tokenizer: String,
+    provider_name_for_tokenizer: String,
     post: &mut ChatPost,
     messages: &Vec<ChatMessage>,
     prepend_system_prompt: bool,
@@ -82,7 +84,7 @@ pub async fn create_chat_scratchpad(
     supports_clicks: bool,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
+    let tokenizer_arc = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer, provider_name_for_tokenizer).await?;
     if scratchpad_name == "CHAT-GENERIC" {
         result = Box::new(chat_generic::GenericChatScratchpad::new(
             tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at

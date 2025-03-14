@@ -11,7 +11,7 @@ use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::global_context::GlobalContext;
-use crate::caps::{CodeAssistantCaps, strip_model_from_finetune};
+use crate::caps::{strip_model_from_finetune, CodeAssistantCaps};
 
 
 async fn try_open_tokenizer(
@@ -123,6 +123,7 @@ pub async fn cached_tokenizer(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     global_context: Arc<ARwLock<GlobalContext>>,
     model_name: String,
+    provider_name: String,
 ) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
     let model_name = strip_model_from_finetune(&model_name);
     let tokenizer_download_lock: Arc<AMutex<bool>> = global_context.read().await.tokenizer_download_lock.clone();
@@ -138,10 +139,10 @@ pub async fn cached_tokenizer(
     }
 
     let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir).join("tokenizers");
-    tokio::fs::create_dir_all(&tokenizer_cache_dir)
+    let to = tokenizer_cache_dir.join(&provider_name).join(&model_name).join("tokenizer.json");
+    tokio::fs::create_dir_all(&to.parent().unwrap())
         .await
         .expect("failed to create cache dir");
-    let to = tokenizer_cache_dir.join(model_name.clone()).join("tokenizer.json");
     let http_path = {
         let caps_locked = caps.read().unwrap();
         let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
