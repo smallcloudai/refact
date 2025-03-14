@@ -164,6 +164,49 @@ pub struct CodeAssistantCaps {
     pub support_metadata: bool,
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsCompletion {
+    pub endpoint: String,
+    pub models: IndexMap<String, ModelRecord>,
+    pub default_model: String,
+    pub default_multiline_model: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsChat {
+    pub endpoint: String,
+    pub models: IndexMap<String, ModelRecord>,
+    pub default_model: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsEmbeddings {
+    pub endpoint: String,
+    pub models: Vec<String>,
+    pub default_model: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsTelemetryEndpoints {
+    pub telemetry_basic_endpoint: String,
+    pub telemetry_corrected_snippets_endpoint: String,
+    pub telemetry_basic_retrieve_my_own_endpoint: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsV2 {
+    pub cloud_name: String,
+
+    pub completion: CodeAssistantCapsCompletion,
+    pub chat: CodeAssistantCapsChat,
+    pub embeddings: CodeAssistantCapsEmbeddings,
+
+    pub telemetry_endpoints: CodeAssistantCapsTelemetryEndpoints,
+    pub tokenizer_endpoints: HashMap<String, String>,
+
+    pub caps_version: i64,
+}
+
 fn load_caps_from_buf(
     buffer: &String,
     caps_url: &String,
@@ -232,6 +275,83 @@ fn load_caps_from_buf(
     // info!("code_chat_models models: {:?}", r1.code_chat_models);
     // info!("code completion models: {:?}", r1.code_completion_models);
     Ok(Arc::new(StdRwLock::new(r1)))
+}
+
+fn load_caps_from_buf_v2(
+    buffer: &String,
+    caps_url: &String,
+) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
+    // Try to parse as V2 format
+    let caps_v2: CodeAssistantCapsV2 = match serde_json::from_str(buffer) {
+        Ok(v) => v,
+        Err(_) => return Err("failed to load in v2 format".to_string()),
+    };
+
+    // Convert V2 to V1 format
+    let mut caps = CodeAssistantCaps {
+        cloud_name: caps_v2.cloud_name,
+        endpoint_style: "openai".to_string(),
+        chat_endpoint_style: "openai".to_string(),
+        completion_endpoint_style: "openai".to_string(),
+
+        // Completion related fields
+        completion_endpoint: relative_to_full_url(&caps_url, &caps_v2.completion.endpoint)?,
+        code_completion_models: caps_v2.completion.models.clone(),
+        code_completion_default_model: caps_v2.completion.default_model.clone(),
+        multiline_code_completion_default_model: caps_v2.completion.default_multiline_model.clone(),
+
+        // Chat related fields
+        chat_endpoint: relative_to_full_url(&caps_url, &caps_v2.chat.endpoint)?,
+        code_chat_models: caps_v2.chat.models.clone(),
+        code_chat_default_model: caps_v2.chat.default_model.clone(),
+
+        // Embeddings related fields
+        endpoint_embeddings_template: relative_to_full_url(&caps_url, &caps_v2.embeddings.endpoint)?,
+        embedding_model: caps_v2.embeddings.default_model.clone(),
+
+        // Telemetry endpoints
+        telemetry_basic_dest: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
+        telemetry_basic_retrieve_my_own: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_retrieve_my_own_endpoint)?,
+
+        // TODO: Tokenizer related
+        tokenizer_rewrite_path: caps_v2.tokenizer_endpoints.clone(),
+
+        // Version
+        caps_version: caps_v2.caps_version,
+
+        // TODO: Running models - collect from all models
+        running_models: {
+            let mut models = Vec::new();
+            if !caps_v2.chat.default_model.is_empty() {
+                models.push(caps_v2.chat.default_model.clone());
+            }
+            if !caps_v2.completion.default_model.is_empty() {
+                models.push(caps_v2.completion.default_model.clone());
+            }
+            if !caps_v2.completion.default_multiline_model.is_empty() {
+                models.push(caps_v2.completion.default_multiline_model.clone());
+            }
+            if !caps_v2.embeddings.default_model.is_empty() {
+                models.push(caps_v2.embeddings.default_model.clone());
+            }
+            models
+        },
+
+        ..Default::default()
+    };
+
+    // Convert relative URLs to absolute URLs
+    caps.endpoint_embeddings_template = relative_to_full_url(&caps_url, &caps.endpoint_embeddings_template)?;
+    caps.chat_endpoint = relative_to_full_url(&caps_url, &caps.chat_endpoint)?;
+    caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
+    caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
+
+    // Set default embedding context size if not set
+    if caps.embedding_n_ctx == 0 {
+        caps.embedding_n_ctx = 512;
+    }
+
+    Ok(Arc::new(StdRwLock::new(caps)))
 }
 
 macro_rules! get_api_key_macro {
@@ -387,7 +507,13 @@ pub async fn load_caps(
     } else {
         (buf, caps_url) = load_caps_buf_from_file(cmdline, gcx).await?
     }
-    load_caps_from_buf(&buf, &caps_url)
+    match load_caps_from_buf_v2(&buf, &caps_url) {
+        Ok(caps) => Ok(caps),
+        Err(e) => {
+            info!("Cannot load v2 caps: `{}`, try old format", e);
+            load_caps_from_buf(&buf, &caps_url)
+        }
+    }
 }
 
 pub fn strip_model_from_finetune(model: &String) -> String {
