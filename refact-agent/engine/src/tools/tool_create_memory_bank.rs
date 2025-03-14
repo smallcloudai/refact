@@ -223,6 +223,7 @@ async fn read_and_compress_directory(
     dir_relative: String,
     tokens_limit: usize,
     model: String,
+    provider: String,
 ) -> Result<String, String> {
     let project_dirs = get_project_dirs(gcx.clone()).await;
     let base_dir = project_dirs.get(0).ok_or("No project directory found")?;
@@ -263,7 +264,7 @@ async fn read_and_compress_directory(
     }
 
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), model).await.map_err(|e| format!("Tokenizer error: {}", e))?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), model, provider).await.map_err(|e| format!("Tokenizer error: {}", e))?;
     let mut pp_settings = PostprocessSettings::new();
     pp_settings.max_files_n = context_files.len();
     let compressed = postprocess_context_files(
@@ -406,6 +407,7 @@ impl Tool for ToolCreateMemoryBank {
                     target.target_name.clone(),
                     params.subchat_tokens_for_rag,
                     params.subchat_model.clone(),
+                    params.subchat_provider.clone(),
                 ).await.map_err(|e| {
                     tracing::warn!("Failed to read/compress files for {}: {}", target.target_name, e);
                     e

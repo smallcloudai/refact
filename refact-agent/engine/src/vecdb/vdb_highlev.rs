@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use tracing::{error, info};
 
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::get_custom_embedding_api_key;
+use crate::caps::{get_api_key, get_caps_provider, ModelType};
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{MemdbSubEvent, MemoriesDatabase};
@@ -50,7 +50,14 @@ async fn do_i_need_to_reload_vecdb(
     let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
     let mut consts = {
         let caps_locked = caps.read().unwrap();
-        let mut b = caps_locked.embedding_batch;
+        let provider = match get_caps_provider(&caps_locked, &caps_locked.embedding_provider) {
+            Ok(provider) => provider,
+            Err(e) => {
+                error!("vecdb: provider {} not found in caps, will not start or reload vecdb, the error was: {}", caps_locked.embedding_provider, e);
+                return (false, None);
+            }
+        };
+        let mut b = provider.embedding_batch;
         if b == 0 {
             b = 64;
         }
@@ -60,13 +67,14 @@ async fn do_i_need_to_reload_vecdb(
         }
         VecdbConstants {
             embedding_model: caps_locked.embedding_model.clone(),
-            embedding_size: caps_locked.embedding_size,
+            embedding_provider: caps_locked.embedding_provider.clone(),
+            embedding_size: provider.embedding_size,
             embedding_batch: b,
-            vectorizer_n_ctx: caps_locked.embedding_n_ctx,
+            vectorizer_n_ctx: provider.embedding_n_ctx,
             tokenizer: None,
-            endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
-            endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
-            splitter_window_size: caps_locked.embedding_n_ctx / 2,
+            endpoint_embeddings_template: provider.endpoint_embeddings_template.clone(),
+            endpoint_embeddings_style: provider.endpoint_embeddings_style.clone(),
+            splitter_window_size: provider.embedding_n_ctx / 2,
             vecdb_max_files: vecdb_max_files,
         }
     };
@@ -94,7 +102,8 @@ async fn do_i_need_to_reload_vecdb(
     }
 
     let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
-        caps.clone(), gcx.clone(), consts.embedding_model.clone()).await;
+        caps.clone(), gcx.clone(), consts.embedding_model.clone(), consts.embedding_provider.clone()
+    ).await;
     if tokenizer_maybe.is_err() {
         error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
         return (false, None);
@@ -423,10 +432,7 @@ pub async fn memories_search(
         )
     };
 
-    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
-    if let Err(err) = api_key {
-        return Err(err.message);
-    }
+    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), &constants.embedding_provider).await?;
 
     let embedding = fetch_embedding::get_embedding_with_retry(
         vecdb_emb_client,
@@ -434,7 +440,7 @@ pub async fn memories_search(
         &constants.embedding_model,
         &constants.endpoint_embeddings_template,
         vec![query.clone()],
-        &api_key.unwrap(),
+        &api_key,
         5,
     ).await?;
     if embedding.is_empty() {

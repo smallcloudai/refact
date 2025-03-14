@@ -23,6 +23,7 @@ pub trait VecdbSearch: Send {
 pub struct VecdbConstants {
     // constant in a sense it cannot be changed without creating a new db
     pub embedding_model: String,
+    pub embedding_provider: String,
     pub embedding_size: i32,
     pub embedding_batch: usize,
     pub tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
