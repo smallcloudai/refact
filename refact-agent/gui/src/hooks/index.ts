@@ -30,3 +30,4 @@ export * from "./useOpenUrl";
 export * from "./useCapsForToolUse";
 export * from "./useCanUseTools";
 export * from "./useCopyToClipboard";
+export * from "./useResizeObserver";

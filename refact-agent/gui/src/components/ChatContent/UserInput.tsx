@@ -33,7 +33,6 @@ export const UserInput: React.FC<UserInputProps> = ({
 
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
-  // const ref = React.useRef<HTMLButtonElement>(null);
 
   const handleSubmit = useCallback(
     (value: UserMessage["content"]) => {

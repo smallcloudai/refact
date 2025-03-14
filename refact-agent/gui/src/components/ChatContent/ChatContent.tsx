@@ -5,10 +5,11 @@ import {
   isChatContextFileMessage,
   isDiffMessage,
   isToolMessage,
+  isUserMessage,
   UserMessage,
 } from "../../services/refact";
 import { UserInput } from "./UserInput";
-import { ScrollArea } from "../ScrollArea";
+import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
 import { Spinner } from "../Spinner";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
@@ -109,13 +110,14 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   useDiffFileReload();
 
   return (
-    <ScrollArea
+    <ScrollAreaWithAnchor.ScrollArea
       ref={scrollRef}
       style={{ flexGrow: 1, height: "auto", position: "relative" }}
       scrollbars="vertical"
       onScroll={handleScroll}
       onWheel={handleWheel}
       type={isWaiting || isStreaming ? "auto" : "hover"}
+      fullHeight
     >
       <Flex
         direction="column"
@@ -125,10 +127,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         gap="1"
       >
         {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages, onRetryWrapper)}
+        {renderMessages(messages, onRetryWrapper, isWaiting)}
         <UncommittedChangesWarning />
         {threadUsage && messages.length > 0 && <UsageCounter />}
-
         <Container py="4">
           <Spinner
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
@@ -173,7 +174,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
           </Flex>
         </ScrollArea>
       </Box>
-    </ScrollArea>
+    </ScrollAreaWithAnchor.ScrollArea>
   );
 };
 
@@ -182,19 +183,20 @@ ChatContent.displayName = "ChatContent";
 function renderMessages(
   messages: ChatMessages,
   onRetry: (index: number, question: UserMessage["content"]) => void,
+  waiting: boolean,
   memo: React.ReactNode[] = [],
   index = 0,
 ) {
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, onRetry, memo, index + 1);
+    return renderMessages(tail, onRetry, waiting, memo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (head.role === "assistant") {
@@ -211,25 +213,33 @@ function renderMessages(
       />,
     ];
 
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (head.role === "user") {
     const key = "user-input-" + index;
-
+    const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
+      isLastUserMessage && !waiting && (
+        <ScrollAreaWithAnchor.ScrollAnchor
+          key={`${key}-anchor`}
+          behavior="smooth"
+          block="start"
+          mt="-2"
+        />
+      ),
       <UserInput onRetry={onRetry} key={key} messageIndex={index}>
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (isDiffMessage(head)) {
@@ -246,10 +256,11 @@ function renderMessages(
     return renderMessages(
       nextTail,
       onRetry,
+      waiting,
       nextMemo,
       index + diffMessages.length,
     );
   }
 
-  return renderMessages(tail, onRetry, memo, index + 1);
+  return renderMessages(tail, onRetry, waiting, memo, index + 1);
 }
