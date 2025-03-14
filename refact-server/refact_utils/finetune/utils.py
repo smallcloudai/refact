@@ -100,7 +100,7 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         if model_dict.get("has_chat"):
             result["chat"].append(model_name)
         if model_dict.get("has_embeddings"):
-            result["embeddings"].append(model_name)
+            result["embedding"].append(model_name)
 
     for model_name, v in data.get("model_assign", {}).items():
         if model_dict := [d for d in data["models"] if d["name"] == model_name]:
