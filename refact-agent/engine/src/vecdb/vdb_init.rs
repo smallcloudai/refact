@@ -5,7 +5,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
-use crate::caps::get_custom_embedding_api_key;
+use crate::caps::{get_api_key, ModelType};
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::vecdb::vdb_highlev::VecDb;
 use crate::vecdb::vdb_structs::{VecdbConstants, VecdbSearch};
@@ -120,9 +120,9 @@ pub async fn initialize_vecdb_with_context(
     constants: VecdbConstants,
     init_config: Option<VecDbInitConfig>,
 ) -> Result<(), VecDbInitError> {
-    let api_key = match get_custom_embedding_api_key(gcx.clone()).await {
+    let api_key = match get_api_key(ModelType::Embedding, gcx.clone(), &constants.embedding_provider).await {
         Ok(key) => key,
-        Err(err) => return Err(VecDbInitError::ApiKeyError(err.message)),
+        Err(err) => return Err(VecDbInitError::ApiKeyError(err)),
     };
     
     let (cache_dir, config_dir, cmdline) = {

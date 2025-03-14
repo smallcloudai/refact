@@ -211,9 +211,9 @@ struct EmbeddingsResultOpenAI {
 pub async fn get_embedding_openai_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
-    endpoint_template: &String,
-    model_name: &String,
-    api_key: &String,
+    endpoint_template: &str,
+    model_name: &str,
+    api_key: &str,
 ) -> Result<Vec<Vec<f32>>, String> {
     if endpoint_template.is_empty() {
         return Err(format!("no embedding_endpoint configured"));
@@ -225,13 +225,13 @@ pub async fn get_embedding_openai_style(
     let B = text.len();
     let payload = EmbeddingsPayloadOpenAI {
         input: text,
-        model: model_name.clone(),
+        model: model_name.to_string(),
     };
-    let url = endpoint_template.clone();
-    let api_key_clone = api_key.clone();
+    let url = endpoint_template.to_string();
+    let api_key_clone = api_key.to_string();
     let response = client.lock().await
-        .post(&url)
-        .bearer_auth(api_key_clone.clone())
+        .post(url)
+        .bearer_auth(api_key_clone.to_string())
         .json(&payload)
         .send()
         .await

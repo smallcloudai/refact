@@ -3,7 +3,7 @@ use axum::Extension;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 
-use crate::caps::get_custom_embedding_api_key;
+use crate::caps::{get_api_key, ModelType};
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::vecdb::vdb_structs::VecdbSearch;
@@ -26,7 +26,8 @@ pub async fn handle_v1_vecdb_search(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let api_key = get_custom_embedding_api_key(gcx.clone()).await?;
+    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), "").await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     let cx_locked = gcx.read().await;
 
     let search_res = match *cx_locked.vec_db.lock().await {
