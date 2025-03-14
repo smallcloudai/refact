@@ -213,19 +213,13 @@ const BottomSpace: React.FC = () => {
       return;
     }
 
-    if (state.follow) {
-      state.scrollRef.current.scrollTop =
-        state.scrollRef.current.scrollHeight -
-        state.scrollRef.current.clientHeight;
-    }
-
     const anchorPosition = state.anchorRef.current.offsetTop;
     const topOfBottom = bottomSpaceRef.current.offsetTop;
     const spaceBetween = topOfBottom - anchorPosition;
     const maxSpace = state.scrollRef.current.clientHeight;
     setHeight(Math.max(maxSpace - spaceBetween, 0));
 
-    if (!state.scrolled) {
+    if (!state.scrolled && !state.follow) {
       dispatch({ type: "set_scroll", payload: true });
     }
   }, [
@@ -292,7 +286,13 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
       return;
     }
 
-    state.anchorRef.current.scrollIntoView({ behavior, block, inline });
+    if (!isAtBottom(state.scrollRef.current) && !state.follow) {
+      state.anchorRef.current.scrollIntoView({ behavior, block, inline });
+    } else if (state.follow) {
+      state.scrollRef.current.scrollTop =
+        state.scrollRef.current.scrollHeight -
+        state.scrollRef.current.clientHeight;
+    }
 
     dispatch({ type: "set_scrolled", payload: true });
   }, [
@@ -304,6 +304,7 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
     block,
     inline,
     state.scrollRef,
+    state.follow,
   ]);
 
   return <Box {...props} ref={anchorRef} />;
