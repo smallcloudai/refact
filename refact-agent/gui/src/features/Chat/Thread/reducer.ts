@@ -6,6 +6,7 @@ import {
   ToolUse,
   LspChatMode,
   chatModeToLspMode,
+  isLspChatMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
@@ -306,6 +307,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
       ...mostUptoDateThread,
     };
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
+    if (action.payload.mode && !isLspChatMode(action.payload.mode)) {
+      state.thread.mode = "AGENT";
+    }
   });
 
   // New builder to save chat title within the current thread and not only inside of a history thread
