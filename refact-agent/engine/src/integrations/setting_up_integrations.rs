@@ -8,28 +8,11 @@ use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::fs as async_fs;
 use tokio::io::AsyncWriteExt;
+use crate::custom_error::YamlError;
 use crate::global_context::GlobalContext;
 use crate::files_correction::any_glob_matches_path;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
-
-
-#[derive(Serialize, Default)]
-pub struct YamlError {
-    pub integr_config_path: String,
-    pub error_line: usize,  // starts with 1, zero if invalid
-    pub error_msg: String,
-}
-
-impl From<(&str, &serde_yaml::Error)> for YamlError {
-    fn from((path, err): (&str, &serde_yaml::Error)) -> Self {
-        YamlError {
-            integr_config_path: path.to_string(),
-            error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
-            error_msg: err.to_string(),
-        }
-    }
-}
 
 #[derive(Serialize, Default, Debug, Clone)]
 pub struct IntegrationRecord {
@@ -119,7 +102,7 @@ pub fn read_integrations_d(
             Err(e) => {
                 tracing::warn!("failed to read {}: {}", integrations_yaml_path, e);
                 error_log.push(YamlError {
-                    integr_config_path: integrations_yaml_path.clone(),
+                    path: integrations_yaml_path.clone(),
                     error_line: 0,
                     error_msg: e.to_string(),
                 });
@@ -209,7 +192,7 @@ pub fn read_integrations_d(
                 },
                 Err(e) => {
                     error_log.push(YamlError {
-                        integr_config_path: path_str.to_string(),
+                        path: path_str.to_string(),
                         error_line: 0,
                         error_msg: e.to_string(),
                     });
@@ -349,7 +332,7 @@ pub async fn get_vars_for_replacements(
                 Err(e) => {
                     tracing::warn!("Failed to parse {}: {}", path.display(), e);
                     error_log.push(YamlError {
-                        integr_config_path: path.to_string_lossy().to_string(),
+                        path: path.to_string_lossy().to_string(),
                         error_line: e.location().map(|loc| loc.line()).unwrap_or(0),
                         error_msg: format!("Failed to parse {}: {}", path.display(), e),
                     });
@@ -359,7 +342,7 @@ pub async fn get_vars_for_replacements(
             Err(e) => {
                 tracing::info!("Failed to read {}: {}", path.display(), e);
                 error_log.push(YamlError {
-                    integr_config_path: path.to_string_lossy().to_string(),
+                    path: path.to_string_lossy().to_string(),
                     error_line: 0,
                     error_msg: format!("Failed to read {}: {}", path.display(), e),
                 });
@@ -511,7 +494,7 @@ pub async fn integration_config_get(
                             Ok(_) => {}
                             Err(err) => {
                                 result.error_log.push(YamlError {
-                                    integr_config_path: better_integr_config_path.clone(),
+                                    path: better_integr_config_path.clone(),
                                     error_line: err.line(),
                                     error_msg: err.to_string(),
                                 });
@@ -527,7 +510,7 @@ pub async fn integration_config_get(
                     }
                     Err(err) => {
                         result.error_log.push(YamlError {
-                            integr_config_path: better_integr_config_path.clone(),
+                            path: better_integr_config_path.clone(),
                             error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
                             error_msg: err.to_string(),
                         });

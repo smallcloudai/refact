@@ -221,8 +221,8 @@ pub async fn handle_v1_links(
         for e in integration_yaml_errors {
             links.push(Link {
                 link_action: LinkAction::Goto,
-                link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
-                link_goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
+                link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.path, 20)),
+                link_goto: Some(format!("SETTINGS:{}", e.path)),
                 link_summary_path: None,
                 link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
                 ..Default::default()

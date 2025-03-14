@@ -35,12 +35,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             let mut error_log = Vec::new();
             let tconfig = load_customization(gcx.clone(), true, &mut error_log).await;
             for e in error_log.iter() {
-                tracing::error!(
-                    "{}:{} {:?}",
-                    crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-                    e.error_line,
-                    e.error_msg,
-                );
+                tracing::error!("{e}");
             }
             tconfig.subchat_tool_parameters.get(tool_name).cloned()
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
