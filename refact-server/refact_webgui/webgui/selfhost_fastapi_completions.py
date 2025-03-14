@@ -297,8 +297,15 @@ class BaseCompletionsRouter(APIRouter):
         chat_default_model = _select_default_model(list(chat_models.keys()))
 
         # embedding models
-        embeddings_models = running_models.get("embeddings", [])
-        embeddings_default_model = _select_default_model(embeddings_models)
+        embedding_models = {}
+        for model_name in running_models.get("embedding", []):
+            if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
+                embedding_models[model_name] = {
+                    "n_ctx": model_info["T"],
+                }
+            else:
+                log(f"embedding model `{model_name}` is listed as running but not found in configs, skip")
+        embedding_default_model = _select_default_model(list(embedding_models.keys()))
 
         # tokenizer endpoints
         tokenizer_endpoints = {}
@@ -322,10 +329,10 @@ class BaseCompletionsRouter(APIRouter):
                 "default_model": chat_default_model,
             },
 
-            "embeddings": {
+            "embedding": {
                 "endpoint": "v1/embeddings",
-                "models": embeddings_models,
-                "default_model": embeddings_default_model,
+                "models": embedding_models,
+                "default_model": embedding_default_model,
             },
 
             "telemetry_endpoints": {
