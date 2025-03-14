@@ -42,12 +42,7 @@ pub async fn create_chat_post_and_scratchpad(
     let mut error_log = Vec::new();
     let tconfig = load_customization(global_context.clone(), true, &mut error_log).await;
     for e in error_log.iter() {
-        tracing::error!(
-            "{}:{} {:?}",
-            crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-            e.error_line,
-            e.error_msg,
-        );
+        tracing::error!("{e}");
     }
 
     let mut chat_post = ChatPost {
