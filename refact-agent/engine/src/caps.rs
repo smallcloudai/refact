@@ -311,7 +311,8 @@ fn load_caps_from_buf_v2(
         endpoint_embeddings_template: relative_to_full_url(&caps_url, &caps_v2.embedding.endpoint)?,
         embedding_model: caps_v2.embedding.default_model.clone(),
         embedding_n_ctx: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx,
-        embedding_size: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx as i32,
+        // embedding_size: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx as i32,
+        embedding_size: 768,  // TODO: this is wrong but vecdb requires it
 
         // Telemetry endpoints
         telemetry_basic_dest: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
