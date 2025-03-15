@@ -220,6 +220,7 @@ export function useLinksFromLsp() {
         return;
       }
 
+      // TBD: It should be safe to remove this now?
       if (link.link_action === "regenerate-with-increased-context-size") {
         dispatch(setMaxNewTokens(INCREASED_MAX_NEW_TOKENS));
         submit({
