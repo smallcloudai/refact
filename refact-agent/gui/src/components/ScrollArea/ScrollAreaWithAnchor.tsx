@@ -202,7 +202,6 @@ const BottomSpace: React.FC = () => {
   const { state, dispatch } = useScrollContext();
   const [height, setHeight] = useState<number>(0);
   const bottomSpaceRef = useRef<HTMLDivElement>(null);
-
   const calculateAndSetSpace = useCallback(() => {
     if (
       !state.scrollRef?.current ||
@@ -313,9 +312,15 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
 const FollowButton: React.FC = () => {
   const { state, dispatch } = useScrollContext();
 
+  // TODO: move this up
   const handleClick = useCallback(() => {
+    if (state.scrollRef?.current) {
+      state.scrollRef.current.scrollTop =
+        state.scrollRef.current.scrollHeight -
+        state.scrollRef.current.clientHeight;
+    }
     dispatch({ type: "set_follow", payload: true });
-  }, [dispatch]);
+  }, [dispatch, state.scrollRef]);
 
   const shouldShow = !state.at_the_bottom && !state.follow;
 
