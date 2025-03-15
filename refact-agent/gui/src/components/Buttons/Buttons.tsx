@@ -1,12 +1,5 @@
 import React, { forwardRef, useCallback } from "react";
-import {
-  IconButton,
-  Button,
-  Flex,
-  Text,
-  HoverCard,
-  Skeleton,
-} from "@radix-ui/themes";
+import { IconButton, Button, Flex } from "@radix-ui/themes";
 import {
   PaperPlaneIcon,
   ExitIcon,
@@ -19,8 +12,6 @@ import { useOpenUrl } from "../../hooks/useOpenUrl";
 import { useAppSelector } from "../../hooks";
 import { selectApiKey } from "../../features/Config/configSlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
-import { selectThreadBoostReasoning } from "../../features/Chat";
-import { useThinking } from "../../hooks/useThinking";
 
 type IconButtonProps = React.ComponentProps<typeof IconButton>;
 type ButtonProps = React.ComponentProps<typeof Button>;
@@ -175,53 +166,5 @@ export const AgentUsageLinkButton: React.FC<AgentUsageLinkButtonProps> = ({
       </Button>
       {error && <div className={styles.error}>{error}</div>}
     </form>
-  );
-};
-
-export const ThinkingButton: React.FC = () => {
-  const isBoostReasoningEnabled = useAppSelector(selectThreadBoostReasoning);
-  const {
-    handleReasoningChange,
-    shouldBeDisabled,
-    noteText,
-    areCapsInitialized,
-  } = useThinking();
-
-  if (!areCapsInitialized) {
-    return (
-      <Skeleton>
-        <Button size="1">💡 Think</Button>
-      </Skeleton>
-    );
-  }
-
-  return (
-    <Flex gap="2" align="center">
-      <HoverCard.Root>
-        <HoverCard.Trigger>
-          <Button
-            size="1"
-            onClick={(event) =>
-              handleReasoningChange(event, !isBoostReasoningEnabled)
-            }
-            variant={isBoostReasoningEnabled ? "solid" : "outline"}
-            disabled={shouldBeDisabled}
-          >
-            💡 Think
-          </Button>
-        </HoverCard.Trigger>
-        <HoverCard.Content size="2" maxWidth="280px" side="top">
-          <Text as="p" size="2">
-            When enabled, the model will use enhanced reasoning capabilities
-            which may improve problem-solving for complex tasks.
-          </Text>
-          {noteText && (
-            <Text as="p" color="gray" size="1" mt="1">
-              {noteText}
-            </Text>
-          )}
-        </HoverCard.Content>
-      </HoverCard.Root>
-    </Flex>
   );
 };
