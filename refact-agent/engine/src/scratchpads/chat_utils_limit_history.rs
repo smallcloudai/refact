@@ -229,7 +229,6 @@ fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<u
     
     // Second pass: identify which messages need to be compressed
     let mut to_compress: Vec<(usize, Vec<String>)> = Vec::new();
-    
     for (filename, occurrences) in &file_occurrences {
         // Sort occurrences by index (oldest to newest)
         let mut sorted_occurrences = occurrences.clone();
@@ -257,16 +256,37 @@ fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<u
     
     // Third pass: compress the messages
     let mut compressed_count = 0;
-    
     for (idx, filenames) in to_compress {
         if !filenames.is_empty() {
             let filenames_str = filenames.join(", ");
-            let summary = format!("💿 Duplicate ContextFile(s) compressed: '{}' files with overlapping line ranges appear later in the conversation. Ask for these files again if needed.", filenames_str);
+            let summary = format!("💿 Duplicate context file compressed: '{}' files with overlapping line ranges appear later in the conversation", filenames_str);
             
             tracing::info!("Stage 0: Compressing duplicate ContextFile at index {}: {}", idx, filenames_str);
-            messages[idx].role = "cd_instruction".to_string();
-            messages[idx].content = ChatContent::SimpleText(summary);
-            compressed_count += 1;
+            let content_text = messages[idx].content.content_text_only();
+            let context_files: Vec<ContextFile> = serde_json::from_str(&content_text)
+                .expect("already checked in the previous pass");
+            
+            let files_to_compress: HashSet<String> = filenames.iter()
+                .map(|name| name.to_string())
+                .collect();
+                
+            let remaining_files: Vec<ContextFile> = context_files.into_iter()
+                .filter(|cf| !files_to_compress.contains(&format!("{}:{}-{}", cf.file_name, cf.line1, cf.line2)))
+                .collect();
+                
+            if !remaining_files.is_empty() {
+                let new_content = serde_json::to_string(&remaining_files)
+                    .expect("serialization of filtered ContextFiles failed");
+                messages[idx].content = ChatContent::SimpleText(new_content);
+                tracing::info!("Stage 0: Partially compressed ContextFile at index {}: {} files removed, {} files kept", 
+                              idx, files_to_compress.len(), remaining_files.len());
+            } else {
+                messages[idx].content = ChatContent::SimpleText(summary);
+                messages[idx].role = "cd_instruction".to_string();
+                tracing::info!("Stage 0: Fully compressed ContextFile at index {}: all {} files removed", 
+                              idx, files_to_compress.len());
+            }
+            compressed_count += filenames.len();
         }
     }
     
