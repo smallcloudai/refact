@@ -9,7 +9,6 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
-use crate::tools::tool_cat::parse_skeleton_from_args;
 
 pub struct ToolAstReference;
 
@@ -31,9 +30,6 @@ impl Tool for ToolAstReference {
         };
 
         symbol = symbol.replace('.', "::");
-
-        let skeleton = parse_skeleton_from_args(args)?;
-        ccx.lock().await.pp_skeleton = skeleton;
 
         let gcx = ccx.lock().await.global_context.clone();
         let ast_service_opt = gcx.read().await.ast_service.clone();
@@ -89,7 +85,7 @@ impl Tool for ToolAstReference {
                         line1: *uline,
                         line2: *uline,
                         symbols: vec![usedin.path()],
-                        gradient_type: -1,
+                        gradient_type: 4,
                         usefulness: 100.0,
                     });
                 }

@@ -138,7 +138,7 @@ impl Tool for ToolRelevantFiles {
                 line1: 0,
                 line2: text.lines().count(),
                 symbols: vec![],
-                gradient_type: -1,
+                gradient_type: 4,
                 usefulness,
             }));
 
@@ -149,7 +149,7 @@ impl Tool for ToolRelevantFiles {
                     line1: symbol.full_line1(),
                     line2: symbol.full_line2(),
                     symbols: vec![symbol.path()],
-                    gradient_type: -1,
+                    gradient_type: 4,
                     usefulness: 100.,
                 }));
             }

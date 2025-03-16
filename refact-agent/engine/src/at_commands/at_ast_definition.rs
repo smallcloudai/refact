@@ -138,7 +138,7 @@ impl AtCommand for AtAstDefinition {
                     line1: res.full_line1(),
                     line2: res.full_line2(),
                     symbols: vec![res.path_drop0()],
-                    gradient_type: -1,
+                    gradient_type: 4,
                     usefulness: 100.0,
                 });
             }
