@@ -244,7 +244,10 @@ tools:
         description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
       - name: "skeleton"
         type: "boolean"
-        description: "if true, files will be skeletonized - mostly only AST symbols will be visible"
+        description: "If true, files will be skeletonized - mostly only AST symbols will be visible. Extremely useful for large files to get a high-level overview without token overflow."
+      - name: "line_range"
+        type: "string"
+        description: "Specify a line or range of lines to display (format: 'N' for a single line, 'N-M' for a range). Useful for viewing specific sections of large files."
     parameters_required:
       - "paths"
 
