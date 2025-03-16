@@ -256,7 +256,7 @@ async fn read_and_compress_directory(
             line1: 1,
             line2: lines,
             symbols: vec![],
-            gradient_type: -1,
+            gradient_type: 4,
             usefulness: 0.0,
         });
     }

@@ -159,9 +159,7 @@ pub async fn run_at_commands_locally(
         }
     }
 
-    ccx.lock().await.pp_skeleton = false;
-
-    return (rebuilt_messages, any_context_produced)
+    (rebuilt_messages, any_context_produced)
 }
 
 pub async fn run_at_commands_remotely(

@@ -79,7 +79,7 @@ impl AtCommand for AtAstReference {
                         line1: *uline,
                         line2: *uline,
                         symbols: vec![usedin.path_drop0()],
-                        gradient_type: -1,
+                        gradient_type: 4,
                         usefulness: 100.0,
                     });
                 }

@@ -54,7 +54,7 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
     }
 }
 
-pub const CHAT_TOP_N: usize = 7;
+pub const CHAT_TOP_N: usize = 12;
 
 pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,

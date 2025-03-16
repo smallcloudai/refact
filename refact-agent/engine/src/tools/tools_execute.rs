@@ -320,11 +320,12 @@ async fn pp_run_tools(
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.postprocess_parameters.clone(), ccx_locked.pp_skeleton)
         };
+        pp_settings.close_small_gaps = true;
         if pp_settings.max_files_n == 0 {
             pp_settings.max_files_n = top_n;
         }
         if pp_skeleton && pp_settings.take_floor == 0.0 {
-            pp_settings.take_floor = 50.0;
+            pp_settings.take_floor = 60.0;
         }
 
         let context_file_vec = postprocess_context_files(

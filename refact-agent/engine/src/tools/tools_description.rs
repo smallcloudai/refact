@@ -195,9 +195,6 @@ tools:
       - name: "symbol"
         type: "string"
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
-      - name: "skeleton"
-        type: "boolean"
-        description: "Skeletonize ouput. Set true to explore, set false when as much context as possible is needed."
     parameters_required:
       - "symbol"
 
@@ -207,9 +204,6 @@ tools:
       - name: "symbol"
         type: "string"
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
-      - name: "skeleton"
-        type: "boolean"
-        description: "Skeletonize ouput. Set true to explore, set false when as much context as possible is needed."
     parameters_required:
       - "symbol"
 
@@ -234,20 +228,14 @@ tools:
       - "url"
 
   - name: "cat"
-    description: "Like cat in console, but better: it can read multiple files and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full. It can also read images just fine."
+    description: "Like cat in console, but better: it can read multiple files and images. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext, dir3/dir4"
+        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4. You can specify line ranges directly in the path using colon notation (file.ext:10-20 for lines 10-20, file.ext:42 for just line 42)."
       - name: "symbols"
         type: "string"
         description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
-      - name: "skeleton"
-        type: "boolean"
-        description: "If true, files will be skeletonized - mostly only AST symbols will be visible. Extremely useful for large files to get a high-level overview without token overflow."
-      - name: "line_range"
-        type: "string"
-        description: "Specify a line or range of lines to display (format: 'N' for a single line, 'N-M' for a range). Useful for viewing specific sections of large files."
     parameters_required:
       - "paths"
 
