@@ -82,7 +82,7 @@ fn compress_message_at_index(
         let filenames = vector_of_context_files.iter().map(|cf| cf.file_name.clone()).join(", ");
         tracing::info!("Compressing ContextFile message at index {}: {}", index, filenames);
         mutable_messages[index].role = "cd_instruction".to_string();
-        format!("💿 '{}' files were dropped due to compression. Ask for these files again if needed.", filenames)
+        format!("💿 '{}' files were dropped due to compression. Ask for these files again if needed. If you see this error again - files are too large to fit completely, try to open some part of it or just complain to user.", filenames)
     } else if role == "tool" {
         // For tool results: create a summary with the tool call ID and first part of content
         let content = mutable_messages[index].content.content_text_only();
@@ -412,14 +412,11 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 0: Compress old and duplicated ContextFiles
     // This is done before token calculation to reduce the number of messages that need to be tokenized
-    let stage0_start = Instant::now();
     let stage0_result = compress_duplicate_context_files(&mut mutable_messages);
-    let stage0_duration = stage0_start.elapsed();
-    
     if let Err(e) = stage0_result {
         tracing::warn!("Stage 0 compression failed: {}", e);
     } else if let Ok(count) = stage0_result {
-        tracing::info!("Stage 0: Compressed {} duplicate ContextFile messages in {:?}", count, stage0_duration);
+        tracing::info!("Stage 0: Compressed {} duplicate ContextFile messages", count);
     }
     
     replace_broken_tool_call_messages(
@@ -479,8 +476,6 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 2: Compress Tool Result messages before the last user message
     if occupied_tokens > tokens_limit {
-        let stage2_start = Instant::now();
-        
         let msg_len = mutable_messages.len();
         let stage2_end = std::cmp::min(undroppable_msg_n, msg_len);
         let result = process_compression_stage(
@@ -502,11 +497,8 @@ pub fn fix_and_limit_messages_history(
         occupied_tokens = result.0;
         tokens_limit = result.1;
         
-        let stage2_duration = stage2_start.elapsed();
         if result.2 { // If budget reached
-            tracing::info!("Token budget reached after Stage 2 compression in {:?}.", stage2_duration);
-        } else {
-            tracing::info!("Stage 2 compression completed in {:?}.", stage2_duration);
+            tracing::info!("Token budget reached after Stage 2 compression.");
         }
     }
     
@@ -542,114 +534,75 @@ pub fn fix_and_limit_messages_history(
             tracing::info!("Token budget reached after Stage 3 compression.");
         }
     }
-    
-    // STAGE 4: Drop non-essential messages block by block
+
+    // STAGE 4: Drop non-essential messages one by one within each block until budget is reached
     if occupied_tokens > tokens_limit {
         tracing::info!("STAGE 4: Iterating conversation blocks to drop non-essential messages");
-        let user_indices: Vec<usize> = 
+        let mut current_occupied_tokens = occupied_tokens;
+        let user_indices: Vec<usize> =
             mutable_messages.iter().enumerate().filter_map(|(i, m)| {
                 if m.role == "user" { Some(i) } else { None }
             }).collect();
-        
-        // Create the kept_messages list, initially preserving the very first message
-        let mut kept_messages: Vec<ChatMessage> = Vec::new();
-        if !mutable_messages.is_empty() {
-            kept_messages.push(mutable_messages[0].clone());
-        }
-        
-        // Process each conversation block (except the last one)
-        // We iterate from the first user-message block (after the system message)
-        // until before the block that contains the last user message (undroppable_msg_n)
+
+        let mut messages_ids_to_filter_out: HashSet<usize> = HashSet::new();
         for block_idx in 0..user_indices.len().saturating_sub(1) {
             let start_idx = user_indices[block_idx];
             let end_idx = user_indices[block_idx + 1];
-            if end_idx >= undroppable_msg_n {
+            tracing::info!("Processing block {}: messages {}..{}", block_idx, start_idx, end_idx);
+            if end_idx >= undroppable_msg_n || current_occupied_tokens <= tokens_limit {
                 break;
             }
-        
-            let mut block_messages: Vec<ChatMessage> = Vec::new();
-            // If this block starts with user and it's not the initial message, add it
-            if start_idx != 0 {
-                block_messages.push(mutable_messages[start_idx].clone());
-            }
-            
-            // Look for the last assistant message in the block
+            let mut last_assistant_idx: Option<usize> = None;
             for i in (start_idx + 1..end_idx).rev() {
                 if mutable_messages[i].role == "assistant" {
-                    let mut assistant_msg = mutable_messages[i].clone();
-                    // Clear tool calls to avoid validation issues
-                    assistant_msg.tool_calls = None;
-                    assistant_msg.tool_call_id = "".to_string();
-                    block_messages.push(assistant_msg);
+                    last_assistant_idx = Some(i);
                     break;
                 }
             }
-            
-            // Calculate the token count for just this block's messages
-            let mut block_tokens = 0;
-            for msg in &block_messages {
-                let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
-                block_tokens += count;
-            }
-            
-            // Calculate current tokens used (without adding this block)
-            let mut current_tokens = tools_description_tokens;
-            for msg in &kept_messages {
-                let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
-                current_tokens += count;
-            }
-            
-            // Calculate what the total would be if we add this block
-            let projected_total = current_tokens + block_tokens;
-            tracing::info!("Block {}: {} tokens, Current: {} tokens, Projected: {} tokens (limit: {})", 
-                          block_idx, block_tokens, current_tokens, projected_total, tokens_limit);
-        
-            // Only include the block if it still stays under budget
-            if projected_total <= tokens_limit {
-                kept_messages.extend(block_messages);
-            } else {
-                tracing::info!("Token limit reached while processing block {}, stopping block processing", block_idx);
-                break;
+
+            for i in start_idx + 1..end_idx {
+                if Some(start_idx) != last_assistant_idx {
+                    messages_ids_to_filter_out.insert(i);
+                    let new_current_occupied_tokens = current_occupied_tokens - token_counts[i];
+                    tracing::info!("Dropping message at index {} to stay under token limit: {} -> {}", i, current_occupied_tokens, new_current_occupied_tokens);
+                    current_occupied_tokens = new_current_occupied_tokens;
+                    // Clear tool calls for assistant messages to avoid validation issues
+                    let mut msg = mutable_messages[i].clone();
+                    if msg.role == "assistant" && Some(i) != last_assistant_idx {
+                        msg.tool_calls = None;
+                        msg.tool_call_id = "".to_string();
+                    }
+                }
+                if current_occupied_tokens <= tokens_limit {
+                    break;
+                }
             }
         }
-        
-        // Always preserve ALL messages after the last user message (from undroppable_msg_n until the end)
-        // This is critical - we must keep the entire last conversation block intact
-        for i in undroppable_msg_n..mutable_messages.len() {
-            kept_messages.push(mutable_messages[i].clone());
+
+        occupied_tokens = current_occupied_tokens;
+        mutable_messages = mutable_messages
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| !messages_ids_to_filter_out.contains(i))
+            .sorted_by_key(|(i, _)| *i)
+            .map(|(_, x)| x)
+            .collect();
+        token_counts = token_counts
+            .into_iter()
+            .enumerate()
+            .filter(|(i, _)| !messages_ids_to_filter_out.contains(i))
+            .sorted_by_key(|(i, _)| *i)
+            .map(|(_, x)| x)
+            .collect();
+
+        tracing::info!(
+            "Stage 4 complete: {} -> {} tokens ({} messages -> {} messages)", 
+            occupied_tokens, current_occupied_tokens, mutable_messages.len() + messages_ids_to_filter_out.len(), 
+            mutable_messages.len()
+        );
+        if occupied_tokens <= tokens_limit {
+            tracing::info!("Token budget reached after Stage 4 compression.");
         }
-        
-        tracing::info!("STAGE 4: All messages after the last user message preserved; kept_messages count = {}", kept_messages.len());
-        
-        let mut new_token_counts: Vec<i32> = Vec::with_capacity(kept_messages.len());
-        let mut new_occupied_tokens = tools_description_tokens;
-        for msg in &kept_messages {
-            let count = token_cache.get_token_count(msg, t.tokenizer.clone(), extra_tokens_per_message)?;
-            new_token_counts.push(count);
-            new_occupied_tokens += count;
-        }
-        
-        for (_i, msg) in mutable_messages.iter().enumerate() {
-            let is_kept = kept_messages.iter().any(|kept| {
-                kept.role == msg.role && kept.content.content_text_only() == msg.content.content_text_only()
-            });
-            if !is_kept {
-                tracing::info!("DROP {:?} with role {}", 
-                              crate::nicer_logs::first_n_chars(&msg.content.content_text_only(), 30), 
-                              msg.role);
-            }
-        }
-        
-        let stage4_duration = Instant::now().elapsed();
-        tracing::info!("Stage 4 complete: {} -> {} tokens ({} messages -> {} messages) in {:?}", 
-                      occupied_tokens, new_occupied_tokens, mutable_messages.len(), kept_messages.len(), stage4_duration);
-        
-        mutable_messages = kept_messages;
-        token_counts = new_token_counts;
-        
-        let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
-        occupied_tokens = recalculated.0;
-        tokens_limit = recalculated.1;
     }
 
     // STAGE 5: Compress ContextFile messages after the last user message (last resort)
@@ -767,9 +720,7 @@ pub fn fix_and_limit_messages_history(
                     t.tokenizer.clone(), 
                     extra_tokens_per_message
                 )?;
-                
-                let last_msg_duration = Instant::now().elapsed();
-                tracing::info!("Last user message compression completed in {:?}.", last_msg_duration);
+                tracing::info!("Last user message compression completed.");
             }
             
             let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
