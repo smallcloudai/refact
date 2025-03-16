@@ -41,6 +41,37 @@ pub fn parse_skeleton_from_args(args: &HashMap<String, Value>) -> Result<bool, S
     })
 }
 
+pub fn parse_line_range_from_args(args: &HashMap<String, Value>) -> Result<Option<(usize, usize)>, String> {
+    match args.get("line_range") {
+        Some(Value::String(s)) => {
+            let range_parts: Vec<&str> = s.split('-').collect();
+            if range_parts.len() == 1 {
+                match range_parts[0].trim().parse::<usize>() {
+                    Ok(line) => Ok(Some((line, line))),
+                    Err(_) => Err(format!("Invalid line number: {}", s))
+                }
+            } else if range_parts.len() == 2 {
+                let start = match range_parts[0].trim().parse::<usize>() {
+                    Ok(n) => n,
+                    Err(_) => return Err(format!("Invalid start line: {}", range_parts[0]))
+                };
+                let end = match range_parts[1].trim().parse::<usize>() {
+                    Ok(n) => n,
+                    Err(_) => return Err(format!("Invalid end line: {}", range_parts[1]))
+                };
+                if start > end {
+                    return Err(format!("Start line ({}) cannot be greater than end line ({})", start, end));
+                }
+                Ok(Some((start, end)))
+            } else {
+                Err(format!("Invalid line range format (use 'start-end' or 'single_line'): {}", s))
+            }
+        },
+        Some(v) => Err(format!("argument `line_range` is not a string: {:?}", v)),
+        None => Ok(None),
+    }
+}
+
 #[async_trait]
 impl Tool for ToolCat {
     fn as_any(&self) -> &dyn std::any::Any { self }
@@ -74,10 +105,12 @@ impl Tool for ToolCat {
             Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
             None => vec![],
         };
+        let line_range = parse_line_range_from_args(args)?;
         let skeleton = parse_skeleton_from_args(args)?;
         ccx.lock().await.pp_skeleton = skeleton;
 
-        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
+        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = 
+            paths_and_symbols_to_cat(ccx.clone(), paths, symbols, line_range).await;
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
@@ -185,6 +218,7 @@ pub async fn paths_and_symbols_to_cat(
     ccx: Arc<AMutex<AtCommandsContext>>,
     paths: Vec<String>,
     arg_symbols: Vec<String>,
+    line_range: Option<(usize, usize)>,
 ) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextEnum>, Vec<MultimodalElement>)
 {
     let (gcx, top_n) = {
@@ -245,11 +279,28 @@ pub async fn paths_and_symbols_to_cat(
             }
 
             for sym in syms_def_in_this_file {
+                let sym_start = sym.full_line1();
+                let sym_end = sym.full_line2();
+
+                // If line range is specified, check overlap
+                let (start_line, end_line) = match line_range {
+                    Some((start, end)) => {
+                        // If symbol doesn't overlap with requested line range, skip it
+                        if end < sym_start || start > sym_end {
+                            // Symbol is completely outside requested range
+                            continue;
+                        }
+                        // Show the intersection of symbol range and requested range
+                        (start.max(sym_start), end.min(sym_end))
+                    },
+                    None => (sym_start, sym_end)
+                };
+                
                 let cf = ContextFile {
                     file_name: p.clone(),
                     file_content: "".to_string(),
-                    line1: sym.full_line1(),
-                    line2: sym.full_line2(),
+                    line1: start_line,
+                    line2: end_line,
                     symbols: vec![sym.path()],
                     gradient_type: -1,
                     usefulness: 100.0,
@@ -292,11 +343,29 @@ pub async fn paths_and_symbols_to_cat(
         } else {
             match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await {
                 Ok(text) => {
+                    let total_lines = text.lines().count();
+                    let (start_line, end_line) = match line_range {
+                        Some((start, end)) => {
+                            let start = start.max(1);
+                            let end = end.min(total_lines);
+                            if start > end {
+                                not_found_messages.push(format!(
+                                    "Requested line range {}-{} is outside file bounds (file has {} lines)", 
+                                    start, end, total_lines
+                                ));
+                                (1, total_lines)
+                            } else {
+                                (start, end)
+                            }
+                        },
+                        None => (1, total_lines)
+                    };
+                    
                     let cf = ContextFile {
                         file_name: p.clone(),
                         file_content: "".to_string(),
-                        line1: 1,
-                        line2: text.lines().count(),
+                        line1: start_line,
+                        line2: end_line,
                         symbols: vec![],
                         gradient_type: -1,
                         usefulness: 0.0,
