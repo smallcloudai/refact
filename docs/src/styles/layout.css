@@ -1,0 +1,57 @@
+/* Main content layout */
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg);
+}
+
+/* Search container */
+.search-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: var(--space-md) 0;
+}
+
+/* Site title */
+.site-title {
+    max-width: 140px;
+}
+
+/* Full width tables */
+.full-table {
+    width: 100% !important;
+    table-layout: fixed;
+}
+
+.full-table thead,
+.full-table tbody,
+.full-table tr {
+    width: 100% !important;   
+}
+
+.full-table td,
+.full-table th {
+    width: 100vw;
+}
+
+.full-table td:nth-child(2) {
+    text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    main {
+        padding: 0 var(--space-md);
+    }
+    
+    .site-title {
+        max-width: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    main {
+        padding: 0 var(--space-sm);
+    }
+}
