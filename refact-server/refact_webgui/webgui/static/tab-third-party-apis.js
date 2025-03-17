@@ -79,6 +79,10 @@ function setProviderCollapsedState(providerId, isExpanded) {
     }
 }
 
+function requiresApiKey(providerId) {
+    return PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0;
+}
+
 function initializeProvidersList() {
     const providersContainer = document.querySelector('#providers-container');
     providersContainer.innerHTML = '';
@@ -99,6 +103,13 @@ function initializeProvidersList() {
             </div>
         `;
 
+        const apiKeyContainerHtml = requiresApiKey(providerId) ? `
+            <div class="api-key-container mb-3" id="${providerId}-api-key-container">
+                <label for="${providerId}-api-key" class="form-label">API Key</label>
+                <input type="text" class="form-control api-key-input" id="${providerId}-api-key" data-provider="${providerId}">
+            </div>
+        ` : '';
+
         providerCard.innerHTML = `
             <div class="card-header d-flex justify-content-between align-items-center provider-header" data-provider="${providerId}">
                 <h5 class="mb-0 provider-title" data-provider="${providerId}">${providerConfig.provider_name}</h5>
@@ -112,10 +123,7 @@ function initializeProvidersList() {
                 </div>
             </div>
             <div class="card-body provider-body" id="${providerId}-body" style="display: none;">
-                <div class="api-key-container mb-3" id="${providerId}-api-key-container">
-                    <label for="${providerId}-api-key" class="form-label">API Key</label>
-                    <input type="text" class="form-control api-key-input" id="${providerId}-api-key" data-provider="${providerId}">
-                </div>
+                ${apiKeyContainerHtml}
                 <div class="models-container" id="${providerId}-models-container">
                     ${modelsHtml}
                     <div class="mt-3">
@@ -198,12 +206,13 @@ function addEventListeners() {
         input.addEventListener('blur', function() {
             const providerId = this.dataset.provider;
             updateConfiguration();
-
-            const modelsContainer = document.getElementById(`${providerId}-models-container`);
-            if (this.value) {
-                modelsContainer.style.display = 'block';
-            } else {
-                modelsContainer.style.display = 'none';
+            if (requiresApiKey(providerId)) {
+                const modelsContainer = document.getElementById(`${providerId}-models-container`);
+                if (this.value) {
+                    modelsContainer.style.display = 'block';
+                } else {
+                    modelsContainer.style.display = 'none';
+                }
             }
         });
     });
@@ -242,8 +251,8 @@ function updateConfiguration() {
             // Update the enabled state based on the toggle
             apiConfig.providers[providerId].enabled = toggle.checked;
 
-            // Update the API key if it has changed
-            if (apiKeyInput.value) {
+            // Update the API key if this provider has one and it has changed
+            if (apiKeyInput && apiKeyInput.value) {
                 apiConfig.providers[providerId].api_key = apiKeyInput.value;
             }
         }
@@ -280,54 +289,52 @@ function updateUI() {
         const enabledModels = providerConfig.enabled_models || [];
         const isEnabled = providerConfig.enabled !== undefined ? providerConfig.enabled : true;
 
-        // Update API key input
+        // Update API key input if this provider has one
         const input = document.getElementById(`${providerId}-api-key`);
         if (input) {
             input.value = apiKey;
+        }
 
-            // Set toggle state based on enabled property
-            const toggle = document.getElementById(`${providerId}-toggle`);
-            if (toggle) {
-                toggle.checked = isEnabled;
+        // Set toggle state based on enabled property
+        const toggle = document.getElementById(`${providerId}-toggle`);
+        if (toggle) {
+            toggle.checked = isEnabled;
 
-                // Show body content if expanded in UI or if this is a new provider
-                const isExpanded = expandedProviders[providerId] !== undefined ? expandedProviders[providerId] : true;
+            const isExpanded = expandedProviders[providerId] !== undefined ? expandedProviders[providerId] : true;
+            setProviderCollapsedState(providerId, isExpanded);
 
-                // Use our helper function to set the collapsed state
-                setProviderCollapsedState(providerId, isExpanded);
+            if (!requiresApiKey(providerId)) {
+                const modelsContainer = document.getElementById(`${providerId}-models-container`);
+                if (modelsContainer) {
+                    modelsContainer.style.display = 'block';
+                }
+            }
 
-                // Get the models list container
-                const modelsList = document.getElementById(`${providerId}-models-list`);
-                if (modelsList) {
-                    // Clear existing models
-                    modelsList.innerHTML = '';
+            const modelsList = document.getElementById(`${providerId}-models-list`);
+            if (modelsList) {
+                modelsList.innerHTML = '';
 
-                    // Display enabled models
-                    if (enabledModels.length > 0) {
-                        // Hide the "no enabled models" message if it exists
-                        const noEnabledModelsMsg = document.getElementById(`${providerId}-no-enabled-models-msg`);
-                        if (noEnabledModelsMsg) {
-                            noEnabledModelsMsg.style.display = 'none';
+                if (enabledModels.length > 0) {
+                    const noEnabledModelsMsg = document.getElementById(`${providerId}-no-enabled-models-msg`);
+                    if (noEnabledModelsMsg) {
+                        noEnabledModelsMsg.style.display = 'none';
+                    }
+
+                    enabledModels.forEach(model => {
+                        const modelName = typeof model === 'string' ? model : model.model_name;
+                        const supportsAgentic = typeof model === 'object' && model.supports_agentic;
+                        const supportsClicks = typeof model === 'object' && model.supports_clicks;
+
+                        let capabilitiesBadges = '';
+                        if (supportsAgentic) {
+                            capabilitiesBadges += '<span class="badge bg-info me-1" title="Supports Agentic Mode">Agent</span>';
+                        }
+                        if (supportsClicks) {
+                            capabilitiesBadges += '<span class="badge bg-success me-1" title="Supports Click Interactions">Clicks</span>';
                         }
 
-                        // Add each enabled model to the list
-                        enabledModels.forEach(model => {
-                            // Handle both string models and ModelConfig objects
-                            const modelName = typeof model === 'string' ? model : model.model_name;
-                            const supportsAgentic = typeof model === 'object' && model.supports_agentic;
-                            const supportsClicks = typeof model === 'object' && model.supports_clicks;
-
-                            // Create capability badges if needed
-                            let capabilitiesBadges = '';
-                            if (supportsAgentic) {
-                                capabilitiesBadges += '<span class="badge bg-info me-1" title="Supports Agentic Mode">Agent</span>';
-                            }
-                            if (supportsClicks) {
-                                capabilitiesBadges += '<span class="badge bg-success me-1" title="Supports Click Interactions">Clicks</span>';
-                            }
-
-                            const modelItem = document.createElement('div');
-                            modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
+                        const modelItem = document.createElement('div');
+                        modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
                             modelItem.innerHTML = `
                                 <div class="d-flex align-items-center">
                                     <span class="model-name">${modelName}</span>
@@ -339,22 +346,19 @@ function updateUI() {
                                     <i class="bi bi-x"></i>
                                 </button>
                             `;
-                            modelsList.appendChild(modelItem);
+                        modelsList.appendChild(modelItem);
 
-                            // Add event listener for remove button
-                            const removeBtn = modelItem.querySelector('.remove-model-btn');
-                            removeBtn.addEventListener('click', function() {
-                                removeModel(this.dataset.provider, this.dataset.model);
-                            });
+                        const removeBtn = modelItem.querySelector('.remove-model-btn');
+                        removeBtn.addEventListener('click', function() {
+                            removeModel(this.dataset.provider, this.dataset.model);
                         });
-                    } else {
-                        // Show the "no enabled models" message
-                        const noEnabledModelsMsg = document.createElement('div');
-                        noEnabledModelsMsg.className = 'alert alert-info';
-                        noEnabledModelsMsg.id = `${providerId}-no-enabled-models-msg`;
-                        noEnabledModelsMsg.textContent = 'No models enabled for this provider. Use the "Add Model" button below to add and enable models.';
-                        modelsList.appendChild(noEnabledModelsMsg);
-                    }
+                    });
+                } else {
+                    const noEnabledModelsMsg = document.createElement('div');
+                    noEnabledModelsMsg.className = 'alert alert-info';
+                    noEnabledModelsMsg.id = `${providerId}-no-enabled-models-msg`;
+                    noEnabledModelsMsg.textContent = 'No models enabled for this provider. Use the "Add Model" button below to add and enable models.';
+                    modelsList.appendChild(noEnabledModelsMsg);
                 }
             }
         }
@@ -402,11 +406,16 @@ function showAddProviderModal() {
     document.getElementById('third-party-provider-name').value = '';
     document.getElementById('third-party-provider-api-key').value = '';
 
+    // Hide API key field by default until a provider is selected
+    const apiKeyContainer = document.getElementById('third-party-provider-api-key-container');
+    apiKeyContainer.style.display = 'block';
+
     Object.entries(PROVIDERS).forEach(([providerId, providerInfo]) => {
         const option = document.createElement('option');
         option.value = providerId;
         option.textContent = providerInfo.name;
         option.dataset.name = providerInfo.name;
+        option.dataset.noApiKey = providerInfo.models.length > 0 ? 'false' : 'true';
         providerIdSelect.appendChild(option);
     });
 
@@ -414,6 +423,11 @@ function showAddProviderModal() {
         const selectedOption = this.options[this.selectedIndex];
         if (selectedOption && selectedOption.dataset.name) {
             document.getElementById('third-party-provider-name').value = selectedOption.dataset.name;
+            if (selectedOption.dataset.noApiKey === 'true') {
+                apiKeyContainer.style.display = 'none';
+            } else {
+                apiKeyContainer.style.display = 'block';
+            }
         }
     });
 
@@ -430,6 +444,11 @@ function addProvider() {
     const providerName = document.getElementById('third-party-provider-name').value.trim();
     const apiKey = document.getElementById('third-party-provider-api-key').value.trim();
 
+    // Check if the selected provider requires an API key
+    const providerSelect = document.getElementById('third-party-provider-id');
+    const selectedOption = providerSelect.options[providerSelect.selectedIndex];
+    const requiresApiKey = selectedOption && selectedOption.dataset.noApiKey !== 'true';
+
     if (!providerId) {
         const error_message = "Provider ID is required"
         console.error(error_message);
@@ -444,7 +463,7 @@ function addProvider() {
         return;
     }
 
-    if (!apiKey) {
+    if (requiresApiKey && !apiKey) {
         const error_message = "API Key is required"
         console.error(error_message);
         general_error(error_message);
@@ -453,7 +472,7 @@ function addProvider() {
 
     apiConfig.providers[providerId] = {
         provider_name: providerName,
-        api_key: apiKey,
+        api_key: requiresApiKey ? apiKey : "",  // Empty string for providers that don't need API key
         enabled_models: [],
         enabled: true
     };
