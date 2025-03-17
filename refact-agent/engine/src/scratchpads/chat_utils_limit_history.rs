@@ -8,17 +8,14 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingPara
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::token_count_cache::TokenCountCache;
 
-/// Enum representing the level of compression applied to the message history
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum CompressionStrength {
-    /// Low compression - only basic compression of context files and tool results (stages 1-3)
+    Absent,
     Low,
-    /// Medium compression - dropping messages and conversation blocks (stage 4)
     Medium,
-    /// High compression - compressing messages in the most recent context (stages 5-7)
     High,
 }
-
 
 /// Returns the appropriate token parameters for a given model.
 /// 
@@ -431,8 +428,6 @@ pub fn fix_and_limit_messages_history(
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens));
     }
     let mut mutable_messages = messages.clone();
-    
-    // Track which compression stages are used
     let mut highest_compression_stage = 0;
     
     // STAGE 0: Compress old and duplicated ContextFiles
@@ -623,7 +618,6 @@ pub fn fix_and_limit_messages_history(
             .map(|(_, x)| x)
             .collect();
 
-        // If we actually removed any messages, update the compression stage
         if !messages_ids_to_filter_out.is_empty() {
             highest_compression_stage = 4;
         }
@@ -780,19 +774,15 @@ pub fn fix_and_limit_messages_history(
     let total_duration = start_time.elapsed();
     tracing::info!("Total compression time: {:?}", total_duration);
     
-    // Determine compression strength based on highest stage used
     let compression_strength = match highest_compression_stage {
-        0 => CompressionStrength::Low, // No compression needed
+        0 => CompressionStrength::Absent,
         1..=3 => CompressionStrength::Low,
         4 => CompressionStrength::Medium,
         5..=7 => CompressionStrength::High,
-        _ => CompressionStrength::Low, // Fallback, shouldn't happen
+        _ => CompressionStrength::High,
     };
-    
     tracing::info!("Used compression stage {} resulting in {:?} compression strength", 
                   highest_compression_stage, compression_strength);
-    
-    // Return both the validated messages and the compression strength
     validate_chat_history(&mutable_messages).map(|msgs| (msgs, compression_strength))
 }
 
