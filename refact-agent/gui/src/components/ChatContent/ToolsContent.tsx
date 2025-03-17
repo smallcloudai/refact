@@ -39,6 +39,7 @@ import { TextDocTool } from "../Tools/Textdoc";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
+import { FadedButton } from "../Buttons";
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
@@ -532,19 +533,9 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
                 );
               })}
             </Flex>
-            <Button
-              variant="ghost"
-              color="gray"
-              onClick={() => setOpen(false)}
-              mx="2"
-              asChild
-              style={{
-                maskImage:
-                  "linear-gradient(to top, var(--color-background) 0%, transparent 100%)",
-              }}
-            >
-              <Flex>Hide Memories</Flex>
-            </Button>
+            <FadedButton color="gray" onClick={() => setOpen(false)} mx="2">
+              Hide Memories
+            </FadedButton>
           </Flex>
         </Collapsible.Content>
       </Collapsible.Root>
