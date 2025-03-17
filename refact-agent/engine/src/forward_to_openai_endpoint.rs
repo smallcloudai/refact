@@ -10,7 +10,7 @@ use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
-
+use crate::scratchpads::chat_utils_limit_history::CompressionStrength;
 
 pub async fn forward_to_openai_style_endpoint(
     save_url: &mut String,
@@ -175,6 +175,21 @@ fn passthrough_messages_to_json(
         if model_name != "o1-mini" {
             data["tools"] = tools.clone();
         }
+    }
+}
+
+pub fn try_get_compression_from_prompt(
+    prompt: &str,
+) -> serde_json::Value {
+    let big_json: serde_json::Value = if prompt.starts_with("PASSTHROUGH ") {
+        serde_json::from_str( &prompt[12..]).unwrap()
+    } else {
+        serde_json::from_str(&prompt).unwrap()
+    };
+    if let Some(compression_strength) = big_json.get("compression_strength") {
+        compression_strength.clone()
+    } else {
+        json!(CompressionStrength::Absent)
     }
 }
 
