@@ -198,6 +198,24 @@ def available_third_party_models() -> Dict[str, ThirdPartyModel]:
     return models_available
 
 
+def get_provider_models() -> Dict[str, List[str]]:
+    providers_models = litellm.models_by_provider
+
+    filtered_providers_models = {}
+    for provider, models in providers_models.items():
+        chat_models = []
+        for model in models:
+            try:
+                model_info = litellm.get_model_info(model=model, custom_llm_provider=provider)
+                if model_info and model_info.get("mode") == "chat":
+                    chat_models.append(model)
+            except Exception:
+                continue
+        filtered_providers_models[provider] = chat_models
+
+    return filtered_providers_models
+
+
 # TODO:
 # 1. tokenizer resolve
 # 2. token counting
