@@ -65,7 +65,7 @@ PROMPT_AGENTIC_TOOLS: |
   **STRATEGY**
   **Step 1: Gather Existing Knowledge**
     - *Goal:* Get information about the project and previous similar tasks.
-    - Use the `knowledge()` tool to get initial information about the project and the task.
+    - Always call the `knowledge()` tool to get initial information about the project and the task.
     - This tool gives you access to memories, and external data, example trajectories (🗃️) to help understand and solve the task.
   **Step 2: Gather Context**
     - *Goal:* Fully understand the task by gathering all important details.
