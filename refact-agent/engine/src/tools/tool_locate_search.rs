@@ -207,6 +207,7 @@ async fn find_relevant_files_with_search(
         LS_WRAP_UP,
         1,
         Some(0.1),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-search")),
         Some(false),  
