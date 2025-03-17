@@ -9,6 +9,7 @@ import {
   IconButton,
   Card,
   Separator,
+  Button,
 } from "@radix-ui/themes";
 import {
   isMultiModalToolResult,
@@ -478,7 +479,6 @@ const ToolUsageSummary: React.FC<{
 const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   const [open, setOpen] = React.useState(false);
 
-  // TODO: add voting actions
   const maybeResult = useAppSelector((state) =>
     selectToolResultById(state, toolCall.id),
   );
@@ -532,6 +532,19 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
                 );
               })}
             </Flex>
+            <Button
+              variant="ghost"
+              color="gray"
+              onClick={() => setOpen(false)}
+              mx="2"
+              asChild
+              style={{
+                maskImage:
+                  "linear-gradient(to top, var(--color-background) 0%, transparent 100%)",
+              }}
+            >
+              <Flex>Hide Memories</Flex>
+            </Button>
           </Flex>
         </Collapsible.Content>
       </Collapsible.Root>
