@@ -108,9 +108,14 @@ def save_third_party_config(config: ThirdPartyApiConfig):
     os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
 
 
+def _supports_chat(model_name: str) -> bool:
+    model_info = litellm.get_model_info(model=model_name)
+    return model_info and model_info.get("mode") == "chat"
+
+
 def _get_context_size(model_name: str) -> Optional[int]:
     model_info = litellm.get_model_info(model_name)
-    return model_info.get("max_input_tokens")
+    return model_info.get("max_input_tokens", 8192)
 
 
 class ThirdPartyModel:
@@ -123,19 +128,19 @@ class ThirdPartyModel:
             api_key: Optional[str] = None,
     ):
         self._model_config = model_config
-        self._provider_api_key = api_key
         if model_config.custom_model_config is None:
             self._api_key = api_key
             self._n_ctx = min(_get_context_size(self.name), self.PASSTHROUGH_MAX_TOKENS_LIMIT)
-            self._supports_tools = litellm.supports_function_calling(self.name)
-            self._supports_multimodality = litellm.supports_vision(self.name)
+            self._supports_chat = _supports_chat(self.name)
+            self._supports_tools = bool(litellm.supports_function_calling(self.name))
+            self._supports_multimodality = bool(litellm.supports_vision(self.name))
         else:
             self._api_key = model_config.custom_model_config.api_key
             self._n_ctx = model_config.custom_model_config.n_ctx
-            self._supports_tools = model_config.custom_model_config.supports_tools
-            self._supports_multimodality = model_config.custom_model_config.supports_multimodality
-        assert self._api_key is not None
-        assert self._n_ctx is not None
+            self._supports_chat = True  # custom models are only for chat
+            self._supports_tools = bool(model_config.custom_model_config.supports_tools)
+            self._supports_multimodality = bool(model_config.custom_model_config.supports_multimodality)
+        assert self._n_ctx is not None, "no context size"
 
     @property
     def name(self) -> str:
@@ -151,11 +156,11 @@ class ThirdPartyModel:
 
     @property
     def supports_chat(self) -> bool:
-        return True
+        return self._supports_chat
 
     @property
     def supports_completion(self) -> bool:
-        return self._model_config.model_name in self.COMPLETION_READY_MODELS
+        return self.name in self.COMPLETION_READY_MODELS
 
     @property
     def tokenizer_uri(self) -> str:
@@ -167,7 +172,7 @@ class ThirdPartyModel:
     # NOTE: weird function for backward compatibility
     def compose_usage_dict(self, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
         def _pp1000t(cost_entry_name: str) -> int:
-            cost = litellm.model_cost.get(self._model_config.model_name, {}).get(cost_entry_name, 0)
+            cost = litellm.model_cost.get(self.name, {}).get(cost_entry_name, 0)
             return int(cost * 1_000_000 * 1_000)
         return {
             "pp1000t_prompt": _pp1000t("input_cost_per_token"),
@@ -209,10 +214,13 @@ def available_third_party_models() -> Dict[str, ThirdPartyModel]:
             continue
         for model_config in provider_config.enabled_models:
             if model_config.model_name not in models_available:
-                models_available[model_config.model_name] = ThirdPartyModel(
-                    model_config,
-                    provider_config.api_key,
-                )
+                try:
+                    models_available[model_config.model_name] = ThirdPartyModel(
+                        model_config,
+                        provider_config.api_key,
+                    )
+                except Exception as e:
+                    log(f"model listed as available but it's not supported: {e}")
     return models_available
 
 
@@ -222,29 +230,13 @@ def get_provider_models() -> Dict[str, List[str]]:
         provider_chat_models = []
         provider_name = str(provider.value)
         provider_models = litellm.models_by_provider.get(provider_name, [])
-        for model in provider_models:
+        for model_name in provider_models:
             try:
-                model_info = litellm.get_model_info(model=model, custom_llm_provider=provider_name)
-                if model_info and model_info.get("mode") == "chat":
-                    provider_chat_models.append(model)
+                model = ThirdPartyModel(ModelConfig(model_name=model_name))
+                if model.supports_chat:
+                    provider_chat_models.append(model_name)
             except Exception:
                 continue
         if not provider_models or provider_chat_models:
             filtered_providers_models[provider_name] = provider_chat_models
     return filtered_providers_models
-
-
-# TODO:
-# 1. tokenizer resolve
-# 2. token counting
-# 3. model config
-
-# "backend": "litellm",
-# "provider": "openai",
-# "tokenizer_path": "Xenova/gpt-4o",
-# "resolve_as": "o1-2024-12-17",
-# "T": 200_000,
-# "T_out": 32_000,
-# "pp1000t_prompt": 15_000,  # $15.00 / 1M tokens (2025 january)
-# "pp1000t_generated": 60_000,  # $60.00 / 1M tokens (2025 january)
-# "filter_caps": ["chat", "tools"],
