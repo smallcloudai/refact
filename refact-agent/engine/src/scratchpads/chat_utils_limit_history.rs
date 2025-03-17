@@ -3,9 +3,21 @@ use itertools::Itertools;
 use serde_json::Value;
 use tracing::error;
 use std::time::Instant;
+use serde::{Serialize, Deserialize};
 use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingParameters};
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::token_count_cache::TokenCountCache;
+
+/// Enum representing the level of compression applied to the message history
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum CompressionStrength {
+    /// Low compression - only basic compression of context files and tool results (stages 1-3)
+    Low,
+    /// Medium compression - dropping messages and conversation blocks (stage 4)
+    Medium,
+    /// High compression - compressing messages in the most recent context (stages 5-7)
+    High,
+}
 
 
 /// Returns the appropriate token parameters for a given model.
@@ -412,13 +424,16 @@ pub fn fix_and_limit_messages_history(
     n_ctx: usize,
     tools_description: Option<String>,
     model_name: &str,
-) -> Result<Vec<ChatMessage>, String> {
+) -> Result<(Vec<ChatMessage>, CompressionStrength), String> {
     let start_time = Instant::now();
     
     if n_ctx <= sampling_parameters_to_patch.max_new_tokens {
         return Err(format!("bad input, n_ctx={}, max_new_tokens={}", n_ctx, sampling_parameters_to_patch.max_new_tokens));
     }
     let mut mutable_messages = messages.clone();
+    
+    // Track which compression stages are used
+    let mut highest_compression_stage = 0;
     
     // STAGE 0: Compress old and duplicated ContextFiles
     // This is done before token calculation to reduce the number of messages that need to be tokenized
@@ -478,6 +493,7 @@ pub fn fix_and_limit_messages_history(
         
         occupied_tokens = result.0;
         tokens_limit = result.1;
+        highest_compression_stage = 1;
         
         if result.2 { // If budget reached
             tracing::info!("Token budget reached after Stage 1 compression.");
@@ -506,6 +522,7 @@ pub fn fix_and_limit_messages_history(
         
         occupied_tokens = result.0;
         tokens_limit = result.1;
+        highest_compression_stage = 2;
         
         if result.2 { // If budget reached
             tracing::info!("Token budget reached after Stage 2 compression.");
@@ -539,6 +556,7 @@ pub fn fix_and_limit_messages_history(
         
         occupied_tokens = result.0;
         tokens_limit = result.1;
+        highest_compression_stage = 3;
         
         if result.2 { // If budget reached
             tracing::info!("Token budget reached after Stage 3 compression.");
@@ -605,6 +623,11 @@ pub fn fix_and_limit_messages_history(
             .map(|(_, x)| x)
             .collect();
 
+        // If we actually removed any messages, update the compression stage
+        if !messages_ids_to_filter_out.is_empty() {
+            highest_compression_stage = 4;
+        }
+
         tracing::info!(
             "Stage 4 complete: {} -> {} tokens ({} messages -> {} messages)", 
             occupied_tokens, current_occupied_tokens, mutable_messages.len() + messages_ids_to_filter_out.len(), 
@@ -665,6 +688,7 @@ pub fn fix_and_limit_messages_history(
         
         occupied_tokens = result.0;
         tokens_limit = result.1;
+        highest_compression_stage = 6;
         
         if result.2 { // If budget reached
             tracing::info!("Token budget reached after Stage 6 compression.");
@@ -697,6 +721,7 @@ pub fn fix_and_limit_messages_history(
         
         occupied_tokens = result.0;
         tokens_limit = result.1;
+        highest_compression_stage = 7;
         
         if result.2 { // If budget reached
             tracing::info!("Token budget reached after Stage 7 compression.");
@@ -755,7 +780,20 @@ pub fn fix_and_limit_messages_history(
     let total_duration = start_time.elapsed();
     tracing::info!("Total compression time: {:?}", total_duration);
     
-    validate_chat_history(&mutable_messages)
+    // Determine compression strength based on highest stage used
+    let compression_strength = match highest_compression_stage {
+        0 => CompressionStrength::Low, // No compression needed
+        1..=3 => CompressionStrength::Low,
+        4 => CompressionStrength::Medium,
+        5..=7 => CompressionStrength::High,
+        _ => CompressionStrength::Low, // Fallback, shouldn't happen
+    };
+    
+    tracing::info!("Used compression stage {} resulting in {:?} compression strength", 
+                  highest_compression_stage, compression_strength);
+    
+    // Return both the validated messages and the compression strength
+    validate_chat_history(&mutable_messages).map(|msgs| (msgs, compression_strength))
 }
 
 #[cfg(test)]
@@ -1357,7 +1395,9 @@ mod tests {
                 eprintln!("{} => {}", title, result.clone().err().unwrap());
                 continue;
             }
-            let dump = _msgdump(&result.unwrap(), title);
+            let (limited_msgs, compression_strength) = result.unwrap();
+            eprintln!("Compression strength: {:?}", compression_strength);
+            let dump = _msgdump(&limited_msgs, title);
             eprintln!("{}", dump);
         }
     }
@@ -1397,7 +1437,8 @@ mod tests {
                 continue;
             }
             
-            let limited_messages = result.unwrap();
+            let (limited_messages, compression_strength) = result.unwrap();
+            println!("Compression strength for n_ctx={}: {:?}", n_ctx, compression_strength);
             
             // Verify that the system message is preserved
             assert_eq!(limited_messages[0].role, "system", "System message should be preserved for n_ctx={}", n_ctx);
@@ -1466,7 +1507,8 @@ mod tests {
             );
             return; // Skip the rest of the test
         }
-        let output = result.unwrap();
+        let (output, compression_strength) = result.unwrap();
+        tracing::info!("Compression strength: {:?}", compression_strength);
 
         let dump = _msgdump(&output, format!("n_ctx={}", n_ctx));
         tracing::info!("{}", dump);
@@ -1555,8 +1597,11 @@ mod tests {
             return;
         }
         
-        let claude_messages = result_claude.unwrap();
-        let default_messages = result_default.unwrap();
+        let (claude_messages, claude_compression) = result_claude.unwrap();
+        let (default_messages, default_compression) = result_default.unwrap();
+        
+        eprintln!("Claude compression strength: {:?}", claude_compression);
+        eprintln!("Default compression strength: {:?}", default_compression);
         
         // The Claude model should have fewer messages due to higher token overhead
         eprintln!(
@@ -1616,7 +1661,8 @@ mod tests {
                 continue;
             }
             
-            let compressed_messages = result.unwrap();
+            let (compressed_messages, compression_strength) = result.unwrap();
+            eprintln!("Compression strength for n_ctx={}: {:?}", n_ctx, compression_strength);
             let dump = _msgdump(&compressed_messages, title);
             eprintln!("{}", dump);
             

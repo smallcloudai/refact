@@ -232,7 +232,7 @@ tools:
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4. You can specify line ranges directly in the path using colon notation (file.ext:10-20 for lines 10-20, file.ext:42 for just line 42)."
+        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4."
       - name: "symbols"
         type: "string"
         description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
