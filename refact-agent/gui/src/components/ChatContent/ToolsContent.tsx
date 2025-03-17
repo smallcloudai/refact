@@ -9,7 +9,6 @@ import {
   IconButton,
   Card,
   Separator,
-  Button,
 } from "@radix-ui/themes";
 import {
   isMultiModalToolResult,
