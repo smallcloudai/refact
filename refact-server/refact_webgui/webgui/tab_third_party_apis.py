@@ -1,11 +1,10 @@
-import litellm
-
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from refact_utils.third_party.utils import ThirdPartyApiConfig
 from refact_utils.third_party.utils import load_third_party_config
 from refact_utils.third_party.utils import save_third_party_config
+from refact_utils.third_party.utils import get_provider_models
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 
@@ -47,23 +46,4 @@ class TabThirdPartyApisRouter(APIRouter):
         Get all available providers and their models from litellm.
         Filters models to only include chat models.
         """
-        try:
-            providers_models = litellm.models_by_provider
-
-            filtered_providers_models = {}
-            for provider, models in providers_models.items():
-                chat_models = []
-                for model in models:
-                    try:
-                        model_info = litellm.get_model_info(model=model, custom_llm_provider=provider)
-                        if model_info and model_info.get("mode") == "chat":
-                            chat_models.append(model)
-                    except Exception:
-                        continue
-
-                if chat_models:
-                    filtered_providers_models[provider] = chat_models
-
-            return JSONResponse(filtered_providers_models)
-        except Exception as e:
-            return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse(get_provider_models())
