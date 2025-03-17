@@ -299,8 +299,9 @@ fn replace_broken_tool_call_messages(
     new_max_new_tokens: usize
 ) {
     let high_budget_tools = vec!["create_textdoc"];
-    let last_index = messages.len().saturating_sub(1);
-
+    let last_index_assistant = messages.iter()
+        .rposition(|msg| msg.role == "assistant")
+        .unwrap_or(0);
     for (i, message) in messages.iter_mut().enumerate() {
         if let Some(tool_calls) = &mut message.tool_calls {
             let incorrect_reasons = tool_calls.iter().map(|tc| {
@@ -314,7 +315,7 @@ fn replace_broken_tool_call_messages(
             let has_high_budget_tools = tool_calls.iter().any(|tc| high_budget_tools.contains(&tc.function.name.as_str()));
             if !incorrect_reasons.is_empty() {
                 // Only increase max_new_tokens if this is the last message and it was truncated due to "length"
-                let extra_message = if i == last_index && message.finish_reason == Some("length".to_string()) {
+                let extra_message = if i == last_index_assistant && message.finish_reason == Some("length".to_string()) {
                     tracing::warn!("increasing `max_new_tokens` from {} to {}", sampling_parameters.max_new_tokens, new_max_new_tokens);
                     let tokens_msg = if sampling_parameters.max_new_tokens < new_max_new_tokens {
                         sampling_parameters.max_new_tokens = new_max_new_tokens;
@@ -344,17 +345,6 @@ fn replace_broken_tool_call_messages(
     }
 }
 
-/// Validates the chat history after compression/truncation.
-///
-/// This function checks:
-/// 1. There is at least one message that is either "system" or "user".
-/// 2. The first message's role is either "system" or "user".
-/// 3. Every tool call's arguments (if present in tool_calls) can be parsed as a HashMap.
-/// 4. For every tool call in the chat history there must be a corresponding tool result (i.e. a message that has a matching nonempty tool_call_id).
-/// 5. Any assistant message with nonempty tool_calls must be followed by one (or more) tool messages that respond to each listed tool_call_id.
-/// 6. Prints total token count including messages, tools descriptions.
-///
-/// Returns Ok(the validated chat messages) or Err(a descriptive error message).
 fn validate_chat_history(
     messages: &Vec<ChatMessage>,
 ) -> Result<Vec<ChatMessage>, String> {
