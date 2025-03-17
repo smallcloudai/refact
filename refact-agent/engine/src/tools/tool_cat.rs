@@ -308,7 +308,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                     line1: start_line,
                     line2: end_line,
                     symbols: vec![sym.path()],
-                    gradient_type: -1,
+                    gradient_type: 4,
                     usefulness: 100.0,
                 };
                 context_enums.push(ContextEnum::ContextFile(cf));
@@ -376,8 +376,8 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                         line1: start_line,
                         line2: end_line,
                         symbols: vec![],
-                        gradient_type: -1,
-                        usefulness: 0.0,
+                        gradient_type: 4,
+                        usefulness: 100.0,
                     };
                     context_enums.push(ContextEnum::ContextFile(cf));
                 },
