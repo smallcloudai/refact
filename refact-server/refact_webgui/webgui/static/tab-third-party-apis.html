@@ -87,6 +87,55 @@
                         </label>
                         <div class="form-text">Enable if this model supports click interactions.</div>
                     </div>
+
+                    <div class="mt-4">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="third-party-model-is-custom">
+                            <label class="form-check-label" for="third-party-model-is-custom">
+                                Custom Model Configuration
+                            </label>
+                            <div class="form-text">Enable to provide additional configuration for custom models.</div>
+                        </div>
+
+                        <div id="custom-model-config-container" style="display: none;">
+                            <div class="card p-3 mb-3 bg-light">
+                                <h6 class="mb-3">Custom Model Configuration</h6>
+
+                                <div class="mb-3">
+                                    <label for="custom-model-api-key" class="form-label">API Key</label>
+                                    <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
+                                    <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
+                                    <div class="form-text">Maximum number of tokens the model can process.</div>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="custom-model-supports-tools">
+                                    <label class="form-check-label" for="custom-model-supports-tools">
+                                        Supports Tools
+                                    </label>
+                                    <div class="form-text">Enable if this model supports function calling/tools.</div>
+                                </div>
+
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality">
+                                    <label class="form-check-label" for="custom-model-supports-multimodality">
+                                        Supports Multimodality
+                                    </label>
+                                    <div class="form-text">Enable if this model supports images and other media types.</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
+                                    <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
+                                    <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
