@@ -165,11 +165,7 @@ pub struct CapsProvider {
 
     // default api key is in the command line
     #[serde(default)]
-    pub completion_apikey: String,
-    #[serde(default)]
-    pub chat_apikey: String,
-    #[serde(default)]
-    pub embedding_apikey: String,
+    pub api_key: String,
 
     #[serde(default)]
     #[serde(alias = "size_embeddings")]
@@ -393,7 +389,6 @@ async fn load_caps_from_buf(
 }
 
 pub async fn get_api_key(
-    api_key_type: ModelType,
     gcx: Arc<ARwLock<GlobalContext>>,
     provider_name: &str,
 ) -> Result<String, String> {
@@ -408,16 +403,7 @@ pub async fn get_api_key(
         } else {
             caps_locked.providers.get(provider_name)
         };
-        if let Some(provider) = provider {
-            match api_key_type {
-                ModelType::Chat => provider.chat_apikey.clone(),
-                ModelType::CodeCompletion | ModelType::MultilineCodeCompletion => 
-                    provider.completion_apikey.clone(),
-                ModelType::Embedding => provider.embedding_apikey.clone(),
-            }
-        } else {
-            String::new()
-        }
+        provider.map(|p| p.api_key.clone()).unwrap_or_default()
     };
     
     if custom_apikey.is_empty() {

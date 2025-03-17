@@ -3,7 +3,7 @@ use axum::Extension;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 
-use crate::caps::{get_api_key, ModelType};
+use crate::caps::get_api_key;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::vecdb::vdb_structs::VecdbSearch;
@@ -32,7 +32,7 @@ pub async fn handle_v1_vecdb_search(
     } else {
         "".to_string()
     };
-    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), &provider_name).await
+    let api_key = get_api_key(gcx.clone(), &provider_name).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     let cx_locked = gcx.read().await;
 

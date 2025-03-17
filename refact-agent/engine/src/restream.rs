@@ -43,7 +43,7 @@ async fn _resolve_model_connection_details(
         let provider = provider.unwrap();
         if provider.code_chat_models.contains_key(model_name) {
             (
-                provider.chat_apikey.clone(),
+                provider.api_key.clone(),
                 provider.endpoint_style.clone(),      // abstract
                 provider.chat_endpoint_style.clone(), // chat-specific
                 provider.endpoint_template.clone(),   // abstract
@@ -52,7 +52,7 @@ async fn _resolve_model_connection_details(
             )
         } else {
             (
-                provider.completion_apikey.clone(),
+                provider.api_key.clone(),
                 provider.endpoint_style.clone(),             // abstract
                 provider.completion_endpoint_style.clone(),  // completion-specific
                 provider.endpoint_template.clone(),          // abstract

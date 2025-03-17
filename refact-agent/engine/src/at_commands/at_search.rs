@@ -1,5 +1,5 @@
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommand, AtCommandsContext, AtParam};
-use crate::caps::{get_api_key, ModelType};
+use crate::caps::get_api_key;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
@@ -76,7 +76,7 @@ pub async fn execute_at_search(
     } else {
         "".to_string()
     };
-    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), &provider_name).await;
+    let api_key = get_api_key(gcx.clone(), &provider_name).await;
     if let Err(err) = api_key {
         return Err(err);
     }

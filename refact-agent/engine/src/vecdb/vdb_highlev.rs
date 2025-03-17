@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use tracing::{error, info};
 
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::{get_api_key, get_caps_provider, ModelType};
+use crate::caps::{get_api_key, get_caps_provider};
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{MemdbSubEvent, MemoriesDatabase};
@@ -432,7 +432,7 @@ pub async fn memories_search(
         )
     };
 
-    let api_key = get_api_key(ModelType::Embedding, gcx.clone(), &constants.embedding_provider).await?;
+    let api_key = get_api_key(gcx.clone(), &constants.embedding_provider).await?;
 
     let embedding = fetch_embedding::get_embedding_with_retry(
         vecdb_emb_client,
