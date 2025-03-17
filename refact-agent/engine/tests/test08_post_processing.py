@@ -15,6 +15,7 @@ async def ask_chat(messages):
         messages,
         1,
         "gpt-4o-mini",
+        provider_name="",
         tools=tools,
         verbose=False,
         temperature=0.3,
