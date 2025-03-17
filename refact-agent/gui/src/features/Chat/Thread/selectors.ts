@@ -1,6 +1,10 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
-import { isToolMessage } from "../../../services/refact/types";
+import {
+  isToolMessage,
+  isUserMessage,
+  UserMessage,
+} from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
@@ -69,4 +73,19 @@ export const selectIntegration = createSelector(
 export const selectThreadMode = createSelector(
   selectThread,
   (thread) => thread.mode,
+);
+
+export const selectLastSentCompression = createSelector(
+  selectMessages,
+  (messages) => {
+    const lastUserMessage = messages.reduce<null | UserMessage>(
+      (acc, message) => {
+        if (isUserMessage(message)) return message;
+        return acc;
+      },
+      null,
+    );
+
+    return lastUserMessage?.compression_strength ?? null;
+  },
 );
