@@ -385,7 +385,7 @@ fn validate_chat_history(
                     for tc in tool_calls {
                         // Look for a following "tool" message whose tool_call_id equals tc.id
                         let mut found = false;
-                        for later_msg in messages.iter().skip(idx + 1).take(1) {
+                        for later_msg in messages.iter().skip(idx + 1) {
                             if later_msg.tool_call_id == tc.id {
                                 found = true;
                                 break;
