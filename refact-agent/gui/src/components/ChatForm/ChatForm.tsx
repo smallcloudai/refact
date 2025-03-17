@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text } from "@radix-ui/themes";
+import { Flex, Card, Text, Button, IconButton } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
@@ -17,6 +17,7 @@ import {
   useConfig,
   useCapsForToolUse,
   useSendChatRequest,
+  useCompressChat,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -44,6 +45,7 @@ import {
   selectChatId,
   selectIsStreaming,
   selectIsWaiting,
+  selectLastSentCompression,
   selectMessages,
   selectPreventSend,
   // selectThreadMaximumTokens,
@@ -56,6 +58,7 @@ import { AgentCapabilities } from "./AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
 // import { useUsageCounter } from "../UsageCounter/useUsageCounter";
 import classNames from "classnames";
+import { ArchiveIcon } from "@radix-ui/react-icons";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -88,6 +91,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
+  const lastSentCompression = useAppSelector(selectLastSentCompression);
+  const { compressChat } = useCompressChat();
   // const currentThreadMaximumContextTokens = useAppSelector(
   //   selectThreadMaximumTokens,
   // );
@@ -369,6 +374,23 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             <ThinkingButton />
             <Flex gap="2" align="center" className={styles.buttonGroup}>
               <TokensPreview currentMessageQuery={value} />
+              {!unCalledTools && lastSentCompression && (
+                <IconButton
+                  size="1"
+                  variant="ghost"
+                  color={
+                    lastSentCompression === "high"
+                      ? "red"
+                      : lastSentCompression === "medium"
+                        ? "yellow"
+                        : undefined
+                  }
+                  title="Compress chat and continue"
+                  onClick={() => compressChat()}
+                >
+                  <ArchiveIcon />
+                </IconButton>
+              )}
               {toolUse === "agent" && (
                 <AgentIntegrationsButton
                   title="Set up Agent Integrations"
