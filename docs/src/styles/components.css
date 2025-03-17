@@ -1,0 +1,55 @@
+/* Common component styles */
+a,
+.icon,
+button,
+input,
+.sidebar-content a,
+.pagefind-ui__search-input,
+.search-item,
+.current-page {
+    border-radius: var(--border-radius-md);
+    transition: var(--transition-default);
+}
+
+/* Video frame styles */
+.video-frame {
+    border: 2px solid var(--sl-color-accent);
+    border-radius: var(--border-radius-lg);
+    padding: var(--space-md);
+    background: var(--sl-color-accent-low);
+}
+
+/* Sidebar navigation */
+/* Hover effect only for non-active sidebar links */
+.sidebar-content a:not([aria-current]):hover {
+    background-color: var(--sl-color-gray-6);
+}
+
+/* Current page styling - no hover effects */
+.sidebar-content .current-page {
+    background-color: var(--sl-color-accent-high);
+    color: var(--sl-color-accent);
+    pointer-events: none;
+}
+
+/* Ensure proper contrast for nested items */
+.sidebar-content li > a.current-page,
+.sidebar-content li > a.current-page:hover,
+.sidebar-content li > a.current-page:focus {
+    background-color: var(--sl-color-accent-high);
+    color: var(--sl-color-accent);
+}
+
+/* Dialog styling */
+header.dialog {
+    background-color: #fff;
+    border-radius: var(--border-radius-lg);
+    margin: var(--space-md);
+}
+
+/* Search input */
+.pagefind-ui__search-input {
+    border: 0;
+    border-radius: var(--border-radius-md);
+    padding: 0.75rem 1rem;
+}

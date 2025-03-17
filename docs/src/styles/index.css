@@ -1,0 +1,12 @@
+/* Main CSS entry point */
+
+/* Import design tokens and variables first */
+@import './variables.css';
+
+/* Import base styles */
+@import './typography.css';
+@import './layout.css';
+
+/* Import component styles */
+@import './components.css';
+@import './search.css';
