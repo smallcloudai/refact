@@ -197,16 +197,27 @@ pub struct CapsProvider {
     pub running_models: Vec<String>,  // check there if a model is available or not, not in other places
 }
 
-async fn read_providers_d(config_dir: &Path) -> (IndexMap<String, CapsProvider>, Vec<YamlError>) {
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct DefaultModels {
+    #[serde(default, alias = "completion_model")]
+    pub code_completion_default_model: String,
+    #[serde(default, alias = "multiline_completion_model")]
+    pub multiline_code_completion_default_model: String,
+    #[serde(default, alias = "chat_model")]
+    pub code_chat_default_model: String,
+    #[serde(default, alias = "default_embeddings_model")]
+    pub embedding_model: String,
+}
+
+async fn add_providers_d_to_caps(caps: &mut CodeAssistantCaps, config_dir: &Path) -> Vec<YamlError> {
     let providers_dir = config_dir.join("providers.d");
-    let mut providers = IndexMap::new();
     let mut error_log = Vec::new();
 
     let mut entries = match tokio::fs::read_dir(&providers_dir).await {
         Ok(entries) => entries,
-        Err(e) => return {
-            tracing::warn!("Failed to read providers directory: {}", e);
-            (providers, error_log)
+        Err(e) => {
+            tracing::error!("Failed to read providers directory: {}", e);
+            return error_log;
         }
     };
 
@@ -234,12 +245,8 @@ async fn read_providers_d(config_dir: &Path) -> (IndexMap<String, CapsProvider>,
             None => continue,
         };
 
-        if provider_name == "main" {
-            error_log.push(YamlError {
-                path: path.to_string_lossy().to_string(),
-                error_line: 0,
-                error_msg: "Provider name 'main' is reserved, skipping file".to_string(),
-            });
+        if caps.providers.first().map(|(name, _)| name) == Some(&provider_name) {
+            tracing::error!("Main provider '{}' cannot be replaced", provider_name);
             continue;
         }
 
@@ -267,10 +274,37 @@ async fn read_providers_d(config_dir: &Path) -> (IndexMap<String, CapsProvider>,
             }
         };
 
-        providers.insert(provider_name, provider);
+        let default_models: DefaultModels = match serde_yaml::from_str(&content) {
+            Ok(default_models) => default_models,
+            Err(e) => {
+                error_log.push(YamlError {
+                    path: path.to_string_lossy().to_string(),
+                    error_line: e.location().map_or(0, |loc| loc.line()),
+                    error_msg: format!("Failed to parse YAML: {}", e),
+                });
+                continue;
+            }
+        };
+
+        // Override caps default models if specified in the provider.
+        let model_mappings = [
+            (default_models.code_chat_default_model, &mut caps.code_chat_default_model, &mut caps.code_chat_default_provider),
+            (default_models.code_completion_default_model, &mut caps.code_completion_default_model, &mut caps.code_completion_default_provider),
+            (default_models.multiline_code_completion_default_model, &mut caps.multiline_code_completion_default_model, &mut caps.multiline_code_completion_default_provider),
+            (default_models.embedding_model, &mut caps.embedding_model, &mut caps.embedding_provider),
+        ];
+
+        for (default_model, caps_model, caps_provider) in model_mappings {
+            if !default_model.is_empty() {
+                *caps_model = default_model;
+                *caps_provider = provider_name.clone();
+            }
+        }
+
+        caps.providers.insert(provider_name, provider);
     }
 
-    (providers, error_log)
+    error_log
 }
 
 fn parse_from_yaml_or_json<'de, T: Deserialize<'de>>(buffer: &'de str) -> Result<T, String> {
@@ -297,13 +331,13 @@ async fn load_caps_from_buf(
     let mut caps: CodeAssistantCaps = parse_from_yaml_or_json(buffer)?;
 
     let main_provider: CapsProvider = parse_from_yaml_or_json(buffer)?;
-    caps.providers.insert(main_provider.name.clone(), main_provider);
+    let main_provider_name = main_provider.name.clone();
+    caps.providers.insert(main_provider_name.clone(), main_provider);
 
-    let (providers, error_log) = read_providers_d(config_dir).await;
+    let error_log = add_providers_d_to_caps(&mut caps, config_dir).await;
     for e in error_log {
         tracing::error!("{e}");
     }
-    caps.providers.extend(providers.into_iter());
 
     let known_models: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
         let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
