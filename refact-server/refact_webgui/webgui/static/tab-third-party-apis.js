@@ -79,8 +79,10 @@ function setProviderCollapsedState(providerId, isExpanded) {
     }
 }
 
-function requiresApiKey(providerId) {
-    return PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0;
+function hasPredefinedModels(providerId) {
+    return PROVIDERS[providerId] &&
+           PROVIDERS[providerId].models &&
+           PROVIDERS[providerId].models.length > 0;
 }
 
 function initializeProvidersList() {
@@ -95,6 +97,14 @@ function initializeProvidersList() {
 
         let modelsHtml = `
             <label class="form-label">Enabled Models</label>
+            ${hasPredefinedModels(providerId) ?
+              `<div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle"></i> This provider has predefined models. Custom models cannot be added.
+               </div>` :
+              `<div class="alert alert-secondary mb-3">
+                <i class="bi bi-info-circle"></i> This provider doesn't have predefined models. You can add custom models.
+               </div>`
+            }
             <div class="models-list" id="${providerId}-models-list">
                 <!-- Enabled models will be populated here when configuration is loaded -->
                 <div class="alert alert-info" id="${providerId}-no-enabled-models-msg">
@@ -103,7 +113,7 @@ function initializeProvidersList() {
             </div>
         `;
 
-        const apiKeyContainerHtml = requiresApiKey(providerId) ? `
+        const apiKeyContainerHtml = hasPredefinedModels(providerId) ? `
             <div class="api-key-container mb-3" id="${providerId}-api-key-container">
                 <label for="${providerId}-api-key" class="form-label">API Key</label>
                 <input type="text" class="form-control api-key-input" id="${providerId}-api-key" data-provider="${providerId}">
@@ -112,7 +122,9 @@ function initializeProvidersList() {
 
         providerCard.innerHTML = `
             <div class="card-header d-flex justify-content-between align-items-center provider-header" data-provider="${providerId}">
-                <h5 class="mb-0 provider-title" data-provider="${providerId}">${providerConfig.provider_name}</h5>
+                <h5 class="mb-0 provider-title" data-provider="${providerId}">
+                    ${providerConfig.provider_name}
+                </h5>
                 <div class="d-flex align-items-center">
                     <div class="form-check form-switch me-2">
                         <input class="form-check-input provider-toggle" type="checkbox" id="${providerId}-toggle" data-provider="${providerId}">
@@ -206,7 +218,7 @@ function addEventListeners() {
         input.addEventListener('blur', function() {
             const providerId = this.dataset.provider;
             updateConfiguration();
-            if (requiresApiKey(providerId)) {
+            if (hasPredefinedModels(providerId)) {
                 const modelsContainer = document.getElementById(`${providerId}-models-container`);
                 if (this.value) {
                     modelsContainer.style.display = 'block';
@@ -303,7 +315,7 @@ function updateUI() {
             const isExpanded = expandedProviders[providerId] !== undefined ? expandedProviders[providerId] : true;
             setProviderCollapsedState(providerId, isExpanded);
 
-            if (!requiresApiKey(providerId)) {
+            if (!hasPredefinedModels(providerId)) {
                 const modelsContainer = document.getElementById(`${providerId}-models-container`);
                 if (modelsContainer) {
                     modelsContainer.style.display = 'block';
@@ -497,10 +509,8 @@ function showAddModelModal(providerId) {
             <select class="form-select" id="third-party-model-id">
                 <option value="" selected>-- Select a model --</option>
                 ${PROVIDERS[providerId].models.map(model => `<option value="${model}">${model}</option>`).join('')}
-                <option value="custom">-- Enter custom model ID --</option>
             </select>
-            <input type="text" class="form-control mt-2" id="third-party-model-custom" placeholder="Enter custom model ID" style="display: none;">
-            <div class="form-text mb-3">Select from available models or enter a custom model ID.</div>
+            <div class="form-text mb-3">Select from available models for this provider.</div>
 
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
@@ -520,23 +530,14 @@ function showAddModelModal(providerId) {
         `;
 
         modelIdContainer.innerHTML = selectHtml;
-
-        const modelSelect = document.getElementById('third-party-model-id');
-        const customInput = document.getElementById('third-party-model-custom');
-
-        modelSelect.addEventListener('change', function() {
-            if (this.value === 'custom') {
-                customInput.style.display = 'block';
-                customInput.focus();
-            } else {
-                customInput.style.display = 'none';
-            }
-        });
     } else {
         const inputHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
             <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> This provider doesn't have predefined models, so you can add custom models.
+            </div>
 
             <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
@@ -581,17 +582,11 @@ function addModel() {
     const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
     const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
 
-    // Check if we're using a select element (combobox)
+    // Check if we're using a select element (combobox) or an input field
     if (modelIdElement.tagName === 'SELECT') {
-        if (modelIdElement.value === 'custom') {
-            // Get the value from the custom input field
-            const customInput = document.getElementById('third-party-model-custom');
-            modelId = customInput ? customInput.value.trim() : '';
-        } else {
-            modelId = modelIdElement.value.trim();
-        }
+        modelId = modelIdElement.value.trim();
     } else {
-        // Using the regular input field
+        // Using the regular input field for custom providers
         modelId = modelIdElement.value.trim();
     }
 
