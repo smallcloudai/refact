@@ -199,20 +199,20 @@ def available_third_party_models() -> Dict[str, ThirdPartyModel]:
 
 
 def get_provider_models() -> Dict[str, List[str]]:
-    providers_models = litellm.models_by_provider
-
     filtered_providers_models = {}
-    for provider, models in providers_models.items():
-        chat_models = []
-        for model in models:
+    for provider in litellm.provider_list:
+        provider_chat_models = []
+        provider_name = str(provider.value)
+        provider_models = litellm.models_by_provider.get(provider_name, [])
+        for model in provider_models:
             try:
-                model_info = litellm.get_model_info(model=model, custom_llm_provider=provider)
+                model_info = litellm.get_model_info(model=model, custom_llm_provider=provider_name)
                 if model_info and model_info.get("mode") == "chat":
-                    chat_models.append(model)
+                    provider_chat_models.append(model)
             except Exception:
                 continue
-        filtered_providers_models[provider] = chat_models
-
+        if not provider_models or provider_chat_models:
+            filtered_providers_models[provider_name] = provider_chat_models
     return filtered_providers_models
 
 
