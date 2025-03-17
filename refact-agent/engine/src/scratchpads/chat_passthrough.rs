@@ -206,10 +206,6 @@ impl ScratchpadAbstract for ChatPassthrough {
                 return Err(format!("error limiting messages: {}", e));
             }
         };
-        
-        // Add compression strength to big_json
-        big_json["compression_strength"] = json!(compression_strength);
-
         if self.prepend_system_prompt {
             assert_eq!(limited_msgs.first().unwrap().role, "system");
         }
@@ -245,6 +241,7 @@ impl ScratchpadAbstract for ChatPassthrough {
 
         let converted_messages = convert_messages_to_openai_format(limited_adapted_msgs, &style);
         big_json["messages"] = json!(converted_messages);
+        big_json["compression_strength"] = json!(compression_strength);
 
         let prompt = "PASSTHROUGH ".to_string() + &serde_json::to_string(&big_json).unwrap();
         Ok(prompt.to_string())
