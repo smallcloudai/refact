@@ -40,12 +40,6 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
                     s.trim()
                 ));
             }
-            if path.exists() {
-                return Err(format!(
-                    "Error: Cannot create file at '{:?}' because it already exists. Please choose a different path or use update_textdoc/replace_textdoc to modify existing files.",
-                    path
-                ));
-            }
             path
         }
         Some(v) => return Err(format!("Error: The 'path' argument must be a string, but received: {:?}", v)),
