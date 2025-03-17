@@ -51,8 +51,11 @@ import {
   isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
+  isUserMessage,
+  isUserResponse,
   ToolCall,
   ToolMessage,
+  UserMessage,
   validateToolCall,
 } from "../../../services/refact";
 import { capsApi } from "../../../services/refact";
@@ -196,6 +199,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (isChatResponseChoice(action.payload) && action.payload.usage) {
       state.thread.usage = action.payload.usage;
     }
+    if (
+      isUserResponse(action.payload) &&
+      action.payload.compression_strength &&
+      action.payload.compression_strength !== "absent"
+    ) {
+      state.thread.new_chat_suggested.wasSuggested = true;
+    }
   });
 
   builder.addCase(backUpMessages, (state, action) => {
@@ -309,6 +319,21 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
     if (action.payload.mode && !isLspChatMode(action.payload.mode)) {
       state.thread.mode = "AGENT";
+    }
+
+    const lastUserMessage = action.payload.messages.reduce<UserMessage | null>(
+      (acc, cur) => {
+        if (isUserMessage(cur)) return cur;
+        return acc;
+      },
+      null,
+    );
+
+    if (
+      lastUserMessage?.compression_strength &&
+      lastUserMessage.compression_strength !== "absent"
+    ) {
+      state.thread.new_chat_suggested.wasSuggested = true;
     }
   });
 

@@ -146,6 +146,7 @@ export interface UserMessage extends BaseMessage {
     | string
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
   checkpoints?: Checkpoint[];
+  compression_strength?: CompressionStrength;
 }
 
 export type ProcessedUserMessageContentWithImages = {
@@ -410,6 +411,7 @@ export type ChatUserMessageResponse =
       role: "user" | "context_file" | "context_memory";
       content: string;
       checkpoints?: Checkpoint[];
+      compression_strength?: CompressionStrength;
     }
   | {
       id: string;
@@ -421,6 +423,7 @@ export type ChatUserMessageResponse =
             | ProcessedUserMessageContentWithImages
           )[];
       checkpoints?: Checkpoint[];
+      compression_strength?: CompressionStrength;
     };
 
 export type ToolResponse = {
@@ -606,6 +609,8 @@ export function isChatResponseChoice(
   return true;
 }
 
+// TODO: type checks for this.
+export type CompressionStrength = "absent" | "low" | "medium" | "high";
 export type ChatResponse =
   | ChatResponseChoice
   | ChatUserMessageResponse
