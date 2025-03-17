@@ -445,7 +445,7 @@ pub fn fix_and_limit_messages_history(
         16000
     );
 
-    let (extra_tokens_per_message, extra_budget_offset_perc) = get_model_token_params(model_name);
+    let (extra_tokens_per_message, _) = get_model_token_params(model_name);
     let mut token_cache = TokenCountCache::new();
     let mut token_counts: Vec<i32> = Vec::with_capacity(mutable_messages.len());
     for msg in &mutable_messages {
@@ -455,13 +455,11 @@ pub fn fix_and_limit_messages_history(
     let tools_description_tokens = if let Some(desc) = tools_description.clone() {
         t.count_tokens(&desc).unwrap_or(0)
     } else { 0 };
-    let extra_budget = (n_ctx as f32 * extra_budget_offset_perc) as usize;
-    let tokens_limit = n_ctx.saturating_sub(sampling_parameters_to_patch.max_new_tokens).saturating_sub(extra_budget) as i32;
     let undroppable_msg_n = mutable_messages.iter()
         .rposition(|msg| msg.role == "user")
         .unwrap_or(0);
     tracing::info!("Calculated undroppable_msg_n = {} (last user message)", undroppable_msg_n);
-    let outlier_threshold = (tokens_limit as f32 * 0.1) as i32; // 10% of token limit
+    let outlier_threshold = 1000;
     let (mut occupied_tokens, mut tokens_limit) = 
         recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
     tracing::info!("Before compression: occupied_tokens={} vs tokens_limit={}", occupied_tokens, tokens_limit);
@@ -705,7 +703,7 @@ pub fn fix_and_limit_messages_history(
             "Stage 7: Compressing outlier messages in the last conversation block (last resort)",
             model_name,
             |i, msg, token_count| {
-                i != undroppable_msg_n && // Don't compress the last user message yet
+                i >= undroppable_msg_n &&
                 token_count > outlier_threshold && 
                 msg.role != "context_file" && 
                 msg.role != "tool"
@@ -713,62 +711,25 @@ pub fn fix_and_limit_messages_history(
             false
         )?;
         
-        occupied_tokens = result.0;
-        tokens_limit = result.1;
         highest_compression_stage = 7;
         
         if result.2 { // If budget reached
             tracing::info!("Token budget reached after Stage 7 compression.");
         }
-        
-        // As a last resort, compress the last user message if it's large and exists
-        if occupied_tokens > tokens_limit && undroppable_msg_n < mutable_messages.len() && token_counts[undroppable_msg_n] > outlier_threshold {
-            tracing::warn!("LAST RESORT: Compressing the last user message. This is not ideal and may affect understanding. Consider reducing input size or adjusting token limits.");
-            
-            // Custom compression for the last user message to preserve more content
-            let content_text = mutable_messages[undroppable_msg_n].content.content_text_only();
-            let content_len = content_text.len();
-            
-            if content_len > 5000 {
-                let preserve_ratio = 0.5;
-                let preserve_chars = (content_len as f32 * preserve_ratio) as usize;
-                let half_preserve = preserve_chars / 2;
-                
-                let preview_start = &content_text[..std::cmp::min(half_preserve, content_len)];
-                let preview_end = if content_len > half_preserve {
-                    &content_text[content_len.saturating_sub(half_preserve)..]
-                } else {
-                    ""
-                };
-                tracing::info!("Compressing last user message");
-                let new_summary = format!("💿 Message compressed: {}... (truncated) ...{}", preview_start, preview_end);
-                mutable_messages[undroppable_msg_n].content = ChatContent::SimpleText(new_summary);
-                token_cache.invalidate(&mutable_messages[undroppable_msg_n]);
-                token_counts[undroppable_msg_n] = token_cache.get_token_count(
-                    &mutable_messages[undroppable_msg_n], 
-                    t.tokenizer.clone(), 
-                    extra_tokens_per_message
-                )?;
-                tracing::info!("Last user message compression completed.");
-            }
-            
-            let recalculated = recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
-            occupied_tokens = recalculated.0;
-            tokens_limit = recalculated.1;
-        }
-    }
-    
-    // If we're still over the limit after all compression stages, return an error
-    if occupied_tokens > tokens_limit {
-        return Err("Cannot compress chat history enough: the mandatory messages still exceed the allowed token budget. Please reduce input size or adjust token limits.".to_string());
     }
 
-    // If we've made it here, we've successfully compressed the messages
     remove_invalid_tool_calls_and_tool_calls_results(&mut mutable_messages);
+    let (occupied_tokens, tokens_limit) =
+        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
     tracing::info!("Final occupied_tokens={} <= tokens_limit={}", occupied_tokens, tokens_limit);
-    
+
+    // If we're still over the limit after all compression stages, return an error
+    if occupied_tokens > tokens_limit {
+        return Err("Cannot compress chat history enough: the mandatory messages still exceed the allowed token budget. Please start the new chat session.".to_string());
+    }
+
     let (hits, misses, hit_rate) = token_cache.stats();
-    tracing::info!("Token cache stats: {} hits, {} misses, {:.2}% hit rate", 
+    tracing::info!("Tokenizer cache stats: {} hits, {} misses, {:.2}% hit rate", 
                   hits, misses, hit_rate * 100.0);
     
     let total_duration = start_time.elapsed();
