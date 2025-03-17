@@ -3,29 +3,31 @@ import os
 import litellm
 
 from pydantic import BaseModel, Field
-from pydantic import computed_field
 from typing import Dict, List, Any, Optional
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
 
 
+class CustomModelConfig(BaseModel):
+    api_key: str
+    n_ctx: int
+    supports_tools: bool
+    supports_multimodality: bool
+    tokenizer_uri: Optional[str]
+
+
 class ModelConfig(BaseModel):
     model_name: str
     supports_agentic: bool = False
     supports_clicks: bool = False
-    @computed_field
-    def supports_tools(self) -> bool:
-        return litellm.supports_function_calling(self.model_name)
-    @computed_field
-    def supports_multimodality(self) -> bool:
-        return litellm.supports_vision(self.model_name)
+    custom_model_config: Optional[CustomModelConfig] = None
 
 
 class ThirdPartyProviderConfig(BaseModel):
     provider_name: str
-    api_key: str
     enabled: bool
+    api_key: Optional[str] = None
     enabled_models: List[ModelConfig] = Field(default_factory=list)
 
 
@@ -106,6 +108,11 @@ def save_third_party_config(config: ThirdPartyApiConfig):
     os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
 
 
+def _get_context_size(model_name: str) -> Optional[int]:
+    model_info = litellm.get_model_info(model_name)
+    return model_info.get("max_input_tokens")
+
+
 class ThirdPartyModel:
     PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
     COMPLETION_READY_MODELS = []
@@ -116,7 +123,19 @@ class ThirdPartyModel:
             api_key: Optional[str] = None,
     ):
         self._model_config = model_config
-        self._api_key = api_key
+        self._provider_api_key = api_key
+        if model_config.custom_model_config is None:
+            self._api_key = api_key
+            self._n_ctx = min(_get_context_size(self.name), self.PASSTHROUGH_MAX_TOKENS_LIMIT)
+            self._supports_tools = litellm.supports_function_calling(self.name)
+            self._supports_multimodality = litellm.supports_vision(self.name)
+        else:
+            self._api_key = model_config.custom_model_config.api_key
+            self._n_ctx = model_config.custom_model_config.n_ctx
+            self._supports_tools = model_config.custom_model_config.supports_tools
+            self._supports_multimodality = model_config.custom_model_config.supports_multimodality
+        assert self._api_key is not None
+        assert self._n_ctx is not None
 
     @property
     def name(self) -> str:
@@ -127,9 +146,8 @@ class ThirdPartyModel:
         return self._api_key
 
     @property
-    def n_ctx(self) -> Optional[int]:
-        if max_input_tokens := litellm.get_model_info(self.name).get("max_input_tokens"):
-            return min(self.PASSTHROUGH_MAX_TOKENS_LIMIT, max_input_tokens)
+    def n_ctx(self) -> int:
+        return self._n_ctx
 
     @property
     def supports_chat(self) -> bool:
@@ -176,8 +194,8 @@ class ThirdPartyModel:
             "supports_scratchpads": {
                 "PASSTHROUGH": {},
             },
-            "supports_tools": self._model_config.supports_tools,
-            "supports_multimodality": self._model_config.supports_multimodality,
+            "supports_tools": self._supports_tools,
+            "supports_multimodality": self._supports_multimodality,
             "supports_clicks": self._model_config.supports_clicks,
             "supports_agent": self._model_config.supports_agentic,
         }
