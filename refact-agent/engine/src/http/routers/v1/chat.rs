@@ -67,7 +67,7 @@ pub async fn lookup_chat_scratchpad(
             ModelType::Chat,
             &caps_locked,
             &chat_post.model,
-            &caps_locked.code_chat_default_model,
+            &chat_post.provider,
         )?;
     let (sname, patch) = crate::caps::which_scratchpad_to_use(
         &recommended_model_record.supports_scratchpads,
