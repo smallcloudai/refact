@@ -140,7 +140,13 @@ pub async fn compress_trajectory(
         .flatten()
         .flatten()
         .ok_or("No traj message was generated".to_string())?;
-    let trajectory = remove_fencing(&content);
+    let code_blocks = remove_fencing(&content);
+    let trajectory = if !code_blocks.is_empty() {
+        code_blocks[0].clone()
+    } else {
+        content.clone()
+    };
+
     let goal = parse_goal(&trajectory)?;
 
     Ok((goal, trajectory))

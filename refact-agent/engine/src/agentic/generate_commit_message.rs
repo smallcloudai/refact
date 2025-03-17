@@ -29,10 +29,10 @@ The output should be a single commit message in the following format:
 
 **Input (diff)**:
 ```diff
-- public class UserManager { 
+- public class UserManager {
 -     private final UserDAO userDAO;
-  
-+ public class UserManager { 
+
++ public class UserManager {
 +     private final UserService userService;
 +     private final NotificationService notificationService;
 
@@ -99,10 +99,10 @@ Refactor UserManager to use services instead of DAOs
 
 **Input (diff)**:
 ```diff
-- public class UserManager { 
+- public class UserManager {
 -     private final UserDAO userDAO;
-  
-+ public class UserManager { 
+
++ public class UserManager {
 +     private final UserService userService;
 +     private final NotificationService notificationService;
 
@@ -147,23 +147,84 @@ Simplify age check logic for accessing permissions by using a single expression
 const N_CTX: usize = 32000;
 const TEMPERATURE: f32 = 0.5;
 
-pub fn remove_fencing(message: &String) -> String {
+pub fn remove_fencing(message: &String) -> Vec<String> {
     let trimmed_message = message.trim();
-    let without_leading_fence = if trimmed_message.starts_with("```") {
-        let mut lines = trimmed_message.lines();
-        lines.next();
-        lines.collect::<Vec<&str>>().join("\n")
+    if !trimmed_message.contains("```") {
+        return Vec::new();
+    }
+    if trimmed_message.contains("``````") {
+        return Vec::new();
+    }
+
+    let mut results = Vec::new();
+    let mut in_code_block = false;
+
+    for (_i, part) in trimmed_message.split("```").enumerate() {
+        if in_code_block {
+            let part_lines: Vec<&str> = part.lines().collect();
+            if !part_lines.is_empty() {
+                let start_idx = if part_lines[0].trim().split_whitespace().count() <= 1 && part_lines.len() > 1 {
+                    1
+                } else {
+                    0
+                };
+                if start_idx < part_lines.len() {
+                    let code_block = part_lines[start_idx..].join("\n");
+                    if !code_block.is_empty() {
+                        results.push(code_block.trim().to_string());
+                    }
+                }
+            }
+        }
+
+        in_code_block = !in_code_block;
+    }
+    if !results.is_empty() {
+        results
     } else {
-        trimmed_message.to_string()
-    };
-    let without_trailing_fence = if without_leading_fence.ends_with("```") {
-        let mut lines = without_leading_fence.lines().collect::<Vec<&str>>();
-        lines.pop();
-        lines.join("\n")
-    } else {
-        without_leading_fence
-    };
-    without_trailing_fence.trim().to_string()
+        Vec::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_no_fencing() {
+        let input = "Simple text without fencing".to_string();
+        assert_eq!(remove_fencing(&input), Vec::<String>::new());
+    }
+
+    #[test]
+    fn test_simple_fencing() {
+        let input = "```\nCode block\n```".to_string();
+        assert_eq!(remove_fencing(&input), vec!["Code block".to_string()]);
+    }
+
+    #[test]
+    fn test_language_tag() {
+        let input = "```rust\nfn main() {\n    println!(\"Hello\");\n}\n```".to_string();
+        assert_eq!(remove_fencing(&input), vec!["fn main() {\n    println!(\"Hello\");\n}".to_string()]);
+    }
+
+    #[test]
+    fn test_text_before_and_after() {
+        let input = "Text before\nText before\n```\nCode block\n```\nText after".to_string();
+        assert_eq!(remove_fencing(&input), vec!["Code block".to_string()]);
+    }
+
+    #[test]
+    fn test_multiple_code_blocks() {
+        let input = "First paragraph\n```\nFirst code\n```\nMiddle text\n```python\ndef hello():\n    print('world')\n```\nLast paragraph".to_string();
+        assert_eq!(remove_fencing(&input), vec!["First code".to_string(), "def hello():\n    print('world')".to_string()]);
+    }
+
+    #[test]
+    fn test_empty_code_block() {
+        let input = "Text with `````` empty block".to_string();
+        assert_eq!(remove_fencing(&input), Vec::<String>::new());
+    }
 }
 
 pub async fn generate_commit_message_by_diff(
@@ -254,7 +315,13 @@ pub async fn generate_commit_message_by_diff(
         .flatten()
         .flatten()
         .ok_or("No commit message was generated".to_string())?;
-    Ok(remove_fencing(&commit_message))
+
+    let code_blocks = remove_fencing(&commit_message);
+    if !code_blocks.is_empty() {
+        Ok(code_blocks[0].clone())
+    } else {
+        Ok(commit_message)
+    }
 }
 
 pub async fn _generate_commit_message_for_projects(
