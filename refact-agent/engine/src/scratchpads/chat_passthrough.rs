@@ -192,7 +192,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
 
-        let limited_msgs = match fix_and_limit_messages_history(
+        let (limited_msgs, compression_strength) = match fix_and_limit_messages_history(
             &self.t,
             &messages,
             sampling_parameters_to_patch,
@@ -200,12 +200,15 @@ impl ScratchpadAbstract for ChatPassthrough {
             big_json.get("tools").map(|x| x.to_string()),
             self.post.model.as_str()
         ) {
-            Ok(limited_msgs) => limited_msgs,
+            Ok((limited_msgs, compression_strength)) => (limited_msgs, compression_strength),
             Err(e) => {
                 tracing::error!("error limiting messages: {}", e);
                 return Err(format!("error limiting messages: {}", e));
             }
         };
+        
+        // Add compression strength to big_json
+        big_json["compression_strength"] = json!(compression_strength);
 
         if self.prepend_system_prompt {
             assert_eq!(limited_msgs.first().unwrap().role, "system");
