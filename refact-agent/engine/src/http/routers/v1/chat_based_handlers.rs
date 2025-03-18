@@ -45,6 +45,34 @@ struct CompressTrajectoryPost {
     messages: Vec<ChatMessage>,
 }
 
+
+pub async fn handle_v1_trajectory_compress(
+    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> axum::response::Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<CompressTrajectoryPost>(&body_bytes).map_err(|e| {
+        ScratchError::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            format!("JSON problem: {}", e),
+        )
+    })?;
+
+    let (goal, trajectory) = compress_trajectory(global_context.clone(), &post.messages)
+        .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
+
+    let response = serde_json::json!({
+        "goal": goal,
+        "trajectory": trajectory,
+    });
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&response).unwrap()))
+        .unwrap())
+}
+
+
 pub async fn handle_v1_trajectory_save(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
