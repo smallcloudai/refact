@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from typing import OrderedDict
 import os
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -27,7 +27,7 @@ class Caps(BaseModel):
     def get_provider(self, provider_name: str) -> Optional[CapsProvider]:
         if not self.providers:
             return None
-        
+
         if not provider_name:
             return self.providers.get(next(iter(self.providers)))
         else:
