@@ -1,5 +1,5 @@
 use crate::global_context::GlobalContext;
-use crate::vecdb::vdb_highlev::{memories_add, memories_block_until_vectorized, memories_erase, memories_select_all, VecDb};
+use crate::memdb::db_memories::{memories_add, memories_erase, memories_select_all};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
@@ -37,12 +37,17 @@ async fn is_time_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     Ok(duration_since_last_download.num_days() >= TRAJECTORIES_UPDATE_EACH_N_DAYS)
 }
 
-async fn remove_legacy_trajectories(vecdb: Arc<AMutex<Option<VecDb>>>) -> Result<(), String> {
-    for memo in memories_select_all(vecdb.clone())
+async fn remove_legacy_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
+    let memdb = match gcx.read().await.memdb.clone() {
+        Some(db) => db,
+        None => return Err("memdb not initialized".to_string()),
+    };
+    
+    for memo in memories_select_all(memdb.clone())
         .await?
         .iter()
         .filter(|x| x.m_origin == "refact-standard") {
-        memories_erase(vecdb.clone(), &memo.memid).await?;
+        memories_erase(memdb.clone(), &memo.memid).await?;
         info!("removed legacy trajectory: {}", memo.memid);
     }
     Ok(())
@@ -63,7 +68,14 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     if vec_db.lock().await.is_none() {
         return Err("vecdb is not initialized".to_string());        
     }
-    memories_block_until_vectorized(vec_db.clone(), 20_000).await?;
+    if let Some(_service) = &*gcx.read().await.vectorizer_service.lock().await {
+        if let Some(vs) = &*gcx.read().await.vectorizer_service.lock().await {
+            crate::vecdb::vdb_highlev::memories_block_until_vectorized(
+                Arc::new(AMutex::new(vs.clone())), 
+                20_000
+            ).await?;
+        }
+    }
 
     info!("starting to download trajectories...");
     let client = reqwest::Client::new();
@@ -78,8 +90,11 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         return Err(format!("failed to download trajectories: {:?}", response_json));
     }
 
-    let trajectories = response_json["data"].as_array().unwrap();
-    remove_legacy_trajectories(vec_db.clone()).await?;
+    let trajectories = match response_json["data"].as_array() {
+        Some(arr) => arr,
+        None => return Err("Invalid response format: 'data' field is not an array".to_string()),
+    };
+    remove_legacy_trajectories(gcx.clone()).await?;
     for trajectory in trajectories {
         let m_type = trajectory["kind"].as_str().unwrap_or("unknown");
         let m_goal = trajectory["goal"].as_str().unwrap_or("unknown");
@@ -90,8 +105,25 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
             info!("empty or no payload for the trajectory, skipping it");
             continue;            
         }
+        let memdb = match gcx.read().await.memdb.clone() {
+            Some(db) => db,
+            None => {
+                info!("memdb not initialized, skipping trajectory");
+                continue;
+            },
+        };
+        
+        let vectorizer_service = match gcx.read().await.vectorizer_service.lock().await.as_ref() {
+            Some(service) => Arc::new(AMutex::new(service.clone())),
+            None => {
+                info!("vectorizer service not initialized, skipping trajectory");
+                continue;
+            },
+        };
+        
         match memories_add(
-            vec_db.clone(),
+            memdb,
+            vectorizer_service,
             m_type,
             m_goal,
             m_project,
