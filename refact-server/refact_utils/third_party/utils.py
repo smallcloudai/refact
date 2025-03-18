@@ -131,9 +131,11 @@ class ThirdPartyModel:
     def __init__(
             self,
             model_config: ModelConfig,
+            provider: Optional[str] = None,
             api_key: Optional[str] = None,
     ):
         self._model_config = model_config
+        self._provider = provider
         if model_config.custom_model_config is None:
             self._api_base = None
             self._api_key = api_key
@@ -155,6 +157,13 @@ class ThirdPartyModel:
     @property
     def name(self) -> str:
         return self._model_config.model_name
+
+    @property
+    def inference_name(self) -> str:
+        if self._provider is not None:
+            return f"{self._provider}/{self._model_config.model_name}"
+        else:
+            return self._model_config.model_name
 
     @property
     def api_base(self) -> Optional[str]:
@@ -235,7 +244,8 @@ def available_third_party_models() -> Dict[str, ThirdPartyModel]:
                 try:
                     models_available[model_config.model_name] = ThirdPartyModel(
                         model_config,
-                        provider_config.api_key,
+                        provider=provider_id,
+                        api_key=provider_config.api_key,
                     )
                 except Exception as e:
                     log(f"model listed as available but it's not supported: {e}")
