@@ -7,6 +7,7 @@ type State = {
   follow: boolean;
   anchorProps: ScrollIntoViewOptions | null;
   scrolled: boolean;
+  mode: "user-message" | "manual" | "follow";
 };
 
 type Action =
@@ -21,7 +22,8 @@ type Action =
     }
   | { type: "set_follow"; payload: boolean }
   | { type: "set_anchor_props"; payload: ScrollIntoViewOptions | null }
-  | { type: "set_scrolled"; payload: boolean };
+  | { type: "set_scrolled"; payload: boolean }
+  | { type: "set_mode"; payload: State["mode"] };
 
 type Dispatch = (action: Action) => void;
 
@@ -45,16 +47,10 @@ export function scrollAreaWithAnchorReducer(state: State, action: Action) {
         ...action.payload,
       };
     }
-    case "set_anchor":
+    case "set_anchor": {
       return {
         ...state,
         anchorRef: action.payload,
-      };
-
-    case "set_follow": {
-      return {
-        ...state,
-        follow: action.payload,
       };
     }
 
@@ -76,6 +72,13 @@ export function scrollAreaWithAnchorReducer(state: State, action: Action) {
       return {
         ...state,
         bottomRef: action.payload,
+      };
+    }
+
+    case "set_mode": {
+      return {
+        ...state,
+        mode: action.payload,
       };
     }
     default:

@@ -16,20 +16,21 @@ export const FollowButton: React.FC = () => {
       }
       if (
         state.scrollRef.current &&
-        state.follow &&
+        state.mode === "follow" &&
         btm &&
+        !state.scrolled &&
         !btm.isIntersecting
       ) {
         scrollToBottom(state.scrollRef.current);
       }
     },
-    [state.scrollRef, state.bottomRef, state.follow],
+    [state.scrollRef, state.bottomRef, state.mode, state.scrolled],
   );
 
   useEffect(() => {
     const observer = new IntersectionObserver(followFn, {
       root: state.scrollRef?.current,
-      threshold: 0.1,
+      threshold: 0.2,
     });
 
     if (state.bottomRef?.current) {
@@ -47,7 +48,8 @@ export const FollowButton: React.FC = () => {
     if (state.scrollRef?.current) {
       scrollToBottom(state.scrollRef.current);
     }
-    dispatch({ type: "set_follow", payload: true });
+    dispatch({ type: "set_mode", payload: "follow" });
+    dispatch({ type: "set_scrolled", payload: false });
   }, [dispatch, state.scrollRef]);
 
   const showButton = useMemo(
