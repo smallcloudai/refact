@@ -296,6 +296,8 @@ fn _adapt_for_reasoning_models(
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::High);
             }
+            sampling_parameters.temperature = default_temperature;
+
             // NOTE: OpenAI prefer user message over system
             messages.iter().map(|msg| {
                 let mut msg = msg.clone();
