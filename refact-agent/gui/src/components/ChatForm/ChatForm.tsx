@@ -374,7 +374,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             <ThinkingButton />
             <Flex gap="2" align="center" className={styles.buttonGroup}>
               <TokensPreview currentMessageQuery={value} />
-              {!unCalledTools && lastSentCompression && (
+              {!unCalledTools && (
                 <IconButton
                   size="1"
                   variant="ghost"
@@ -387,6 +387,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                   }
                   title="Compress chat and continue"
                   onClick={() => void compressChat()}
+                  disabled={
+                    lastSentCompression === null ||
+                    lastSentCompression === "absent"
+                  }
                   loading={compressChatRequest.isLoading}
                 >
                   <ArchiveIcon />
