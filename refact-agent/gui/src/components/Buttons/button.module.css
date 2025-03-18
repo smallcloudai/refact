@@ -16,3 +16,11 @@
   /* right: 10px; */
   right: var(--space-1);
 }
+
+.button_faded {
+  mask-image: linear-gradient(
+    to top,
+    var(--color-background) 50%,
+    transparent 100%
+  );
+}

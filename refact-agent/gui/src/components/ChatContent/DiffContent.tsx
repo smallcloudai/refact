@@ -9,6 +9,7 @@ import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
 import { useEventsBusForIDE } from "../../hooks";
+import { FadedButton } from "../Buttons";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -162,7 +163,12 @@ export const DiffContent: React.FC<{
         </Flex>
       </Collapsible.Trigger>
       <Collapsible.Content>
-        <DiffForm diffs={diffs} />
+        <Flex direction="column">
+          <DiffForm diffs={diffs} />
+          <FadedButton color="gray" onClick={() => setOpen(false)} mx="2">
+            Hide Diff
+          </FadedButton>
+        </Flex>
       </Collapsible.Content>
     </Collapsible.Root>
   );

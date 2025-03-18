@@ -30,7 +30,7 @@ import {
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
-import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 import { RootState } from "../../app/store";
 import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
@@ -38,6 +38,7 @@ import { TextDocTool } from "../Tools/Textdoc";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
+import { FadedButton } from "../Buttons";
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
@@ -478,7 +479,6 @@ const ToolUsageSummary: React.FC<{
 const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   const [open, setOpen] = React.useState(false);
 
-  // TODO: add voting actions
   const maybeResult = useAppSelector((state) =>
     selectToolResultById(state, toolCall.id),
   );
@@ -532,6 +532,9 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
                 );
               })}
             </Flex>
+            <FadedButton color="gray" onClick={() => setOpen(false)} mx="2">
+              Hide Memories
+            </FadedButton>
           </Flex>
         </Collapsible.Content>
       </Collapsible.Root>
@@ -561,23 +564,23 @@ const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
           <Flex gap="2" align="center">
             <IconButton
               size="1"
-              title="Bad"
+              title="Down vote"
               onClick={handleBad}
               disabled={status.isLoading}
               variant="outline"
               color="tomato"
             >
-              <Cross2Icon />{" "}
+              <ArrowDownIcon />
             </IconButton>
             <IconButton
               size="1"
-              title="Good"
+              title="Up vote"
               onClick={handleGood}
               disabled={status.isLoading}
               variant="outline"
               color="grass"
             >
-              <CheckIcon />
+              <ArrowUpIcon />
             </IconButton>
           </Flex>
         </Flex>
