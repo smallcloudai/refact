@@ -33,11 +33,11 @@ impl Default for CmdlineOutputFilter {
 }
 
 fn default_limit_lines() -> usize {
-    100
+    1000  // since we have better compression routine, very large output will be compressed after a few turns anyway
 }
 
 fn default_limit_chars() -> usize {
-    10000
+    100000
 }
 
 fn default_valuable_top_or_bottom() -> String {
