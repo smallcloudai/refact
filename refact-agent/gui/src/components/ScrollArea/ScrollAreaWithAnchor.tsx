@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -21,9 +22,9 @@ type State = {
   innerRef: RefObject<HTMLDivElement> | null;
   scrollRef: RefObject<HTMLDivElement> | null;
   anchorRef: RefObject<HTMLDivElement> | null;
-  scroll: boolean;
-  scrolled: boolean;
   follow: boolean;
+  anchorProps: ScrollIntoViewOptions | null;
+  scrolled: boolean;
 };
 
 type Action =
@@ -35,12 +36,9 @@ type Action =
       type: "upsert_refs";
       payload: Partial<State>;
     }
-  | {
-      type: "set_scroll";
-      payload: boolean;
-    }
-  | { type: "set_scrolled"; payload: boolean }
-  | { type: "set_follow"; payload: boolean };
+  | { type: "set_follow"; payload: boolean }
+  | { type: "set_anchor_props"; payload: ScrollIntoViewOptions | null }
+  | { type: "set_scrolled"; payload: boolean };
 
 type Dispatch = (action: Action) => void;
 
@@ -63,6 +61,13 @@ function scrollAreaWithAnchorReducer(state: State, action: Action) {
         anchorRef: action.payload,
       };
 
+    case "set_follow": {
+      return {
+        ...state,
+        follow: action.payload,
+      };
+    }
+
     case "set_scroll": {
       return {
         ...state,
@@ -77,13 +82,12 @@ function scrollAreaWithAnchorReducer(state: State, action: Action) {
       };
     }
 
-    case "set_follow": {
+    case "set_anchor_props": {
       return {
         ...state,
-        follow: action.payload,
+        anchor_props: action.payload,
       };
     }
-
     default:
       return state;
   }
@@ -189,15 +193,24 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     scrollRef: scrollRef,
     innerRef: innerRef,
     anchorRef: null,
-    scroll: false,
-    scrolled: false,
     follow: false,
+    anchorProps: null,
+    scrolled: false,
   });
+
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      dispatch({ type: "set_scrolled", payload: true });
+      props.onScroll?.(event);
+    },
+    [props],
+  );
 
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (state.follow && event.deltaY < 0) {
         dispatch({ type: "set_follow", payload: false });
+        dispatch({ type: "set_scrolled", payload: true });
       }
       props.onWheel?.(event);
     },
@@ -217,6 +230,16 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     bottomRef.current,
   );
 
+  useEffect(() => {
+    if (state.anchorRef?.current) {
+      const anchorPosition =
+        state.anchorRef.current.getBoundingClientRect().top;
+      if (anchorPosition > 0 && !state.scrolled) {
+        state.anchorRef.current.scrollIntoView(state.anchorProps ?? undefined);
+      }
+    }
+  }, [bottomSpaceHeight, state.anchorProps, state.anchorRef, state.scrolled]);
+
   const handleFollowButtonClick = useCallback(() => {
     if (state.scrollRef?.current) {
       scrollToBottom(state.scrollRef.current);
@@ -226,7 +249,12 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
 
   return (
     <ScrollAreaWithAnchorContext.Provider value={{ state, dispatch }}>
-      <BaseScrollArea ref={scrollRef} {...props} onWheel={handleWheel}>
+      <BaseScrollArea
+        ref={scrollRef}
+        {...props}
+        onWheel={handleWheel}
+        onScroll={(e) => handleScroll}
+      >
         <Box ref={innerRef}>
           {children}
           <BottomSpace height={bottomSpaceHeight} ref={bottomRef} />
@@ -277,37 +305,23 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
   ...props
 }) => {
   const anchorRef = useRef<HTMLDivElement>(null);
-  const { state, dispatch } = useScrollContext();
+  const { dispatch } = useScrollContext();
 
   useEffect(() => {
     dispatch({ type: "add_anchor", payload: anchorRef });
-  }, [dispatch, anchorRef]);
+    dispatch({
+      type: "set_anchor_props",
+      payload: { behavior, block, inline },
+    });
 
-  useEffect(() => {
     return () => {
+      dispatch({
+        type: "set_anchor_props",
+        payload: null,
+      });
       dispatch({ type: "set_scrolled", payload: false });
-      dispatch({ type: "set_scroll", payload: false });
     };
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (!state.anchorRef?.current) {
-      return;
-    }
-
-    if (!state.follow && !state.scrolled) {
-      state.anchorRef.current.scrollIntoView({ behavior, block, inline });
-      dispatch({ type: "set_scrolled", payload: true });
-    }
-  }, [
-    behavior,
-    block,
-    dispatch,
-    inline,
-    state.anchorRef,
-    state.follow,
-    state.scrolled,
-  ]);
+  }, [dispatch, anchorRef, behavior, block, inline]);
 
   return <Box {...props} ref={anchorRef} />;
 };
