@@ -146,7 +146,7 @@ class ThirdPartyModel:
             self._supports_multimodality = bool(litellm.supports_vision(self.name))
         else:
             self._api_base = model_config.custom_model_config.api_base
-            self._api_key = model_config.custom_model_config.api_key
+            self._api_key = model_config.custom_model_config.api_key or "dummy"
             self._n_ctx = model_config.custom_model_config.n_ctx
             self._max_tokens = min(model_config.custom_model_config.n_ctx, self.PASSTHROUGH_MAX_TOKENS_LIMIT)
             self._supports_chat = True  # custom models are only for chat
