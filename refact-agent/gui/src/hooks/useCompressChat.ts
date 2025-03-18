@@ -1,32 +1,41 @@
 import { useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
 import { selectThread } from "../features/Chat/Thread/selectors";
-import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
-import {
-  restoreChat,
-  setSendImmediately,
-} from "../features/Chat/Thread/actions";
-import { saveChat } from "../features/History/historySlice";
+import { knowledgeApi } from "../services/refact";
+import { newChatAction } from "../events";
+import { useAppDispatch } from "./useAppDispatch";
+import { setError } from "../features/Errors/errorsSlice";
+import { setIsWaitingForResponse } from "../features/Chat";
 
 export function useCompressChat() {
   const dispatch = useAppDispatch();
   const thread = useAppSelector(selectThread);
-  const compressChat = useCallback(() => {
-    const now = new Date().toISOString();
-    const newId = uuidv4();
-    const newThread = {
-      ...thread,
-      id: newId,
-      createdAt: now,
-      updatedAt: now,
-      title: thread.title ?? "",
-      read: false,
-    };
-    dispatch(saveChat(newThread));
-    dispatch(restoreChat(newThread));
-    dispatch(setSendImmediately(true));
-  }, [dispatch, thread]);
 
-  return { compressChat };
+  const [submit, request] = knowledgeApi.useCompressMessagesMutation();
+
+  const compressChat = useCallback(async () => {
+    dispatch(setIsWaitingForResponse(true));
+    const result = await submit({
+      messages: thread.messages,
+      project: thread.project_name ?? "",
+    });
+    dispatch(setIsWaitingForResponse(false));
+
+    if (result.error) {
+      // TODO: handle errors
+      dispatch(
+        setError("Error compressing chat: " + JSON.stringify(result.error)),
+      );
+    }
+
+    // TODO: create new chat with result.data as user message.
+    if (result.data) {
+      const newThreadAction = newChatAction({
+        messages: [{ role: "user", content: result.data.trajectory }],
+      });
+      dispatch(newThreadAction);
+    }
+  }, [submit, thread.messages, thread.project_name, dispatch]);
+
+  return { compressChat, compressChatRequest: request };
 }
