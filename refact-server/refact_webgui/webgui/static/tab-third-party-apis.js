@@ -603,11 +603,8 @@ function showAddModelModal(providerId) {
         modelIdContainer.innerHTML = inputHtml;
     }
 
-    // Reset the modal title and button text in case it was changed by showEditModelModal
     document.getElementById('add-third-party-model-modal-label').textContent = 'Add Model';
     document.getElementById('add-third-party-model-submit').textContent = 'Add Model';
-
-    // Reset the submit button to call addModel
     document.getElementById('add-third-party-model-submit').onclick = function() {
         addModel();
     };
@@ -622,6 +619,10 @@ function addModel() {
     let modelId;
     const providerId = document.getElementById('add-third-party-model-modal-id-container').dataset.providerId;
     const modelIdElement = document.getElementById('third-party-model-id');
+
+    if (!modelIdElement) {
+        return;
+    }
 
     // Get the values of the capability checkboxes
     const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
@@ -720,16 +721,13 @@ function addModel() {
     }
 }
 
-// Remove a model from the enabled models list
 function showEditModelModal(providerId, modelId) {
-    // Find the provider in the configuration
     const providerConfig = apiConfig.providers[providerId];
     if (!providerConfig) {
         general_error("Provider configuration not found");
         return;
     }
 
-    // Find the model, handling both string models and ModelConfig objects
     const modelObj = providerConfig.enabled_models.find(model =>
         typeof model === 'string' ? model === modelId : model.model_name === modelId
     );
@@ -741,35 +739,34 @@ function showEditModelModal(providerId, modelId) {
 
     const customConfig = modelObj.custom_model_config;
 
-    // Reuse the add model modal but customize it for editing
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
     modelIdContainer.dataset.modelId = modelId;
     modelIdContainer.dataset.isEdit = 'true';
 
-    // Create the HTML for the edit modal
-    const editHtml = `
-        <h5 class="mb-3">Edit Custom Configuration for "${modelId}"</h5>
+    if (hasPredefinedModels(providerId)) {
+        const editHtml = `
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelObj.supports_agentic ? 'checked' : ''}>
+                <label class="form-check-label" for="third-party-model-supports-agentic">
+                    Supports Agentic Mode
+                </label>
+                <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+            </div>
 
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelObj.supports_agentic ? 'checked' : ''}>
-            <label class="form-check-label" for="third-party-model-supports-agentic">
-                Supports Agentic Mode
-            </label>
-            <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
-        </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelObj.supports_clicks ? 'checked' : ''}>
+                <label class="form-check-label" for="third-party-model-supports-clicks">
+                    Supports Clicks
+                </label>
+                <div class="form-text">Enable if this model supports click interactions.</div>
+            </div>
+        `;
 
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelObj.supports_clicks ? 'checked' : ''}>
-            <label class="form-check-label" for="third-party-model-supports-clicks">
-                Supports Clicks
-            </label>
-            <div class="form-text">Enable if this model supports click interactions.</div>
-        </div>
-
-        <div class="card p-3 mb-3 bg-light">
-            <h6 class="mb-3">Custom Model Configuration</h6>
-
+        modelIdContainer.innerHTML = editHtml;
+        document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
+    } else {
+        const editHtml = `
             <div class="mb-3">
                 <label for="custom-model-api-key" class="form-label">API Key</label>
                 <input type="text" class="form-control" id="custom-model-api-key" value="${customConfig.api_key}" placeholder="Enter API key for this model">
@@ -797,28 +794,40 @@ function showEditModelModal(providerId, modelId) {
                 <div class="form-text">Enable if this model supports images and other media types.</div>
             </div>
 
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelObj.supports_agentic ? 'checked' : ''}>
+                <label class="form-check-label" for="third-party-model-supports-agentic">
+                    Supports Agentic Mode
+                </label>
+                <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+            </div>
+
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelObj.supports_clicks ? 'checked' : ''}>
+                <label class="form-check-label" for="third-party-model-supports-clicks">
+                    Supports Clicks
+                </label>
+                <div class="form-text">Enable if this model supports click interactions.</div>
+            </div>
+
             <div class="mb-3">
                 <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
                 <input type="text" class="form-control" id="custom-model-tokenizer-uri" value="${customConfig.tokenizer_uri || ''}" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
                 <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
             </div>
-        </div>
-    `;
+        `;
 
-    modelIdContainer.innerHTML = editHtml;
+        modelIdContainer.innerHTML = editHtml;
+        document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Custom Model';
+    }
 
-    // Change the modal title and button text
-    document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Custom Model';
     document.getElementById('add-third-party-model-submit').textContent = 'Save Changes';
-
-    // Show the modal
-    const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
-    modal.show();
-
-    // Update the submit button to call updateModel instead of addModel
     document.getElementById('add-third-party-model-submit').onclick = function() {
         updateModel();
     };
+
+    const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
+    modal.show();
 }
 
 function updateModel() {
@@ -826,89 +835,85 @@ function updateModel() {
     const providerId = modelIdContainer.dataset.providerId;
     const modelId = modelIdContainer.dataset.modelId;
 
+    const providerConfig = apiConfig.providers[providerId];
+    if (!providerConfig) {
+        const error_message = "No provider in config, can't update model";
+        console.error(error_message);
+        general_error(error_message);
+    }
+
+    const modelIndex = providerConfig.enabled_models.findIndex(model =>
+        typeof model === 'string' ? model === modelId : model.model_name === modelId
+    );
+
+    if (modelIndex === -1) {
+        const error_message = "No model in provider in config, can't update model";
+        console.error(error_message);
+        general_error(error_message);
+    }
+
+    const modelConfig = providerConfig.enabled_models[modelIndex];
+
+    if (typeof modelConfig === 'string') {
+        const error_message = "Invalid format of model config, can't update model";
+        console.error(error_message);
+        general_error(error_message);
+    }
+
     // Get the values of the capability checkboxes
     const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
     const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
 
-    // Get the custom model configuration values
-    const customApiKey = document.getElementById('custom-model-api-key').value.trim();
-    const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
-    const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
-    const customSupportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
-    const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
+    if (hasPredefinedModels(providerId)) {
+        modelConfig.supports_agentic = supportsAgentic;
+        modelConfig.supports_clicks = supportsClicks;
+        modelConfig.custom_model_config = null;
+    } else {
+        // Get the custom model configuration values
+        const customApiKey = document.getElementById('custom-model-api-key').value.trim();
+        const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
+        const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
+        const customSupportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
+        const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
 
-    // Validate required fields
-    if (!customApiKey) {
-        const error_message = "API Key is required for custom model configuration";
-        console.error(error_message);
-        general_error(error_message);
-        return;
-    }
-
-    if (isNaN(customNCtx) || customNCtx < 1024) {
-        const error_message = "Context size must be a valid number greater than or equal to 1024";
-        console.error(error_message);
-        general_error(error_message);
-        return;
-    }
-
-    // Find the provider in the configuration
-    const providerConfig = apiConfig.providers[providerId];
-    if (providerConfig) {
-        // Find the model index
-        const modelIndex = providerConfig.enabled_models.findIndex(model =>
-            typeof model === 'string' ? model === modelId : model.model_name === modelId
-        );
-
-        if (modelIndex !== -1) {
-            // Update the model configuration
-            const modelConfig = providerConfig.enabled_models[modelIndex];
-
-            if (typeof modelConfig === 'string') {
-                // Convert string model to object if needed
-                providerConfig.enabled_models[modelIndex] = {
-                    model_name: modelConfig,
-                    supports_agentic: supportsAgentic,
-                    supports_clicks: supportsClicks,
-                    custom_model_config: {
-                        api_key: customApiKey,
-                        n_ctx: customNCtx,
-                        supports_tools: customSupportsTools,
-                        supports_multimodality: customSupportsMultimodality,
-                        tokenizer_uri: customTokenizerUri || null
-                    }
-                };
-            } else {
-                // Update existing object
-                modelConfig.supports_agentic = supportsAgentic;
-                modelConfig.supports_clicks = supportsClicks;
-                modelConfig.custom_model_config = {
-                    api_key: customApiKey,
-                    n_ctx: customNCtx,
-                    supports_tools: customSupportsTools,
-                    supports_multimodality: customSupportsMultimodality,
-                    tokenizer_uri: customTokenizerUri || null
-                };
-            }
-
-            // Update the configuration
-            updateConfiguration();
-
-            // Update the UI
-            updateUI();
-
-            // Close the modal
-            const modalElement = document.getElementById('add-third-party-model-modal');
-            const modal = bootstrap.Modal.getInstance(modalElement);
-            if (modal) {
-                modal.hide();
-            } else if (modalElement && modalElement._bsModal) {
-                modalElement._bsModal.hide();
-            }
-
-            showSuccessToast("Model updated successfully");
+        // Validate required fields
+        if (!customApiKey) {
+            const error_message = "API Key is required for custom model configuration";
+            console.error(error_message);
+            general_error(error_message);
+            return;
         }
+
+        if (isNaN(customNCtx) || customNCtx < 1024) {
+            const error_message = "Context size must be a valid number greater than or equal to 1024";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
+
+        modelConfig.supports_agentic = supportsAgentic;
+        modelConfig.supports_clicks = supportsClicks;
+        modelConfig.custom_model_config = {
+            api_key: customApiKey,
+            n_ctx: customNCtx,
+            supports_tools: customSupportsTools,
+            supports_multimodality: customSupportsMultimodality,
+            tokenizer_uri: customTokenizerUri || null
+        };
     }
+
+    updateConfiguration();
+    updateUI();
+
+    const modalElement = document.getElementById('add-third-party-model-modal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) {
+        modal.hide();
+    } else if (modalElement && modalElement._bsModal) {
+        modalElement._bsModal.hide();
+    }
+
+    showSuccessToast("Model updated successfully");
 }
 
 function removeModel(providerId, modelId) {
