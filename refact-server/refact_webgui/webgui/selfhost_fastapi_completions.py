@@ -512,7 +512,7 @@ class BaseCompletionsRouter(APIRouter):
 
         max_tokens = min(model.max_tokens, post.actual_max_tokens)
         completion_kwargs = {
-            "model": model.name,
+            "model": model.inference_name,
             "api_base": model.api_base,
             "api_key": model.api_key,
             "messages": messages,
