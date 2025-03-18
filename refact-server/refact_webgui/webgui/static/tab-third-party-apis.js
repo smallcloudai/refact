@@ -551,7 +551,12 @@ function showAddModelModal(providerId) {
             <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
 
             <div class="mb-3">
-                <label for="custom-model-api-key" class="form-label">API Key</label>
+                <label for="custom-model-api-base" class="form-label">API Key</label>
+                <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
+            </div>
+
+            <div class="mb-3">
+                <label for="custom-model-api-key" class="form-label">API Base</label>
                 <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
             </div>
 
@@ -659,6 +664,7 @@ function addModel() {
             };
 
             if (!hasPredefinedModels(providerId)) {
+                const customApiBase = document.getElementById('custom-model-api-base').value.trim();
                 const customApiKey = document.getElementById('custom-model-api-key').value.trim();
                 const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
                 const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
@@ -666,8 +672,8 @@ function addModel() {
                 const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
 
                 // Validate required fields
-                if (!customApiKey) {
-                    const error_message = "API Key is required for custom model configuration";
+                if (!customApiBase) {
+                    const error_message = "API Base is required for custom model configuration";
                     console.error(error_message);
                     general_error(error_message);
                     return;
@@ -682,6 +688,7 @@ function addModel() {
 
                 // Create the custom model configuration
                 modelConfig.custom_model_config = {
+                    api_base: customApiBase,
                     api_key: customApiKey,
                     n_ctx: customNCtx,
                     supports_tools: customSupportsTools,
@@ -767,6 +774,11 @@ function showEditModelModal(providerId, modelId) {
         document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
     } else {
         const editHtml = `
+            <div class="mb-3">
+                <label for="custom-model-api-base" class="form-label">API Base</label>
+                <input type="text" class="form-control" id="custom-model-api-base" value="${customConfig.api_base}" placeholder="Enter API base for this model">
+            </div>
+
             <div class="mb-3">
                 <label for="custom-model-api-key" class="form-label">API Key</label>
                 <input type="text" class="form-control" id="custom-model-api-key" value="${customConfig.api_key}" placeholder="Enter API key for this model">
@@ -870,6 +882,7 @@ function updateModel() {
         modelConfig.custom_model_config = null;
     } else {
         // Get the custom model configuration values
+        const customApiBase = document.getElementById('custom-model-api-base').value.trim();
         const customApiKey = document.getElementById('custom-model-api-key').value.trim();
         const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
         const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
@@ -877,6 +890,13 @@ function updateModel() {
         const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
 
         // Validate required fields
+        if (!customApiBase) {
+            const error_message = "API Base URL is required for custom model configuration";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
+
         if (!customApiKey) {
             const error_message = "API Key is required for custom model configuration";
             console.error(error_message);
@@ -894,6 +914,7 @@ function updateModel() {
         modelConfig.supports_agentic = supportsAgentic;
         modelConfig.supports_clicks = supportsClicks;
         modelConfig.custom_model_config = {
+            api_base: customApiBase,
             api_key: customApiKey,
             n_ctx: customNCtx,
             supports_tools: customSupportsTools,

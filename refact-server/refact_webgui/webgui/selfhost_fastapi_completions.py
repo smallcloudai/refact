@@ -513,6 +513,7 @@ class BaseCompletionsRouter(APIRouter):
         max_tokens = min(litellm.get_max_tokens(model.name) or post.actual_max_tokens, post.actual_max_tokens)
         completion_kwargs = {
             "model": model.name,
+            "api_base": model.api_base,
             "api_key": model.api_key,
             "messages": messages,
             "temperature": post.temperature,
