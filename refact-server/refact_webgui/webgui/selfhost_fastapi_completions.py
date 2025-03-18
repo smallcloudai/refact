@@ -510,7 +510,7 @@ class BaseCompletionsRouter(APIRouter):
         if post.tools:
             prompt_tokens_n += litellm.token_counter(model.name, text=json.dumps(post.tools))
 
-        max_tokens = min(litellm.get_max_tokens(model.name) or post.actual_max_tokens, post.actual_max_tokens)
+        max_tokens = min(model.max_tokens, post.actual_max_tokens)
         completion_kwargs = {
             "model": model.name,
             "api_base": model.api_base,
