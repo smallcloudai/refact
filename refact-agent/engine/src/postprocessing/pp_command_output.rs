@@ -32,12 +32,14 @@ impl Default for CmdlineOutputFilter {
     }
 }
 
+// Since we have better compression routine, very large output will be compressed after a few turns anyway
+// The maximum output would be about 10K tokens
 fn default_limit_lines() -> usize {
-    1000  // since we have better compression routine, very large output will be compressed after a few turns anyway
+    400 
 }
 
 fn default_limit_chars() -> usize {
-    100000
+    40000
 }
 
 fn default_valuable_top_or_bottom() -> String {
