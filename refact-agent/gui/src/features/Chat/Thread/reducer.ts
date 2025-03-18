@@ -157,7 +157,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.system_prompt = action.payload;
   });
 
-  builder.addCase(newChatAction, (state) => {
+  builder.addCase(newChatAction, (state, action) => {
     const next = createInitialState({
       tool_use: state.tool_use,
       maybeMode: state.thread.mode,
@@ -171,6 +171,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.automatic_patch = state.automatic_patch;
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
+    if (action.payload?.messages) {
+      next.thread.messages = action.payload.messages;
+    }
     return next;
   });
 

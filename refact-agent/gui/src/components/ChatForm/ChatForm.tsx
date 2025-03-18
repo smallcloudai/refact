@@ -92,7 +92,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
   const lastSentCompression = useAppSelector(selectLastSentCompression);
-  const { compressChat } = useCompressChat();
+  const { compressChat, compressChatRequest } = useCompressChat();
   // const currentThreadMaximumContextTokens = useAppSelector(
   //   selectThreadMaximumTokens,
   // );
@@ -386,7 +386,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                         : undefined
                   }
                   title="Compress chat and continue"
-                  onClick={() => compressChat()}
+                  onClick={() => void compressChat()}
+                  loading={compressChatRequest.isLoading}
                 >
                   <ArchiveIcon />
                 </IconButton>

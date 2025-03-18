@@ -37,7 +37,9 @@ import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import { capsApi } from "../../../services/refact";
 
-export const newChatAction = createAction("chatThread/new");
+export const newChatAction = createAction<Partial<ChatThread> | undefined>(
+  "chatThread/new",
+);
 
 export const newIntegrationChat = createAction<{
   integration: IntegrationMeta;
