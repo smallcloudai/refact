@@ -10,6 +10,7 @@ from refact_webgui.webgui.selfhost_webutils import log
 
 
 class CustomModelConfig(BaseModel):
+    api_base: str
     api_key: str
     n_ctx: int
     supports_tools: bool
@@ -129,12 +130,14 @@ class ThirdPartyModel:
     ):
         self._model_config = model_config
         if model_config.custom_model_config is None:
+            self._api_base = None
             self._api_key = api_key
             self._n_ctx = min(_get_context_size(self.name), self.PASSTHROUGH_MAX_TOKENS_LIMIT)
             self._supports_chat = _supports_chat(self.name)
             self._supports_tools = bool(litellm.supports_function_calling(self.name))
             self._supports_multimodality = bool(litellm.supports_vision(self.name))
         else:
+            self._api_base = model_config.custom_model_config.api_base
             self._api_key = model_config.custom_model_config.api_key
             self._n_ctx = model_config.custom_model_config.n_ctx
             self._supports_chat = True  # custom models are only for chat
@@ -145,6 +148,10 @@ class ThirdPartyModel:
     @property
     def name(self) -> str:
         return self._model_config.model_name
+
+    @property
+    def api_base(self) -> Optional[str]:
+        return self._api_base
 
     @property
     def api_key(self) -> str:
