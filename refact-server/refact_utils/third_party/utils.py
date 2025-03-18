@@ -116,11 +116,16 @@ def _supports_chat(model_name: str) -> bool:
 
 def _get_context_size(model_name: str) -> Optional[int]:
     model_info = litellm.get_model_info(model_name)
-    return model_info.get("max_input_tokens", 8192)
+    return model_info.get("max_input_tokens") or 8192
+
+
+def _get_max_tokens(model_name: str) -> Optional[int]:
+    return litellm.get_max_tokens(model_name) or 8192
 
 
 class ThirdPartyModel:
-    PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
+    PASSTHROUGH_N_CTX_LIMIT = 128_000
+    PASSTHROUGH_MAX_TOKENS_LIMIT = 16_000
     COMPLETION_READY_MODELS = []
 
     def __init__(
@@ -132,7 +137,8 @@ class ThirdPartyModel:
         if model_config.custom_model_config is None:
             self._api_base = None
             self._api_key = api_key
-            self._n_ctx = min(_get_context_size(self.name), self.PASSTHROUGH_MAX_TOKENS_LIMIT)
+            self._n_ctx = min(_get_context_size(self.name), self.PASSTHROUGH_N_CTX_LIMIT)
+            self._max_tokens = min(_get_max_tokens(self.name), self.PASSTHROUGH_MAX_TOKENS_LIMIT)
             self._supports_chat = _supports_chat(self.name)
             self._supports_tools = bool(litellm.supports_function_calling(self.name))
             self._supports_multimodality = bool(litellm.supports_vision(self.name))
@@ -140,6 +146,7 @@ class ThirdPartyModel:
             self._api_base = model_config.custom_model_config.api_base
             self._api_key = model_config.custom_model_config.api_key
             self._n_ctx = model_config.custom_model_config.n_ctx
+            self._max_tokens = min(model_config.custom_model_config.n_ctx, self.PASSTHROUGH_MAX_TOKENS_LIMIT)
             self._supports_chat = True  # custom models are only for chat
             self._supports_tools = bool(model_config.custom_model_config.supports_tools)
             self._supports_multimodality = bool(model_config.custom_model_config.supports_multimodality)
@@ -160,6 +167,10 @@ class ThirdPartyModel:
     @property
     def n_ctx(self) -> int:
         return self._n_ctx
+
+    @property
+    def max_tokens(self) -> int:
+        return self._max_tokens
 
     @property
     def supports_chat(self) -> bool:

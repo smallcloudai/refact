@@ -551,12 +551,12 @@ function showAddModelModal(providerId) {
             <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
 
             <div class="mb-3">
-                <label for="custom-model-api-base" class="form-label">API Key</label>
+                <label for="custom-model-api-base" class="form-label">API Base</label>
                 <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
             </div>
 
             <div class="mb-3">
-                <label for="custom-model-api-key" class="form-label">API Base</label>
+                <label for="custom-model-api-key" class="form-label">API Key</label>
                 <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
             </div>
 
