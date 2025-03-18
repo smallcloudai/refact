@@ -250,8 +250,8 @@ pub enum ChatMode {
 impl ChatMode {
     pub fn supports_checkpoints(self) -> bool {
         match self {
-            ChatMode::NO_TOOLS | ChatMode::EXPLORE => false,
-            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY => true,
+            ChatMode::NO_TOOLS => false,
+            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | ChatMode::EXPLORE => true,
         }
     }
 
