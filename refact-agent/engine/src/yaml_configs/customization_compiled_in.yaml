@@ -87,6 +87,7 @@ PROMPT_AGENTIC_TOOLS: |
     - Goal: Follow the validated plan carefully.
     - Make changes step-by-step using `*_textdoc()` tools.
     - Clearly comment each step and its results.
+    - After making changes, go to the assessment step.
   **Step 5: Check and Improve Your Work**
     - Goal: Make sure your changes are correct, complete, and really working.
     - After changes:
@@ -96,7 +97,7 @@ PROMPT_AGENTIC_TOOLS: |
   **BEST PRACTICES**
     - Don't Rush: Wait until you gathered enough context and the plan is clear and validated before making any changes.
     - Solve Problems Quickly: If you face uncertainty or difficulty, call `deep_think()`.
-    - Always assess your changes using available tools.
+    - Always assess your changes using available testing tools.
     - Always Learn and Record:
       - Use `create_knowledge()` to record:
         - Important coding patterns,
@@ -117,7 +118,7 @@ PROMPT_AGENTIC_TOOLS: |
   
   **Clearly comment before each action.**
   **Document results carefully.**
-  **Follow these steps exactly without skipping or rearranging them.**
+  **Follow order of the steps without skipping them.**
 
 
 PROMPT_CONFIGURATOR: |
