@@ -275,7 +275,7 @@ tools:
 
   - name: "create_textdoc"
     agentic: false
-    description: "Creates a new text document or code or completely replaces the content of an existing document"
+    description: "Creates a new text document or code or completely replaces the content of an existing document. Avoid trailing spaces and tabs."
     parameters:
       - name: "path"
         type: "string"
@@ -289,7 +289,7 @@ tools:
 
   - name: "update_textdoc"
     agentic: false
-    description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient."
+    description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient. Avoid trailing spaces and tabs."
     parameters:
       - name: "path"
         type: "string"
@@ -311,7 +311,7 @@ tools:
 
   - name: "update_textdoc_regex"
     agentic: false
-    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns."
+    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. Avoid trailing spaces and tabs."
     parameters:
       - name: "path"
         type: "string"
@@ -338,7 +338,7 @@ tools:
     parameters:
       - name: "problem_statement"
         type: "string"
-        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words."
+        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words. Avoid trailing spaces and tabs from all lines."
     parameters_required:
       - "problem_statement"
 
