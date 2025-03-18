@@ -84,20 +84,6 @@ function scrollAreaWithAnchorReducer(state: State, action: Action) {
       };
     }
 
-    case "set_overflow": {
-      return {
-        ...state,
-        overflow: action.payload,
-      };
-    }
-
-    case "set_at_the_bottom": {
-      return {
-        ...state,
-        at_the_bottom: action.payload,
-      };
-    }
-
     default:
       return state;
   }
@@ -273,7 +259,7 @@ const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
 );
 ScrollArea.displayName = "ScrollAreaWithAnchor.ScrollArea";
 
-type BottomSpaceProps = BoxProps & { height: number };
+type BottomSpaceProps = Omit<BoxProps, "height"> & { height: number };
 const BottomSpace = forwardRef<HTMLDivElement, BottomSpaceProps>(
   ({ height, ...props }, ref) => {
     return <Box ref={ref} {...props} height={height + "px"} />;

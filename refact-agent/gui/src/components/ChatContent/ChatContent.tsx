@@ -203,7 +203,7 @@ function renderMessages(
     const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
-      isLastUserMessage && !waiting && (
+      isLastUserMessage && (
         <ScrollAreaWithAnchor.ScrollAnchor
           key={`${key}-anchor`}
           behavior="smooth"
