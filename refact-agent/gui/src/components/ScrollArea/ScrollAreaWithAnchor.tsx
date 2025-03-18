@@ -5,7 +5,7 @@ import React, {
   useContext,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -15,7 +15,7 @@ import {
   ScrollArea as BaseScrollArea,
   type ScrollAreaProps,
 } from "./ScrollArea";
-import { useResizeObserverOnRef } from "../../hooks";
+import { useResizeObserver } from "../../hooks";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
 type State = {
   innerRef: RefObject<HTMLDivElement> | null;
@@ -24,8 +24,6 @@ type State = {
   scroll: boolean;
   scrolled: boolean;
   follow: boolean;
-  overflow: boolean;
-  at_the_bottom: boolean;
 };
 
 type Action =
@@ -42,9 +40,7 @@ type Action =
       payload: boolean;
     }
   | { type: "set_scrolled"; payload: boolean }
-  | { type: "set_follow"; payload: boolean }
-  | { type: "set_overflow"; payload: boolean }
-  | { type: "set_at_the_bottom"; payload: boolean };
+  | { type: "set_follow"; payload: boolean };
 
 type Dispatch = (action: Action) => void;
 
@@ -107,16 +103,88 @@ function scrollAreaWithAnchorReducer(state: State, action: Action) {
   }
 }
 
-function isAtBottom(element: HTMLDivElement | null) {
-  if (element === null) return true;
-  const { scrollHeight, scrollTop, clientHeight } = element;
-  return Math.abs(scrollHeight - clientHeight - scrollTop) <= 1;
+function scrollToBottom(elem: HTMLElement) {
+  elem.scrollTop = elem.scrollHeight - elem.clientHeight;
 }
 
-function isOverflowing(element: HTMLDivElement | null) {
-  if (element === null) return false;
-  const { scrollHeight, clientHeight } = element;
-  return scrollHeight > clientHeight;
+function calculateSpace(
+  scrollElem: HTMLElement,
+  anchorElem: HTMLElement,
+  bottomElem: HTMLElement,
+) {
+  const anchorPosition = anchorElem.offsetTop;
+  const topOfBottom = bottomElem.offsetTop;
+  const spaceBetween = topOfBottom - anchorPosition;
+  const maxSpace = scrollElem.clientHeight;
+  return Math.max(maxSpace - spaceBetween, 0);
+}
+
+function useSpaceCalculator(
+  scrollElem: HTMLElement | null,
+  innerElem: HTMLElement | null,
+  anchorElem: HTMLElement | null,
+  bottomElem: HTMLElement | null,
+) {
+  const [height, setHeight] = useState<number>(0);
+  const calculateAndSetSpace = useCallback(() => {
+    if (!scrollElem || !bottomElem || !anchorElem) {
+      return;
+    }
+    const nextHeight = calculateSpace(scrollElem, anchorElem, bottomElem);
+    setHeight(nextHeight);
+  }, [scrollElem, bottomElem, anchorElem]);
+
+  useResizeObserver(innerElem, calculateAndSetSpace);
+  useEffect(() => {
+    calculateAndSetSpace();
+  }, [calculateAndSetSpace]);
+
+  return height;
+}
+
+function useFollowBottom(
+  follow: boolean,
+  scrollElem: HTMLElement | null,
+  bottomElem: HTMLElement | null,
+) {
+  const [isIntersecting, setIsIntersecting] = useState(!follow);
+  const followFn: IntersectionObserverCallback = useCallback(
+    (entries) => {
+      if (!scrollElem || !bottomElem) return;
+      const btm = entries.find((e) => e.target === bottomElem);
+      if (btm) {
+        setIsIntersecting(btm.isIntersecting);
+      }
+      if (follow && btm && !btm.isIntersecting) {
+        scrollToBottom(scrollElem);
+      }
+    },
+    [follow, scrollElem, bottomElem],
+  );
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(followFn, {
+      root: scrollElem,
+      threshold: 0.1,
+    });
+
+    if (bottomElem) {
+      observer.observe(bottomElem);
+    }
+
+    return () => {
+      if (bottomElem) {
+        observer.unobserve(bottomElem);
+      }
+    };
+  });
+
+  const showButton = useMemo(
+    () => !follow && !isIntersecting,
+    [follow, isIntersecting],
+  );
+
+  return { showFollow: showButton };
 }
 
 const Provider: React.FC<ScrollAreaProps> = forwardRef<
@@ -129,6 +197,7 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     () => scrollRef.current,
   );
   const innerRef = React.useRef<HTMLDivElement>(null);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
   const [state, dispatch] = React.useReducer(scrollAreaWithAnchorReducer, {
     // mutable dom refs
     scrollRef: scrollRef,
@@ -137,20 +206,7 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     scroll: false,
     scrolled: false,
     follow: false,
-    overflow: false,
-    at_the_bottom: false,
   });
-
-  const handleScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (state.scrollRef?.current) {
-        const atTheBottom = isAtBottom(state.scrollRef.current);
-        dispatch({ type: "set_at_the_bottom", payload: atTheBottom });
-      }
-      props.onScroll?.(event);
-    },
-    [props, state.scrollRef],
-  );
 
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
@@ -162,16 +218,36 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     [props, state.follow],
   );
 
+  const { showFollow } = useFollowBottom(
+    state.follow,
+    scrollRef.current,
+    bottomRef.current,
+  );
+
+  const bottomSpaceHeight = useSpaceCalculator(
+    scrollRef.current,
+    innerRef.current,
+    state.anchorRef?.current ?? null,
+    bottomRef.current,
+  );
+
+  const handleFollowButtonClick = useCallback(() => {
+    if (state.scrollRef?.current) {
+      scrollToBottom(state.scrollRef.current);
+    }
+    dispatch({ type: "set_follow", payload: true });
+  }, [state.scrollRef]);
+
   return (
     <ScrollAreaWithAnchorContext.Provider value={{ state, dispatch }}>
-      <BaseScrollArea
-        ref={scrollRef}
-        {...props}
-        onScroll={handleScroll}
-        onWheel={handleWheel}
-      >
-        <Box ref={innerRef}>{children}</Box>
-        <FollowButton />
+      <BaseScrollArea ref={scrollRef} {...props} onWheel={handleWheel}>
+        <Box ref={innerRef}>
+          {children}
+          <BottomSpace height={bottomSpaceHeight} ref={bottomRef} />
+        </Box>
+        {showFollow && (
+          <ScrollToBottomButton onClick={handleFollowButtonClick} />
+        )}
       </BaseScrollArea>
     </ScrollAreaWithAnchorContext.Provider>
   );
@@ -191,66 +267,19 @@ const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
     return (
       <Provider {...props} ref={ref}>
         {children}
-        <BottomSpace />
       </Provider>
     );
   },
 );
 ScrollArea.displayName = "ScrollAreaWithAnchor.ScrollArea";
 
-const BottomSpace: React.FC = () => {
-  const { state, dispatch } = useScrollContext();
-  const [height, setHeight] = useState<number>(0);
-  const bottomSpaceRef = useRef<HTMLDivElement>(null);
-  const calculateAndSetSpace = useCallback(() => {
-    if (
-      !state.scrollRef?.current ||
-      !state.innerRef?.current ||
-      !state.anchorRef?.current ||
-      !bottomSpaceRef.current
-    ) {
-      return;
-    }
-
-    const anchorPosition = state.anchorRef.current.offsetTop;
-    const topOfBottom = bottomSpaceRef.current.offsetTop;
-    const spaceBetween = topOfBottom - anchorPosition;
-    const maxSpace = state.scrollRef.current.clientHeight;
-    setHeight(Math.max(maxSpace - spaceBetween, 0));
-
-    if (!state.scrolled && !state.follow) {
-      dispatch({ type: "set_scroll", payload: true });
-    }
-  }, [
-    dispatch,
-    state.anchorRef,
-    state.innerRef,
-    state.scrollRef,
-    state.scrolled,
-    state.follow,
-  ]);
-
-  useResizeObserverOnRef(state.innerRef, calculateAndSetSpace);
-
-  useEffect(() => {
-    calculateAndSetSpace();
-  }, [calculateAndSetSpace, dispatch]);
-
-  // move this to resize observer
-  useLayoutEffect(() => {
-    if (!state.scrollRef?.current) return;
-    const atTheBottom = isAtBottom(state.scrollRef.current);
-    dispatch({ type: "set_at_the_bottom", payload: atTheBottom });
-  }, [state.scrollRef, dispatch, height]);
-
-  useEffect(() => {
-    if (!state.scrollRef?.current) return;
-    const overflowing = isOverflowing(state.scrollRef.current);
-    dispatch({ type: "set_overflow", payload: overflowing });
-  }, [dispatch, height, state.scrollRef]);
-
-  return <Box ref={bottomSpaceRef} height={height + "px"} mt="-2" />;
-};
+type BottomSpaceProps = BoxProps & { height: number };
+const BottomSpace = forwardRef<HTMLDivElement, BottomSpaceProps>(
+  ({ height, ...props }, ref) => {
+    return <Box ref={ref} {...props} height={height + "px"} />;
+  },
+);
+BottomSpace.displayName = "ScrollAreaWithAnchor.BottomSpace";
 
 export type ScrollAnchorProps = React.PropsWithChildren<
   ScrollIntoViewOptions & BoxProps
@@ -276,56 +305,40 @@ const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
   }, [dispatch]);
 
   useEffect(() => {
-    if (
-      !state.scrollRef?.current ||
-      !state.anchorRef?.current ||
-      state.scrolled ||
-      !state.scroll
-    ) {
+    if (!state.anchorRef?.current) {
       return;
     }
 
-    if (!isAtBottom(state.scrollRef.current) && !state.follow) {
+    if (!state.follow && !state.scrolled) {
       state.anchorRef.current.scrollIntoView({ behavior, block, inline });
-    } else if (state.follow) {
-      state.scrollRef.current.scrollTop =
-        state.scrollRef.current.scrollHeight -
-        state.scrollRef.current.clientHeight;
+      dispatch({ type: "set_scrolled", payload: true });
     }
-
-    dispatch({ type: "set_scrolled", payload: true });
   }, [
-    state.anchorRef,
-    state.scroll,
-    dispatch,
-    state.scrolled,
     behavior,
     block,
+    dispatch,
     inline,
-    state.scrollRef,
+    state.anchorRef,
     state.follow,
+    state.scrolled,
   ]);
 
   return <Box {...props} ref={anchorRef} />;
 };
 
-const FollowButton: React.FC = () => {
-  const { state, dispatch } = useScrollContext();
-
-  // TODO: move this up
-  const handleClick = useCallback(() => {
-    if (state.scrollRef?.current) {
-      state.scrollRef.current.scrollTop =
-        state.scrollRef.current.scrollHeight -
-        state.scrollRef.current.clientHeight;
-    }
-    dispatch({ type: "set_follow", payload: true });
-  }, [dispatch, state.scrollRef]);
-
-  const shouldShow = !state.at_the_bottom && !state.follow;
-
-  if (!shouldShow) return false;
-  return <ScrollToBottomButton onClick={handleClick} />;
-};
-
 export { ScrollArea, ScrollAnchor };
+
+/**
+ * Check list
+ * Static chat
+ * ✅ When give a long chat it should start from the last user message
+ * ✅ When clicking the follow button it should go to the bottom of the screen
+ * ✅When at the bottom the follow button should not show
+ *
+ * In progress chat.
+ * ✅ When a user message is submitted it should go to the user message
+ * ✅ When i click the follow button it should follow the chat
+ * ✅ I can stop following by manually scrolling
+ * ✅ follow button shouldn't flicker
+ * ✅ ui should scroll flicker
+ */

@@ -11,3 +11,14 @@ export function useResizeObserverOnRef(
     return () => observer.disconnect();
   }, [callback, options, ref]);
 }
+
+export function useResizeObserver(
+  elem: HTMLElement | null,
+  callback: ResizeObserverCallback,
+) {
+  useEffect(() => {
+    const observer = new ResizeObserver(callback);
+    elem && observer.observe(elem);
+    return () => observer.disconnect();
+  }, [callback, elem]);
+}
