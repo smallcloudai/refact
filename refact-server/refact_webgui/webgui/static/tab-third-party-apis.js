@@ -517,7 +517,7 @@ function showAddModelModal(providerId) {
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
 
-    if (PROVIDERS[providerId] && PROVIDERS[providerId].models && PROVIDERS[providerId].models.length > 0) {
+    if (hasPredefinedModels(providerId)) {
         const selectHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <select class="form-select" id="third-party-model-id">
@@ -541,55 +541,6 @@ function showAddModelModal(providerId) {
                 </label>
                 <div class="form-text">Enable if this model supports click interactions.</div>
             </div>
-
-            <div class="mt-4">
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="third-party-model-is-custom">
-                    <label class="form-check-label" for="third-party-model-is-custom">
-                        Custom Model Configuration
-                    </label>
-                    <div class="form-text">Enable to provide additional configuration for custom models.</div>
-                </div>
-
-                <div id="custom-model-config-container" style="display: none;">
-                    <div class="card p-3 mb-3 bg-light">
-                        <h6 class="mb-3">Custom Model Configuration</h6>
-
-                        <div class="mb-3">
-                            <label for="custom-model-api-key" class="form-label">API Key</label>
-                            <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
-                            <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
-                            <div class="form-text">Maximum number of tokens the model can process.</div>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="custom-model-supports-tools">
-                            <label class="form-check-label" for="custom-model-supports-tools">
-                                Supports Tools
-                            </label>
-                            <div class="form-text">Enable if this model supports function calling/tools.</div>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality">
-                            <label class="form-check-label" for="custom-model-supports-multimodality">
-                                Supports Multimodality
-                            </label>
-                            <div class="form-text">Enable if this model supports images and other media types.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
-                            <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
-                            <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         `;
 
         modelIdContainer.innerHTML = selectHtml;
@@ -598,8 +549,32 @@ function showAddModelModal(providerId) {
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
             <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
-            <div class="alert alert-info">
-                <i class="bi bi-info-circle"></i> This provider doesn't have predefined models, so you can add custom models.
+
+            <div class="mb-3">
+                <label for="custom-model-api-key" class="form-label">API Key</label>
+                <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
+            </div>
+
+            <div class="mb-3">
+                <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
+                <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
+                <div class="form-text">Maximum number of tokens the model can process.</div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="custom-model-supports-tools">
+                <label class="form-check-label" for="custom-model-supports-tools">
+                    Supports Tools
+                </label>
+                <div class="form-text">Enable if this model supports function calling/tools.</div>
+            </div>
+
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality">
+                <label class="form-check-label" for="custom-model-supports-multimodality">
+                    Supports Multimodality
+                </label>
+                <div class="form-text">Enable if this model supports images and other media types.</div>
             </div>
 
             <div class="form-check mb-2">
@@ -618,77 +593,15 @@ function showAddModelModal(providerId) {
                 <div class="form-text">Enable if this model supports click interactions.</div>
             </div>
 
-            <div class="mt-4">
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="third-party-model-is-custom">
-                    <label class="form-check-label" for="third-party-model-is-custom">
-                        Custom Model Configuration
-                    </label>
-                    <div class="form-text">Enable to provide additional configuration for custom models.</div>
-                </div>
-
-                <div id="custom-model-config-container" style="display: none;">
-                    <div class="card p-3 mb-3 bg-light">
-                        <h6 class="mb-3">Custom Model Configuration</h6>
-
-                        <div class="mb-3">
-                            <label for="custom-model-api-key" class="form-label">API Key</label>
-                            <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
-                            <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
-                            <div class="form-text">Maximum number of tokens the model can process.</div>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="custom-model-supports-tools">
-                            <label class="form-check-label" for="custom-model-supports-tools">
-                                Supports Tools
-                            </label>
-                            <div class="form-text">Enable if this model supports function calling/tools.</div>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality">
-                            <label class="form-check-label" for="custom-model-supports-multimodality">
-                                Supports Multimodality
-                            </label>
-                            <div class="form-text">Enable if this model supports images and other media types.</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
-                            <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
-                            <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
-                        </div>
-                    </div>
-                </div>
+            <div class="mb-3">
+                <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
+                <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
+                <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
             </div>
         `;
 
         modelIdContainer.innerHTML = inputHtml;
     }
-
-    // Reset checkboxes and add event listener for custom model toggle
-    setTimeout(() => {
-        const agenticCheckbox = document.getElementById('third-party-model-supports-agentic');
-        const clicksCheckbox = document.getElementById('third-party-model-supports-clicks');
-        const isCustomCheckbox = document.getElementById('third-party-model-is-custom');
-        const customModelConfigContainer = document.getElementById('custom-model-config-container');
-
-        if (agenticCheckbox) agenticCheckbox.checked = false;
-        if (clicksCheckbox) clicksCheckbox.checked = false;
-        if (isCustomCheckbox) {
-            isCustomCheckbox.checked = false;
-            isCustomCheckbox.addEventListener('change', function() {
-                if (customModelConfigContainer) {
-                    customModelConfigContainer.style.display = this.checked ? 'block' : 'none';
-                }
-            });
-        }
-    }, 100);
 
     // Reset the modal title and button text in case it was changed by showEditModelModal
     document.getElementById('add-third-party-model-modal-label').textContent = 'Add Model';
@@ -714,9 +627,6 @@ function addModel() {
     const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
     const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
 
-    // Check if custom model configuration is enabled
-    const isCustomModel = document.getElementById('third-party-model-is-custom').checked;
-
     // Check if we're using a select element (combobox) or an input field
     if (modelIdElement.tagName === 'SELECT') {
         modelId = modelIdElement.value.trim();
@@ -741,15 +651,13 @@ function addModel() {
         );
 
         if (!modelExists) {
-            // Create a ModelConfig object with the selected capabilities
             const modelConfig = {
                 model_name: modelId,
                 supports_agentic: supportsAgentic,
                 supports_clicks: supportsClicks
             };
 
-            // Add custom model configuration if enabled
-            if (isCustomModel) {
+            if (!hasPredefinedModels(providerId)) {
                 const customApiKey = document.getElementById('custom-model-api-key').value.trim();
                 const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
                 const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
