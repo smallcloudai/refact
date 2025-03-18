@@ -16,7 +16,7 @@ import {
   type ScrollAreaProps,
 } from "./ScrollArea";
 import { useSpaceCalculator } from "./useSapceCalculator";
-import { atBottom, overflowing } from "./utils";
+import { atBottom, atTop, overflowing } from "./utils";
 import { FollowButton } from "./FollowButton";
 
 /**
@@ -115,6 +115,7 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
     dispatch({ type: "set_bottom", payload: bottomRef });
   }, [dispatch]);
 
+  // TODO: this could be replace with an intersection?
   useEffect(() => {
     if (
       state.scrollRef?.current &&
@@ -126,10 +127,7 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
       overflowing(state.scrollRef.current) &&
       !atBottom(state.scrollRef.current)
     ) {
-      console.log("scrolling from bottom");
-      // this fights the user?
-      // maybe track if it should scroll?
-      // dispatch({ type: "set_scrolled", payload: true });
+      dispatch({ type: "set_scrolled", payload: true });
       state.anchorRef.current.scrollIntoView(state.anchorProps ?? undefined);
     }
   }, [
@@ -165,7 +163,13 @@ export const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
       type: "set_anchor_props",
       payload: { behavior, block, inline },
     });
+    dispatch({ type: "set_scrolled", payload: false });
   }, [dispatch, behavior, block, inline]);
+  useEffect(() => {
+    if (state.mode !== "follow") return;
+    console.log("anchor scroll");
+    anchorRef.current?.scrollIntoView({ behavior, block, inline });
+  }, [behavior, block, inline, state.mode]);
 
   return <Box {...props} ref={anchorRef} />;
 };

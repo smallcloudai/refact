@@ -11,5 +11,10 @@ export function overflowing(element: HTMLDivElement | null) {
 export function atBottom(element: HTMLDivElement | null) {
   if (element === null) return true;
   const { scrollHeight, scrollTop, clientHeight } = element;
-  return Math.abs(scrollHeight - (scrollTop + clientHeight)) <= 1;
+  return Math.abs(scrollHeight - (scrollTop + clientHeight)) <= 16;
+}
+
+export function atTop(element: HTMLDivElement | null) {
+  if (element === null) return true;
+  return element.scrollTop === 0;
 }
