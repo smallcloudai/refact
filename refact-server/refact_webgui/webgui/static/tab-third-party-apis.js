@@ -897,13 +897,6 @@ function updateModel() {
             return;
         }
 
-        if (!customApiKey) {
-            const error_message = "API Key is required for custom model configuration";
-            console.error(error_message);
-            general_error(error_message);
-            return;
-        }
-
         if (isNaN(customNCtx) || customNCtx < 1024) {
             const error_message = "Context size must be a valid number greater than or equal to 1024";
             console.error(error_message);
