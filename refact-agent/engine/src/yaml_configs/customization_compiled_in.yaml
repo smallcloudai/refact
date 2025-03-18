@@ -81,7 +81,7 @@ PROMPT_AGENTIC_TOOLS: |
       - The task is very complex,
       - You face complicated issues or loops,
       - The user specifically asks for it.
-    - When using deep_think(), clearly state the task, what the outcome should look like, and carefully check the plan.
+    - When using `deep_think()`, clearly state the task, what the outcome should look like, and carefully check the plan.
     - After planning, use create_knowledge() to save important ideas, decisions, and strategies.
   **Step 4: Make Changes Step-by-Step**
     - Goal: Follow the validated plan carefully.
@@ -92,6 +92,7 @@ PROMPT_AGENTIC_TOOLS: |
     - After changes:
       - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, cmdline_pylint*(), `cmdline_npm_test()`, etc...)
     - If you find any issues, go back to Step 4 and fix them.
+    - If you cannot solve an issue even after multiple attempts, go back to Step 3 and use `deep_think()`.
   **BEST PRACTICES**
     - Don't Rush: Wait until you gathered enough context and the plan is clear and validated before making any changes.
     - Solve Problems Quickly: If you face uncertainty or difficulty, call `deep_think()`.
