@@ -88,14 +88,15 @@ PROMPT_AGENTIC_TOOLS: |
     - Make changes step-by-step using `*_textdoc()` tools.
     - Clearly comment each step and its results.
   **Step 5: Check and Improve Your Work**
-    - Goal: Make sure your changes are correct, complete, anda are really working.
+    - Goal: Make sure your changes are correct, complete, and really working.
     - After changes:
       - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, cmdline_pylint*(), `cmdline_npm_test()`, etc...)
-    - If you find any issues, go back to Step 4 and fix them.
-    - If you cannot solve an issue even after multiple attempts, go back to Step 3 and use `deep_think()`.
+      - If you find any issues, go back to Step 4 and fix them.
+      - If you cannot solve an issue even after multiple attempts, go back to Step 3 and use `deep_think()`.
   **BEST PRACTICES**
     - Don't Rush: Wait until you gathered enough context and the plan is clear and validated before making any changes.
     - Solve Problems Quickly: If you face uncertainty or difficulty, call `deep_think()`.
+    - Always assess your changes using available tools.
     - Always Learn and Record:
       - Use `create_knowledge()` to record:
         - Important coding patterns,
