@@ -29,7 +29,6 @@ export const selectThreadMaximumTokens = (state: RootState) =>
   state.chat.thread.currentMaximumContextTokens;
 export const selectThreadCurrentMessageTokens = (state: RootState) =>
   state.chat.thread.currentMessageContextTokens;
-export const selectThreadUsage = (state: RootState) => state.chat.thread.usage;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;

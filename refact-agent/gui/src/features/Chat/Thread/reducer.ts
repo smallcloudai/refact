@@ -46,7 +46,6 @@ import {
   commandsApi,
   DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
-  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -198,10 +197,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = true;
     state.waiting_for_response = false;
     state.thread.messages = messages;
-    // maybe update thread usage here.
-    if (isChatResponseChoice(action.payload) && action.payload.usage) {
-      state.thread.usage = action.payload.usage;
-    }
+    // // maybe update thread usage here.
+    // if (isChatResponseChoice(action.payload) && action.payload.usage) {
+    //   state.thread.usage = action.payload.usage;
+    // }
     if (
       isUserResponse(action.payload) &&
       action.payload.compression_strength &&

@@ -22,7 +22,6 @@ const MockedStore: React.FC<{
   threadMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
 }> = ({
-  usage,
   threadMaximumContextTokens,
   currentMessageContextTokens,
   isInline = false,
@@ -55,7 +54,6 @@ const MockedStore: React.FC<{
         },
         currentMaximumContextTokens: threadMaximumContextTokens,
         currentMessageContextTokens,
-        usage,
       },
     },
   });

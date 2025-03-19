@@ -24,7 +24,6 @@ import {
   selectIsWaiting,
   selectMessages,
   selectThread,
-  selectThreadUsage,
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
@@ -34,6 +33,7 @@ import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -48,7 +48,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
-  const threadUsage = useAppSelector(selectThreadUsage);
+  const { shouldShow } = useUsageCounter();
   const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
@@ -114,7 +114,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         {messages.length === 0 && <PlaceHolderText />}
         {renderMessages(messages, onRetryWrapper, isWaiting)}
         <UncommittedChangesWarning />
-        {threadUsage && messages.length > 0 && <UsageCounter />}
+        {shouldShow && <UsageCounter />}
         <Container py="4">
           <Spinner
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}

@@ -23,6 +23,7 @@ export type LspChatMessage =
       thinking_blocks?: ThinkingBlock[];
       tool_calls?: ToolCall[];
       tool_call_id?: string;
+      usage?: Usage;
     }
   | UserMessage
   | { role: "tool"; content: ToolResult["content"]; tool_call_id: string };

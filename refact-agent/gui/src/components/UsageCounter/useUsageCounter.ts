@@ -1,21 +1,30 @@
 import { useEffect, useMemo } from "react";
 import {
   selectChatId,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
   selectThreadMaximumTokens,
-  selectThreadUsage,
   setIsNewChatCreationMandatory,
   setIsNewChatSuggested,
   // setIsNewChatSuggestionRejected,
 } from "../../features/Chat";
 import { useAppDispatch, useAppSelector } from "../../hooks";
-import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens";
+import {
+  calculateUsageInputTokens,
+  mergeUsages,
+} from "../../utils/calculateUsageInputTokens";
+import { isAssistantMessage } from "../../services/refact";
 
 export function useUsageCounter() {
   const dispatch = useAppDispatch();
 
   const chatId = useAppSelector(selectChatId);
-
-  const currentThreadUsage = useAppSelector(selectThreadUsage);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const messages = useAppSelector(selectMessages);
+  const assistantMessages = messages.filter(isAssistantMessage);
+  const currentThreadUsage = mergeUsages(assistantMessages.map((m) => m.usage));
   const currentThreadMaximumContextTokens = useAppSelector(
     selectThreadMaximumTokens,
   );
@@ -32,22 +41,18 @@ export function useUsageCounter() {
   }, [currentThreadUsage]);
 
   const isOverflown = useMemo(() => {
-    if (
+    return !!(
       currentThreadMaximumContextTokens &&
       totalInputTokens > currentThreadMaximumContextTokens
-    )
-      return true;
-    return false;
+    );
   }, [totalInputTokens, currentThreadMaximumContextTokens]);
 
   const isWarning = useMemo(() => {
     if (isOverflown) return false;
-    if (
+    return !!(
       currentThreadMaximumContextTokens &&
       totalInputTokens > currentThreadMaximumContextTokens * 0.75
-    )
-      return true;
-    return false;
+    );
   }, [isOverflown, totalInputTokens, currentThreadMaximumContextTokens]);
 
   useEffect(() => {
@@ -65,11 +70,17 @@ export function useUsageCounter() {
         value: isOverflown,
       }),
     ];
+    // src/components/UsageCounter/UsageCounter.stories.tsx:58:9
 
     actions.forEach((action) => dispatch(action));
   }, [dispatch, chatId, isWarning, isOverflown]);
 
+  const shouldShow = useMemo(() => {
+    return messages.length > 0 && !isStreaming && !isWaiting;
+  }, [messages, isStreaming, isWaiting]);
+
   return {
+    shouldShow,
     currentThreadUsage,
     totalInputTokens,
     isOverflown,
