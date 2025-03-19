@@ -56,9 +56,13 @@ fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettin
         }
     };
 
+    let mut final_content = content.clone();
+    if !final_content.ends_with('\n') {
+        final_content.push('\n');
+    }
     Ok(ToolCreateTextDocArgs {
         path,
-        content: content.clone(),
+        content: final_content,
     })
 }
 
