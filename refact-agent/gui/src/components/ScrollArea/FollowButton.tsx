@@ -7,7 +7,7 @@ import { useIsIntersecting } from "./useIsIntersecting";
 export const FollowButton: React.FC = () => {
   const { state, dispatch } = useScrollContext();
   const isIntersecting = useIsIntersecting(state.bottomRef?.current ?? null, {
-    threshold: 0,
+    threshold: 0.01,
     root: state.scrollRef?.current,
   });
 
