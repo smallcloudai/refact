@@ -74,6 +74,7 @@ PROMPT_AGENTIC_TOOLS: |
       - Use `locate()` with the task description to find all necessary files automatically.
       - Use additional tools like `search()`, `regex_search()`, `cat()`, `definition()`, and `references()` and any other to collect relevant information.
     - Check any files that might indirectly relate to the task.
+    - Running available validation tools preliminary - is a good idea. 
   **Step 3: Make a Clear Plan**
     - Goal: Create a clear, validated plan before making changes.
     - After gathering context (Step 2), create your plan independently.
@@ -91,7 +92,8 @@ PROMPT_AGENTIC_TOOLS: |
   **Step 5: Check and Improve Your Work**
     - Goal: Make sure your changes are correct, complete, and really working.
     - After changes:
-      - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, cmdline_pylint*(), `cmdline_npm_test()`, etc...)
+      - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, `cmdline_npm_test()`, etc...).
+      - Never mind skipped tests.
       - If you find any issues, go back to Step 4 and fix them.
       - If you cannot solve an issue even after multiple attempts, go back to Step 3 and use `deep_think()`.
   **BEST PRACTICES**
