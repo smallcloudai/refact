@@ -114,7 +114,7 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
   }, [dispatch]);
 
   const nearBottom = useIsIntersecting(bottomRef.current, {
-    threshold: 0.5,
+    threshold: 1,
     root: state.scrollRef?.current,
   });
 
@@ -127,10 +127,7 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
       height &&
       !nearBottom
     ) {
-      state.bottomRef.current.scrollIntoView({
-        ...state.anchorProps,
-        block: "end",
-      });
+      state.anchorRef.current.scrollIntoView(state.anchorProps ?? undefined);
       dispatch({ type: "set_scrolled", payload: true });
     }
   }, [
@@ -143,6 +140,7 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
     state.innerRef,
     dispatch,
     nearBottom,
+    state.scrolled,
   ]);
 
   return <Box {...props} height={height + "px"} ref={bottomRef} />;
