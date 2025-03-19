@@ -208,7 +208,7 @@ function renderMessages(
           key={`${key}-anchor`}
           behavior="smooth"
           block="start"
-          my="-2"
+          // my="-2"
         />
       ),
       <UserInput onRetry={onRetry} key={key} messageIndex={index}>

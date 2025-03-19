@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useDeferredValue } from "react";
 import { useResizeObserver } from "../../hooks";
 
 function calculateSpace(
@@ -20,6 +20,8 @@ export function useSpaceCalculator(
   bottomElem?: HTMLElement | null,
 ) {
   const [height, setHeight] = useState<number>(bottomElem?.clientHeight ?? 0);
+  // smooths out some of the jumps in the height
+  const deferredHeight = useDeferredValue(height);
   const calculateAndSetSpace = useCallback(() => {
     if (!scrollElem || !bottomElem || !anchorElem) {
       return;
@@ -32,5 +34,5 @@ export function useSpaceCalculator(
   useEffect(() => {
     calculateAndSetSpace();
   }, [calculateAndSetSpace]);
-  return height;
+  return deferredHeight;
 }

@@ -26,7 +26,7 @@ export const FollowButton: React.FC = () => {
     },
     [state.scrollRef, state.bottomRef, state.mode, state.scrolled],
   );
-
+  // TODO: useIsIntersecting hook
   useEffect(() => {
     const observer = new IntersectionObserver(followFn, {
       root: state.scrollRef?.current,
@@ -38,9 +38,7 @@ export const FollowButton: React.FC = () => {
     }
 
     return () => {
-      if (state.bottomRef?.current) {
-        observer.unobserve(state.bottomRef.current);
-      }
+      observer.disconnect();
     };
   });
 

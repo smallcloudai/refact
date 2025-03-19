@@ -16,8 +16,8 @@ import {
   type ScrollAreaProps,
 } from "./ScrollArea";
 import { useSpaceCalculator } from "./useSapceCalculator";
-import { atBottom, atTop, overflowing } from "./utils";
 import { FollowButton } from "./FollowButton";
+import { useIsIntersecting } from "./useIsIntersecting";
 
 /**
  * Check list
@@ -72,14 +72,14 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
 
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
-      if (state.follow && event.deltaY < 0) {
+      if (event.deltaY < 0) {
         dispatch({ type: "set_mode", payload: "manual" });
         dispatch({ type: "set_follow", payload: false });
         dispatch({ type: "set_scrolled", payload: true });
       }
       props.onWheel?.(event);
     },
-    [props, state.follow],
+    [props],
   );
 
   return (
@@ -92,7 +92,7 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
       >
         <Box ref={innerRef}>
           {children}
-          <BottomSpace my="-2" />
+          <BottomSpace />
         </Box>
         <FollowButton />
       </BaseScrollArea>
@@ -115,29 +115,36 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
     dispatch({ type: "set_bottom", payload: bottomRef });
   }, [dispatch]);
 
-  // TODO: this could be replace with an intersection?
+  const nearBottom = useIsIntersecting(bottomRef.current, {
+    threshold: 1,
+    root: state.scrollRef?.current,
+  });
+
   useEffect(() => {
     if (
       state.scrollRef?.current &&
       state.anchorRef?.current &&
-      // !state.scrolled &&
+      state.bottomRef?.current &&
       state.mode === "user-message" &&
-      !state.scrolled &&
       height &&
-      overflowing(state.scrollRef.current) &&
-      !atBottom(state.scrollRef.current)
+      !nearBottom
     ) {
+      state.bottomRef.current.scrollIntoView({
+        ...state.anchorProps,
+        block: "end",
+      });
       dispatch({ type: "set_scrolled", payload: true });
-      state.anchorRef.current.scrollIntoView(state.anchorProps ?? undefined);
     }
   }, [
     state.scrollRef,
-    state.scrolled,
     height,
     state.anchorRef,
     state.anchorProps,
+    state.bottomRef,
     state.mode,
+    state.innerRef,
     dispatch,
+    nearBottom,
   ]);
 
   return <Box {...props} height={height + "px"} ref={bottomRef} />;
@@ -165,11 +172,11 @@ export const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
     });
     dispatch({ type: "set_scrolled", payload: false });
   }, [dispatch, behavior, block, inline]);
+
   useEffect(() => {
-    if (state.mode !== "follow") return;
-    console.log("anchor scroll");
+    if (state.mode !== "user-message" && !state.scrolled) return;
     anchorRef.current?.scrollIntoView({ behavior, block, inline });
-  }, [behavior, block, inline, state.mode]);
+  }, [behavior, block, dispatch, inline, state.mode, state.scrolled]);
 
   return <Box {...props} ref={anchorRef} />;
 };
