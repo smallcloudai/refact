@@ -5,6 +5,7 @@ use tracing::error;
 use std::time::Instant;
 use serde::{Serialize, Deserialize};
 use crate::call_validation::{ChatMessage, ChatContent, ContextFile, SamplingParameters};
+use crate::nicer_logs::first_n_chars;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
 use crate::scratchpads::token_count_cache::TokenCountCache;
 
@@ -317,7 +318,7 @@ fn replace_broken_tool_call_messages(
                 match serde_json::from_str::<HashMap<String, Value>>(&tc.function.arguments) {
                     Ok(_) => None,
                     Err(err) => {
-                        Some(format!("broken {}({}): {}", tc.function.name, tc.function.arguments, err))
+                        Some(format!("broken {}({}): {}", tc.function.name, first_n_chars(&tc.function.arguments, 100), err))
                     }
                 }
             }).filter_map(|x| x).collect::<Vec<_>>();

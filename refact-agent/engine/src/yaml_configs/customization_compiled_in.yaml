@@ -118,6 +118,7 @@ PROMPT_AGENTIC_TOOLS: |
 
   %PROJECT_SUMMARY%
   
+  **Always test you solutions!**
   **Clearly comment before each action.**
   **Document results carefully.**
   **Follow order of the steps without skipping them.**
