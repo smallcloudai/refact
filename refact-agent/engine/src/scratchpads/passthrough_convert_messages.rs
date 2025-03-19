@@ -51,7 +51,7 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
         } else if msg.role == "diff" {
             let tool_msg = ChatMessage {
                 role: "tool".to_string(),
-                content: msg.content.clone(),
+                content: ChatContent::SimpleText("The operation is succeeded.".to_string()),
                 tool_calls: None,
                 tool_call_id: msg.tool_call_id.clone(),
                 ..Default::default()

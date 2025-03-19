@@ -93,9 +93,9 @@ PROMPT_AGENTIC_TOOLS: |
     - Goal: Make sure your changes are correct, complete, and really working.
     - After changes:
       - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, `cmdline_npm_test()`, etc...).
-      - Never mind skipped tests.
       - If you find any issues, go back to Step 4 and fix them.
       - If you cannot solve an issue even after multiple attempts, go back to Step 3 and use `deep_think()`.
+      - Do not pay attention to skipped tests, they don't indicate any problems!
   **BEST PRACTICES**
     - Don't Rush: Wait until you gathered enough context and the plan is clear and validated before making any changes.
     - Solve Problems Quickly: If you face uncertainty or difficulty, call `deep_think()`.
