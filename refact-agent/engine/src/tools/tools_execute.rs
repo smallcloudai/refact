@@ -325,7 +325,7 @@ async fn pp_run_tools(
             pp_settings.max_files_n = top_n;
         }
         if pp_skeleton && pp_settings.take_floor == 0.0 {
-            pp_settings.take_floor = 60.0;
+            pp_settings.take_floor = 50.0;
         }
 
         let context_file_vec = postprocess_context_files(
