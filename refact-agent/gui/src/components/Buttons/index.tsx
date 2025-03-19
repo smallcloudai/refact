@@ -6,6 +6,7 @@ export {
   RightButtonGroup,
   AgentUsageLinkButton,
   AgentIntegrationsButton,
-  ThinkingButton,
 } from "./Buttons";
+
+export { ThinkingButton } from "./ThinkingButton";
 export { FadedButton } from "./FadedButton";
