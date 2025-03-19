@@ -108,3 +108,13 @@ export function stubResizeObserver() {
  */
 export const repeat = (n: number) =>
   Array.from({ length: n }).map((_d, i) => i + 1);
+
+export function stubIntersectionObserver() {
+  const mockIntersectionObserver = vi.fn();
+  mockIntersectionObserver.mockReturnValue({
+    observe: () => null,
+    unobserve: () => null,
+    disconnect: () => null,
+  });
+  vi.stubGlobal("IntersectionObserver", mockIntersectionObserver);
+}
