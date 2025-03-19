@@ -184,7 +184,7 @@ pub fn try_get_compression_from_prompt(
     let big_json: serde_json::Value = if prompt.starts_with("PASSTHROUGH ") {
         serde_json::from_str( &prompt[12..]).unwrap()
     } else {
-        serde_json::from_str(&prompt).unwrap()
+        return json!(CompressionStrength::Absent);
     };
     if let Some(compression_strength) = big_json.get("compression_strength") {
         compression_strength.clone()

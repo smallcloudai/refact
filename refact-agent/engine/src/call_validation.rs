@@ -52,6 +52,7 @@ pub struct SamplingParameters {
     #[serde(default)]
     pub stop: Vec<String>,
     pub n: Option<usize>,
+    #[serde(default)]
     pub boost_reasoning: bool,
     // NOTE: use the following arguments for direct API calls
     #[serde(default)]

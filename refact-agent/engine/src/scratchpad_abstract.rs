@@ -25,6 +25,7 @@ impl FinishReason {
             "" => FinishReason::None,
             "stop" => FinishReason::Stop,
             "stop-eot" => FinishReason::Stop,
+            "stop-lf" => FinishReason::Stop,
             "tool_calls" => FinishReason::Stop,
             "length" => FinishReason::Length,
             "scratchpad-stop" => FinishReason::ScratchpadStop,
