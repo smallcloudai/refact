@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
+use serde_inline_default::serde_inline_default;
 use serde_json::Value;
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
@@ -9,16 +10,22 @@ use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, s
 use crate::integrations::docker::docker_container_manager::Port;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 
-
+#[serde_inline_default]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsIsolation {
     pub container_workspace_folder: String,
     pub docker_image_id: String,
+    #[serde(default)]
     pub docker_network: String,
     #[serde(serialize_with = "serialize_ports", deserialize_with = "deserialize_ports")]
+    #[serde(default)]
     pub ports: Vec<Port>,
     #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub keep_containers_alive_for_x_minutes: u64,
+    #[serde_inline_default("sh".to_string())]
+    pub docker_entrypoint: String,
+    #[serde(default)]
+    pub docker_extra_params: Vec<String>,
 }
 
 #[derive(Clone, Default)]
@@ -73,6 +80,13 @@ fields:
   ports:
     f_type: string_long
     f_desc: "Comma separated published:target notation for ports to publish, example '8080:3000,5000:5432'"
+  docker_entrypoint:
+    f_type: string_long
+    f_desc: "The entrypoint to use in the Docker container. If empty, use the default entrypoint for the container."
+    f_default: "sh"
+  docker_extra_params:
+    f_type: string_array
+    f_desc: "Extra parameters to pass to the Docker command."
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false

@@ -95,6 +95,16 @@ export type LspChatMode =
   | "CONFIGURE"
   | "PROJECT_SUMMARY";
 
+export function isLspChatMode(mode: string): mode is LspChatMode {
+  return (
+    mode === "NO_TOOLS" ||
+    mode === "EXPLORE" ||
+    mode === "AGENT" ||
+    mode === "CONFIGURE" ||
+    mode === "PROJECT_SUMMARY"
+  );
+}
+
 export function chatModeToLspMode({
   toolUse,
   mode,

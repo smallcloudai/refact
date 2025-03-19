@@ -23,7 +23,7 @@ function isOverflowing(element: HTMLDivElement | null) {
 }
 
 export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
-  const [followRef, setFollowRef] = useState(true);
+  const [followRef, setFollowRef] = useState(false);
 
   const [isScrolledTillBottom, setIsScrolledTillBottom] = useState(true);
 
@@ -37,10 +37,6 @@ export function useAutoScroll({ scrollRef }: useAutoScrollProps) {
         scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
     }
   }, [scrollRef]);
-
-  useEffect(() => {
-    scrollIntoView();
-  }, [scrollRef, scrollIntoView]);
 
   const handleScrollButtonClick = useCallback(() => {
     setFollowRef(isStreaming);

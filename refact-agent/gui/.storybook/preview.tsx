@@ -4,7 +4,14 @@ import "../src/lib/render/web.css";
 
 import { initialize, mswLoader } from "msw-storybook-addon";
 
-initialize();
+initialize({
+  onUnhandledRequest: (request, print) => {
+    if (request.url.startsWith("http://localhost:6006/src/")) {
+      return;
+    }
+    print.warning();
+  },
+});
 
 const preview: Preview = {
   parameters: {

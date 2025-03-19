@@ -9,6 +9,7 @@ import {
   chatGenerateTitleThunk,
   ChatThread,
   doneStreaming,
+  isLspChatMode,
   maybeAppendToolCallResultFromIdeToMessages,
   removeChatFromCache,
   restoreChat,
@@ -75,6 +76,11 @@ export const historySlice = createSlice({
       if (action.payload.messages.length === 0) return state;
       const now = new Date().toISOString();
 
+      const updatedMode =
+        action.payload.mode && !isLspChatMode(action.payload.mode)
+          ? "AGENT"
+          : action.payload.mode;
+
       const chat: ChatHistoryItem = {
         ...action.payload,
         title: action.payload.title
@@ -86,6 +92,7 @@ export const historySlice = createSlice({
         integration: action.payload.integration,
         currentMaximumContextTokens: action.payload.currentMaximumContextTokens,
         isTitleGenerated: action.payload.isTitleGenerated,
+        mode: updatedMode,
       };
 
       const messageMap = {
