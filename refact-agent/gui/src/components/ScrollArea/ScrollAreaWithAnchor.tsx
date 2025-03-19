@@ -170,7 +170,7 @@ export const ScrollAnchor: React.FC<ScrollAnchorProps> = ({
   }, [dispatch, behavior, block, inline]);
 
   useEffect(() => {
-    if (state.mode !== "user-message" && !state.scrolled) return;
+    if (state.mode !== "user-message" || state.scrolled) return;
     anchorRef.current?.scrollIntoView({ behavior, block, inline });
   }, [behavior, block, dispatch, inline, state.mode, state.scrolled]);
 
