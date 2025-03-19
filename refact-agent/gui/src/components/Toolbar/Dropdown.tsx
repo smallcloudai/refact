@@ -1,5 +1,9 @@
 import React, { useCallback, useMemo } from "react";
-import { selectHost, type Config } from "../../features/Config/configSlice";
+import {
+  selectHost,
+  selectKnowledgeFeature,
+  type Config,
+} from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
   useConfig,
@@ -64,6 +68,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const dispatch = useAppDispatch();
   const logout = useLogout();
   const { addressURL } = useConfig();
+  const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
   const { startPollingForUser } = useAgentUsage();
 
   const bugUrl = linkForBugReports(host);
@@ -158,9 +163,13 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <PuzzleIcon /> Set up Agent Integrations
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item onSelect={() => handleNavigation("knowledge list")}>
-          Manage Knowledge
-        </DropdownMenu.Item>
+        {knowledgeEnabled && (
+          <DropdownMenu.Item
+            onSelect={() => handleNavigation("knowledge list")}
+          >
+            Manage Knowledge
+          </DropdownMenu.Item>
+        )}
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           {refactProductType} Settings
