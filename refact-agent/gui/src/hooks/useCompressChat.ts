@@ -32,6 +32,7 @@ export function useCompressChat() {
       const messages: ChatMessages = [
         { role: "user", content: result.data.trajectory },
       ];
+      // TODO: better title?
       const action = newChatAction({ messages });
       dispatch(action);
       dispatch(setSendImmediately(true));
