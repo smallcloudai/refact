@@ -5,10 +5,7 @@ import { ChatMessages, knowledgeApi } from "../services/refact";
 import { newChatAction } from "../events";
 import { useAppDispatch } from "./useAppDispatch";
 import { setError } from "../features/Errors/errorsSlice";
-import {
-  createNewChatWithMessagesToBeSent,
-  setIsWaitingForResponse,
-} from "../features/Chat";
+import { setIsWaitingForResponse, setSendImmediately } from "../features/Chat";
 
 export function useCompressChat() {
   const dispatch = useAppDispatch();
@@ -35,8 +32,9 @@ export function useCompressChat() {
       const messages: ChatMessages = [
         { role: "user", content: result.data.trajectory },
       ];
-      const action = createNewChatWithMessagesToBeSent({ messages });
+      const action = newChatAction({ messages });
       dispatch(action);
+      dispatch(setSendImmediately(true));
     }
   }, [submit, thread.messages, thread.project_name, dispatch]);
 
