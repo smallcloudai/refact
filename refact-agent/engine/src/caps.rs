@@ -8,6 +8,7 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_inline_default::serde_inline_default;
 use serde_json::Value;
 use tokio::sync::RwLock as ARwLock;
 use url::Url;
@@ -24,15 +25,36 @@ const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct ModelRecord {
+#[serde_inline_default]
+pub struct BaseModelRecord {
     #[serde(default)]
     pub n_ctx: usize,
+
+    #[serde(default)]
+    pub endpoint: String,
+    #[serde_inline_default("openai".to_string())]
+    pub endpoint_style: String,
+    #[serde(default)]
+    pub api_key: String,
+
+    #[serde(default)]
+    pub support_metadata: bool,
+    #[serde(default)]
+    pub similar_models: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct ChatModelRecord {
+    #[serde(flatten)]
+    pub base: BaseModelRecord,
+
     #[serde(default)]
     pub supports_scratchpads: HashMap<String, Value>,
     #[serde(default)]
     pub default_scratchpad: String,
     #[serde(default)]
-    pub similar_models: Vec<String>,
+    pub tokenizer: String,
+
     #[serde(default)]
     pub supports_tools: bool,
     #[serde(default)]
@@ -47,173 +69,141 @@ pub struct ModelRecord {
     pub supports_boost_reasoning: bool,
     #[serde(default)]
     pub default_temperature: Option<f32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CompletionModelRecord {
+    #[serde(flatten)]
+    pub base: BaseModelRecord,
+
+    #[serde(default)]
+    pub supports_scratchpads: HashMap<String, Value>,
+    #[serde(default)]
+    pub default_scratchpad: String,
     #[serde(default)]
     pub tokenizer: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct EmbeddingModelRecord {
+    #[serde(flatten)]
+    pub base: BaseModelRecord,
+    pub name: String,
+
+    pub embedding_size: i32,
+    pub embedding_batch: usize,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ModelType {
-    CodeCompletion,
-    MultilineCodeCompletion,
+    Completion,
+    MultilineCompletion,
     Chat,
     Embedding,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ModelsOnly {
-    pub code_completion_models: IndexMap<String, ModelRecord>,
-    pub code_chat_models: IndexMap<String, ModelRecord>,
-    pub tokenizer_rewrite_path: HashMap<String, String>,
-}
-
-fn default_tokenizer_path_template() -> String {
-    String::from("https://huggingface.co/$MODEL/resolve/main/tokenizer.json")
-}
-
-fn default_telemetry_basic_dest() -> String {
-    String::from("https://www.smallcloud.ai/v1/telemetry-basic")
-}
-
-fn default_telemetry_basic_retrieve_my_own() -> String {
-    String::from("https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats")
-}
-
-fn default_endpoint_style() -> String {
-    String::from("openai")
-}
-
-fn default_code_completion_n_ctx() -> usize {
-    2048
-}
-
-fn default_endpoint_embeddings_style() -> String {
-    String::from("openai")
-}
-
-fn default_support_metadata() -> bool { false }
-
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde_inline_default]
 pub struct CodeAssistantCaps {
-    #[serde(default)]
-    pub providers: IndexMap<String, CapsProvider>,
-
-    #[serde(default = "default_tokenizer_path_template")]
-    pub tokenizer_path_template: String,
-    #[serde(default)]
-    pub tokenizer_rewrite_path: HashMap<String, String>, // TO-DO, remove this
-    
-    #[serde(default = "default_telemetry_basic_dest")]
+    #[serde_inline_default("https://www.smallcloud.ai/v1/telemetry-basic".to_string())]
     pub telemetry_basic_dest: String,
-    #[serde(default = "default_telemetry_basic_retrieve_my_own")]
+    #[serde_inline_default("https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string())]
     pub telemetry_basic_retrieve_my_own: String,
 
-    #[serde(default, alias = "completion_model")]
-    pub code_completion_default_model: String,
-    #[serde(default, alias = "completion_provider")]
-    pub code_completion_default_provider: String,
+    #[serde(skip)]
+    pub code_completion_models: IndexMap<String, CompletionModelRecord>,
+    #[serde(skip)]
+    pub code_chat_models: IndexMap<String, ChatModelRecord>,
+    #[serde(skip)]
+    pub embedding_model: EmbeddingModelRecord,
 
-    #[serde(default, alias = "multiline_completion_model")]
-    pub multiline_code_completion_default_model: String,
-    #[serde(default, alias = "multiline_completion_provider")]
-    pub multiline_code_completion_default_provider: String,
-
-    #[serde(default, alias = "chat_model")]
-    pub code_chat_default_model: String,
-    #[serde(default, alias = "chat_provider")]
-    pub code_chat_default_provider: String,
-
-    #[serde(default, alias = "default_embeddings_model")]
-    pub embedding_model: String,
-    #[serde(default, alias = "default_embeddings_provider")]
-    pub embedding_provider: String,
+    #[serde(flatten)]
+    pub default_models: DefaultModels,
     
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
     #[serde(default)]
-    pub code_chat_default_system_prompt: String,
+    pub code_chat_default_system_prompt: String, // Should we get rid of this?
 
     #[serde(default)]
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde_inline_default]
 pub struct CapsProvider {
     #[serde(alias = "cloud_name", default)]
     pub name: String,
 
-    #[serde(default = "default_endpoint_style")]
+    #[serde_inline_default("openai".to_string())]
     pub endpoint_style: String,
-    #[serde(default)]
-    pub chat_endpoint_style: String,
-    #[serde(default = "default_endpoint_style")]
-    pub completion_endpoint_style: String,
-    #[serde(default)]
-    pub endpoint_chat_passthrough: String,
-    #[serde(default = "default_endpoint_embeddings_style")]
-    #[serde(alias = "embedding_endpoint_style")]
-    pub endpoint_embeddings_style: String,
 
     #[serde(default)]
-    pub endpoint_template: String,
+    pub endpoint_template: String, // We can get rid easily of this
     #[serde(default)]
     pub completion_endpoint: String,
-    #[serde(default)]
+    #[serde(default, alias = "endpoint_chat_passthrough")]
     pub chat_endpoint: String,
-    #[serde(default)]
-    #[serde(alias = "embedding_endpoint")]
-    pub endpoint_embeddings_template: String,
+    #[serde(default, alias = "endpoint_embeddings_template")]
+    pub embeddings_endpoint: String,
 
     // default api key is in the command line
     #[serde(default)]
     pub api_key: String,
 
+    #[serde_inline_default(2048)]
+    pub code_completion_n_ctx: usize,
+
     #[serde(default)]
-    #[serde(alias = "size_embeddings")]
+    pub support_metadata: bool,
+
+    #[serde(default)]
+    pub code_completion_models: IndexMap<String, CompletionModelRecord>,
+    #[serde(default)]
+    pub code_chat_models: IndexMap<String, ChatModelRecord>,
+
+    #[serde(default)]
+    pub models_dict_patch: IndexMap<String, Value>, // Used to patch some params from cloud, like n_ctx for pro/free users
+
+    #[serde(flatten)]
+    pub default_models: DefaultModels,
+
+    #[serde(default)]
+    pub embedding_n_ctx: i32,
+    #[serde(default, alias="size_embeddings")]
     pub embedding_size: i32,
     #[serde(default)]
     pub embedding_batch: usize,
 
     #[serde(default)]
-    pub embedding_n_ctx: usize,
-    #[serde(default = "default_code_completion_n_ctx")]
-    #[serde(alias = "completion_n_ctx")]
-    pub code_completion_n_ctx: usize,
-
-    #[serde(default = "default_support_metadata")]
-    pub support_metadata: bool,
-
-    #[serde(default)]
-    pub code_completion_models: IndexMap<String, ModelRecord>,
-    #[serde(default)]
-    pub code_chat_models: IndexMap<String, ModelRecord>,
-    #[serde(default)]
-    pub models_dict_patch: HashMap<String, ModelRecord>,
-
-    #[serde(default)]
-    pub running_models: Vec<String>,  // check there if a model is available or not, not in other places
+    pub running_models: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DefaultModels {
-    #[serde(default, alias = "completion_model")]
-    pub code_completion_default_model: String,
-    #[serde(default, alias = "multiline_completion_model")]
-    pub multiline_code_completion_default_model: String,
-    #[serde(default, alias = "chat_model")]
-    pub code_chat_default_model: String,
+    #[serde(default, alias = "code_completion_default_model")]
+    pub completion_model: String,
+    #[serde(default, alias = "multiline_code_completion_default_model")]
+    pub multiline_completion_model: String,
+    #[serde(default, alias = "code_chat_default_model")]
+    pub chat_model: String,
     #[serde(default, alias = "default_embeddings_model")]
     pub embedding_model: String,
 }
 
-async fn add_providers_d_to_caps(caps: &mut CodeAssistantCaps, config_dir: &Path) -> Vec<YamlError> {
+async fn read_providers_d(
+    prev_providers: Vec<CapsProvider>, 
+    config_dir: &Path
+) -> (Vec<CapsProvider>, Vec<YamlError>) {
     let providers_dir = config_dir.join("providers.d");
+    let mut providers = prev_providers;
     let mut error_log = Vec::new();
 
     let mut entries = match tokio::fs::read_dir(&providers_dir).await {
         Ok(entries) => entries,
         Err(e) => {
             tracing::error!("Failed to read providers directory: {}", e);
-            return error_log;
+            return (providers, error_log);
         }
     };
 
@@ -241,11 +231,6 @@ async fn add_providers_d_to_caps(caps: &mut CodeAssistantCaps, config_dir: &Path
             None => continue,
         };
 
-        if caps.providers.first().map(|(name, _)| name) == Some(&provider_name) {
-            tracing::error!("Main provider '{}' cannot be replaced", provider_name);
-            continue;
-        }
-
         let content = match tokio::fs::read_to_string(&path).await {
             Ok(content) => content,
             Err(e) => {
@@ -258,7 +243,7 @@ async fn add_providers_d_to_caps(caps: &mut CodeAssistantCaps, config_dir: &Path
             }
         };
 
-        let provider: CapsProvider = match serde_yaml::from_str(&content) {
+        let mut provider: CapsProvider = match serde_yaml::from_str(&content) {
             Ok(provider) => provider,
             Err(e) => {
                 error_log.push(YamlError {
@@ -269,44 +254,33 @@ async fn add_providers_d_to_caps(caps: &mut CodeAssistantCaps, config_dir: &Path
                 continue;
             }
         };
+        provider.name = provider_name;
 
-        let default_models: DefaultModels = match serde_yaml::from_str(&content) {
-            Ok(default_models) => default_models,
-            Err(e) => {
-                error_log.push(YamlError {
-                    path: path.to_string_lossy().to_string(),
-                    error_line: e.location().map_or(0, |loc| loc.line()),
-                    error_msg: format!("Failed to parse YAML: {}", e),
-                });
-                continue;
-            }
-        };
-
-        // Override caps default models if specified in the provider.
-        let model_mappings = [
-            (default_models.code_chat_default_model, &mut caps.code_chat_default_model, &mut caps.code_chat_default_provider),
-            (default_models.code_completion_default_model, &mut caps.code_completion_default_model, &mut caps.code_completion_default_provider),
-            (default_models.multiline_code_completion_default_model, &mut caps.multiline_code_completion_default_model, &mut caps.multiline_code_completion_default_provider),
-            (default_models.embedding_model, &mut caps.embedding_model, &mut caps.embedding_provider),
+        let mut models_to_add = vec![
+            &provider.default_models.chat_model,
+            &provider.default_models.completion_model,
+            &provider.default_models.multiline_completion_model,
+            &provider.default_models.embedding_model,
         ];
+        models_to_add.extend(provider.code_chat_models.keys());
+        models_to_add.extend(provider.code_completion_models.keys());
 
-        for (default_model, caps_model, caps_provider) in model_mappings {
-            if !default_model.is_empty() {
-                *caps_model = default_model;
-                *caps_provider = provider_name.clone();
+        for model in models_to_add {
+            if !model.is_empty() && !provider.running_models.contains(model) {
+                provider.running_models.push(model.clone());
             }
         }
 
-        caps.providers.insert(provider_name, provider);
+        providers.push(provider);
     }
 
-    error_log
+    (providers, error_log)
 }
 
-fn parse_from_yaml_or_json<'de, T: Deserialize<'de>>(buffer: &'de str) -> Result<T, String> {
-    match serde_json::from_str::<T>(&buffer) {
+fn parse_from_yaml_or_json(buffer: &str) -> Result<serde_json::Value, String> {
+    match serde_json::from_str::<serde_json::Value>(buffer) {
         Ok(v) => Ok(v),
-        Err(json_err) => match serde_yaml::from_str::<T>(&buffer) {
+        Err(json_err) => match serde_yaml::from_str::<serde_json::Value>(buffer) {
             Ok(v) => Ok(v),
             Err(yaml_err) => {
                 if buffer.trim_start().starts_with(&['{', '[']) {
@@ -319,65 +293,99 @@ fn parse_from_yaml_or_json<'de, T: Deserialize<'de>>(buffer: &'de str) -> Result
     }
 }
 
+fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>) {
+    fn add_provider_details_to_model(base_model_rec: &mut BaseModelRecord, provider: &CapsProvider, model_name: &str) {
+        base_model_rec.api_key = provider.api_key.clone();
+            
+        let endpoint = if provider.completion_endpoint.is_empty() {
+            provider.endpoint_template.clone()
+        } else {
+            provider.completion_endpoint.clone()
+        };
+        base_model_rec.endpoint = endpoint.replace("$MODEL", model_name);
+        base_model_rec.support_metadata = provider.support_metadata;
+        base_model_rec.endpoint_style = provider.endpoint_style.clone();
+    }
+    
+    for mut provider in providers {
+        let provider_name = &provider.name;
+        
+        let completion_models = std::mem::take(&mut provider.code_completion_models);
+        for (model_name, mut model_rec) in completion_models {
+            let model_id = format!("{provider_name}/{model_name}");
+            
+            add_provider_details_to_model(&mut model_rec.base, &provider, &model_name);
+
+            if provider.code_completion_n_ctx > 0 && provider.code_completion_n_ctx < model_rec.base.n_ctx {
+                // model is capable of more, but we may limit it from server or provider, e.x. for latency
+                model_rec.base.n_ctx = provider.code_completion_n_ctx; 
+            }
+            
+            caps.code_completion_models.insert(model_id, model_rec);
+        }
+
+        let chat_models = std::mem::take(&mut provider.code_chat_models);
+        for (model_name, mut model_rec) in chat_models {
+            let model_id = format!("{provider_name}/{model_name}");
+            
+            add_provider_details_to_model(&mut model_rec.base, &provider, &model_name);
+
+            caps.code_chat_models.insert(model_id, model_rec);
+        }
+
+        if !provider.default_models.embedding_model.is_empty() {
+            let endpoint = if provider.embeddings_endpoint.is_empty() {
+                provider.endpoint_template
+            } else {
+                provider.embeddings_endpoint
+            };
+            let endpoint = endpoint.replace("$MODEL", &provider.default_models.embedding_model);
+            caps.embedding_model = EmbeddingModelRecord {
+                name: provider.default_models.embedding_model,
+                base: BaseModelRecord { 
+                    n_ctx: provider.embedding_n_ctx as usize, 
+                    endpoint: endpoint, 
+                    endpoint_style: provider.endpoint_style, 
+                    api_key: provider.api_key, 
+                    support_metadata: provider.support_metadata, 
+                    similar_models: Vec::new(), 
+                },
+                embedding_batch: provider.embedding_batch,
+                embedding_size: provider.embedding_size,
+            };
+        }
+    }
+}
+
 async fn load_caps_from_buf(
     buffer: &str,
     caps_url: &str,
     config_dir: &Path,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
-    let mut caps: CodeAssistantCaps = parse_from_yaml_or_json(buffer)?;
-
-    let main_provider: CapsProvider = parse_from_yaml_or_json(buffer)?;
-    let main_provider_name = main_provider.name.clone();
-    caps.providers.insert(main_provider_name.clone(), main_provider);
-
-    let error_log = add_providers_d_to_caps(&mut caps, config_dir).await;
+    let buffer_value = parse_from_yaml_or_json(buffer)?;
+    let mut caps = serde_json::from_value::<CodeAssistantCaps>(buffer_value.clone())
+        .map_err_with_prefix("Failed to parse caps:")?;
+    let first_provider = serde_json::from_value::<CapsProvider>(buffer_value)
+        .map_err_with_prefix("Failed to parse caps provider:")?;
+    
+    let (mut providers, error_log) = read_providers_d(vec![first_provider], config_dir).await;
     for e in error_log {
         tracing::error!("{e}");
     }
 
-    let known_models: ModelsOnly = serde_json::from_str(&KNOWN_MODELS).map_err(|e| {
-        let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
-        error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
-        format!("failed to parse KNOWN_MODELS: {}", e)
-    })?;
+    populate_with_known_models(&mut providers)?;
+    apply_models_dict_patch(&mut providers);
 
-    let models_to_add = [
-        (caps.code_chat_default_model.clone(), caps.code_chat_default_provider.clone()),
-        (caps.code_completion_default_model.clone(), caps.code_completion_default_provider.clone()),
-        (caps.multiline_code_completion_default_model.clone(), caps.multiline_code_completion_default_provider.clone()),
-        (caps.embedding_model.clone(), caps.embedding_provider.clone()),
-    ];
-    for (model, provider_name) in models_to_add {
-        match get_caps_provider_mut(&mut caps, &provider_name) {
-            Ok(provider) => {
-                if !provider.running_models.contains(&model) {
-                    provider.running_models.push(model.clone());
-                }
-            },
-            Err(e) => tracing::error!("{e}"),
-        };
-    }
-
-    populate_model_dicts(&mut caps, &known_models);
-    apply_models_dict_patch(&mut caps);
-    for (_name, provider) in &mut caps.providers {
+    for provider in &mut providers {
         provider.endpoint_template = relative_to_full_url(caps_url, &provider.endpoint_template)?;
-        provider.endpoint_chat_passthrough = relative_to_full_url(caps_url, &provider.endpoint_chat_passthrough)?;
-        if provider.endpoint_chat_passthrough.is_empty() {
-            provider.endpoint_chat_passthrough = relative_to_full_url(caps_url, &provider.chat_endpoint)?;
-        }
-
-        provider.endpoint_embeddings_template = relative_to_full_url(&caps_url, &provider.endpoint_embeddings_template)?;
-        if provider.embedding_n_ctx == 0 {
-            provider.embedding_n_ctx = 512;
-        }
+        provider.chat_endpoint = relative_to_full_url(caps_url, &provider.chat_endpoint)?;
+        provider.completion_endpoint = relative_to_full_url(caps_url, &provider.completion_endpoint)?;
+        provider.embeddings_endpoint = relative_to_full_url(caps_url, &provider.embeddings_endpoint)?;
     }
-
-    caps.tokenizer_path_template = relative_to_full_url(&caps_url, &caps.tokenizer_path_template)?;
     caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
     
-    
+    add_models_to_caps(&mut caps, providers);
     // info!("caps {} completion models", caps.code_completion_models.len());
     // info!("caps default completion model: \"{}\"", caps.code_completion_default_model);
     // info!("caps {} chat models", caps.code_chat_models.len());
@@ -537,55 +545,59 @@ fn relative_to_full_url(
     }
 }
 
-fn apply_models_dict_patch(caps: &mut CodeAssistantCaps) {
-    fn apply_model_record_patch(rec: &mut ModelRecord, rec_patched: &ModelRecord) {
-        if rec_patched.n_ctx != 0 {
-            rec.n_ctx = rec_patched.n_ctx;
-        }
-        if rec_patched.supports_tools {
-            rec.supports_tools = rec_patched.supports_tools;
-        }
-        if rec_patched.supports_multimodality {
-            rec.supports_multimodality = rec_patched.supports_multimodality;
-        }
-        if rec_patched.supports_tools {
-            rec.supports_tools = rec_patched.supports_tools;
-        }
-    }
-
-    for provider in caps.providers.values_mut() {
+fn apply_models_dict_patch(providers: &mut Vec<CapsProvider>) {
+    for provider in providers {
         for (model_name, rec_patched) in provider.models_dict_patch.iter() {
-            if let Some(rec) = provider.code_completion_models.get_mut(model_name) {
-                apply_model_record_patch(rec, rec_patched);
+            if let Some(completion_rec) = provider.code_completion_models.get_mut(model_name) {
+                if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
+                    completion_rec.base.n_ctx = n_ctx as usize;
+                }
             }
-            if let Some(rec) = provider.code_chat_models.get_mut(model_name) {
-                apply_model_record_patch(rec, rec_patched);
+            
+            if let Some(chat_rec) = provider.code_chat_models.get_mut(model_name) {
+                if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
+                    chat_rec.base.n_ctx = n_ctx as usize;
+                }
+                
+                if let Some(supports_tools) = rec_patched.get("supports_tools").and_then(|v| v.as_bool()) {
+                    chat_rec.supports_tools = supports_tools;
+                }
+                if let Some(supports_multimodality) = rec_patched.get("supports_multimodality").and_then(|v| v.as_bool()) {
+                    chat_rec.supports_multimodality = supports_multimodality;
+                }
             }
         }
     }
 }
 
-fn populate_model_dicts(
-    caps: &mut CodeAssistantCaps,
-    known_models: &ModelsOnly,
-) {
-    // XXX: only patches running models, patch all?
-    for (provider_name, provider) in caps.providers.iter_mut() {
-        for caps_model_name in &provider.running_models {
-            let caps_model_stripped = strip_model_from_finetune(caps_model_name);
+fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), String> {
+    #[derive(Deserialize)]
+    struct KnownModels {
+        code_completion_models: IndexMap<String, CompletionModelRecord>,
+        code_chat_models: IndexMap<String, ChatModelRecord>,
+    }
+    let known_models: KnownModels = serde_json::from_str(KNOWN_MODELS).map_err(|e| {
+        let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
+        error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
+        format!("failed to parse KNOWN_MODELS: {}", e)
+    })?;
 
-            if !provider.code_completion_models.contains_key(&caps_model_stripped) {
+    for provider in providers {
+        for model_name in &provider.running_models {
+            let model_stripped = strip_model_from_finetune(model_name);
+
+            if !provider.code_completion_models.contains_key(&model_stripped) {
                 for (known_model_name, known_model_rec) in &known_models.code_completion_models {
-                    if known_model_name == &caps_model_stripped || known_model_rec.similar_models.contains(&caps_model_stripped) {
-                        provider.code_completion_models.insert(caps_model_name.clone(), known_model_rec.clone());
+                    if known_model_name == &model_stripped || known_model_rec.base.similar_models.contains(&model_stripped) {
+                        provider.code_completion_models.insert(model_name.clone(), known_model_rec.clone());
                     }
                 }
             }
 
-            if!provider.code_chat_models.contains_key(&caps_model_stripped) {
+            if !provider.code_chat_models.contains_key(&model_stripped) {
                 for (known_model_name, known_model_rec) in &known_models.code_chat_models {
-                    if known_model_name == &caps_model_stripped || known_model_rec.similar_models.contains(&caps_model_stripped) {
-                        provider.code_chat_models.insert(caps_model_name.clone(), known_model_rec.clone());
+                    if known_model_name == &model_stripped || known_model_rec.base.similar_models.contains(&model_stripped) {
+                        provider.code_chat_models.insert(model_name.clone(), known_model_rec.clone());
                     }
                 }
             }
@@ -594,17 +606,12 @@ fn populate_model_dicts(
         for model in &provider.running_models {
             if !provider.code_completion_models.contains_key(model) && 
                 !provider.code_chat_models.contains_key(model) &&
-                !(model == &caps.embedding_model && provider_name == &caps.embedding_provider) {
-                tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider_name);
+                !(model == &provider.default_models.embedding_model) {
+                tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
             }
         }
     }
-
-    for tok_rewrite in known_models.tokenizer_rewrite_path.keys() {
-        if !caps.tokenizer_rewrite_path.contains_key(tok_rewrite) {
-            caps.tokenizer_rewrite_path.insert(tok_rewrite.to_string(), known_models.tokenizer_rewrite_path[tok_rewrite].clone());
-        }
-    }
+    Ok(())
 }
 
 pub fn which_model_to_use<'a>(
