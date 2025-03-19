@@ -13,7 +13,7 @@ import { STUB_TOOL_RESPONSE } from "./tools_response";
 import { STUB_SUB_RESPONSE, STUB_SUB_RESPONSE_WITH_STATUS } from "./knowledge";
 import { GoodPollingResponse } from "../services/smallcloud";
 import type { LinksForChatResponse } from "../services/refact/links";
-import { CompressTrajectoryResponse } from "../services/refact/knowledge";
+import { SaveTrajectoryResponse } from "../services/refact/knowledge";
 import { ToolConfirmationResponse } from "../services/refact";
 
 export const goodPing: HttpHandler = http.get(
@@ -183,7 +183,7 @@ export const KnowledgeWithStatus: HttpHandler = http.post(
 export const makeKnowledgeFromChat: HttpHandler = http.post(
   `http://127.0.0.1:8001${KNOWLEDGE_CREATE_URL}`,
   () => {
-    const result: CompressTrajectoryResponse = {
+    const result: SaveTrajectoryResponse = {
       memid: "foo",
       trajectory: "something",
     };
@@ -202,7 +202,7 @@ export const updateKnowledgeUse: HttpHandler = http.post(
       typeof body.memid === "string"
         ? body.memid
         : "foo";
-    const result: CompressTrajectoryResponse = {
+    const result: SaveTrajectoryResponse = {
       memid,
       trajectory: "something",
     };

@@ -23,7 +23,6 @@ import {
   setMemory,
   setVecDbStatus,
 } from "../../features/Knowledge/knowledgeSlice";
-import { build } from "vite";
 
 export type MemdbSubEvent = {
   pubevent_id: number;
