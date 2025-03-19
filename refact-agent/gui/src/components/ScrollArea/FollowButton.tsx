@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { scrollToBottom } from "./utils";
 import { useScrollContext } from "./useScrollContext";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
