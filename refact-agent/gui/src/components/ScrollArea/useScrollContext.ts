@@ -4,7 +4,6 @@ type State = {
   scrollRef: RefObject<HTMLDivElement> | null;
   anchorRef: RefObject<HTMLDivElement> | null;
   bottomRef: RefObject<HTMLDivElement> | null;
-  follow: boolean;
   anchorProps: ScrollIntoViewOptions | null;
   scrolled: boolean;
   mode: "user-message" | "manual" | "follow";
@@ -20,7 +19,6 @@ type Action =
       type: "upsert_refs";
       payload: Partial<State>;
     }
-  | { type: "set_follow"; payload: boolean }
   | { type: "set_anchor_props"; payload: ScrollIntoViewOptions | null }
   | { type: "set_scrolled"; payload: boolean }
   | { type: "set_mode"; payload: State["mode"] };

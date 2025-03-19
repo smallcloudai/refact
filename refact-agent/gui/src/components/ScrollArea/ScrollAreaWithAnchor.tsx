@@ -57,7 +57,6 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     innerRef: innerRef,
     bottomRef: null,
     anchorRef: null,
-    follow: false,
     anchorProps: null,
     scrolled: false,
     mode: "user-message",
@@ -74,7 +73,6 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (event.deltaY < 0) {
         dispatch({ type: "set_mode", payload: "manual" });
-        dispatch({ type: "set_follow", payload: false });
         dispatch({ type: "set_scrolled", payload: true });
       }
       props.onWheel?.(event);
