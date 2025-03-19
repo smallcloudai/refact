@@ -216,7 +216,7 @@ impl Tool for ToolRm {
                 lines_add: "".to_string(),
                 file_name_rename: None,
                 is_file: true,
-                application_details: "File removed".to_string(),
+                application_details: format!("File `{}` removed", corrected_path),
             };
             messages.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "diff".to_string(),

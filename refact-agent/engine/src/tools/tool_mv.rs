@@ -201,7 +201,7 @@ impl Tool for ToolMv {
                             lines_add: src_file_content.clone(),
                             file_name_rename: None,
                             is_file: true,
-                            application_details: format!("File content edited with content from '{}'", src_corrected_path),
+                            application_details: format!("`{}` replaced with `{}`", dst_corrected_path, src_corrected_path),
                         };
                         messages.push(ContextEnum::ChatMessage(ChatMessage {
                             role: "diff".to_string(),
@@ -257,7 +257,7 @@ impl Tool for ToolMv {
                                     lines_add: src_file_content.clone(),
                                     file_name_rename: None,
                                     is_file: true,
-                                    application_details: format!("File content edited with content from '{}'", src_corrected_path),
+                                    application_details: format!("`{}` replaced with `{}`", dst_corrected_path, src_corrected_path),
                                 };
                                 messages.push(ContextEnum::ChatMessage(ChatMessage {
                                     role: "diff".to_string(),
