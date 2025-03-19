@@ -163,6 +163,10 @@ export const upsertToolCall = createAction<
   Parameters<typeof ideToolCallResponse>[0] & { replaceOnly?: boolean }
 >("chatThread/upsertToolCall");
 
+export const createNewChatWithMessagesToBeSent = createAction<{
+  messages: ChatMessages;
+}>("chatThread/createNewChatWithMessagesToBeSent");
+
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;

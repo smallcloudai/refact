@@ -1,11 +1,14 @@
 import { useCallback } from "react";
 import { selectThread } from "../features/Chat/Thread/selectors";
 import { useAppSelector } from "./useAppSelector";
-import { knowledgeApi } from "../services/refact";
+import { ChatMessages, knowledgeApi } from "../services/refact";
 import { newChatAction } from "../events";
 import { useAppDispatch } from "./useAppDispatch";
 import { setError } from "../features/Errors/errorsSlice";
-import { setIsWaitingForResponse } from "../features/Chat";
+import {
+  createNewChatWithMessagesToBeSent,
+  setIsWaitingForResponse,
+} from "../features/Chat";
 
 export function useCompressChat() {
   const dispatch = useAppDispatch();
@@ -28,12 +31,12 @@ export function useCompressChat() {
       );
     }
 
-    // TODO: create new chat with result.data as user message.
     if (result.data) {
-      const newThreadAction = newChatAction({
-        messages: [{ role: "user", content: result.data.trajectory }],
-      });
-      dispatch(newThreadAction);
+      const messages: ChatMessages = [
+        { role: "user", content: result.data.trajectory },
+      ];
+      const action = createNewChatWithMessagesToBeSent({ messages });
+      dispatch(action);
     }
   }, [submit, thread.messages, thread.project_name, dispatch]);
 
