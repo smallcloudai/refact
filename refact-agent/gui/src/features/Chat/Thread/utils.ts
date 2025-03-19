@@ -168,6 +168,7 @@ export function formatChatResponse(
       role: response.role,
       content: response.content,
       checkpoints: response.checkpoints,
+      compression_strength: response.compression_strength,
     });
   }
 
