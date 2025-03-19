@@ -374,28 +374,28 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             <ThinkingButton />
             <Flex gap="2" align="center" className={styles.buttonGroup}>
               <TokensPreview currentMessageQuery={value} />
-              {!unCalledTools && (
-                <IconButton
-                  size="1"
-                  variant="ghost"
-                  color={
-                    lastSentCompression === "high"
-                      ? "red"
-                      : lastSentCompression === "medium"
-                        ? "yellow"
-                        : undefined
-                  }
-                  title="Compress chat and continue"
-                  onClick={() => void compressChat()}
-                  disabled={
-                    lastSentCompression === null ||
-                    lastSentCompression === "absent"
-                  }
-                  loading={compressChatRequest.isLoading}
-                >
-                  <ArchiveIcon />
-                </IconButton>
-              )}
+
+              <IconButton
+                size="1"
+                variant="ghost"
+                color={
+                  lastSentCompression === "high"
+                    ? "red"
+                    : lastSentCompression === "medium"
+                      ? "yellow"
+                      : undefined
+                }
+                title="Compress chat and continue"
+                onClick={() => void compressChat()}
+                disabled={
+                  unCalledTools ||
+                  lastSentCompression === null ||
+                  lastSentCompression === "absent"
+                }
+                loading={compressChatRequest.isLoading}
+              >
+                <ArchiveIcon />
+              </IconButton>
               {toolUse === "agent" && (
                 <AgentIntegrationsButton
                   title="Set up Agent Integrations"
