@@ -114,7 +114,7 @@ const BottomSpace: React.FC<BoxProps> = (props) => {
   }, [dispatch]);
 
   const nearBottom = useIsIntersecting(bottomRef.current, {
-    threshold: 1,
+    threshold: 0.5,
     root: state.scrollRef?.current,
   });
 
