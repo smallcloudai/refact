@@ -25,7 +25,6 @@ export type ChatThread = {
   project_name?: string;
   last_user_message_id?: string;
   new_chat_suggested: SuggestedChat;
-  usage?: Usage;
   currentMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
 };

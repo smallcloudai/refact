@@ -227,6 +227,8 @@ export function formatChatResponse(
     return messages;
   }
 
+  const currentUsage = response.usage;
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       const msg = { role: cur.delta.role, content: cur.delta.content };
@@ -246,6 +248,7 @@ export function formatChatResponse(
         tool_calls: cur.delta.tool_calls,
         thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
+        usage: currentUsage,
       };
       return acc.concat([msg]);
     }
@@ -276,6 +279,7 @@ export function formatChatResponse(
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
+          usage: lastMessage.usage ?? currentUsage,
         },
       ]);
     }
@@ -309,6 +313,7 @@ export function formatChatResponse(
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
+          usage: lastMessage.usage ?? currentUsage,
         },
       ]);
     }
@@ -330,6 +335,7 @@ export function formatChatResponse(
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
+          usage: lastMessage.usage ?? currentUsage,
         },
       ]);
     } else if (
@@ -343,6 +349,7 @@ export function formatChatResponse(
           reasoning_content: cur.delta.reasoning_content,
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
+          usage: currentUsage,
         },
       ]);
     } else if (cur.delta.role === "assistant") {
@@ -363,6 +370,7 @@ export function formatChatResponse(
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
+            usage: currentUsage,
           },
         ]);
       }
@@ -382,6 +390,7 @@ export function formatChatResponse(
             tool_calls: lastMessage.tool_calls,
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
+            usage: lastMessage.usage ?? currentUsage,
           },
         ]);
       }
@@ -485,6 +494,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
           tool_calls: message.tool_calls ?? undefined,
           thinking_blocks: message.thinking_blocks ?? undefined,
           finish_reason: message.finish_reason,
+          usage: message.usage,
         },
       ]);
     }

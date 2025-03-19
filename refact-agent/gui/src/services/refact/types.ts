@@ -160,6 +160,7 @@ export interface AssistantMessage extends BaseMessage {
   tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+  usage?: Usage;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
