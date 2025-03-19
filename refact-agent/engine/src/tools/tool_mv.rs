@@ -11,6 +11,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{FilePrivacyLevel, load_privacy_if_needed, check_file_privacy};
@@ -139,15 +140,11 @@ impl Tool for ToolMv {
         let src_metadata = fs::symlink_metadata(&src_true_path).await
             .map_err(|e| format!("Failed to access source '{}': {}", src_str, e))?;
             
-        // Read source file content before move/rename for context files
         let mut src_file_content = String::new();
         if !src_is_dir {
-            src_file_content = fs::read_to_string(&src_true_path).await.unwrap_or_else(|_| "".to_string());
+            src_file_content = get_file_text_from_memory_or_disk(gcx.clone(), &src_true_path).await?;
         }
-        
-        // Check if destination exists and has content (for diff)
         let mut dst_file_content = String::new();
-        
         if let Ok(dst_metadata) = fs::metadata(&dst_true_path).await {
             if !overwrite {
                 return Err(format!("Destination '{}' exists. Use overwrite=true to replace it", dst_str));
@@ -156,7 +153,6 @@ impl Tool for ToolMv {
                 fs::remove_dir_all(&dst_true_path).await
                     .map_err(|e| format!("Failed to remove existing directory '{}': {}", dst_str, e))?;
             } else {
-                // Read destination file content before removal (if it's being overwritten)
                 if !dst_metadata.is_dir() {
                     dst_file_content = fs::read_to_string(&dst_true_path).await.unwrap_or_else(|_| "".to_string());
                 }
@@ -179,18 +175,12 @@ impl Tool for ToolMv {
 
         match fs::rename(&src_true_path, &dst_true_path).await {
             Ok(_) => {
-                let op_desc = if src_true_path.parent() == dst_true_path.parent() { "Renamed" } else { "Moved" };
-                let item_desc = if src_is_dir { format!("directory '{}'", src_str) } else { format!("file '{}'", src_str) };
                 let corrections = src_str != src_corrected_path || dst_str != dst_corrected_path;
-                
                 let mut messages = vec![];
-                
-                // Add context file information for non-directory files
                 if !src_is_dir && !src_file_content.is_empty() {
-                    // Create diff chunk
                     let diff_chunk = DiffChunk {
                         file_name: src_corrected_path.clone(),
-                        file_action: "rename".to_string(), // Always use "rename" when a file is being renamed or moved
+                        file_action: "rename".to_string(),
                         line1: 1,
                         line2: src_file_content.lines().count(),
                         lines_remove: src_file_content.clone(),
@@ -201,10 +191,7 @@ impl Tool for ToolMv {
                             if src_true_path.parent() == dst_true_path.parent() { "renamed" } else { "moved" },
                             src_corrected_path, dst_corrected_path),
                     };
-                    
-                    // If destination file exists and is being overwritten, include its content in the diff
                     if !dst_file_content.is_empty() {
-                        // Create a second diff chunk for the destination file content being replaced
                         let dst_diff_chunk = DiffChunk {
                             file_name: dst_corrected_path.clone(),
                             file_action: "edit".to_string(), // Use "edit" instead of "overwrite"
@@ -216,8 +203,6 @@ impl Tool for ToolMv {
                             is_file: true,
                             application_details: format!("File content edited with content from '{}'", src_corrected_path),
                         };
-                        
-                        // Add only diff message with both chunks
                         messages.push(ContextEnum::ChatMessage(ChatMessage {
                             role: "diff".to_string(),
                             content: ChatContent::SimpleText(json!([diff_chunk, dst_diff_chunk]).to_string()),
@@ -226,7 +211,6 @@ impl Tool for ToolMv {
                             ..Default::default()
                         }));
                     } else {
-                        // Add only diff message with single chunk
                         messages.push(ContextEnum::ChatMessage(ChatMessage {
                             role: "diff".to_string(),
                             content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
@@ -236,21 +220,10 @@ impl Tool for ToolMv {
                         }));
                     }
                 }
-                
-                // Always add a tool message for basic operation feedback
-                // messages.push(ContextEnum::ChatMessage(ChatMessage {
-                //     role: "tool".to_string(),
-                //     content: ChatContent::SimpleText(format!("{} {} to '{}'", op_desc, item_desc, dst_str)),
-                //     tool_calls: None,
-                //     tool_call_id: tool_call_id.clone(),
-                //     ..Default::default()
-                // }));
-                
                 Ok((corrections, messages))
             },
             Err(e) => {
                 if e.kind() == io::ErrorKind::Other && e.to_string().contains("cross-device") {
-                    // Cross-device move fallback.
                     if src_metadata.is_dir() {
                         Err("Cross-device move of directories is not supported in this simplified tool".to_string())
                     } else {
@@ -261,12 +234,10 @@ impl Tool for ToolMv {
                             
                         let mut messages = vec![];
                         
-                        // Add context file information for non-directory files
                         if !src_file_content.is_empty() {
-                            // Create diff chunk
                             let diff_chunk = DiffChunk {
                                 file_name: src_corrected_path.clone(),
-                                file_action: "rename".to_string(), // Use "rename" for move operations too
+                                file_action: "rename".to_string(),
                                 line1: 1,
                                 line2: src_file_content.lines().count(),
                                 lines_remove: src_file_content.clone(),
@@ -276,13 +247,10 @@ impl Tool for ToolMv {
                                 application_details: format!("File renamed from '{}' to '{}'", 
                                     src_corrected_path, dst_corrected_path),
                             };
-                            
-                            // If destination file exists and is being overwritten, include its content in the diff
                             if !dst_file_content.is_empty() {
-                                // Create a second diff chunk for the destination file content being replaced
                                 let dst_diff_chunk = DiffChunk {
                                     file_name: dst_corrected_path.clone(),
-                                    file_action: "edit".to_string(), // Use "edit" instead of "overwrite"
+                                    file_action: "edit".to_string(),
                                     line1: 1,
                                     line2: dst_file_content.lines().count(),
                                     lines_remove: dst_file_content.clone(),
@@ -291,8 +259,6 @@ impl Tool for ToolMv {
                                     is_file: true,
                                     application_details: format!("File content edited with content from '{}'", src_corrected_path),
                                 };
-                                
-                                // Add only diff message with both chunks
                                 messages.push(ContextEnum::ChatMessage(ChatMessage {
                                     role: "diff".to_string(),
                                     content: ChatContent::SimpleText(json!([diff_chunk, dst_diff_chunk]).to_string()),
@@ -301,7 +267,6 @@ impl Tool for ToolMv {
                                     ..Default::default()
                                 }));
                             } else {
-                                // Add only diff message with single chunk
                                 messages.push(ContextEnum::ChatMessage(ChatMessage {
                                     role: "diff".to_string(),
                                     content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
@@ -311,16 +276,6 @@ impl Tool for ToolMv {
                                 }));
                             }
                         }
-                        
-                        // Always add a tool message for basic operation feedback
-                        // messages.push(ContextEnum::ChatMessage(ChatMessage {
-                        //     role: "tool".to_string(),
-                        //     content: ChatContent::SimpleText(format!("Moved file '{}' to '{}'", src_str, dst_str)),
-                        //     tool_calls: None,
-                        //     tool_call_id: tool_call_id.clone(),
-                        //     ..Default::default()
-                        // }));
-                        
                         Ok((false, messages))
                     }
                 } else {
