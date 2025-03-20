@@ -22,6 +22,7 @@ const MockedStore: React.FC<{
   threadMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
 }> = ({
+  usage,
   threadMaximumContextTokens,
   currentMessageContextTokens,
   isInline = false,
@@ -46,7 +47,17 @@ const MockedStore: React.FC<{
       cache: {},
       thread: {
         id: "test",
-        messages: [],
+        messages: [
+          {
+            role: "user",
+            content: "Hello, how are you?",
+          },
+          {
+            role: "assistant",
+            content: "Test content",
+            usage,
+          },
+        ],
         model: "claude-3-5-sonnet",
         mode: "AGENT",
         new_chat_suggested: {
