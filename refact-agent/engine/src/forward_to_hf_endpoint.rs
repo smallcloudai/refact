@@ -8,6 +8,7 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
+use crate::caps::EmbeddingModelRecord;
 
 // Idea: use USER_AGENT
 // let user_agent = format!("{NAME}/{VERSION}; rust/unknown; ide/{ide:?}");
@@ -125,16 +126,13 @@ struct EmbeddingsPayloadHF {
 pub async fn get_embedding_hf_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
-    endpoint_template: &str,
-    model_name: &str,
-    api_key: &str,
+    model: &EmbeddingModelRecord,
 ) -> Result<Vec<Vec<f32>>, String> {
     let payload = EmbeddingsPayloadHF { inputs: text, options: EmbeddingsPayloadHFOptions::new() };
-    let url = endpoint_template.to_string().replace("$MODEL", &model_name);
 
     let maybe_response = client.lock().await
-        .post(&url)
-        .bearer_auth(api_key.to_string())
+        .post(&model.base.endpoint)
+        .bearer_auth(model.base.api_key.clone())
         .json(&payload)
         .send()
         .await;

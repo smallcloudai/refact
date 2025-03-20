@@ -11,6 +11,7 @@ use tracing::info;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::scratchpads::chat_utils_limit_history::CompressionStrength;
+use crate::caps::EmbeddingModelRecord;
 
 pub async fn forward_to_openai_style_endpoint(
     save_url: &mut String,
@@ -211,27 +212,23 @@ struct EmbeddingsResultOpenAI {
 pub async fn get_embedding_openai_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
-    endpoint_template: &str,
-    model_name: &str,
-    api_key: &str,
+    model_rec: &EmbeddingModelRecord,
 ) -> Result<Vec<Vec<f32>>, String> {
-    if endpoint_template.is_empty() {
-        return Err(format!("no embedding_endpoint configured"));
+    if model_rec.base.endpoint.is_empty() {
+        return Err(format!("No embedding endpoint configured"));
     }
-    if api_key.is_empty() {
-        return Err(format!("cannot access embedding model, because api_key is empty"));
+    if model_rec.base.api_key.is_empty() {
+        return Err(format!("Cannot access embedding model, because api_key is empty"));
     }
     #[allow(non_snake_case)]
-    let B = text.len();
+    let B: usize = text.len();
     let payload = EmbeddingsPayloadOpenAI {
         input: text,
-        model: model_name.to_string(),
+        model: model_rec.name.to_string(),
     };
-    let url = endpoint_template.to_string();
-    let api_key_clone = api_key.to_string();
     let response = client.lock().await
-        .post(url)
-        .bearer_auth(api_key_clone.to_string())
+        .post(&model_rec.base.endpoint)
+        .bearer_auth(&model_rec.base.api_key)
         .json(&payload)
         .send()
         .await
