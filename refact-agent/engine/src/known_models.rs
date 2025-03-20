@@ -10,6 +10,7 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "default_scratchpad": "FIM-PSM",
+            "tokenizer": "hf://bigcode/starcoder",
             "similar_models": [
                 "bigcode/starcoderbase",
                 "starcoder/15b/base",
@@ -43,6 +44,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "FIM-SPM": { }
             },
+            "tokenizer": "hf://smallcloudai/Refact-1_6B-fim",
             "default_scratchpad": "FIM-SPM",
             "similar_models": [
                 "Refact/1.6B",
@@ -61,6 +63,7 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "default_scratchpad": "FIM-PSM",
+            "tokenizer": "hf://codellama/CodeLlama-13b-hf",
             "similar_models": [
                 "codellama/7b"
             ]
@@ -76,6 +79,7 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "default_scratchpad": "FIM-PSM",
+            "tokenizer": "hf://deepseek-ai/deepseek-coder-1.3b-base",
             "similar_models": [
                 "deepseek-coder/5.7b/mqa-base",
                 "deepseek-coder/1.3b/vllm",
@@ -88,6 +92,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "FIM-PSM": {}
             },
             "default_scratchpad": "FIM-PSM",
+            "tokenizer": "hf://stabilityai/stable-code-3b"
             "similar_models": []
         },
         "llama3/8b/instruct": {
@@ -105,6 +110,7 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "default_scratchpad": "REPLACE",
+            "tokenizer": "hf://Xenova/llama3-tokenizer",
             "similar_models": [
                 "llama3/8b/instruct/neuron",
                 "llama3.1/8b/instruct",
@@ -114,6 +120,7 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "deepseek-coder/6.7b/instruct-finetune/vllm": {
             "n_ctx": 4096,
+            "tokenizer": "hf://deepseek-ai/deepseek-coder-6.7b-instruct",
             "supports_scratchpads": {
                 "REPLACE_PASSTHROUGH": {
                     "context_format": "chat",
@@ -129,6 +136,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/llama3-tokenizer",
             "similar_models": [
                 "llama3.1/8b/instruct/vllm"
             ]
@@ -141,6 +149,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://meta-llama/llama-3.2-1b-instruct",
             "similar_models": [
                 "llama3.2/3b/instruct/vllm"
             ]
@@ -153,6 +162,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Qwen/Qwen2.5-Coder-1.5B-Instruct",
             "similar_models": [
                 "qwen2.5/coder/3b/instruct/vllm",
                 "qwen2.5/coder/7b/instruct/vllm",
@@ -171,6 +181,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/gpt-4o"
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
@@ -187,6 +198,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/claude-tokenizer",
             "similar_models": [
                 "claude-3-haiku",
                 "claude-3-5-haiku",
@@ -206,6 +218,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/Meta-Llama-3.1-Tokenizer"
             "similar_models": [
                 "groq-llama-3.1-70b",
                 "groq-llama-3.2-1b",
@@ -222,6 +235,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/Meta-Llama-3.1-Tokenizer",
             "similar_models": [
                 "cerebras-llama3.1-70b"
             ]
@@ -234,6 +248,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Xenova/gemma2-tokenizer",
             "similar_models": [
                 "gemini-1.5-flash",
                 "gemini-1.5-flash-8b"
@@ -247,6 +262,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Xenova/gemma2-tokenizer",
             "similar_models": [
                 "gemini-2.0-exp-advanced"
             ]
@@ -261,6 +277,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer",
             "similar_models": [
                 "grok-2-1212",
                 "grok-2"
@@ -273,7 +290,8 @@ pub const KNOWN_MODELS: &str = r####"
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
-            }
+            },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
         },
         "grok-2-vision-1212": {
             "n_ctx": 32000,
@@ -283,6 +301,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer",
             "similar_models": [
                 "grok-2-vision"
             ]
@@ -294,7 +313,8 @@ pub const KNOWN_MODELS: &str = r####"
                     "context_format": "chat",
                     "rag_ratio": 0.5
                 }
-            }
+            },
+            "tokenizer": "hf://deepseek-ai/DeepSeek-V3"
         },
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
@@ -311,6 +331,7 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             },
             "default_scratchpad": "REPLACE",
+            "tokenizer": "hf://Qwen/Qwen2.5-Coder-0.5B-Instruct",
             "similar_models": [
                 "qwen2.5/coder/1.5b/instruct",
                 "qwen2.5/coder/3b/instruct",
@@ -335,6 +356,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
+            "tokenizer": "hf://Qwen/Qwen2.5-Coder-0.5B",
             "default_scratchpad": "FIM-PSM",
             "similar_models": [
                 "qwen2.5/coder/1.5b/base",
@@ -361,6 +383,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {
                 }
             },
+            "tokenizer": "hf://Xenova/gpt-4o",
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
@@ -377,7 +400,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "gpt-4o-mini-2024-07-18"
-            ]
+            ],
+            "tokenizer": "hf://Xenova/gpt-4o"
         },
         "o1": {
             "n_ctx": 200000,
@@ -388,7 +412,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
-            }
+            },
+            "tokenizer": "hf://Xenova/gpt-4o"
         },
         "o1-mini": {
             "n_ctx": 128000,
@@ -397,7 +422,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
-            }
+            },
+            "tokenizer": "hf://Xenova/gpt-4o"
         },
         "o3-mini": {
             "n_ctx": 200000,
@@ -409,7 +435,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {
                 }
-            }
+            },
+            "tokenizer": "hf://Xenova/gpt-4o"
         },
         "claude-instant-1.2": {
             "n_ctx": 8096,
@@ -421,7 +448,8 @@ pub const KNOWN_MODELS: &str = r####"
                 "claude-3-haiku",
                 "claude-3-opus",
                 "claude-3-sonnet"
-            ]
+            ],
+            "tokenizer": "hf://Xenova/claude-tokenizer"
         },
         "claude-3-5-sonnet": {
             "n_ctx": 16384,
@@ -431,6 +459,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Xenova/claude-tokenizer",
             "similar_models": [
                 "claude-3-5-sonnet-20240620"
             ]
@@ -443,7 +472,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_agent": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://Xenova/claude-tokenizer"
         },
         "claude-3-5-haiku": {
             "n_ctx": 16384,
@@ -455,7 +485,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "claude-3-5-haiku-20241022"
-            ]
+            ],
+            "tokenizer": "hf://Xenova/claude-tokenizer"
         },
         "claude-3-7-sonnet": {
             "n_ctx": 16384,
@@ -470,7 +501,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "claude-3-7-sonnet-20250219"
-            ]
+            ],
+            "tokenizer": "hf://Xenova/claude-tokenizer"
         },
         "gemini-2.0-flash-exp": {
             "n_ctx": 128000,
@@ -483,7 +515,8 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gemini-1.5-flash",
                 "gemini-1.5-flash-8b"
-            ]
+            ],
+            "tokenizer": "hf://Xenova/gemma2-tokenizer"
         },
         "gemini-1.5-pro": {
             "n_ctx": 128000,
@@ -495,7 +528,8 @@ pub const KNOWN_MODELS: &str = r####"
             },
             "similar_models": [
                 "gemini-2.0-exp-advanced"
-            ]
+            ],
+            "tokenizer": "hf://Xenova/gemma2-tokenizer"
         },
         "llama3/8b/instruct": {
             "n_ctx": 4096,
@@ -512,6 +546,7 @@ pub const KNOWN_MODELS: &str = r####"
                     ]
                 }
             },
+            "tokenizer": "hf://Xenova/llama3-tokenizer",
             "similar_models": [
                 "llama3/8b/instruct/neuron",
                 "meta-llama/llama-3.1-8b-instruct",
@@ -522,6 +557,7 @@ pub const KNOWN_MODELS: &str = r####"
         },
         "deepseek-coder/6.7b/instruct-finetune/vllm": {
             "n_ctx": 4096,
+            "tokenizer": "hf://deepseek-ai/deepseek-coder-6.7b-instruct",
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             }
@@ -531,6 +567,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://meta-llama/Meta-Llama-3-8B-Instruct",
             "similar_models": [
                 "llama3.1/8b/instruct/vllm"
             ]
@@ -540,6 +577,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://meta-llama/Llama-3.2-1B-Instruct",
             "similar_models": [
                 "llama3.2/3b/instruct/vllm",
                 "llama3.3/70b/instruct/vllm"
@@ -552,6 +590,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "mistralai/Mistral-Small-24B-Instruct-2501"
             "similar_models": [
             ]
         },
@@ -560,6 +599,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Qwen/Qwen2.5-Coder-1.5B-Instruct",
             "similar_models": [
                 "qwen2.5/coder/3b/instruct/vllm",
                 "qwen2.5/coder/7b/instruct/vllm",
@@ -574,6 +614,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Qwen/Qwen2.5-7B-Instruct",
             "similar_models": [
                 "qwen2.5/14b/instruct/vllm",
                 "qwen2.5/32b/instruct/vllm"
@@ -586,6 +627,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Qwen/QwQ-32B",
             "similar_models": [
                 "qwen-qwq/32b/awq/vllm"
             ]
@@ -603,6 +645,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "stop_list": ["\n\n"]
                 }
             },
+            "tokenizer": "hf://cognitivecomputations/WizardLM-7B-Uncensored",
             "similar_models": [
                 "wizardlm/13b",
                 "wizardlm/30b"
@@ -620,7 +663,8 @@ pub const KNOWN_MODELS: &str = r####"
                     "stop_list": [],
                     "eot": "<|EOT|>"
                 }
-            }
+            },
+            "tokenizer": "hf://ise-uiuc/Magicoder-S-DS-6.7B"
         },
         "mistral/7b/instruct-v0.1": {
             "n_ctx": 4096,
@@ -635,6 +679,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "eot": "</s>"
                 }
             },
+            "tokenizer": "hf://mistralai/Mistral-7B-Instruct-v0.1",
             "similar_models": [
                 "mixtral/8x7b/instruct-v0.1"
             ]
@@ -651,7 +696,8 @@ pub const KNOWN_MODELS: &str = r####"
                     "stop_list": [],
                     "eot": "</s>"
                 }
-            }
+            },
+            "tokenizer": "hf://Phind/Phind-CodeLlama-34B-v2"
         },
         "deepseek-coder/6.7b/instruct": {
             "n_ctx": 4096,
@@ -666,6 +712,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "eot": "<|EOT|>"
                 }
             },
+            "tokenizer": "hf://deepseek-ai/deepseek-coder-6.7b-instruct",
             "similar_models": [
                 "deepseek-coder/33b/instruct",
                 "deepseek-coder/6.7b/instruct-finetune"
@@ -693,6 +740,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://Xenova/Meta-Llama-3.1-Tokenizer",
             "similar_models": [
                 "cerebras-llama3.1-70b"
             ]
@@ -703,7 +751,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": false,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
         },
         "grok-vision-beta": {
             "n_ctx": 8192,
@@ -711,7 +760,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
         },
         "grok-2-vision-1212": {
             "n_ctx": 32000,
@@ -719,7 +769,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
         },
         "grok-2-1212": {
             "n_ctx": 128000,
@@ -727,7 +778,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": false,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
         },
         "grok-2": {
             "n_ctx": 128000,
@@ -735,7 +787,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_multimodality": false,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
         },
         "deepseek-chat": {
             "n_ctx": 64000,
@@ -744,7 +797,8 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_agent": true,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://deepseek-ai/DeepSeek-V3"
         },
         "deepseek-reasoner": {
             "n_ctx": 64000,
@@ -754,7 +808,8 @@ pub const KNOWN_MODELS: &str = r####"
             "default_temperature": 0.6,
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
-            }
+            },
+            "tokenizer": "hf://deepseek-ai/DeepSeek-R1"
         },
         "qwen2.5/coder/0.5b/instruct": {
             "n_ctx": 8192,
@@ -773,6 +828,7 @@ pub const KNOWN_MODELS: &str = r####"
                     ]
                 }
             },
+            "tokenizer": "hf://Qwen/Qwen2.5-Coder-0.5B-Instruct",
             "similar_models": [
                 "qwen2.5/coder/1.5b/instruct",
                 "qwen2.5/coder/3b/instruct",
@@ -791,6 +847,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
+            "tokenizer": "hf://deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
             "similar_models": [
                 "deepseek-r1-distill/7b/vllm",
                 "deepseek-r1-distill/8b/vllm",
@@ -799,46 +856,6 @@ pub const KNOWN_MODELS: &str = r####"
                 "deepseek-r1-distill/70b/vllm"
             ]
         }
-    },
-    "tokenizer_rewrite_path": {
-        "Refact/1.6B": "smallcloudai/Refact-1_6B-fim",
-        "starcoder2/3b": "bigcode/starcoder2-3b",
-
-        "text-embedding-3-small": "Xenova/text-embedding-ada-002",
-        "gpt-4o":                 "Xenova/gpt-4o",
-        "gpt-4o-2024-05-13":      "Xenova/gpt-4o",
-        "gpt-4o-2024-08-06":      "Xenova/gpt-4o",
-        "gpt-4o-mini":            "Xenova/gpt-4o",
-        "gpt-4o-mini-2024-07-18": "Xenova/gpt-4o",
-        "o1":                     "Xenova/gpt-4o",
-        "o1-mini":                "Xenova/gpt-4o",
-        "o3-mini":                "Xenova/gpt-4o",
-        "openai/gpt-4o":          "Xenova/gpt-4o",
-
-        "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
-        "claude-3-5-haiku":           "Xenova/claude-tokenizer",
-        "claude-3-5-haiku-20241022":  "Xenova/claude-tokenizer",
-        "claude-3-5-sonnet-20240620": "Xenova/claude-tokenizer",
-        "claude-3-5-sonnet-20241022": "Xenova/claude-tokenizer",
-        "claude-3-7-sonnet":          "Xenova/claude-tokenizer",
-
-        "groq-llama-3.1-8b":      "Xenova/Meta-Llama-3.1-Tokenizer",
-        "cerebras-llama3.1-8b":     "Xenova/Meta-Llama-3.1-Tokenizer",
-
-        "grok-beta": "Xenova/grok-1-tokenizer",
-        "grok-vision-beta": "Xenova/grok-1-tokenizer",
-        "grok-2": "Xenova/grok-1-tokenizer",
-        "grok-2-vision-1212": "Xenova/grok-1-tokenizer",
-        "grok-2-1212": "Xenova/grok-1-tokenizer",
-
-        "gemini-2.0-flash-exp": "Xenova/gemma2-tokenizer",
-        "gemini-1.5-flash": "Xenova/gemma2-tokenizer",
-        "gemini-1.5-flash-8b": "Xenova/gemma2-tokenizer",
-        "gemini-1.5-pro": "Xenova/gemma2-tokenizer",
-        "gemini-2.0-exp-advanced": "Xenova/gemma2-tokenizer",
-
-        "deepseek-chat":     "deepseek-ai/DeepSeek-V3",
-        "deepseek-reasoner": "deepseek-ai/DeepSeek-R1"
     }
 }
 "####;
