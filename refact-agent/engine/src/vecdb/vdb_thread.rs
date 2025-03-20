@@ -11,7 +11,7 @@ use tokio::task::JoinHandle;
 use tracing::{info, warn};
 
 use crate::ast::file_splitter::AstBasedFileSplitter;
-use crate::fetch_embedding::get_embedding_with_retry;
+use crate::fetch_embedding::get_embedding_with_retries;
 use crate::files_in_workspace::{is_path_to_enqueue_valid, Document};
 use crate::global_context::GlobalContext;
 use crate::knowledge::{vectorize_dirty_memories, MemoriesDatabase};
@@ -33,7 +33,6 @@ pub struct FileVectorizerService {
     pub vstatus: Arc<AMutex<VecDbStatus>>,
     pub vstatus_notify: Arc<ANotify>,   // fun stuff https://docs.rs/tokio/latest/tokio/sync/struct.Notify.html
     constants: VecdbConstants,
-    api_key: String,
     memdb: Arc<AMutex<MemoriesDatabase>>,
     vecdb_todo: Arc<AMutex<VecDeque<MessageToVecdbThread>>>,
 }
@@ -44,21 +43,17 @@ async fn vectorize_batch_from_q(
     vstatus: Arc<AMutex<VecDbStatus>>,
     client: Arc<AMutex<reqwest::Client>>,
     constants: &VecdbConstants,
-    api_key: &String,
     vecdb_handler_arc: Arc<AMutex<VecDBSqlite>>,
-    #[allow(non_snake_case)]
-    B: usize,
 ) -> Result<(), String> {
+    #[allow(non_snake_case)]
+    let B = constants.embedding_model.embedding_batch;
     let batch = run_actual_model_on_these.drain(..B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
     assert!(batch.len() > 0);
 
-    let batch_result = match get_embedding_with_retry(
+    let batch_result = match get_embedding_with_retries(
         client.clone(),
-        &constants.endpoint_embeddings_style.clone(),
-        &constants.embedding_model.clone(),
-        &constants.endpoint_embeddings_template.clone(),
+        &constants.embedding_model,
         batch.iter().map(|x| x.window_text.clone()).collect(),
-        api_key,
         10,
     ).await {
         Ok(res) => res,
@@ -170,7 +165,6 @@ async fn vectorize_thread(
         vecdb_handler_arc,
         vstatus,
         vstatus_notify,
-        api_key
     ) = {
         let vservice_locked = vservice.lock().await;
         (
@@ -180,7 +174,6 @@ async fn vectorize_thread(
             vservice_locked.vecdb_handler.clone(),
             vservice_locked.vstatus.clone(),
             vservice_locked.vstatus_notify.clone(),
-            vservice_locked.api_key.clone()
         )
     };
 
@@ -238,7 +231,7 @@ async fn vectorize_thread(
         loop {
             if
             run_actual_model_on_these.len() > 0 && flush ||
-                run_actual_model_on_these.len() >= constants.embedding_batch
+                run_actual_model_on_these.len() >= constants.embedding_model.embedding_batch
             {
                 if let Err(err) = vectorize_batch_from_q(
                     &mut run_actual_model_on_these,
@@ -246,9 +239,7 @@ async fn vectorize_thread(
                     vstatus.clone(),
                     client.clone(),
                     &constants,
-                    &api_key,
                     vecdb_handler_arc.clone(),
-                    constants.embedding_batch,
                 ).await {
                     tracing::error!("{}", err);
                     continue;
@@ -281,8 +272,7 @@ async fn vectorize_thread(
                         vecdb_handler_arc.clone(),
                         vstatus.clone(),
                         client.clone(),
-                        &api_key,
-                        constants.embedding_batch,
+                        constants.embedding_model.embedding_batch,
                     ).await;
                     info!("/MEMDB {:?}", r);
                     continue;
@@ -353,7 +343,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.vectorizer_n_ctx).await.unwrap_or_else(|err| {
+        let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });
@@ -424,7 +414,6 @@ impl FileVectorizerService {
     pub async fn new(
         vecdb_handler: Arc<AMutex<VecDBSqlite>>,
         constants: VecdbConstants,
-        api_key: String,
         memdb: Arc<AMutex<MemoriesDatabase>>,
     ) -> Self {
         let vstatus = Arc::new(AMutex::new(
@@ -446,7 +435,6 @@ impl FileVectorizerService {
             vstatus: vstatus.clone(),
             vstatus_notify: Arc::new(ANotify::new()),
             constants,
-            api_key,
             memdb,
             vecdb_todo: Default::default(),
         }

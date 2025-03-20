@@ -1,5 +1,4 @@
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommand, AtCommandsContext, AtParam};
-use crate::caps::get_api_key;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
@@ -69,25 +68,12 @@ pub async fn execute_at_search(
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
 
-    let caps_opt = gcx.read().await.caps.clone();
-    let provider_name = if let Some(caps) = caps_opt {
-        let caps_locked = caps.read().unwrap();
-        caps_locked.embedding_provider.clone()
-    } else {
-        "".to_string()
-    };
-    let api_key = get_api_key(gcx.clone(), &provider_name).await;
-    if let Err(err) = api_key {
-        return Err(err);
-    }
-    let api_key = api_key.unwrap();
-
     let vec_db = gcx.read().await.vec_db.clone();
     let r = match *vec_db.lock().await {
         Some(ref db) => {
             let top_n_twice_as_big = top_n * 2;  // top_n will be cut at postprocessing stage, and we really care about top_n files, not pieces
             // TODO: this code sucks, release lock, don't hold anything during the search
-            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb, &api_key).await?;
+            let search_result = db.vecdb_search(query.clone(), top_n_twice_as_big, vecdb_scope_filter_mb).await?;
             let results = search_result.results.clone();
             return Ok(results2message(&results));
         }

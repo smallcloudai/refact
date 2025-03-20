@@ -5,7 +5,6 @@ use tokio::sync::Mutex as AMutex;
 use tokio::time::sleep;
 use tracing::{debug, error, info, warn};
 
-use crate::caps::get_api_key;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::vecdb::vdb_highlev::VecDb;
 use crate::vecdb::vdb_structs::{VecdbConstants, VecdbSearch};
@@ -54,7 +53,6 @@ pub async fn init_vecdb_fail_safe(
     config_dir: &PathBuf,
     cmdline: CommandLine,
     constants: VecdbConstants,
-    api_key: &String,
     init_config: VecDbInitConfig,
 ) -> Result<VecDb, VecDbInitError> {
     let mut attempt: usize = 0;
@@ -64,12 +62,12 @@ pub async fn init_vecdb_fail_safe(
         attempt += 1;
         info!("VecDb init attempt {}/{}", attempt, init_config.max_attempts);
         
-        match VecDb::init(cache_dir, config_dir, cmdline.clone(), constants.clone(), api_key).await {
+        match VecDb::init(cache_dir, config_dir, cmdline.clone(), constants.clone()).await {
             Ok(vecdb) => {
                 info!("Successfully initialized VecDb on attempt {}", attempt);
                 
                 if init_config.test_search_after_init {
-                    match vecdb_test_search(&vecdb, api_key).await {
+                    match vecdb_test_search(&vecdb).await {
                         Ok(_) => {
                             info!("VecDb test search successful");
                             return Ok(vecdb);
@@ -104,12 +102,12 @@ pub async fn init_vecdb_fail_safe(
     }
 }
 
-async fn vecdb_test_search(vecdb: &VecDb, api_key: &String) -> Result<(), String> {
+async fn vecdb_test_search(vecdb: &VecDb) -> Result<(), String> {
     let test_query = "test query".to_string();
     let top_n = 3;
     let filter = None;
     
-    match VecdbSearch::vecdb_search(vecdb, test_query, top_n, filter, api_key).await {
+    match VecdbSearch::vecdb_search(vecdb, test_query, top_n, filter).await {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Test search failed: {}", e)),
     }
@@ -120,10 +118,6 @@ pub async fn initialize_vecdb_with_context(
     constants: VecdbConstants,
     init_config: Option<VecDbInitConfig>,
 ) -> Result<(), VecDbInitError> {
-    let api_key = match get_api_key(gcx.clone(), &constants.embedding_provider).await {
-        Ok(key) => key,
-        Err(err) => return Err(VecDbInitError::ApiKeyError(err)),
-    };
     
     let (cache_dir, config_dir, cmdline) = {
         let gcx_locked = gcx.read().await;
@@ -141,7 +135,6 @@ pub async fn initialize_vecdb_with_context(
         &base_dir_config,
         cmdline.clone(),
         constants,
-        &api_key,
         config,
     ).await?;
     

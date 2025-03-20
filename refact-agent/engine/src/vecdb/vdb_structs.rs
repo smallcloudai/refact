@@ -7,6 +7,8 @@ use indexmap::IndexMap;
 use tokenizers::Tokenizer;
 use async_trait::async_trait;
 
+use crate::caps::EmbeddingModelRecord;
+
 
 #[async_trait]
 pub trait VecdbSearch: Send {
@@ -15,21 +17,14 @@ pub trait VecdbSearch: Send {
         query: String,
         top_n: usize,
         filter_mb: Option<String>,
-        api_key: &String,
     ) -> Result<SearchResult, String>;
 }
 
 #[derive(Debug, Clone)]
 pub struct VecdbConstants {
     // constant in a sense it cannot be changed without creating a new db
-    pub embedding_model: String,
-    pub embedding_provider: String,
-    pub embedding_size: i32,
-    pub embedding_batch: usize,
+    pub embedding_model: EmbeddingModelRecord,
     pub tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
-    pub vectorizer_n_ctx: usize,
-    pub endpoint_embeddings_template: String,
-    pub endpoint_embeddings_style: String,
     pub splitter_window_size: usize,
     pub vecdb_max_files: usize,
 }
