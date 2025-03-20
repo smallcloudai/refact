@@ -83,13 +83,12 @@ export const SuggestNewChat = ({
     });
   }, [dispatch, sendTelemetryEvent]);
 
-  // TBD: maybe change this text
   const tipText = useMemo(() => {
     if (isWarning)
-      return "Long chats cause you to reach your usage limits faster.";
+      return "This chat has been moderately compressed. The model may have limited access to earlier messages.";
     if (isContextOverflown)
-      return "Maximum available context for this chat is exceeded. Consider starting a new chat.";
-    return "Models perform better for chats which don't switch topics often.";
+      return "This chat has been heavily compressed. The model might not recall details from earlier conversations.";
+    return "For best results, consider starting a new chat when switching topics.";
   }, [isWarning, isContextOverflown]);
 
   return (
