@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 
 import { clearPauseReasonsAndHandleToolsStatus } from "../../../features/ToolConfirmation/confirmationSlice";
-import { useAppDispatch, useAppSelector } from "../../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useCompressChat,
+} from "../../../hooks";
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
 import { telemetryApi } from "../../../services/refact";
 import {
@@ -34,6 +38,7 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
+  const { compressChat, compressChatRequest } = useCompressChat();
 
   useEffect(() => {
     if (shouldBeVisible) {
@@ -111,7 +116,15 @@ export const SuggestNewChat = ({
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          <Link size="1" onClick={handleClose} color="indigo" asChild>
+          <Link
+            size="1"
+            onClick={() => {
+              if (compressChatRequest.isLoading) return;
+              void compressChat();
+            }}
+            color="indigo"
+            asChild
+          >
             <Flex align="center" justify="start" gap="1" display="inline-flex">
               <ArchiveIcon style={{ alignSelf: "start" }} />
               Compress and open in a new chat.
