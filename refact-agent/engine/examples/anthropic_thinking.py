@@ -20,7 +20,6 @@ async def main():
                 messages=messages,
                 n_answers=1,
                 model_name="claude-3-7-sonnet",
-                provider_name="",
                 tools=tools,
                 tool_choice="auto",
                 stream=False,

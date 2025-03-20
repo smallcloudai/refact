@@ -43,7 +43,6 @@ async def think_of_good_filename_and_export(msglist: List[chat_client.Message]):
             )],
             1,
             cli_settings.args.model,
-            cli_settings.args.provider,
             verbose=False,
             temperature=0.0,
             max_tokens=100,

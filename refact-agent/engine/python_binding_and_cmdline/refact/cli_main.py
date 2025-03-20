@@ -40,7 +40,7 @@ app: Optional[Application] = None
 async def answer_question_in_arguments(settings, arg_question):
     cli_streaming.add_streaming_message(chat_client.Message(role="user", content=arg_question))
     cli_streaming.start_streaming()
-    await the_chatting_loop(settings.model, settings.provider, max_auto_resubmit=4)
+    await the_chatting_loop(settings.model, max_auto_resubmit=4)
     cli_streaming.flush_response()
 
 
@@ -203,7 +203,7 @@ def on_submit(buffer):
     start_streaming()
 
     async def asyncfunc():
-        await the_chatting_loop(cli_settings.args.model, cli_settings.args.provider, cli_settings.args.chat_id, cli_settings.args.chat_remote, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
+        await the_chatting_loop(cli_settings.args.model, cli_settings.args.chat_id, cli_settings.args.chat_remote, max_auto_resubmit=(1 if cli_settings.args.always_pause else 6))
         if len(cli_streaming.streaming_messages) == 0:
             return
         # cli_streaming.print_response("\n")  # flush_response inside
@@ -237,7 +237,6 @@ async def chat_main():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('path_to_project', type=str, nargs='?', help="Path to the project", default=None)
     parser.add_argument('--model', type=str, help="Specify the model to use")
-    parser.add_argument('--provider', type=str, default="", help="Specify the model provider to use")
     parser.add_argument('--experimental', type=bool, default=False, help="Enable experimental features, such as new integrations")
     parser.add_argument('--xdebug', type=int, default=0, help="Connect to refact-lsp on the given port, as opposed to starting a new refact-lsp process")
     parser.add_argument('--always-pause', action='store_true', help="Pause even if the model tries to run tools, normally that's submitted automatically")
@@ -285,7 +284,6 @@ async def chat_main():
         cli_settings.args = cli_settings.CmdlineArgs(
             caps,
             model=args_parsed.model,
-            provider=args_parsed.provider,
             path_to_project=args_parsed.path_to_project,
             always_pause=args_parsed.always_pause,
             chat_id=chat_id,
@@ -347,14 +345,9 @@ async def actual_chat(
     app = Application(key_bindings=kb, layout=layout)
     app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
-    if cli_settings.args.provider and cli_settings.args.provider not in caps.providers.keys():
-        print(f"provider {cli_settings.args.provider} is unknown, pick one of {list(caps.providers.keys())}")
-        return
-    provider = caps.get_provider(cli_settings.args.provider)
-    assert provider is not None, "Couldn't find model provider"
-    if cli_settings.args.model not in provider.code_chat_models:
-        known_models = list(provider.code_chat_models.keys())
-        print(f"model {cli_settings.args.model} is unknown for provider {provider.name}, pick one of {known_models}")
+    if cli_settings.args.model not in caps.code_chat_models:
+        known_models = list(caps.code_chat_models.keys())
+        print(f"model {cli_settings.args.model} is unknown, pick one of {known_models}")
         return
 
     cli_statusbar.model_section = f"model {cli_settings.args.model} context {cli_settings.args.n_ctx()}"

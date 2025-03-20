@@ -214,7 +214,6 @@ async def ask_using_http(
     messages: List[Message],
     n_answers: int,
     model_name: str,
-    provider_name: str,
     *,
     stop: List[str] = [],
     tools: Optional[List[Dict[str, Any]]] = None,
@@ -234,7 +233,6 @@ async def ask_using_http(
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
     post_me = {
         "model": model_name,
-        "provider": provider_name,
         "n": n_answers,
         "messages": messages_to_dicts(messages, verbose, tools=tools, temperature=temperature, model_name=model_name)[0],
         "temperature": temperature,
