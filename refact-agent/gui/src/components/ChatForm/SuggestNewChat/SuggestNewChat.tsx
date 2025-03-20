@@ -1,5 +1,5 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { ArchiveIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 
@@ -102,14 +102,23 @@ export const SuggestNewChat = ({
         [styles.visible]: isAnimating,
       })}
     >
-      <Flex align="center" justify="between" gap="2">
+      <Flex align="center" justify="between" gap="2" wrap="wrap">
         <Text size="1">
           <Text weight="bold">Tip:</Text> {tipText}
         </Text>
-        <Flex align="center" gap="3" flexShrink="0">
+
+        <Flex align="center" mr="2" wrap="wrap" gap="2">
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
+          <Link size="1" onClick={handleClose} color="indigo" asChild>
+            <Flex align="center" justify="start" gap="1" display="inline-flex">
+              <ArchiveIcon style={{ alignSelf: "start" }} />
+              Compress and open in a new chat.
+            </Flex>
+          </Link>
+        </Flex>
+        <Box position="absolute" top="1" right="1">
           <IconButton
             asChild
             variant="ghost"
@@ -119,7 +128,7 @@ export const SuggestNewChat = ({
           >
             <Cross2Icon />
           </IconButton>
-        </Flex>
+        </Box>
       </Flex>
     </Box>
   );
