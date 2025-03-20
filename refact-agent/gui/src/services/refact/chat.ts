@@ -119,14 +119,14 @@ export type DeterministicMessage = {
   usage: unknown;
 };
 
-type CompletionTokenDetails = {
+export type CompletionTokenDetails = {
   accepted_prediction_tokens: number;
   audio_tokens: number;
   reasoning_tokens: number;
   rejected_prediction_tokens: number;
 };
 
-type PromptTokenDetails = {
+export type PromptTokenDetails = {
   audio_tokens: number;
   cached_tokens: number;
 };

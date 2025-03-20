@@ -22,9 +22,12 @@ export function useUsageCounter() {
   const chatId = useAppSelector(selectChatId);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
+
   const messages = useAppSelector(selectMessages);
   const assistantMessages = messages.filter(isAssistantMessage);
-  const currentThreadUsage = mergeUsages(assistantMessages.map((m) => m.usage));
+  const usages = assistantMessages.map((msg) => msg.usage);
+  const currentThreadUsage = mergeUsages(usages);
+
   const currentThreadMaximumContextTokens = useAppSelector(
     selectThreadMaximumTokens,
   );
