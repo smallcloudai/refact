@@ -488,7 +488,6 @@ export const MARKDOWN_ISSUE: ChatThread = {
   mode: "AGENT",
   new_chat_suggested: {
     wasSuggested: true,
-    isMandatory: true,
   },
   currentMaximumContextTokens: 64000,
   currentMessageContextTokens: 1,

@@ -38,7 +38,6 @@ import {
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
   upsertToolCall,
-  setIsNewChatCreationMandatory,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -248,14 +247,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.new_chat_suggested = {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
-    };
-  });
-
-  builder.addCase(setIsNewChatCreationMandatory, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.new_chat_suggested = {
-      ...state.thread.new_chat_suggested,
-      isMandatory: action.payload.value,
     };
   });
 

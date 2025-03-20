@@ -10,7 +10,6 @@ import { telemetryApi } from "../../../services/refact";
 import {
   newChatAction,
   selectChatId,
-  selectThreadNewChatSuggested,
   setIsNewChatSuggestionRejected,
 } from "../../../features/Chat";
 
@@ -28,7 +27,6 @@ export const SuggestNewChat = ({
 }: SuggestNewChatProps) => {
   const dispatch = useAppDispatch();
   const chatId = useAppSelector(selectChatId);
-  const { isMandatory } = useAppSelector(selectThreadNewChatSuggested);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
 
@@ -85,6 +83,7 @@ export const SuggestNewChat = ({
     });
   }, [dispatch, sendTelemetryEvent]);
 
+  // TBD: maybe change this text
   const tipText = useMemo(() => {
     if (isWarning)
       return "Long chats cause you to reach your usage limits faster.";
@@ -112,17 +111,15 @@ export const SuggestNewChat = ({
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          {!isMandatory && (
-            <IconButton
-              asChild
-              variant="ghost"
-              color="violet"
-              size="1"
-              onClick={handleClose}
-            >
-              <Cross2Icon />
-            </IconButton>
-          )}
+          <IconButton
+            asChild
+            variant="ghost"
+            color="violet"
+            size="1"
+            onClick={handleClose}
+          >
+            <Cross2Icon />
+          </IconButton>
         </Flex>
       </Flex>
     </Box>
