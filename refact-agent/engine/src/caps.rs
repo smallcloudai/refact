@@ -2,6 +2,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use indexmap::IndexMap;
+use serde::Deserializer;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
@@ -24,7 +25,7 @@ const CAPS_FILENAME: &str = "refact-caps";
 const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
 
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 #[serde_inline_default]
 pub struct BaseModelRecord {
     #[serde(default)]
@@ -41,6 +42,8 @@ pub struct BaseModelRecord {
     pub support_metadata: bool,
     #[serde(default)]
     pub similar_models: Vec<String>,
+    #[serde(default)]
+    pub tokenizer: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -52,8 +55,6 @@ pub struct ChatModelRecord {
     pub supports_scratchpads: HashMap<String, Value>,
     #[serde(default)]
     pub default_scratchpad: String,
-    #[serde(default)]
-    pub tokenizer: String,
 
     #[serde(default)]
     pub supports_tools: bool,
@@ -80,18 +81,23 @@ pub struct CompletionModelRecord {
     pub supports_scratchpads: HashMap<String, Value>,
     #[serde(default)]
     pub default_scratchpad: String,
-    #[serde(default)]
-    pub tokenizer: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct EmbeddingModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
+    #[serde(alias = "model_name")]
     pub name: String,
 
     pub embedding_size: i32,
     pub embedding_batch: usize,
+}
+
+impl EmbeddingModelRecord {
+    pub fn is_configured(&self) -> bool {
+        !self.name.is_empty() && (self.embedding_size > 0 || self.embedding_batch > 0 || self.base.n_ctx > 0)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -161,19 +167,14 @@ pub struct CapsProvider {
     pub code_completion_models: IndexMap<String, CompletionModelRecord>,
     #[serde(default)]
     pub code_chat_models: IndexMap<String, ChatModelRecord>,
+    #[serde(default, alias = "default_embeddings_model", deserialize_with = "deserialize_embedding_model")]
+    pub embedding_model: EmbeddingModelRecord,
 
     #[serde(default)]
     pub models_dict_patch: IndexMap<String, Value>, // Used to patch some params from cloud, like n_ctx for pro/free users
 
     #[serde(flatten)]
     pub default_models: DefaultModels,
-
-    #[serde(default)]
-    pub embedding_n_ctx: i32,
-    #[serde(default, alias="size_embeddings")]
-    pub embedding_size: i32,
-    #[serde(default)]
-    pub embedding_batch: usize,
 
     #[serde(default)]
     pub running_models: Vec<String>,
@@ -187,8 +188,19 @@ pub struct DefaultModels {
     pub multiline_completion_model: String,
     #[serde(default, alias = "code_chat_default_model")]
     pub chat_model: String,
-    #[serde(default, alias = "default_embeddings_model")]
-    pub embedding_model: String,
+}
+
+fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
+    deserializer: D
+) -> Result<EmbeddingModelRecord, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Input { String(String), Full(EmbeddingModelRecord) }
+    
+    match Input::deserialize(deserializer)? {
+        Input::String(name) => Ok(EmbeddingModelRecord { name, ..Default::default() }),
+        Input::Full(record) => Ok(record),
+    }
 }
 
 async fn read_providers_d(
@@ -260,7 +272,6 @@ async fn read_providers_d(
             &provider.default_models.chat_model,
             &provider.default_models.completion_model,
             &provider.default_models.multiline_completion_model,
-            &provider.default_models.embedding_model,
         ];
         models_to_add.extend(provider.code_chat_models.keys());
         models_to_add.extend(provider.code_completion_models.keys());
@@ -294,13 +305,13 @@ fn parse_from_yaml_or_json(buffer: &str) -> Result<serde_json::Value, String> {
 }
 
 fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>) {
-    fn add_provider_details_to_model(base_model_rec: &mut BaseModelRecord, provider: &CapsProvider, model_name: &str) {
+    fn add_provider_details_to_model(base_model_rec: &mut BaseModelRecord, provider: &CapsProvider, model_name: &str, custom_endpoint: &str) {
         base_model_rec.api_key = provider.api_key.clone();
             
-        let endpoint = if provider.completion_endpoint.is_empty() {
+        let endpoint = if custom_endpoint.is_empty() {
             provider.endpoint_template.clone()
         } else {
-            provider.completion_endpoint.clone()
+            custom_endpoint.to_string()
         };
         base_model_rec.endpoint = endpoint.replace("$MODEL", model_name);
         base_model_rec.support_metadata = provider.support_metadata;
@@ -314,7 +325,9 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
         for (model_name, mut model_rec) in completion_models {
             let model_id = format!("{provider_name}/{model_name}");
             
-            add_provider_details_to_model(&mut model_rec.base, &provider, &model_name);
+            add_provider_details_to_model(
+                &mut model_rec.base, &provider, &model_name, &provider.completion_endpoint
+            );
 
             if provider.code_completion_n_ctx > 0 && provider.code_completion_n_ctx < model_rec.base.n_ctx {
                 // model is capable of more, but we may limit it from server or provider, e.x. for latency
@@ -328,31 +341,28 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
         for (model_name, mut model_rec) in chat_models {
             let model_id = format!("{provider_name}/{model_name}");
             
-            add_provider_details_to_model(&mut model_rec.base, &provider, &model_name);
+            add_provider_details_to_model(
+                &mut model_rec.base, &provider, &model_name, &provider.chat_endpoint
+            );
 
             caps.code_chat_models.insert(model_id, model_rec);
         }
 
-        if !provider.default_models.embedding_model.is_empty() {
-            let endpoint = if provider.embeddings_endpoint.is_empty() {
-                provider.endpoint_template
-            } else {
-                provider.embeddings_endpoint
-            };
-            let endpoint = endpoint.replace("$MODEL", &provider.default_models.embedding_model);
-            caps.embedding_model = EmbeddingModelRecord {
-                name: provider.default_models.embedding_model,
-                base: BaseModelRecord { 
-                    n_ctx: provider.embedding_n_ctx as usize, 
-                    endpoint: endpoint, 
-                    endpoint_style: provider.endpoint_style, 
-                    api_key: provider.api_key, 
-                    support_metadata: provider.support_metadata, 
-                    similar_models: Vec::new(), 
+        if provider.embedding_model.is_configured() {
+            let mut embedding_model = std::mem::take(&mut provider.embedding_model);
+            add_provider_details_to_model(
+                &mut embedding_model.base, &provider, &embedding_model.name, &provider.embeddings_endpoint
+            );
+
+            embedding_model.embedding_batch = match embedding_model.embedding_batch {
+                0 => 64,
+                b if b > 256 => {
+                    tracing::warn!("embedding_batch can't be higher than 256");
+                    64
                 },
-                embedding_batch: provider.embedding_batch,
-                embedding_size: provider.embedding_size,
+                b => b,
             };
+            caps.embedding_model = embedding_model;
         }
     }
 }
@@ -575,6 +585,7 @@ fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), S
     struct KnownModels {
         code_completion_models: IndexMap<String, CompletionModelRecord>,
         code_chat_models: IndexMap<String, ChatModelRecord>,
+        embedding_models: IndexMap<String, EmbeddingModelRecord>,
     }
     let known_models: KnownModels = serde_json::from_str(KNOWN_MODELS).map_err(|e| {
         let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
@@ -606,11 +617,21 @@ fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), S
         for model in &provider.running_models {
             if !provider.code_completion_models.contains_key(model) && 
                 !provider.code_chat_models.contains_key(model) &&
-                !(model == &provider.default_models.embedding_model) {
+                !(model == &provider.embedding_model.name) {
                 tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
             }
         }
+
+        if !provider.embedding_model.is_configured() && !provider.embedding_model.name.is_empty() {
+            let model_stripped = strip_model_from_finetune(&provider.embedding_model.name);
+            if let Some(known_model_rec) = known_models.embedding_models.get(&model_stripped) {
+                provider.embedding_model = known_model_rec.clone();
+            } else {
+                tracing::warn!("Unkown embedding model '{}', maybe configure it or update this binary", model_stripped);
+            }
+        }
     }
+
     Ok(())
 }
 
