@@ -99,7 +99,6 @@ async def do_all():
             messages,
             N,
             MODEL,
-            provider_name="",
             tools=tools,
             verbose=True,
             temperature=0.3,

@@ -1,4 +1,3 @@
-from typing import OrderedDict
 import os
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -13,25 +12,12 @@ class CapsModel(BaseModel):
     supports_tools: bool
 
 
-class CapsProvider(BaseModel):
-    name: str
-    code_chat_models: Dict[str, CapsModel]
-
-
 class Caps(BaseModel):
-    providers: OrderedDict[str, CapsProvider]
-    code_chat_default_model: str = ""
-    code_chat_default_provider: str = ""
-    embedding_model: str = ""
+    cloud_name: str
+    code_chat_models: Dict[str, CapsModel]
+    code_chat_default_model: str
+    embedding_model: str
 
-    def get_provider(self, provider_name: str) -> Optional[CapsProvider]:
-        if not self.providers:
-            return None
-
-        if not provider_name:
-            return self.providers.get(next(iter(self.providers)))
-        else:
-            return self.providers.get(provider_name)
 
 class SettingsCLI(BaseModel):
     address_url: Optional[str] = None
@@ -78,18 +64,16 @@ vecdb_max_files: 5000
 
 
 class CmdlineArgs:
-    def __init__(self, caps: Caps, *, model: str, provider: str, path_to_project: str, always_pause: bool, chat_id: str, chat_remote: bool):
+    def __init__(self, caps: Caps, *, model: str, path_to_project: str, always_pause: bool, chat_id: str, chat_remote: bool):
         self.caps = caps
         self.model = model or caps.code_chat_default_model
-        self.provider = provider or caps.code_chat_default_provider
         self.project_path = path_to_project
         self.always_pause = always_pause
         self.chat_id = chat_id
         self.chat_remote = chat_remote
 
     def n_ctx(self):
-        provider_key = self.provider if self.provider else next(iter(self.caps.providers))
-        return self.caps.providers[provider_key].code_chat_models[self.model]
+        return self.caps.code_chat_models[self.model].n_ctx
 
 
 args: Optional[CmdlineArgs] = None
@@ -102,7 +86,6 @@ async def fetch_caps(base_url: str) -> Caps:
         async with session.get(url) as response:
             if response.status == 200:
                 data = await response.json()
-                print(data)
                 return Caps(**data)  # Parse the JSON data into the Caps model
             else:
                 raise RuntimeError(f"cannot fetch {url}\n{response.status}")

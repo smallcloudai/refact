@@ -52,7 +52,6 @@ async def single_test(system_prompt: str, ask_this: str, *, tools_must_be) -> in
         messages,
         N,
         MODEL,
-        provider_name="",
         tools=tools,
         verbose=False,
         temperature=0.3,
