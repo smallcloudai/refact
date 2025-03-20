@@ -10,8 +10,9 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::{canonicalize_normalized_path, preprocess_path_for_normalization};
+use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
 use tokio::sync::RwLock as ARwLock;
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::global_context::GlobalContext;
 
 struct ToolUpdateTextDocArgs {
@@ -23,17 +24,18 @@ struct ToolUpdateTextDocArgs {
 
 pub struct ToolUpdateTextDoc;
 
-fn parse_args(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<ToolUpdateTextDocArgs, String> {
+async fn parse_args(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    args: &HashMap<String, Value>,
+    privacy_settings: Arc<PrivacySettings>
+) -> Result<ToolUpdateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
-            if !path.is_absolute() {
-                return Err(format!(
-                    "Error: The provided path '{}' is not absolute. Please provide a full path starting from the root directory.",
-                    s.trim()
-                ));
-            }
-            let path = canonicalize_normalized_path(path);
+            let candidates_file = file_repair_candidates(gcx.clone(), &s, 3, false).await;
+            let path = match return_one_candidate_or_a_good_error(gcx.clone(), &s, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+                Ok(f) => canonicalize_normalized_path(PathBuf::from(preprocess_path_for_normalization(f.trim().to_string()))),
+                Err(e) => return Err(e)
+            };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(
                     "Error: Cannot update the file '{:?}' due to privacy settings.",
@@ -81,7 +83,7 @@ pub async fn tool_update_text_doc_exec(
     dry: bool
 ) -> Result<(String, String, Vec<DiffChunk>), String> {
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-    let args = parse_args(args, privacy_settings)?;
+    let args = parse_args(gcx.clone(), args, privacy_settings).await?;
     await_ast_indexing(gcx.clone()).await?;
     let (before_text, after_text) = str_replace(gcx.clone(), &args.path, &args.old_str, &args.replacement, args.multiple, dry).await?;
     sync_documents_ast(gcx.clone(), &args.path).await?;
@@ -125,8 +127,8 @@ impl Tool for ToolUpdateTextDoc {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
         
-        async fn can_execute_tool_edit(args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
-            let _ = parse_args(args, privacy_settings)?;
+        async fn can_execute_tool_edit(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
+            let _ = parse_args(gcx.clone(), args, privacy_settings).await?;
             Ok(())
         }
 
@@ -135,7 +137,7 @@ impl Tool for ToolUpdateTextDoc {
         // workaround: if messages weren't passed by ToolsPermissionCheckPost, legacy
         if msgs_len != 0 {
             // if we cannot execute apply_edit, there's no need for confirmation
-            if let Err(_) = can_execute_tool_edit(args, privacy_settings).await {
+            if let Err(_) = can_execute_tool_edit(gcx.clone(), args, privacy_settings).await {
                 return Ok(MatchConfirmDeny {
                     result: MatchConfirmDenyResult::PASS,
                     command: "update_textdoc".to_string(),
