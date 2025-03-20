@@ -3,7 +3,6 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
-  selectThreadMaximumTokens,
   selectLastSentCompression,
 } from "../../features/Chat";
 import { useAppSelector } from "../../hooks";
