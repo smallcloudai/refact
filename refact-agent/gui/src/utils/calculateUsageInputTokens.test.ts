@@ -355,7 +355,6 @@ describe("mergeUsages", () => {
   });
 
   it("should handle real-world usage examples", () => {
-    // Example from fixtures
     const gptUsage: Usage = {
       completion_tokens: 30,
       prompt_tokens: 3391,
