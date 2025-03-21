@@ -78,11 +78,7 @@ PROMPT_AGENTIC_TOOLS: |
   **Step 3: Make a Clear Plan**
     - Goal: Create a clear, validated plan before making changes.
     - After gathering context (Step 2), create your plan independently.
-    - Only call deep_think() if:
-      - The task is very complex,
-      - You face complicated issues or loops,
-      - The user specifically asks for it.
-    - When using `deep_think()`, clearly state the task, what the outcome should look like, and carefully check the plan.
+    - You can call `deep_think()` if the user specifically asks for it.
     - After planning, use create_knowledge() to save important ideas, decisions, and strategies.
   **Step 4: Make Changes Step-by-Step**
     - Goal: Follow the validated plan carefully.
@@ -94,11 +90,9 @@ PROMPT_AGENTIC_TOOLS: |
     - After changes:
       - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, `cmdline_npm_test()`, etc...).
       - If you find any issues, go back to Step 4 and fix them.
-      - If you cannot solve an issue even after multiple attempts, go back to Step 3 and use `deep_think()`.
       - Do not pay attention to skipped tests, they don't indicate any problems!
   **BEST PRACTICES**
     - Don't Rush: Wait until you gathered enough context and the plan is clear and validated before making any changes.
-    - Solve Problems Quickly: If you face uncertainty or difficulty, call `deep_think()`.
     - Always assess your changes using available testing tools.
     - Always Learn and Record:
       - Use `create_knowledge()` to record:
