@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import {
   Container,
@@ -22,7 +22,7 @@ import styles from "./ChatContent.module.css";
 import { CommandMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
-import { useAppSelector } from "../../hooks";
+import { useAppSelector, useHideScroll } from "../../hooks";
 import {
   selectManyToolResultsByIds,
   selectToolResultById,
@@ -478,6 +478,13 @@ const ToolUsageSummary: React.FC<{
 // TODO: make this look nicer.
 const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   const [open, setOpen] = React.useState(false);
+  const ref = useRef(null);
+  const scrollOnHide = useHideScroll(ref);
+
+  const handleHide = useCallback(() => {
+    setOpen(false);
+    scrollOnHide();
+  }, [scrollOnHide]);
 
   const maybeResult = useAppSelector((state) =>
     selectToolResultById(state, toolCall.id),
@@ -532,7 +539,7 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
                 );
               })}
             </Flex>
-            <FadedButton color="gray" onClick={() => setOpen(false)} mx="2">
+            <FadedButton color="gray" onClick={handleHide} mx="2">
               Hide Memories
             </FadedButton>
           </Flex>
