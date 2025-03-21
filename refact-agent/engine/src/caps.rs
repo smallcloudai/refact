@@ -371,6 +371,7 @@ async fn load_caps_from_buf(
     buffer: &str,
     caps_url: &str,
     config_dir: &Path,
+    cmdline_api_key: &str,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
     let buffer_value = parse_from_yaml_or_json(buffer)?;
     let mut caps = serde_json::from_value::<CodeAssistantCaps>(buffer_value.clone())
@@ -391,6 +392,23 @@ async fn load_caps_from_buf(
         provider.chat_endpoint = relative_to_full_url(caps_url, &provider.chat_endpoint)?;
         provider.completion_endpoint = relative_to_full_url(caps_url, &provider.completion_endpoint)?;
         provider.embeddings_endpoint = relative_to_full_url(caps_url, &provider.embeddings_endpoint)?;
+
+        provider.api_key = match &provider.api_key {
+            k if k.is_empty() => cmdline_api_key.to_string(),
+            k if k.starts_with("$") => {
+                match std::env::var(&k[1..]) {
+                    Ok(env_val) => env_val,
+                    Err(e) => {
+                        tracing::error!(
+                            "tried to read API key from env var {} for provider {}, but failed: {}", 
+                            k, provider.name, e
+                        );
+                        cmdline_api_key.to_string()
+                    }
+                }
+            }
+            k => k.to_string(),
+        };
     }
     caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
@@ -404,40 +422,6 @@ async fn load_caps_from_buf(
     // info!("code_chat_models models: {:?}", caps.code_chat_models);
     // info!("code completion models: {:?}", caps.code_completion_models);
     Ok(Arc::new(StdRwLock::new(caps)))
-}
-
-pub async fn get_api_key(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    provider_name: &str,
-) -> Result<String, String> {
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0)
-        .await.map_err_to_string()?;
-    let cmdline_api_key = gcx.read().await.cmdline.api_key.clone();
-
-    let custom_apikey = {
-        let caps_locked = caps.read().unwrap();
-        let provider = if provider_name.is_empty() {
-            caps_locked.providers.first().map(|(_, p)| p)
-        } else {
-            caps_locked.providers.get(provider_name)
-        };
-        provider.map(|p| p.api_key.clone()).unwrap_or_default()
-    };
-    
-    if custom_apikey.is_empty() {
-        Ok(cmdline_api_key)
-    } else if custom_apikey.starts_with("$") {
-        let env_var_name = &custom_apikey[1..];
-        match std::env::var(env_var_name) {
-            Ok(env_value) => Ok(env_value),
-            Err(e) => {
-                error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.config/refact/bring-your-own-key.yaml", env_var_name, e);
-                Ok(cmdline_api_key)
-            }
-        }
-    } else {
-        Ok(custom_apikey)
-    }
 }
 
 async fn load_caps_buf_from_file(
@@ -525,7 +509,10 @@ pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
-    let config_dir = gcx.read().await.config_dir.clone();
+    let (config_dir, cmdline_api_key) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.api_key.clone())
+    };
     let mut caps_url = cmdline.address_url.clone();
     let buf: String;
     if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
@@ -533,7 +520,7 @@ pub async fn load_caps(
     } else {
         (buf, caps_url) = load_caps_buf_from_file(cmdline, gcx).await?
     }
-    load_caps_from_buf(&buf, &caps_url, &config_dir).await
+    load_caps_from_buf(&buf, &caps_url, &config_dir, &cmdline_api_key).await
 }
 
 pub fn strip_model_from_finetune(model: &str) -> String {
