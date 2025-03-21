@@ -17,7 +17,7 @@ use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::get_model_record;
+use crate::caps::get_chat_model_record;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -35,12 +35,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             let mut error_log = Vec::new();
             let tconfig = load_customization(gcx.clone(), true, &mut error_log).await;
             for e in error_log.iter() {
-                tracing::error!(
-                    "{}:{} {:?}",
-                    crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-                    e.error_line,
-                    e.error_msg,
-                );
+                tracing::error!("{e}");
             }
             tconfig.subchat_tool_parameters.get(tool_name).cloned()
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
@@ -48,7 +43,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     };
 
     // check if the models exist otherwise use the external chat model
-    match get_model_record(gcx, &params.subchat_model).await {
+    match get_chat_model_record(gcx, &params.subchat_model).await {
         Ok(_) => {}
         Err(err) => {
             let current_model = ccx.lock().await.current_model.clone();
@@ -62,6 +57,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
+    provider_name: &str,
     maxgen: usize,
     original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
@@ -88,6 +84,7 @@ pub async fn run_tools_remotely(
         subchat_tool_parameters,
         postprocess_parameters,
         model_name: model_name.to_string(),
+        provider_name: provider_name.to_string(),
         chat_id,
         style: style.clone(),
     };

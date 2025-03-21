@@ -18,6 +18,7 @@ use crate::cached_tokenizers;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::call_validation::{ChatMeta, PostprocessSettings, SubchatParameters};
+use crate::caps::ModelType;
 use crate::custom_error::ScratchError;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
@@ -49,6 +50,8 @@ struct CommandPreviewPost {
     #[serde(default)]
     model: String,
     #[serde(default)]
+    provider: String,
+    #[serde(default)]
     pub meta: ChatMeta,
 }
 
@@ -69,6 +72,7 @@ pub struct CommandExecutePost {
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
     pub postprocess_parameters: PostprocessSettings,
     pub model_name: String,
+    pub provider_name: String,
     pub chat_id: String,
 }
 
@@ -168,22 +172,23 @@ pub async fn handle_v1_command_preview(
     };
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, recommended_model_record) = {
+    let (model_name, recommended_model_record, provider_name) = {
         let caps_locked = caps.read().unwrap();
         let tmp = crate::caps::which_model_to_use(
-                &caps_locked.code_chat_models,
+                ModelType::Chat,
+                &caps_locked,
                 &post.model,
-                &caps_locked.code_chat_default_model,
+                &post.provider,
             );
         match tmp {
-            Ok(x) => (x.0, x.1.clone()),
+            Ok(x) => (x.0, x.1.clone(), x.2.name.clone()),
             Err(e) => {
                 tracing::warn!("can't find model: {}", e);
                 return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("can't find model: {}", e)))?;
             }
         }
     };
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = match cached_tokenizers::cached_tokenizer(caps.clone(), global_context.clone(), model_name.clone()).await {
+    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = match cached_tokenizers::cached_tokenizer(caps.clone(), global_context.clone(), model_name.clone(), provider_name).await {
         Ok(x) => x,
         Err(e) => {
             tracing::warn!("can't load tokenizer for preview: {}", e);
@@ -289,7 +294,7 @@ pub async fn handle_v1_at_command_execute(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let caps = try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), post.model_name.clone()).await
+    let tokenizer = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), post.model_name.clone(), post.provider_name.clone()).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
 
     let mut ccx = AtCommandsContext::new(

@@ -42,12 +42,7 @@ pub async fn create_chat_post_and_scratchpad(
     let mut error_log = Vec::new();
     let tconfig = load_customization(global_context.clone(), true, &mut error_log).await;
     for e in error_log.iter() {
-        tracing::error!(
-            "{}:{} {:?}",
-            crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-            e.error_line,
-            e.error_msg,
-        );
+        tracing::error!("{e}");
     }
 
     let mut chat_post = ChatPost {
@@ -75,7 +70,7 @@ pub async fn create_chat_post_and_scratchpad(
         ..Default::default()
     };
 
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, _supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
+    let (model_name, provider_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, _supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
         caps.clone(),
         &chat_post,
     ).await?;
@@ -95,7 +90,8 @@ pub async fn create_chat_post_and_scratchpad(
     let scratchpad = crate::scratchpads::create_chat_scratchpad(
         global_context.clone(),
         caps,
-        model_name.to_string(),
+        model_name,
+        provider_name,
         &mut chat_post,
         &messages.into_iter().cloned().collect::<Vec<_>>(),
         prepend_system_prompt,
@@ -122,8 +118,13 @@ async fn chat_interaction_non_stream(
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let meta = {
         let gcx = ccx.lock().await.global_context.clone();
-        if is_metadata_supported(gcx).await {
-            Some(chat_post.meta.clone())
+        let caps = gcx.read().await.caps.clone();
+        if let Some(caps) = caps {
+            if is_metadata_supported(caps, &chat_post.provider).await {
+                Some(chat_post.meta.clone())
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -136,6 +137,7 @@ async fn chat_interaction_non_stream(
         "chat".to_string(),
         prompt,
         chat_post.model.clone(),
+        chat_post.provider.clone(),
         &chat_post.parameters,   // careful: includes n
         chat_post.only_deterministic_messages,
         meta

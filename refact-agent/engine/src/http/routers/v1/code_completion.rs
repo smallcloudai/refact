@@ -10,6 +10,7 @@ use tracing::info;
 use crate::call_validation::{CodeCompletionPost, code_completion_post_validate};
 use crate::caps;
 use crate::caps::CodeAssistantCaps;
+use crate::caps::ModelType;
 use crate::completion_cache;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
@@ -25,35 +26,37 @@ async fn _lookup_code_completion_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
     code_completion_post: &CodeCompletionPost,
     look_for_multiline_model: bool,
-) -> Result<(String, String, serde_json::Value, usize), String> {
+) -> Result<(String, String, String, serde_json::Value, usize), String> {
     let caps_locked = caps.read().unwrap();
 
-    let (model_name, modelrec) = if !look_for_multiline_model 
+    let (model_name, model_rec, provider) = if !look_for_multiline_model 
         || caps_locked.multiline_code_completion_default_model.is_empty() {
         caps::which_model_to_use(
-            &caps_locked.code_completion_models,
+            ModelType::CodeCompletion,
+            &caps_locked,
             &code_completion_post.model,
-            &caps_locked.code_completion_default_model,
+            &code_completion_post.provider,
         )?
     } else {
         caps::which_model_to_use(
-            &caps_locked.code_completion_models,
+            ModelType::MultilineCodeCompletion,
+            &caps_locked,
             &code_completion_post.model,
-            &caps_locked.multiline_code_completion_default_model,
+            &code_completion_post.provider,
         )?
     };
     let (sname, patch) = caps::which_scratchpad_to_use(
-        &modelrec.supports_scratchpads,
+        &model_rec.supports_scratchpads,
         &code_completion_post.scratchpad,
-        &modelrec.default_scratchpad,
+        &model_rec.default_scratchpad,
     )?;
-    let caps_completion_n_ctx = caps_locked.code_completion_n_ctx;
-    let mut n_ctx = modelrec.n_ctx;
+    let caps_completion_n_ctx = provider.code_completion_n_ctx;
+    let mut n_ctx = model_rec.n_ctx;
     if caps_completion_n_ctx > 0 && n_ctx > caps_completion_n_ctx {
         // the model might be capable of a bigger context, but server (i.e. admin) tells us to use smaller (for example because latency)
         n_ctx = caps_completion_n_ctx;
     }
-    Ok((model_name, sname.clone(), patch.clone(), n_ctx))
+    Ok((model_name, code_completion_post.provider.clone(), sname.clone(), patch.clone(), n_ctx))
 }
 
 pub async fn handle_v1_code_completion(
@@ -77,7 +80,7 @@ pub async fn handle_v1_code_completion(
         let _ = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 10).await;
         return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
     }
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
+    let (model_name, provider_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
     }
@@ -111,6 +114,7 @@ pub async fn handle_v1_code_completion(
         gcx.clone(),
         caps,
         model_name.clone(),
+        provider_name.clone(),
         &code_completion_post.clone(),
         &scratchpad_name,
         &scratchpad_patch,
@@ -130,9 +134,9 @@ pub async fn handle_v1_code_completion(
         false,
     ).await));
     if !code_completion_post.stream {
-        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), model_name, &mut code_completion_post.parameters, false, None).await
+        crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), model_name, provider_name, &mut code_completion_post.parameters, false, None).await
     } else {
-        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_name, code_completion_post.parameters.clone(), false, None).await
+        crate::restream::scratchpad_interaction_stream(ccx.clone(), scratchpad, "completion-stream".to_string(), model_name, provider_name, code_completion_post.parameters.clone(), false, None).await
     }
 }
 
@@ -165,7 +169,7 @@ pub async fn handle_v1_code_completion_prompt(
     if maybe.is_err() {
         return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", maybe.unwrap_err())))
     }
-    let (model_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
+    let (model_name, provider_name, scratchpad_name, scratchpad_patch, n_ctx) = maybe.unwrap();
 
     // don't need cache, but go along
     let (cache_arc, tele_storage) = {
@@ -178,6 +182,7 @@ pub async fn handle_v1_code_completion_prompt(
         gcx.clone(),
         caps,
         model_name.clone(),
+        provider_name.clone(),
         &post,
         &scratchpad_name,
         &scratchpad_patch,
