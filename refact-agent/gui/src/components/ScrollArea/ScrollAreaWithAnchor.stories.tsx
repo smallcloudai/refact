@@ -5,7 +5,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ScrollAreaWithAnchor } from ".";
 import { Text, Container, Theme, Card } from "@radix-ui/themes";
 
-const meta = {
+const meta: Meta<typeof ScrollAreaWithAnchor.ScrollArea> = {
   title: "Scroll Area Anchor",
   decorators: [
     (Story) => (
@@ -27,7 +27,7 @@ const meta = {
     fullHeight: true,
     style: { height: "150px" },
   },
-} satisfies Meta<typeof ScrollAreaWithAnchor.ScrollArea>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
