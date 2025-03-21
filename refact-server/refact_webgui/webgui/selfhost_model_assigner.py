@@ -8,7 +8,7 @@ from refact_utils.finetune.utils import get_active_loras
 from refact_utils.huggingface.utils import is_hf_hub_offline
 from refact_utils.huggingface.utils import get_repo_status
 from refact_webgui.webgui.selfhost_webutils import log
-from refact_known_models import models_mini_db, passthrough_mini_db
+from refact_known_models import models_mini_db
 
 from pathlib import Path
 from typing import List, Dict, Any, Set, Optional
@@ -108,14 +108,6 @@ class ModelAssigner:
     @property
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
-
-    @property
-    def passthrough_mini_db(self) -> Dict[str, Any]:
-        return passthrough_mini_db
-
-    @property
-    def models_db_with_passthrough(self) -> Dict[str, Any]:
-        return {**self.models_db, **self.passthrough_mini_db}
 
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
@@ -270,14 +262,13 @@ class ModelAssigner:
                     'share_gpu': False,
                 },
             },
-            "openai_api_enable": False,
-            "anthropic_api_enable": False,
-            "groq_api_enable": False,
-            "cerebras_api_enable": False,
-            "gemini_api_enable": False,
-            "xai_api_enable": False,
-            "deepseek_api_enable": False,
         }
+        
+        # Create default enabled models config
+        default_enabled_models = {}
+        with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
+            json.dump(default_enabled_models, f, indent=4)
+        os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
         self.models_to_watchdog_configs(default_config)
 
     @property
@@ -306,14 +297,12 @@ class ModelAssigner:
         for k, rec in self.models_db.items():
             if rec.get("hidden", False):
                 continue
-            finetune_info = None
-            if k in active_loras:
-                finetune_info = [
-                    {
-                        "run_id": l["run_id"],
-                        "checkpoint": l["checkpoint"],
-                    } for l in active_loras[k].get('loras', [])
-                ]
+            finetune_info = [
+                {
+                    "run_id": l["run_id"],
+                    "checkpoint": l["checkpoint"],
+                } for l in active_loras.get(k, {}).get('loras', [])
+            ]
             has_finetune = bool("finetune" in rec["filter_caps"])
             finetune_model = rec.get("finetune_model", k if has_finetune else None)
             default_n_ctx = get_default_n_ctx(k, rec)
@@ -360,11 +349,6 @@ class ModelAssigner:
     def model_assignment(self):
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, "r"))
-            j["groq_api_enable"] = j.get("groq_api_enable", False)
-            j["cerebras_api_enable"] = j.get("cerebras_api_enable", False)
-            j["gemini_api_enable"] = j.get("gemini_api_enable", False)
-            j["xai_api_enable"] = j.get("xai_api_enable", False)
-            j["deepseek_api_enable"] = j.get("deepseek_api_enable", False)
         else:
             j = {"model_assign": {}}
 

@@ -144,8 +144,12 @@ pub async fn cached_tokenizer(
     let to = tokenizer_cache_dir.join(model_name.clone()).join("tokenizer.json");
     let http_path = {
         let caps_locked = caps.read().unwrap();
-        let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
-        caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name)
+        if caps_locked.tokenizer_path_template.is_empty() {
+            caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name).clone()
+        } else {
+            let rewritten_model_name = caps_locked.tokenizer_rewrite_path.get(&model_name).unwrap_or(&model_name);
+            caps_locked.tokenizer_path_template.replace("$MODEL", rewritten_model_name)
+        }
     };
     try_download_tokenizer_file_and_open(&client2, http_path.as_str(), api_key.clone(), &to).await?;
     info!("loading tokenizer \"{}\"", to.display());

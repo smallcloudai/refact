@@ -13,7 +13,7 @@ from refact_webgui.webgui.tab_loras import write_to_file
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from pathlib import Path
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from pydantic import field_validator
 from typing import Dict, Optional
 
@@ -42,17 +42,6 @@ class TabHostModelRec(BaseModel):
 
 class TabHostModelsAssign(BaseModel):
     model_assign: Dict[str, TabHostModelRec] = {}
-
-    # integrations
-    openai_api_enable: bool = False
-    anthropic_api_enable: bool = False
-    groq_api_enable: bool = False
-    cerebras_api_enable: bool = False
-    gemini_api_enable: bool = False
-    xai_api_enable: bool = False
-    deepseek_api_enable: bool = False
-
-    model_config = ConfigDict(protected_namespaces=())  # avoiding model_ namespace protection
 
 
 class TabHostRouter(APIRouter):
