@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import { Text, Container, Box, Flex, Link } from "@radix-ui/themes";
 import { DiffMessage, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
@@ -8,7 +8,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useEventsBusForIDE } from "../../hooks";
+import { useEventsBusForIDE, useHideScroll } from "../../hooks";
 import { FadedButton } from "../Buttons";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
@@ -239,11 +239,18 @@ export const DiffContent: React.FC<{
   diffs: Record<string, DiffChunk[]>;
 }> = ({ diffs }) => {
   const [open, setOpen] = React.useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const handleScroll = useHideScroll(ref);
+
+  const handleHide = useCallback(() => {
+    setOpen(false);
+    handleScroll();
+  }, [handleScroll]);
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
       <Collapsible.Trigger asChild>
-        <Flex gap="2" align="center">
+        <Flex gap="2" align="center" ref={ref}>
           <Text weight="light" size="1">
             <DiffTitle diffs={diffs} />
           </Text>
@@ -253,7 +260,7 @@ export const DiffContent: React.FC<{
       <Collapsible.Content>
         <Flex direction="column">
           <DiffForm diffs={diffs} />
-          <FadedButton color="gray" onClick={() => setOpen(false)} mx="2">
+          <FadedButton color="gray" onClick={handleHide} mx="2">
             Hide Diff
           </FadedButton>
         </Flex>
