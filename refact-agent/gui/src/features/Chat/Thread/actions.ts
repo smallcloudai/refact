@@ -150,6 +150,7 @@ export const setIsWaitingForResponse = createAction<boolean>(
   "chatThread/setIsWaiting",
 );
 
+// TBD: maybe remove it's only used by a smart link.
 export const setMaxNewTokens = createAction<number>(
   "chatThread/setMaxNewTokens",
 );
@@ -324,9 +325,10 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
           ? state.chat.thread
           : null;
 
+    const maxTokens = thread?.currentMaximumContextTokens
+      ? thread.currentMaximumContextTokens / 4
+      : DEFAULT_MAX_NEW_TOKENS;
     // TODO: stops the stream.
-    // const onlyDeterministicMessages =
-    //   checkForToolLoop(messages) || !messages.some(isSystemMessage);
 
     const onlyDeterministicMessages = checkForToolLoop(messages);
 
@@ -342,7 +344,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       tools,
       stream: true,
       abortSignal: thunkAPI.signal,
-      max_new_tokens: state.chat.max_new_tokens,
+      max_new_tokens: maxTokens,
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,
