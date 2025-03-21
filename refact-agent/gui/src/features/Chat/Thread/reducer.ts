@@ -44,6 +44,7 @@ import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
   commandsApi,
+  DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
   isDiffMessage,
   isMultiModalToolResult,
@@ -114,6 +115,7 @@ const createInitialState = ({
     error: null,
     prevent_send: false,
     waiting_for_response: false,
+    max_new_tokens: DEFAULT_MAX_NEW_TOKENS,
     cache: {},
     system_prompt: {},
     tool_use,
@@ -381,9 +383,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.waiting_for_response = action.payload;
   });
 
-  // TBD: should be safe to remove?
   builder.addCase(setMaxNewTokens, (state, action) => {
-    state.thread.currentMaximumContextTokens = action.payload;
+    state.max_new_tokens = action.payload;
   });
 
   builder.addCase(fixBrokenToolMessages, (state, action) => {
