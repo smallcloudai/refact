@@ -90,7 +90,7 @@ const Provider: React.FC<ScrollAreaProps> = forwardRef<
       >
         <Box ref={innerRef}>
           {children}
-          <BottomSpace />
+          <BottomSpace mt="-2" />
         </Box>
         <FollowButton />
       </BaseScrollArea>

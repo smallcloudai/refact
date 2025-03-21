@@ -67,11 +67,6 @@ export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
 );
 
-export const setIsNewChatCreationMandatory =
-  createAction<PayloadWithChatAndBoolean>(
-    "chatThread/setIsNewChatCreationMandatory",
-  );
-
 export const setIsNewChatSuggestionRejected =
   createAction<PayloadWithChatAndBoolean>(
     "chatThread/setIsNewChatSuggestionRejected",

@@ -386,6 +386,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                       : undefined
                 }
                 title="Compress chat and continue"
+                type="button"
                 onClick={() => void compressChat()}
                 disabled={
                   unCalledTools ||

@@ -32,7 +32,6 @@ export type ChatThread = {
 export type SuggestedChat = {
   wasSuggested: boolean;
   wasRejectedByUser?: boolean;
-  isMandatory?: boolean;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
