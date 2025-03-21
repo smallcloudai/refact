@@ -182,8 +182,6 @@ pub struct ChatMessage {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubchatParameters {
     pub subchat_model: String,
-    #[serde(default)]
-    pub subchat_provider: String,
     pub subchat_n_ctx: usize,
     #[serde(default)]
     pub subchat_tokens_for_rag: usize,
