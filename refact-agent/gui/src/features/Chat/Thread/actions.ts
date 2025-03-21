@@ -326,7 +326,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
           : null;
 
     const maxTokens = thread?.currentMaximumContextTokens
-      ? thread.currentMaximumContextTokens / 2
+      ? thread.currentMaximumContextTokens / 4
       : DEFAULT_MAX_NEW_TOKENS;
     // TODO: stops the stream.
 
