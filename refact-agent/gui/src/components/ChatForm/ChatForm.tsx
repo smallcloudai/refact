@@ -18,6 +18,7 @@ import {
   useCapsForToolUse,
   useSendChatRequest,
   useCompressChat,
+  useAutoFocusOnce,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -93,12 +94,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const preventSend = useAppSelector(selectPreventSend);
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest } = useCompressChat();
-  // const currentThreadMaximumContextTokens = useAppSelector(
-  //   selectThreadMaximumTokens,
-  // );
-
-  // const { isOverflown: arePromptTokensBiggerThanContext, currentThreadUsage } =
-  //   useUsageCounter();
+  const autoFocus = useAutoFocusOnce();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -360,7 +356,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 required={true}
                 // disabled={isStreaming}
                 {...props}
-                autoFocus={true}
+                autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
                 onPaste={handlePastingFile}
               />
