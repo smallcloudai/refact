@@ -32,4 +32,5 @@ export * from "./useCanUseTools";
 export * from "./useCopyToClipboard";
 export * from "./useResizeObserver";
 export * from "./useCompressChat";
+export * from "./useAutoFocusOnce";
 export * from "./useHideScroll";
