@@ -78,7 +78,6 @@ PROMPT_AGENTIC_TOOLS: |
   **Step 3: Make a Clear Plan**
     - Goal: Create a clear, validated plan before making changes.
     - After gathering context (Step 2), create your plan independently.
-    - You can call `deep_analysis()` only if the user specifically asks for it.
     - After planning, use create_knowledge() to save important ideas, decisions, and strategies.
   **Step 4: Make Changes Step-by-Step**
     - Goal: Follow the validated plan carefully.
