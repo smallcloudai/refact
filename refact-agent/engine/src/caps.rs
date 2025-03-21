@@ -702,31 +702,10 @@ pub fn which_scratchpad_to_use<'a>(
     }
 }
 
-pub fn get_caps_provider<'a>(caps: &'a CodeAssistantCaps, provider_name: &str) -> Result<&'a CapsProvider, String> {
-    if provider_name.is_empty() {
-        caps.providers.first().map(|(_, p)| p)
-            .ok_or("No providers defined in caps".to_string())
-    } else {
-        caps.providers.get(provider_name)
-            .ok_or(format!("No provider named `{}` in caps", provider_name))
-    }
-}
-
-pub fn get_caps_provider_mut<'a>(caps: &'a mut CodeAssistantCaps, provider_name: &str) -> Result<&'a mut CapsProvider, String> {
-    if provider_name.is_empty() {
-        caps.providers.first_mut().map(|(_, p)| p)
-            .ok_or("No providers defined in caps".to_string())
-    } else {
-        caps.providers.get_mut(provider_name)
-            .ok_or(format!("No provider named `{}` in caps", provider_name))
-    }
-}
-
-pub async fn get_model_record(
+pub async fn get_chat_model_record(
     gcx: Arc<ARwLock<GlobalContext>>,
     model: &str,
-    provider_name: &str,
-) -> Result<ModelRecord, String> {
+) -> Result<ChatModelRecord, String> {
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(
         gcx.clone(), 0,
     ).await.map_err(|e| {
@@ -735,8 +714,7 @@ pub async fn get_model_record(
     })?;
 
     let caps_locked = caps.read().unwrap();
-    let provider = get_caps_provider(&caps_locked, provider_name)?;
-    match provider.code_chat_models.get(model) {
+    match caps_locked.code_chat_models.get(model) {
         Some(res) => Ok(res.clone()),
         None => Err(format!("no model record for model `{}`", model))
     }

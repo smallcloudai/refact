@@ -17,7 +17,7 @@ use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::get_model_record;
+use crate::caps::get_chat_model_record;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -43,7 +43,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     };
 
     // check if the models exist otherwise use the external chat model
-    match get_model_record(gcx, &params.subchat_model, &params.subchat_provider).await {
+    match get_chat_model_record(gcx, &params.subchat_model).await {
         Ok(_) => {}
         Err(err) => {
             let current_model = ccx.lock().await.current_model.clone();

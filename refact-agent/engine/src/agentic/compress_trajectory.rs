@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
-use crate::caps::{get_caps_provider, strip_model_from_finetune};
+use crate::caps::strip_model_from_finetune;
 
 const COMPRESSION_MESSAGE: &str = r#"
 Compress the chat above.
