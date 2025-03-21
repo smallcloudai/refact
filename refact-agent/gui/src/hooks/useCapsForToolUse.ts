@@ -5,11 +5,9 @@ import { useAppSelector, useGetCapsQuery, useAppDispatch } from ".";
 import {
   getSelectedChatModel,
   setChatModel,
-  setMaxNewTokens,
   setToolUse,
   ToolUse,
 } from "../features/Chat";
-import { DEFAULT_MAX_NEW_TOKENS } from "../services/refact";
 
 // TODO: hard coded for now.
 export const PAID_AGENT_LIST = [
@@ -41,11 +39,8 @@ export function useCapsForToolUse() {
       const model = caps.data?.code_chat_default_model === value ? "" : value;
       const action = setChatModel(model);
       dispatch(action);
-      const tokens =
-        caps.data?.code_chat_models[value]?.n_ctx ?? DEFAULT_MAX_NEW_TOKENS;
-      dispatch(setMaxNewTokens(tokens));
     },
-    [caps.data?.code_chat_default_model, caps.data?.code_chat_models, dispatch],
+    [caps.data?.code_chat_default_model, dispatch],
   );
 
   const isMultimodalitySupportedForCurrentModel = useMemo(() => {
