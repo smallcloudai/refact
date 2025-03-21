@@ -78,7 +78,7 @@ PROMPT_AGENTIC_TOOLS: |
   **Step 3: Make a Clear Plan**
     - Goal: Create a clear, validated plan before making changes.
     - After gathering context (Step 2), create your plan independently.
-    - You can call `deep_think()` if the user specifically asks for it.
+    - You can call `deep_analysis()` only if the user specifically asks for it.
     - After planning, use create_knowledge() to save important ideas, decisions, and strategies.
   **Step 4: Make Changes Step-by-Step**
     - Goal: Follow the validated plan carefully.
@@ -244,7 +244,7 @@ subchat_tool_parameters:
     subchat_tokens_for_rag: 10000
     subchat_n_ctx: 16000
     subchat_max_new_tokens: 2000
-  deep_think:
+  deep_analysis:
     subchat_model: "o3-mini"
     subchat_tokens_for_rag: 70000
     subchat_n_ctx: 128000

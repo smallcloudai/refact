@@ -15,7 +15,7 @@ use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::scratchpads::scratchpad_utils::count_tokens;
 
-pub struct ToolDeepThinking;
+pub struct ToolDeepAnalysis;
 
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
@@ -99,7 +99,7 @@ async fn _make_prompt(
 
 
 #[async_trait]
-impl Tool for ToolDeepThinking {
+impl Tool for ToolDeepAnalysis {
     fn as_any(&self) -> &dyn std::any::Any { self }
     
     async fn tool_execute(
@@ -117,14 +117,14 @@ impl Tool for ToolDeepThinking {
             None => return Err("Missing argument `problem_statement`".to_string())
         };
 
-        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_think").await?;
+        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_analysis").await?;
 
         let external_messages = {
             let ccx_lock = ccx.lock().await;
             ccx_lock.messages.clone()
         };
         let prompt = _make_prompt(ccx.clone(), &subchat_params, &problem_statement, &external_messages).await?;
-        tracing::info!("thinking prompt:\n{}", prompt);
+        tracing::info!("deep analysis prompt:\n{}", prompt);
 
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
@@ -156,14 +156,14 @@ impl Tool for ToolDeepThinking {
             false,
             Some(&mut usage_collector),
             Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-deep-thinking")),
+            Some(format!("{log_prefix}-deep-analysis")),
         ).await?[0].clone();
 
         let final_message = model_says.last()
             .ok_or("No messages from model")?
             .content
             .content_text_only();
-        tracing::info!("deep thinking response:\n{}", final_message);
+        tracing::info!("deep analysis response:\n{}", final_message);
 
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
