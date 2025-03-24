@@ -199,7 +199,9 @@ def _get_default_model_config(provider_id: str, model_id: str) -> Optional[Model
 
 
 def get_provider_models() -> Dict[str, List[str]]:
-    providers_models = {}
+    providers_models = {
+        "custom": [],
+    }
     for provider in litellm.provider_list:
         provider_id = str(provider.value)
         for model_id in litellm.models_by_provider.get(provider_id, []):
