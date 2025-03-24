@@ -234,27 +234,27 @@ fn is_content_duplicate(
         return true;
     }
     // Check for substantial line overlap
-    let first_lines: HashSet<&str> = first_content.lines().filter(|x| x.starts_with("...")).collect();
-    let current_lines: HashSet<&str> = current_content.lines().filter(|x| x.starts_with("...")).collect();
+    let first_lines: HashSet<&str> = first_content.lines().filter(|x| !x.starts_with("...")).collect();
+    let current_lines: HashSet<&str> = current_content.lines().filter(|x| !x.starts_with("...")).collect();
     let intersect_count = first_lines.intersection(&current_lines).count();
     let min_count = first_lines.len().min(current_lines.len());
     
     min_count > 0 && intersect_count >= current_lines.len()
 }
 
-#[derive(Debug, Clone)]
-struct ContextFileInfo {
-    msg_idx: usize,
-    cf_idx: usize,
-    file_name: String,
-    content: String,
-    line1: usize,
-    line2: usize,
-    is_compressed: bool,
-}
-
 /// Stage 0: Compress duplicate ContextFiles based on content comparison - keeping the first occurrence
 fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(usize, Vec<bool>), String> {
+    #[derive(Debug, Clone)]
+    struct ContextFileInfo {
+        msg_idx: usize,
+        cf_idx: usize,
+        file_name: String,
+        content: String,
+        line1: usize,
+        line2: usize,
+        is_compressed: bool,
+    }
+    
     // First pass: collect information about all context files
     let mut preserve_messages = vec![false; messages.len()];
     let mut all_files: Vec<ContextFileInfo> = Vec::new();
