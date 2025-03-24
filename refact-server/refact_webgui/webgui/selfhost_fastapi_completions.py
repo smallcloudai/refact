@@ -353,7 +353,7 @@ class BaseCompletionsRouter(APIRouter):
             model_path = self._model_assigner.models_db[model_name]["model_path"]
             data = await self._local_tokenizer(model_path)
         elif model := available_third_party_models().get(model_name):
-            data = await self._passthrough_tokenizer(model.tokenizer_uri)
+            data = await self._passthrough_tokenizer(model.tokenizer_uri())
         else:
             raise HTTPException(404, detail=f"model '{model_name}' does not exists in db")
         return Response(content=data, media_type='application/json')
@@ -498,23 +498,23 @@ class BaseCompletionsRouter(APIRouter):
         def _wrap_output(output: str) -> str:
             return prefix + output + postfix
 
-        model = available_third_party_models().get(post.model)
-        if model:
-            log(f"chat/completions: resolve {post.model} -> {model.name}")
+        model_config = available_third_party_models().get(post.model)
+        if model_config:
+            log(f"chat/completions: resolve {post.model} -> {model_config.model_id}")
         else:
-            err_message = f"model {model.name} is not running on server"
+            err_message = f"model {post.name} is not running on server"
             log(f"chat/completions: {err_message}")
             raise HTTPException(status_code=400, detail=err_message)
 
-        prompt_tokens_n = litellm.token_counter(model.name, messages=messages)
+        prompt_tokens_n = litellm.token_counter(model_config.model_id, messages=messages)
         if post.tools:
-            prompt_tokens_n += litellm.token_counter(model.name, text=json.dumps(post.tools))
+            prompt_tokens_n += litellm.token_counter(model_config.model_id, text=json.dumps(post.tools))
 
-        max_tokens = min(model.max_tokens, post.actual_max_tokens)
+        max_tokens = min(model_config.max_tokens, post.actual_max_tokens)
         completion_kwargs = {
-            "model": model.inference_name,
-            "api_base": model.api_base,
-            "api_key": model.api_key,
+            "model": model_config.model_id,
+            "api_base": model_config.api_base,
+            "api_key": model_config.api_key,
             "messages": messages,
             "temperature": post.temperature,
             "top_p": post.top_p,
@@ -548,7 +548,7 @@ class BaseCompletionsRouter(APIRouter):
                         finish_reason = choice0["finish_reason"]
                         if delta := choice0.get("delta"):
                             if text := delta.get("content"):
-                                generated_tokens_n += litellm.token_counter(model.name, text=text)
+                                generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
 
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
@@ -577,7 +577,7 @@ class BaseCompletionsRouter(APIRouter):
                     data = model_response.dict()
                     for choice in data.get("choices", []):
                         if text := choice.get("message", {}).get("content"):
-                            generated_tokens_n += litellm.token_counter(model.name, text=text)
+                            generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
                         finish_reason = choice.get("finish_reason")
                     usage_dict = model.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
