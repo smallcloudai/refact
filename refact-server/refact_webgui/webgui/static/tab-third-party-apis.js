@@ -424,34 +424,33 @@ function updateUI() {
                         const defaultConfig = providerDefaultModels.find(m => m.model_id === modelId);
                         const defaultCapabilities = defaultConfig ? defaultConfig.capabilities : null;
 
-                        // Combine all capabilities sources
-                        const capabilities = {
-                            tools: modelConfig.capabilities.tools ||
-                                  (defaultCapabilities && defaultCapabilities.tools) ||
-                                  false,
-                            multimodal: modelConfig.capabilities.multimodal ||
-                                       (defaultCapabilities && defaultCapabilities.multimodal) ||
-                                       false,
-                            agent: modelConfig.capabilities.agent || false,
-                            clicks: modelConfig.capabilities.clicks || false,
-                            completion: modelConfig.capabilities.completion ||
-                                       (defaultCapabilities && defaultCapabilities.completion) ||
-                                       false
-                        };
+                        // Ensure modelConfig has capabilities
+                        if (!modelConfig.capabilities) {
+                            modelConfig.capabilities = {
+                                tools: defaultCapabilities && defaultCapabilities.tools,
+                                multimodal: defaultCapabilities && defaultCapabilities.multimodal,
+                                agent: defaultCapabilities && defaultCapabilities.agent,
+                                clicks: defaultCapabilities && defaultCapabilities.clicks,
+                                completion: defaultCapabilities && defaultCapabilities.completion,
+                            };
+                        }
 
                         let capabilitiesBadges = '';
-                        if (capabilities.agent) {
+                        if (modelConfig.capabilities.agent) {
                             capabilitiesBadges += '<span class="badge bg-info me-1" title="Supports Agentic Mode">Agent</span>';
                         }
-                        if (capabilities.clicks) {
+                        if (modelConfig.capabilities.clicks) {
                             capabilitiesBadges += '<span class="badge bg-success me-1" title="Supports Click Interactions">Clicks</span>';
                         }
-                        if (capabilities.tools) {
+                        if (modelConfig.capabilities.tools) {
                             capabilitiesBadges += '<span class="badge bg-secondary me-1" title="Supports Function Calling/Tools">Tools</span>';
                         }
-                        if (capabilities.multimodal) {
+                        if (modelConfig.capabilities.multimodal) {
                             capabilitiesBadges += '<span class="badge bg-primary me-1" title="Supports Images and Other Media">Multimodal</span>';
                         }
+
+                        // Force refresh of badges by adding a timestamp to ensure DOM updates
+                        capabilitiesBadges += `<span class="d-none">${Date.now()}</span>`;
 
                         const modelItem = document.createElement('div');
                         modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
@@ -832,6 +831,11 @@ function addModel() {
                 }
             };
 
+            // Ensure all capability fields are explicitly set as booleans
+            Object.keys(modelConfig.capabilities).forEach(key => {
+                modelConfig.capabilities[key] = !!modelConfig.capabilities[key];
+            });
+
             // Add tokenizer URI if provided
 //            if (customTokenizerUri) {
 //                modelConfig.tokenizer_uri = customTokenizerUri;
@@ -1031,8 +1035,15 @@ function removeModel(providerId, modelId) {
 
 export function tab_switched_here() {
     try {
+        // Force a complete refresh of the configuration and UI
+        loadProvidersFromLiteLLM();
         loadConfiguration();
-        initializeProvidersList();
+
+        // Small delay to ensure data is loaded before initializing the UI
+        setTimeout(() => {
+            initializeProvidersList();
+            updateUI();
+        }, 100);
     } catch (error) {
         console.error("Error reloading providers:", error);
         general_error(error);
