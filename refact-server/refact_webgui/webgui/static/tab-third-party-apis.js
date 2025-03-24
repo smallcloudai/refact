@@ -452,9 +452,6 @@ function updateUI() {
                         if (capabilities.multimodal) {
                             capabilitiesBadges += '<span class="badge bg-primary me-1" title="Supports Images and Other Media">Multimodal</span>';
                         }
-                        if (hasCustomConfig) {
-                            capabilitiesBadges += '<span class="badge bg-warning me-1" title="Has Custom Configuration">Custom</span>';
-                        }
 
                         const modelItem = document.createElement('div');
                         modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
