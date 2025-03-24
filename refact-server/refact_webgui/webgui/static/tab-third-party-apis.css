@@ -77,12 +77,6 @@
     padding-right: 10px;
 }
 
-/* Custom styling for the model selection dropdown */
-#third-party-model-select option[value="custom"] {
-    font-style: italic;
-    color: #6c757d;
-}
-
 /* Styling for enabled models list */
 .enabled-model-item {
     padding: 8px 12px;
