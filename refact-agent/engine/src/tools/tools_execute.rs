@@ -137,6 +137,9 @@ pub async fn run_tools(
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let n_ctx = ccx.lock().await.n_ctx;
+    // Default tokens limit for tools that perform internal compression (`tree()`, ...) 
+    ccx.lock().await.tokens_for_rag = 4096;
+
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
         Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
         None => return Ok((vec![], false)),
