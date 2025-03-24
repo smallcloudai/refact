@@ -29,9 +29,10 @@ export function useCompressChat() {
     }
 
     if (result.data) {
-      const messages: ChatMessages = [
-        { role: "user", content: result.data.trajectory },
-      ];
+      const content =
+        "I am continuing from a compressed chat history. Here is what happened so far: " +
+        result.data.trajectory;
+      const messages: ChatMessages = [{ role: "user", content }];
       // TODO: better title?
       const action = newChatAction({ messages });
       dispatch(action);
