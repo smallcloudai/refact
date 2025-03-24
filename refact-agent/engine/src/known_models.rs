@@ -856,6 +856,18 @@ pub const KNOWN_MODELS: &str = r####"
                 "deepseek-r1-distill/70b/vllm"
             ]
         }
+    },
+    "embedding_models": {
+        "thenlper/gte-base": {
+            "embedding_size": 768,
+            "rejection_threshold": 0.25,
+            "tokenizer": "hf://thenlper/gte-base"
+        },
+        "text-embedding-3-small": {
+            "embedding_size": 1536,
+            "rejection_threshold": 0.63,
+            "tokenizer": "hf://Xenova/text-embedding-ada-002"
+        }
     }
 }
 "####;

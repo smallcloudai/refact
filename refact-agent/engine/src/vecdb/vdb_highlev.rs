@@ -16,15 +16,6 @@ use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecD
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
 
 
-fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
-    match embedding_model {
-        "text-embedding-3-small" => 0.63,
-        "thenlper_gte" => 0.25,
-        _ => 0.63,
-    }
-}
-
-
 pub struct VecDb {
     pub memdb: Arc<AMutex<MemoriesDatabase>>,
     vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
@@ -70,13 +61,13 @@ async fn do_i_need_to_reload_vecdb(
         }
     }
 
-    if consts.embedding_model.name.is_empty() || consts.embedding_model.base.endpoint.is_empty() {
+    if consts.embedding_model.base.name.is_empty() || consts.embedding_model.base.endpoint.is_empty() {
         error!("command line says to launch vecdb, but this will not happen: embedding model name or endpoint are empty");
         return (true, None);
     }
 
     let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
-        caps.clone(), gcx.clone(), &consts.embedding_model.base,
+        gcx.clone(), &consts.embedding_model.base,
     ).await;
     if tokenizer_maybe.is_err() {
         error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
@@ -151,7 +142,7 @@ impl VecDb {
         constants: VecdbConstants,
     ) -> Result<VecDb, String> {
         let emb_table_name = crate::vecdb::vdb_emb_aux::create_emb_table_name(&vec![cmdline.workspace_folder]);
-        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model.name, constants.embedding_model.embedding_size, &emb_table_name).await?;
+        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model.base.name, constants.embedding_model.embedding_size, &emb_table_name).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, &emb_table_name, cmdline.reset_memory).await?));
 
@@ -425,10 +416,9 @@ pub async fn memories_search(
         score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    let rejection_threshold = model_to_rejection_threshold(&constants.embedding_model.name);
     let mut filtered_results = Vec::new();
     for rec in results.iter() {
-        if rec.distance.abs() >= rejection_threshold {
+        if rec.distance.abs() >= constants.embedding_model.rejection_threshold {
             info!("distance {:.3} -> dropped memory {}", rec.distance, rec.memid);
         } else {
             info!("distance {:.3} -> kept memory {}", rec.distance, rec.memid);
@@ -511,7 +501,7 @@ impl VecdbSearch for VecDb {
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         let mut dist0 = 0.0;
         let mut filtered_results = Vec::new();
-        let rejection_threshold = model_to_rejection_threshold(&self.constants.embedding_model.name);
+        let rejection_threshold = self.constants.embedding_model.rejection_threshold;
         info!("rejection_threshold {:.3}", rejection_threshold);
         for rec in results.iter_mut() {
             if dist0 == 0.0 {

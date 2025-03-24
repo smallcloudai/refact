@@ -33,7 +33,6 @@ impl Default for VecDbInitConfig {
 
 #[derive(Debug)]
 pub enum VecDbInitError {
-    ApiKeyError(String),
     InitializationError(String),
     TestSearchError(String),
 }
@@ -41,7 +40,6 @@ pub enum VecDbInitError {
 impl std::fmt::Display for VecDbInitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            VecDbInitError::ApiKeyError(msg) => write!(f, "API key error: {}", msg),
             VecDbInitError::InitializationError(msg) => write!(f, "Initialization error: {}", msg),
             VecDbInitError::TestSearchError(msg) => write!(f, "Test search error: {}", msg),
         }
