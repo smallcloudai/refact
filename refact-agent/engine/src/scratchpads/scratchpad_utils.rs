@@ -64,12 +64,15 @@ pub fn max_tokens_for_rag_chat_by_tools(
         return base_limit.min(4096);
     }
     
-    let tool_limit = match tools[0].function.name.as_str() {
-        "cat" | "locate" => 8192,
-        "search" | "regex_search" | "definition" | "references" => 4096,
-        _ => 4096,
-    };
-    base_limit.min(tool_limit)
+    let mut overall_tool_limit: usize = 0;
+    for tool in tools {
+        overall_tool_limit += match tool.function.name.as_str() {
+            "cat" | "locate" => 8192,
+            "search" | "regex_search" | "definition" | "references" => 4096,
+            _ => 4096,
+        };
+    }
+    base_limit.min(overall_tool_limit)
 }
 
 pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
