@@ -622,6 +622,10 @@ function showAddModelModal(providerId) {
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
 
+    // Reset edit mode flag
+    modelIdContainer.dataset.isEdit = 'false';
+    modelIdContainer.dataset.modelId = '';
+
     // Determine if we have predefined models for this provider
     const hasPredefined = hasPredefinedModels(providerId);
     const providerModels = hasPredefined ? PROVIDER_DEFAULT_CONFIGS[providerId] : [];
@@ -666,7 +670,7 @@ function showAddModelModal(providerId) {
         </div>
 
         <div class="mb-3">
-            <label for="custom-model-max-tokens" class="form-label">Context Size (n_ctx)</label>
+            <label for="custom-model-max-tokens" class="form-label">Max Tokens (n_ctx)</label>
             <input type="number" class="form-control" id="custom-model-max-tokens" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
             <div class="form-text">Maximum number of tokens the model can process.</div>
         </div>
@@ -749,9 +753,19 @@ function showAddModelModal(providerId) {
 
 // Add a new model to a provider
 function addModel() {
+    // Check if we're in edit mode
+    const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
+    const isEdit = modelIdContainer.dataset.isEdit === 'true';
+
+    // If we're in edit mode, call updateModel instead
+    if (isEdit) {
+        updateModel();
+        return;
+    }
+
     // Get the model ID from either the input field or the select dropdown
     let modelId;
-    const providerId = document.getElementById('add-third-party-model-modal-id-container').dataset.providerId;
+    const providerId = modelIdContainer.dataset.providerId;
     const modelIdElement = document.getElementById('third-party-model-id');
 
     if (!modelIdElement) {
@@ -787,7 +801,7 @@ function addModel() {
             const customApiKey = document.getElementById('custom-model-api-key').value.trim();
             const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
             const customMaxTokens = parseInt(document.getElementById('custom-model-max-tokens').value.trim(), 10);
-//            const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
+//            const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri')?.value.trim();
 
             // Validate context size
             if (isNaN(customNCtx) || customNCtx < 1024) {
@@ -868,89 +882,52 @@ function showEditModelModal(providerId, modelId) {
         return;
     }
 
+    // First, call the same function that shows the modal for adding a model
+    // This builds the default form
+    showAddModelModal(providerId);
+
+    // Set a flag so we know we are in edit mode
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
     modelIdContainer.dataset.modelId = modelId;
     modelIdContainer.dataset.isEdit = 'true';
 
-    // Create a unified edit form with all configuration options
-    const editHtml = `
-        <div class="mb-3">
-            <label class="form-label">Model ID</label>
-            <input type="text" class="form-control" value="${modelId}" disabled>
-            <div class="form-text">Model ID cannot be changed.</div>
-        </div>
+    // Now pre-populate the fields with the data from the existing model configuration
+    const modelIdElement = document.getElementById('third-party-model-id');
+    if (modelIdElement) {
+        modelIdElement.value = modelId;
+        // Disable the model id field - we do not allow changing a model's id
+        modelIdElement.disabled = true;
+    }
 
-        <div class="mb-3">
-            <label for="custom-model-api-base" class="form-label">API Base</label>
-            <input type="text" class="form-control" id="custom-model-api-base" value="${modelConfig.api_base || ''}" placeholder="Enter API base for this model">
-        </div>
+    // Ensure capabilities object exists
+    const capabilities = modelConfig.capabilities || {};
 
-        <div class="mb-3">
-            <label for="custom-model-api-key" class="form-label">API Key</label>
-            <input type="text" class="form-control" id="custom-model-api-key" value="${modelConfig.api_key || ''}" placeholder="Enter API key for this model">
-        </div>
+    // Fill in the form fields with the existing model data
+    document.getElementById('custom-model-api-base').value = modelConfig.api_base || null;
+    document.getElementById('custom-model-api-key').value = modelConfig.api_key || null;
+    document.getElementById('custom-model-n-ctx').value = modelConfig.n_ctx || 8192;
+    document.getElementById('custom-model-max-tokens').value = modelConfig.max_tokens || 8192;
+    document.getElementById('custom-model-supports-tools').checked = capabilities.tools || false;
+    document.getElementById('custom-model-supports-multimodality').checked = capabilities.multimodal || false;
+    document.getElementById('third-party-model-supports-agentic').checked = capabilities.agent || false;
+    document.getElementById('third-party-model-supports-clicks').checked = capabilities.clicks || false;
 
-        <div class="mb-3">
-            <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
-            <input type="number" class="form-control" id="custom-model-n-ctx" value="${modelConfig.n_ctx || 8192}" placeholder="e.g., 8192" min="1024" step="1024">
-            <div class="form-text">Maximum number of tokens the model can process.</div>
-        </div>
+    // Set tokenizer URI if available
+    const tokenizerUriElement = document.getElementById('custom-model-tokenizer-uri');
+    if (tokenizerUriElement) {
+        tokenizerUriElement.value = modelConfig.tokenizer_uri || '';
+    }
 
-        <div class="mb-3">
-            <label for="custom-model-max-tokens" class="form-label">Context Size (n_ctx)</label>
-            <input type="number" class="form-control" id="custom-model-max-tokens" value="${modelConfig.max_tokens || 8192}" placeholder="e.g., 8192" min="1024" step="1024">
-            <div class="form-text">Maximum number of tokens the model can generate.</div>
-        </div>
-
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="custom-model-supports-tools" ${modelConfig.capabilities.tools ? 'checked' : ''}>
-            <label class="form-check-label" for="custom-model-supports-tools">
-                Supports Tools
-            </label>
-            <div class="form-text">Enable if this model supports function calling/tools.</div>
-        </div>
-
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality" ${modelConfig.capabilities.multimodal ? 'checked' : ''}>
-            <label class="form-check-label" for="custom-model-supports-multimodality">
-                Supports Multimodality
-            </label>
-            <div class="form-text">Enable if this model supports images and other media types.</div>
-        </div>
-
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelConfig.capabilities.agent ? 'checked' : ''}>
-            <label class="form-check-label" for="third-party-model-supports-agentic">
-                Supports Agentic Mode
-            </label>
-            <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
-        </div>
-
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelConfig.capabilities.clicks ? 'checked' : ''}>
-            <label class="form-check-label" for="third-party-model-supports-clicks">
-                Supports Clicks
-            </label>
-            <div class="form-text">Enable if this model supports click interactions.</div>
-        </div>
-
-        <div class="mb-3">
-            <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
-            <input type="text" class="form-control" id="custom-model-tokenizer-uri" value="${modelConfig.tokenizer_uri || ''}" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
-            <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
-        </div>
-    `;
-
-    modelIdContainer.innerHTML = editHtml;
+    // Change the modal labels and button text to indicate edit mode
     document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
-    document.getElementById('add-third-party-model-submit').textContent = 'Save Changes';
-    document.getElementById('add-third-party-model-submit').onclick = function() {
+    const submitBtn = document.getElementById('add-third-party-model-submit');
+    submitBtn.textContent = 'Save Changes';
+
+    // Replace the submit click handler to update the model instead of adding a new one
+    submitBtn.onclick = function() {
         updateModel();
     };
-
-    const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
-    modal.show();
 }
 
 function updateModel() {
@@ -983,7 +960,7 @@ function updateModel() {
     const customApiKey = document.getElementById('custom-model-api-key').value.trim();
     const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
     const customMaxTokens = parseInt(document.getElementById('custom-model-max-tokens').value.trim(), 10);
-    const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
+//    const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
 
     // Validate context size
     if (isNaN(customNCtx) || customNCtx < 1024) {
@@ -996,37 +973,6 @@ function updateModel() {
     // Get the current model configuration
     const modelConfig = apiConfig.models[modelId];
 
-    // Find default model config if available
-    const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
-    const defaultConfig = providerModels.find(m => m.model_id === modelId);
-
-    // If we have a default config, make sure we preserve all default values
-    // that aren't explicitly overridden by the user
-    if (defaultConfig) {
-        // Preserve default properties that aren't in the form
-        for (const key in defaultConfig) {
-            if (key !== 'capabilities' &&
-                key !== 'n_ctx' &&
-                key !== 'api_base' &&
-                key !== 'api_key' &&
-                key !== 'tokenizer_uri' &&
-                key !== 'model_id' &&
-                key !== 'provider_id') {
-                modelConfig[key] = defaultConfig[key];
-            }
-        }
-
-        // Preserve default capabilities that aren't in the form
-        for (const key in defaultConfig.capabilities) {
-            if (key !== 'agent' && 
-                key !== 'clicks' && 
-                key !== 'tools' && 
-                key !== 'multimodal') {
-                modelConfig.capabilities[key] = defaultConfig.capabilities[key];
-            }
-        }
-    }
-
     modelConfig.capabilities.agent = supportsAgentic;
     modelConfig.capabilities.clicks = supportsClicks;
     modelConfig.capabilities.tools = supportsTools;
@@ -1035,26 +981,15 @@ function updateModel() {
     modelConfig.n_ctx = customNCtx;
     modelConfig.max_tokens = customMaxTokens;
 
-    // Update API base if provided, otherwise remove it
-    if (customApiBase) {
-        modelConfig.api_base = customApiBase;
-    } else {
-        delete modelConfig.api_base;
-    }
-
-    // Update API key if provided, otherwise remove it
-    if (customApiKey) {
-        modelConfig.api_key = customApiKey;
-    } else {
-        delete modelConfig.api_key;
-    }
+    modelConfig.api_base = customApiBase ? customApiBase : null;
+    modelConfig.api_key = customApiKey ? customApiKey : null;
 
     // Update tokenizer URI if provided, otherwise remove it
-    if (customTokenizerUri) {
-        modelConfig.tokenizer_uri = customTokenizerUri;
-    } else {
-        delete modelConfig.tokenizer_uri;
-    }
+//    if (customTokenizerUri) {
+//        modelConfig.tokenizer_uri = customTokenizerUri;
+//    } else {
+//        delete modelConfig.tokenizer_uri;
+//    }
 
     updateConfiguration();
     updateUI();
