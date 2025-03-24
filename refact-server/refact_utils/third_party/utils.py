@@ -19,7 +19,7 @@ class ModelCapabilities(BaseModel):
 
 class ModelConfig(BaseModel):
     model_id: str
-    provider_id: Optional[str]
+    provider_id: str
     api_base: Optional[str]
     api_key: Optional[str]
     n_ctx: int
@@ -140,9 +140,13 @@ def load_third_party_config() -> ThirdPartyApiConfig:
 def save_third_party_config(config: ThirdPartyApiConfig):
     os.makedirs(os.path.dirname(env.CONFIG_INTEGRATIONS_MODELS), exist_ok=True)
 
-    # TODO: Update API keys of the providers
+    # Filter out models whose provider is not in the current configuration
+    config.models = {
+        model_id: model_config
+        for model_id, model_config in config.models.items()
+        if model_config.provider_id in config.providers
+    }
 
-    # Save the configuration
     with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
         json.dump(config.model_dump(), f, indent=4)
     os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
