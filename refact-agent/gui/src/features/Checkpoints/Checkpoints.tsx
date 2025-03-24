@@ -75,8 +75,8 @@ export const Checkpoints = () => {
                       borderRadius: "var(--radius-3)",
                     }}
                   >
-                    <Flex align="center" gap="2">
-                      <TruncateLeft size="2">
+                    <Flex align="center" gap="2" width="100%">
+                      <TruncateLeft size="2" style={{ maxWidth: "50%" }}>
                         <Link
                           title="Open file"
                           onClick={(event) => {
@@ -96,8 +96,9 @@ export const Checkpoints = () => {
                       <Text size="2" color="gray" style={{ opacity: 0.65 }}>
                         {formattedWorkspaceFolder}
                       </Text>
+
+                      <CheckpointsStatusIndicator status={file.status} />
                     </Flex>
-                    <CheckpointsStatusIndicator status={file.status} />
                   </Flex>
                 );
               })}
