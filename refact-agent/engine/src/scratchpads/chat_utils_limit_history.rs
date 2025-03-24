@@ -211,96 +211,171 @@ fn remove_invalid_tool_calls_and_tool_calls_results(messages: &mut Vec<ChatMessa
     });
 }
 
-/// Stage 0: Compress duplicate ContextFiles with overlapping line ranges
-fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<usize, String> {
-    // Map: filename -> Vec<(index, line1, line2)>
-    let mut file_occurrences: HashMap<String, Vec<(usize, usize, usize)>> = HashMap::new();
+/// Determines if a file content is substantially a duplicate of previously shown content
+fn is_content_duplicate(
+    current_content: &str, 
+    current_line1: usize, 
+    current_line2: usize,
+    first_content: &str, 
+    first_line1: usize, 
+    first_line2: usize
+) -> bool {
+    let lines_overlap = first_line1 <= current_line2 && first_line2 >= current_line1;
+    // If line ranges don't overlap at all, it's definitely not a duplicate
+    if !lines_overlap {
+        return false;
+    }
+    // Consider empty contents are not duplicate
+    if current_content.is_empty() || first_content.is_empty() {
+        return false;
+    }
+    // Check if current content is entirely contained in first content
+    if first_content.contains(current_content) {
+        return true;
+    }
+    // Check for substantial line overlap
+    let first_lines: HashSet<&str> = first_content.lines().filter(|x| x.starts_with("...")).collect();
+    let current_lines: HashSet<&str> = current_content.lines().filter(|x| x.starts_with("...")).collect();
+    let intersect_count = first_lines.intersection(&current_lines).count();
+    let min_count = first_lines.len().min(current_lines.len());
     
+    min_count > 0 && intersect_count >= current_lines.len()
+}
+
+#[derive(Debug, Clone)]
+struct ContextFileInfo {
+    msg_idx: usize,
+    cf_idx: usize,
+    file_name: String,
+    content: String,
+    line1: usize,
+    line2: usize,
+    is_compressed: bool,
+}
+
+/// Stage 0: Compress duplicate ContextFiles based on content comparison - keeping the first occurrence
+fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(usize, Vec<bool>), String> {
     // First pass: collect information about all context files
-    for (idx, msg) in messages.iter().enumerate() {
+    let mut preserve_messages = vec![false; messages.len()];
+    let mut all_files: Vec<ContextFileInfo> = Vec::new();
+    for (msg_idx, msg) in messages.iter().enumerate() {
         if msg.role != "context_file" {
             continue;
         }
-        
         let content_text = msg.content.content_text_only();
         let context_files: Vec<ContextFile> = match serde_json::from_str(&content_text) {
             Ok(v) => v,
             Err(e) => {
-                tracing::warn!("Stage 0: Failed to parse ContextFile JSON at index {}: {}. Skipping.", idx, e);
+                tracing::warn!("Stage 0: Failed to parse ContextFile JSON at index {}: {}. Skipping.", msg_idx, e);
                 continue;
             }
         };
-        
-        for cf in &context_files {
-            let entry = file_occurrences.entry(cf.file_name.clone()).or_insert_with(Vec::new);
-            entry.push((idx, cf.line1, cf.line2));
+        for (cf_idx, cf) in context_files.iter().enumerate() {
+            all_files.push(ContextFileInfo {
+                msg_idx,
+                cf_idx,
+                file_name: cf.file_name.clone(),
+                content: cf.file_content.clone(),
+                line1: cf.line1,
+                line2: cf.line2,
+                is_compressed: false,
+            });
         }
     }
     
-    // Second pass: identify which messages need to be compressed
-    let mut to_compress: Vec<(usize, Vec<String>)> = Vec::new();
-    for (filename, occurrences) in &file_occurrences {
-        // Sort occurrences by index (oldest to newest)
-        let mut sorted_occurrences = occurrences.clone();
-        sorted_occurrences.sort_by_key(|&(idx, _, _)| idx);
+    // Group occurrences by file name
+    let mut files_by_name: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, file) in all_files.iter().enumerate() {
+        files_by_name.entry(file.file_name.clone())
+            .or_insert_with(Vec::new)
+            .push(i);
+    }
+    
+    // Process each file's occurrences
+    for (filename, indices) in &files_by_name {
+        if indices.len() <= 1 {
+            continue;
+        }
         
-        for i in 0..sorted_occurrences.len().saturating_sub(1) {
-            let (idx, line1, line2) = sorted_occurrences[i];
-            
-            // Check if any later occurrence includes this one's line range
-            let is_duplicate = sorted_occurrences.iter().skip(i + 1).any(|&(_, later_line1, later_line2)| {
-                later_line1 <= line1 && later_line2 >= line2
-            });
-            
-            if is_duplicate {
-                let entry_idx = to_compress.iter().position(|&(compress_idx, _)| compress_idx == idx);
-                
-                if let Some(pos) = entry_idx {
-                    to_compress[pos].1.push(format!("{}:{}-{}", filename, line1, line2));
-                } else {
-                    to_compress.push((idx, vec![format!("{}:{}-{}", filename, line1, line2)]));
+        let mut sorted_indices = indices.clone();
+        sorted_indices.sort_by_key(|&i| all_files[i].msg_idx);
+        
+        let first_idx = sorted_indices[0];
+        let first_msg_idx = all_files[first_idx].msg_idx;
+        
+        let last_user_msg_idx = messages.iter()
+            .rposition(|msg| msg.role == "user")
+            .unwrap_or(0);
+        
+        for &curr_idx in sorted_indices.iter().skip(1) {
+            let current_msg_idx = all_files[curr_idx].msg_idx;
+            let content_is_duplicate = is_content_duplicate(
+                &all_files[curr_idx].content, all_files[curr_idx].line1, all_files[curr_idx].line2,
+                &all_files[first_idx].content, all_files[first_idx].line1, all_files[first_idx].line2
+            );
+            if content_is_duplicate {
+                all_files[curr_idx].is_compressed = true;
+                if current_msg_idx > last_user_msg_idx {
+                    preserve_messages[first_msg_idx] = true;
+                    tracing::info!("Stage 0: Preserving first occurrence of file {} at message index {} (has post-user duplicates)", 
+                       filename, first_msg_idx);
                 }
+                tracing::info!("Stage 0: Marking for compression - duplicate content of file {} at message index {}", 
+                    filename, current_msg_idx);
+            } else {
+                tracing::info!("Stage 0: Not compressing - unique content of file {} at message index {}", 
+                    filename, current_msg_idx);
             }
         }
     }
     
-    // Third pass: compress the messages
+    // Apply compressions to messages
     let mut compressed_count = 0;
-    for (idx, filenames) in to_compress {
-        if !filenames.is_empty() {
-            let filenames_str = filenames.join(", ");
-            let summary = format!("💿 Duplicate context file compressed: '{}' files with overlapping line ranges appear later in the conversation", filenames_str);
-            
-            tracing::info!("Stage 0: Compressing duplicate ContextFile at index {}: {}", idx, filenames_str);
-            let content_text = messages[idx].content.content_text_only();
+    let mut modified_messages: HashSet<usize> = HashSet::new();
+    for file in &all_files {
+        if file.is_compressed && !modified_messages.contains(&file.msg_idx) {
+            let content_text = messages[file.msg_idx].content.content_text_only();
             let context_files: Vec<ContextFile> = serde_json::from_str(&content_text)
                 .expect("already checked in the previous pass");
             
-            let files_to_compress: HashSet<String> = filenames.iter()
-                .map(|name| name.to_string())
-                .collect();
-                
-            let remaining_files: Vec<ContextFile> = context_files.into_iter()
-                .filter(|cf| !files_to_compress.contains(&format!("{}:{}-{}", cf.file_name, cf.line1, cf.line2)))
-                .collect();
-                
-            if !remaining_files.is_empty() {
-                let new_content = serde_json::to_string(&remaining_files)
-                    .expect("serialization of filtered ContextFiles failed");
-                messages[idx].content = ChatContent::SimpleText(new_content);
-                tracing::info!("Stage 0: Partially compressed ContextFile at index {}: {} files removed, {} files kept", 
-                              idx, files_to_compress.len(), remaining_files.len());
-            } else {
-                messages[idx].content = ChatContent::SimpleText(summary);
-                messages[idx].role = "cd_instruction".to_string();
-                tracing::info!("Stage 0: Fully compressed ContextFile at index {}: all {} files removed", 
-                              idx, files_to_compress.len());
+            let mut remaining_files = Vec::new();
+            let mut compressed_files = Vec::new();
+            
+            for (cf_idx, cf) in context_files.iter().enumerate() {
+                if all_files.iter().any(|f| 
+                    f.msg_idx == file.msg_idx && 
+                    f.cf_idx == cf_idx && 
+                    f.is_compressed
+                ) {
+                    compressed_files.push(format!("{}", cf.file_name));
+                } else {
+                    remaining_files.push(cf.clone());
+                }
             }
-            compressed_count += filenames.len();
+            
+            if !compressed_files.is_empty() {
+                let compressed_files_str = compressed_files.join(", ");
+                if remaining_files.is_empty() {
+                    let summary = format!("💿 Duplicate context file compressed: '{}' files were shown earlier in the conversation history", compressed_files_str);
+                    messages[file.msg_idx].content = ChatContent::SimpleText(summary);
+                    messages[file.msg_idx].role = "cd_instruction".to_string();
+                    tracing::info!("Stage 0: Fully compressed ContextFile at index {}: all {} files removed", 
+                                  file.msg_idx, compressed_files.len());
+                } else {
+                    let new_content = serde_json::to_string(&remaining_files)
+                        .expect("serialization of filtered ContextFiles failed");
+                    messages[file.msg_idx].content = ChatContent::SimpleText(new_content);
+                    tracing::info!("Stage 0: Partially compressed ContextFile at index {}: {} files removed, {} files kept", 
+                                  file.msg_idx, compressed_files.len(), remaining_files.len());
+                }
+                
+                compressed_count += compressed_files.len();
+                modified_messages.insert(file.msg_idx);
+            }
         }
     }
     
-    Ok(compressed_count)
+    Ok((compressed_count, preserve_messages))
 }
 
 fn replace_broken_tool_call_messages(
@@ -433,11 +508,14 @@ pub fn fix_and_limit_messages_history(
     
     // STAGE 0: Compress old and duplicated ContextFiles
     // This is done before token calculation to reduce the number of messages that need to be tokenized
+    let mut preserve_in_later_stages = vec![false; mutable_messages.len()];
+    
     let stage0_result = compress_duplicate_context_files(&mut mutable_messages);
-    if let Err(e) = stage0_result {
+    if let Err(e) = &stage0_result {
         tracing::warn!("Stage 0 compression failed: {}", e);
-    } else if let Ok(count) = stage0_result {
+    } else if let Ok((count, preservation_flags)) = stage0_result {
         tracing::info!("Stage 0: Compressed {} duplicate ContextFile messages", count);
+        preserve_in_later_stages = preservation_flags;
     }
     
     replace_broken_tool_call_messages(
@@ -481,7 +559,7 @@ pub fn fix_and_limit_messages_history(
             stage1_end,
             "Stage 1: Compressing ContextFile messages before the last user message",
             model_name,
-            |i, msg, _| i != 0 && msg.role == "context_file",
+            |i, msg, _| i != 0 && msg.role == "context_file" && !preserve_in_later_stages[i],
             true
         )?;
         
@@ -648,7 +726,7 @@ pub fn fix_and_limit_messages_history(
             msg_len,
             "Stage 5: Compressing ContextFile messages after the last user message (last resort)",
             model_name,
-            |_, msg, _| msg.role == "context_file",
+            |i, msg, _| msg.role == "context_file" && !preserve_in_later_stages[i],
             true
         )?;
         
