@@ -15,7 +15,6 @@ let apiConfig = {
 // Track expanded/collapsed state of providers
 let expandedProviders = {};
 
-// Initialize the third-party API widget
 export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
     document.querySelector('#third-party-apis').innerHTML = await req.text();
@@ -23,27 +22,6 @@ export async function init(general_error) {
     loadProvidersFromLiteLLM();
     loadConfiguration();
     initializeProvidersList();
-
-    // Initialize modals
-    const addProviderModal = document.getElementById('add-third-party-provider-modal');
-    if (addProviderModal) {
-        addProviderModal._bsModal = new bootstrap.Modal(addProviderModal);
-
-        // Add event listener for the submit button
-        document.getElementById('add-third-party-provider-submit').addEventListener('click', function() {
-            addProvider();
-        });
-    }
-
-    const addModelModal = document.getElementById('add-third-party-model-modal');
-    if (addModelModal) {
-        addModelModal._bsModal = new bootstrap.Modal(addModelModal);
-
-        // Add event listener for the submit button
-        document.getElementById('add-third-party-model-submit').addEventListener('click', function() {
-            addModel();
-        });
-    }
 }
 
 function loadProvidersFromLiteLLM() {
@@ -58,7 +36,6 @@ function loadProvidersFromLiteLLM() {
         });
 }
 
-// Helper function to set the collapsed state of a provider
 function setProviderCollapsedState(providerId, isExpanded) {
     const header = document.querySelector(`.provider-header[data-provider="${providerId}"]`);
     const body = document.getElementById(`${providerId}-body`);
@@ -142,7 +119,6 @@ function initializeProvidersList() {
 }
 
 function addEventListeners() {
-    // Provider toggle switch (enable/disable)
     document.querySelectorAll('.provider-toggle').forEach(toggle => {
         toggle.addEventListener('change', function() {
             const providerId = this.dataset.provider;
@@ -150,10 +126,8 @@ function addEventListeners() {
         });
     });
 
-    // Provider header click for collapse/expand
     document.querySelectorAll('.provider-header, .provider-title').forEach(header => {
         header.addEventListener('click', function(event) {
-            // Don't trigger if clicking on toggle switch or remove button
             if (event.target.classList.contains('provider-toggle') || 
                 event.target.classList.contains('remove-provider-btn') ||
                 event.target.closest('.remove-provider-btn') ||
@@ -163,20 +137,16 @@ function addEventListeners() {
 
             const providerId = this.dataset.provider;
             const providerBody = document.getElementById(`${providerId}-body`);
-            
-            // Toggle visibility
+
             const isVisible = providerBody.style.display !== 'none';
             const newExpandedState = !isVisible;
 
-            // Use our helper function to set the collapsed state
             setProviderCollapsedState(providerId, newExpandedState);
 
-            // Store expanded state
             expandedProviders[providerId] = newExpandedState;
         });
     });
 
-    // Remove provider button
     document.querySelectorAll('.remove-provider-btn').forEach(button => {
         button.addEventListener('click', function() {
             const providerId = this.dataset.provider;
@@ -198,14 +168,12 @@ function addEventListeners() {
         });
     });
 
-    // Model checkboxes
     document.querySelectorAll('.model-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             updateConfiguration();
         });
     });
 
-    // Add provider button
     const addProviderBtn = document.querySelector('.add-provider-btn');
     if (addProviderBtn) {
         addProviderBtn.addEventListener('click', function() {
@@ -213,7 +181,6 @@ function addEventListeners() {
         });
     }
 
-    // Add model buttons
     document.querySelectorAll('.add-model-btn').forEach(button => {
         button.addEventListener('click', function() {
             const providerId = this.dataset.provider;
