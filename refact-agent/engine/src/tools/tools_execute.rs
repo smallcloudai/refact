@@ -145,22 +145,12 @@ pub async fn run_tools(
         return Ok((vec![], false));
     }
     
-    let reserve_for_context = max_tokens_for_rag_chat_by_tools(&last_msg_tool_calls, n_ctx, maxgen);
-    let tokens_for_rag = reserve_for_context;
-    ccx.lock().await.tokens_for_rag = tokens_for_rag;
-    info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
-
-    if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
-        warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
-        return Ok((vec![], false));
-    }
-
     let mut context_files_for_pp = vec![];
     let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
     let mut any_corrections = false;
 
-    for t_call in last_msg_tool_calls {
+    for t_call in last_msg_tool_calls.iter() {
         let cmd = match tools.get_mut(&t_call.function.name) {
             Some(cmd) => cmd,
             None => {
@@ -240,6 +230,19 @@ pub async fn run_tools(
             }
         }
         assert!(have_answer);
+    }
+
+    let reserve_for_context = max_tokens_for_rag_chat_by_tools(
+        &last_msg_tool_calls,
+        &context_files_for_pp,
+        n_ctx, maxgen
+    );
+    let tokens_for_rag = reserve_for_context;
+    ccx.lock().await.tokens_for_rag = tokens_for_rag;
+    info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
+    if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
+        warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
+        return Ok((vec![], false));
     }
 
     let (generated_tool, generated_other) = pp_run_tools(
