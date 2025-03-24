@@ -208,7 +208,7 @@ def get_provider_models() -> Dict[str, List[str]]:
                 model_info = litellm.get_model_info(model=model_id)
                 if model_info and model_info.get("mode") == "chat":
                     model_config = _get_default_model_config(provider_id, model_id)
-                    providers_models.setdefault(provider_id, []).append(model_config)
+                    providers_models.setdefault(provider_id, []).append(model_config.dict())
             except Exception:
                 continue
     return providers_models
