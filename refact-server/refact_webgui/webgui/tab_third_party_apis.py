@@ -22,18 +22,9 @@ class TabThirdPartyApisRouter(APIRouter):
         self.add_api_route("/tab-third-party-apis-get-providers", self._tab_third_party_apis_get_providers, methods=["GET"])
 
     async def _tab_third_party_apis_get(self):
-        """
-        Get the current third-party API configuration.
-        Returns a dictionary of providers with their API keys and enabled models.
-        """
-        config = load_third_party_config()
-        return JSONResponse(config.dict())
+        return JSONResponse(load_third_party_config())
 
     async def _tab_third_party_apis_save(self, config: ThirdPartyApiConfig):
-        """
-        Save the third-party API configuration.
-        Expects a dictionary that can be parsed into a ThirdPartyApiConfig.
-        """
         try:
             save_third_party_config(config)
             self._models_assigner.models_to_watchdog_configs()
@@ -42,8 +33,4 @@ class TabThirdPartyApisRouter(APIRouter):
             return JSONResponse({"error": str(e)}, status_code=400)
 
     async def _tab_third_party_apis_get_providers(self):
-        """
-        Get all available providers and their models from litellm.
-        Filters models to only include chat models.
-        """
         return JSONResponse(get_provider_models())
