@@ -3,9 +3,8 @@ use image::ImageReader;
 use regex::Regex;
 use serde_json::Value;
 use tokenizers::Tokenizer;
-
+use crate::call_validation::ChatToolCall;
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
-
 
 pub struct HasRagResults {
     pub was_sent: bool,
@@ -55,8 +54,26 @@ pub fn parse_image_b64_from_image_url_openai(image_url: &str) -> Option<(String,
     })
 }
 
+pub fn max_tokens_for_rag_chat_by_tools(
+    tools: &Vec<ChatToolCall>,
+    n_ctx: usize,
+    maxgen: usize,
+) -> usize {
+    let base_limit = n_ctx.saturating_sub(maxgen).saturating_sub(RESERVE_FOR_QUESTION_AND_FOLLOWUP);
+    if tools.is_empty() {
+        return base_limit.min(4096);
+    }
+    
+    let tool_limit = match tools[0].function.name.as_str() {
+        "cat" | "locate" => 8192,
+        "search" | "regex_search" | "definition" | "references" => 4096,
+        _ => 4096,
+    };
+    base_limit.min(tool_limit)
+}
+
 pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
-    (n_ctx/2).saturating_sub(maxgen).saturating_sub(RESERVE_FOR_QUESTION_AND_FOLLOWUP)
+    (n_ctx / 4).saturating_sub(maxgen).saturating_sub(RESERVE_FOR_QUESTION_AND_FOLLOWUP)
 }
 
 fn calculate_image_tokens_by_dimensions_openai(mut width: u32, mut height: u32) -> i32 {

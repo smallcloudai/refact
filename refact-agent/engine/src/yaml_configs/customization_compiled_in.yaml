@@ -71,8 +71,9 @@ PROMPT_AGENTIC_TOOLS: |
     - *Goal:* Fully understand the task by gathering all important details.
     - Do the following:
       - Use `tree()` to check the project structure.
-      - Use `locate()` with the task description to find all necessary files automatically.
-      - Use additional tools like `search()`, `regex_search()`, `cat()`, `definition()`, and `references()` and any other to collect relevant information.
+      - Then use `search()`, `regex_search()`, `definition()`, and `references()`, `cat("filename:x-x")` tools to collect relevant information.
+      - You also can use `locate()` with the task description to find all necessary files automatically.
+      - Use `cat("filename")` to look inside the most important files without compression.
     - Check any files that might indirectly relate to the task.
     - Running available validation tools preliminary - is a good idea. 
   **Step 3: Make a Clear Plan**
