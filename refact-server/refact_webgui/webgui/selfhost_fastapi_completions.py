@@ -502,7 +502,7 @@ class BaseCompletionsRouter(APIRouter):
         if model_config:
             log(f"chat/completions: resolve {post.model} -> {model_config.model_id}")
         else:
-            err_message = f"model {post.name} is not running on server"
+            err_message = f"model {post.model} is not running on server"
             log(f"chat/completions: {err_message}")
             raise HTTPException(status_code=400, detail=err_message)
 
@@ -555,7 +555,7 @@ class BaseCompletionsRouter(APIRouter):
                     yield _wrap_output(json.dumps(_patch_caps_version(data)))
 
                 final_msg: Dict[str, Any] = {"choices": []}
-                usage_dict = model.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
+                usage_dict = model_config.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                 final_msg.update(usage_dict)
                 yield _wrap_output(json.dumps(_patch_caps_version(final_msg)))
 
@@ -579,7 +579,7 @@ class BaseCompletionsRouter(APIRouter):
                         if text := choice.get("message", {}).get("content"):
                             generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
                         finish_reason = choice.get("finish_reason")
-                    usage_dict = model.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
+                    usage_dict = model_config.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
