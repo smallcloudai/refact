@@ -9,7 +9,6 @@ use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_inline_default::serde_inline_default;
 use serde_json::Value;
 use tokio::sync::RwLock as ARwLock;
 use url::Url;
@@ -17,23 +16,28 @@ use tracing::{error, info, warn};
 
 use crate::custom_error::MapErrToString;
 use crate::custom_error::YamlError;
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 use crate::known_models::KNOWN_MODELS;
 
 
 const CAPS_FILENAME: &str = "refact-caps";
 const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
 
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
-#[serde_inline_default]
+#[derive(Debug, Serialize, Clone, Deserialize, Default, PartialEq)]
 pub struct BaseModelRecord {
     #[serde(default)]
     pub n_ctx: usize,
 
+    /// Actual model name, e.g. "gpt-4o"
+    #[serde(default)]
+    pub name: String, 
+    /// provider/model_name, e.g. "openai/gpt-4o"
+    #[serde(skip_deserializing)]
+    pub id: String, 
+
     #[serde(default)]
     pub endpoint: String,
-    #[serde_inline_default("openai".to_string())]
+    #[serde(default)]
     pub endpoint_style: String,
     #[serde(default)]
     pub api_key: String,
@@ -46,15 +50,39 @@ pub struct BaseModelRecord {
     pub tokenizer: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Deserialize, Default)]
+pub struct ScratchpadSupport {
+    #[serde(default, rename = "supports_scratchpads")]
+    pub supported: HashMap<String, Value>,
+    #[serde(default, rename = "default_scratchpad")]
+    pub default: String,
+}
+
+impl ScratchpadSupport {
+    pub fn resolve<'a>(&'a self, user_wants: &str) -> Result<(String, &'a Value), String> {
+        let name = if !user_wants.is_empty() { user_wants } else { &self.default };
+        
+        // Special case: no default but exactly one scratchpad exists
+        if name.is_empty() && self.supported.len() == 1 {
+            let (name, scratchpad) = self.supported.iter().next().unwrap();
+            return Ok((name.to_string(), scratchpad));
+        }
+        
+        self.supported.get(name)
+            .map(|value| (name.to_string(), value))
+            .ok_or_else(|| format!(
+                "Scratchpad '{}' not found. Available scratchpads: {:?}",
+                name, self.supported.keys()
+            ))
+    }
+}
+
+#[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct ChatModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
-
-    #[serde(default)]
-    pub supports_scratchpads: HashMap<String, Value>,
-    #[serde(default)]
-    pub default_scratchpad: String,
+    #[serde(flatten)]
+    pub scratchpads: ScratchpadSupport,
 
     #[serde(default)]
     pub supports_tools: bool,
@@ -72,55 +100,46 @@ pub struct ChatModelRecord {
     pub default_temperature: Option<f32>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct CompletionModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
-
-    #[serde(default)]
-    pub supports_scratchpads: HashMap<String, Value>,
-    #[serde(default)]
-    pub default_scratchpad: String,
+    #[serde(flatten)]
+    pub scratchpads: ScratchpadSupport,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
+#[derive(Debug, Serialize, Clone, Deserialize, Default, PartialEq)]
 pub struct EmbeddingModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
-    #[serde(alias = "model_name")]
-    pub name: String,
 
     pub embedding_size: i32,
+    #[serde(default = "default_rejection_threshold")]
+    pub rejection_threshold: f32,
+    #[serde(default)]
     pub embedding_batch: usize,
 }
 
+fn default_rejection_threshold() -> f32 { 0.63 }
+
 impl EmbeddingModelRecord {
     pub fn is_configured(&self) -> bool {
-        !self.name.is_empty() && (self.embedding_size > 0 || self.embedding_batch > 0 || self.base.n_ctx > 0)
+        !self.base.name.is_empty() && (self.embedding_size > 0 || self.embedding_batch > 0 || self.base.n_ctx > 0)
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub enum ModelType {
-    Completion,
-    MultilineCompletion,
-    Chat,
-    Embedding,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-#[serde_inline_default]
 pub struct CodeAssistantCaps {
-    #[serde_inline_default("https://www.smallcloud.ai/v1/telemetry-basic".to_string())]
+    #[serde(default = "default_telemetry_basic_dest")]
     pub telemetry_basic_dest: String,
-    #[serde_inline_default("https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string())]
+    #[serde(default = "default_telemetry_retrieve_my_own")]
     pub telemetry_basic_retrieve_my_own: String,
 
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub code_completion_models: IndexMap<String, CompletionModelRecord>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub code_chat_models: IndexMap<String, ChatModelRecord>,
-    #[serde(skip)]
+    #[serde(skip_deserializing)]
     pub embedding_model: EmbeddingModelRecord,
 
     #[serde(flatten)]
@@ -135,13 +154,20 @@ pub struct CodeAssistantCaps {
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
 }
 
+fn default_telemetry_retrieve_my_own() -> String { 
+    "https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string() 
+}
+
+fn default_telemetry_basic_dest() -> String { 
+    "https://www.smallcloud.ai/v1/telemetry-basic".to_string() 
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-#[serde_inline_default]
 pub struct CapsProvider {
     #[serde(alias = "cloud_name", default)]
     pub name: String,
 
-    #[serde_inline_default("openai".to_string())]
+    #[serde(default = "default_endpoint_style")]
     pub endpoint_style: String,
 
     #[serde(default)]
@@ -151,13 +177,13 @@ pub struct CapsProvider {
     #[serde(default, alias = "endpoint_chat_passthrough")]
     pub chat_endpoint: String,
     #[serde(default, alias = "endpoint_embeddings_template")]
-    pub embeddings_endpoint: String,
+    pub embedding_endpoint: String,
 
     // default api key is in the command line
     #[serde(default)]
     pub api_key: String,
 
-    #[serde_inline_default(2048)]
+    #[serde(default = "default_code_completion_n_ctx")]
     pub code_completion_n_ctx: usize,
 
     #[serde(default)]
@@ -180,6 +206,10 @@ pub struct CapsProvider {
     pub running_models: Vec<String>,
 }
 
+fn default_endpoint_style() -> String { "openai".to_string() }
+
+fn default_code_completion_n_ctx() -> usize { 2048 }
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DefaultModels {
     #[serde(default, alias = "code_completion_default_model")]
@@ -198,7 +228,10 @@ fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
     enum Input { String(String), Full(EmbeddingModelRecord) }
     
     match Input::deserialize(deserializer)? {
-        Input::String(name) => Ok(EmbeddingModelRecord { name, ..Default::default() }),
+        Input::String(name) => {
+            Ok(EmbeddingModelRecord { 
+            base: BaseModelRecord { name, ..Default::default() }, ..Default::default() 
+        })},
         Input::Full(record) => Ok(record),
     }
 }
