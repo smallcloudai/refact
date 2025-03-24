@@ -73,7 +73,6 @@ class ModelConfig(BaseModel):
 
 
 class ProviderConfig(BaseModel):
-    api_keys: List[str]
     enabled: bool = True
 
 
