@@ -1,6 +1,7 @@
+use itertools::Itertools;
 use serde_json::Value;
 use tracing::{error, warn};
-use crate::call_validation::{ChatContent, ChatMessage, ContextFile};
+use crate::call_validation::{ChatContent, ChatMessage, ContextFile, DiffChunk};
 
 
 pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Option<String>) -> Vec<Value> {
@@ -49,9 +50,18 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
             results.push(msg.into_value(&style));
 
         } else if msg.role == "diff" {
+            let extra_message = match serde_json::from_str::<Vec<DiffChunk>>(&msg.content.content_text_only()) {
+                Ok(chunks) => {
+                    chunks.iter()
+                        .filter(|x| !x.application_details.is_empty())
+                        .map(|x| x.application_details.clone())
+                        .join("\n")
+                },
+                Err(_) => "".to_string()
+            };
             let tool_msg = ChatMessage {
                 role: "tool".to_string(),
-                content: ChatContent::SimpleText("The operation is succeeded.".to_string()),
+                content: ChatContent::SimpleText(format!("The operation is succeeded.\n{extra_message}")),
                 tool_calls: None,
                 tool_call_id: msg.tool_call_id.clone(),
                 ..Default::default()
