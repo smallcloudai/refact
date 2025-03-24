@@ -117,7 +117,7 @@ function initializeProvidersList() {
         providerCard.innerHTML = `
             <div class="card-header d-flex justify-content-between align-items-center provider-header" data-provider="${providerId}">
                 <h5 class="mb-0 provider-title" data-provider="${providerId}">
-                    ${providerConfig.provider_name}
+                    ${providerId}
                 </h5>
                 <div class="d-flex align-items-center">
                     <div class="form-check form-switch me-2">
@@ -286,82 +286,13 @@ function loadConfiguration() {
     fetch("/tab-third-party-apis-get")
         .then(response => response.json())
         .then(data => {
-            // Check if we need to migrate from old format to new format
-            if (data.providers && Object.values(data.providers).some(p => p.enabled_models)) {
-                // Migrate from old format (with enabled_models) to new format
-                migrateConfigFromOldFormat(data);
-            } else {
-                apiConfig = data;
-            }
+            apiConfig = data;
             updateUI();
         })
         .catch(error => {
             console.error("Error loading configuration:", error);
             general_error(error);
         });
-}
-
-function migrateConfigFromOldFormat(oldConfig) {
-    // Start with a fresh config
-    apiConfig = {
-        providers: {},
-        models: {}
-    };
-
-    // Copy providers
-    Object.entries(oldConfig.providers).forEach(([providerId, providerConfig]) => {
-        apiConfig.providers[providerId] = {
-            provider_name: providerConfig.provider_name || providerId,
-            api_keys: providerConfig.api_keys ||
-                     (providerConfig.api_key ? [providerConfig.api_key] : []),
-            enabled: providerConfig.enabled !== undefined ? providerConfig.enabled : true,
-            enabled_models: [] // Keep this for backward compatibility
-        };
-
-        // Migrate models from enabled_models to models dictionary
-        if (providerConfig.enabled_models && Array.isArray(providerConfig.enabled_models)) {
-            providerConfig.enabled_models.forEach(model => {
-                const modelId = typeof model === 'string' ? model : model.model_name;
-
-                if (!modelId) return; // Skip if no model ID
-
-                // Create model config
-                const modelConfig = {
-                    provider_id: providerId,
-                    capabilities: {
-                        agent: model.supports_agentic || false,
-                        clicks: model.supports_clicks || false,
-                        tools: model.custom_model_config ? model.custom_model_config.supports_tools || false : false,
-                        multimodal: model.custom_model_config ? model.custom_model_config.supports_multimodality || false : false,
-                        completion: false
-                    }
-                };
-
-                // Add custom model properties if available
-                if (model.custom_model_config) {
-                    modelConfig.api_base = model.custom_model_config.api_base;
-                    modelConfig.api_key = model.custom_model_config.api_key;
-                    modelConfig.n_ctx = model.custom_model_config.n_ctx || 8192;
-
-                    if (model.custom_model_config.tokenizer_uri) {
-                        modelConfig.tokenizer_uri = model.custom_model_config.tokenizer_uri;
-                    }
-                }
-
-                // Add to models dictionary
-                apiConfig.models[modelId] = modelConfig;
-            });
-        }
-    });
-
-    // If models were already in the new format, copy them too
-    if (oldConfig.models) {
-        Object.entries(oldConfig.models).forEach(([modelId, modelConfig]) => {
-            if (!apiConfig.models[modelId]) {
-                apiConfig.models[modelId] = modelConfig;
-            }
-        });
-    }
 }
 
 // Update the UI based on loaded data
@@ -602,7 +533,6 @@ function addProvider() {
     }
 
     apiConfig.providers[providerId] = {
-        provider_name: providerName,
         api_keys: requiresApiKey ? [apiKey] : [],  // Array of API keys
         enabled: true
     };
@@ -1014,14 +944,6 @@ function removeModel(providerId, modelId) {
     if (apiConfig.models[modelId] && apiConfig.models[modelId].provider_id === providerId) {
         // Remove the model from the models dictionary
         delete apiConfig.models[modelId];
-
-        // Also remove from enabled_models array if it exists (for backward compatibility)
-        if (apiConfig.providers[providerId] && apiConfig.providers[providerId].enabled_models) {
-            apiConfig.providers[providerId].enabled_models =
-                apiConfig.providers[providerId].enabled_models.filter(model =>
-                    typeof model === 'string' ? model !== modelId : model.model_name !== modelId
-                );
-        }
 
         // Update the configuration
         updateConfiguration();
