@@ -115,16 +115,16 @@ export const setPreventSend = createAction<PayloadWithId>(
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
-export const setAutomaticPatch = createAction<boolean>(
-  "chat/setAutomaticPatch",
-);
-
 export const setEnabledCheckpoints = createAction<boolean>(
   "chat/setEnabledCheckpoints",
 );
 
 export const setBoostReasoning = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setBoostReasoning",
+);
+
+export const setAutomaticPatch = createAction<PayloadWithChatAndBoolean>(
+  "chatThread/setAutomaticPatch",
 );
 
 export const saveTitle = createAction<PayloadWithIdAndTitle>(
