@@ -2,9 +2,9 @@
 import { general_error } from './error.js';
 let show_toast = false;
 
-// Provider configuration with their available models
+// Provider default configurations with their available models
 // This will be populated from litellm
-let PROVIDERS = {};
+let PROVIDER_DEFAULT_CONFIGS = {};
 
 // Store the configuration
 let apiConfig = {
@@ -49,13 +49,7 @@ function loadProvidersFromLiteLLM() {
     fetch("/tab-third-party-apis-get-providers")
         .then(response => response.json())
         .then(data => {
-            PROVIDERS = {};
-            Object.entries(data).forEach(([providerId, providerModels]) => {
-                PROVIDERS[providerId] = {
-                    name: providerId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-                    models: providerModels
-                };
-            });
+            PROVIDER_DEFAULT_CONFIGS = data;
         })
         .catch(error => {
             console.error("Error loading providers from litellm:", error);
@@ -80,9 +74,8 @@ function setProviderCollapsedState(providerId, isExpanded) {
 }
 
 function hasPredefinedModels(providerId) {
-    return PROVIDERS[providerId] &&
-           PROVIDERS[providerId].models &&
-           PROVIDERS[providerId].models.length > 0;
+    return PROVIDER_DEFAULT_CONFIGS[providerId] &&
+           PROVIDER_DEFAULT_CONFIGS[providerId].length > 0;
 }
 
 function initializeProvidersList() {
@@ -338,12 +331,43 @@ function updateUI() {
                         const supportsClicks = typeof model === 'object' && model.supports_clicks;
                         const hasCustomConfig = typeof model === 'object' && model.custom_model_config;
 
+                        // Get default capabilities from PROVIDER_DEFAULT_CONFIGS if available
+                        const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
+                        const defaultConfig = providerModels.find(m => m.model_id === modelName);
+                        const defaultCapabilities = defaultConfig ? defaultConfig.capabilities : null;
+
+                        // Get stored default capabilities if available
+                        const storedDefaultCapabilities = typeof model === 'object' && model.default_capabilities;
+
+                        // Combine all capabilities sources
+                        const capabilities = {
+                            tools: (defaultCapabilities && defaultCapabilities.tools) ||
+                                  (storedDefaultCapabilities && storedDefaultCapabilities.tools) ||
+                                  (hasCustomConfig && model.custom_model_config.supports_tools) ||
+                                  false,
+                            multimodal: (defaultCapabilities && defaultCapabilities.multimodal) ||
+                                       (storedDefaultCapabilities && storedDefaultCapabilities.multimodal) ||
+                                       (hasCustomConfig && model.custom_model_config.supports_multimodality) ||
+                                       false,
+                            agent: supportsAgentic,
+                            clicks: supportsClicks,
+                            completion: (defaultCapabilities && defaultCapabilities.completion) ||
+                                       (storedDefaultCapabilities && storedDefaultCapabilities.completion) ||
+                                       false
+                        };
+
                         let capabilitiesBadges = '';
-                        if (supportsAgentic) {
+                        if (capabilities.agent) {
                             capabilitiesBadges += '<span class="badge bg-info me-1" title="Supports Agentic Mode">Agent</span>';
                         }
-                        if (supportsClicks) {
+                        if (capabilities.clicks) {
                             capabilitiesBadges += '<span class="badge bg-success me-1" title="Supports Click Interactions">Clicks</span>';
+                        }
+                        if (capabilities.tools) {
+                            capabilitiesBadges += '<span class="badge bg-secondary me-1" title="Supports Function Calling/Tools">Tools</span>';
+                        }
+                        if (capabilities.multimodal) {
+                            capabilitiesBadges += '<span class="badge bg-primary me-1" title="Supports Images and Other Media">Multimodal</span>';
                         }
                         if (hasCustomConfig) {
                             capabilitiesBadges += '<span class="badge bg-warning me-1" title="Has Custom Configuration">Custom</span>';
@@ -436,12 +460,14 @@ function showAddProviderModal() {
     const apiKeyContainer = document.getElementById('third-party-provider-api-key-container');
     apiKeyContainer.style.display = 'block';
 
-    Object.entries(PROVIDERS).forEach(([providerId, providerInfo]) => {
+    Object.keys(PROVIDER_DEFAULT_CONFIGS).forEach((providerId) => {
         const option = document.createElement('option');
         option.value = providerId;
-        option.textContent = providerInfo.name;
-        option.dataset.name = providerInfo.name;
-        option.dataset.noApiKey = providerInfo.models.length > 0 ? 'false' : 'true';
+        option.textContent = providerId;
+        option.dataset.name = providerId;
+        // TODO: no need in this logic anymore
+        // option.dataset.noApiKey = providerInfo.models.length > 0 ? 'false' : 'true';
+        option.dataset.noApiKey = 'false';
         providerIdSelect.appendChild(option);
     });
 
@@ -518,11 +544,12 @@ function showAddModelModal(providerId) {
     modelIdContainer.dataset.providerId = providerId;
 
     if (hasPredefinedModels(providerId)) {
+        const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId];
         const selectHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
             <select class="form-select" id="third-party-model-id">
                 <option value="" selected>-- Select a model --</option>
-                ${PROVIDERS[providerId].models.map(model => `<option value="${model}">${model}</option>`).join('')}
+                ${providerModels.map(model => `<option value="${model.model_id}">${model.model_id}</option>`).join('')}
             </select>
             <div class="form-text mb-3">Select from available models for this provider.</div>
 
@@ -544,6 +571,23 @@ function showAddModelModal(providerId) {
         `;
 
         modelIdContainer.innerHTML = selectHtml;
+
+        // Add event listener to pre-fill capabilities when a model is selected
+        const modelSelect = document.getElementById('third-party-model-id');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', function() {
+                const selectedModelId = this.value;
+                const selectedModel = providerModels.find(model => model.model_id === selectedModelId);
+
+                if (selectedModel) {
+                    // Pre-fill agent and clicks capabilities from the model config
+                    document.getElementById('third-party-model-supports-agentic').checked = 
+                        selectedModel.capabilities.agent;
+                    document.getElementById('third-party-model-supports-clicks').checked = 
+                        selectedModel.capabilities.clicks;
+                }
+            });
+        }
     } else {
         const inputHtml = `
             <label for="third-party-model-id" class="form-label">Model ID</label>
@@ -663,6 +707,10 @@ function addModel() {
                 supports_clicks: supportsClicks
             };
 
+            // If this is a predefined model with a default config, use those values
+            const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
+            const defaultModelConfig = providerModels.find(model => model.model_id === modelId);
+
             if (!hasPredefinedModels(providerId)) {
                 const customApiBase = document.getElementById('custom-model-api-base').value.trim();
                 const customApiKey = document.getElementById('custom-model-api-key').value.trim();
@@ -694,6 +742,14 @@ function addModel() {
                     supports_tools: customSupportsTools,
                     supports_multimodality: customSupportsMultimodality,
                     tokenizer_uri: customTokenizerUri || null
+                };
+            } else if (defaultModelConfig) {
+                // For predefined models, we can store additional default capabilities
+                // from the model config if needed
+                modelConfig.default_capabilities = {
+                    tools: defaultModelConfig.capabilities.tools,
+                    multimodal: defaultModelConfig.capabilities.multimodal,
+                    completion: defaultModelConfig.capabilities.completion
                 };
             }
 
@@ -739,9 +795,62 @@ function showEditModelModal(providerId, modelId) {
         typeof model === 'string' ? model === modelId : model.model_name === modelId
     );
 
-    if (!modelObj || typeof modelObj === 'string' || !modelObj.custom_model_config) {
-        general_error("Custom model configuration not found");
+    if (!modelObj) {
+        general_error("Model configuration not found");
         return;
+    }
+
+    // For predefined models without custom config
+    if (typeof modelObj === 'string' || !modelObj.custom_model_config) {
+        if (hasPredefinedModels(providerId)) {
+            const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
+            modelIdContainer.dataset.providerId = providerId;
+            modelIdContainer.dataset.modelId = modelId;
+            modelIdContainer.dataset.isEdit = 'true';
+
+            // Get default capabilities from PROVIDER_DEFAULT_CONFIGS if available
+            const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
+            const defaultConfig = providerModels.find(m => m.model_id === modelId);
+            const defaultCapabilities = defaultConfig ? defaultConfig.capabilities : null;
+
+            // Get stored default capabilities if available
+            const storedDefaultCapabilities = typeof modelObj === 'object' ? modelObj.default_capabilities : null;
+
+            const supportsAgentic = typeof modelObj === 'object' ? modelObj.supports_agentic : false;
+            const supportsClicks = typeof modelObj === 'object' ? modelObj.supports_clicks : false;
+
+            const editHtml = `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${supportsAgentic ? 'checked' : ''}>
+                    <label class="form-check-label" for="third-party-model-supports-agentic">
+                        Supports Agentic Mode
+                    </label>
+                    <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+                </div>
+
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${supportsClicks ? 'checked' : ''}>
+                    <label class="form-check-label" for="third-party-model-supports-clicks">
+                        Supports Clicks
+                    </label>
+                    <div class="form-text">Enable if this model supports click interactions.</div>
+                </div>
+            `;
+
+            modelIdContainer.innerHTML = editHtml;
+            document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
+            document.getElementById('add-third-party-model-submit').textContent = 'Save Changes';
+            document.getElementById('add-third-party-model-submit').onclick = function() {
+                updateModel();
+            };
+
+            const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
+            modal.show();
+            return;
+        } else {
+            general_error("Custom model configuration not found");
+            return;
+        }
     }
 
     const customConfig = modelObj.custom_model_config;
@@ -852,6 +961,7 @@ function updateModel() {
         const error_message = "No provider in config, can't update model";
         console.error(error_message);
         general_error(error_message);
+        return;
     }
 
     const modelIndex = providerConfig.enabled_models.findIndex(model =>
@@ -862,58 +972,92 @@ function updateModel() {
         const error_message = "No model in provider in config, can't update model";
         console.error(error_message);
         general_error(error_message);
-    }
-
-    const modelConfig = providerConfig.enabled_models[modelIndex];
-
-    if (typeof modelConfig === 'string') {
-        const error_message = "Invalid format of model config, can't update model";
-        console.error(error_message);
-        general_error(error_message);
+        return;
     }
 
     // Get the values of the capability checkboxes
     const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
     const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
 
-    if (hasPredefinedModels(providerId)) {
-        modelConfig.supports_agentic = supportsAgentic;
-        modelConfig.supports_clicks = supportsClicks;
-        modelConfig.custom_model_config = null;
-    } else {
-        // Get the custom model configuration values
-        const customApiBase = document.getElementById('custom-model-api-base').value.trim();
-        const customApiKey = document.getElementById('custom-model-api-key').value.trim();
-        const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
-        const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
-        const customSupportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
-        const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
+    // Handle string model (convert to object)
+    if (typeof providerConfig.enabled_models[modelIndex] === 'string') {
+        // Create a new model config object
+        const defaultConfig = MODEL_CONFIGS[modelId];
 
-        // Validate required fields
-        if (!customApiBase) {
-            const error_message = "API Base URL is required for custom model configuration";
-            console.error(error_message);
-            general_error(error_message);
-            return;
-        }
-
-        if (isNaN(customNCtx) || customNCtx < 1024) {
-            const error_message = "Context size must be a valid number greater than or equal to 1024";
-            console.error(error_message);
-            general_error(error_message);
-            return;
-        }
-
-        modelConfig.supports_agentic = supportsAgentic;
-        modelConfig.supports_clicks = supportsClicks;
-        modelConfig.custom_model_config = {
-            api_base: customApiBase,
-            api_key: customApiKey,
-            n_ctx: customNCtx,
-            supports_tools: customSupportsTools,
-            supports_multimodality: customSupportsMultimodality,
-            tokenizer_uri: customTokenizerUri || null
+        const newModelConfig = {
+            model_name: modelId,
+            supports_agentic: supportsAgentic,
+            supports_clicks: supportsClicks
         };
+
+        // Add default capabilities if available
+        if (defaultConfig) {
+            newModelConfig.default_capabilities = {
+                tools: defaultConfig.capabilities.tools,
+                multimodal: defaultConfig.capabilities.multimodal,
+                completion: defaultConfig.capabilities.completion
+            };
+        }
+
+        providerConfig.enabled_models[modelIndex] = newModelConfig;
+    } else {
+        // Update existing model config
+        const modelConfig = providerConfig.enabled_models[modelIndex];
+
+        if (hasPredefinedModels(providerId)) {
+            modelConfig.supports_agentic = supportsAgentic;
+            modelConfig.supports_clicks = supportsClicks;
+
+            // Preserve default capabilities if they exist
+            if (!modelConfig.default_capabilities) {
+                const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
+                const defaultConfig = providerModels.find(m => m.model_id === modelId);
+                if (defaultConfig) {
+                    modelConfig.default_capabilities = {
+                        tools: defaultConfig.capabilities.tools,
+                        multimodal: defaultConfig.capabilities.multimodal,
+                        completion: defaultConfig.capabilities.completion
+                    };
+                }
+            }
+
+            // Remove custom config if it exists
+            modelConfig.custom_model_config = null;
+        } else {
+            // Get the custom model configuration values
+            const customApiBase = document.getElementById('custom-model-api-base').value.trim();
+            const customApiKey = document.getElementById('custom-model-api-key').value.trim();
+            const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
+            const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
+            const customSupportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
+            const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
+
+            // Validate required fields
+            if (!customApiBase) {
+                const error_message = "API Base URL is required for custom model configuration";
+                console.error(error_message);
+                general_error(error_message);
+                return;
+            }
+
+            if (isNaN(customNCtx) || customNCtx < 1024) {
+                const error_message = "Context size must be a valid number greater than or equal to 1024";
+                console.error(error_message);
+                general_error(error_message);
+                return;
+            }
+
+            modelConfig.supports_agentic = supportsAgentic;
+            modelConfig.supports_clicks = supportsClicks;
+            modelConfig.custom_model_config = {
+                api_base: customApiBase,
+                api_key: customApiKey,
+                n_ctx: customNCtx,
+                supports_tools: customSupportsTools,
+                supports_multimodality: customSupportsMultimodality,
+                tokenizer_uri: customTokenizerUri || null
+            };
+        }
     }
 
     updateConfiguration();
