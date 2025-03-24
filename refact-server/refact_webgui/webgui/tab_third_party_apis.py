@@ -22,7 +22,8 @@ class TabThirdPartyApisRouter(APIRouter):
         self.add_api_route("/tab-third-party-apis-get-providers", self._tab_third_party_apis_get_providers, methods=["GET"])
 
     async def _tab_third_party_apis_get(self):
-        return JSONResponse(load_third_party_config())
+        config = load_third_party_config()
+        return JSONResponse(config.dict())
 
     async def _tab_third_party_apis_save(self, config: ThirdPartyApiConfig):
         try:
