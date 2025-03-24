@@ -259,7 +259,22 @@ function updateConfiguration() {
 
             // Update the API key if this provider has one and it has changed
             if (apiKeyInput && apiKeyInput.value) {
-                apiConfig.providers[providerId].api_key = apiKeyInput.value;
+                // Make sure api_keys is an array
+                if (!apiConfig.providers[providerId].api_keys) {
+                    apiConfig.providers[providerId].api_keys = [];
+                }
+
+                // Replace the first API key or add it if none exists
+                if (apiConfig.providers[providerId].api_keys.length > 0) {
+                    apiConfig.providers[providerId].api_keys[0] = apiKeyInput.value;
+                } else {
+                    apiConfig.providers[providerId].api_keys.push(apiKeyInput.value);
+                }
+
+                // Remove old api_key property if it exists
+                if (apiConfig.providers[providerId].hasOwnProperty('api_key')) {
+                    delete apiConfig.providers[providerId].api_key;
+                }
             }
         }
     });
@@ -271,13 +286,82 @@ function loadConfiguration() {
     fetch("/tab-third-party-apis-get")
         .then(response => response.json())
         .then(data => {
-            apiConfig = data;
+            // Check if we need to migrate from old format to new format
+            if (data.providers && Object.values(data.providers).some(p => p.enabled_models)) {
+                // Migrate from old format (with enabled_models) to new format
+                migrateConfigFromOldFormat(data);
+            } else {
+                apiConfig = data;
+            }
             updateUI();
         })
         .catch(error => {
             console.error("Error loading configuration:", error);
             general_error(error);
         });
+}
+
+function migrateConfigFromOldFormat(oldConfig) {
+    // Start with a fresh config
+    apiConfig = {
+        providers: {},
+        models: {}
+    };
+
+    // Copy providers
+    Object.entries(oldConfig.providers).forEach(([providerId, providerConfig]) => {
+        apiConfig.providers[providerId] = {
+            provider_name: providerConfig.provider_name || providerId,
+            api_keys: providerConfig.api_keys ||
+                     (providerConfig.api_key ? [providerConfig.api_key] : []),
+            enabled: providerConfig.enabled !== undefined ? providerConfig.enabled : true,
+            enabled_models: [] // Keep this for backward compatibility
+        };
+
+        // Migrate models from enabled_models to models dictionary
+        if (providerConfig.enabled_models && Array.isArray(providerConfig.enabled_models)) {
+            providerConfig.enabled_models.forEach(model => {
+                const modelId = typeof model === 'string' ? model : model.model_name;
+
+                if (!modelId) return; // Skip if no model ID
+
+                // Create model config
+                const modelConfig = {
+                    provider_id: providerId,
+                    capabilities: {
+                        agent: model.supports_agentic || false,
+                        clicks: model.supports_clicks || false,
+                        tools: model.custom_model_config ? model.custom_model_config.supports_tools || false : false,
+                        multimodal: model.custom_model_config ? model.custom_model_config.supports_multimodality || false : false,
+                        completion: false
+                    }
+                };
+
+                // Add custom model properties if available
+                if (model.custom_model_config) {
+                    modelConfig.api_base = model.custom_model_config.api_base;
+                    modelConfig.api_key = model.custom_model_config.api_key;
+                    modelConfig.n_ctx = model.custom_model_config.n_ctx || 8192;
+
+                    if (model.custom_model_config.tokenizer_uri) {
+                        modelConfig.tokenizer_uri = model.custom_model_config.tokenizer_uri;
+                    }
+                }
+
+                // Add to models dictionary
+                apiConfig.models[modelId] = modelConfig;
+            });
+        }
+    });
+
+    // If models were already in the new format, copy them too
+    if (oldConfig.models) {
+        Object.entries(oldConfig.models).forEach(([modelId, modelConfig]) => {
+            if (!apiConfig.models[modelId]) {
+                apiConfig.models[modelId] = modelConfig;
+            }
+        });
+    }
 }
 
 // Update the UI based on loaded data
@@ -693,16 +777,26 @@ function addModel() {
     // Find the provider in the configuration
     const providerConfig = apiConfig.providers[providerId];
     if (providerConfig) {
-        // Check if the model is already enabled (by model name)
-        const modelExists = providerConfig.enabled_models.some(model =>
-            typeof model === 'string' ? model === modelId : model.model_name === modelId
-        );
+        // Check if the model is already enabled for this provider
+        const modelExists = Object.entries(apiConfig.models)
+            .some(([existingModelId, model]) =>
+                model.provider_id === providerId && existingModelId === modelId
+            );
 
         if (!modelExists) {
+            // Create a new model config with capabilities
             const modelConfig = {
-                model_name: modelId,
-                supports_agentic: supportsAgentic,
-                supports_clicks: supportsClicks
+                model_id: modelId,
+                provider_id: providerId,
+                api_base: null,
+                api_key: null,
+                capabilities: {
+                    agent: supportsAgentic,
+                    clicks: supportsClicks,
+                    tools: false,
+                    multimodal: false,
+                    completion: false
+                }
             };
 
             // If this is a predefined model with a default config, use those values
@@ -732,27 +826,27 @@ function addModel() {
                     return;
                 }
 
-                // Create the custom model configuration
-                modelConfig.custom_model_config = {
-                    api_base: customApiBase,
-                    api_key: customApiKey,
-                    n_ctx: customNCtx,
-                    supports_tools: customSupportsTools,
-                    supports_multimodality: customSupportsMultimodality,
-                    tokenizer_uri: customTokenizerUri || null
-                };
+                // Add custom model properties
+                modelConfig.api_base = customApiBase;
+                modelConfig.api_key = customApiKey;
+                modelConfig.n_ctx = customNCtx;
+                modelConfig.capabilities.tools = customSupportsTools;
+                modelConfig.capabilities.multimodal = customSupportsMultimodality;
+
+                if (customTokenizerUri) {
+                    modelConfig.tokenizer_uri = customTokenizerUri;
+                }
             } else if (defaultModelConfig) {
-                // For predefined models, we can store additional default capabilities
-                // from the model config if needed
-                modelConfig.default_capabilities = {
-                    tools: defaultModelConfig.capabilities.tools,
-                    multimodal: defaultModelConfig.capabilities.multimodal,
-                    completion: defaultModelConfig.capabilities.completion
-                };
+                // For predefined models, copy capabilities from the default config
+                modelConfig.n_ctx = defaultModelConfig.n_ctx || 8192;
+                modelConfig.max_tokens = defaultModelConfig.max_tokens || 4096;
+                modelConfig.capabilities.tools = defaultModelConfig.capabilities.tools;
+                modelConfig.capabilities.multimodal = defaultModelConfig.capabilities.multimodal;
+                modelConfig.capabilities.completion = defaultModelConfig.capabilities.completion;
             }
 
-            // Add the model config to the enabled models
-            providerConfig.enabled_models.push(modelConfig);
+            // Add the model config to the models dictionary
+            apiConfig.models[modelId] = modelConfig;
 
             // Update the configuration
             updateConfiguration();
@@ -1004,6 +1098,14 @@ function removeModel(providerId, modelId) {
     if (apiConfig.models[modelId] && apiConfig.models[modelId].provider_id === providerId) {
         // Remove the model from the models dictionary
         delete apiConfig.models[modelId];
+
+        // Also remove from enabled_models array if it exists (for backward compatibility)
+        if (apiConfig.providers[providerId] && apiConfig.providers[providerId].enabled_models) {
+            apiConfig.providers[providerId].enabled_models =
+                apiConfig.providers[providerId].enabled_models.filter(model =>
+                    typeof model === 'string' ? model !== modelId : model.model_name !== modelId
+                );
+        }
 
         // Update the configuration
         updateConfiguration();
