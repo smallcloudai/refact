@@ -12,10 +12,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
+use crate::files_correction::{canonicalize_normalized_path, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
-use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
+use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 
 struct ToolCreateTextDocArgs {
     path: PathBuf,
@@ -31,10 +31,28 @@ async fn parse_args(
 ) -> Result<ToolCreateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let candidates_file = file_repair_candidates(gcx.clone(), &s, 3, false).await;
-            let path = match return_one_candidate_or_a_good_error(gcx.clone(), &s, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
-                Ok(f) => canonicalize_normalized_path(PathBuf::from(preprocess_path_for_normalization(f.trim().to_string()))),
-                Err(e) => return Err(e)
+            let raw_path = PathBuf::from(preprocess_path_for_normalization(s.trim().to_string()));
+            let filename_str = if let Some(filename) = raw_path.file_name() {
+                filename.to_string_lossy().to_string()
+            } else {
+                return Err(format!(
+                    "Error: The provided path '{}' doesn't contain a filename. Please provide an absolute path with a filename.",
+                    s.trim()
+                ));
+            };
+            let path = if let Some(parent) = raw_path.parent() {
+                let parent_str = parent.to_string_lossy().to_string();
+                let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &parent_str, false, 3).await;
+                let candidate_parent_dir = match return_one_candidate_or_a_good_error(gcx.clone(), &parent_str, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
+                    Ok(f) => f,
+                    Err(e) => return Err(e)
+                };
+                canonicalize_normalized_path(PathBuf::from(candidate_parent_dir).join(filename_str))
+            } else {
+                return Err(format!(
+                    "Error: The provided path '{}' is not absolute. Please provide a full path starting from the root directory.",
+                    s.trim()
+                ));
             };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(
