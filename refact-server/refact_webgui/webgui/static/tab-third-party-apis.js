@@ -183,6 +183,13 @@ function addEventListeners() {
             if (confirm(`Are you sure you want to remove the ${providerId} provider?`)) {
                 delete apiConfig.providers[providerId];
                 delete expandedProviders[providerId];
+                const updatedModels = {};
+                Object.entries(apiConfig.models).forEach(([modelId, modelConfig]) => {
+                    if (Object.keys(apiConfig.providers).includes(modelConfig.provider_id)) {
+                        updatedModels[modelId] = modelConfig;
+                    }
+                });
+                apiConfig.models = updatedModels;
                 saveConfiguration();
                 initializeProvidersList();
                 updateUI();
