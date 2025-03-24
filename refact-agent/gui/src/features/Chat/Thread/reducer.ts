@@ -38,7 +38,6 @@ import {
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
   upsertToolCall,
-  setIsNewChatCreationMandatory,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -204,7 +203,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
       action.payload.compression_strength &&
       action.payload.compression_strength !== "absent"
     ) {
-      state.thread.new_chat_suggested.wasSuggested = true;
+      state.thread.new_chat_suggested = {
+        ...state.thread.new_chat_suggested,
+        wasSuggested: true,
+      };
     }
   });
 
@@ -245,14 +247,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.new_chat_suggested = {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
-    };
-  });
-
-  builder.addCase(setIsNewChatCreationMandatory, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.new_chat_suggested = {
-      ...state.thread.new_chat_suggested,
-      isMandatory: action.payload.value,
     };
   });
 
@@ -333,7 +327,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
       lastUserMessage?.compression_strength &&
       lastUserMessage.compression_strength !== "absent"
     ) {
-      state.thread.new_chat_suggested.wasSuggested = true;
+      state.thread.new_chat_suggested = {
+        ...state.thread.new_chat_suggested,
+        wasSuggested: true,
+      };
     }
   });
 
