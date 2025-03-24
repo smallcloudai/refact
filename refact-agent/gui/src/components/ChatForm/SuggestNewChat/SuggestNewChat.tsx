@@ -14,6 +14,7 @@ import { telemetryApi } from "../../../services/refact";
 import {
   newChatAction,
   selectChatId,
+  selectLastSentCompression,
   setIsNewChatSuggestionRejected,
 } from "../../../features/Chat";
 
@@ -40,6 +41,7 @@ export const SuggestNewChat = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const { compressChat, compressChatRequest } = useCompressChat();
 
+  const lastSentCompression = useAppSelector(selectLastSentCompression);
   useEffect(() => {
     if (shouldBeVisible) {
       setIsRendered(true);
@@ -116,20 +118,27 @@ export const SuggestNewChat = ({
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          <Link
-            size="1"
-            onClick={() => {
-              if (compressChatRequest.isLoading) return;
-              void compressChat();
-            }}
-            color="indigo"
-            asChild
-          >
-            <Flex align="center" justify="start" gap="1" display="inline-flex">
-              <ArchiveIcon style={{ alignSelf: "start" }} />
-              Compress and open in a new chat.
-            </Flex>
-          </Link>
+          {lastSentCompression && lastSentCompression !== "absent" && (
+            <Link
+              size="1"
+              onClick={() => {
+                if (compressChatRequest.isLoading) return;
+                void compressChat();
+              }}
+              color="indigo"
+              asChild
+            >
+              <Flex
+                align="center"
+                justify="start"
+                gap="1"
+                display="inline-flex"
+              >
+                <ArchiveIcon style={{ alignSelf: "start" }} />
+                Compress and open in a new chat.
+              </Flex>
+            </Link>
+          )}
         </Flex>
         <Box position="absolute" top="1" right="1">
           <IconButton
