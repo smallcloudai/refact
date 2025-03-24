@@ -5,6 +5,7 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use axum::http::StatusCode;
+use crate::caps::resolve_chat_model;
 use crate::subchat::subchat_single;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
@@ -29,7 +30,8 @@ async fn _make_prompt(
 ) -> Result<String, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), subchat_params.subchat_model.to_string()).await
+    let model_rec = resolve_chat_model(caps, &subchat_params.subchat_model)?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(gcx.clone(), &model_rec.base).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;

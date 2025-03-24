@@ -10,6 +10,8 @@ use tracing::{info, warn};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
+use crate::custom_error::MapErrToString;
+use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::http::http_post_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
@@ -17,7 +19,7 @@ use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::get_chat_model_record;
+use crate::caps::resolve_chat_model;
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -43,7 +45,8 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     };
 
     // check if the models exist otherwise use the external chat model
-    match get_chat_model_record(gcx, &params.subchat_model).await {
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
+    match resolve_chat_model(caps, &params.subchat_model) {
         Ok(_) => {}
         Err(err) => {
             let current_model = ccx.lock().await.current_model.clone();
@@ -57,7 +60,6 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
-    provider_name: &str,
     maxgen: usize,
     original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
@@ -84,7 +86,6 @@ pub async fn run_tools_remotely(
         subchat_tool_parameters,
         postprocess_parameters,
         model_name: model_name.to_string(),
-        provider_name: provider_name.to_string(),
         chat_id,
         style: style.clone(),
     };

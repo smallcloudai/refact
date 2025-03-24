@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
@@ -9,12 +8,11 @@ use hyper::{Body, Response, StatusCode};
 use serde_json::Value;
 
 use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
-use crate::caps::CodeAssistantCaps;
-use crate::caps::ModelType;
+use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::git::checkpoints::create_workspace_checkpoint;
-use crate::global_context::{is_metadata_supported, GlobalContext, SharedGlobalContext};
+use crate::global_context::{GlobalContext, SharedGlobalContext};
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 
 
@@ -57,35 +55,6 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
 
 pub const CHAT_TOP_N: usize = 12;
 
-pub async fn lookup_chat_scratchpad(
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    chat_post: &ChatPost,
-) -> Result<(String, String, String, serde_json::Value, usize, bool, bool, bool), String> {
-    let caps_locked = caps.read().unwrap();
-    let (model_name, recommended_model_record, _) =
-        crate::caps::which_model_to_use(
-            ModelType::Chat,
-            &caps_locked,
-            &chat_post.model,
-            &chat_post.provider,
-        )?;
-    let (sname, patch) = crate::caps::which_scratchpad_to_use(
-        &recommended_model_record.supports_scratchpads,
-        &chat_post.scratchpad,
-        &recommended_model_record.default_scratchpad,
-    )?;
-    Ok((
-        model_name,
-        chat_post.provider.clone(),
-        sname,
-        patch.clone(),
-        recommended_model_record.n_ctx,
-        recommended_model_record.supports_tools,
-        recommended_model_record.supports_multimodality,
-        recommended_model_record.supports_clicks,
-    ))
-}
-
 pub async fn handle_v1_chat_completions(
     // standard openai-style handler
     Extension(gcx): Extension<SharedGlobalContext>,
@@ -113,7 +82,7 @@ pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Resu
     Ok(messages)
 }
 
-fn fill_sampling_params(chat_post: &mut ChatPost, n_ctx: usize, model_name: &String) {
+fn fill_sampling_params(chat_post: &mut ChatPost, n_ctx: usize, model_id: &str) {
     let mut max_tokens = if chat_post.increase_max_tokens {
         chat_post.max_tokens.unwrap_or(16384)
     } else {
@@ -124,7 +93,7 @@ fn fill_sampling_params(chat_post: &mut ChatPost, n_ctx: usize, model_name: &Str
     if chat_post.parameters.max_new_tokens == 0 {
         chat_post.parameters.max_new_tokens = max_tokens;
     }
-    chat_post.model = model_name.clone();
+    chat_post.model = model_id.to_string();
     chat_post.parameters.n = chat_post.n;
     chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.0)));
 }
@@ -166,21 +135,17 @@ async fn _chat(
     }
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let (model_name, provider_name, scratchpad_name, scratchpad_patch, n_ctx, supports_tools, supports_multimodality, supports_clicks) = lookup_chat_scratchpad(
-        caps.clone(),
-        &chat_post,
-    ).await.map_err(|e| {
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
-    })?;
-    fill_sampling_params(&mut chat_post, n_ctx, &model_name);
+    let model_rec = resolve_chat_model(caps, &chat_post.model)
+            .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+    fill_sampling_params(&mut chat_post, model_rec.base.n_ctx, &model_rec.base.id);
 
     // extra validation to catch {"query": "Frog", "scope": "workspace"}{"query": "Toad", "scope": "workspace"}
     let re = regex::Regex::new(r"\{.*?\}").unwrap();
     for message in messages.iter_mut() {
-        if !supports_multimodality {
+        if !model_rec.supports_multimodality {
             if let ChatContent::Multimodal(content) = &message.content {
                 if content.iter().any(|el| el.is_image()) {
-                    return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("model '{}' does not support multimodality", model_name)));
+                    return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("model '{}' does not support multimodality", model_rec.base.id)));
                 }
             }
             message.content = ChatContent::SimpleText(message.content.content_text_only());
@@ -224,12 +189,10 @@ async fn _chat(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     }
 
-    let meta = {
-        if is_metadata_supported(caps.clone(), &chat_post.provider).await {
-            Some(chat_post.meta.clone())
-        } else {
-            None
-        }
+    let meta = if model_rec.base.support_metadata {
+        Some(chat_post.meta.clone())
+    } else {
+        None
     };
 
     if chat_post.checkpoints_enabled {
@@ -256,17 +219,11 @@ async fn _chat(
     // chat_post.stream = Some(false);  // for debugging 400 errors that are hard to debug with streaming (because "data: " is not present and the error message is ignored by the library)
     let mut scratchpad = crate::scratchpads::create_chat_scratchpad(
         gcx.clone(),
-        caps,
-        model_name.clone(),
-        provider_name.clone(),
         &mut chat_post,
         &messages,
         true,
-        &scratchpad_name,
-        &scratchpad_patch,
+        &model_rec,
         allow_at,
-        supports_tools,
-        supports_clicks,
     ).await.map_err(|e|
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
@@ -285,7 +242,7 @@ async fn _chat(
     // }
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
-        n_ctx,
+        model_rec.base.n_ctx,
         CHAT_TOP_N,
         false,
         messages.clone(),
@@ -301,8 +258,7 @@ async fn _chat(
             ccx_arc.clone(),
             &mut scratchpad,
             "chat".to_string(),
-            model_name,
-            provider_name,
+            model_rec.base,
             &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
             meta
@@ -312,8 +268,7 @@ async fn _chat(
             ccx_arc.clone(),
             scratchpad,
             "chat-stream".to_string(),
-            model_name,
-            provider_name,
+            model_rec.base,
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
             meta

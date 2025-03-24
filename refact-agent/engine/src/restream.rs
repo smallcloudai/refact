@@ -1,6 +1,5 @@
-use std::sync::{Arc, RwLock as StdRwLock};
+use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::mpsc;
 use async_stream::stream;
 use futures::StreamExt;
@@ -11,142 +10,54 @@ use serde_json::{json, Value};
 use tracing::info;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
+use crate::caps::BaseModelRecord;
 use crate::custom_error::ScratchError;
-use crate::global_context::is_metadata_supported;
 use crate::nicer_logs;
 use crate::scratchpad_abstract::{FinishReason, ScratchpadAbstract};
 use crate::telemetry::telemetry_structs;
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
-async fn _resolve_model_connection_details(
-    gcx: Arc<ARwLock<crate::global_context::GlobalContext>>,
-    caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
-    model_name: &str,
-    provider_name: &str,
-) -> (String, String, String, String)
-{
-    let (
-        custom_apikey,
-        mut endpoint_style,
-        custom_endpoint_style,
-        mut endpoint_template,
-        custom_endpoint_template,
-        endpoint_chat_passthrough,
-    ) = {
-        let caps_locked = caps.read().unwrap();
-        let provider = if provider_name.is_empty() {
-            caps_locked.providers.first().map(|(_, p)| p)
-        } else {
-            caps_locked.providers.get(provider_name)
-        };
-        let provider = provider.unwrap();
-        if provider.code_chat_models.contains_key(model_name) {
-            (
-                provider.api_key.clone(),
-                provider.endpoint_style.clone(),      // abstract
-                provider.chat_endpoint_style.clone(), // chat-specific
-                provider.endpoint_template.clone(),   // abstract
-                provider.chat_endpoint.clone(),       // chat-specific
-                provider.endpoint_chat_passthrough.clone(),
-            )
-        } else {
-            (
-                provider.api_key.clone(),
-                provider.endpoint_style.clone(),             // abstract
-                provider.completion_endpoint_style.clone(),  // completion-specific
-                provider.endpoint_template.clone(),          // abstract
-                provider.completion_endpoint.clone(),        // completion-specific
-                "".to_string(),
-            )
-        }
-    };
-    let api_key = match custom_apikey {
-        s if s.is_empty() => gcx.read().await.cmdline.api_key.clone(),
-        s if s.starts_with("$") => {
-            match std::env::var(s.trim_start_matches('$')) {
-                Ok(v) => v,
-                Err(e) => {
-                    tracing::error!("Failed to get API key from env var {s}: {e}");
-                    gcx.read().await.cmdline.api_key.clone()
-                }
-            }
-        },
-        _ => custom_apikey,
-    };
-    if !custom_endpoint_style.is_empty() {
-        endpoint_style = custom_endpoint_style;
-    }
-    if !custom_endpoint_template.is_empty() {
-        endpoint_template = custom_endpoint_template;
-    }
-    (
-        api_key,
-        endpoint_template,
-        endpoint_style,
-        endpoint_chat_passthrough,
-    )
-}
-
 pub async fn scratchpad_interaction_not_stream_json(
     ccx: Arc<AMutex<AtCommandsContext>>,
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
     prompt: &str,
-    model_name: String,
-    provider_name: String,
+    model_rec: &BaseModelRecord,
     parameters: &SamplingParameters,  // includes n
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let gcx = ccx.lock().await.global_context.clone();
-    let (client, caps, tele_storage, slowdown_arc) = {
+    let (client, tele_storage, slowdown_arc) = {
         let gcx_locked = gcx.write().await;
-        let caps = gcx_locked.caps.clone()
-            .ok_or(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "No caps available".to_string()))?;
         (
             gcx_locked.http_client.clone(),
-            caps,
             gcx_locked.telemetry.clone(),
             gcx_locked.http_client_slowdown.clone()
         )
     };
-    let (
-        bearer,
-        endpoint_template,
-        endpoint_style,
-        endpoint_chat_passthrough,
-    ) = _resolve_model_connection_details(gcx.clone(), caps.clone(), &model_name, &provider_name).await;
 
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
-    let metadata_supported = is_metadata_supported(caps.clone(), &provider_name).await;
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
         Ok(Value::Object(serde_json::Map::new()))
-    } else if endpoint_style == "hf" {
+    } else if model_rec.endpoint_style == "hf" {
         crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
-            &mut save_url,
-            bearer.clone(),
-            &model_name,
-            &prompt,
+            &model_rec,
+            prompt,
             &client,
-            &endpoint_template,
             &parameters,
             meta
         ).await
     } else {
         crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
-            &mut save_url,
-            bearer.clone(),
-            &model_name,
-            &prompt,
+            &model_rec,
+            prompt,
             &client,
-            &endpoint_template,
-            &endpoint_chat_passthrough,
-            &parameters,  // includes n
-            metadata_supported,
+            &parameters,
             meta
         ).await
     }.map_err(|e| {
@@ -273,8 +184,7 @@ pub async fn scratchpad_interaction_not_stream(
     ccx: Arc<AMutex<AtCommandsContext>>,
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
-    model_name: String,
-    provider_name: String,
+    model_rec: BaseModelRecord,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
@@ -294,8 +204,7 @@ pub async fn scratchpad_interaction_not_stream(
         scratchpad,
         scope,
         prompt.as_str(),
-        model_name,
-        provider_name,
+        &model_rec,
         parameters,
         only_deterministic_messages,
         meta
@@ -318,35 +227,26 @@ pub async fn scratchpad_interaction_stream(
     ccx: Arc<AMutex<AtCommandsContext>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
-    mut model_name: String,
-    provider_name: String,
+    mut model_rec: BaseModelRecord,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
 ) -> Result<Response<Body>, ScratchError> {
-    let t1 = std::time::SystemTime::now();
+    let t1: std::time::SystemTime = std::time::SystemTime::now();
     let evstream = stream! {
         let my_scratchpad: &mut Box<dyn ScratchpadAbstract> = &mut scratchpad;
         let mut my_parameters = parameters.clone();
         let my_ccx = ccx.clone();
 
         let gcx = ccx.lock().await.global_context.clone();
-        let (client, caps, tele_storage, slowdown_arc) = {
+        let (client, tele_storage, slowdown_arc) = {
             let gcx_locked = gcx.write().await;
-            let caps = gcx_locked.caps.clone().unwrap();
             (
                 gcx_locked.http_client.clone(),
-                caps,
                 gcx_locked.telemetry.clone(),
                 gcx_locked.http_client_slowdown.clone()
             )
         };
-        let (
-            bearer,
-            endpoint_template,
-            endpoint_style,
-            endpoint_chat_passthrough,
-        ) = _resolve_model_connection_details(gcx.clone(), caps.clone(), &model_name, &provider_name).await;
 
         let t0 = std::time::Instant::now();
         let mut prompt = String::new();
@@ -399,7 +299,6 @@ pub async fn scratchpad_interaction_stream(
         }
         info!("scratchpad_interaction_stream prompt {:?}", t0.elapsed());
 
-        let mut save_url: String = String::new();
         let _ = slowdown_arc.acquire().await;
         loop {
             let value_maybe = my_scratchpad.response_spontaneous();
@@ -421,29 +320,20 @@ pub async fn scratchpad_interaction_stream(
                 break;
             }
             // info!("prompt: {:?}", prompt);
-            let metadata_supported = is_metadata_supported(caps.clone(), &provider_name).await;
-            let event_source_maybe = if endpoint_style == "hf" {
+            let event_source_maybe = if model_rec.endpoint_style == "hf" {
                 crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
-                    &mut save_url,
-                    bearer.clone(),
-                    &model_name,
-                    prompt.as_str(),
+                    &model_rec,
+                    &prompt,
                     &client,
-                    &endpoint_template,
                     &my_parameters,
                     meta
                 ).await
             } else {
                 crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
-                    &mut save_url,
-                    bearer.clone(),
-                    &model_name,
-                    prompt.as_str(),
+                    &model_rec,
+                    &prompt,
                     &client,
-                    &endpoint_template,
-                    &endpoint_chat_passthrough,
                     &my_parameters,
-                    metadata_supported,
                     meta
                 ).await
             };
@@ -452,7 +342,7 @@ pub async fn scratchpad_interaction_stream(
                 Err(e) => {
                     let e_str = format!("forward_to_endpoint: {:?}", e);
                     tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
-                        save_url.clone(),
+                        model_rec.endpoint.clone(),
                         scope.clone(),
                         false,
                         e_str.to_string(),
@@ -479,7 +369,7 @@ pub async fn scratchpad_interaction_stream(
                         match _push_streaming_json_into_scratchpad(
                             my_scratchpad,
                             &json,
-                            &mut model_name,
+                            &mut model_rec.name,
                             &mut was_correct_output_even_if_error,
                         ) {
                             Ok((mut value, finish_reason)) => {
@@ -526,7 +416,7 @@ pub async fn scratchpad_interaction_stream(
                         tracing::error!("restream error: {}\n", problem_str);
                         {
                             tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
-                                save_url.clone(),
+                                model_rec.endpoint.clone(),
                                 scope.clone(),
                                 false,
                                 problem_str.clone(),
@@ -541,7 +431,7 @@ pub async fn scratchpad_interaction_stream(
 
             let mut value = my_scratchpad.streaming_finished(last_finish_reason)?;
             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
-            value["model"] = json!(model_name.clone());
+            value["model"] = json!(model_rec.name.clone());
             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
             info!("yield final: {:?}", value_str);
             yield Result::<_, String>::Ok(value_str);
@@ -550,7 +440,7 @@ pub async fn scratchpad_interaction_stream(
         info!("yield: [DONE]");
         yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
         tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
-            save_url.clone(),
+            model_rec.endpoint.clone(),
             scope.clone(),
             true,
             "".to_string(),

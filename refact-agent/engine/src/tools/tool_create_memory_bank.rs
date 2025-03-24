@@ -23,6 +23,7 @@ use crate::{
     subchat::subchat,
     tools::tools_description::Tool,
 };
+use crate::caps::resolve_chat_model;
 use crate::call_validation::ReasoningEffort;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 
@@ -263,7 +264,8 @@ async fn read_and_compress_directory(
     }
 
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), model).await.map_err(|e| format!("Tokenizer error: {}", e))?;
+    let model_rec = resolve_chat_model(caps, &model)?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(gcx.clone(), &model_rec.base).await.map_err(|e| format!("Tokenizer error: {}", e))?;
     let mut pp_settings = PostprocessSettings::new();
     pp_settings.max_files_n = context_files.len();
     let compressed = postprocess_context_files(

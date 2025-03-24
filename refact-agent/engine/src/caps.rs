@@ -339,12 +339,15 @@ fn parse_from_yaml_or_json(buffer: &str) -> Result<serde_json::Value, String> {
 
 fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>) {
     fn add_provider_details_to_model(base_model_rec: &mut BaseModelRecord, provider: &CapsProvider, model_name: &str, custom_endpoint: &str) {
+        base_model_rec.name = model_name.to_string();
+        base_model_rec.id = format!("{}/{}", provider.name, model_name);
+        
         base_model_rec.api_key = provider.api_key.clone();
             
-        let endpoint = if custom_endpoint.is_empty() {
-            provider.endpoint_template.clone()
-        } else {
+        let endpoint = if !custom_endpoint.is_empty() {
             custom_endpoint.to_string()
+        } else {
+            provider.endpoint_template.clone()
         };
         base_model_rec.endpoint = endpoint.replace("$MODEL", model_name);
         base_model_rec.support_metadata = provider.support_metadata;
@@ -352,12 +355,9 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
     }
     
     for mut provider in providers {
-        let provider_name = &provider.name;
-        
+
         let completion_models = std::mem::take(&mut provider.code_completion_models);
         for (model_name, mut model_rec) in completion_models {
-            let model_id = format!("{provider_name}/{model_name}");
-            
             add_provider_details_to_model(
                 &mut model_rec.base, &provider, &model_name, &provider.completion_endpoint
             );
@@ -367,24 +367,23 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
                 model_rec.base.n_ctx = provider.code_completion_n_ctx; 
             }
             
-            caps.code_completion_models.insert(model_id, model_rec);
+            caps.code_completion_models.insert(model_rec.base.id.clone(), model_rec);
         }
 
         let chat_models = std::mem::take(&mut provider.code_chat_models);
         for (model_name, mut model_rec) in chat_models {
-            let model_id = format!("{provider_name}/{model_name}");
-            
             add_provider_details_to_model(
                 &mut model_rec.base, &provider, &model_name, &provider.chat_endpoint
             );
 
-            caps.code_chat_models.insert(model_id, model_rec);
+            caps.code_chat_models.insert(model_rec.base.id.clone(), model_rec);
         }
 
         if provider.embedding_model.is_configured() {
             let mut embedding_model = std::mem::take(&mut provider.embedding_model);
+            let model_name = embedding_model.base.name.clone();
             add_provider_details_to_model(
-                &mut embedding_model.base, &provider, &embedding_model.name, &provider.embeddings_endpoint
+                &mut embedding_model.base, &provider, &model_name, &provider.embedding_endpoint
             );
 
             embedding_model.embedding_batch = match embedding_model.embedding_batch {
@@ -424,7 +423,7 @@ async fn load_caps_from_buf(
         provider.endpoint_template = relative_to_full_url(caps_url, &provider.endpoint_template)?;
         provider.chat_endpoint = relative_to_full_url(caps_url, &provider.chat_endpoint)?;
         provider.completion_endpoint = relative_to_full_url(caps_url, &provider.completion_endpoint)?;
-        provider.embeddings_endpoint = relative_to_full_url(caps_url, &provider.embeddings_endpoint)?;
+        provider.embedding_endpoint = relative_to_full_url(caps_url, &provider.embedding_endpoint)?;
 
         provider.api_key = match &provider.api_key {
             k if k.is_empty() => cmdline_api_key.to_string(),
@@ -637,15 +636,17 @@ fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), S
         for model in &provider.running_models {
             if !provider.code_completion_models.contains_key(model) && 
                 !provider.code_chat_models.contains_key(model) &&
-                !(model == &provider.embedding_model.name) {
+                !(model == &provider.embedding_model.base.name) {
                 tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
             }
         }
 
-        if !provider.embedding_model.is_configured() && !provider.embedding_model.name.is_empty() {
-            let model_stripped = strip_model_from_finetune(&provider.embedding_model.name);
+        if !provider.embedding_model.is_configured() && !provider.embedding_model.base.name.is_empty() {
+            let model_name = provider.embedding_model.base.name.clone();
+            let model_stripped = strip_model_from_finetune(&model_name);
             if let Some(known_model_rec) = known_models.embedding_models.get(&model_stripped) {
                 provider.embedding_model = known_model_rec.clone();
+                provider.embedding_model.base.name = model_name;
             } else {
                 tracing::warn!("Unkown embedding model '{}', maybe configure it or update this binary", model_stripped);
             }
@@ -655,104 +656,44 @@ fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), S
     Ok(())
 }
 
-pub fn which_model_to_use<'a>(
-    model_type: ModelType,
-    caps: &'a CodeAssistantCaps,
-    user_wants_model: &str,
-    user_wants_model_provider: &str,
-) -> Result<(String, &'a ModelRecord, &'a CapsProvider), String> {
-    let (model_name, provider_name) = if !user_wants_model.is_empty() {
-        (user_wants_model, user_wants_model_provider)
+pub fn resolve_model<T: Clone>(
+    models: &IndexMap<String, T>,
+    requested_model_id: &str,
+    default_model_id: &str,
+) -> Result<T, String> {
+    let model_id = if !requested_model_id.is_empty() {
+        requested_model_id
     } else {
-        match model_type {
-            ModelType::CodeCompletion => (
-                caps.code_completion_default_model.as_str(),
-                caps.code_completion_default_provider.as_str(),
-            ),
-            ModelType::MultilineCodeCompletion => (
-                caps.multiline_code_completion_default_model.as_str(),
-                caps.multiline_code_completion_default_provider.as_str(),
-            ),
-            ModelType::Chat => (
-                caps.code_chat_default_model.as_str(),
-                caps.code_chat_default_provider.as_str(),
-            ),
-            ModelType::Embedding => unimplemented!(),
-        }
+        default_model_id
     };
-    
-    let model_name_stripped = strip_model_from_finetune(model_name);
-
-    let provider = get_caps_provider(&caps, provider_name)?;
-    let models_list = match model_type {
-        ModelType::CodeCompletion | ModelType::MultilineCodeCompletion => &provider.code_completion_models,
-        ModelType::Chat => &provider.code_chat_models,
-        ModelType::Embedding => unimplemented!(),
-    };
-
-    let model_rec = models_list.get(model_name)
-        .or_else(|| models_list.get(&model_name_stripped));
-
-    match model_rec {
-        Some(model_rec) => Ok((model_name.to_string(), model_rec, provider)),
-        None => Err(format!(
-            "Model '{}' not found. Server has the following models for provider {}: {:?}",
-            model_name,
-            provider_name,
-            models_list.keys()
-        )),
-    }
+    models.get(model_id).or_else(
+        || models.get(&strip_model_from_finetune(model_id))
+    ).cloned().ok_or(format!("Model '{}' not found. Server has the following models: {:?}", model_id, models.keys()))
 }
 
-pub fn which_scratchpad_to_use<'a>(
-    scratchpads: &'a HashMap<String, serde_json::Value>,
-    user_wants_scratchpad: &str,
-    default_scratchpad: &str,
-) -> Result<(String, &'a serde_json::Value), String> {
-    let mut take_this_one = default_scratchpad;
-    if user_wants_scratchpad != "" {
-        take_this_one = user_wants_scratchpad;
-    }
-    if default_scratchpad == "" {
-        if scratchpads.len() == 1 {
-            let key = scratchpads.keys().next().unwrap();
-            return Ok((key.clone(), &scratchpads[key]));
-        } else {
-            return Err(format!(
-                "There is no default scratchpad defined, requested scratchpad is empty. The model supports these scratchpads: {:?}",
-                scratchpads.keys()
-            ));
-        }
-    }
-    if let Some(scratchpad_patch) = scratchpads.get(take_this_one) {
-        return Ok((take_this_one.to_string(), scratchpad_patch));
-    } else {
-        return Err(format!(
-            "Scratchpad '{}' not found. The model supports these scratchpads: {:?}",
-            take_this_one,
-            scratchpads.keys()
-        ));
-    }
-}
-
-pub async fn get_chat_model_record(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    model: &str,
+pub fn resolve_chat_model(
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    requested_model_id: &str,
 ) -> Result<ChatModelRecord, String> {
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(
-        gcx.clone(), 0,
-    ).await.map_err(|e| {
-        warn!("no caps: {:?}", e);
-        format!("failed to load caps: {}", e)
-    })?;
-
     let caps_locked = caps.read().unwrap();
-    match caps_locked.code_chat_models.get(model) {
-        Some(res) => Ok(res.clone()),
-        None => Err(format!("no model record for model `{}`", model))
-    }
+    resolve_model(
+        &caps_locked.code_chat_models, 
+        requested_model_id, 
+        &caps_locked.default_models.chat_model
+    )
 }
 
+pub fn resolve_completion_model(
+    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    requested_model_id: &str,
+) -> Result<CompletionModelRecord, String> {
+    let caps_locked = caps.read().unwrap();
+    resolve_model(
+        &caps_locked.code_completion_models, 
+        requested_model_id, 
+        &caps_locked.default_models.completion_model
+    )
+}
 
 pub const BRING_YOUR_OWN_KEY_SAMPLE: &str = r#"
 cloud_name: My own mix of clouds!

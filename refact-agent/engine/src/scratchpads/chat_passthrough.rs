@@ -10,7 +10,7 @@ use tracing::info;
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ReasoningEffort, SamplingParameters};
-use crate::caps::get_caps_provider;
+use crate::caps::resolve_chat_model;
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -126,13 +126,13 @@ impl ScratchpadAbstract for ChatPassthrough {
         let (mut messages, _any_context_produced) = if self.allow_at && !should_execute_remotely {
             run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else if self.allow_at {
-            run_at_commands_remotely(ccx.clone(), &self.post.model, &self.post.provider, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
+            run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
         } else {
             (messages, false)
         };
         if self.supports_tools {
             (messages, _) = if should_execute_remotely {
-                run_tools_remotely(ccx.clone(), &self.post.model, &self.post.provider, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
+                run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             } else {
                 run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
@@ -216,22 +216,15 @@ impl ScratchpadAbstract for ChatPassthrough {
             let gcx_locked = gcx.write().await;
             gcx_locked.caps.clone().unwrap()
         };
-        let model_record_mb = {
-            let caps_locked = caps.read().unwrap();
-            let provider = get_caps_provider(&caps_locked, &self.post.provider)?;
-            provider.code_chat_models.get(&self.post.model).cloned()
-        };
+        let model_record_mb = resolve_chat_model(caps, &self.post.model).ok();
 
-        let supports_reasoning = if let Some(model_record) = model_record_mb.clone() {
-            !model_record.supports_reasoning.is_none()
-        } else {
-            false
-        };
+        let supports_reasoning = model_record_mb.as_ref()
+            .map_or(false, |m| m.supports_reasoning.is_some());
 
         let limited_adapted_msgs = if supports_reasoning {
             let model_record = model_record_mb.unwrap();
             _adapt_for_reasoning_models(
-                &limited_msgs,
+                limited_msgs,
                 sampling_parameters_to_patch,
                 model_record.supports_reasoning.unwrap(),
                 model_record.default_temperature.clone(),
@@ -287,7 +280,7 @@ impl ScratchpadAbstract for ChatPassthrough {
 }
 
 fn _adapt_for_reasoning_models(
-    messages: &Vec<ChatMessage>,
+    messages: Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
     supports_reasoning: String,
     default_temperature: Option<f32>,
@@ -301,8 +294,7 @@ fn _adapt_for_reasoning_models(
             sampling_parameters.temperature = default_temperature;
 
             // NOTE: OpenAI prefer user message over system
-            messages.iter().map(|msg| {
-                let mut msg = msg.clone();
+            messages.into_iter().map(|mut msg| {
                 if msg.role == "system" {
                     msg.role = "user".to_string();
                 }
@@ -321,11 +313,11 @@ fn _adapt_for_reasoning_models(
                     "budget_tokens": budget_tokens,
                 }));
             }
-            messages.clone()
+            messages
         },
         _ => {
             sampling_parameters.temperature = default_temperature.clone();
-            messages.clone()
+            messages
         }
     }
 }

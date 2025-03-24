@@ -10,34 +10,29 @@ use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
+use crate::caps::BaseModelRecord;
+use crate::custom_error::MapErrToString;
 use crate::scratchpads::chat_utils_limit_history::CompressionStrength;
 use crate::caps::EmbeddingModelRecord;
 
 pub async fn forward_to_openai_style_endpoint(
-    save_url: &mut String,
-    bearer: String,
-    model_name: &str,
+    model_rec: &BaseModelRecord,
     prompt: &str,
     client: &reqwest::Client,
-    endpoint_template: &String,
-    endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
-    is_metadata_supported: bool,
     meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
-    let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
-    save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
-    if !bearer.is_empty() {
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
+    if !model_rec.api_key.is_empty() {
+        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", model_rec.api_key)).unwrap());
     }
-    if is_metadata_supported {
-        headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
+    if model_rec.support_metadata {
+        headers.insert(USER_AGENT, HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build_info::PKG_VERSION)).unwrap());
     }
     let mut data = json!({
-        "model": model_name,
+        "model": model_rec.name.clone(),
         "stream": false,
     });
     if !sampling_parameters.stop.is_empty() {  // openai does not like empty stop
@@ -58,7 +53,7 @@ pub async fn forward_to_openai_style_endpoint(
         .map(|x| x.to_string())
         .unwrap_or("None".to_string()));
     if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt, model_name);
+        passthrough_messages_to_json(&mut data, prompt, &model_rec.name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
         data["echo"] = serde_json::Value::Bool(false);
@@ -68,23 +63,23 @@ pub async fn forward_to_openai_style_endpoint(
     }
     
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
-    let req = client.post(&url)
+    let req = client.post(&model_rec.endpoint)
         .headers(headers)
         .body(data.to_string())
         .send()
         .await;
-    let resp = req.map_err(|e| format!("{}", e))?;
+    let resp = req.map_err_to_string()?;
     let status_code = resp.status().as_u16();
     let response_txt = resp.text().await.map_err(|e|
-        format!("reading from socket {}: {}", url, e)
+        format!("reading from socket {}: {}", model_rec.endpoint, e)
     )?;
     // 400 "client error" is likely a json that we rather accept here, pick up error details as we analyse json fields at the level
     // higher, the most often 400 is no such model.
     if status_code != 200 && status_code != 400 {
-        return Err(format!("{} status={} text {}", url, status_code, response_txt));
+        return Err(format!("{} status={} text {}", model_rec.endpoint, status_code, response_txt));
     }
     if status_code != 200 {
-        info!("forward_to_openai_style_endpoint: {} {}\n{}", url, status_code, response_txt);
+        tracing::info!("forward_to_openai_style_endpoint: {} {}\n{}", model_rec.endpoint, status_code, response_txt);
     }
     let parsed_json: serde_json::Value = match serde_json::from_str(&response_txt) {
         Ok(json) => json,
@@ -94,37 +89,30 @@ pub async fn forward_to_openai_style_endpoint(
 }
 
 pub async fn forward_to_openai_style_endpoint_streaming(
-    save_url: &mut String,
-    bearer: String,
-    model_name: &str,
+    model_rec: &BaseModelRecord,
     prompt: &str,
     client: &reqwest::Client,
-    endpoint_template: &String,
-    endpoint_chat_passthrough: &String,
     sampling_parameters: &SamplingParameters,
-    is_metadata_supported: bool,
     meta: Option<ChatMeta>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
-    let url = if !is_passthrough { endpoint_template.replace("$MODEL", model_name) } else { endpoint_chat_passthrough.clone() };
-    save_url.clone_from(&&url);
     let mut headers = HeaderMap::new();
     headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/json").unwrap());
-    if !bearer.is_empty() {
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(format!("Bearer {}", bearer).as_str()).unwrap());
+    if !model_rec.api_key.is_empty() {
+        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", model_rec.api_key)).unwrap());
     }
-    if is_metadata_supported {
+    if model_rec.support_metadata {
         headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
     }
 
     let mut data = json!({
-        "model": model_name,
+        "model": model_rec.name,
         "stream": true,
         "stream_options": {"include_usage": true},
     });
 
     if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt, model_name);
+        passthrough_messages_to_json(&mut data, prompt, &model_rec.name);
     } else {
         data["prompt"] = serde_json::Value::String(prompt.to_string());
     }
@@ -152,11 +140,11 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     if let Some(meta) = meta {
         data["meta"] = json!(meta);
     }
-    let builder = client.post(&url)
+    let builder = client.post(&model_rec.endpoint)
         .headers(headers)
         .body(data.to_string());
     let event_source: EventSource = EventSource::new(builder).map_err(|e|
-        format!("can't stream from {}: {}", url, e)
+        format!("can't stream from {}: {}", model_rec.endpoint, e)
     )?;
     Ok(event_source)
 }
@@ -224,7 +212,7 @@ pub async fn get_embedding_openai_style(
     let B: usize = text.len();
     let payload = EmbeddingsPayloadOpenAI {
         input: text,
-        model: model_rec.name.to_string(),
+        model: model_rec.base.name.to_string(),
     };
     let response = client.lock().await
         .post(&model_rec.base.endpoint)
