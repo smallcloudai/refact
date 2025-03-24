@@ -15,7 +15,7 @@ export const selectToolUse = (state: RootState) => state.chat.tool_use;
 export const selectThreadToolUse = (state: RootState) =>
   state.chat.thread.tool_use;
 export const selectAutomaticPatch = (state: RootState) =>
-  state.chat.automatic_patch;
+  state.chat.thread.automatic_patch;
 
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;

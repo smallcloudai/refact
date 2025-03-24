@@ -15,7 +15,11 @@ import {
   isAssistantMessage,
   ToolConfirmationPauseReason,
 } from "../../services/refact";
-import { selectMessages, setAutomaticPatch } from "../../features/Chat";
+import {
+  selectChatId,
+  selectMessages,
+  setAutomaticPatch,
+} from "../../features/Chat";
 
 type ToolConfirmationProps = {
   pauseReasons: ToolConfirmationPauseReason[];
@@ -59,6 +63,8 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
 }) => {
   const dispatch = useAppDispatch();
 
+  const chatId = useAppSelector(selectChatId);
+
   const commands = pauseReasons.map((reason) => reason.command);
   const rules = pauseReasons.map((reason) => reason.rule);
   const types = pauseReasons.map((reason) => reason.type);
@@ -84,7 +90,7 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
   const { rejectToolUsage, confirmToolUsage } = useSendChatRequest();
 
   const handleAllowForThisChat = () => {
-    dispatch(setAutomaticPatch(true));
+    dispatch(setAutomaticPatch({ chatId, value: true }));
     confirmToolUsage();
   };
 

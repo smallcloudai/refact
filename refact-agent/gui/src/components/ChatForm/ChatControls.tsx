@@ -25,6 +25,7 @@ import { ToolUseSwitch } from "./ToolUseSwitch";
 import {
   ToolUse,
   selectAutomaticPatch,
+  selectChatId,
   selectCheckpointsEnabled,
   selectIsStreaming,
   selectIsWaiting,
@@ -38,10 +39,11 @@ import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
 
   const handleAutomaticPatchChange = (checked: boolean) => {
-    dispatch(setAutomaticPatch(checked));
+    dispatch(setAutomaticPatch({ chatId, value: checked }));
   };
 
   return (

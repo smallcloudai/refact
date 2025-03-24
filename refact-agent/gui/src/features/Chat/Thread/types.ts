@@ -25,6 +25,7 @@ export type ChatThread = {
   project_name?: string;
   last_user_message_id?: string;
   new_chat_suggested: SuggestedChat;
+  automatic_patch?: boolean;
   currentMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
 };
@@ -41,7 +42,6 @@ export type Chat = {
   thread: ChatThread;
   error: null | string;
   prevent_send: boolean;
-  automatic_patch?: boolean;
   checkpoints_enabled?: boolean;
   waiting_for_response: boolean;
   max_new_tokens?: number;

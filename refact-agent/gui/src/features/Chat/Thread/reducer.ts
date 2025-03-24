@@ -75,6 +75,7 @@ const createChatThread = (
       wasSuggested: false,
     },
     boost_reasoning: false,
+    automatic_patch: false,
   };
   return chat;
 };
@@ -164,9 +165,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
     next.thread.model = state.thread.model;
     next.system_prompt = state.system_prompt;
-    next.automatic_patch = state.automatic_patch;
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
+    // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {
       next.thread.messages = action.payload.messages;
     }
@@ -232,7 +233,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setAutomaticPatch, (state, action) => {
-    state.automatic_patch = action.payload;
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.automatic_patch = action.payload.value;
   });
 
   builder.addCase(setIsNewChatSuggested, (state, action) => {

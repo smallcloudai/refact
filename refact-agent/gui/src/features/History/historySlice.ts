@@ -92,6 +92,7 @@ export const historySlice = createSlice({
         integration: action.payload.integration,
         currentMaximumContextTokens: action.payload.currentMaximumContextTokens,
         isTitleGenerated: action.payload.isTitleGenerated,
+        automatic_patch: action.payload.automatic_patch,
         mode: updatedMode,
       };
 
