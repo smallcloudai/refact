@@ -91,14 +91,6 @@ function initializeProvidersList() {
 
         let modelsHtml = `
             <label class="form-label">Enabled Models</label>
-            ${hasPredefinedModels(providerId) ?
-              `<div class="alert alert-info mb-3">
-                <i class="bi bi-info-circle"></i> This provider has predefined models available for selection.
-               </div>` :
-              `<div class="alert alert-secondary mb-3">
-                <i class="bi bi-info-circle"></i> This provider doesn't have predefined models. You'll need to enter model details manually.
-               </div>`
-            }
             <div class="models-list" id="${providerId}-models-list">
                 <!-- Enabled models will be populated here when configuration is loaded -->
                 <div class="alert alert-info" id="${providerId}-no-enabled-models-msg">
@@ -112,12 +104,6 @@ function initializeProvidersList() {
                 <label class="form-label">API Keys</label>
                 <div class="api-keys-list" id="${providerId}-api-keys-list">
                     <!-- API keys will be populated here -->
-                </div>
-                <div class="input-group mt-2">
-                    <input type="text" class="form-control new-api-key-input" id="${providerId}-new-api-key" placeholder="Add new API key">
-                    <button class="btn btn-outline-primary add-api-key-btn" data-provider="${providerId}">
-                        <i class="bi bi-plus"></i>
-                    </button>
                 </div>
             </div>
         `;
@@ -215,24 +201,9 @@ function addEventListeners() {
         });
     });
 
-    // Add API key button and input
-    document.querySelectorAll('.add-api-key-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            addApiKey(this.dataset.provider);
-        });
-    });
+    // API key functionality is now read-only
 
-    // Add API key on Enter key press
-    document.querySelectorAll('.new-api-key-input').forEach(input => {
-        input.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                addApiKey(this.id.replace('-new-api-key', ''));
-            }
-        });
-    });
-
-    // Copy and remove API key buttons (using event delegation)
+    // Copy API key buttons (using event delegation)
     document.addEventListener('click', function(event) {
         // Copy API key
         const copyBtn = event.target.closest('.copy-api-key-btn');
@@ -246,20 +217,6 @@ function addEventListeners() {
             }).catch(err => {
                 general_error("Failed to copy API key: " + err);
             });
-        }
-
-        // Remove API key
-        const removeBtn = event.target.closest('.remove-api-key-btn');
-        if (removeBtn) {
-            const providerId = removeBtn.dataset.provider;
-            const keyIndex = parseInt(removeBtn.dataset.index, 10);
-
-            if (confirm("Are you sure you want to remove this API key?")) {
-                apiConfig.providers[providerId].api_keys.splice(keyIndex, 1);
-                updateConfiguration();
-                updateUI();
-                showSuccessToast("API key removed successfully");
-            }
         }
     });
 
@@ -316,6 +273,13 @@ function loadConfiguration() {
         });
 }
 
+function maskApiKey(apiKey) {
+    const apiKeyMask = "****";
+    return apiKey.length > 16
+        ? apiKey.substring(0, 4) + apiKeyMask + apiKey.substring(apiKey.length - 4)
+        : "****" + apiKeyMask + "****";
+}
+
 // Update the UI based on loaded data
 function updateUI() {
     // First, uncheck all toggles and reset provider displays
@@ -327,14 +291,34 @@ function updateUI() {
 
     // Update UI based on configuration
     Object.entries(apiConfig.providers).forEach(([providerId, providerConfig]) => {
-        // Get the first API key (for simplicity)
-        const apiKey = providerConfig.api_keys && providerConfig.api_keys.length > 0 ? providerConfig.api_keys[0] : "";
         const isEnabled = providerConfig.enabled !== undefined ? providerConfig.enabled : true;
 
-        // Update API key input if this provider has one
-        const input = document.getElementById(`${providerId}-api-key`);
-        if (input) {
-            input.value = apiKey;
+        // Display API keys in a read-only format
+        const apiKeysList = document.getElementById(`${providerId}-api-keys-list`);
+        if (apiKeysList) {
+            apiKeysList.innerHTML = '';
+
+            if (providerConfig.api_keys && providerConfig.api_keys.length > 0) {
+                providerConfig.api_keys.forEach((apiKey, index) => {
+                    if (apiKey && apiKey.trim()) {
+                        const maskedKey = maskApiKey(apiKey);
+                        const apiKeyItem = document.createElement('div');
+                        apiKeyItem.className = 'api-key-item mb-2 d-flex align-items-center';
+                        apiKeyItem.innerHTML = `
+                            <div class="api-key-text me-2" data-key="${apiKey}">
+                                <span class="badge bg-secondary">${maskedKey}</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary copy-api-key-btn"
+                                    data-key="${apiKey}" title="Copy API key">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        `;
+                        apiKeysList.appendChild(apiKeyItem);
+                    }
+                });
+            } else {
+                apiKeysList.innerHTML = '<div class="alert alert-warning">No API keys available for this provider.</div>';
+            }
         }
 
         // Set toggle state based on enabled property
@@ -688,11 +672,7 @@ function showAddModelModal(providerId) {
             if (apiKey && apiKey.trim()) {  // Only add non-empty keys
                 const option = document.createElement('option');
                 option.value = apiKey;
-                // Show a masked version of the API key for security
-                const maskedKey = apiKey.length > 8
-                    ? apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4)
-                    : '****';
-                option.textContent = `API Key ${index + 1}: ${maskedKey}`;
+                option.textContent = maskApiKey(apiKey);
                 apiKeySelect.appendChild(option);
             }
         });
