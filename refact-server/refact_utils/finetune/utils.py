@@ -111,11 +111,10 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
                 _add_result(f"{model_name}:{run_id}:{checkpoint_id}", model_dict)
 
     # third party models
-    for model in available_third_party_models().values():
-        if model.supports_chat:
-            result["chat"].append(model.name)
-        if model.supports_completion:
-            result["completion"].append(model.name)
+    for model_name, model_config in available_third_party_models().items():
+        result["chat"].append(model_name)
+        if model_config.capabilities.completion:
+            result["completion"].append(model_name)
 
     return result
 
