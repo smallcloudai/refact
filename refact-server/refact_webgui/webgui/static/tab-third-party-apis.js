@@ -8,7 +8,8 @@ let PROVIDER_DEFAULT_CONFIGS = {};
 
 // Store the configuration
 let apiConfig = {
-    providers: {}
+    providers: {},
+    models: {}
 };
 
 // Track expanded/collapsed state of providers
@@ -195,7 +196,7 @@ function addEventListeners() {
     document.querySelectorAll('.remove-provider-btn').forEach(button => {
         button.addEventListener('click', function() {
             const providerId = this.dataset.provider;
-            if (confirm(`Are you sure you want to remove the ${apiConfig.providers[providerId].provider_name} provider?`)) {
+            if (confirm(`Are you sure you want to remove the ${providerId} provider?`)) {
                 delete apiConfig.providers[providerId];
                 delete expandedProviders[providerId];
                 saveConfiguration();
@@ -270,7 +271,7 @@ function loadConfiguration() {
     fetch("/tab-third-party-apis-get")
         .then(response => response.json())
         .then(data => {
-            apiConfig = data || { providers: [] };
+            apiConfig = data;
             updateUI();
         })
         .catch(error => {
@@ -290,8 +291,8 @@ function updateUI() {
 
     // Update UI based on configuration
     Object.entries(apiConfig.providers).forEach(([providerId, providerConfig]) => {
-        const apiKey = providerConfig.api_key;
-        const enabledModels = providerConfig.enabled_models || [];
+        // Get the first API key (for simplicity)
+        const apiKey = providerConfig.api_keys && providerConfig.api_keys.length > 0 ? providerConfig.api_keys[0] : "";
         const isEnabled = providerConfig.enabled !== undefined ? providerConfig.enabled : true;
 
         // Update API key input if this provider has one
@@ -319,40 +320,38 @@ function updateUI() {
             if (modelsList) {
                 modelsList.innerHTML = '';
 
-                if (enabledModels.length > 0) {
+                // Get models for this provider
+                const providerModels = Object.entries(apiConfig.models)
+                    .filter(([_, model]) => model.provider_id === providerId)
+                    .map(([modelId, _]) => modelId);
+
+                if (providerModels.length > 0) {
                     const noEnabledModelsMsg = document.getElementById(`${providerId}-no-enabled-models-msg`);
                     if (noEnabledModelsMsg) {
                         noEnabledModelsMsg.style.display = 'none';
                     }
 
-                    enabledModels.forEach(model => {
-                        const modelName = typeof model === 'string' ? model : model.model_name;
-                        const supportsAgentic = typeof model === 'object' && model.supports_agentic;
-                        const supportsClicks = typeof model === 'object' && model.supports_clicks;
-                        const hasCustomConfig = typeof model === 'object' && model.custom_model_config;
+                    providerModels.forEach(modelId => {
+                        const modelConfig = apiConfig.models[modelId];
+                        const hasCustomConfig = modelConfig.api_base !== undefined;
 
                         // Get default capabilities from PROVIDER_DEFAULT_CONFIGS if available
-                        const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
-                        const defaultConfig = providerModels.find(m => m.model_id === modelName);
+                        const providerDefaultModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
+                        const defaultConfig = providerDefaultModels.find(m => m.model_id === modelId);
                         const defaultCapabilities = defaultConfig ? defaultConfig.capabilities : null;
-
-                        // Get stored default capabilities if available
-                        const storedDefaultCapabilities = typeof model === 'object' && model.default_capabilities;
 
                         // Combine all capabilities sources
                         const capabilities = {
-                            tools: (defaultCapabilities && defaultCapabilities.tools) ||
-                                  (storedDefaultCapabilities && storedDefaultCapabilities.tools) ||
-                                  (hasCustomConfig && model.custom_model_config.supports_tools) ||
+                            tools: modelConfig.capabilities.tools ||
+                                  (defaultCapabilities && defaultCapabilities.tools) ||
                                   false,
-                            multimodal: (defaultCapabilities && defaultCapabilities.multimodal) ||
-                                       (storedDefaultCapabilities && storedDefaultCapabilities.multimodal) ||
-                                       (hasCustomConfig && model.custom_model_config.supports_multimodality) ||
+                            multimodal: modelConfig.capabilities.multimodal ||
+                                       (defaultCapabilities && defaultCapabilities.multimodal) ||
                                        false,
-                            agent: supportsAgentic,
-                            clicks: supportsClicks,
-                            completion: (defaultCapabilities && defaultCapabilities.completion) ||
-                                       (storedDefaultCapabilities && storedDefaultCapabilities.completion) ||
+                            agent: modelConfig.capabilities.agent || false,
+                            clicks: modelConfig.capabilities.clicks || false,
+                            completion: modelConfig.capabilities.completion ||
+                                       (defaultCapabilities && defaultCapabilities.completion) ||
                                        false
                         };
 
@@ -376,13 +375,13 @@ function updateUI() {
                         const modelItem = document.createElement('div');
                         modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
                             modelItem.innerHTML = `
-                                <div class="d-flex align-items-center model-info" data-provider="${providerId}" data-model="${modelName}">
-                                    <span class="model-name">${modelName}</span>
+                                <div class="d-flex align-items-center model-info" data-provider="${providerId}" data-model="${modelId}">
+                                    <span class="model-name">${modelId}</span>
                                     <div class="ms-2">${capabilitiesBadges}</div>
                                 </div>
                                 <button class="btn btn-sm btn-outline-danger remove-model-btn" 
                                         data-provider="${providerId}" 
-                                        data-model="${modelName}">
+                                        data-model="${modelId}">
                                     <i class="bi bi-x"></i>
                                 </button>
                             `;
@@ -524,8 +523,7 @@ function addProvider() {
 
     apiConfig.providers[providerId] = {
         provider_name: providerName,
-        api_key: requiresApiKey ? apiKey : "",  // Empty string for providers that don't need API key
-        enabled_models: [],
+        api_keys: requiresApiKey ? [apiKey] : [],  // Array of API keys
         enabled: true
     };
 
@@ -785,85 +783,32 @@ function addModel() {
 }
 
 function showEditModelModal(providerId, modelId) {
-    const providerConfig = apiConfig.providers[providerId];
-    if (!providerConfig) {
+    // Check if the provider exists
+    if (!apiConfig.providers[providerId]) {
         general_error("Provider configuration not found");
         return;
     }
 
-    const modelObj = providerConfig.enabled_models.find(model =>
-        typeof model === 'string' ? model === modelId : model.model_name === modelId
-    );
-
-    if (!modelObj) {
+    // Check if the model exists and belongs to this provider
+    const modelConfig = apiConfig.models[modelId];
+    if (!modelConfig || modelConfig.provider_id !== providerId) {
         general_error("Model configuration not found");
         return;
     }
-
-    // For predefined models without custom config
-    if (typeof modelObj === 'string' || !modelObj.custom_model_config) {
-        if (hasPredefinedModels(providerId)) {
-            const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
-            modelIdContainer.dataset.providerId = providerId;
-            modelIdContainer.dataset.modelId = modelId;
-            modelIdContainer.dataset.isEdit = 'true';
-
-            // Get default capabilities from PROVIDER_DEFAULT_CONFIGS if available
-            const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
-            const defaultConfig = providerModels.find(m => m.model_id === modelId);
-            const defaultCapabilities = defaultConfig ? defaultConfig.capabilities : null;
-
-            // Get stored default capabilities if available
-            const storedDefaultCapabilities = typeof modelObj === 'object' ? modelObj.default_capabilities : null;
-
-            const supportsAgentic = typeof modelObj === 'object' ? modelObj.supports_agentic : false;
-            const supportsClicks = typeof modelObj === 'object' ? modelObj.supports_clicks : false;
-
-            const editHtml = `
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${supportsAgentic ? 'checked' : ''}>
-                    <label class="form-check-label" for="third-party-model-supports-agentic">
-                        Supports Agentic Mode
-                    </label>
-                    <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
-                </div>
-
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${supportsClicks ? 'checked' : ''}>
-                    <label class="form-check-label" for="third-party-model-supports-clicks">
-                        Supports Clicks
-                    </label>
-                    <div class="form-text">Enable if this model supports click interactions.</div>
-                </div>
-            `;
-
-            modelIdContainer.innerHTML = editHtml;
-            document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
-            document.getElementById('add-third-party-model-submit').textContent = 'Save Changes';
-            document.getElementById('add-third-party-model-submit').onclick = function() {
-                updateModel();
-            };
-
-            const modal = new bootstrap.Modal(document.getElementById('add-third-party-model-modal'));
-            modal.show();
-            return;
-        } else {
-            general_error("Custom model configuration not found");
-            return;
-        }
-    }
-
-    const customConfig = modelObj.custom_model_config;
 
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
     modelIdContainer.dataset.modelId = modelId;
     modelIdContainer.dataset.isEdit = 'true';
 
+    // Check if this is a predefined model or a custom model
+    const hasCustomConfig = modelConfig.api_base !== undefined;
+
     if (hasPredefinedModels(providerId)) {
+        // For predefined models, we only show capability checkboxes
         const editHtml = `
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelObj.supports_agentic ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelConfig.capabilities.agent ? 'checked' : ''}>
                 <label class="form-check-label" for="third-party-model-supports-agentic">
                     Supports Agentic Mode
                 </label>
@@ -871,7 +816,7 @@ function showEditModelModal(providerId, modelId) {
             </div>
 
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelObj.supports_clicks ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelConfig.capabilities.clicks ? 'checked' : ''}>
                 <label class="form-check-label" for="third-party-model-supports-clicks">
                     Supports Clicks
                 </label>
@@ -882,25 +827,26 @@ function showEditModelModal(providerId, modelId) {
         modelIdContainer.innerHTML = editHtml;
         document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
     } else {
+        // For custom models, show all configuration options
         const editHtml = `
             <div class="mb-3">
                 <label for="custom-model-api-base" class="form-label">API Base</label>
-                <input type="text" class="form-control" id="custom-model-api-base" value="${customConfig.api_base}" placeholder="Enter API base for this model">
+                <input type="text" class="form-control" id="custom-model-api-base" value="${modelConfig.api_base || ''}" placeholder="Enter API base for this model">
             </div>
 
             <div class="mb-3">
                 <label for="custom-model-api-key" class="form-label">API Key</label>
-                <input type="text" class="form-control" id="custom-model-api-key" value="${customConfig.api_key}" placeholder="Enter API key for this model">
+                <input type="text" class="form-control" id="custom-model-api-key" value="${modelConfig.api_key || ''}" placeholder="Enter API key for this model">
             </div>
 
             <div class="mb-3">
                 <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
-                <input type="number" class="form-control" id="custom-model-n-ctx" value="${customConfig.n_ctx}" placeholder="e.g., 8192" min="1024" step="1024">
+                <input type="number" class="form-control" id="custom-model-n-ctx" value="${modelConfig.n_ctx || 8192}" placeholder="e.g., 8192" min="1024" step="1024">
                 <div class="form-text">Maximum number of tokens the model can process.</div>
             </div>
 
             <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="custom-model-supports-tools" ${customConfig.supports_tools ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" id="custom-model-supports-tools" ${modelConfig.capabilities.tools ? 'checked' : ''}>
                 <label class="form-check-label" for="custom-model-supports-tools">
                     Supports Tools
                 </label>
@@ -908,7 +854,7 @@ function showEditModelModal(providerId, modelId) {
             </div>
 
             <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality" ${customConfig.supports_multimodality ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality" ${modelConfig.capabilities.multimodal ? 'checked' : ''}>
                 <label class="form-check-label" for="custom-model-supports-multimodality">
                     Supports Multimodality
                 </label>
@@ -916,7 +862,7 @@ function showEditModelModal(providerId, modelId) {
             </div>
 
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelObj.supports_agentic ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic" ${modelConfig.capabilities.agent ? 'checked' : ''}>
                 <label class="form-check-label" for="third-party-model-supports-agentic">
                     Supports Agentic Mode
                 </label>
@@ -924,7 +870,7 @@ function showEditModelModal(providerId, modelId) {
             </div>
 
             <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelObj.supports_clicks ? 'checked' : ''}>
+                <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks" ${modelConfig.capabilities.clicks ? 'checked' : ''}>
                 <label class="form-check-label" for="third-party-model-supports-clicks">
                     Supports Clicks
                 </label>
@@ -933,7 +879,7 @@ function showEditModelModal(providerId, modelId) {
 
             <div class="mb-3">
                 <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
-                <input type="text" class="form-control" id="custom-model-tokenizer-uri" value="${customConfig.tokenizer_uri || ''}" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
+                <input type="text" class="form-control" id="custom-model-tokenizer-uri" value="${modelConfig.tokenizer_uri || ''}" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
                 <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
             </div>
         `;
@@ -956,20 +902,17 @@ function updateModel() {
     const providerId = modelIdContainer.dataset.providerId;
     const modelId = modelIdContainer.dataset.modelId;
 
-    const providerConfig = apiConfig.providers[providerId];
-    if (!providerConfig) {
+    // Check if the provider exists
+    if (!apiConfig.providers[providerId]) {
         const error_message = "No provider in config, can't update model";
         console.error(error_message);
         general_error(error_message);
         return;
     }
 
-    const modelIndex = providerConfig.enabled_models.findIndex(model =>
-        typeof model === 'string' ? model === modelId : model.model_name === modelId
-    );
-
-    if (modelIndex === -1) {
-        const error_message = "No model in provider in config, can't update model";
+    // Check if the model exists
+    if (!apiConfig.models[modelId] || apiConfig.models[modelId].provider_id !== providerId) {
+        const error_message = "No model in config, can't update model";
         console.error(error_message);
         general_error(error_message);
         return;
@@ -979,84 +922,66 @@ function updateModel() {
     const supportsAgentic = document.getElementById('third-party-model-supports-agentic').checked;
     const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
 
-    // Handle string model (convert to object)
-    if (typeof providerConfig.enabled_models[modelIndex] === 'string') {
-        // Create a new model config object
-        const defaultConfig = MODEL_CONFIGS[modelId];
+    // Update the model configuration
+    const modelConfig = apiConfig.models[modelId];
 
-        const newModelConfig = {
-            model_name: modelId,
-            supports_agentic: supportsAgentic,
-            supports_clicks: supportsClicks
-        };
+    // Update capabilities
+    modelConfig.capabilities.agent = supportsAgentic;
+    modelConfig.capabilities.clicks = supportsClicks;
 
-        // Add default capabilities if available
+    if (hasPredefinedModels(providerId)) {
+        // For predefined models, we only update the capabilities
+        // Preserve other properties from the default configuration
+        const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
+        const defaultConfig = providerModels.find(m => m.model_id === modelId);
+
         if (defaultConfig) {
-            newModelConfig.default_capabilities = {
-                tools: defaultConfig.capabilities.tools,
-                multimodal: defaultConfig.capabilities.multimodal,
-                completion: defaultConfig.capabilities.completion
-            };
+            // Keep default capabilities but update agent and clicks
+            modelConfig.capabilities.tools = defaultConfig.capabilities.tools;
+            modelConfig.capabilities.multimodal = defaultConfig.capabilities.multimodal;
+            modelConfig.capabilities.completion = defaultConfig.capabilities.completion;
         }
 
-        providerConfig.enabled_models[modelIndex] = newModelConfig;
+        // Remove custom properties if they exist
+        delete modelConfig.api_base;
+        delete modelConfig.api_key;
+        delete modelConfig.tokenizer_uri;
     } else {
-        // Update existing model config
-        const modelConfig = providerConfig.enabled_models[modelIndex];
+        // For custom models, update all properties
+        const customApiBase = document.getElementById('custom-model-api-base').value.trim();
+        const customApiKey = document.getElementById('custom-model-api-key').value.trim();
+        const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
+        const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
+        const customSupportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
+        const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
 
-        if (hasPredefinedModels(providerId)) {
-            modelConfig.supports_agentic = supportsAgentic;
-            modelConfig.supports_clicks = supportsClicks;
+        // Validate required fields
+        if (!customApiBase) {
+            const error_message = "API Base URL is required for custom model configuration";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
 
-            // Preserve default capabilities if they exist
-            if (!modelConfig.default_capabilities) {
-                const providerModels = PROVIDER_DEFAULT_CONFIGS[providerId] || [];
-                const defaultConfig = providerModels.find(m => m.model_id === modelId);
-                if (defaultConfig) {
-                    modelConfig.default_capabilities = {
-                        tools: defaultConfig.capabilities.tools,
-                        multimodal: defaultConfig.capabilities.multimodal,
-                        completion: defaultConfig.capabilities.completion
-                    };
-                }
-            }
+        if (isNaN(customNCtx) || customNCtx < 1024) {
+            const error_message = "Context size must be a valid number greater than or equal to 1024";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
 
-            // Remove custom config if it exists
-            modelConfig.custom_model_config = null;
+        // Update model properties
+        modelConfig.api_base = customApiBase;
+        modelConfig.api_key = customApiKey;
+        modelConfig.n_ctx = customNCtx;
+        modelConfig.capabilities.tools = customSupportsTools;
+        modelConfig.capabilities.multimodal = customSupportsMultimodality;
+
+        // Update tokenizer URI
+        if (customTokenizerUri) {
+            modelConfig.tokenizer_uri = customTokenizerUri;
         } else {
-            // Get the custom model configuration values
-            const customApiBase = document.getElementById('custom-model-api-base').value.trim();
-            const customApiKey = document.getElementById('custom-model-api-key').value.trim();
-            const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
-            const customSupportsTools = document.getElementById('custom-model-supports-tools').checked;
-            const customSupportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
-            const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
-
-            // Validate required fields
-            if (!customApiBase) {
-                const error_message = "API Base URL is required for custom model configuration";
-                console.error(error_message);
-                general_error(error_message);
-                return;
-            }
-
-            if (isNaN(customNCtx) || customNCtx < 1024) {
-                const error_message = "Context size must be a valid number greater than or equal to 1024";
-                console.error(error_message);
-                general_error(error_message);
-                return;
-            }
-
-            modelConfig.supports_agentic = supportsAgentic;
-            modelConfig.supports_clicks = supportsClicks;
-            modelConfig.custom_model_config = {
-                api_base: customApiBase,
-                api_key: customApiKey,
-                n_ctx: customNCtx,
-                supports_tools: customSupportsTools,
-                supports_multimodality: customSupportsMultimodality,
-                tokenizer_uri: customTokenizerUri || null
-            };
+            delete modelConfig.tokenizer_uri;
         }
     }
 
@@ -1075,25 +1000,18 @@ function updateModel() {
 }
 
 function removeModel(providerId, modelId) {
-    // Find the provider in the configuration
-    const providerConfig = apiConfig.providers[providerId];
-    if (providerConfig) {
-        // Find the model index, handling both string models and ModelConfig objects
-        const modelIndex = providerConfig.enabled_models.findIndex(model =>
-            typeof model === 'string' ? model === modelId : model.model_name === modelId
-        );
+    // Check if the model exists and belongs to the specified provider
+    if (apiConfig.models[modelId] && apiConfig.models[modelId].provider_id === providerId) {
+        // Remove the model from the models dictionary
+        delete apiConfig.models[modelId];
 
-        if (modelIndex !== -1) {
-            providerConfig.enabled_models.splice(modelIndex, 1);
+        // Update the configuration
+        updateConfiguration();
 
-            // Update the configuration
-            updateConfiguration();
+        // Update the UI
+        updateUI();
 
-            // Update the UI
-            updateUI();
-
-            showSuccessToast("Model removed successfully");
-        }
+        showSuccessToast("Model removed successfully");
     }
 }
 
