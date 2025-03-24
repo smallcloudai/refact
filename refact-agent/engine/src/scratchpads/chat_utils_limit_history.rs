@@ -302,11 +302,7 @@ fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(
         
         let first_idx = sorted_indices[0];
         let first_msg_idx = all_files[first_idx].msg_idx;
-        
-        let last_user_msg_idx = messages.iter()
-            .rposition(|msg| msg.role == "user")
-            .unwrap_or(0);
-        
+        preserve_messages[first_msg_idx] = true;
         for &curr_idx in sorted_indices.iter().skip(1) {
             let current_msg_idx = all_files[curr_idx].msg_idx;
             let content_is_duplicate = is_content_duplicate(
@@ -315,11 +311,6 @@ fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(
             );
             if content_is_duplicate {
                 all_files[curr_idx].is_compressed = true;
-                if current_msg_idx > last_user_msg_idx {
-                    preserve_messages[first_msg_idx] = true;
-                    tracing::info!("Stage 0: Preserving first occurrence of file {} at message index {} (has post-user duplicates)", 
-                       filename, first_msg_idx);
-                }
                 tracing::info!("Stage 0: Marking for compression - duplicate content of file {} at message index {}", 
                     filename, current_msg_idx);
             } else {
@@ -506,7 +497,7 @@ pub fn fix_and_limit_messages_history(
     let mut mutable_messages = messages.clone();
     let mut highest_compression_stage = 0;
     
-    // STAGE 0: Compress old and duplicated ContextFiles
+    // STAGE 0: Compress duplicated ContextFiles
     // This is done before token calculation to reduce the number of messages that need to be tokenized
     let mut preserve_in_later_stages = vec![false; mutable_messages.len()];
     
