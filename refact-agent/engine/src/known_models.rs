@@ -92,7 +92,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "FIM-PSM": {}
             },
             "default_scratchpad": "FIM-PSM",
-            "tokenizer": "hf://stabilityai/stable-code-3b"
+            "tokenizer": "hf://stabilityai/stable-code-3b",
             "similar_models": []
         },
         "llama3/8b/instruct": {
@@ -181,7 +181,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
-            "tokenizer": "hf://Xenova/gpt-4o"
+            "tokenizer": "hf://Xenova/gpt-4o",
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
@@ -218,7 +218,7 @@ pub const KNOWN_MODELS: &str = r####"
                     "rag_ratio": 0.5
                 }
             },
-            "tokenizer": "hf://Xenova/Meta-Llama-3.1-Tokenizer"
+            "tokenizer": "hf://Xenova/Meta-Llama-3.1-Tokenizer",
             "similar_models": [
                 "groq-llama-3.1-70b",
                 "groq-llama-3.2-1b",
@@ -590,7 +590,7 @@ pub const KNOWN_MODELS: &str = r####"
             "supports_scratchpads": {
                 "PASSTHROUGH": {}
             },
-            "tokenizer": "mistralai/Mistral-Small-24B-Instruct-2501"
+            "tokenizer": "mistralai/Mistral-Small-24B-Instruct-2501",
             "similar_models": [
             ]
         },

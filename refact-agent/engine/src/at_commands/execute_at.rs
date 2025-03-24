@@ -165,7 +165,6 @@ pub async fn run_at_commands_locally(
 pub async fn run_at_commands_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_name: &str,
-    provider_name: &str,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -188,7 +187,6 @@ pub async fn run_at_commands_remotely(
         subchat_tool_parameters,
         postprocess_parameters,
         model_name: model_name.to_string(),
-        provider_name: provider_name.to_string(),
         chat_id: chat_id.clone(),
     };
 

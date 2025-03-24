@@ -16,7 +16,7 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Semaphore, Notify as ANoti
 use tracing::{error, info};
 
 use crate::ast::ast_indexer_thread::AstIndexService;
-use crate::caps::{get_caps_provider, CodeAssistantCaps};
+use crate::caps::CodeAssistantCaps;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;
@@ -395,15 +395,4 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
     (gcx, ask_shutdown_receiver, cmdline)
-}
-
-pub async fn is_metadata_supported(caps: Arc<StdRwLock<CodeAssistantCaps>>, provider_name: &str) -> bool {
-    let caps_locked = caps.read().unwrap();
-    match get_caps_provider(&caps_locked, provider_name) {
-        Ok(provider) => provider.support_metadata,
-        Err(e) => {
-            tracing::error!("{e}");
-            false
-        }
-    }
 }

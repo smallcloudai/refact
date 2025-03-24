@@ -122,16 +122,15 @@ async fn try_download_tokenizer_file_and_open(
 
 pub async fn cached_tokenizer(
     global_context: Arc<ARwLock<GlobalContext>>,
-    model_name: String,
     model_rec: &BaseModelRecord,
 ) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
-    let model_name = strip_model_from_finetune(&model_name);
+    let model_id = strip_model_from_finetune(&model_rec.id);
     let tokenizer_download_lock: Arc<AMutex<bool>> = global_context.read().await.tokenizer_download_lock.clone();
     let _tokenizer_download_locked = tokenizer_download_lock.lock().await;
 
     let (client2, cache_dir, tokenizer_arc) = {
         let cx_locked = global_context.read().await;
-        (cx_locked.http_client.clone(), cx_locked.cache_dir.clone(), cx_locked.tokenizer_map.clone().get(&model_name).cloned())
+        (cx_locked.http_client.clone(), cx_locked.cache_dir.clone(), cx_locked.tokenizer_map.clone().get(&model_id).cloned())
     };
 
     if tokenizer_arc.is_some() {
@@ -139,6 +138,7 @@ pub async fn cached_tokenizer(
     }
 
     let (mut tok_file_path, tok_url) = match &model_rec.tokenizer {
+        empty_tok if empty_tok.is_empty() => return Err(format!("failed to load tokenizer: empty tokenizer for {model_id}")),
         fake_tok if fake_tok.starts_with("fake://") => {
             todo!()
         }
@@ -163,11 +163,11 @@ pub async fn cached_tokenizer(
 
     if tok_file_path.as_os_str().is_empty() {
         let tokenizer_cache_dir = std::path::PathBuf::from(cache_dir).join("tokenizers");
-        let sanitized_model_name = model_name.chars()
+        let sanitized_model_id = model_id.chars()
             .map(|c| if c.is_alphanumeric() { c } else { '_' })
             .collect::<String>();
         
-        tok_file_path = tokenizer_cache_dir.join(&sanitized_model_name).join("tokenizer.json");
+        tok_file_path = tokenizer_cache_dir.join(&sanitized_model_id).join("tokenizer.json");
 
         try_download_tokenizer_file_and_open(&client2, &tok_url, &model_rec.api_key, &tok_file_path).await?;
     }
@@ -179,6 +179,6 @@ pub async fn cached_tokenizer(
     tokenizer.with_padding(None);
     let arc = Arc::new(StdRwLock::new(tokenizer));
 
-    global_context.write().await.tokenizer_map.insert(model_name.clone(), arc.clone());
+    global_context.write().await.tokenizer_map.insert(model_id, arc.clone());
     Ok(arc)
 }

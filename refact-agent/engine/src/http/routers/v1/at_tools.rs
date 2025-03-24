@@ -11,6 +11,7 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSettings, SubchatParameters};
+use crate::caps::resolve_chat_model;
 use crate::http::http_post_json;
 use crate::http::routers::v1::chat::CHAT_TOP_N;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
@@ -54,7 +55,6 @@ pub struct ToolsExecutePost {
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
     pub postprocess_parameters: PostprocessSettings,
     pub model_name: String,
-    pub provider_name: String,
     pub chat_id: String,
     pub style: Option<String>,
 }
@@ -210,7 +210,9 @@ pub async fn handle_v1_tools_execute(
       .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), tools_execute_post.model_name.clone(), tools_execute_post.provider_name.clone()).await
+    let model_rec = resolve_chat_model(caps, &tools_execute_post.model_name)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let tokenizer = cached_tokenizers::cached_tokenizer(gcx.clone(), &model_rec.base).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
 
     let mut ccx = AtCommandsContext::new(
@@ -229,7 +231,7 @@ pub async fn handle_v1_tools_execute(
     let mut at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
     })?;
-    let (messages, tools_ran) = run_tools( // todo: fix typo "runned"
+    let (messages, tools_ran) = run_tools(
         ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 
