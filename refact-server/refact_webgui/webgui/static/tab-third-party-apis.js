@@ -107,12 +107,20 @@ function initializeProvidersList() {
             </div>
         `;
 
-        const apiKeyContainerHtml = hasPredefinedModels(providerId) ? `
+        const apiKeyContainerHtml = `
             <div class="api-key-container mb-3" id="${providerId}-api-key-container">
-                <label for="${providerId}-api-key" class="form-label">API Key</label>
-                <input type="text" class="form-control api-key-input" id="${providerId}-api-key" data-provider="${providerId}">
+                <label class="form-label">API Keys</label>
+                <div class="api-keys-list" id="${providerId}-api-keys-list">
+                    <!-- API keys will be populated here -->
+                </div>
+                <div class="input-group mt-2">
+                    <input type="text" class="form-control new-api-key-input" id="${providerId}-new-api-key" placeholder="Add new API key">
+                    <button class="btn btn-outline-primary add-api-key-btn" data-provider="${providerId}">
+                        <i class="bi bi-plus"></i>
+                    </button>
+                </div>
             </div>
-        ` : '';
+        `;
 
         providerCard.innerHTML = `
             <div class="card-header d-flex justify-content-between align-items-center provider-header" data-provider="${providerId}">
@@ -207,20 +215,52 @@ function addEventListeners() {
         });
     });
 
-    // API key input
-    document.querySelectorAll('.api-key-input').forEach(input => {
-        input.addEventListener('blur', function() {
-            const providerId = this.dataset.provider;
-            updateConfiguration();
-            if (hasPredefinedModels(providerId)) {
-                const modelsContainer = document.getElementById(`${providerId}-models-container`);
-                if (this.value) {
-                    modelsContainer.style.display = 'block';
-                } else {
-                    modelsContainer.style.display = 'none';
-                }
+    // Add API key button and input
+    document.querySelectorAll('.add-api-key-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            addApiKey(this.dataset.provider);
+        });
+    });
+
+    // Add API key on Enter key press
+    document.querySelectorAll('.new-api-key-input').forEach(input => {
+        input.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addApiKey(this.id.replace('-new-api-key', ''));
             }
         });
+    });
+
+    // Copy and remove API key buttons (using event delegation)
+    document.addEventListener('click', function(event) {
+        // Copy API key
+        const copyBtn = event.target.closest('.copy-api-key-btn');
+        const apiKeyText = event.target.closest('.api-key-text');
+
+        if (copyBtn || apiKeyText) {
+            const element = copyBtn || apiKeyText;
+            const apiKey = element.dataset.key;
+            navigator.clipboard.writeText(apiKey).then(() => {
+                showSuccessToast("API key copied to clipboard");
+            }).catch(err => {
+                general_error("Failed to copy API key: " + err);
+            });
+        }
+
+        // Remove API key
+        const removeBtn = event.target.closest('.remove-api-key-btn');
+        if (removeBtn) {
+            const providerId = removeBtn.dataset.provider;
+            const keyIndex = parseInt(removeBtn.dataset.index, 10);
+
+            if (confirm("Are you sure you want to remove this API key?")) {
+                apiConfig.providers[providerId].api_keys.splice(keyIndex, 1);
+                updateConfiguration();
+                updateUI();
+                showSuccessToast("API key removed successfully");
+            }
+        }
     });
 
     // Model checkboxes
@@ -251,30 +291,11 @@ function updateConfiguration() {
     // Iterate through all providers in the current configuration
     Object.keys(apiConfig.providers).forEach(providerId => {
         const toggle = document.getElementById(`${providerId}-toggle`);
-        const apiKeyInput = document.getElementById(`${providerId}-api-key`);
 
-        if (toggle && apiKeyInput) {
-            // Update the enabled state based on the toggle
+        if (toggle) {
             apiConfig.providers[providerId].enabled = toggle.checked;
-
-            // Update the API key if this provider has one and it has changed
-            if (apiKeyInput && apiKeyInput.value) {
-                // Make sure api_keys is an array
-                if (!apiConfig.providers[providerId].api_keys) {
-                    apiConfig.providers[providerId].api_keys = [];
-                }
-
-                // Replace the first API key or add it if none exists
-                if (apiConfig.providers[providerId].api_keys.length > 0) {
-                    apiConfig.providers[providerId].api_keys[0] = apiKeyInput.value;
-                } else {
-                    apiConfig.providers[providerId].api_keys.push(apiKeyInput.value);
-                }
-
-                // Remove old api_key property if it exists
-                if (apiConfig.providers[providerId].hasOwnProperty('api_key')) {
-                    delete apiConfig.providers[providerId].api_key;
-                }
+            if (!apiConfig.providers[providerId].api_keys) {
+                apiConfig.providers[providerId].api_keys = [];
             }
         }
     });
@@ -589,7 +610,13 @@ function showAddModelModal(providerId) {
 
         <div class="mb-3">
             <label for="custom-model-api-key" class="form-label">API Key</label>
-            <input type="text" class="form-control" id="custom-model-api-key" placeholder="Enter API key for this model">
+            <select class="form-select" id="custom-model-api-key">
+                <option value="" selected>-- Select an API key --</option>
+                <option value="custom">-- Enter custom API key --</option>
+            </select>
+            <div id="custom-model-api-key-input-container" style="display: none; margin-top: 10px;">
+                <input type="text" class="form-control" id="custom-model-api-key-input" placeholder="Enter custom API key">
+            </div>
         </div>
 
         <div class="mb-3">
@@ -644,6 +671,53 @@ function showAddModelModal(providerId) {
     `;
 
     modelIdContainer.innerHTML = modelConfigHtml;
+
+    // Populate API keys dropdown
+    const apiKeySelect = document.getElementById('custom-model-api-key');
+    apiKeySelect.innerHTML = '<option value="" selected>-- Select an API key --</option>';
+
+    // Add existing API keys from the provider
+    if (apiConfig.providers[providerId] && apiConfig.providers[providerId].api_keys) {
+        // Ensure api_keys is an array
+        if (!Array.isArray(apiConfig.providers[providerId].api_keys)) {
+            apiConfig.providers[providerId].api_keys = [];
+        }
+
+        // Add each API key as an option
+        apiConfig.providers[providerId].api_keys.forEach((apiKey, index) => {
+            if (apiKey && apiKey.trim()) {  // Only add non-empty keys
+                const option = document.createElement('option');
+                option.value = apiKey;
+                // Show a masked version of the API key for security
+                const maskedKey = apiKey.length > 8
+                    ? apiKey.substring(0, 4) + '...' + apiKey.substring(apiKey.length - 4)
+                    : '****';
+                option.textContent = `API Key ${index + 1}: ${maskedKey}`;
+                apiKeySelect.appendChild(option);
+            }
+        });
+    } else if (apiConfig.providers[providerId]) {
+        // Initialize api_keys as an empty array if it doesn't exist
+        apiConfig.providers[providerId].api_keys = [];
+    }
+
+    // Add custom option
+    const customOption = document.createElement('option');
+    customOption.value = 'custom';
+    customOption.textContent = '-- Enter custom API key --';
+    apiKeySelect.appendChild(customOption);
+
+    // Add event listener for the API key dropdown
+    apiKeySelect.addEventListener('change', function() {
+        const customInputContainer = document.getElementById('custom-model-api-key-input-container');
+        if (this.value === 'custom') {
+            customInputContainer.style.display = 'block';
+            document.getElementById('custom-model-api-key-input').value = '';
+            document.getElementById('custom-model-api-key-input').focus();
+        } else {
+            customInputContainer.style.display = 'none';
+        }
+    });
 
     // Add event listener to pre-fill capabilities when a model is selected
     const modelSelect = document.getElementById('third-party-model-id');
@@ -727,7 +801,29 @@ function addModel() {
             const supportsTools = document.getElementById('custom-model-supports-tools').checked;
             const supportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
             const customApiBase = document.getElementById('custom-model-api-base').value.trim();
-            const customApiKey = document.getElementById('custom-model-api-key').value.trim();
+
+            // Get API key from either dropdown or custom input
+            let customApiKey = '';
+            const apiKeySelect = document.getElementById('custom-model-api-key');
+            if (apiKeySelect.value === 'custom') {
+                customApiKey = document.getElementById('custom-model-api-key-input').value.trim();
+
+                // Validate that a custom API key is provided
+                if (!customApiKey) {
+                    const error_message = "Custom API key is required when selecting the custom option";
+                    console.error(error_message);
+                    general_error(error_message);
+                    return;
+                }
+
+                // Add the custom API key to the provider's api_keys array if it's not already there
+                if (!apiConfig.providers[providerId].api_keys.includes(customApiKey)) {
+                    apiConfig.providers[providerId].api_keys.push(customApiKey);
+                }
+            } else {
+                customApiKey = apiKeySelect.value.trim();
+            }
+
             const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
             const customMaxTokens = parseInt(document.getElementById('custom-model-max-tokens').value.trim(), 10);
 //            const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri')?.value.trim();
@@ -838,14 +934,39 @@ function showEditModelModal(providerId, modelId) {
     const capabilities = modelConfig.capabilities || {};
 
     // Fill in the form fields with the existing model data
-    document.getElementById('custom-model-api-base').value = modelConfig.api_base || null;
-    document.getElementById('custom-model-api-key').value = modelConfig.api_key || null;
+    document.getElementById('custom-model-api-base').value = modelConfig.api_base || '';
     document.getElementById('custom-model-n-ctx').value = modelConfig.n_ctx || 8192;
     document.getElementById('custom-model-max-tokens').value = modelConfig.max_tokens || 8192;
     document.getElementById('custom-model-supports-tools').checked = capabilities.tools || false;
     document.getElementById('custom-model-supports-multimodality').checked = capabilities.multimodal || false;
     document.getElementById('third-party-model-supports-agentic').checked = capabilities.agent || false;
     document.getElementById('third-party-model-supports-clicks').checked = capabilities.clicks || false;
+
+    // Handle API key selection
+    const apiKeySelect = document.getElementById('custom-model-api-key');
+    const customApiKeyInput = document.getElementById('custom-model-api-key-input');
+    const customApiKeyInputContainer = document.getElementById('custom-model-api-key-input-container');
+
+    if (modelConfig.api_key) {
+        // Check if the model's API key is in the provider's list
+        const providerApiKeys = apiConfig.providers[providerId].api_keys || [];
+        const keyIndex = providerApiKeys.indexOf(modelConfig.api_key);
+
+        if (keyIndex >= 0) {
+            // The key exists in the provider's list, select it
+            apiKeySelect.value = modelConfig.api_key;
+            customApiKeyInputContainer.style.display = 'none';
+        } else {
+            // The key doesn't exist in the provider's list, use custom input
+            apiKeySelect.value = 'custom';
+            customApiKeyInput.value = modelConfig.api_key;
+            customApiKeyInputContainer.style.display = 'block';
+        }
+    } else {
+        // No API key set
+        apiKeySelect.value = '';
+        customApiKeyInputContainer.style.display = 'none';
+    }
 
     // Set tokenizer URI if available
     const tokenizerUriElement = document.getElementById('custom-model-tokenizer-uri');
@@ -891,7 +1012,29 @@ function updateModel() {
     const supportsTools = document.getElementById('custom-model-supports-tools').checked;
     const supportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
     const customApiBase = document.getElementById('custom-model-api-base').value.trim();
-    const customApiKey = document.getElementById('custom-model-api-key').value.trim();
+
+    // Get API key from either dropdown or custom input
+    let customApiKey = '';
+    const apiKeySelect = document.getElementById('custom-model-api-key');
+    if (apiKeySelect.value === 'custom') {
+        customApiKey = document.getElementById('custom-model-api-key-input').value.trim();
+
+        // Validate that a custom API key is provided
+        if (!customApiKey) {
+            const error_message = "Custom API key is required when selecting the custom option";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
+
+        // Add the custom API key to the provider's api_keys array if it's not already there
+        if (!apiConfig.providers[providerId].api_keys.includes(customApiKey)) {
+            apiConfig.providers[providerId].api_keys.push(customApiKey);
+        }
+    } else {
+        customApiKey = apiKeySelect.value.trim();
+    }
+
     const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
     const customMaxTokens = parseInt(document.getElementById('custom-model-max-tokens').value.trim(), 10);
 //    const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
