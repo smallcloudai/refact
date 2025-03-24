@@ -717,7 +717,7 @@ pub fn fix_and_limit_messages_history(
             msg_len,
             "Stage 5: Compressing ContextFile messages after the last user message (last resort)",
             model_name,
-            |i, msg, _| msg.role == "context_file",
+            |_, msg, _| msg.role == "context_file",
             true
         )?;
         

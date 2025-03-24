@@ -14,7 +14,7 @@ use crate::http::http_post_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
-use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
+use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
@@ -137,21 +137,21 @@ pub async fn run_tools(
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let n_ctx = ccx.lock().await.n_ctx;
-    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
+    let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
+        Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
+        None => return Ok((vec![], false)),
+    };
+    if last_msg_tool_calls.is_empty() {
+        return Ok((vec![], false));
+    }
+    
+    let reserve_for_context = max_tokens_for_rag_chat_by_tools(&last_msg_tool_calls, n_ctx, maxgen);
     let tokens_for_rag = reserve_for_context;
     ccx.lock().await.tokens_for_rag = tokens_for_rag;
     info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
 
     if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
-        return Ok((vec![], false));
-    }
-
-    let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
-        Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
-        None => return Ok((vec![], false)),
-    };
-    if last_msg_tool_calls.is_empty() {
         return Ok((vec![], false));
     }
 

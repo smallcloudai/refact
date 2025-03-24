@@ -61,7 +61,7 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
             };
             let tool_msg = ChatMessage {
                 role: "tool".to_string(),
-                content: ChatContent::SimpleText(format!("The operation is succeeded.\n{extra_message}")),
+                content: ChatContent::SimpleText(format!("The operation has succeeded.\n{extra_message}")),
                 tool_calls: None,
                 tool_call_id: msg.tool_call_id.clone(),
                 ..Default::default()
