@@ -6,7 +6,7 @@ use serde::Deserializer;
 use std::fs::File;
 use std::io::Read;
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
+
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -404,7 +404,7 @@ async fn load_caps_from_buf(
     caps_url: &str,
     config_dir: &Path,
     cmdline_api_key: &str,
-) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
+) -> Result<Arc<CodeAssistantCaps>, String> {
     let buffer_value = parse_from_yaml_or_json(buffer)?;
     let mut caps = serde_json::from_value::<CodeAssistantCaps>(buffer_value.clone())
         .map_err_with_prefix("Failed to parse caps:")?;
@@ -453,7 +453,7 @@ async fn load_caps_from_buf(
     // info!("running models: {:?}", caps.running_models);
     // info!("code_chat_models models: {:?}", caps.code_chat_models);
     // info!("code completion models: {:?}", caps.code_completion_models);
-    Ok(Arc::new(StdRwLock::new(caps)))
+    Ok(Arc::new(caps))
 }
 
 async fn load_caps_buf_from_file(
@@ -540,7 +540,7 @@ async fn load_caps_buf_from_url(
 pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
     gcx: Arc<ARwLock<GlobalContext>>,
-) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
+) -> Result<Arc<CodeAssistantCaps>, String> {
     let (config_dir, cmdline_api_key) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.config_dir.clone(), gcx_locked.cmdline.api_key.clone())
@@ -672,26 +672,24 @@ pub fn resolve_model<T: Clone>(
 }
 
 pub fn resolve_chat_model(
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    caps: Arc<CodeAssistantCaps>,
     requested_model_id: &str,
 ) -> Result<ChatModelRecord, String> {
-    let caps_locked = caps.read().unwrap();
     resolve_model(
-        &caps_locked.code_chat_models, 
+        &caps.code_chat_models, 
         requested_model_id, 
-        &caps_locked.default_models.chat_model
+        &caps.default_models.chat_model
     )
 }
 
 pub fn resolve_completion_model(
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
+    caps: Arc<CodeAssistantCaps>,
     requested_model_id: &str,
 ) -> Result<CompletionModelRecord, String> {
-    let caps_locked = caps.read().unwrap();
     resolve_model(
-        &caps_locked.code_completion_models, 
+        &caps.code_completion_models, 
         requested_model_id, 
-        &caps_locked.default_models.completion_model
+        &caps.default_models.completion_model
     )
 }
 

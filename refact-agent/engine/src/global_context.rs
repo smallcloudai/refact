@@ -151,7 +151,7 @@ pub struct GlobalContext {
     pub http_client_slowdown: Arc<Semaphore>,
     pub cache_dir: PathBuf,
     pub config_dir: PathBuf,
-    pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
+    pub caps: Option<Arc<CodeAssistantCaps>>,
     pub caps_reading_lock: Arc<AMutex<bool>>,
     pub caps_last_error: String,
     pub caps_last_attempted_ts: u64,
@@ -209,7 +209,7 @@ pub async fn migrate_to_config_folder(
 pub async fn try_load_caps_quickly_if_not_present(
     gcx: Arc<ARwLock<GlobalContext>>,
     max_age_seconds: u64,
-) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
+) -> Result<Arc<CodeAssistantCaps>, ScratchError> {
     let cmdline = CommandLine::from_args();  // XXX make it Arc and don't reload all the time
 
     let caps_reading_lock: Arc<AMutex<bool>> = gcx.read().await.caps_reading_lock.clone();
@@ -275,9 +275,8 @@ pub async fn look_for_piggyback_fields(
         let new_caps_version = dict.get("caps_version").and_then(|v| v.as_i64()).unwrap_or(0);
         if new_caps_version > 0 {
             if let Some(caps) = gcx_locked.caps.clone() {
-                let caps_locked = caps.read().unwrap();
-                if caps_locked.caps_version < new_caps_version {
-                    info!("detected biggyback caps version {} is newer than the current version {}", new_caps_version, caps_locked.caps_version);
+                if caps.caps_version < new_caps_version {
+                    info!("detected biggyback caps version {} is newer than the current version {}", new_caps_version, caps.caps_version);
                     gcx_locked.caps = None;
                     gcx_locked.caps_last_attempted_ts = 0;
                 }

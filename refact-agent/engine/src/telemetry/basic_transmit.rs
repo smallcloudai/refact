@@ -1,5 +1,5 @@
 use tracing::{error, info};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::path::PathBuf;
 use serde_json::json;
 
@@ -107,7 +107,7 @@ pub async fn basic_telemetry_compress(
 
 pub async fn basic_telemetry_send(
     global_context: Arc<ARwLock<GlobalContext>>,
-    caps: Arc<RwLock<CodeAssistantCaps>>,
+    caps: Arc<CodeAssistantCaps>,
 ) -> () {
     let (cache_dir, api_key, enable_basic_telemetry) = {
         let cx = global_context.write().await;
@@ -119,13 +119,11 @@ pub async fn basic_telemetry_send(
     };
     let (dir_compressed, dir_sent) = telemetry_storage_dirs(&cache_dir).await;
 
-    let telemetry_basic_dest = caps.read().unwrap().telemetry_basic_dest.clone();
-
-    if enable_basic_telemetry && !telemetry_basic_dest.is_empty() {
+    if enable_basic_telemetry && !caps.telemetry_basic_dest.is_empty() {
         send_telemetry_files_to_mothership(
             dir_compressed.clone(),
             dir_sent.clone(),
-            telemetry_basic_dest.clone(),
+            caps.telemetry_basic_dest.clone(),
             api_key,
             global_context.clone()
         ).await;

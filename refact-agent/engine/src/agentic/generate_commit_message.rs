@@ -266,10 +266,7 @@ pub async fn generate_commit_message_by_diff(
         ]
     };
     let model_name = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps
-            .read()
-            .map(|x| Ok(x.default_models.chat_model.clone()))
-            .map_err(|_| "Caps are not available".to_string())?,
+        Ok(caps) => Ok(caps.default_models.chat_model.clone()),
         Err(_) => Err("No caps available".to_string()),
     }?;
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(

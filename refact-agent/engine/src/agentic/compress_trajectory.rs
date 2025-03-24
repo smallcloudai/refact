@@ -91,14 +91,13 @@ pub async fn compress_trajectory(
     }
     let (model_name, n_ctx) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
-            let caps_locked = caps.read().unwrap();
-            let model_name = caps_locked.default_models.chat_model.clone();
-            if let Some(model_rec) = caps_locked.code_completion_models.get(&strip_model_from_finetune(&model_name)) {
+            let model_name = caps.default_models.chat_model.clone();
+            if let Some(model_rec) = caps.code_completion_models.get(&strip_model_from_finetune(&model_name)) {
                 Ok((model_name, model_rec.base.n_ctx))
             } else {
                 Err(format!(
                     "Model '{}' not found, server has these models: {:?}",
-                    model_name, caps_locked.code_completion_models.keys()
+                    model_name, caps.code_completion_models.keys()
                 ))
             }
         },

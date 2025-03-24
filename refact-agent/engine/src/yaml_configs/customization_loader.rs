@@ -216,11 +216,6 @@ pub async fn load_customization(
         }
     };
 
-    let caps_config_text = {
-        let caps_locked = caps.read().unwrap();
-        caps_locked.customization.clone()
-    };
-
     let config_dir = gcx.read().await.config_dir.clone();
     let customization_yaml_path = config_dir.join("customization.yaml");
     let user_config_text = std::fs::read_to_string(&customization_yaml_path)
@@ -229,7 +224,7 @@ pub async fn load_customization(
 
     load_and_mix_with_users_config(
         &user_config_text,
-        &caps_config_text,
+        &caps.customization,
         skip_visibility_filtering,
         allow_experimental,
         error_log,

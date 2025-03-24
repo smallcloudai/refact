@@ -39,11 +39,10 @@ async fn do_i_need_to_reload_vecdb(
 
     let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
     let mut consts = {
-        let caps_locked = caps.read().unwrap();
         VecdbConstants {
-            embedding_model: caps_locked.embedding_model.clone(),
+            embedding_model: caps.embedding_model.clone(),
             tokenizer: None,
-            splitter_window_size: caps_locked.embedding_model.base.n_ctx / 2,
+            splitter_window_size: caps.embedding_model.base.n_ctx / 2,
             vecdb_max_files: vecdb_max_files,
         }
     };
