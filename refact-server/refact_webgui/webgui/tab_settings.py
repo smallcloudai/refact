@@ -20,14 +20,6 @@ class TabSettingsRouter(APIRouter):
         name: str
 
     class Integrations(BaseModel):
-        # openai_api_key: Optional[str] = None
-        # anthropic_api_key: Optional[str] = None
-        # groq_api_key: Optional[str] = None
-        # cerebras_api_key: Optional[str] = None
-        # gemini_api_key: Optional[str] = None
-        # xai_api_key: Optional[str] = None
-        # deepseek_api_key: Optional[str] = None
-        # TODO: integrations
         huggingface_api_key: Optional[str] = None
 
     def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
