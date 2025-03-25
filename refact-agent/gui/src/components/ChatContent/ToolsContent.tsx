@@ -529,7 +529,12 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Flex gap="2" align="end" onClick={() => setOpen((prev) => !prev)}>
+          <Flex
+            gap="2"
+            align="end"
+            onClick={() => setOpen((prev) => !prev)}
+            ref={ref}
+          >
             <Flex
               gap="1"
               align="start"
