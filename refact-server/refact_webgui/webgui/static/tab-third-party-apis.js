@@ -543,10 +543,7 @@ function showAddModelModal(providerId) {
 
         <div class="mb-3">
             <label for="custom-model-api-key" class="form-label">API Key</label>
-            <select class="form-select" id="custom-model-api-key">
-                <option value="" selected>-- Select an API key --</option>
-                <option value="custom">-- Enter custom API key --</option>
-            </select>
+            <select class="form-select" id="custom-model-api-key"></select>
             <div id="custom-model-api-key-input-container" style="display: none; margin-top: 10px;">
                 <input type="text" class="form-control" id="custom-model-api-key-input" placeholder="Enter custom API key">
             </div>
@@ -560,12 +557,16 @@ function showAddModelModal(providerId) {
     modelIdContainer.innerHTML = modelConfigHtml;
 
     const apiKeySelect = document.getElementById('custom-model-api-key');
-    apiKeySelect.innerHTML = '<option value="" selected>-- Select an API key --</option>';
+    let selectedApiKey = !hasPredefined;
     providerApiKeys(providerId).forEach((apiKey) => {
         if (apiKey && apiKey.trim()) {
             const option = document.createElement('option');
             option.value = apiKey;
             option.textContent = maskApiKey(apiKey);
+            if (!selectedApiKey) {
+                option.selected = true;
+                selectedApiKey = true;
+            }
             apiKeySelect.appendChild(option);
         }
     });
@@ -573,6 +574,7 @@ function showAddModelModal(providerId) {
     const customOption = document.createElement('option');
     customOption.value = 'custom';
     customOption.textContent = '-- Enter custom API key --';
+    customOption.selected = !hasPredefined || !selectedApiKey;
     apiKeySelect.appendChild(customOption);
 
     apiKeySelect.addEventListener('change', function() {
