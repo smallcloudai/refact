@@ -121,6 +121,28 @@ class ThirdPartyApiConfig(BaseModel):
 #         log(f"Error migrating old configuration: {e}")
 
 
+def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
+    # Filter out models whose provider is not in the current configuration
+    models = {}
+    for model_id, model_config in config.models.items():
+        if model_config.provider_id in config.providers:
+            models[model_id] = model_config
+        elif raise_on_error:
+            raise RuntimeError(f"no provider for `{model_id}` model")
+    config.models = models
+    # Correct capabilities
+    for model_config in config.models.values():
+        if model_config.capabilities.agent and not model_config.capabilities.tools:
+            if raise_on_error:
+                raise RuntimeError(f"agent capability requires tools")
+            model_config.capabilities.agent = False
+        if model_config.capabilities.clicks and not model_config.capabilities.multimodal:
+            if raise_on_error:
+                raise RuntimeError(f"clicks capability requires multimodal")
+            model_config.capabilities.clicks = False
+    return config
+
+
 def load_third_party_config() -> ThirdPartyApiConfig:
     # Check if the old config exists and migrate it
     # if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
@@ -131,7 +153,8 @@ def load_third_party_config() -> ThirdPartyApiConfig:
             raise FileNotFoundError(f"No third party config found")
         with open(env.CONFIG_INTEGRATIONS_MODELS, "r") as f:
             data = json.load(f)
-        return ThirdPartyApiConfig.model_validate(data)
+        config = ThirdPartyApiConfig.model_validate(data)
+        return _validate_config(config, raise_on_error=False)
     except Exception as e:
         log(f"Can't read third-party providers config, fallback to empty: {e}")
         return ThirdPartyApiConfig()
@@ -139,14 +162,7 @@ def load_third_party_config() -> ThirdPartyApiConfig:
 
 def save_third_party_config(config: ThirdPartyApiConfig):
     os.makedirs(os.path.dirname(env.CONFIG_INTEGRATIONS_MODELS), exist_ok=True)
-
-    # Filter out models whose provider is not in the current configuration
-    config.models = {
-        model_id: model_config
-        for model_id, model_config in config.models.items()
-        if model_config.provider_id in config.providers
-    }
-
+    config = _validate_config(config, raise_on_error=True)
     with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
         json.dump(config.model_dump(), f, indent=4)
     os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)

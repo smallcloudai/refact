@@ -430,6 +430,25 @@ function addProvider() {
     showSuccessToast("Provider added successfully");
 }
 
+function dependentCheckbox(elementId, dependentElementId) {
+    const element = document.getElementById(elementId);
+    const dependent = document.getElementById(dependentElementId);
+    if (element.checked) {
+        dependent.disabled = false;
+    } else {
+        dependent.checked = false;
+        dependent.disabled = true;
+    }
+    element.addEventListener('change', function() {
+        if (this.checked) {
+            dependent.disabled = false;
+        } else {
+            dependent.checked = false;
+            dependent.disabled = true;
+        }
+    });
+}
+
 function showAddModelModal(providerId) {
     const modelIdContainer = document.getElementById('add-third-party-model-modal-id-container');
     modelIdContainer.dataset.providerId = providerId;
@@ -585,6 +604,9 @@ function showAddModelModal(providerId) {
             }
         });
     }
+
+    dependentCheckbox('custom-model-supports-tools', 'third-party-model-supports-agentic');
+    dependentCheckbox('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
 
     document.getElementById('add-third-party-model-modal-label').textContent = 'Add Model';
     document.getElementById('add-third-party-model-submit').textContent = 'Add Model';
