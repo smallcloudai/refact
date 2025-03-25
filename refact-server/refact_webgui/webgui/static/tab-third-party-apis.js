@@ -484,11 +484,6 @@ function showAddModelModal(providerId) {
         ${modelIdSelectionHtml}
 
         <div class="mb-3">
-            <label for="custom-model-api-base" class="form-label">API Base</label>
-            <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
-        </div>
-
-        <div class="mb-3">
             <label for="custom-model-api-key" class="form-label">API Key</label>
             <select class="form-select" id="custom-model-api-key">
                 <option value="" selected>-- Select an API key --</option>
@@ -500,15 +495,20 @@ function showAddModelModal(providerId) {
         </div>
 
         <div class="mb-3">
+            <label for="custom-model-api-base" class="form-label">API Base</label>
+            <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
+        </div>
+
+        <div class="mb-3">
             <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
             <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
-            <div class="form-text">Maximum number of tokens the model can process.</div>
+            <div class="form-text">Maximum Context size of the model.</div>
         </div>
 
         <div class="mb-3">
             <label for="custom-model-max-tokens" class="form-label">Max Tokens (n_ctx)</label>
-            <input type="number" class="form-control" id="custom-model-max-tokens" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
-            <div class="form-text">Maximum number of tokens the model can process.</div>
+            <input type="number" class="form-control" id="custom-model-max-tokens" placeholder="e.g., 4096" min="1024" step="1024" value="4096">
+            <div class="form-text">Maximum number of tokens the model can generate.</div>
         </div>
 
         <div class="form-check mb-3">
@@ -601,6 +601,9 @@ function showAddModelModal(providerId) {
                 document.getElementById('custom-model-max-tokens').value =
                     selectedModel.max_tokens;
             }
+
+            dependentCheckboxSet('custom-model-supports-tools', 'third-party-model-supports-agentic');
+            dependentCheckboxSet('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
         });
     }
 
@@ -794,7 +797,7 @@ function showEditModelModal(providerId, modelId) {
     // Fill in the form fields with the existing model data
     document.getElementById('custom-model-api-base').value = modelConfig.api_base || '';
     document.getElementById('custom-model-n-ctx').value = modelConfig.n_ctx || 8192;
-    document.getElementById('custom-model-max-tokens').value = modelConfig.max_tokens || 8192;
+    document.getElementById('custom-model-max-tokens').value = modelConfig.max_tokens || 4096;
     document.getElementById('custom-model-supports-tools').checked = capabilities.tools || false;
     document.getElementById('custom-model-supports-multimodality').checked = capabilities.multimodal || false;
     document.getElementById('third-party-model-supports-agentic').checked = capabilities.agent || false;
