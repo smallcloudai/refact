@@ -56,6 +56,7 @@ import {
 
 import { v4 as uuidv4 } from "uuid";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
+import { useTotalTokenUsage } from "./useTotalTokenUsage";
 
 type SubmitHandlerParams =
   | {
@@ -355,6 +356,7 @@ export function useAutoSend() {
   const sendImmediately = useAppSelector(selectSendImmediately);
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
+  const { limitReached } = useTotalTokenUsage();
   const { sendMessages, abort, messagesWithSystemPrompt } =
     useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
@@ -379,6 +381,7 @@ export function useAutoSend() {
       const lastMessage = currentMessages.slice(-1)[0];
       // here ish
       if (
+        !limitReached &&
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
