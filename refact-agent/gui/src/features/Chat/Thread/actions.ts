@@ -324,8 +324,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
           ? state.chat.thread
           : null;
 
-    // TODO: stops the stream.
-
+    // stops the stream
     const onlyDeterministicMessages = checkForToolLoop(messages);
 
     const messagesForLsp = formatMessagesForLsp(messages);
