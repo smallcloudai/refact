@@ -101,14 +101,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { limitReached, tokens, limit } = useTotalTokenUsage();
 
   useEffect(() => {
-    if (limitReached) {
-      dispatch(
-        setInformation(
-          `Token Limit reached, ${tokens} out of ${limit} used. To continue click the compress button or start a new chat.`,
-        ),
+    if (limitReached && !information) {
+      setInformation(
+        `Token Limit reached, ${tokens} out of ${limit} used. To continue click the compress button or start a new chat.`,
       );
     }
-  }, [tokens, limit, limitReached, dispatch]);
+  }, [tokens, limit, limitReached, information]);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
