@@ -101,12 +101,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { limitReached, tokens, limit } = useTotalTokenUsage();
 
   useEffect(() => {
-    if (limitReached && !information) {
-      setInformation(
-        `Token Limit reached, ${tokens} out of ${limit} used. To continue click the compress button or start a new chat.`,
+    if (limitReached) {
+      dispatch(
+        setInformation(
+          `Token Limit reached, ${tokens} out of ${limit} used. To continue click the compress button or start a new chat.`,
+        ),
       );
     }
-  }, [tokens, limit, limitReached, information]);
+  }, [tokens, limit, limitReached, dispatch]);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -319,7 +321,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (information) {
     return (
-      <InformationCallout mt="2" onClick={onClearInformation} timeout={2000}>
+      <InformationCallout
+        mt="2"
+        onClick={onClearInformation}
+        timeout={limitReached ? null : 2000}
+      >
         {information}
       </InformationCallout>
     );
@@ -379,6 +385,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 data-testid="chat-form-textarea"
                 required={true}
                 // disabled={isStreaming}
+                disabled={limitReached}
                 {...props}
                 autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
