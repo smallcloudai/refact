@@ -119,7 +119,7 @@ class WebGUI(FastAPI):
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
             TabSettingsRouter(model_assigner),
-            TabThirdPartyApisRouter(model_assigner),
+            TabThirdPartyApisRouter(),
             TabAboutRouter(),
             StaticRouter(),
         ]
