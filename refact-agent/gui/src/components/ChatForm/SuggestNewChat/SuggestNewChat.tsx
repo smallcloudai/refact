@@ -1,16 +1,20 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { ArchiveIcon, Cross2Icon } from "@radix-ui/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 
 import { clearPauseReasonsAndHandleToolsStatus } from "../../../features/ToolConfirmation/confirmationSlice";
-import { useAppDispatch, useAppSelector } from "../../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useCompressChat,
+} from "../../../hooks";
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
 import { telemetryApi } from "../../../services/refact";
 import {
   newChatAction,
   selectChatId,
-  selectThreadNewChatSuggested,
+  selectLastSentCompression,
   setIsNewChatSuggestionRejected,
 } from "../../../features/Chat";
 
@@ -28,7 +32,6 @@ export const SuggestNewChat = ({
 }: SuggestNewChatProps) => {
   const dispatch = useAppDispatch();
   const chatId = useAppSelector(selectChatId);
-  const { isMandatory } = useAppSelector(selectThreadNewChatSuggested);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
 
@@ -36,7 +39,9 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
+  const { compressChat, compressChatRequest } = useCompressChat();
 
+  const lastSentCompression = useAppSelector(selectLastSentCompression);
   useEffect(() => {
     if (shouldBeVisible) {
       setIsRendered(true);
@@ -87,10 +92,10 @@ export const SuggestNewChat = ({
 
   const tipText = useMemo(() => {
     if (isWarning)
-      return "Long chats cause you to reach your usage limits faster.";
+      return "This chat has been moderately compressed. The model may have limited access to earlier messages.";
     if (isContextOverflown)
-      return "Maximum available context for this chat is exceeded. Consider starting a new chat.";
-    return "Models perform better for chats which don't switch topics often.";
+      return "This chat has been heavily compressed. The model might not recall details from earlier conversations.";
+    return "For best results, consider starting a new chat when switching topics.";
   }, [isWarning, isContextOverflown]);
 
   return (
@@ -104,26 +109,48 @@ export const SuggestNewChat = ({
         [styles.visible]: isAnimating,
       })}
     >
-      <Flex align="center" justify="between" gap="2">
+      <Flex align="center" justify="between" gap="2" wrap="wrap">
         <Text size="1">
           <Text weight="bold">Tip:</Text> {tipText}
         </Text>
-        <Flex align="center" gap="3" flexShrink="0">
+
+        <Flex align="center" mr="2" wrap="wrap" gap="2">
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          {!isMandatory && (
-            <IconButton
-              asChild
-              variant="ghost"
-              color="violet"
+          {lastSentCompression && lastSentCompression !== "absent" && (
+            <Link
               size="1"
-              onClick={handleClose}
+              onClick={() => {
+                if (compressChatRequest.isLoading) return;
+                void compressChat();
+              }}
+              color="indigo"
+              asChild
             >
-              <Cross2Icon />
-            </IconButton>
+              <Flex
+                align="center"
+                justify="start"
+                gap="1"
+                display="inline-flex"
+              >
+                <ArchiveIcon style={{ alignSelf: "start" }} />
+                Compress and open in a new chat.
+              </Flex>
+            </Link>
           )}
         </Flex>
+        <Box position="absolute" top="1" right="1">
+          <IconButton
+            asChild
+            variant="ghost"
+            color="violet"
+            size="1"
+            onClick={handleClose}
+          >
+            <Cross2Icon />
+          </IconButton>
+        </Box>
       </Flex>
     </Box>
   );

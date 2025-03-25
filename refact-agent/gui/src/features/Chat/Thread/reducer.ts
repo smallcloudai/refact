@@ -6,6 +6,7 @@ import {
   ToolUse,
   LspChatMode,
   chatModeToLspMode,
+  isLspChatMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
@@ -32,25 +33,27 @@ import {
   setAutomaticPatch,
   setLastUserMessageId,
   setEnabledCheckpoints,
+  setBoostReasoning,
   fixBrokenToolMessages,
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
   upsertToolCall,
-  setIsNewChatCreationMandatory,
+  setIncreaseMaxTokens,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
   commandsApi,
-  DEFAULT_MAX_NEW_TOKENS,
   isAssistantMessage,
-  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
+  isUserMessage,
+  isUserResponse,
   ToolCall,
   ToolMessage,
+  UserMessage,
   validateToolCall,
 } from "../../../services/refact";
 import { capsApi } from "../../../services/refact";
@@ -72,6 +75,9 @@ const createChatThread = (
     new_chat_suggested: {
       wasSuggested: false,
     },
+    boost_reasoning: false,
+    automatic_patch: false,
+    increase_max_tokens: false,
   };
   return chat;
 };
@@ -110,7 +116,6 @@ const createInitialState = ({
     error: null,
     prevent_send: false,
     waiting_for_response: false,
-    max_new_tokens: DEFAULT_MAX_NEW_TOKENS,
     cache: {},
     system_prompt: {},
     tool_use,
@@ -151,7 +156,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.system_prompt = action.payload;
   });
 
-  builder.addCase(newChatAction, (state) => {
+  builder.addCase(newChatAction, (state, action) => {
     const next = createInitialState({
       tool_use: state.tool_use,
       maybeMode: state.thread.mode,
@@ -162,8 +167,12 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
     next.thread.model = state.thread.model;
     next.system_prompt = state.system_prompt;
-    next.automatic_patch = state.automatic_patch;
     next.checkpoints_enabled = state.checkpoints_enabled;
+    next.thread.boost_reasoning = state.thread.boost_reasoning;
+    // next.thread.automatic_patch = state.thread.automatic_patch;
+    if (action.payload?.messages) {
+      next.thread.messages = action.payload.messages;
+    }
     return next;
   });
 
@@ -188,9 +197,19 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = true;
     state.waiting_for_response = false;
     state.thread.messages = messages;
-    // maybe update thread usage here.
-    if (isChatResponseChoice(action.payload) && action.payload.usage) {
-      state.thread.usage = action.payload.usage;
+    // // maybe update thread usage here.
+    // if (isChatResponseChoice(action.payload) && action.payload.usage) {
+    //   state.thread.usage = action.payload.usage;
+    // }
+    if (
+      isUserResponse(action.payload) &&
+      action.payload.compression_strength &&
+      action.payload.compression_strength !== "absent"
+    ) {
+      state.thread.new_chat_suggested = {
+        ...state.thread.new_chat_suggested,
+        wasSuggested: true,
+      };
     }
   });
 
@@ -216,7 +235,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(setAutomaticPatch, (state, action) => {
-    state.automatic_patch = action.payload;
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.automatic_patch = action.payload.value;
   });
 
   builder.addCase(setIsNewChatSuggested, (state, action) => {
@@ -234,16 +254,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
     };
   });
 
-  builder.addCase(setIsNewChatCreationMandatory, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.new_chat_suggested = {
-      ...state.thread.new_chat_suggested,
-      isMandatory: action.payload.value,
-    };
-  });
-
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
+  });
+
+  builder.addCase(setBoostReasoning, (state, action) => {
+    if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.boost_reasoning = action.payload.value;
   });
 
   builder.addCase(setLastUserMessageId, (state, action) => {
@@ -298,6 +315,27 @@ export const chatReducer = createReducer(initialState, (builder) => {
       ...mostUptoDateThread,
     };
     state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
+    if (action.payload.mode && !isLspChatMode(action.payload.mode)) {
+      state.thread.mode = "AGENT";
+    }
+
+    const lastUserMessage = action.payload.messages.reduce<UserMessage | null>(
+      (acc, cur) => {
+        if (isUserMessage(cur)) return cur;
+        return acc;
+      },
+      null,
+    );
+
+    if (
+      lastUserMessage?.compression_strength &&
+      lastUserMessage.compression_strength !== "absent"
+    ) {
+      state.thread.new_chat_suggested = {
+        ...state.thread.new_chat_suggested,
+        wasSuggested: true,
+      };
+    }
   });
 
   // New builder to save chat title within the current thread and not only inside of a history thread
@@ -344,8 +382,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.waiting_for_response = action.payload;
   });
 
+  // TBD: should be safe to remove?
   builder.addCase(setMaxNewTokens, (state, action) => {
-    state.max_new_tokens = action.payload;
+    state.thread.currentMaximumContextTokens = action.payload;
   });
 
   builder.addCase(fixBrokenToolMessages, (state, action) => {
@@ -377,6 +416,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
         action.payload.replaceOnly,
       );
     }
+  });
+
+  builder.addCase(setIncreaseMaxTokens, (state, action) => {
+    state.thread.increase_max_tokens = action.payload;
   });
 
   builder.addMatcher(

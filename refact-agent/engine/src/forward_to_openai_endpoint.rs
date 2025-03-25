@@ -10,7 +10,7 @@ use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
-
+use crate::scratchpads::chat_utils_limit_history::CompressionStrength;
 
 pub async fn forward_to_openai_style_endpoint(
     save_url: &mut String,
@@ -45,17 +45,14 @@ pub async fn forward_to_openai_style_endpoint(
     if let Some(n) = sampling_parameters.n {
         data["n"] = serde_json::Value::from(n);
     }
-    if model_name != "o1-mini" {
-        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
-        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+    if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
+        data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
+    } else if let Some(thinking) = sampling_parameters.thinking.clone() {
+        data["thinking"] = thinking.clone();
     } else {
-        data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
     }
-    if let Some(n) = sampling_parameters.n {
-        if n > 1 {
-            data["n"] = serde_json::Value::from(n);
-        }
-    }
+    data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
     info!("NOT STREAMING TEMP {}", sampling_parameters.temperature
         .map(|x| x.to_string())
         .unwrap_or("None".to_string()));
@@ -122,24 +119,35 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     let mut data = json!({
         "model": model_name,
         "stream": true,
-        "temperature": sampling_parameters.temperature,
-        "max_completion_tokens": sampling_parameters.max_new_tokens,
         "stream_options": {"include_usage": true},
     });
+
+    if is_passthrough {
+        passthrough_messages_to_json(&mut data, prompt, model_name);
+    } else {
+        data["prompt"] = serde_json::Value::String(prompt.to_string());
+    }
+
     if !sampling_parameters.stop.is_empty() {  // openai does not like empty stop
         data["stop"] = serde_json::Value::from(sampling_parameters.stop.clone());
     };
     if let Some(n) = sampling_parameters.n{
         data["n"] = serde_json::Value::from(n);
     }
+
+    if let Some(reasoning_effort) = sampling_parameters.reasoning_effort.clone() {
+        data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
+    } else if let Some(thinking) = sampling_parameters.thinking.clone() {
+        data["thinking"] = thinking.clone();
+    } else {
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
+    }
+    data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
+
     info!("STREAMING TEMP {}", sampling_parameters.temperature
         .map(|x| x.to_string())
         .unwrap_or("None".to_string()));
-    if is_passthrough {
-        passthrough_messages_to_json(&mut data, prompt, model_name);
-    } else {
-        data["prompt"] = serde_json::Value::String(prompt.to_string());
-    }
+
     if let Some(meta) = meta {
         data["meta"] = json!(meta);
     }
@@ -152,6 +160,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     Ok(event_source)
 }
 
+// NOTE: questionable function, no idea why we need it
 fn passthrough_messages_to_json(
     data: &mut serde_json::Value,
     prompt: &str,
@@ -166,6 +175,21 @@ fn passthrough_messages_to_json(
         if model_name != "o1-mini" {
             data["tools"] = tools.clone();
         }
+    }
+}
+
+pub fn try_get_compression_from_prompt(
+    prompt: &str,
+) -> serde_json::Value {
+    let big_json: serde_json::Value = if prompt.starts_with("PASSTHROUGH ") {
+        serde_json::from_str( &prompt[12..]).unwrap()
+    } else {
+        return json!(CompressionStrength::Absent);
+    };
+    if let Some(compression_strength) = big_json.get("compression_strength") {
+        compression_strength.clone()
+    } else {
+        json!(CompressionStrength::Absent)
     }
 }
 

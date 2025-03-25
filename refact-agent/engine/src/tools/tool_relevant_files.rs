@@ -138,7 +138,7 @@ impl Tool for ToolRelevantFiles {
                 line1: 0,
                 line2: text.lines().count(),
                 symbols: vec![],
-                gradient_type: -1,
+                gradient_type: 4,
                 usefulness,
             }));
 
@@ -149,7 +149,7 @@ impl Tool for ToolRelevantFiles {
                     line1: symbol.full_line1(),
                     line2: symbol.full_line2(),
                     symbols: vec![symbol.path()],
-                    gradient_type: -1,
+                    gradient_type: 4,
                     usefulness: 100.,
                 }));
             }
@@ -398,6 +398,7 @@ async fn find_relevant_files(
         RF_EXPERT_WRAP_UP,
         1,
         Some(0.4),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-treeguess")),
         Some(false),  
@@ -423,6 +424,7 @@ async fn find_relevant_files(
         RF_EXPERT_WRAP_UP,
         1,
         Some(0.4),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step1-gotodef")),
         Some(false),  
@@ -467,6 +469,7 @@ async fn find_relevant_files(
         RF_REDUCE_WRAP_UP,
         1,
         Some(0.0),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-rf-step2-reduce")),
         Some(false),  

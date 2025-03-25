@@ -37,7 +37,9 @@ import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import { capsApi } from "../../../services/refact";
 
-export const newChatAction = createAction("chatThread/new");
+export const newChatAction = createAction<Partial<ChatThread> | undefined>(
+  "chatThread/new",
+);
 
 export const newIntegrationChat = createAction<{
   integration: IntegrationMeta;
@@ -64,11 +66,6 @@ export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
 export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
 );
-
-export const setIsNewChatCreationMandatory =
-  createAction<PayloadWithChatAndBoolean>(
-    "chatThread/setIsNewChatCreationMandatory",
-  );
 
 export const setIsNewChatSuggestionRejected =
   createAction<PayloadWithChatAndBoolean>(
@@ -118,12 +115,16 @@ export const setPreventSend = createAction<PayloadWithId>(
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
-export const setAutomaticPatch = createAction<boolean>(
-  "chat/setAutomaticPatch",
-);
-
 export const setEnabledCheckpoints = createAction<boolean>(
   "chat/setEnabledCheckpoints",
+);
+
+export const setBoostReasoning = createAction<PayloadWithChatAndBoolean>(
+  "chatThread/setBoostReasoning",
+);
+
+export const setAutomaticPatch = createAction<PayloadWithChatAndBoolean>(
+  "chatThread/setAutomaticPatch",
 );
 
 export const saveTitle = createAction<PayloadWithIdAndTitle>(
@@ -144,6 +145,7 @@ export const setIsWaitingForResponse = createAction<boolean>(
   "chatThread/setIsWaiting",
 );
 
+// TBD: maybe remove it's only used by a smart link.
 export const setMaxNewTokens = createAction<number>(
   "chatThread/setMaxNewTokens",
 );
@@ -155,6 +157,10 @@ export const fixBrokenToolMessages = createAction<PayloadWithId>(
 export const upsertToolCall = createAction<
   Parameters<typeof ideToolCallResponse>[0] & { replaceOnly?: boolean }
 >("chatThread/upsertToolCall");
+
+export const setIncreaseMaxTokens = createAction<boolean>(
+  "chatThread/setIncreaseMaxTokens",
+);
 
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
@@ -232,7 +238,10 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
       const title = chatResponseChunks.reduce<string>((acc, chunk) => {
         if (isChatResponseChoice(chunk)) {
           if (isAssistantDelta(chunk.choices[0].delta)) {
-            return acc + chunk.choices[0].delta.content;
+            const deltaContent = chunk.choices[0].delta.content;
+            if (deltaContent) {
+              return acc + deltaContent;
+            }
           }
         }
         return acc;
@@ -315,15 +324,14 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
           ? state.chat.thread
           : null;
 
-    // TODO: stops the stream.
-    // const onlyDeterministicMessages =
-    //   checkForToolLoop(messages) || !messages.some(isSystemMessage);
-
+    // stops the stream
     const onlyDeterministicMessages = checkForToolLoop(messages);
 
     const messagesForLsp = formatMessagesForLsp(messages);
     const realMode = mode ?? thread?.mode;
     const maybeLastUserMessageId = thread?.last_user_message_id;
+    const boostReasoning = thread?.boost_reasoning ?? false;
+    const increaseMaxTokens = thread?.increase_max_tokens ?? false;
 
     return sendChat({
       messages: messagesForLsp,
@@ -332,7 +340,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       tools,
       stream: true,
       abortSignal: thunkAPI.signal,
-      max_new_tokens: state.chat.max_new_tokens,
+      increase_max_tokens: increaseMaxTokens,
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,
@@ -340,6 +348,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       checkpointsEnabled,
       integration: thread?.integration,
       mode: realMode,
+      boost_reasoning: boostReasoning,
     })
       .then((response) => {
         if (!response.ok) {

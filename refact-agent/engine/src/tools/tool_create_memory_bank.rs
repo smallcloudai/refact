@@ -23,6 +23,7 @@ use crate::{
     subchat::subchat,
     tools::tools_description::Tool,
 };
+use crate::call_validation::ReasoningEffort;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 
 const MAX_EXPLORATION_STEPS: usize = 1000;
@@ -256,8 +257,8 @@ async fn read_and_compress_directory(
             line1: 1,
             line2: lines,
             symbols: vec![],
-            gradient_type: -1,
-            usefulness: 0.0,
+            gradient_type: 4,
+            usefulness: 100.0,
         });
     }
 
@@ -373,7 +374,7 @@ impl Tool for ToolCreateMemoryBank {
             let mut ctx = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
-                7,
+                25,
                 false,
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
@@ -425,6 +426,7 @@ impl Tool for ToolCreateMemoryBank {
                     MB_EXPERT_WRAP_UP,
                     1,
                     None,
+                    Some(ReasoningEffort::High),
                     Some(tool_call_id.clone()),
                     Some(format!("{log_prefix}-memory-bank-dir-{}", target.target_name.replace("/", "_"))),
                     Some(false),

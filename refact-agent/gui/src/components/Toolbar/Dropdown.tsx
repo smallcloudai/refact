@@ -15,10 +15,22 @@ import {
   useAgentUsage,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
-import { Button, DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
-import { HamburgerMenuIcon, DiscordLogoIcon } from "@radix-ui/react-icons";
+import {
+  Button,
+  DropdownMenu,
+  Flex,
+  HoverCard,
+  IconButton,
+  Text,
+} from "@radix-ui/themes";
+import {
+  HamburgerMenuIcon,
+  DiscordLogoIcon,
+  QuestionMarkCircledIcon,
+} from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
 import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
+import { PuzzleIcon } from "../../images/PuzzleIcon";
 //import { Coin } from "../../images";
 
 export type DropdownNavigationOptions =
@@ -65,6 +77,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const user = useGetUser();
   const host = useAppSelector(selectHost);
   const dispatch = useAppDispatch();
+  const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
   const logout = useLogout();
   const { addressURL } = useConfig();
   const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
@@ -111,15 +124,28 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Item>
         )}
 
-        {/*
-        Hide coins (until coins logic is reworked)
         {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
-              <Coin /> {user.data.metering_balance} coins
+              {currentAgentUsage}/{maxAgentUsageAmount} requests
+              <HoverCard.Root>
+                <HoverCard.Trigger>
+                  <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+                </HoverCard.Trigger>
+                <HoverCard.Content size="2" maxWidth="280px">
+                  <Flex direction="column" gap="2">
+                    <Text as="p" size="2">
+                      First number indicates your available requests today
+                    </Text>
+                    <Text as="p" size="2">
+                      Second number indicates maximum daily request limit
+                    </Text>
+                  </Flex>
+                </HoverCard.Content>
+              </HoverCard.Root>
             </Flex>
           </DropdownMenu.Label>
-        )} */}
+        )}
         {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
@@ -159,7 +185,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => handleNavigation("integrations")}>
-          Setup Agent Integrations
+          <PuzzleIcon /> Set up Agent Integrations
         </DropdownMenu.Item>
 
         {knowledgeEnabled && (

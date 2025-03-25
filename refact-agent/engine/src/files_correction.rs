@@ -455,6 +455,15 @@ pub fn canonicalize_normalized_path(p: PathBuf) -> PathBuf {
     p.canonicalize().unwrap_or_else(|_| absolute(&p).unwrap_or(p))
 }
 
+pub fn any_glob_matches_path(globs: &[String], path: &Path) -> bool {
+    globs.iter().any(|glob| {
+        let pattern = glob::Pattern::new(glob).unwrap();
+        let mut matches = pattern.matches_path(path);
+        matches |= path.to_str().map_or(false, |s: &str| s.ends_with(glob));
+        matches
+    })
+}
+
 pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&path.to_string_lossy())
 }

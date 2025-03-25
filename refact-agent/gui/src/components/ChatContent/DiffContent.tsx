@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import { Text, Container, Box, Flex, Link } from "@radix-ui/themes";
 import { DiffMessage, type DiffChunk } from "../../services/refact";
 import { ScrollArea } from "../ScrollArea";
@@ -8,7 +8,8 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useEventsBusForIDE } from "../../hooks";
+import { useEventsBusForIDE, useHideScroll } from "../../hooks";
+import { FadedButton } from "../Buttons";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
 
@@ -79,6 +80,8 @@ type DiffProps = {
 export const Diff: React.FC<DiffProps> = ({ diff }) => {
   const removeString = diff.lines_remove && diff.lines_remove;
   const addString = diff.lines_add && diff.lines_add;
+  const isRename = diff.file_action === "rename" && diff.file_name_rename;
+
   return (
     <Flex
       className={styles.diff}
@@ -86,10 +89,18 @@ export const Diff: React.FC<DiffProps> = ({ diff }) => {
       direction="column"
       style={{ minWidth: "min-content" }}
     >
-      {removeString && (
+      {isRename && (
+        <Flex py="1" px="2">
+          <Text size="1" color="orange">
+            {filename(diff.file_name)} was renamed to{" "}
+            {filename(diff.file_name_rename ?? "")}
+          </Text>
+        </Flex>
+      )}
+      {removeString && !isRename && (
         <DiffHighlight startLine={diff.line1} sign={"-"} text={removeString} />
       )}
-      {addString && (
+      {addString && !isRename && (
         <DiffHighlight startLine={diff.line1} sign={"+"} text={addString} />
       )}
     </Flex>
@@ -114,6 +125,12 @@ export const DiffTitle: React.FC<{
     const [head, ...tail] = items;
     const [fullPath, diffForFile] = head;
     const name = filename(fullPath);
+
+    // Check if this is a rename action
+    const renameAction = diffForFile.find(
+      (diff) => diff.file_action === "rename" && diff.file_name_rename,
+    );
+
     const addLength = diffForFile.reduce<number>((acc, diff) => {
       return acc + (diff.lines_add ? diff.lines_add.split("\n").length : 0);
     }, 0);
@@ -124,23 +141,95 @@ export const DiffTitle: React.FC<{
     }, 0);
     const adds = "+".repeat(addLength);
     const removes = "-".repeat(removeLength);
-    const element = (
-      <Text
-        style={{ display: "inline-block" }}
-        key={fullPath + "-" + diffForFile.length}
-      >
-        {name}{" "}
-        <Text color="red" wrap="wrap" style={{ wordBreak: "break-all" }}>
-          {removes}
-        </Text>
-        <Text color="green" wrap="wrap" style={{ wordBreak: "break-all" }}>
-          {adds}
-        </Text>
-      </Text>
-    );
-    const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
 
-    return process(tail, nextMemo);
+    // Directly return the element based on condition
+    if (renameAction?.file_name_rename) {
+      // Display rename information
+      const newName = filename(renameAction.file_name_rename);
+      return process(
+        tail,
+        memo.length > 0
+          ? [
+              ...memo,
+              ", ",
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text color="orange" style={{ fontStyle: "italic" }}>
+                  → {newName}
+                </Text>
+              </Text>,
+            ]
+          : [
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text color="orange" style={{ fontStyle: "italic" }}>
+                  → {newName}
+                </Text>
+              </Text>,
+            ],
+      );
+    } else {
+      return process(
+        tail,
+        memo.length > 0
+          ? [
+              ...memo,
+              ", ",
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text
+                  color="red"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {removes}
+                </Text>
+                <Text
+                  color="green"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {adds}
+                </Text>
+              </Text>,
+            ]
+          : [
+              <Text
+                style={{ display: "inline-block" }}
+                key={fullPath + "-" + diffForFile.length}
+              >
+                {name}{" "}
+                <Text
+                  color="red"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {removes}
+                </Text>
+                <Text
+                  color="green"
+                  wrap="wrap"
+                  style={{ wordBreak: "break-all" }}
+                >
+                  {adds}
+                </Text>
+              </Text>,
+            ],
+      );
+    }
+
+    // const nextMemo = memo.length > 0 ? [...memo, ", ", element] : [element];
+
+    // return process(tail, nextMemo);
   }
 
   return process(entries);
@@ -150,11 +239,18 @@ export const DiffContent: React.FC<{
   diffs: Record<string, DiffChunk[]>;
 }> = ({ diffs }) => {
   const [open, setOpen] = React.useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const handleScroll = useHideScroll(ref);
+
+  const handleHide = useCallback(() => {
+    setOpen(false);
+    handleScroll();
+  }, [handleScroll]);
 
   return (
     <Collapsible.Root open={open} onOpenChange={setOpen}>
       <Collapsible.Trigger asChild>
-        <Flex gap="2" align="center">
+        <Flex gap="2" align="center" ref={ref}>
           <Text weight="light" size="1">
             <DiffTitle diffs={diffs} />
           </Text>
@@ -162,7 +258,12 @@ export const DiffContent: React.FC<{
         </Flex>
       </Collapsible.Trigger>
       <Collapsible.Content>
-        <DiffForm diffs={diffs} />
+        <Flex direction="column">
+          <DiffForm diffs={diffs} />
+          <FadedButton color="gray" onClick={handleHide} mx="2">
+            Hide Diff
+          </FadedButton>
+        </Flex>
       </Collapsible.Content>
     </Collapsible.Root>
   );
@@ -184,6 +285,11 @@ export const DiffForm: React.FC<{
       {Object.entries(diffs).map(([fullFileName, diffsForFile], index) => {
         const key = fullFileName + "-" + index;
 
+        // Check if this is a rename action
+        const renameAction = diffsForFile.find(
+          (diff) => diff.file_action === "rename" && diff.file_name_rename,
+        );
+
         return (
           <Box key={key} my="2">
             <Flex justify="between" align="center" p="1">
@@ -202,7 +308,16 @@ export const DiffForm: React.FC<{
                     });
                   }}
                 >
-                  {fullFileName}
+                  <Text
+                    as="span"
+                    color={
+                      renameAction?.file_name_rename ? "orange" : undefined
+                    }
+                  >
+                    {renameAction?.file_name_rename
+                      ? renameAction.file_name_rename
+                      : fullFileName}
+                  </Text>
                 </Link>
               </TruncateLeft>
             </Flex>

@@ -39,6 +39,12 @@ pub struct ModelRecord {
     pub supports_clicks: bool,
     #[serde(default)]
     pub supports_agent: bool,
+    #[serde(default)]
+    pub supports_reasoning: Option<String>,
+    #[serde(default)]
+    pub supports_boost_reasoning: bool,
+    #[serde(default)]
+    pub default_temperature: Option<f32>,
 }
 
 #[derive(Debug, Deserialize)]

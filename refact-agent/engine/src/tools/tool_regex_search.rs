@@ -50,7 +50,7 @@ async fn search_single_file(
                 line1: line_num as usize,
                 line2: line_num as usize,
                 symbols: vec![],
-                gradient_type: -1,
+                gradient_type: 4,
                 usefulness: 100.0,
             });
         }

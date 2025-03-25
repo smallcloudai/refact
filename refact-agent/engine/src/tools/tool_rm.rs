@@ -4,11 +4,14 @@ use serde_json::Value;
 use tokio::fs;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
+use serde_json::json;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 
@@ -129,6 +132,15 @@ impl Tool for ToolRm {
 
         let true_path = canonical_path(&corrected_path);
 
+        let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+        if let Err(e) = check_file_privacy(
+            privacy_settings.clone(), 
+            &true_path, 
+            &FilePrivacyLevel::AllowToSendAnywhere
+        ) {
+            return Err(format!("Cannot rm '{}': {}", path_str, e));
+        }
+
         // Check that the true_path is within project directories.
         let is_within_project = project_dirs.iter().any(|p| true_path.starts_with(p));
         if !is_within_project && !gcx.read().await.cmdline.inside_container {
@@ -150,9 +162,14 @@ impl Tool for ToolRm {
             }
         }
 
+        let mut file_content = String::new();
+        let is_dir = true_path.is_dir();
+        if !is_dir {
+            file_content = get_file_text_from_memory_or_disk(gcx.clone(), &true_path).await?;
+        }
         let mut messages: Vec<ContextEnum> = Vec::new();
         let corrections = path_str != corrected_path;
-        if true_path.is_dir() {
+        if is_dir {
             if !recursive {
                 return Err(format!("Cannot remove directory '{}' without recursive=true", corrected_path));
             }
@@ -190,9 +207,20 @@ impl Tool for ToolRm {
             fs::remove_file(&true_path).await.map_err(|e| {
                 format!("Failed to remove file '{}': {}", corrected_path, e)
             })?;
+            let diff_chunk = DiffChunk {
+                file_name: corrected_path.clone(),
+                file_action: "remove".to_string(),
+                line1: 1,
+                line2: file_content.lines().count(),
+                lines_remove: file_content.clone(),
+                lines_add: "".to_string(),
+                file_name_rename: None,
+                is_file: true,
+                application_details: format!("File `{}` removed", corrected_path),
+            };
             messages.push(ContextEnum::ChatMessage(ChatMessage {
-                role: "tool".to_string(),
-                content: ChatContent::SimpleText(format!("Removed file '{}'", corrected_path)),
+                role: "diff".to_string(),
+                content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()

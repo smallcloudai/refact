@@ -48,14 +48,13 @@ pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatM
         ChatMode::NO_TOOLS => {
             vec![]
         },
-        ChatMode::EXPLORE | ChatMode::AGENT => filter_out_tools(&current_tools, &vec!["think"]),
-        ChatMode::THINKING_AGENT => current_tools,
+        ChatMode::EXPLORE | ChatMode::AGENT => current_tools,
         ChatMode::CONFIGURE => filter_out_tools(&current_tools, &vec!["tree", "locate", "knowledge", "search"]),
         ChatMode::PROJECT_SUMMARY => keep_tools(&current_tools, &vec!["cat", "tree", "bash"]),
     }
 }
 
-pub const CHAT_TOP_N: usize = 7;
+pub const CHAT_TOP_N: usize = 12;
 
 pub async fn lookup_chat_scratchpad(
     caps: Arc<StdRwLock<CodeAssistantCaps>>,
@@ -111,6 +110,23 @@ pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Resu
     Ok(messages)
 }
 
+fn fill_sampling_params(chat_post: &mut ChatPost, n_ctx: usize, model_name: &String) {
+    let mut max_tokens = if chat_post.increase_max_tokens {
+        chat_post.max_tokens.unwrap_or(16384)
+    } else {
+        chat_post.max_tokens.unwrap_or(4096)
+    };
+    max_tokens = max_tokens.min(n_ctx / 4);
+    chat_post.max_tokens = Some(max_tokens);
+    if chat_post.parameters.max_new_tokens == 0 {
+        chat_post.parameters.max_new_tokens = max_tokens;
+    }
+    chat_post.model = model_name.clone();
+    chat_post.parameters.n = chat_post.n;
+    chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.0)));
+}
+
+
 async fn _chat(
     gcx: Arc<ARwLock<GlobalContext>>,
     body_bytes: &hyper::body::Bytes,
@@ -153,15 +169,7 @@ async fn _chat(
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("{}", e))
     })?;
-    if chat_post.parameters.max_new_tokens == 0 {
-        chat_post.parameters.max_new_tokens = chat_post.max_tokens;
-    }
-    if chat_post.parameters.max_new_tokens == 0 {
-        chat_post.parameters.max_new_tokens = 1024;
-    }
-    chat_post.parameters.n = chat_post.n;
-    chat_post.parameters.temperature = Some(chat_post.parameters.temperature.unwrap_or(chat_post.temperature.unwrap_or(0.0)));
-    chat_post.model = model_name.clone();
+    fill_sampling_params(&mut chat_post, n_ctx, &model_name);
 
     // extra validation to catch {"query": "Frog", "scope": "workspace"}{"query": "Toad", "scope": "workspace"}
     let re = regex::Regex::new(r"\{.*?\}").unwrap();

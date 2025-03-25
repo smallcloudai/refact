@@ -5,7 +5,6 @@ import {
   isUserMessage,
   linksApi,
   type ChatLink,
-  INCREASED_MAX_NEW_TOKENS,
 } from "..//services/refact";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
@@ -20,9 +19,9 @@ import {
   selectMessages,
   selectModel,
   selectThreadMode,
+  setIncreaseMaxTokens,
   setIntegrationData,
   setIsNewChatSuggested,
-  setMaxNewTokens,
 } from "../features/Chat";
 import { useGoToLink } from "./useGoToLink";
 import { setError } from "../features/Errors/errorsSlice";
@@ -220,8 +219,9 @@ export function useLinksFromLsp() {
         return;
       }
 
+      // TBD: It should be safe to remove this now?
       if (link.link_action === "regenerate-with-increased-context-size") {
-        dispatch(setMaxNewTokens(INCREASED_MAX_NEW_TOKENS));
+        dispatch(setIncreaseMaxTokens(true));
         submit({
           maybeDropLastMessage: true,
         });

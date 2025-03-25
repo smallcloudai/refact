@@ -1,18 +1,19 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::hash::Hash;
-use std::path::PathBuf;
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Weak, Mutex as StdMutex};
 use std::time::Instant;
 use indexmap::IndexSet;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
-use notify::event::{CreateKind, DataChange, ModifyKind, RemoveKind};
+use notify::event::{CreateKind, ModifyKind, RemoveKind};
 use ropey::Rope;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 use walkdir::WalkDir;
 use which::which;
 use tracing::info;
 
+use crate::files_correction::canonical_path;
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
@@ -327,24 +328,32 @@ pub fn ls_files(
     Ok(paths)
 }
 
-pub async fn detect_vcs_for_a_file_path(file_path: &PathBuf) -> Option<(PathBuf, &'static str)> {
-    let mut dir = file_path.clone();
+pub async fn detect_vcs_for_a_file_path(file_path: &Path) -> Option<(PathBuf, &'static str)> {
+    let mut dir = file_path.to_path_buf();
     if dir.is_file() {
         dir.pop();
     }
     loop {
-        if dir.join(".git").is_dir() {
-            return Some((dir.clone(), "git"));
-        } else if dir.join(".svn").is_dir() {
-            return Some((dir.clone(), "svn"));
-        } else if dir.join(".hg").is_dir() {
-            return Some((dir.clone(), "hg"));
+        if let Some(vcs_type) = get_vcs_type(&dir) {
+            return Some((dir, vcs_type));
         }
         if !dir.pop() {
             break;
         }
     }
     None
+}
+
+pub fn get_vcs_type(path: &Path) -> Option<&'static str> {
+    if path.join(".git").is_dir() {
+        Some("git")
+    } else if path.join(".svn").is_dir() {
+        Some("svn")
+    } else if path.join(".hg").is_dir() {
+        Some("hg")
+    } else {
+        None
+    }
 }
 
 // Slow version of version control detection:
@@ -410,10 +419,11 @@ async fn _ls_files_under_version_control_recursive(
                 continue;
             }
             avoid_dups.insert(checkme.clone());
-            let maybe_files = ls_files_under_version_control(&checkme).await;
-            if let Some(v) = maybe_files {
-                // Have version control
+            if get_vcs_type(&checkme).is_some() {
                 vcs_folders.push(checkme.clone());
+            }
+            if let Some(v) = ls_files_under_version_control(&checkme).await {
+                // Has version control
                 let indexing_yaml_path = checkme.join(".refact").join("indexing.yaml");
                 if indexing_yaml_path.exists() {
                     match crate::files_blocklist::load_indexing_yaml(&indexing_yaml_path, Some(&checkme)).await {
@@ -757,14 +767,13 @@ pub async fn remove_folder(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
 
 pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalContext>>)
 {
-    async fn on_create_modify(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
+    async fn on_file_change(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         let mut docs = vec![];
         let indexing_everywhere_arc;
         if let Some(gcx) = gcx_weak.clone().upgrade() {
             indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
         } else {
-            // the program is shutting down
-            return;
+            return; // the program is shutting down
         }
         for p in &event.paths {
             let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
@@ -772,68 +781,82 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                 continue;
             }
 
-            let mut go_ahead = true;
-            {
-                let is_it_good = is_valid_file(p, false, false);
-                if is_it_good.is_err() {
-                    // info!("{:?} ignoring changes: {}", p, is_it_good.err().unwrap());
-                    go_ahead = false;
-                }
-            }
-
-            if go_ahead {
-                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
+            // If it's a removed file or a valid existing file, then we can enqueue it
+            if (!p.exists() && p.extension().is_some()) || is_valid_file(p, false, false).is_ok() {
+                let cpath = crate::files_correction::canonical_path(p.to_string_lossy());
                 docs.push(cpath.to_string_lossy().to_string());
             }
         }
         if docs.is_empty() {
             return;
         }
-        // info!("EventKind::Create/Modify {} paths", event.paths.len());
+        // info!("EventKind::Create/Modify/Remove {} paths", event.paths.len());
         if let Some(gcx) = gcx_weak.clone().upgrade() {
             enqueue_some_docs(gcx, &docs, false).await;
         }
     }
 
-    async fn on_remove(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
-        let mut never_mind = true;
-        let indexing_everywhere_arc;
+    async fn on_dot_git_dir_change(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
         if let Some(gcx) = gcx_weak.clone().upgrade() {
-            indexing_everywhere_arc = reload_indexing_everywhere_if_needed(gcx.clone()).await;
-        } else {
-            // the program is shutting down
-            return;
-        }
-        for p in &event.paths {
-            let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
-            never_mind &= is_blocklisted(&indexing_settings, &p);
-        }
-        let mut docs = vec![];
-        if !never_mind {
-            for p in &event.paths {
-                let indexing_settings = indexing_everywhere_arc.indexing_for_path(p);
-                if is_blocklisted(&indexing_settings, &p) {
-                    continue;
-                }
-                let cpath = crate::files_correction::canonical_path(&p.to_string_lossy().to_string());
-                docs.push(cpath.to_string_lossy().to_string());
+            // Get the path before .git component, and check if repo associated exists
+            let repo_paths = event.paths.iter()
+                .filter_map(|p| {
+                    p.components()
+                        .position(|c| c == Component::Normal(".git".as_ref()))
+                        .map(|i| {
+                            let repo_p = p.components().take(i).collect::<PathBuf>();
+                            canonical_path(repo_p.to_string_lossy())
+                        })
+                })
+                .map(|p| { 
+                    let exists = p.join(".git").exists(); 
+                    (p.clone(), exists) 
+                })
+                .collect::<Vec<_>>();
+            
+            if repo_paths.is_empty() {
+                return;
             }
-        }
-        if docs.is_empty() {
-            return;
-        }
-        if let Some(gcx) = gcx_weak.clone().upgrade() {
-            enqueue_some_docs(gcx, &docs, false).await;
+            
+            let workspace_vcs_roots = gcx.read().await.documents_state.workspace_vcs_roots.clone();
+            
+            let mut should_reindex = false;
+            {
+                let mut workspace_vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
+                for (repo_path, exists_in_disk) in repo_paths {
+                    if exists_in_disk && !workspace_vcs_roots_locked.contains(&repo_path) {
+                        tracing::info!("Found .git folder in workspace: {}", repo_path.to_string_lossy());
+                        should_reindex = true;
+                        workspace_vcs_roots_locked.push(repo_path);
+                    } else if !exists_in_disk && workspace_vcs_roots_locked.contains(&repo_path) {
+                        tracing::info!("Removed .git folder from workspace: {}", repo_path.to_string_lossy());
+                        should_reindex = true;
+                        workspace_vcs_roots_locked.retain(|p| p != &repo_path);
+                    }
+                }
+            }
+
+            if should_reindex {
+                tracing::info!("Reindexing all files");
+                enqueue_all_files_from_workspace_folders(gcx, false, false).await;
+            }
         }
     }
 
     match event.kind {
-        EventKind::Any => {},
-        EventKind::Access(_) => {},
-        EventKind::Create(CreateKind::File) => on_create_modify(gcx_weak.clone(), event).await,
-        EventKind::Remove(RemoveKind::File) => on_remove(gcx_weak.clone(), event).await,
-        EventKind::Modify(ModifyKind::Data(DataChange::Content)) => on_create_modify(gcx_weak.clone(), event).await,
-        EventKind::Other => {}
-        _ => {}
+        // We may receive specific event that a folder is being added/removed, but not the .git itself, this happens on Unix systems
+        EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter().any(
+            |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
+        ) => on_dot_git_dir_change(gcx_weak.clone(), event).await,
+        
+        // In Windows, we receive generic events (Any subtype), but we receive them about each exact folder
+        EventKind::Create(CreateKind::Any) | EventKind::Modify(ModifyKind::Any) | EventKind::Remove(RemoveKind::Any)
+            if event.paths.iter().any(|p| p.ends_with(".git")) =>
+            on_dot_git_dir_change(gcx_weak, event).await,
+
+        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
+            on_file_change(gcx_weak.clone(), event).await,
+        
+        EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
 }

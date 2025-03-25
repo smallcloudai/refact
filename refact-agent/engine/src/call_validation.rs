@@ -39,16 +39,26 @@ impl Default for ReasoningEffort {
     }
 }
 
+impl ReasoningEffort {
+    pub fn to_string(&self) -> String { format!("{:?}", self).to_lowercase() }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SamplingParameters {
     #[serde(default)]
     pub max_new_tokens: usize,  // TODO: rename it to `max_completion_tokens` everywhere, including chat-js
     pub temperature: Option<f32>,
-    pub top_p: Option<f32>,
+    pub top_p: Option<f32>,  // NOTE: deprecated
     #[serde(default)]
     pub stop: Vec<String>,
     pub n: Option<usize>,
-    pub reasoning_effort: Option<ReasoningEffort>
+    #[serde(default)]
+    pub boost_reasoning: bool,
+    // NOTE: use the following arguments for direct API calls
+    #[serde(default)]
+    pub reasoning_effort: Option<ReasoningEffort>,  // OpenAI style reasoning
+    #[serde(default)]
+    pub thinking: Option<serde_json::Value>,  // Anthropic style reasoning
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -163,6 +173,8 @@ pub struct ChatMessage {
     pub usage: Option<ChatUsage>,
     #[serde(default, skip_serializing_if="Vec::is_empty")]
     pub checkpoints: Vec<Checkpoint>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub thinking_blocks: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -175,6 +187,8 @@ pub struct SubchatParameters {
     pub subchat_temperature: Option<f32>,
     #[serde(default)]
     pub subchat_max_new_tokens: usize,
+    #[serde(default)]
+    pub subchat_reasoning_effort: Option<ReasoningEffort>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -189,7 +203,9 @@ pub struct ChatPost {
     pub stream: Option<bool>,
     pub temperature: Option<f32>,
     #[serde(default)]
-    pub max_tokens: usize,
+    pub max_tokens: Option<usize>,
+    #[serde(default)]
+    pub increase_max_tokens: bool,
     #[serde(default)]
     pub n: Option<usize>,
     #[serde(default)]
@@ -232,21 +248,19 @@ pub enum ChatMode {
     AGENT,
     CONFIGURE,
     PROJECT_SUMMARY,
-    THINKING_AGENT,
 }
 
 impl ChatMode {
     pub fn supports_checkpoints(self) -> bool {
         match self {
-            ChatMode::NO_TOOLS | ChatMode::EXPLORE => false,
-            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | 
-                ChatMode::THINKING_AGENT => true,
+            ChatMode::NO_TOOLS => false,
+            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | ChatMode::EXPLORE => true,
         }
     }
 
     pub fn is_agentic(self) -> bool {
         match self {
-            ChatMode::AGENT | ChatMode::THINKING_AGENT => true,
+            ChatMode::AGENT => true,
             ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE | 
                 ChatMode::PROJECT_SUMMARY => false,
         }
@@ -335,10 +349,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -366,10 +377,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -397,10 +405,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -428,10 +433,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),

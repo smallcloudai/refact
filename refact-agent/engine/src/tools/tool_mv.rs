@@ -5,13 +5,16 @@ use tokio::fs;
 use std::io;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
+use serde_json::json;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
+use crate::privacy::{FilePrivacyLevel, load_privacy_if_needed, check_file_privacy};
 
 pub struct ToolMv;
 
@@ -109,6 +112,22 @@ impl Tool for ToolMv {
         let src_true_path = canonical_path(&src_corrected_path);
         let dst_true_path = canonical_path(&dst_corrected_path);
 
+        let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
+        if let Err(e) = check_file_privacy(
+            privacy_settings.clone(), 
+            &src_true_path, 
+            &FilePrivacyLevel::AllowToSendAnywhere
+        ) {
+            return Err(format!("Cannot move '{}': {}", src_str, e));
+        }
+        if let Err(e) = check_file_privacy(
+            privacy_settings.clone(), 
+            &dst_true_path, 
+            &FilePrivacyLevel::AllowToSendAnywhere
+        ) {
+            return Err(format!("Cannot move to '{}': {}", src_str, e));
+        }
+
         let src_within_project = project_dirs.iter().any(|p| src_true_path.starts_with(p));
         let dst_within_project = project_dirs.iter().any(|p| dst_true_path.starts_with(p));
         if !src_within_project && !gcx.read().await.cmdline.inside_container {
@@ -120,7 +139,12 @@ impl Tool for ToolMv {
 
         let src_metadata = fs::symlink_metadata(&src_true_path).await
             .map_err(|e| format!("Failed to access source '{}': {}", src_str, e))?;
-
+            
+        let mut src_file_content = String::new();
+        if !src_is_dir {
+            src_file_content = get_file_text_from_memory_or_disk(gcx.clone(), &src_true_path).await?;
+        }
+        let mut dst_file_content = String::new();
         if let Ok(dst_metadata) = fs::metadata(&dst_true_path).await {
             if !overwrite {
                 return Err(format!("Destination '{}' exists. Use overwrite=true to replace it", dst_str));
@@ -129,6 +153,9 @@ impl Tool for ToolMv {
                 fs::remove_dir_all(&dst_true_path).await
                     .map_err(|e| format!("Failed to remove existing directory '{}': {}", dst_str, e))?;
             } else {
+                if !dst_metadata.is_dir() {
+                    dst_file_content = fs::read_to_string(&dst_true_path).await.unwrap_or_else(|_| "".to_string());
+                }
                 fs::remove_file(&dst_true_path).await
                     .map_err(|e| format!("Failed to remove existing file '{}': {}", dst_str, e))?;
             }
@@ -148,21 +175,55 @@ impl Tool for ToolMv {
 
         match fs::rename(&src_true_path, &dst_true_path).await {
             Ok(_) => {
-                let op_desc = if src_true_path.parent() == dst_true_path.parent() { "Renamed" } else { "Moved" };
-                let item_desc = if src_is_dir { format!("directory '{}'", src_str) } else { format!("file '{}'", src_str) };
                 let corrections = src_str != src_corrected_path || dst_str != dst_corrected_path;
-                let messages = vec![ContextEnum::ChatMessage(ChatMessage {
-                    role: "tool".to_string(),
-                    content: ChatContent::SimpleText(format!("{} {} to '{}'", op_desc, item_desc, dst_str)),
-                    tool_calls: None,
-                    tool_call_id: tool_call_id.clone(),
-                    ..Default::default()
-                })];
+                let mut messages = vec![];
+                if !src_is_dir && !src_file_content.is_empty() {
+                    let diff_chunk = DiffChunk {
+                        file_name: src_corrected_path.clone(),
+                        file_action: "rename".to_string(),
+                        line1: 1,
+                        line2: src_file_content.lines().count(),
+                        lines_remove: src_file_content.clone(),
+                        lines_add: "".to_string(), 
+                        file_name_rename: Some(dst_corrected_path.clone()),
+                        is_file: true,
+                        application_details: format!("File {} from '{}' to '{}'", 
+                            if src_true_path.parent() == dst_true_path.parent() { "renamed" } else { "moved" },
+                            src_corrected_path, dst_corrected_path),
+                    };
+                    if !dst_file_content.is_empty() {
+                        let dst_diff_chunk = DiffChunk {
+                            file_name: dst_corrected_path.clone(),
+                            file_action: "edit".to_string(), // Use "edit" instead of "overwrite"
+                            line1: 1,
+                            line2: dst_file_content.lines().count(),
+                            lines_remove: dst_file_content.clone(),
+                            lines_add: src_file_content.clone(),
+                            file_name_rename: None,
+                            is_file: true,
+                            application_details: format!("`{}` replaced with `{}`", dst_corrected_path, src_corrected_path),
+                        };
+                        messages.push(ContextEnum::ChatMessage(ChatMessage {
+                            role: "diff".to_string(),
+                            content: ChatContent::SimpleText(json!([diff_chunk, dst_diff_chunk]).to_string()),
+                            tool_calls: None,
+                            tool_call_id: tool_call_id.clone(),
+                            ..Default::default()
+                        }));
+                    } else {
+                        messages.push(ContextEnum::ChatMessage(ChatMessage {
+                            role: "diff".to_string(),
+                            content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
+                            tool_calls: None,
+                            tool_call_id: tool_call_id.clone(),
+                            ..Default::default()
+                        }));
+                    }
+                }
                 Ok((corrections, messages))
             },
             Err(e) => {
                 if e.kind() == io::ErrorKind::Other && e.to_string().contains("cross-device") {
-                    // Cross-device move fallback.
                     if src_metadata.is_dir() {
                         Err("Cross-device move of directories is not supported in this simplified tool".to_string())
                     } else {
@@ -170,13 +231,51 @@ impl Tool for ToolMv {
                             .map_err(|e| format!("Failed to copy '{}' to '{}': {}", src_str, dst_str, e))?;
                         fs::remove_file(&src_true_path).await
                             .map_err(|e| format!("Failed to remove source file '{}' after copy: {}", src_str, e))?;
-                        let messages = vec![ContextEnum::ChatMessage(ChatMessage {
-                            role: "tool".to_string(),
-                            content: ChatContent::SimpleText(format!("Moved file '{}' to '{}'", src_str, dst_str)),
-                            tool_calls: None,
-                            tool_call_id: tool_call_id.clone(),
-                            ..Default::default()
-                        })];
+                            
+                        let mut messages = vec![];
+                        
+                        if !src_file_content.is_empty() {
+                            let diff_chunk = DiffChunk {
+                                file_name: src_corrected_path.clone(),
+                                file_action: "rename".to_string(),
+                                line1: 1,
+                                line2: src_file_content.lines().count(),
+                                lines_remove: src_file_content.clone(),
+                                lines_add: "".to_string(), 
+                                file_name_rename: Some(dst_corrected_path.clone()),
+                                is_file: true,
+                                application_details: format!("File renamed from '{}' to '{}'", 
+                                    src_corrected_path, dst_corrected_path),
+                            };
+                            if !dst_file_content.is_empty() {
+                                let dst_diff_chunk = DiffChunk {
+                                    file_name: dst_corrected_path.clone(),
+                                    file_action: "edit".to_string(),
+                                    line1: 1,
+                                    line2: dst_file_content.lines().count(),
+                                    lines_remove: dst_file_content.clone(),
+                                    lines_add: src_file_content.clone(),
+                                    file_name_rename: None,
+                                    is_file: true,
+                                    application_details: format!("`{}` replaced with `{}`", dst_corrected_path, src_corrected_path),
+                                };
+                                messages.push(ContextEnum::ChatMessage(ChatMessage {
+                                    role: "diff".to_string(),
+                                    content: ChatContent::SimpleText(json!([diff_chunk, dst_diff_chunk]).to_string()),
+                                    tool_calls: None,
+                                    tool_call_id: tool_call_id.clone(),
+                                    ..Default::default()
+                                }));
+                            } else {
+                                messages.push(ContextEnum::ChatMessage(ChatMessage {
+                                    role: "diff".to_string(),
+                                    content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
+                                    tool_calls: None,
+                                    tool_call_id: tool_call_id.clone(),
+                                    ..Default::default()
+                                }));
+                            }
+                        }
                         Ok((false, messages))
                     }
                 } else {

@@ -47,6 +47,10 @@ export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
 export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
+export const ideForceReloadFileByPath = createAction<string>(
+  "ide/forceReloadFileByPath",
+);
+
 export const ideToolCall = createAction<{
   toolCall: TextDocToolCall;
   chatId: string;
@@ -186,6 +190,14 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setForceReloadFileByPath = useCallback(
+    (path: string) => {
+      const action = ideForceReloadFileByPath(path);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
   const [getIntegrationsPath] = pathApi.useLazyIntegrationsPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
@@ -256,6 +268,7 @@ export const useEventsBusForIDE = () => {
     escapeKeyPressed,
     setIsChatStreaming,
     setIsChatReady,
+    setForceReloadFileByPath,
     sendToolCallToIde,
   };
 };

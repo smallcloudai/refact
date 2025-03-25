@@ -13,6 +13,7 @@ use crate::call_validation::{ChatMessage, ChatPost, ContextFile, SamplingParamet
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::fix_and_limit_messages_history;
+use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -32,6 +33,7 @@ pub struct GenericChatScratchpad {
     // "SYSTEM:" keyword means it's not one token
     pub keyword_user: String,
     pub keyword_asst: String,
+    pub prepend_system_prompt: bool,
     pub has_rag_results: HasRagResults,
     pub allow_at: bool,
 }
@@ -41,6 +43,7 @@ impl GenericChatScratchpad {
         tokenizer: Arc<RwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
+        prepend_system_prompt: bool,
         allow_at: bool,
     ) -> Self {
         GenericChatScratchpad {
@@ -53,6 +56,7 @@ impl GenericChatScratchpad {
             keyword_syst: "".to_string(),
             keyword_user: "".to_string(),
             keyword_asst: "".to_string(),
+            prepend_system_prompt,
             has_rag_results: HasRagResults::new(),
             allow_at,
         }
@@ -97,13 +101,22 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let n_ctx = ccx.lock().await.n_ctx;
-        let (messages, _any_context_produced) = if self.allow_at {
-            run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &self.messages, &mut self.has_rag_results).await
+        let (gcx, n_ctx, should_execute_remotely) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
+        };
+
+        let messages = if self.prepend_system_prompt && self.allow_at {
+            prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
+        } else {
+            self.messages.clone()
+        };
+        let (messages, _any_context_produced) = if self.allow_at && !should_execute_remotely {
+            run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
         } else {
             (self.messages.clone(), false)
         };
-        let limited_msgs: Vec<ChatMessage> = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None, self.post.model.as_str())?;
+        let (limited_msgs, _compression_strength) = fix_and_limit_messages_history(&self.t, &messages, sampling_parameters_to_patch, n_ctx, None, self.post.model.as_str())?;
         // if self.supports_tools {
         // };
         sampling_parameters_to_patch.stop = self.dd.stop_list.clone();

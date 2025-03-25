@@ -7,15 +7,18 @@ import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { LikeButton } from "./LikeButton";
+import { ReasoningContent } from "./ReasoningContent";
 
 type ChatInputProps = {
   message: string | null;
+  reasoningContent?: string | null;
   toolCalls?: ToolCall[] | null;
   isLast?: boolean;
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
   message,
+  reasoningContent,
   toolCalls,
   isLast,
 }) => {
@@ -59,6 +62,12 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
 
   return (
     <Container position="relative">
+      {reasoningContent && (
+        <ReasoningContent
+          reasoningContent={reasoningContent}
+          onCopyClick={handleCopy}
+        />
+      )}
       {message && (
         <Box py="4">
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>

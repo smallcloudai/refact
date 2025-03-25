@@ -101,7 +101,6 @@ export const useSendChatRequest = () => {
 
   const currentMessages = useAppSelector(selectMessages);
   const systemPrompt = useAppSelector(getSelectedSystemPrompt);
-  const sendImmediately = useAppSelector(selectSendImmediately);
   const toolUse = useAppSelector(selectThreadToolUse);
   const attachedImages = useAppSelector(selectAllImages);
   const threadMode = useAppSelector(selectThreadMode);
@@ -278,13 +277,6 @@ export const useSendChatRequest = () => {
     abortControllers.abort(chatId);
   }, [abortControllers, chatId]);
 
-  useEffect(() => {
-    if (sendImmediately) {
-      dispatch(setSendImmediately(false));
-      void sendMessages(messagesWithSystemPrompt);
-    }
-  }, [dispatch, messagesWithSystemPrompt, sendImmediately, sendMessages]);
-
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
@@ -348,6 +340,7 @@ export const useSendChatRequest = () => {
     maybeAddImagesToQuestion,
     rejectToolUsage,
     sendMessages,
+    messagesWithSystemPrompt,
   };
 };
 
@@ -359,12 +352,21 @@ export function useAutoSend() {
   const errored = useAppSelector(selectChatError);
   const preventSend = useAppSelector(selectPreventSend);
   const isWaiting = useAppSelector(selectIsWaiting);
+  const sendImmediately = useAppSelector(selectSendImmediately);
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
-  const { sendMessages, abort } = useSendChatRequest();
+  const { sendMessages, abort, messagesWithSystemPrompt } =
+    useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
   const thread = useAppSelector(selectThread);
   const isIntegration = thread.integration ?? false;
+
+  useEffect(() => {
+    if (sendImmediately) {
+      dispatch(setSendImmediately(false));
+      void sendMessages(messagesWithSystemPrompt);
+    }
+  }, [dispatch, messagesWithSystemPrompt, sendImmediately, sendMessages]);
 
   useEffect(() => {
     if (

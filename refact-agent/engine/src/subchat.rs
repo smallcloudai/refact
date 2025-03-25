@@ -59,12 +59,12 @@ pub async fn create_chat_post_and_scratchpad(
             stop: vec![],
             n: Some(n),
             reasoning_effort,
+            ..Default::default()  // TODO
         },
         model: model_name.to_string(),
         scratchpad: "".to_string(),
         stream: Some(false),
         temperature,
-        max_tokens: 0,
         n: Some(n),
         tools,
         tool_choice,
@@ -83,7 +83,7 @@ pub async fn create_chat_post_and_scratchpad(
         warn!("supports_tools is false");
     }
 
-    chat_post.max_tokens = n_ctx;
+    chat_post.max_tokens = Some(n_ctx);
     chat_post.scratchpad = scratchpad_name.clone();
 
     {
@@ -363,6 +363,7 @@ pub async fn subchat(
     wrap_up_prompt: &str,
     wrap_up_n: usize,
     temperature: Option<f32>,
+    reasoning_effort: Option<ReasoningEffort>,
     tx_toolid_mb: Option<String>,
     tx_chatid_mb: Option<String>,
     prepend_system_prompt: Option<bool>,
@@ -400,7 +401,7 @@ pub async fn subchat(
                 temperature,
                 None,
                 1,
-                None,
+                reasoning_effort.clone(),
                 prepend_system_prompt.unwrap_or(false),
                 Some(&mut usage_collector),
                 tx_toolid_mb.clone(),
@@ -423,7 +424,7 @@ pub async fn subchat(
                 temperature,
                 None,
                 1,
-                None,
+                reasoning_effort.clone(),
                 prepend_system_prompt.unwrap_or(false),
                 Some(&mut usage_collector),
                 tx_toolid_mb.clone(),
@@ -442,7 +443,7 @@ pub async fn subchat(
         temperature,
         None,
         wrap_up_n,
-        None,
+        reasoning_effort.clone(),
         prepend_system_prompt.unwrap_or(false),
         Some(&mut usage_collector),
         tx_toolid_mb.clone(),
@@ -462,7 +463,7 @@ pub async fn subchat(
                     temperature,
                     None,
                     1,
-                    None,
+                    reasoning_effort.clone(),
                     prepend_system_prompt.unwrap_or(false),
                     Some(&mut usage_collector),
                     tx_toolid_mb.clone(),

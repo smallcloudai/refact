@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
   PaperPlaneButton,
   BackToSideBarButton,
   AgentIntegrationsButton,
-} from "../Buttons/Buttons";
+  ThinkingButton,
+} from "../Buttons";
 import { TextArea } from "../TextArea";
 import { Form } from "./Form";
 import {
@@ -16,6 +17,8 @@ import {
   useConfig,
   useCapsForToolUse,
   useSendChatRequest,
+  useCompressChat,
+  useAutoFocusOnce,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -43,6 +46,7 @@ import {
   selectChatId,
   selectIsStreaming,
   selectIsWaiting,
+  selectLastSentCompression,
   selectMessages,
   selectPreventSend,
   // selectThreadMaximumTokens,
@@ -55,6 +59,7 @@ import { AgentCapabilities } from "./AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
 // import { useUsageCounter } from "../UsageCounter/useUsageCounter";
 import classNames from "classnames";
+import { ArchiveIcon } from "@radix-ui/react-icons";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -87,16 +92,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
-  // const currentThreadMaximumContextTokens = useAppSelector(
-  //   selectThreadMaximumTokens,
-  // );
-
-  // const { isOverflown: arePromptTokensBiggerThanContext, currentThreadUsage } =
-  //   useUsageCounter();
+  const lastSentCompression = useAppSelector(selectLastSentCompression);
+  const { compressChat, compressChatRequest } = useCompressChat();
+  const autoFocus = useAutoFocusOnce();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
-    return threadToolUse === "agent" && toolUse === "agent";
-  }, [toolUse, threadToolUse]);
+    return threadToolUse === "agent";
+  }, [threadToolUse]);
 
   const onClearError = useCallback(() => {
     if (messages.length > 0 && chatError) {
@@ -229,8 +231,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     (command: string) => {
       setValue(command);
       const trimmedCommand = command.trim();
-      setFileInteracted(!!trimmedCommand);
-      setLineSelectionInteracted(!!trimmedCommand);
+      if (!trimmedCommand) {
+        setFileInteracted(false);
+        setLineSelectionInteracted(false);
+      }
+
       if (trimmedCommand === "@help") {
         handleHelpInfo(helpText()); // This line has been fixed
       } else {
@@ -354,7 +359,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 required={true}
                 // disabled={isStreaming}
                 {...props}
-                autoFocus={true}
+                autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
                 onPaste={handlePastingFile}
               />
@@ -365,8 +370,32 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             align="center"
             justify="between"
           >
+            <ThinkingButton />
             <Flex gap="2" align="center" className={styles.buttonGroup}>
               <TokensPreview currentMessageQuery={value} />
+
+              <IconButton
+                size="1"
+                variant="ghost"
+                color={
+                  lastSentCompression === "high"
+                    ? "red"
+                    : lastSentCompression === "medium"
+                      ? "yellow"
+                      : undefined
+                }
+                title="Compress chat and continue"
+                type="button"
+                onClick={() => void compressChat()}
+                disabled={
+                  unCalledTools ||
+                  lastSentCompression === null ||
+                  lastSentCompression === "absent"
+                }
+                loading={compressChatRequest.isLoading}
+              >
+                <ArchiveIcon />
+              </IconButton>
               {toolUse === "agent" && (
                 <AgentIntegrationsButton
                   title="Set up Agent Integrations"

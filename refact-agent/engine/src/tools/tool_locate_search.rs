@@ -207,6 +207,7 @@ async fn find_relevant_files_with_search(
         LS_WRAP_UP,
         1,
         Some(0.1),
+        None,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-search")),
         Some(false),  
@@ -277,7 +278,7 @@ async fn process_assistant_output(
                         line1: 0,
                         line2: 0,
                         symbols: vec![],
-                        gradient_type: -1,
+                        gradient_type: 4,
                         usefulness: file_usefulness,
                     }));
                 },
@@ -299,7 +300,7 @@ async fn process_assistant_output(
                             line1: 0,
                             line2: 0,
                             symbols: vec![symbol.clone()],
-                            gradient_type: -1,
+                            gradient_type: 4,
                             usefulness: symbol_usefulness,
                         }));
                     }

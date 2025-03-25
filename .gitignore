@@ -292,3 +292,5 @@ dist
 
 # vite cache
 .vite
+# Refact binary/symlink
+**/refact/bin/refact-lsp

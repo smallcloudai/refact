@@ -24,14 +24,19 @@ import {
 import { isUserMessage, telemetryApi } from "../services/refact";
 import { deleteChatById } from "../features/History/historySlice";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
+import { useEventsBusForIDE } from "./useEventBusForIDE";
+import { selectConfig } from "../features/Config/configSlice";
 
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
+  const configIdeHost = useAppSelector(selectConfig).host;
 
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
+
+  const { setForceReloadFileByPath } = useEventsBusForIDE();
 
   const { restoreChangesFromCheckpoints, isLoading: isRestoring } =
     useRestoreCheckpoints();
@@ -129,6 +134,17 @@ export const useCheckpoints = () => {
           success: true,
           error_message: "",
         });
+
+        if (configIdeHost === "jetbrains") {
+          const files =
+            latestRestoredCheckpointsResult.reverted_changes.flatMap(
+              (change) => change.files_changed,
+            );
+          files.forEach((file) => {
+            setForceReloadFileByPath(file.absolute_path);
+          });
+        }
+
         dispatch(setIsCheckpointsPopupIsVisible(false));
       } else {
         dispatch(setCheckpointsErrorLog(response.error_log));
@@ -158,12 +174,15 @@ export const useCheckpoints = () => {
   }, [
     dispatch,
     sendTelemetryEvent,
+    setForceReloadFileByPath,
     restoreChangesFromCheckpoints,
+    configIdeHost,
     shouldNewChatBeStarted,
     maybeMessageIndex,
     chatId,
     messages,
     latestRestoredCheckpointsResult.current_checkpoints,
+    latestRestoredCheckpointsResult.reverted_changes,
   ]);
 
   return {

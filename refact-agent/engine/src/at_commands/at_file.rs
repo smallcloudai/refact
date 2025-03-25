@@ -177,6 +177,7 @@ pub async fn return_one_candidate_or_a_good_error(
         return Err(format!("The path {:?} is ambiguous. It could be interpreted as:\n{}", file_path, candidates.join("\n")));
     }
 
+    // XXX: sometimes it's relative path which looks OK but doesn't work
     let candidate = candidates.get(0).unwrap_or(&"".to_string()).clone();
     if !PathBuf::from(&candidate).exists() {
         return Err(format!("The path {:?} was not found on disk.", candidate));

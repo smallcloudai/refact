@@ -5,13 +5,13 @@ import {
   ExitIcon,
   Cross1Icon,
   FileTextIcon,
-  MagicWandIcon,
 } from "@radix-ui/react-icons";
 import classNames from "classnames";
 import styles from "./button.module.css";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import { useAppSelector } from "../../hooks";
 import { selectApiKey } from "../../features/Config/configSlice";
+import { PuzzleIcon } from "../../images/PuzzleIcon";
 
 type IconButtonProps = React.ComponentProps<typeof IconButton>;
 type ButtonProps = React.ComponentProps<typeof Button>;
@@ -26,7 +26,7 @@ export const AgentIntegrationsButton = forwardRef<
   IconButtonProps
 >((props, ref) => (
   <IconButton variant="ghost" {...props} ref={ref}>
-    <MagicWandIcon />
+    <PuzzleIcon />
   </IconButton>
 ));
 

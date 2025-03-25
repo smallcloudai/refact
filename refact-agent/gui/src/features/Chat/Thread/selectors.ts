@@ -1,6 +1,10 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
-import { isToolMessage } from "../../../services/refact/types";
+import {
+  isToolMessage,
+  isUserMessage,
+  UserMessage,
+} from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
@@ -11,10 +15,13 @@ export const selectToolUse = (state: RootState) => state.chat.tool_use;
 export const selectThreadToolUse = (state: RootState) =>
   state.chat.thread.tool_use;
 export const selectAutomaticPatch = (state: RootState) =>
-  state.chat.automatic_patch;
+  state.chat.thread.automatic_patch;
 
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;
+
+export const selectThreadBoostReasoning = (state: RootState) =>
+  state.chat.thread.boost_reasoning;
 
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;
@@ -22,7 +29,6 @@ export const selectThreadMaximumTokens = (state: RootState) =>
   state.chat.thread.currentMaximumContextTokens;
 export const selectThreadCurrentMessageTokens = (state: RootState) =>
   state.chat.thread.currentMessageContextTokens;
-export const selectThreadUsage = (state: RootState) => state.chat.thread.usage;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
@@ -66,4 +72,19 @@ export const selectIntegration = createSelector(
 export const selectThreadMode = createSelector(
   selectThread,
   (thread) => thread.mode,
+);
+
+export const selectLastSentCompression = createSelector(
+  selectMessages,
+  (messages) => {
+    const lastUserMessage = messages.reduce<null | UserMessage>(
+      (acc, message) => {
+        if (isUserMessage(message)) return message;
+        return acc;
+      },
+      null,
+    );
+
+    return lastUserMessage?.compression_strength ?? null;
+  },
 );

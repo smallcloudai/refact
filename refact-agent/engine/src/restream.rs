@@ -31,11 +31,10 @@ async fn _get_endpoint_and_stuff_from_model_name(
         custom_endpoint_style,
         mut endpoint_template,
         custom_endpoint_template,
-        endpoint_chat_passthrough
+        endpoint_chat_passthrough,
     ) = {
         let caps_locked = caps.read().unwrap();
-        let is_chat = caps_locked.code_chat_models.contains_key(&model_name);
-        if is_chat {
+        if caps_locked.code_chat_models.contains_key(&model_name) {
             (
                 caps_locked.chat_apikey.clone(),
                 caps_locked.endpoint_style.clone(),      // abstract
@@ -62,7 +61,7 @@ async fn _get_endpoint_and_stuff_from_model_name(
     if !custom_endpoint_template.is_empty() {
         endpoint_template = custom_endpoint_template;
     }
-    return (
+    (
         api_key,
         endpoint_template,
         endpoint_style,
@@ -105,7 +104,7 @@ pub async fn scratchpad_interaction_not_stream_json(
     let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
-        Ok(serde_json::Value::Object(serde_json::Map::new()))
+        Ok(Value::Object(serde_json::Map::new()))
     } else if endpoint_style == "hf" {
         crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
             &mut save_url,
@@ -282,6 +281,7 @@ pub async fn scratchpad_interaction_not_stream(
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
 
     try_insert_usage(&mut scratchpad_response_json);
+    scratchpad_response_json["compression_strength"] = crate::forward_to_openai_endpoint::try_get_compression_from_prompt(&prompt);
 
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
     // info!("handle_v1_code_completion return {}", txt);
@@ -382,7 +382,9 @@ pub async fn scratchpad_interaction_stream(
             let value_maybe = my_scratchpad.response_spontaneous();
             if let Ok(value) = value_maybe {
                 for el in value {
-                    let value_str = format!("data: {}\n\n", serde_json::to_string(&el).unwrap());
+                    let mut el_with_compression = el.clone();
+                    el_with_compression["compression_strength"] = crate::forward_to_openai_endpoint::try_get_compression_from_prompt(&prompt);
+                    let value_str = format!("data: {}\n\n", serde_json::to_string(&el_with_compression).unwrap());
                     info!("yield: {:?}", nicer_logs::first_n_chars(&value_str, 40));
                     yield Result::<_, String>::Ok(value_str);
                 }
