@@ -8,9 +8,32 @@
             <div id="providers-container">
                 <!-- Provider cards will be dynamically inserted here -->
             </div>
+
+            <h3 class="mb-4 mt-5">Tokenizers</h3>
+            <p class="mb-4">Manage custom tokenizers for third-party models.</p>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div id="tokenizers-list" class="mb-3">
+                        <!-- Tokenizers will be dynamically inserted here -->
+                        <div class="alert alert-info" id="no-tokenizers-msg">
+                            No custom tokenizers available. Use the buttons below to add a tokenizer.
+                        </div>
+                    </div>
+
+                    <div class="d-flex">
+                        <button class="btn btn-primary me-2" id="upload-tokenizer-btn">
+                            <i class="bi bi-upload"></i> Upload Tokenizer
+                        </button>
+                        <button class="btn btn-outline-primary" id="add-tokenizer-url-btn">
+                            <i class="bi bi-link"></i> Add Tokenizer by URL
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
+
     <!-- Success Toast -->
     <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
         <div class="toast third-party-apis-toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -23,7 +46,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Add Provider Modal -->
     <div class="modal fade" id="add-third-party-provider-modal" tabindex="-1" aria-labelledby="add-third-party-provider-modal-label" aria-hidden="true">
         <div class="modal-dialog">
@@ -49,7 +72,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Add Model Modal -->
     <div class="modal fade" id="add-third-party-model-modal" tabindex="-1" aria-labelledby="add-third-party-model-modal-label" aria-hidden="true">
         <div class="modal-dialog">
@@ -67,4 +90,35 @@
             </div>
         </div>
     </div>
+
+    <!-- Add Tokenizer URL Modal -->
+    <div class="modal fade" id="add-tokenizer-url-modal" tabindex="-1" aria-labelledby="add-tokenizer-url-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add-tokenizer-url-modal-label">Add Tokenizer by URL</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="tokenizer-name" class="form-label">Tokenizer Name</label>
+                        <input type="text" class="form-control" id="tokenizer-name" placeholder="e.g., gpt-4-tokenizer">
+                        <div class="form-text">Enter a descriptive name for this tokenizer.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tokenizer-url" class="form-label">Tokenizer URL</label>
+                        <input type="text" class="form-control" id="tokenizer-url" placeholder="https://huggingface.co/model/tokenizer.json">
+                        <div class="form-text">Enter the URL to the tokenizer JSON file.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="add-tokenizer-url-submit">Add Tokenizer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tokenizer Upload Modal Container -->
+    <div id="tokenizer-upload-modal-container"></div>
 </div>
