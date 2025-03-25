@@ -114,3 +114,22 @@
 .api-key-input {
     font-family: monospace;
 }
+
+/* Tokenizer styling */
+.tokenizer-item {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.tokenizer-name {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+#tokenizers-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
