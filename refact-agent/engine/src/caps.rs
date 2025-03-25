@@ -1,10 +1,8 @@
 use std::path::Path;
-use std::path::PathBuf;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use indexmap::IndexMap;
 use serde::Deserializer;
-use std::fs::File;
-use std::io::Read;
 use std::sync::Arc;
 
 use serde::Deserialize;
@@ -16,6 +14,7 @@ use tracing::{error, info, warn};
 
 use crate::custom_error::MapErrToString;
 use crate::custom_error::YamlError;
+use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
 use crate::known_models::KNOWN_MODELS;
 
@@ -35,18 +34,18 @@ pub struct BaseModelRecord {
     #[serde(skip_deserializing)]
     pub id: String, 
 
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub endpoint: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub endpoint_style: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub api_key: String,
 
     #[serde(default)]
     pub support_metadata: bool,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub similar_models: Vec<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub tokenizer: String,
 }
 
@@ -147,8 +146,6 @@ pub struct CodeAssistantCaps {
     
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
-    #[serde(default)]
-    pub code_chat_default_system_prompt: String, // Should we get rid of this?
 
     #[serde(default)]
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
@@ -179,7 +176,6 @@ pub struct CapsProvider {
     #[serde(default, alias = "endpoint_embeddings_template")]
     pub embedding_endpoint: String,
 
-    // default api key is in the command line
     #[serde(default)]
     pub api_key: String,
 
@@ -213,10 +209,15 @@ fn default_code_completion_n_ctx() -> usize { 2048 }
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DefaultModels {
     #[serde(default, alias = "code_completion_default_model")]
+    #[serde(rename(serialize = "code_completion_default_model"))]
     pub completion_model: String,
+
     #[serde(default, alias = "multiline_code_completion_default_model")]
+    #[serde(rename(serialize = "multiline_code_completion_default_model"))]
     pub multiline_completion_model: String,
+
     #[serde(default, alias = "code_chat_default_model")]
+    #[serde(rename(serialize = "code_chat_default_model"))]
     pub chat_model: String,
 }
 
@@ -236,6 +237,40 @@ fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
     }
 }
 
+/// Returns yaml files from providers.d directory, and list of errors from reading 
+/// directory or listing files
+async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<String>) {
+    let providers_dir = config_dir.join("providers.d");
+    let mut yaml_paths = Vec::new();
+    let mut errors = Vec::new();
+    
+    let mut entries = match tokio::fs::read_dir(&providers_dir).await {
+        Ok(entries) => entries,
+        Err(e) => {
+            errors.push(format!("Failed to read providers directory: {e}"));
+            return (yaml_paths, errors);
+        }
+    };
+    
+    while let Some(entry_result) = entries.next_entry().await.transpose() {
+        match entry_result {
+            Ok(entry) => {
+                let path = entry.path();
+                
+                if path.is_file() && 
+                   path.extension().map_or(false, |ext| ext == "yaml" || ext == "yml") {
+                    yaml_paths.push(path);
+                }
+            },
+            Err(e) => {
+                errors.push(format!("Error reading directory entry: {e}"));
+            }
+        }
+    }
+    
+    (yaml_paths, errors)
+}
+
 async fn read_providers_d(
     prev_providers: Vec<CapsProvider>, 
     config_dir: &Path
@@ -244,43 +279,26 @@ async fn read_providers_d(
     let mut providers = prev_providers;
     let mut error_log = Vec::new();
 
-    let mut entries = match tokio::fs::read_dir(&providers_dir).await {
-        Ok(entries) => entries,
-        Err(e) => {
-            tracing::error!("Failed to read providers directory: {}", e);
-            return (providers, error_log);
-        }
-    };
+    let (yaml_paths, read_errors) = get_provider_yaml_paths(config_dir).await;
+    for error in read_errors {
+        error_log.push(YamlError { 
+            path: providers_dir.to_string_lossy().to_string(), 
+            error_line: 0, 
+            error_msg: error.to_string(),
+        });
+    }
 
-    while let Some(entry_result) = entries.next_entry().await.transpose() {
-        let entry = match entry_result {
-            Ok(entry) => entry,
-            Err(e) => {
-                error_log.push(YamlError {
-                    path: providers_dir.to_string_lossy().to_string(),
-                    error_line: 0,
-                    error_msg: e.to_string(),
-                });
-                continue;
-            }
-        };
-        let path = entry.path();
-        
-        if !path.is_file() || 
-           !(path.extension().map_or(false, |ext| ext == "yaml" || ext == "yml")) {
-            continue;
-        }
-
-        let provider_name = match path.file_stem() {
+    for yaml_path in yaml_paths {
+        let provider_name = match yaml_path.file_stem() {
             Some(name) => name.to_string_lossy().to_string(),
             None => continue,
         };
 
-        let content = match tokio::fs::read_to_string(&path).await {
+        let content = match tokio::fs::read_to_string(&yaml_path).await {
             Ok(content) => content,
             Err(e) => {
                 error_log.push(YamlError {
-                    path: path.to_string_lossy().to_string(),
+                    path: yaml_path.to_string_lossy().to_string(),
                     error_line: 0,
                     error_msg: format!("Failed to read file: {}", e),
                 });
@@ -292,7 +310,7 @@ async fn read_providers_d(
             Ok(provider) => provider,
             Err(e) => {
                 error_log.push(YamlError {
-                    path: path.to_string_lossy().to_string(),
+                    path: yaml_path.to_string_lossy().to_string(),
                     error_line: e.location().map_or(0, |loc| loc.line()),
                     error_msg: format!("Failed to parse YAML: {}", e),
                 });
@@ -321,20 +339,33 @@ async fn read_providers_d(
     (providers, error_log)
 }
 
-fn parse_from_yaml_or_json(buffer: &str) -> Result<serde_json::Value, String> {
-    match serde_json::from_str::<serde_json::Value>(buffer) {
-        Ok(v) => Ok(v),
-        Err(json_err) => match serde_yaml::from_str::<serde_json::Value>(buffer) {
-            Ok(v) => Ok(v),
-            Err(yaml_err) => {
-                if buffer.trim_start().starts_with(&['{', '[']) {
-                    return Err(format!("failed to parse caps: {}", json_err));
-                } else {
-                    return Err(format!("failed to parse caps: {}", yaml_err));
-                }
-            }
-        },
+/// Returns the latest modification timestamp in seconds of any YAML file in the providers.d directory
+pub async fn get_latest_provider_mtime(config_dir: &Path) -> Option<u64> {
+    let (yaml_paths, reading_errors) = get_provider_yaml_paths(config_dir).await;
+    
+    for error in reading_errors {
+        tracing::error!("{error}");
     }
+    
+    let mut latest_mtime = None;
+    for path in yaml_paths {
+        match tokio::fs::metadata(&path).await {
+            Ok(metadata) => {
+                if let Ok(mtime) = metadata.modified() {
+                    latest_mtime = match latest_mtime {
+                        Some(current_latest) if mtime > current_latest => Some(mtime),
+                        None => Some(mtime),
+                        _ => latest_mtime,
+                    };
+                }
+            },
+            Err(e) => {
+                tracing::error!("Failed to get metadata for {}: {}", path.display(), e);
+            }
+        }
+    }
+
+    latest_mtime.map(|mtime| mtime.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs())
 }
 
 fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>) {
@@ -399,142 +430,59 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
     }
 }
 
-async fn load_caps_from_buf(
-    buffer: &str,
-    caps_url: &str,
-    config_dir: &Path,
-    cmdline_api_key: &str,
-) -> Result<Arc<CodeAssistantCaps>, String> {
-    let buffer_value = parse_from_yaml_or_json(buffer)?;
-    let mut caps = serde_json::from_value::<CodeAssistantCaps>(buffer_value.clone())
-        .map_err_with_prefix("Failed to parse caps:")?;
-    let first_provider = serde_json::from_value::<CapsProvider>(buffer_value)
-        .map_err_with_prefix("Failed to parse caps provider:")?;
-    
-    let (mut providers, error_log) = read_providers_d(vec![first_provider], config_dir).await;
-    for e in error_log {
-        tracing::error!("{e}");
-    }
-
-    populate_with_known_models(&mut providers)?;
-    apply_models_dict_patch(&mut providers);
-
-    for provider in &mut providers {
-        provider.endpoint_template = relative_to_full_url(caps_url, &provider.endpoint_template)?;
-        provider.chat_endpoint = relative_to_full_url(caps_url, &provider.chat_endpoint)?;
-        provider.completion_endpoint = relative_to_full_url(caps_url, &provider.completion_endpoint)?;
-        provider.embedding_endpoint = relative_to_full_url(caps_url, &provider.embedding_endpoint)?;
-
-        provider.api_key = match &provider.api_key {
-            k if k.is_empty() => cmdline_api_key.to_string(),
-            k if k.starts_with("$") => {
-                match std::env::var(&k[1..]) {
-                    Ok(env_val) => env_val,
-                    Err(e) => {
-                        tracing::error!(
-                            "tried to read API key from env var {} for provider {}, but failed: {}", 
-                            k, provider.name, e
-                        );
-                        cmdline_api_key.to_string()
-                    }
-                }
-            }
-            k => k.to_string(),
-        };
-    }
-    caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
-    caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
-    
-    add_models_to_caps(&mut caps, providers);
-    // info!("caps {} completion models", caps.code_completion_models.len());
-    // info!("caps default completion model: \"{}\"", caps.code_completion_default_model);
-    // info!("caps {} chat models", caps.code_chat_models.len());
-    // info!("caps default chat model: \"{}\"", caps.code_chat_default_model);
-    // info!("running models: {:?}", caps.running_models);
-    // info!("code_chat_models models: {:?}", caps.code_chat_models);
-    // info!("code completion models: {:?}", caps.code_completion_models);
-    Ok(Arc::new(caps))
-}
-
-async fn load_caps_buf_from_file(
-    cmdline: crate::global_context::CommandLine,
+async fn load_caps_value_from_url(
+    cmdline: CommandLine,
     gcx: Arc<ARwLock<GlobalContext>>,
-) -> Result<(String, String), String> {
-    let mut caps_url = cmdline.address_url.clone();
-    if caps_url.is_empty() {
-        let config_dir = {
-            let gcx_locked = gcx.read().await;
-            gcx_locked.config_dir.clone()
-        };
-        let caps_path = PathBuf::from(config_dir).join("bring-your-own-key.yaml");
-        caps_url = caps_path.to_string_lossy().into_owned();
-        // info!("will use {} as the caps file", caps_url);
-    }
-    let mut buffer = String::new();
-    let mut file = File::open(caps_url.clone()).map_err(|_| format!("failed to open file '{}'", caps_url))?;
-    file.read_to_string(&mut buffer).map_err(|_| format!("failed to read file '{}'", caps_url))?;
-    Ok((buffer, caps_url))
-}
-
-async fn load_caps_buf_from_url(
-    cmdline: crate::global_context::CommandLine,
-    gcx: Arc<ARwLock<GlobalContext>>,
-) -> Result<(String, String), String> {
-    let mut buffer = String::new();
-    let mut caps_urls: Vec<String> = Vec::new();
-    if cmdline.address_url.to_lowercase() == "refact" {
-        caps_urls.push("https://inference.smallcloud.ai/coding_assistant_caps.json".to_string());
+) -> Result<(serde_json::Value, String), String> {
+    let caps_urls = if cmdline.address_url.to_lowercase() == "refact" {
+        vec!["https://inference.smallcloud.ai/coding_assistant_caps.json".to_string()]
     } else {
-        let base_url = Url::parse(&cmdline.address_url.clone()).map_err(|_| "failed to parse address url (1)".to_string())?;
-        let joined_url = base_url.join(&CAPS_FILENAME).map_err(|_| "failed to parse address url (2)".to_string())?;
-        let joined_url_fallback = base_url.join(&CAPS_FILENAME_FALLBACK).map_err(|_| "failed to parse address url (2)".to_string())?;
-        caps_urls.push(joined_url.to_string());
-        caps_urls.push(joined_url_fallback.to_string());
-    }
-
-    let http_client = gcx.read().await.http_client.clone();
-    let api_key = cmdline.api_key.clone();
-    let mut headers = reqwest::header::HeaderMap::new();
-    if !api_key.is_empty() {
-        headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap());
-        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
-    }
-
-    let mut status: u16 = 0;
-    for url in caps_urls.iter() {
-        info!("fetching caps from {}", url);
-        let response = http_client.get(url).headers(headers.clone()).send().await.map_err(|e| format!("{}", e))?;
-        status = response.status().as_u16();
-        buffer = match response.text().await {
-            Ok(v) => v,
-            Err(_) => continue
-        };
-
-        if status == 200 {
-            break;
-        }
-
-        warn!("status={}; server responded with:\n{}", status, buffer);
-    }
-    if status != 200 {
-        let response_json: serde_json::Result<Value> = serde_json::from_str(&buffer);
-        return if let Ok(response_json) = response_json {
-            if let Some(detail) = response_json.get("detail") {
-                Err(detail.as_str().unwrap().to_string())
-            } else {
-                Err(format!("cannot fetch caps, status={}", status))
-            }
-        } else {
-            Err(format!("cannot fetch caps, status={}", status))
-        };
-    }
-
-    let caps_url: String = match caps_urls.get(0) {
-        Some(u) => u.clone(),
-        None => return Err("caps_url is none".to_string())
+        let base_url = Url::parse(&cmdline.address_url)
+            .map_err(|_| "failed to parse address url".to_string())?;
+            
+        vec![
+            base_url.join(&CAPS_FILENAME).map_err(|_| "failed to join caps URL".to_string())?.to_string(),
+            base_url.join(&CAPS_FILENAME_FALLBACK).map_err(|_| "failed to join fallback caps URL".to_string())?.to_string(),
+        ]
     };
 
-    Ok((buffer, caps_url))
+    let http_client = gcx.read().await.http_client.clone();
+    let mut headers = reqwest::header::HeaderMap::new();
+    
+    if !cmdline.api_key.is_empty() {
+        headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(&format!("Bearer {}", cmdline.api_key)).unwrap());
+        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build_info::PKG_VERSION)).unwrap());
+    }
+
+    let mut last_status = 0;
+    let mut last_response_json: Option<serde_json::Value> = None;
+
+    for url in &caps_urls {
+        info!("fetching caps from {}", url);
+        let response = http_client.get(url)
+            .headers(headers.clone())
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        
+        last_status = response.status().as_u16();
+        
+        if let Ok(json_value) = response.json::<serde_json::Value>().await {
+            if last_status == 200 {
+                return Ok((json_value, url.clone()));
+            }
+            last_response_json = Some(json_value.clone());
+            warn!("status={}; server responded with:\n{}", last_status, json_value);
+        }
+    }
+
+    if let Some(json) = last_response_json {
+        if let Some(detail) = json.get("detail").and_then(|d| d.as_str()) {
+            return Err(detail.to_string());
+        }
+    }
+    
+    Err(format!("cannot fetch caps, status={}", last_status))
 }
 
 pub async fn load_caps(
@@ -545,18 +493,55 @@ pub async fn load_caps(
         let gcx_locked = gcx.read().await;
         (gcx_locked.config_dir.clone(), gcx_locked.cmdline.api_key.clone())
     };
-    let mut caps_url = cmdline.address_url.clone();
-    let buf: String;
-    if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
-        (buf, caps_url) = load_caps_buf_from_url(cmdline, gcx).await?
-    } else {
-        (buf, caps_url) = load_caps_buf_from_file(cmdline, gcx).await?
+    
+    let (caps_value, caps_url) = load_caps_value_from_url(cmdline, gcx).await?;
+    
+    let mut caps = serde_json::from_value::<CodeAssistantCaps>(caps_value.clone())
+        .map_err_with_prefix("Failed to parse caps:")?;
+    let mut server_provider = serde_json::from_value::<CapsProvider>(caps_value)
+        .map_err_with_prefix("Failed to parse caps provider:")?;
+
+    server_provider.endpoint_template = relative_to_full_url(&caps_url, &server_provider.endpoint_template)?;
+    server_provider.chat_endpoint = relative_to_full_url(&caps_url, &server_provider.chat_endpoint)?;
+    server_provider.completion_endpoint = relative_to_full_url(&caps_url, &server_provider.completion_endpoint)?;
+    server_provider.embedding_endpoint = relative_to_full_url(&caps_url, &server_provider.embedding_endpoint)?;
+    caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
+    caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
+    
+    let (mut providers, error_log) = read_providers_d(vec![server_provider], &config_dir).await;
+    for e in error_log {
+        tracing::error!("{e}");
     }
-    load_caps_from_buf(&buf, &caps_url, &config_dir, &cmdline_api_key).await
+    populate_with_known_models(&mut providers)?;
+    apply_models_dict_patch(&mut providers);
+    for provider in &mut providers {
+        provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
+    }
+    add_models_to_caps(&mut caps, providers);
+    Ok(Arc::new(caps))
 }
 
 pub fn strip_model_from_finetune(model: &str) -> String {
     model.split(":").next().unwrap().to_string()
+}
+
+fn resolve_provider_api_key(provider: &CapsProvider, cmdline_api_key: &str) -> String {
+    match &provider.api_key {
+        k if k.is_empty() => cmdline_api_key.to_string(),
+        k if k.starts_with("$") => {
+            match std::env::var(&k[1..]) {
+                Ok(env_val) => env_val,
+                Err(e) => {
+                    tracing::error!(
+                        "tried to read API key from env var {} for provider {}, but failed: {}", 
+                        k, provider.name, e
+                    );
+                    cmdline_api_key.to_string()
+                }
+            }
+        }
+        k => k.to_string(),
+    }
 }
 
 fn relative_to_full_url(
