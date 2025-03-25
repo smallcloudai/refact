@@ -60,7 +60,7 @@ pub async fn handle_v1_code_completion(
     gcx: Arc<ARwLock<GlobalContext>>,
     code_completion_post: &mut CodeCompletionPost,
 ) -> Result<Response<Body>, ScratchError> {
-    code_completion_post_validate(code_completion_post.clone())?;
+    code_completion_post_validate(code_completion_post)?;
 
     let cpath = canonical_path(&code_completion_post.inputs.cursor.file);
     check_file_privacy(load_privacy_if_needed(gcx.clone()).await, &cpath, &crate::privacy::FilePrivacyLevel::OnlySendToServersIControl)
@@ -151,10 +151,9 @@ pub async fn handle_v1_code_completion_prompt(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     // Almost the same function, but only returns the prompt (good for generating data)
-    let mut post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes).map_err(|e|
-        ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
-    )?;
-    code_completion_post_validate(post.clone())?;
+    let mut post = serde_json::from_slice::<CodeCompletionPost>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e)))?;
+    code_completion_post_validate(&post)?;
 
     let cpath = canonical_path(&post.inputs.cursor.file);
     check_file_privacy(load_privacy_if_needed(gcx.clone()).await, &cpath, &crate::privacy::FilePrivacyLevel::OnlySendToServersIControl)
