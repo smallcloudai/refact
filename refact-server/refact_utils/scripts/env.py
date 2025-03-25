@@ -21,6 +21,7 @@ DIR_LORAS      = os.path.join(PERMDIR, "loras")
 DIR_LOGS       = os.path.join(PERMDIR, "logs")
 DIR_PROJECTS   = os.path.join(PERMDIR, "projects")
 DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
+DIR_TOKENIZERS   = os.path.join(PERMDIR, "tokenizers")
 
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
 CONFIG_INTEGRATIONS_MODELS = os.path.join(DIR_CONFIG, "integrations_models.cfg")
