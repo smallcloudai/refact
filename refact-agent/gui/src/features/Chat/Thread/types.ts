@@ -28,6 +28,7 @@ export type ChatThread = {
   automatic_patch?: boolean;
   currentMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
+  increase_max_tokens?: boolean;
 };
 
 export type SuggestedChat = {
