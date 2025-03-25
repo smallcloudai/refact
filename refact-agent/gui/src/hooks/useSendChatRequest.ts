@@ -418,5 +418,6 @@ export function useAutoSend() {
     isIntegration,
     thread.mode,
     thread,
+    limitReached,
   ]);
 }
