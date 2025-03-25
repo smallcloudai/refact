@@ -231,8 +231,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     (command: string) => {
       setValue(command);
       const trimmedCommand = command.trim();
-      setFileInteracted(!!trimmedCommand);
-      setLineSelectionInteracted(!!trimmedCommand);
+      if (!trimmedCommand) {
+        setFileInteracted(false);
+        setLineSelectionInteracted(false);
+      }
+
       if (trimmedCommand === "@help") {
         handleHelpInfo(helpText()); // This line has been fixed
       } else {
