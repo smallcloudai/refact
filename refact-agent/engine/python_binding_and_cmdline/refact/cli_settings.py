@@ -8,15 +8,12 @@ import aiohttp
 
 class CapsModel(BaseModel):
     n_ctx: int
-    similar_models: List[str]
     supports_tools: bool
 
 
 class Caps(BaseModel):
-    cloud_name: str
     code_chat_models: Dict[str, CapsModel]
     code_chat_default_model: str
-    embedding_model: str
 
 
 class SettingsCLI(BaseModel):
