@@ -479,21 +479,8 @@ function showAddModelModal(providerId) {
         `;
     }
 
-    // Create the unified model configuration form
-    const modelConfigHtml = `
-        ${modelIdSelectionHtml}
-
-        <div class="mb-3">
-            <label for="custom-model-api-key" class="form-label">API Key</label>
-            <select class="form-select" id="custom-model-api-key">
-                <option value="" selected>-- Select an API key --</option>
-                <option value="custom">-- Enter custom API key --</option>
-            </select>
-            <div id="custom-model-api-key-input-container" style="display: none; margin-top: 10px;">
-                <input type="text" class="form-control" id="custom-model-api-key-input" placeholder="Enter custom API key">
-            </div>
-        </div>
-
+    // Create extended configuration form
+    const modelConfigExtendHtml = `
         <div class="mb-3" id="custom-model-api-base-container">
             <label for="custom-model-api-base" class="form-label">API Base</label>
             <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
@@ -547,6 +534,26 @@ function showAddModelModal(providerId) {
             <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
             <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
             <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
+        </div>
+    `;
+
+    // Create the unified model configuration form
+    const modelConfigHtml = `
+        ${modelIdSelectionHtml}
+
+        <div class="mb-3">
+            <label for="custom-model-api-key" class="form-label">API Key</label>
+            <select class="form-select" id="custom-model-api-key">
+                <option value="" selected>-- Select an API key --</option>
+                <option value="custom">-- Enter custom API key --</option>
+            </select>
+            <div id="custom-model-api-key-input-container" style="display: none; margin-top: 10px;">
+                <input type="text" class="form-control" id="custom-model-api-key-input" placeholder="Enter custom API key">
+            </div>
+        </div>
+
+        <div class="mb-3" id="model-config-extend-container">
+            ${modelConfigExtendHtml}
         </div>
     `;
 
