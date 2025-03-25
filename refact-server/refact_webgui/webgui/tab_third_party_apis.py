@@ -1,20 +1,29 @@
 from fastapi import APIRouter, UploadFile
 from fastapi.responses import JSONResponse
 
+from pydantic import BaseModel
+from pathlib import Path
+
+from refact_utils.scripts import env
 from refact_utils.third_party.utils import ThirdPartyApiConfig
 from refact_utils.third_party.utils import load_third_party_config
 from refact_utils.third_party.utils import save_third_party_config
 from refact_utils.third_party.utils import get_provider_models
-from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
+
+from refact_webgui.webgui.tab_loras import write_to_file
+from refact_webgui.webgui.tab_loras import rm
 
 
 __all__ = ["TabThirdPartyApisRouter"]
 
 
+class UploadViaURL(BaseModel):
+    url: str
+
+
 class TabThirdPartyApisRouter(APIRouter):
-    def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._models_assigner = models_assigner
 
         # Add API routes
         self.add_api_route("/tab-third-party-apis-get", self._tab_third_party_apis_get, methods=["GET"])
@@ -33,7 +42,7 @@ class TabThirdPartyApisRouter(APIRouter):
     async def _tab_third_party_apis_save(self, config: ThirdPartyApiConfig):
         try:
             save_third_party_config(config)
-            self._models_assigner.models_to_watchdog_configs()
+            # self._models_assigner.models_to_watchdog_configs()
             return JSONResponse({"status": "OK"})
         except Exception as e:
             return JSONResponse({"error": str(e)}, status_code=400)
@@ -42,11 +51,22 @@ class TabThirdPartyApisRouter(APIRouter):
         return JSONResponse(get_provider_models())
 
     async def _tab_third_party_apis_get_tokenizers(self):
-        # TODO: implement
-        return JSONResponse([])
+        return JSONResponse([
+            filename.name
+            for filename in Path(env.DIR_TOKENIZERS).iterdir()
+            if filename.name.endswith(".json")
+        ])
 
     async def _tab_third_party_apis_upload_tokenizer(self, file: UploadFile):
-        # TODO: implement, see _upload_lora, _upload_lora_url in tab_loras.py
+        if not file.filename.endswith(".json"):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "tokenizer should have extension json"},
+            )
+        f = Path(env.DIR_TOKENIZERS) / file.filename
+        if (resp := await write_to_file(env.DIR_TOKENIZERS, file)).status_code != 200:
+            rm(f)
+            return resp
         return JSONResponse("OK", status_code=200)
 
     async def _tab_third_party_apis_delete_tokenizer(self, tokenizer_id: str):
