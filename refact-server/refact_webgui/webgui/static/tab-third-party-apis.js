@@ -479,61 +479,87 @@ function showAddModelModal(providerId) {
         `;
     }
 
-    // Create extended configuration form
-    const modelConfigExtendHtml = `
-        <div class="mb-3" id="custom-model-api-base-container">
-            <label for="custom-model-api-base" class="form-label">API Base</label>
-            <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
+    // Create advanced configuration form
+    const modelConfigAdvancedHtml = `
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Context and Token Limits</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
+                            <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
+                            <div class="form-text">Maximum Context size of the model.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="custom-model-max-tokens" class="form-label">Max Tokens (n_ctx)</label>
+                            <input type="number" class="form-control" id="custom-model-max-tokens" placeholder="e.g., 4096" min="1024" step="1024" value="4096">
+                            <div class="form-text">Maximum number of tokens the model can generate.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label for="custom-model-n-ctx" class="form-label">Context Size (n_ctx)</label>
-            <input type="number" class="form-control" id="custom-model-n-ctx" placeholder="e.g., 8192" min="1024" step="1024" value="8192">
-            <div class="form-text">Maximum Context size of the model.</div>
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Model Capabilities</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="custom-model-supports-tools">
+                            <label class="form-check-label" for="custom-model-supports-tools">
+                                Supports Tools
+                            </label>
+                            <div class="form-text">Enable if this model supports function calling/tools.</div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
+                            <label class="form-check-label" for="third-party-model-supports-agentic">
+                                Supports Agentic Mode
+                            </label>
+                            <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality">
+                            <label class="form-check-label" for="custom-model-supports-multimodality">
+                                Supports Multimodality
+                            </label>
+                            <div class="form-text">Enable if this model supports images and other media types.</div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks">
+                            <label class="form-check-label" for="third-party-model-supports-clicks">
+                                Supports Clicks
+                            </label>
+                            <div class="form-text">Enable if this model supports click interactions.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label for="custom-model-max-tokens" class="form-label">Max Tokens (n_ctx)</label>
-            <input type="number" class="form-control" id="custom-model-max-tokens" placeholder="e.g., 4096" min="1024" step="1024" value="4096">
-            <div class="form-text">Maximum number of tokens the model can generate.</div>
-        </div>
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="mb-3" id="custom-model-api-base-container">
+                    <label for="custom-model-api-base" class="form-label">API Base</label>
+                    <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
+                </div>
 
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="custom-model-supports-tools">
-            <label class="form-check-label" for="custom-model-supports-tools">
-                Supports Tools
-            </label>
-            <div class="form-text">Enable if this model supports function calling/tools.</div>
-        </div>
-
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="custom-model-supports-multimodality">
-            <label class="form-check-label" for="custom-model-supports-multimodality">
-                Supports Multimodality
-            </label>
-            <div class="form-text">Enable if this model supports images and other media types.</div>
-        </div>
-
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="third-party-model-supports-agentic">
-            <label class="form-check-label" for="third-party-model-supports-agentic">
-                Supports Agentic Mode
-            </label>
-            <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
-        </div>
-
-        <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" id="third-party-model-supports-clicks">
-            <label class="form-check-label" for="third-party-model-supports-clicks">
-                Supports Clicks
-            </label>
-            <div class="form-text">Enable if this model supports click interactions.</div>
-        </div>
-
-        <div class="mb-3">
-            <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
-            <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
-            <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
+                <div class="mb-3">
+                    <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
+                    <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
+                    <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
+                </div>
+            </div>
         </div>
     `;
 
@@ -549,8 +575,16 @@ function showAddModelModal(providerId) {
             </div>
         </div>
 
-        <div class="mb-3" id="model-config-extend-container">
-            ${modelConfigExtendHtml}
+        <div role="button" id="advancedOptionsCollapseButton" data-bs-toggle="collapse" data-bs-target="#advancedOptionsCollapse" aria-expanded="false" aria-controls="advancedOptionsCollapse" class="mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Advanced Options</h6>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+        <div class="mb-4" id="advancedOptionsCollapse">
+            <div id="model-config-advanced-container">
+                ${modelConfigAdvancedHtml}
+            </div>
         </div>
     `;
 
@@ -587,6 +621,17 @@ function showAddModelModal(providerId) {
             customInputContainer.style.display = 'none';
         }
     });
+
+    // Collapse advanced block setup
+    const collapseButtonElement = document.getElementById('advancedOptionsCollapseButton');
+    const collapseElement = document.getElementById('advancedOptionsCollapse');
+    collapseElement.classList.add("collapse");
+    if (hasPredefined) {
+        collapseButtonElement.setAttribute("aria-expanded", "false");
+    } else {
+        collapseButtonElement.setAttribute("aria-expanded", "true");
+        collapseElement.classList.add("show");
+    }
 
     // Don't show api base for predefined models
     const apiBaseContainer = document.getElementById('custom-model-api-base-container');
