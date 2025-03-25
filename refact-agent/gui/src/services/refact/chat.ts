@@ -10,7 +10,6 @@ import {
 } from "./types";
 
 export const DEFAULT_MAX_NEW_TOKENS = 4096;
-export const INCREASED_MAX_NEW_TOKENS = 16384;
 
 export type LspChatMessage =
   | {
@@ -56,7 +55,6 @@ type SendChatArgs = {
   messages: LspChatMessage[];
   last_user_message_id?: string; // used for `refact-message-id` header
   model: string;
-  max_new_tokens?: number;
   lspUrl?: string;
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
@@ -70,6 +68,7 @@ type SendChatArgs = {
   integration?: IntegrationMeta | null;
   mode?: LspChatMode; // used for chat actions
   boost_reasoning?: boolean;
+  increase_max_tokens?: boolean;
 } & StreamArgs;
 
 type GetChatTitleArgs = {
@@ -147,7 +146,6 @@ export async function sendChat({
   model,
   abortSignal,
   stream,
-  max_new_tokens,
   // lspUrl,
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
@@ -161,6 +159,7 @@ export async function sendChat({
   last_user_message_id = "",
   mode,
   boost_reasoning,
+  increase_max_tokens = false,
 }: SendChatArgs): Promise<Response> {
   // const toolsResponse = await getAvailableTools();
 
@@ -177,11 +176,11 @@ export async function sendChat({
     model: model,
     stream,
     tools,
-    max_tokens: max_new_tokens,
     only_deterministic_messages,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
     parameters: boost_reasoning ? { boost_reasoning: true } : undefined,
+    increase_max_tokens: increase_max_tokens,
     meta: {
       chat_id,
       request_attempt_id: last_user_message_id,

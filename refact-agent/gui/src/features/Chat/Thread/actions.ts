@@ -158,6 +158,10 @@ export const upsertToolCall = createAction<
   Parameters<typeof ideToolCallResponse>[0] & { replaceOnly?: boolean }
 >("chatThread/upsertToolCall");
 
+export const setIncreaseMaxTokens = createAction<boolean>(
+  "chatThread/setIncreaseMaxTokens",
+);
+
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
@@ -320,9 +324,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
           ? state.chat.thread
           : null;
 
-    const maxTokens = thread?.currentMaximumContextTokens
-      ? thread.currentMaximumContextTokens / 4
-      : DEFAULT_MAX_NEW_TOKENS;
     // TODO: stops the stream.
 
     const onlyDeterministicMessages = checkForToolLoop(messages);
@@ -331,6 +332,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
     const realMode = mode ?? thread?.mode;
     const maybeLastUserMessageId = thread?.last_user_message_id;
     const boostReasoning = thread?.boost_reasoning ?? false;
+    const increaseMaxTokens = thread?.increase_max_tokens ?? false;
 
     return sendChat({
       messages: messagesForLsp,
@@ -339,7 +341,7 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       tools,
       stream: true,
       abortSignal: thunkAPI.signal,
-      max_new_tokens: maxTokens,
+      increase_max_tokens: increaseMaxTokens,
       chatId,
       apiKey: state.config.apiKey,
       port: state.config.lspPort,

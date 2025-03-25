@@ -38,6 +38,7 @@ import {
   setIsNewChatSuggested,
   setIsNewChatSuggestionRejected,
   upsertToolCall,
+  setIncreaseMaxTokens,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -76,6 +77,7 @@ const createChatThread = (
     },
     boost_reasoning: false,
     automatic_patch: false,
+    increase_max_tokens: false,
   };
   return chat;
 };
@@ -414,6 +416,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
         action.payload.replaceOnly,
       );
     }
+  });
+
+  builder.addCase(setIncreaseMaxTokens, (state, action) => {
+    state.thread.increase_max_tokens = action.payload;
   });
 
   builder.addMatcher(
