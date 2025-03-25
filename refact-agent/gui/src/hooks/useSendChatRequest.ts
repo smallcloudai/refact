@@ -379,7 +379,7 @@ export function useAutoSend() {
       !preventSend
     ) {
       const lastMessage = currentMessages.slice(-1)[0];
-      // here ish
+
       if (
         !compressionStop.stopped &&
         isAssistantMessage(lastMessage) &&
