@@ -203,7 +203,9 @@ pub struct ChatPost {
     pub stream: Option<bool>,
     pub temperature: Option<f32>,
     #[serde(default)]
-    pub max_tokens: usize,
+    pub max_tokens: Option<usize>,
+    #[serde(default)]
+    pub increase_max_tokens: bool,
     #[serde(default)]
     pub n: Option<usize>,
     #[serde(default)]

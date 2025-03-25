@@ -65,7 +65,6 @@ pub async fn create_chat_post_and_scratchpad(
         scratchpad: "".to_string(),
         stream: Some(false),
         temperature,
-        max_tokens: 0,
         n: Some(n),
         tools,
         tool_choice,
@@ -84,7 +83,7 @@ pub async fn create_chat_post_and_scratchpad(
         warn!("supports_tools is false");
     }
 
-    chat_post.max_tokens = n_ctx;
+    chat_post.max_tokens = Some(n_ctx);
     chat_post.scratchpad = scratchpad_name.clone();
 
     {
