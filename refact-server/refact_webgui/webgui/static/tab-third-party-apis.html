@@ -22,11 +22,8 @@
                     </div>
 
                     <div class="d-flex">
-                        <button class="btn btn-primary me-2" id="upload-tokenizer-btn">
+                        <button class="btn btn-primary" id="upload-tokenizer-btn">
                             <i class="bi bi-upload"></i> Upload Tokenizer
-                        </button>
-                        <button class="btn btn-outline-primary" id="add-tokenizer-url-btn">
-                            <i class="bi bi-link"></i> Add Tokenizer by URL
                         </button>
                     </div>
                 </div>
@@ -91,34 +88,36 @@
         </div>
     </div>
 
-    <!-- Add Tokenizer URL Modal -->
-    <div class="modal fade" id="add-tokenizer-url-modal" tabindex="-1" aria-labelledby="add-tokenizer-url-modal-label" aria-hidden="true">
+
+
+    <!-- Tokenizer Upload Modal -->
+    <div class="modal fade" id="tokenizer-upload-modal" tabindex="-1" aria-labelledby="tokenizer-upload-modal-label" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="add-tokenizer-url-modal-label">Add Tokenizer by URL</h5>
+                    <h5 class="modal-title" id="tokenizer-upload-modal-label">Upload Tokenizer</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="tokenizer-name" class="form-label">Tokenizer Name</label>
-                        <input type="text" class="form-control" id="tokenizer-name" placeholder="e.g., gpt-4-tokenizer">
-                        <div class="form-text">Enter a descriptive name for this tokenizer.</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="tokenizer-url" class="form-label">Tokenizer URL</label>
-                        <input type="text" class="form-control" id="tokenizer-url" placeholder="https://huggingface.co/model/tokenizer.json">
-                        <div class="form-text">Enter the URL to the tokenizer JSON file.</div>
-                    </div>
+                    <form id="tokenizer-upload-form">
+                        <div class="mb-3">
+                            <label for="tokenizer-id" class="form-label">Tokenizer ID</label>
+                            <input type="text" class="form-control" id="tokenizer-id" placeholder="Enter a unique identifier for this tokenizer">
+                            <div class="form-text">A unique name to identify this tokenizer (e.g., gpt-4-tokenizer)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tokenizer-file" class="form-label">Tokenizer File</label>
+                            <input type="file" class="form-control" id="tokenizer-file" accept=".json">
+                            <div class="form-text">Select a tokenizer JSON file to upload</div>
+                        </div>
+                    </form>
+                    <div class="alert alert-danger d-none" id="tokenizer-upload-error"></div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="add-tokenizer-url-submit">Add Tokenizer</button>
+                    <button type="button" class="btn btn-primary" id="tokenizer-upload-submit">Upload</button>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Tokenizer Upload Modal Container -->
-    <div id="tokenizer-upload-modal-container"></div>
 </div>

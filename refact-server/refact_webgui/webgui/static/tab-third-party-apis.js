@@ -26,7 +26,11 @@ export async function init(general_error) {
     loadConfiguration();
     initializeProvidersList();
     initializeTokenizers();
-    initializeTokenizerModals();
+
+    // Initialize the tokenizer upload modal after the HTML is loaded
+    setTimeout(() => {
+        initializeTokenizerModals();
+    }, 100);
 }
 
 function loadProvidersFromLiteLLM() {
@@ -1033,10 +1037,12 @@ export function tab_switched_here() {
         addModelModal._bsModal = new bootstrap.Modal(addModelModal);
     }
 
-    const addTokenizerUrlModal = document.getElementById('add-tokenizer-url-modal');
-    if (addTokenizerUrlModal && !addTokenizerUrlModal._bsModal) {
-        addTokenizerUrlModal._bsModal = new bootstrap.Modal(addTokenizerUrlModal);
+    const tokenizerUploadModal = document.getElementById('tokenizer-upload-modal');
+    if (tokenizerUploadModal && !tokenizerUploadModal._bsModal) {
+        tokenizerUploadModal._bsModal = new bootstrap.Modal(tokenizerUploadModal);
     }
+
+    initializeTokenizerModals();
 }
 
 export function tab_switched_away() {
@@ -1080,17 +1086,15 @@ function updateTokenizersList(tokenizers) {
     noTokenizersMsg.style.display = 'none';
 
     // Create tokenizer items
-    tokenizers.forEach(tokenizer => {
+    tokenizers.forEach(tokenizer_id => {
         const tokenizerItem = document.createElement('div');
         tokenizerItem.className = 'tokenizer-item mb-2 d-flex justify-content-between align-items-center';
         tokenizerItem.innerHTML = `
             <div class="d-flex align-items-center">
-                <span class="tokenizer-name">${tokenizer.name}</span>
-                <span class="badge bg-secondary ms-2">${tokenizer.source_type}</span>
+                <span class="tokenizer-name">${tokenizer_id}</span>
             </div>
             <div>
-                <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn"
-                        data-tokenizer-id="${tokenizer.id}">
+                <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn" data-tokenizer-id="${tokenizer_id}">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -1106,64 +1110,51 @@ function updateTokenizersList(tokenizers) {
 }
 
 function initializeTokenizerModals() {
-    // Initialize the upload tokenizer modal using the modal-upload-files component
-    import('./components/modals/modal-upload-files.js').then(module => {
-        module.init(
-            document.getElementById('tokenizer-upload-modal-container'),
-            document.getElementById('upload-tokenizer-btn'),
-            'Upload Tokenizer',
-            'input',
-            '/tab-third-party-apis-upload-tokenizer-url',
-            '/tab-third-party-apis-upload-tokenizer',
-            'Processing tokenizer...',
-            'Enter tokenizer URL (must be a valid JSON file)',
-            'Select a tokenizer JSON file to upload'
-        ).then(() => {
-            tokenizer_upload_modal = module;
-        });
+    const uploadTokenizerBtn = document.getElementById('upload-tokenizer-btn');
+    const tokenizer_upload_modal_element = document.getElementById('tokenizer-upload-modal');
+    const tokenizer_upload_modal = new bootstrap.Modal(tokenizer_upload_modal_element);
+
+    uploadTokenizerBtn.addEventListener('click', function() {
+        document.getElementById('tokenizer-upload-form').reset();
+        document.getElementById('tokenizer-upload-error').classList.add('d-none');
+        tokenizer_upload_modal.show();
     });
 
-    // Initialize the add tokenizer by URL modal
-    const addTokenizerUrlBtn = document.getElementById('add-tokenizer-url-btn');
-    const addTokenizerUrlModal = new bootstrap.Modal(document.getElementById('add-tokenizer-url-modal'));
-
-    addTokenizerUrlBtn.addEventListener('click', function() {
-        addTokenizerUrlModal.show();
-    });
-
-    const addTokenizerUrlSubmit = document.getElementById('add-tokenizer-url-submit');
-    addTokenizerUrlSubmit.addEventListener('click', function() {
-        const name = document.getElementById('tokenizer-name').value.trim();
-        const url = document.getElementById('tokenizer-url').value.trim();
-
-        if (!name) {
-            general_error("Tokenizer name is required");
-            return;
-        }
-
-        if (!url) {
-            general_error("Tokenizer URL is required");
-            return;
-        }
-
-        // Validate URL format
-        const urlRegex = /^(ftp|http|https):\/\/[^ "]+$/;
-        if (!urlRegex.test(url)) {
-            general_error("Invalid URL format");
-            return;
-        }
-
-        uploadTokenizerByUrl(name, url, addTokenizerUrlModal);
+    document.getElementById('tokenizer-upload-submit').addEventListener('click', function() {
+        uploadTokenizer();
     });
 }
 
-function uploadTokenizerByUrl(name, url, modal) {
-    fetch("/tab-third-party-apis-upload-tokenizer-url", {
-        method: "POST",
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name, url })
+function uploadTokenizer() {
+    const tokenizerId = document.getElementById('tokenizer-id').value.trim();
+    const tokenizerFile = document.getElementById('tokenizer-file').files[0];
+    const errorElement = document.getElementById('tokenizer-upload-error');
+
+    // Validate inputs
+    if (!tokenizerId) {
+        errorElement.textContent = "Please enter a tokenizer ID";
+        errorElement.classList.remove('d-none');
+        return;
+    }
+
+    if (!tokenizerFile) {
+        errorElement.textContent = "Please select a tokenizer file";
+        errorElement.classList.remove('d-none');
+        return;
+    }
+
+    const formData = new FormData();
+    console.log(tokenizerFile);
+    formData.append('file', tokenizerFile, `${tokenizerId}.json`);
+
+    const submitButton = document.getElementById('tokenizer-upload-submit');
+    const originalButtonText = submitButton.textContent;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+
+    fetch('/tab-third-party-apis-upload-tokenizer', {
+        method: 'POST',
+        body: formData
     })
     .then(response => {
         if (!response.ok) {
@@ -1174,17 +1165,19 @@ function uploadTokenizerByUrl(name, url, modal) {
         return response.json();
     })
     .then(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('tokenizer-upload-modal'));
         modal.hide();
-        showSuccessToast("Tokenizer added successfully");
+        showSuccessToast("Tokenizer uploaded successfully");
         loadTokenizers();
-
-        // Clear form fields
-        document.getElementById('tokenizer-name').value = '';
-        document.getElementById('tokenizer-url').value = '';
     })
     .catch(error => {
         console.error("Error uploading tokenizer:", error);
-        general_error(error);
+        errorElement.textContent = error.message || "Failed to upload tokenizer";
+        errorElement.classList.remove('d-none');
+    })
+    .finally(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
     });
 }
 
