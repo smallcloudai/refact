@@ -632,7 +632,7 @@ export type MemoRecord = {
   memid: string;
   thevec?: number[]; // are options nullable?
   distance?: number;
-  m_type: string;
+  m_type: string; // "unknown" | "trajectory" | "knowledge-entry" | // "proj-fact"
   m_goal: string;
   m_project: string;
   m_payload: string;
