@@ -430,7 +430,7 @@ function addProvider() {
     showSuccessToast("Provider added successfully");
 }
 
-function dependentCheckbox(elementId, dependentElementId) {
+function dependentCheckboxSet(elementId, dependentElementId) {
     const element = document.getElementById(elementId);
     const dependent = document.getElementById(dependentElementId);
     if (element.checked) {
@@ -439,13 +439,12 @@ function dependentCheckbox(elementId, dependentElementId) {
         dependent.checked = false;
         dependent.disabled = true;
     }
+}
+
+function dependentCheckboxListener(elementId, dependentElementId) {
+    const element = document.getElementById(elementId);
     element.addEventListener('change', function() {
-        if (this.checked) {
-            dependent.disabled = false;
-        } else {
-            dependent.checked = false;
-            dependent.disabled = true;
-        }
+        dependentCheckboxSet(elementId, dependentElementId);
     });
 }
 
@@ -605,8 +604,10 @@ function showAddModelModal(providerId) {
         });
     }
 
-    dependentCheckbox('custom-model-supports-tools', 'third-party-model-supports-agentic');
-    dependentCheckbox('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
+    dependentCheckboxSet('custom-model-supports-tools', 'third-party-model-supports-agentic');
+    dependentCheckboxListener('custom-model-supports-tools', 'third-party-model-supports-agentic');
+    dependentCheckboxSet('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
+    dependentCheckboxListener('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
 
     document.getElementById('add-third-party-model-modal-label').textContent = 'Add Model';
     document.getElementById('add-third-party-model-submit').textContent = 'Add Model';
@@ -798,6 +799,9 @@ function showEditModelModal(providerId, modelId) {
     document.getElementById('custom-model-supports-multimodality').checked = capabilities.multimodal || false;
     document.getElementById('third-party-model-supports-agentic').checked = capabilities.agent || false;
     document.getElementById('third-party-model-supports-clicks').checked = capabilities.clicks || false;
+
+    dependentCheckboxSet('custom-model-supports-tools', 'third-party-model-supports-agentic');
+    dependentCheckboxSet('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
 
     // Handle API key selection
     const apiKeySelect = document.getElementById('custom-model-api-key');
