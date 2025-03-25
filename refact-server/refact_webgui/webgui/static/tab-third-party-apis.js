@@ -494,7 +494,7 @@ function showAddModelModal(providerId) {
             </div>
         </div>
 
-        <div class="mb-3">
+        <div class="mb-3" id="custom-model-api-base-container">
             <label for="custom-model-api-base" class="form-label">API Base</label>
             <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
         </div>
@@ -578,6 +578,10 @@ function showAddModelModal(providerId) {
             customInputContainer.style.display = 'none';
         }
     });
+
+    // Don't show api base for predefined models
+    const apiBaseContainer = document.getElementById('custom-model-api-base-container');
+    apiBaseContainer.style.display = hasPredefined ? 'none' : '';
 
     // Add event listener to pre-fill capabilities when a model is selected
     const modelSelect = document.getElementById('third-party-model-id');
