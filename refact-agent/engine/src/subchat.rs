@@ -22,7 +22,7 @@ const MAX_NEW_TOKENS: usize = 4096;
 pub async fn create_chat_post_and_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_name: &str,
+    model_id: &str,
     messages: Vec<&ChatMessage>,
     temperature: Option<f32>,
     max_new_tokens: usize,
@@ -57,7 +57,7 @@ pub async fn create_chat_post_and_scratchpad(
             reasoning_effort,
             ..Default::default()  // TODO
         },
-        model: model_name.to_string(),
+        model: model_id.to_string(),
         scratchpad: "".to_string(),
         stream: Some(false),
         temperature,
@@ -70,7 +70,7 @@ pub async fn create_chat_post_and_scratchpad(
         ..Default::default()
     };
 
-    let model_rec = resolve_chat_model(caps, model_name)?;
+    let model_rec = resolve_chat_model(caps, model_id)?;
 
     if !model_rec.supports_tools {
         tracing::warn!("supports_tools is false");
@@ -81,7 +81,7 @@ pub async fn create_chat_post_and_scratchpad(
 
     {
         let mut ccx_locked = ccx.lock().await;
-        ccx_locked.current_model = model_name.to_string();
+        ccx_locked.current_model = model_id.to_string();
     }
 
     let scratchpad = crate::scratchpads::create_chat_scratchpad(
@@ -252,7 +252,7 @@ fn update_usage_from_messages(usage: &mut ChatUsage, messages: &Vec<Vec<ChatMess
 
 pub async fn subchat_single(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_name: &str,
+    model_id: &str,
     messages: Vec<ChatMessage>,
     tools_subset: Option<Vec<String>>,
     tool_choice: Option<String>,
@@ -283,7 +283,7 @@ pub async fn subchat_single(
         error!("Error loading compiled_in_tools: {:?}", e);
         vec![]
     });
-    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_name)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
+    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
     info!("tools_subset {:?}", tools_subset);
     info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
     info!("tools_on_intersection {:?}", tools_on_intersection);
@@ -292,7 +292,7 @@ pub async fn subchat_single(
     let (mut chat_post, spad, model_rec) = create_chat_post_and_scratchpad(
         gcx.clone(),
         ccx.clone(),
-        model_name,
+        model_id,
         messages.iter().collect::<Vec<_>>(),
         temperature,
         max_new_tokens,
@@ -343,7 +343,7 @@ pub async fn subchat_single(
 
 pub async fn subchat(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_name: &str,
+    model_id: &str,
     messages: Vec<ChatMessage>,
     tools_subset: Vec<String>,
     wrap_up_depth: usize,
@@ -381,7 +381,7 @@ pub async fn subchat(
             }
             messages = subchat_single(
                 ccx.clone(),
-                model_name,
+                model_id,
                 messages.clone(),
                 Some(tools_subset.clone()),
                 Some("auto".to_string()),
@@ -404,7 +404,7 @@ pub async fn subchat(
         if !tool_calls.is_empty() {
             messages = subchat_single(
                 ccx.clone(),
-                model_name,
+                model_id,
                 messages,
                 Some(vec![]),
                 Some("none".to_string()),
@@ -423,7 +423,7 @@ pub async fn subchat(
     messages.push(ChatMessage::new("user".to_string(), wrap_up_prompt.to_string()));
     let choices = subchat_single(
         ccx.clone(),
-        model_name,
+        model_id,
         messages,
         Some(tools_subset.clone()),
         Some("auto".to_string()),
@@ -443,7 +443,7 @@ pub async fn subchat(
             if !tool_calls.is_empty() {
                 _ = subchat_single(
                     ccx.clone(),
-                    model_name,
+                    model_id,
                     messages.clone(),
                     Some(vec![]),
                     Some("none".to_string()),

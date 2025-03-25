@@ -59,7 +59,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 
 pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_name: &str,
+    model_id: &str,
     maxgen: usize,
     original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
@@ -85,7 +85,7 @@ pub async fn run_tools_remotely(
         maxgen,
         subchat_tool_parameters,
         postprocess_parameters,
-        model_name: model_name.to_string(),
+        model_name: model_id.to_string(),
         chat_id,
         style: style.clone(),
     };

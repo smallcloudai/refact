@@ -265,7 +265,7 @@ pub async fn generate_commit_message_by_diff(
             },
         ]
     };
-    let model_name = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+    let model_id = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => Ok(caps.default_models.chat_model.clone()),
         Err(_) => Err("No caps available".to_string()),
     }?;
@@ -283,7 +283,7 @@ pub async fn generate_commit_message_by_diff(
     ));
     let new_messages = subchat_single(
         ccx.clone(),
-        model_name.as_str(),
+        &model_id,
         messages,
         Some(vec![]),
         None,

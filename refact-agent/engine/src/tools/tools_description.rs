@@ -532,8 +532,8 @@ fn default_param_type() -> String {
 /// TODO: Think a better way to know if we can send array type to the model
 /// 
 /// For now, anthropic models support it, gpt models don't, for other, we'll need to test
-pub fn model_supports_array_param_type(model_name: &str) -> bool {
-    model_name.starts_with("claude")
+pub fn model_supports_array_param_type(model_id: &str) -> bool {
+    model_id.contains("claude")
 }
 
 pub fn make_openai_tool_value(
