@@ -226,7 +226,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             _adapt_for_reasoning_models(
                 limited_msgs,
                 sampling_parameters_to_patch,
-                model_record.supports_reasoning.unwrap(),
+                model_record.supports_reasoning.as_ref().unwrap().clone(),
                 model_record.default_temperature.clone(),
                 model_record.supports_boost_reasoning.clone(),
             )

@@ -33,7 +33,7 @@ pub async fn create_chat_post_and_scratchpad(
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
     _should_execute_remotely: bool,
-) -> Result<(ChatPost, Box<dyn ScratchpadAbstract>, ChatModelRecord), String> {
+) -> Result<(ChatPost, Box<dyn ScratchpadAbstract>, Arc<ChatModelRecord>), String> {
     let caps = try_load_caps_quickly_if_not_present(
         global_context.clone(), 0,
     ).await.map_err(|e| {

@@ -136,9 +136,9 @@ pub struct CodeAssistantCaps {
     pub telemetry_basic_retrieve_my_own: String,
 
     #[serde(skip_deserializing)]
-    pub code_completion_models: IndexMap<String, CompletionModelRecord>,
+    pub code_completion_models: IndexMap<String, Arc<CompletionModelRecord>>,
     #[serde(skip_deserializing)]
-    pub code_chat_models: IndexMap<String, ChatModelRecord>,
+    pub code_chat_models: IndexMap<String, Arc<ChatModelRecord>>,
     #[serde(skip_deserializing)]
     pub embedding_model: EmbeddingModelRecord,
 
@@ -367,7 +367,7 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
                 model_rec.base.n_ctx = provider.code_completion_n_ctx; 
             }
             
-            caps.code_completion_models.insert(model_rec.base.id.clone(), model_rec);
+            caps.code_completion_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
         let chat_models = std::mem::take(&mut provider.code_chat_models);
@@ -376,7 +376,7 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
                 &mut model_rec.base, &provider, &model_name, &provider.chat_endpoint
             );
 
-            caps.code_chat_models.insert(model_rec.base.id.clone(), model_rec);
+            caps.code_chat_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
         if provider.embedding_model.is_configured() {
@@ -656,11 +656,11 @@ fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), S
     Ok(())
 }
 
-pub fn resolve_model<T: Clone>(
-    models: &IndexMap<String, T>,
+pub fn resolve_model<'a, T>(
+    models: &'a IndexMap<String, Arc<T>>,
     requested_model_id: &str,
     default_model_id: &str,
-) -> Result<T, String> {
+) -> Result<Arc<T>, String> {
     let model_id = if !requested_model_id.is_empty() {
         requested_model_id
     } else {
@@ -671,10 +671,10 @@ pub fn resolve_model<T: Clone>(
     ).cloned().ok_or(format!("Model '{}' not found. Server has the following models: {:?}", model_id, models.keys()))
 }
 
-pub fn resolve_chat_model(
-    caps: Arc<CodeAssistantCaps>,
+pub fn resolve_chat_model<'a>(
+    caps:  Arc<CodeAssistantCaps>,
     requested_model_id: &str,
-) -> Result<ChatModelRecord, String> {
+) -> Result<Arc<ChatModelRecord>, String> {
     resolve_model(
         &caps.code_chat_models, 
         requested_model_id, 
@@ -682,10 +682,10 @@ pub fn resolve_chat_model(
     )
 }
 
-pub fn resolve_completion_model(
+pub fn resolve_completion_model<'a>(
     caps: Arc<CodeAssistantCaps>,
     requested_model_id: &str,
-) -> Result<CompletionModelRecord, String> {
+) -> Result<Arc<CompletionModelRecord>, String> {
     resolve_model(
         &caps.code_completion_models, 
         requested_model_id, 

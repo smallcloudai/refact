@@ -258,7 +258,7 @@ async fn _chat(
             ccx_arc.clone(),
             &mut scratchpad,
             "chat".to_string(),
-            model_rec.base,
+            &model_rec.base,
             &mut chat_post.parameters,
             chat_post.only_deterministic_messages,
             meta
@@ -268,7 +268,7 @@ async fn _chat(
             ccx_arc.clone(),
             scratchpad,
             "chat-stream".to_string(),
-            model_rec.base,
+            model_rec.base.clone(),
             chat_post.parameters.clone(),
             chat_post.only_deterministic_messages,
             meta

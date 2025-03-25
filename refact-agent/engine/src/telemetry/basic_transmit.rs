@@ -131,7 +131,7 @@ pub async fn basic_telemetry_send(
         if !enable_basic_telemetry {
             info!("basic telemetry sending not enabled, skip");
         }
-        if telemetry_basic_dest.is_empty() {
+        if caps.telemetry_basic_dest.is_empty() {
             info!("basic telemetry dest is empty, skip");
         }
     }

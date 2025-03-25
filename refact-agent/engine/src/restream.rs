@@ -184,7 +184,7 @@ pub async fn scratchpad_interaction_not_stream(
     ccx: Arc<AMutex<AtCommandsContext>>,
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
-    model_rec: BaseModelRecord,
+    model_rec: &BaseModelRecord,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
