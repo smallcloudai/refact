@@ -42,7 +42,7 @@ pub async fn telemetry_middleware<B>(
                     format!("{}", e),
                 ));
         }
-        error!("{} returning \"{}\"", path, e);
+        error!("{} returning, client will see \"{}\"", path, e);
         return Err(e);
     }
 
