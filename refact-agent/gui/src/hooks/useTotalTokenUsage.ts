@@ -98,9 +98,9 @@ function sumUsages(a: Usage, b: Usage): Usage {
     completion_tokens_details: completionDetails,
     prompt_tokens_details: promptDetails,
     cache_creation_input_tokens:
-      (a.cache_creation_input_tokens || 0) +
-      (b.cache_creation_input_tokens || 0),
+      (a.cache_creation_input_tokens ?? 0) +
+      (b.cache_creation_input_tokens ?? 0),
     cache_read_input_tokens:
-      (a.cache_read_input_tokens || 0) + (b.cache_read_input_tokens || 0),
+      (a.cache_read_input_tokens ?? 0) + (b.cache_read_input_tokens ?? 0),
   };
 }
