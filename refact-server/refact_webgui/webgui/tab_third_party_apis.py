@@ -17,8 +17,8 @@ from refact_webgui.webgui.tab_loras import rm
 __all__ = ["TabThirdPartyApisRouter"]
 
 
-class UploadViaURL(BaseModel):
-    url: str
+class DeleteTokenizer(BaseModel):
+    tokenizer_id: str
 
 
 class TabThirdPartyApisRouter(APIRouter):
@@ -96,9 +96,9 @@ class TabThirdPartyApisRouter(APIRouter):
             filename.unlink(missing_ok=True)
             return JSONResponse({"detail": f"Error uploading tokenizer: {e}"}, status_code=400)
 
-    async def _tab_third_party_apis_delete_tokenizer(self, tokenizer_id: str):
+    async def _tab_third_party_apis_delete_tokenizer(self, post: DeleteTokenizer):
         try:
-            filename = self._tokenizer_id_to_file(tokenizer_id)
+            filename = self._tokenizer_id_to_file(post.tokenizer_id)
             if filename.exists():
                 filename.unlink()
             return JSONResponse("OK", status_code=200)
