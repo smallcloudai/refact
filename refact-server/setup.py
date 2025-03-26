@@ -23,7 +23,10 @@ all_refact_packages = {
     "code_contrast": PyPackage(
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"]),
     "refact_known_models": PyPackage(),
-    "refact_utils": PyPackage(),
+    "refact_utils": PyPackage(
+        requires_packages=["litellm>=1.63.2", "pydantic>=2", "aiohttp", "aiofiles"],
+        data=["third_party/tokenizers/*"]
+    ),
     "refact_data_pipeline": PyPackage(
         requires=["numpy", "tokenizers>=0.20.1", "torch", "requests>=2.31.0", "cloudpickle", "blobfile",
                   "tqdm", "dataclasses_json", "termcolor", 'more_itertools', "cdifflib",
@@ -33,9 +36,9 @@ all_refact_packages = {
         data=["git_command.exp"],
     ),
     "refact_webgui": PyPackage(
-        requires=["aiohttp", "aiofiles", "cryptography", "fastapi>=0.111.0", "giturlparse", "pydantic>=2",
+        requires=["cryptography", "fastapi>=0.111.0", "giturlparse",
                   "starlette==0.37.2", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
-                  "scyllapy==1.3.0", "pandas>=2.0.3", "litellm>=1.63.2"],
+                  "scyllapy==1.3.0", "pandas>=2.0.3"],
         requires_packages=["refact_known_models", "refact_utils"],
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
@@ -92,7 +95,7 @@ else:
 
 setup(
     name="refact-self-hosting",
-    version="1.9.3",
+    version="1.10.0",
     py_modules=list(setup_packages.keys()),
     package_data={
         name: py_package.data
