@@ -19,7 +19,7 @@ let apiConfig = {
 let expandedProviders = {};
 let expandedTokenizerSections = {
     defaults: false,
-    uploaded: true,
+    uploaded: false,
 };
 
 export async function init(general_error) {
@@ -256,7 +256,7 @@ function updateUI() {
         if (toggle) {
             toggle.checked = isEnabled;
 
-            const isExpanded = expandedProviders[providerId] !== undefined ? expandedProviders[providerId] : true;
+            const isExpanded = expandedProviders[providerId] !== undefined ? expandedProviders[providerId] : false;
             setProviderCollapsedState(providerId, isExpanded);
 
             if (!hasPredefinedModels(providerId)) {
@@ -1144,7 +1144,7 @@ function populateTokenizerDropdown(tokenizers) {
     }
 
     if (hasDefaults) {
-        tokenizersHtml += '<li><h6 class="dropdown-header">Default Tokenizers</h6></li>';
+        tokenizersHtml += '<li><h6 class="dropdown-header">default</h6></li>';
         defaults.forEach(tokenizer => {
             const isActive = updatedCurrentValue === tokenizer;
             tokenizersHtml += `<li><a class="dropdown-item ${isActive ? 'active' : ''}" href="#" data-value="${tokenizer}">${tokenizer}</a></li>`;
@@ -1155,7 +1155,7 @@ function populateTokenizerDropdown(tokenizers) {
         if (hasDefaults) {
             tokenizersHtml += '<li><hr class="dropdown-divider"></li>';
         }
-        tokenizersHtml += '<li><h6 class="dropdown-header">Custom Tokenizers</h6></li>';
+        tokenizersHtml += '<li><h6 class="dropdown-header">custom</h6></li>';
         uploaded.forEach(tokenizer => {
             const isActive = updatedCurrentValue === tokenizer;
             tokenizersHtml += `<li><a class="dropdown-item ${isActive ? 'active' : ''}" href="#" data-value="${tokenizer}">${tokenizer}</a></li>`;
@@ -1215,38 +1215,47 @@ function updateTokenizersList(data) {
     noTokenizersMsg.style.display = 'none';
 
     const defaultsCard = document.createElement('div');
-    defaultsCard.className = 'card mb-3';
+    defaultsCard.className = 'card mb-3 api-provider-container';
     tokenizersContainer.appendChild(defaultsCard);
 
     const defaultsHeader = document.createElement('div');
-    defaultsHeader.className = 'card-header d-flex justify-content-between align-items-center';
+    defaultsHeader.className = 'card-header d-flex justify-content-between align-items-center provider-header';
+    if (!expandedTokenizerSections.defaults) {
+        defaultsHeader.classList.add('collapsed');
+    }
     defaultsHeader.innerHTML = `
-        <span>Default Tokenizers</span>
-        <i class="bi bi-chevron-right"></i>
+        <h5 class="mb-0 provider-title">default</h5>
+        <i class="bi bi-chevron-${expandedTokenizerSections.uploaded ? 'down' : 'right'}"></i>
     `;
     defaultsHeader.style.cursor = 'pointer';
     defaultsCard.appendChild(defaultsHeader);
 
     const defaultsBody = document.createElement('div');
-    defaultsBody.className = 'card-body';
-    defaultsBody.style.display = 'none';
+    defaultsBody.className = 'card-body provider-body';
+    defaultsBody.style.display = expandedTokenizerSections.defaults ? 'block' : 'none';
     defaultsCard.appendChild(defaultsBody);
 
     defaultsHeader.addEventListener('click', function() {
         const chevron = this.querySelector('.bi');
-        if (defaultsBody.style.display === 'none') {
+        const isCollapsed = this.classList.contains('collapsed');
+
+        if (isCollapsed) {
             defaultsBody.style.display = 'block';
             chevron.className = 'bi bi-chevron-down';
+            this.classList.remove('collapsed');
+            expandedTokenizerSections.defaults = true;
         } else {
             defaultsBody.style.display = 'none';
             chevron.className = 'bi bi-chevron-right';
+            this.classList.add('collapsed');
+            expandedTokenizerSections.defaults = false;
         }
     });
 
     if (defaults.length > 0) {
         defaults.forEach(tokenizer_id => {
             const tokenizerItem = document.createElement('div');
-            tokenizerItem.className = 'mb-2';
+            tokenizerItem.className = 'mb-2 enabled-model-item';
             tokenizerItem.textContent = tokenizer_id;
             defaultsBody.appendChild(tokenizerItem);
         });
@@ -1258,39 +1267,50 @@ function updateTokenizersList(data) {
     }
 
     const uploadedCard = document.createElement('div');
-    uploadedCard.className = 'card mb-3';
+    uploadedCard.className = 'card mb-3 api-provider-container';
     tokenizersContainer.appendChild(uploadedCard);
 
     const uploadedHeader = document.createElement('div');
-    uploadedHeader.className = 'card-header d-flex justify-content-between align-items-center';
+    uploadedHeader.className = 'card-header d-flex justify-content-between align-items-center provider-header';
+    uploadedHeader.dataset.section = 'uploaded';
+    if (!expandedTokenizerSections.uploaded) {
+        uploadedHeader.classList.add('collapsed');
+    }
     uploadedHeader.innerHTML = `
-        <span>Custom Tokenizers</span>
-        <i class="bi bi-chevron-down"></i>
+        <h5 class="mb-0 provider-title">custom</h5>
+        <i class="bi bi-chevron-${expandedTokenizerSections.uploaded ? 'down' : 'right'}"></i>
     `;
     uploadedHeader.style.cursor = 'pointer';
     uploadedCard.appendChild(uploadedHeader);
 
     const uploadedBody = document.createElement('div');
-    uploadedBody.className = 'card-body';
+    uploadedBody.className = 'card-body provider-body';
+    uploadedBody.style.display = expandedTokenizerSections.uploaded ? 'block' : 'none';
     uploadedCard.appendChild(uploadedBody);
 
     uploadedHeader.addEventListener('click', function() {
         const chevron = this.querySelector('.bi');
-        if (uploadedBody.style.display === 'none') {
+        const isCollapsed = this.classList.contains('collapsed');
+
+        if (isCollapsed) {
             uploadedBody.style.display = 'block';
             chevron.className = 'bi bi-chevron-down';
+            this.classList.remove('collapsed');
+            expandedTokenizerSections.uploaded = true;
         } else {
             uploadedBody.style.display = 'none';
             chevron.className = 'bi bi-chevron-right';
+            this.classList.add('collapsed');
+            expandedTokenizerSections.uploaded = false;
         }
     });
 
     if (uploaded.length > 0) {
         uploaded.forEach(tokenizer_id => {
             const tokenizerItem = document.createElement('div');
-            tokenizerItem.className = 'd-flex justify-content-between align-items-center mb-2';
+            tokenizerItem.className = 'd-flex justify-content-between align-items-center mb-2 enabled-model-item';
             tokenizerItem.innerHTML = `
-                <span>${tokenizer_id}</span>
+                <span class="model-name">${tokenizer_id}</span>
                 <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn" data-tokenizer-id="${tokenizer_id}">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -1311,9 +1331,7 @@ function updateTokenizersList(data) {
     }
 
     const uploadButtonContainer = document.createElement('div');
-    uploadButtonContainer.className = 'card mb-3';
-    uploadButtonContainer.style.border = '1px dashed #dee2e6';
-    uploadButtonContainer.style.backgroundColor = 'transparent';
+    uploadButtonContainer.className = 'card mb-3 add-provider-card';
 
     const uploadButtonDiv = document.createElement('div');
     uploadButtonDiv.className = 'card-body text-center py-3';
