@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile
+from fastapi import APIRouter, UploadFile, Form, File
 from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel
@@ -13,11 +13,6 @@ from refact_utils.third_party.utils.tokenizers import delete_tokenizer
 
 
 __all__ = ["TabThirdPartyApisRouter"]
-
-
-class UploadTokenizer(BaseModel):
-    tokenizer_id: str
-    file: UploadFile
 
 
 class DeleteTokenizer(BaseModel):
@@ -58,9 +53,13 @@ class TabThirdPartyApisRouter(APIRouter):
         except Exception as e:
             return JSONResponse({"detail": f"Error get tokenizers: {e}"}, status_code=400)
 
-    async def _tab_third_party_apis_upload_tokenizer(self, post: UploadTokenizer):
+    async def _tab_third_party_apis_upload_tokenizer(
+            self,
+            tokenizer_id: str = Form(...),
+            file: UploadFile = File(...)
+    ):
         try:
-            await upload_tokenizer(post.tokenizer_id, post.file)
+            await upload_tokenizer(tokenizer_id, file)
             return JSONResponse("OK", status_code=200)
         except Exception as e:
             return JSONResponse({"detail": f"Error uploading tokenizer: {e}"}, status_code=400)

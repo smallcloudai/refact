@@ -1084,14 +1084,31 @@ function loadTokenizers() {
 }
 
 function loadTokenizersForDropdown() {
+    const dropdownMenu = document.getElementById('tokenizer-dropdown-menu');
+    const tokenizerId = document.getElementById('custom-model-tokenizer-id');
+
+    if (!dropdownMenu || !tokenizerId) {
+        return;
+    }
+
     fetch("/tab-third-party-apis-get-tokenizers")
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            populateTokenizerDropdown(data);
+            if (Array.isArray(data)) {
+                populateTokenizerDropdown(data);
+            } else {
+                console.warn("Unexpected tokenizer data format:", data);
+                populateTokenizerDropdown([]);
+            }
         })
         .catch(error => {
             console.error("Error loading tokenizers for dropdown:", error);
-            general_error(error);
+            populateTokenizerDropdown([]);
         });
 }
 
