@@ -133,3 +133,9 @@
     max-height: 300px;
     overflow-y: auto;
 }
+
+/* Tokenizer dropdown styling */
+#tokenizer-dropdown-menu .dropdown-item.active {
+    background-color: var(--bs-primary);
+    color: white;
+}
