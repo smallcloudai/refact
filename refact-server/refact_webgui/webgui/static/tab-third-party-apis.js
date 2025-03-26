@@ -1078,43 +1078,6 @@ export function tab_update_each_couple_of_seconds() {
 }
 
 function initializeTokenizers() {
-    // Add CSS for tokenizer sections
-    const style = document.createElement('style');
-    style.textContent = `
-        #tokenizers-list {
-            max-height: none !important;
-            overflow: visible !important;
-        }
-        .tokenizer-section-header {
-            cursor: pointer;
-        }
-        .tokenizer-section-body {
-            padding: 15px;
-        }
-        .tokenizer-section-body.collapse {
-            display: none;
-        }
-        .tokenizer-item {
-            padding: 8px 12px;
-            background-color: #fff;
-            border-radius: 4px;
-            border: 1px solid #dee2e6;
-            margin-bottom: 8px;
-        }
-        .tokenizer-item:last-child {
-            margin-bottom: 0;
-        }
-        #upload-tokenizer-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #upload-tokenizer-btn i {
-            margin-right: 5px;
-        }
-    `;
-    document.head.appendChild(style);
-
     const uploadTokenizerBtn = document.getElementById('upload-tokenizer-btn');
     if (uploadTokenizerBtn) {
         uploadTokenizerBtn.className = 'btn btn-primary';
