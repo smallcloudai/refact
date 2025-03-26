@@ -15,7 +15,6 @@ import { telemetryApi } from "../../../services/refact";
 import {
   newChatAction,
   selectChatId,
-  selectLastSentCompression,
   setIsNewChatSuggestionRejected,
 } from "../../../features/Chat";
 
@@ -41,6 +40,7 @@ export const SuggestNewChat = ({
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
   const { compressChat, compressChatRequest } = useCompressChat();
+  const lastSentCompression = useLastSentCompressionStop();
 
   useEffect(() => {
     if (shouldBeVisible) {
@@ -119,27 +119,28 @@ export const SuggestNewChat = ({
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          {lastSentCompression && lastSentCompression !== "absent" && (
-            <Link
-              size="1"
-              onClick={() => {
-                if (compressChatRequest.isLoading) return;
-                void compressChat();
-              }}
-              color="indigo"
-              asChild
-            >
-              <Flex
-                align="center"
-                justify="start"
-                gap="1"
-                display="inline-flex"
+          {lastSentCompression.strength &&
+            lastSentCompression.strength !== "absent" && (
+              <Link
+                size="1"
+                onClick={() => {
+                  if (compressChatRequest.isLoading) return;
+                  void compressChat();
+                }}
+                color="indigo"
+                asChild
               >
-                <ArchiveIcon style={{ alignSelf: "start" }} />
-                Compress and open in a new chat.
-              </Flex>
-            </Link>
-          )}
+                <Flex
+                  align="center"
+                  justify="start"
+                  gap="1"
+                  display="inline-flex"
+                >
+                  <ArchiveIcon style={{ alignSelf: "start" }} />
+                  Compress and open in a new chat.
+                </Flex>
+              </Link>
+            )}
         </Flex>
         <Box position="absolute" top="1" right="1">
           <IconButton
