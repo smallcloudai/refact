@@ -465,6 +465,9 @@ function showAddModelModal(providerId) {
     modelIdContainer.dataset.isEdit = 'false';
     modelIdContainer.dataset.modelId = '';
 
+    // Load available tokenizers for the dropdown
+    loadTokenizersForDropdown();
+
     // Determine if we have predefined models for this provider
     const hasPredefined = hasPredefinedModels(providerId);
     const providerModels = hasPredefined ? PROVIDER_DEFAULT_CONFIGS[providerId] : [];
@@ -564,9 +567,19 @@ function showAddModelModal(providerId) {
                 </div>
 
                 <div class="mb-3">
-                    <label for="custom-model-tokenizer-uri" class="form-label">Tokenizer URI (Optional)</label>
-                    <input type="text" class="form-control" id="custom-model-tokenizer-uri" placeholder="e.g., https://huggingface.co/model/tokenizer.json">
-                    <div class="form-text">URI to the tokenizer for this model. Leave empty to use default.</div>
+                    <label for="custom-model-tokenizer-id" class="form-label">Tokenizer (Optional)</label>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle form-control text-start" type="button" id="tokenizer-dropdown-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                            Default (None)
+                        </button>
+                        <ul class="dropdown-menu w-100" id="tokenizer-dropdown-menu">
+                            <li><a class="dropdown-item" href="#" data-value="">Default (None)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <!-- Custom tokenizers will be populated here -->
+                        </ul>
+                        <input type="hidden" id="custom-model-tokenizer-id" value="">
+                    </div>
+                    <div class="form-text">Tokenizer for this model. Leave as default or select from available tokenizers.</div>
                 </div>
             </div>
         </div>
@@ -754,7 +767,7 @@ function addModel() {
 
             const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
             const customMaxTokens = parseInt(document.getElementById('custom-model-max-tokens').value.trim(), 10);
-//            const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri')?.value.trim();
+            const customTokenizerId = document.getElementById('custom-model-tokenizer-id').value.trim();
 
             // Validate context size
             if (isNaN(customNCtx) || customNCtx < 1024) {
@@ -790,10 +803,12 @@ function addModel() {
                 modelConfig.capabilities[key] = !!modelConfig.capabilities[key];
             });
 
-            // Add tokenizer URI if provided
-//            if (customTokenizerUri) {
-//                modelConfig.tokenizer_uri = customTokenizerUri;
-//            }
+            // Add tokenizer ID if provided
+            if (customTokenizerId) {
+                modelConfig.tokenizer_id = customTokenizerId;
+            } else {
+                modelConfig.tokenizer_id = null;
+            }
 
             // Add the model config to the models dictionary
             apiConfig.models[modelId] = modelConfig;
@@ -887,10 +902,13 @@ function showEditModelModal(providerId, modelId) {
         customApiKeyInputContainer.style.display = 'none';
     }
 
-    const tokenizerUriElement = document.getElementById('custom-model-tokenizer-uri');
-    if (tokenizerUriElement) {
-        tokenizerUriElement.value = modelConfig.tokenizer_uri || '';
+    const tokenizerIdElement = document.getElementById('custom-model-tokenizer-id');
+    if (tokenizerIdElement) {
+        tokenizerIdElement.value = modelConfig.tokenizer_id || '';
     }
+
+    // Load tokenizers for dropdown and highlight the selected one if applicable
+    loadTokenizersForDropdown();
 
     // Change the modal labels and button text to indicate edit mode
     document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
@@ -948,7 +966,7 @@ function updateModel() {
 
     const customNCtx = parseInt(document.getElementById('custom-model-n-ctx').value.trim(), 10);
     const customMaxTokens = parseInt(document.getElementById('custom-model-max-tokens').value.trim(), 10);
-//    const customTokenizerUri = document.getElementById('custom-model-tokenizer-uri').value.trim();
+    const customTokenizerId = document.getElementById('custom-model-tokenizer-id').value.trim();
 
     // Validate context size
     if (isNaN(customNCtx) || customNCtx < 1024) {
@@ -972,12 +990,12 @@ function updateModel() {
     modelConfig.api_base = customApiBase ? customApiBase : null;
     modelConfig.api_key = customApiKey ? customApiKey : null;
 
-    // Update tokenizer URI if provided, otherwise remove it
-//    if (customTokenizerUri) {
-//        modelConfig.tokenizer_uri = customTokenizerUri;
-//    } else {
-//        delete modelConfig.tokenizer_uri;
-//    }
+    // Update tokenizer ID if provided, otherwise set to null
+    if (customTokenizerId) {
+        modelConfig.tokenizer_id = customTokenizerId;
+    } else {
+        modelConfig.tokenizer_id = null;
+    }
 
     updateConfiguration();
     updateUI();
@@ -1065,6 +1083,71 @@ function loadTokenizers() {
         });
 }
 
+function loadTokenizersForDropdown() {
+    fetch("/tab-third-party-apis-get-tokenizers")
+        .then(response => response.json())
+        .then(data => {
+            populateTokenizerDropdown(data);
+        })
+        .catch(error => {
+            console.error("Error loading tokenizers for dropdown:", error);
+            general_error(error);
+        });
+}
+
+function populateTokenizerDropdown(tokenizers) {
+    const dropdownMenu = document.getElementById('tokenizer-dropdown-menu');
+    const currentValue = document.getElementById('custom-model-tokenizer-id').value.trim();
+
+    // Keep the default option and divider
+    const defaultItems = `
+        <li><a class="dropdown-item ${!currentValue ? 'active' : ''}" href="#" data-value="">Default (None)</a></li>
+        <li><hr class="dropdown-divider"></li>
+    `;
+
+    let tokenizersHtml = '';
+
+    if (tokenizers && tokenizers.length > 0) {
+        tokenizers.forEach(tokenizer => {
+            const isActive = currentValue === tokenizer;
+            tokenizersHtml += `<li><a class="dropdown-item ${isActive ? 'active' : ''}" href="#" data-value="${tokenizer}">${tokenizer}</a></li>`;
+        });
+    } else {
+        tokenizersHtml = '<li><a class="dropdown-item disabled" href="#">No custom tokenizers available</a></li>';
+    }
+
+    dropdownMenu.innerHTML = defaultItems + tokenizersHtml;
+
+    // Add event listeners to dropdown items
+    dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tokenizerId = this.getAttribute('data-value');
+            document.getElementById('custom-model-tokenizer-id').value = tokenizerId;
+
+            // Update the dropdown button text to show the selected tokenizer
+            const dropdownBtn = document.getElementById('tokenizer-dropdown-btn');
+            if (tokenizerId) {
+                dropdownBtn.textContent = tokenizerId;
+            } else {
+                dropdownBtn.textContent = 'Default (None)';
+            }
+
+            // Update active state
+            dropdownMenu.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Update the dropdown button text to show the currently selected tokenizer
+    const dropdownBtn = document.getElementById('tokenizer-dropdown-btn');
+    if (currentValue) {
+        dropdownBtn.textContent = currentValue;
+    } else {
+        dropdownBtn.textContent = 'Default (None)';
+    }
+}
+
 function updateTokenizersList(tokenizers) {
     const tokenizersContainer = document.getElementById('tokenizers-list');
     const noTokenizersMsg = document.getElementById('no-tokenizers-msg');
@@ -1113,6 +1196,14 @@ function initializeTokenizerModals() {
     } else {
         tokenizer_upload_modal = new bootstrap.Modal(tokenizer_upload_modal_element);
         tokenizer_upload_modal_element._bsModal = tokenizer_upload_modal;
+    }
+
+    // Initialize the tokenizer dropdown in the model modal
+    const modelModal = document.getElementById('add-third-party-model-modal');
+    if (modelModal) {
+        modelModal.addEventListener('show.bs.modal', function() {
+            loadTokenizersForDropdown();
+        });
     }
 
     tokenizer_upload_modal_element.addEventListener('hidden.bs.modal', function () {
@@ -1215,6 +1306,7 @@ function uploadTokenizer() {
         }
         showSuccessToast("Tokenizer uploaded successfully");
         loadTokenizers();
+        loadTokenizersForDropdown();
     })
     .catch(error => {
         console.error("Error uploading tokenizer:", error);
@@ -1252,6 +1344,7 @@ function deleteTokenizer(tokenizerId) {
         .then(() => {
             showSuccessToast("Tokenizer deleted successfully");
             loadTokenizers();
+            loadTokenizersForDropdown();
         })
         .catch(error => {
             console.error("Error deleting tokenizer:", error);
