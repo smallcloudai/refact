@@ -104,7 +104,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     if (limitReached) {
       dispatch(
         setInformation(
-          `Token Limit reached, ${tokens} out of ${limit} used. To continue click the compress button or start a new chat.`,
+          `Token Limit reached, ${tokens} out of ${limit} used. Consider clicking the compress button to reduce the size.`,
         ),
       );
     }
@@ -131,7 +131,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
-    if (limitReached) return true;
     // if (
     //   currentThreadMaximumContextTokens &&
     //   currentThreadUsage?.prompt_tokens &&
@@ -143,7 +142,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return isWaiting || isStreaming || !isOnline || preventSend;
   }, [
     allDisabled,
-    limitReached,
     messages.length,
     isWaiting,
     isStreaming,
@@ -385,7 +383,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 data-testid="chat-form-textarea"
                 required={true}
                 // disabled={isStreaming}
-                disabled={limitReached}
                 {...props}
                 autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
