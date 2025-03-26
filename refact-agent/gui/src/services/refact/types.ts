@@ -70,6 +70,7 @@ export interface BaseToolResult {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
   content: ToolContent;
+  compression_strength?: CompressionStrength;
 }
 
 export interface SingleModelToolResult extends BaseToolResult {
