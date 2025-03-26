@@ -121,11 +121,20 @@
     margin-bottom: 10px;
     padding-bottom: 5px;
     border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
 }
 
 .tokenizer-section-header h6 {
     color: #495057;
     font-weight: 600;
+}
+
+.tokenizer-section-body {
+    padding: 15px;
+}
+
+.tokenizer-section-body.collapse {
+    display: none;
 }
 
 .tokenizer-item {
@@ -134,6 +143,10 @@
     border: 1px solid #dee2e6;
     border-radius: 4px;
     margin-bottom: 8px;
+}
+
+.tokenizer-item:last-child {
+    margin-bottom: 0;
 }
 
 .tokenizer-item .badge {
@@ -147,9 +160,19 @@
 }
 
 #tokenizers-list {
-    max-height: 400px;
-    overflow-y: auto;
+    max-height: none !important;
+    overflow: visible !important;
     padding-right: 5px;
+}
+
+#upload-tokenizer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#upload-tokenizer-btn i {
+    margin-right: 5px;
 }
 
 /* Tokenizer dropdown styling */
