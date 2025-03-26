@@ -63,6 +63,7 @@ export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
   "chatThread/setLastUserMessageId",
 );
 
+// TBD: only used when `/links` suggests a new chat.
 export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
 );
@@ -160,6 +161,10 @@ export const upsertToolCall = createAction<
 
 export const setIncreaseMaxTokens = createAction<boolean>(
   "chatThread/setIncreaseMaxTokens",
+);
+
+export const setThreadPaused = createAction<boolean>(
+  "chatThread/setThreadPaused",
 );
 
 // TODO: This is the circular dep when imported from hooks :/

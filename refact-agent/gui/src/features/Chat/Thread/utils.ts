@@ -182,7 +182,8 @@ export function formatChatResponse(
   }
 
   if (isToolResponse(response)) {
-    const { tool_call_id, content, finish_reason } = response;
+    const { tool_call_id, content, finish_reason, compression_strength } =
+      response;
     const filteredMessages = finishToolCallInMessages(messages, tool_call_id);
     const toolResult: ToolResult =
       typeof content === "string"
@@ -190,11 +191,13 @@ export function formatChatResponse(
             tool_call_id,
             content,
             finish_reason,
+            compression_strength,
           }
         : {
             tool_call_id,
             content,
             finish_reason,
+            compression_strength,
           };
 
     return [...filteredMessages, { role: response.role, content: toolResult }];
