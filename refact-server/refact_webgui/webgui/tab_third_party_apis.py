@@ -54,12 +54,26 @@ class TabThirdPartyApisRouter(APIRouter):
     def _tokenizers_dir(self) -> Path:
         return Path(env.DIR_TOKENIZERS)
 
+    def _tokenizer_file_to_id(self, filename: Path) -> str:
+        if not filename.exists():
+            raise RuntimeError(f"filename not exists `{filename}`")
+        if not filename.is_relative_to(self._tokenizers_dir):
+            raise RuntimeError(f"filename is not in tokenizers dir `{filename}`")
+        if not filename.name.endswith(".json"):
+            raise RuntimeError(f"invalid tokenizer filename `{filename.name}`")
+        return ".".join(filename.name.split(".")[:-1])
+
+    def _tokenizer_id_to_file(self, tokenizer_id: str) -> Path:
+        return self._tokenizers_dir / f"{tokenizer_id}.json"
+
     async def _tab_third_party_apis_get_tokenizers(self):
-        return JSONResponse([
-            filename.name
-            for filename in self._tokenizers_dir.iterdir()
-            if filename.name.endswith(".json")
-        ])
+        tokenizers = []
+        for filename in sorted(self._tokenizers_dir.iterdir()):
+            try:
+                tokenizers.append(self._tokenizer_file_to_id(filename))
+            except Exception:
+                pass
+        return JSONResponse(tokenizers)
 
     async def _tab_third_party_apis_upload_tokenizer(self, file: UploadFile):
         filename = self._tokenizers_dir / file.filename
@@ -74,7 +88,8 @@ class TabThirdPartyApisRouter(APIRouter):
                 )
 
             if (resp := await write_to_file(str(self._tokenizers_dir), file)).status_code != 200:
-                return resp
+                filename.unlink(missing_ok=True)
+                raise resp
 
             return JSONResponse("OK", status_code=200)
         except Exception as e:
@@ -83,9 +98,9 @@ class TabThirdPartyApisRouter(APIRouter):
 
     async def _tab_third_party_apis_delete_tokenizer(self, tokenizer_id: str):
         try:
-            tokenizer_path = self._tokenizers_dir / f"{tokenizer_id}.json"
-            if tokenizer_path.exists():
-                tokenizer_path.unlink()
+            filename = self._tokenizer_id_to_file(tokenizer_id)
+            if filename.exists():
+                filename.unlink()
             return JSONResponse("OK", status_code=200)
         except Exception as e:
             return JSONResponse({"detail": f"Error deleting tokenizer: {e}"}, status_code=400)
