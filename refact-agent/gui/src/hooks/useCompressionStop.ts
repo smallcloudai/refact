@@ -27,10 +27,15 @@ export function useLastSentCompressionStop() {
   }, [messages]);
 
   useEffect(() => {
-    if (messagesFromLastUserMessage >= 40 && !stopped) {
+    if (
+      lastSentCompression &&
+      lastSentCompression !== "absent" &&
+      messagesFromLastUserMessage >= 40 &&
+      !stopped
+    ) {
       dispatch(setThreadPaused(true));
     }
-  }, [dispatch, messagesFromLastUserMessage, stopped]);
+  }, [dispatch, lastSentCompression, messagesFromLastUserMessage, stopped]);
 
   const resume = useCallback(() => {
     dispatch(setThreadPaused(false));
