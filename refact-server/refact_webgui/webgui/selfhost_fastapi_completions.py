@@ -16,7 +16,7 @@ from fastapi.responses import Response, StreamingResponse
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_utils.third_party.utils.models import available_third_party_models
-from refact_utils.third_party.utils.tokenizers import get_tokenizer
+from refact_utils.third_party.utils.tokenizers import load_tokenizer
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -347,9 +347,9 @@ class BaseCompletionsRouter(APIRouter):
                 model_path = self._model_assigner.models_db[model_name]["model_path"]
                 data = await self._local_tokenizer(model_path)
             elif model := available_third_party_models().get(model_name):
-                data = await get_tokenizer(model)
+                data = await load_tokenizer(model.tokenizer_id)
             else:
-                raise RuntimeError(f"model '{model_name}' does not exist in db")
+                raise RuntimeError(f"model `{model_name}` is not serving")
             return Response(content=data, media_type='application/json')
         except RuntimeError as e:
             raise HTTPException(404, detail=str(e))
