@@ -1,15 +1,21 @@
 import json
 import os
 import litellm
-import aiohttp
-import aiofiles
 
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional
-from pathlib import Path
 
 from refact_utils.scripts import env
 from refact_webgui.webgui.selfhost_webutils import log
+
+
+__all__ = [
+    "load_third_party_config",
+    "save_third_party_config",
+    "available_third_party_models",
+    "get_provider_models",
+    "ThirdPartyApiConfig",
+]
 
 
 class ModelCapabilities(BaseModel):
@@ -230,31 +236,3 @@ def get_provider_models() -> Dict[str, List[str]]:
             except Exception:
                 continue
     return providers_models
-
-
-async def _passthrough_tokenizer(uri: str) -> str:
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(uri) as resp:
-                return await resp.text()
-    except Exception as e:
-        raise RuntimeError(f"Failed to download tokenizer from '{uri}': {str(e)}")
-
-
-async def get_tokenizer(model: ModelConfig) -> str:
-    if model.tokenizer_id:
-        # If tokenizer_id exists, load from file
-        tokenizer_path = Path(env.DIR_TOKENIZERS) / f"{model.tokenizer_id}.json"
-        if tokenizer_path.exists():
-            try:
-                async with aiofiles.open(tokenizer_path, mode='r') as f:
-                    return await f.read()
-            except Exception as e:
-                raise RuntimeError(f"Failed to read tokenizer file '{tokenizer_path}': {str(e)}")
-        else:
-            raise RuntimeError(f"Tokenizer '{model.tokenizer_id}' not found")
-    else:
-        # If tokenizer_id is None, load from HuggingFace as before
-        model_path = "Xenova/gpt-4o"
-        tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
-        return await _passthrough_tokenizer(tokenizer_url)

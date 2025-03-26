@@ -15,8 +15,8 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_utils.third_party.utils import available_third_party_models
-from refact_utils.third_party.utils import get_tokenizer
+from refact_utils.third_party.utils.models import available_third_party_models
+from refact_utils.third_party.utils.tokenizers import get_tokenizer
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log

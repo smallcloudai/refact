@@ -5,13 +5,12 @@ from pydantic import BaseModel
 from pathlib import Path
 
 from refact_utils.scripts import env
-from refact_utils.third_party.utils import ThirdPartyApiConfig
-from refact_utils.third_party.utils import load_third_party_config
-from refact_utils.third_party.utils import save_third_party_config
-from refact_utils.third_party.utils import get_provider_models
+from refact_utils.third_party.utils.models import ThirdPartyApiConfig
+from refact_utils.third_party.utils.models import load_third_party_config
+from refact_utils.third_party.utils.models import save_third_party_config
+from refact_utils.third_party.utils.models import get_provider_models
 
 from refact_webgui.webgui.tab_loras import write_to_file
-from refact_webgui.webgui.tab_loras import rm
 
 
 __all__ = ["TabThirdPartyApisRouter"]

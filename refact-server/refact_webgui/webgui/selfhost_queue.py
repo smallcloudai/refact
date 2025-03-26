@@ -8,7 +8,7 @@ from typing import Dict, List, Any, Tuple
 import uuid
 
 from refact_utils.scripts import env
-from refact_utils.third_party.utils import available_third_party_models
+from refact_utils.third_party.utils.models import available_third_party_models
 from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_webutils import log
 
