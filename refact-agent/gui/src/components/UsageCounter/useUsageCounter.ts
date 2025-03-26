@@ -3,9 +3,9 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
-  selectLastSentCompression,
+  // selectLastSentCompression,
 } from "../../features/Chat";
-import { useAppSelector } from "../../hooks";
+import { useAppSelector, useLastSentCompressionStop } from "../../hooks";
 import {
   calculateUsageInputTokens,
   mergeUsages,
@@ -15,7 +15,7 @@ import { isAssistantMessage } from "../../services/refact";
 export function useUsageCounter() {
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const lastSentCompression = useAppSelector(selectLastSentCompression);
+  const compressionStop = useLastSentCompressionStop();
   const messages = useAppSelector(selectMessages);
   const assistantMessages = messages.filter(isAssistantMessage);
   const usages = assistantMessages.map((msg) => msg.usage);
@@ -33,21 +33,23 @@ export function useUsageCounter() {
   }, [currentThreadUsage]);
 
   const isOverflown = useMemo(() => {
-    if (lastSentCompression === "low") return true;
-    if (lastSentCompression === "medium") return true;
-    if (lastSentCompression === "high") return true;
+    if (!compressionStop.stopped) return false;
+    if (compressionStop.strength === "low") return true;
+    if (compressionStop.strength === "medium") return true;
+    if (compressionStop.strength === "high") return true;
     return false;
-  }, [lastSentCompression]);
+  }, [compressionStop.stopped, compressionStop.strength]);
 
   const isWarning = useMemo(() => {
-    if (lastSentCompression === "medium") return true;
-    if (lastSentCompression === "high") return true;
+    if (!compressionStop.stopped) return false;
+    if (compressionStop.strength === "medium") return true;
+    if (compressionStop.strength === "high") return true;
     return false;
-  }, [lastSentCompression]);
+  }, [compressionStop.stopped, compressionStop.strength]);
 
   const shouldShow = useMemo(() => {
     return messages.length > 0 && !isStreaming && !isWaiting;
-  }, [messages, isStreaming, isWaiting]);
+  }, [messages.length, isStreaming, isWaiting]);
 
   return {
     shouldShow,

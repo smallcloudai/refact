@@ -56,7 +56,7 @@ import {
 
 import { v4 as uuidv4 } from "uuid";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
-import { useTotalTokenUsage } from "./useTotalTokenUsage";
+import { useLastSentCompressionStop } from "./useCompressionStop";
 
 type SubmitHandlerParams =
   | {
@@ -356,7 +356,7 @@ export function useAutoSend() {
   const sendImmediately = useAppSelector(selectSendImmediately);
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
-  const { limitReached } = useTotalTokenUsage();
+  const compressionStop = useLastSentCompressionStop();
   const { sendMessages, abort, messagesWithSystemPrompt } =
     useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
@@ -381,7 +381,7 @@ export function useAutoSend() {
       const lastMessage = currentMessages.slice(-1)[0];
       // here ish
       if (
-        !limitReached &&
+        !compressionStop.stopped &&
         isAssistantMessage(lastMessage) &&
         lastMessage.tool_calls &&
         lastMessage.tool_calls.length > 0
@@ -418,6 +418,6 @@ export function useAutoSend() {
     isIntegration,
     thread.mode,
     thread,
-    limitReached,
+    compressionStop.stopped,
   ]);
 }
