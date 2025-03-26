@@ -8,6 +8,7 @@ import {
   useAppDispatch,
   useAppSelector,
   useCompressChat,
+  useLastSentCompressionStop,
 } from "../../../hooks";
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
 import { telemetryApi } from "../../../services/refact";
@@ -41,7 +42,6 @@ export const SuggestNewChat = ({
   const [isAnimating, setIsAnimating] = useState(false);
   const { compressChat, compressChatRequest } = useCompressChat();
 
-  const lastSentCompression = useAppSelector(selectLastSentCompression);
   useEffect(() => {
     if (shouldBeVisible) {
       setIsRendered(true);
@@ -64,6 +64,7 @@ export const SuggestNewChat = ({
 
   const handleClose = () => {
     dispatch(setIsNewChatSuggestionRejected({ chatId, value: true }));
+
     void sendTelemetryEvent({
       scope: `dismissedNewChatSuggestionWarning`,
       success: true,

@@ -243,6 +243,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIsNewChatSuggested, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.paused = true;
     state.thread.new_chat_suggested = {
       wasSuggested: action.payload.value,
     };
@@ -250,6 +251,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIsNewChatSuggestionRejected, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
+    state.thread.paused = false;
     state.thread.new_chat_suggested = {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
