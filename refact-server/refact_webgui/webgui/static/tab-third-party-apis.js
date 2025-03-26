@@ -1037,11 +1037,6 @@ export function tab_switched_here() {
         addModelModal._bsModal = new bootstrap.Modal(addModelModal);
     }
 
-    const tokenizerUploadModal = document.getElementById('tokenizer-upload-modal');
-    if (tokenizerUploadModal && !tokenizerUploadModal._bsModal) {
-        tokenizerUploadModal._bsModal = new bootstrap.Modal(tokenizerUploadModal);
-    }
-
     initializeTokenizerModals();
 }
 
@@ -1112,7 +1107,28 @@ function updateTokenizersList(tokenizers) {
 function initializeTokenizerModals() {
     const uploadTokenizerBtn = document.getElementById('upload-tokenizer-btn');
     const tokenizer_upload_modal_element = document.getElementById('tokenizer-upload-modal');
-    const tokenizer_upload_modal = new bootstrap.Modal(tokenizer_upload_modal_element);
+
+    if (tokenizer_upload_modal_element._bsModal) {
+        tokenizer_upload_modal = tokenizer_upload_modal_element._bsModal;
+    } else {
+        tokenizer_upload_modal = new bootstrap.Modal(tokenizer_upload_modal_element);
+        tokenizer_upload_modal_element._bsModal = tokenizer_upload_modal;
+    }
+
+    tokenizer_upload_modal_element.addEventListener('hidden.bs.modal', function () {
+        const overlay = document.querySelector('.modal-overlay');
+        if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
+
+        const allButtons = tokenizer_upload_modal_element.querySelectorAll('button');
+        const allInputs = tokenizer_upload_modal_element.querySelectorAll('input');
+        allButtons.forEach(btn => btn.disabled = false);
+        allInputs.forEach(input => input.disabled = false);
+
+        document.getElementById('tokenizer-upload-form').reset();
+        document.getElementById('tokenizer-upload-error').classList.add('d-none');
+    });
 
     uploadTokenizerBtn.addEventListener('click', function() {
         document.getElementById('tokenizer-upload-form').reset();
@@ -1129,9 +1145,9 @@ function uploadTokenizer() {
     const tokenizerId = document.getElementById('tokenizer-id').value.trim();
     const tokenizerFile = document.getElementById('tokenizer-file').files[0];
     const errorElement = document.getElementById('tokenizer-upload-error');
+    const modalElement = document.getElementById('tokenizer-upload-modal');
     errorElement.classList.add('d-none');
 
-    // Validate inputs
     if (!tokenizerId) {
         errorElement.textContent = "Please enter a tokenizer ID";
         errorElement.classList.remove('d-none');
@@ -1151,12 +1167,33 @@ function uploadTokenizer() {
     }
 
     const formData = new FormData();
-    console.log(tokenizerFile);
+    // TODO: we need to pass tokenizer_id instead of filename
     formData.append('file', tokenizerFile, `${tokenizerId}.json`);
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.className = 'modal-overlay';
+    modalOverlay.style.position = 'absolute';
+    modalOverlay.style.top = '0';
+    modalOverlay.style.left = '0';
+    modalOverlay.style.width = '100%';
+    modalOverlay.style.height = '100%';
+    modalOverlay.style.backgroundColor = 'rgba(0,0,0,0.2)';
+    modalOverlay.style.zIndex = '1050';
+    modalOverlay.style.display = 'flex';
+    modalOverlay.style.justifyContent = 'center';
+    modalOverlay.style.alignItems = 'center';
+    modalOverlay.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+
+    const modalDialog = modalElement.querySelector('.modal-dialog');
+    modalDialog.parentNode.insertBefore(modalOverlay, modalDialog);
+
+    const allButtons = modalElement.querySelectorAll('button');
+    const allInputs = modalElement.querySelectorAll('input');
+    allButtons.forEach(btn => btn.disabled = true);
+    allInputs.forEach(input => input.disabled = true);
 
     const submitButton = document.getElementById('tokenizer-upload-submit');
     const originalButtonText = submitButton.textContent;
-    submitButton.disabled = true;
     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
 
     fetch('/tab-third-party-apis-upload-tokenizer', {
@@ -1172,8 +1209,10 @@ function uploadTokenizer() {
         return response.json();
     })
     .then(() => {
-        const modal = bootstrap.Modal.getInstance(document.getElementById('tokenizer-upload-modal'));
-        modal.hide();
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+        }
         showSuccessToast("Tokenizer uploaded successfully");
         loadTokenizers();
     })
@@ -1183,6 +1222,11 @@ function uploadTokenizer() {
         errorElement.classList.remove('d-none');
     })
     .finally(() => {
+        allButtons.forEach(btn => btn.disabled = false);
+        allInputs.forEach(input => input.disabled = false);
+        if (modalOverlay && modalOverlay.parentNode) {
+            modalOverlay.parentNode.removeChild(modalOverlay);
+        }
         submitButton.disabled = false;
         submitButton.textContent = originalButtonText;
     });
