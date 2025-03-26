@@ -63,6 +63,7 @@ export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
   "chatThread/setLastUserMessageId",
 );
 
+// TBD: only used when `/links` suggests a new chat.
 export const setIsNewChatSuggested = createAction<PayloadWithChatAndBoolean>(
   "chatThread/setIsNewChatSuggested",
 );
