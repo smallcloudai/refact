@@ -29,7 +29,7 @@ export async function init(general_error) {
     loadProvidersFromLiteLLM();
     loadConfiguration();
     initializeProvidersList();
-    initializeTokenizers();
+    loadTokenizers();
 
     // Initialize the tokenizer upload modal after the HTML is loaded
     setTimeout(() => {
@@ -1046,9 +1046,6 @@ export function tab_switched_here() {
         setTimeout(() => {
             initializeProvidersList();
             updateUI();
-            Object.keys(expandedTokenizerSections).forEach(sectionId => {
-                setTokenizerSectionCollapsedState(sectionId, expandedTokenizerSections[sectionId]);
-            });
         }, 100);
     } catch (error) {
         console.error("Error reloading providers:", error);
@@ -1075,26 +1072,6 @@ export function tab_switched_away() {
 
 export function tab_update_each_couple_of_seconds() {
     // Nothing to update periodically
-}
-
-function initializeTokenizers() {
-    const uploadTokenizerBtn = document.getElementById('upload-tokenizer-btn');
-    if (uploadTokenizerBtn) {
-        uploadTokenizerBtn.className = 'btn btn-primary';
-
-        uploadTokenizerBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Upload Tokenizer';
-
-        const btnContainer = document.createElement('div');
-        btnContainer.className = 'card mb-3';
-        btnContainer.innerHTML = '<div class="card-body text-center py-3"></div>';
-
-        const parent = uploadTokenizerBtn.parentNode;
-
-        parent.insertBefore(btnContainer, uploadTokenizerBtn);
-        btnContainer.querySelector('.card-body').appendChild(uploadTokenizerBtn);
-    }
-
-    loadTokenizers();
 }
 
 function loadTokenizers() {
@@ -1220,26 +1197,6 @@ function populateTokenizerDropdown(tokenizers) {
     }
 }
 
-function setTokenizerSectionCollapsedState(sectionId, isExpanded) {
-    const sectionBody = document.getElementById(`${sectionId}-tokenizers-body`);
-    const sectionHeader = document.querySelector(`.tokenizer-section-header[data-section="${sectionId}"]`);
-
-    if (sectionBody && sectionHeader) {
-        sectionBody.style.display = isExpanded ? 'block' : 'none';
-
-        const chevron = sectionHeader.querySelector('.bi');
-        if (chevron) {
-            chevron.className = isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-right';
-        }
-
-        if (isExpanded) {
-            sectionHeader.classList.remove('collapsed');
-        } else {
-            sectionHeader.classList.add('collapsed');
-        }
-    }
-}
-
 function updateTokenizersList(data) {
     const tokenizersContainer = document.getElementById('tokenizers-list');
     const noTokenizersMsg = document.getElementById('no-tokenizers-msg');
@@ -1257,108 +1214,125 @@ function updateTokenizersList(data) {
 
     noTokenizersMsg.style.display = 'none';
 
+    const defaultsCard = document.createElement('div');
+    defaultsCard.className = 'card mb-3';
+    tokenizersContainer.appendChild(defaultsCard);
+
+    const defaultsHeader = document.createElement('div');
+    defaultsHeader.className = 'card-header d-flex justify-content-between align-items-center';
+    defaultsHeader.innerHTML = `
+        <span>Default Tokenizers</span>
+        <i class="bi bi-chevron-right"></i>
+    `;
+    defaultsHeader.style.cursor = 'pointer';
+    defaultsCard.appendChild(defaultsHeader);
+
+    const defaultsBody = document.createElement('div');
+    defaultsBody.className = 'card-body';
+    defaultsBody.style.display = 'none';
+    defaultsCard.appendChild(defaultsBody);
+
+    defaultsHeader.addEventListener('click', function() {
+        const chevron = this.querySelector('.bi');
+        if (defaultsBody.style.display === 'none') {
+            defaultsBody.style.display = 'block';
+            chevron.className = 'bi bi-chevron-down';
+        } else {
+            defaultsBody.style.display = 'none';
+            chevron.className = 'bi bi-chevron-right';
+        }
+    });
+
     if (defaults.length > 0) {
-        const defaultsCard = document.createElement('div');
-        defaultsCard.className = 'card mb-3';
-        tokenizersContainer.appendChild(defaultsCard);
-
-        const defaultsHeader = document.createElement('div');
-        defaultsHeader.className = 'tokenizer-section-header d-flex justify-content-between align-items-center card-header';
-        defaultsHeader.dataset.section = 'defaults';
-        defaultsHeader.innerHTML = `
-            <h6 class="mb-0">Default Tokenizers</h6>
-            <i class="bi bi-chevron-down"></i>
-        `;
-        defaultsHeader.style.cursor = 'pointer';
-        defaultsCard.appendChild(defaultsHeader);
-
-        const defaultsBody = document.createElement('div');
-        defaultsBody.id = 'defaults-tokenizers-body';
-        defaultsBody.className = 'tokenizer-section-body card-body';
-        defaultsBody.style.display = expandedTokenizerSections.defaults ? 'block' : 'none';
-        defaultsCard.appendChild(defaultsBody);
-
-        defaultsHeader.addEventListener('click', function() {
-            const isExpanded = expandedTokenizerSections.defaults;
-            expandedTokenizerSections.defaults = !isExpanded;
-            setTokenizerSectionCollapsedState('defaults', !isExpanded);
-        });
-
-        setTokenizerSectionCollapsedState('defaults', expandedTokenizerSections.defaults);
-
         defaults.forEach(tokenizer_id => {
             const tokenizerItem = document.createElement('div');
-            tokenizerItem.className = 'tokenizer-item mb-2 d-flex justify-content-between align-items-center';
-            tokenizerItem.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <span class="tokenizer-name">${tokenizer_id}</span>
-                    <span class="badge bg-secondary ms-2">Default</span>
-                </div>
-                <div>
-                    <!-- No delete button for default tokenizers -->
-                </div>
-            `;
+            tokenizerItem.className = 'mb-2';
+            tokenizerItem.textContent = tokenizer_id;
             defaultsBody.appendChild(tokenizerItem);
         });
+    } else {
+        const noDefaultsMsg = document.createElement('div');
+        noDefaultsMsg.className = 'text-muted';
+        noDefaultsMsg.textContent = 'No default tokenizers available';
+        defaultsBody.appendChild(noDefaultsMsg);
     }
 
+    const uploadedCard = document.createElement('div');
+    uploadedCard.className = 'card mb-3';
+    tokenizersContainer.appendChild(uploadedCard);
+
+    const uploadedHeader = document.createElement('div');
+    uploadedHeader.className = 'card-header d-flex justify-content-between align-items-center';
+    uploadedHeader.innerHTML = `
+        <span>Custom Tokenizers</span>
+        <i class="bi bi-chevron-down"></i>
+    `;
+    uploadedHeader.style.cursor = 'pointer';
+    uploadedCard.appendChild(uploadedHeader);
+
+    const uploadedBody = document.createElement('div');
+    uploadedBody.className = 'card-body';
+    uploadedCard.appendChild(uploadedBody);
+
+    uploadedHeader.addEventListener('click', function() {
+        const chevron = this.querySelector('.bi');
+        if (uploadedBody.style.display === 'none') {
+            uploadedBody.style.display = 'block';
+            chevron.className = 'bi bi-chevron-down';
+        } else {
+            uploadedBody.style.display = 'none';
+            chevron.className = 'bi bi-chevron-right';
+        }
+    });
+
     if (uploaded.length > 0) {
-        const uploadedCard = document.createElement('div');
-        uploadedCard.className = 'card mb-3';
-        tokenizersContainer.appendChild(uploadedCard);
-
-        const uploadedHeader = document.createElement('div');
-        uploadedHeader.className = 'tokenizer-section-header d-flex justify-content-between align-items-center card-header';
-        uploadedHeader.dataset.section = 'uploaded';
-        uploadedHeader.innerHTML = `
-            <h6 class="mb-0">Custom Tokenizers</h6>
-            <i class="bi bi-chevron-down"></i>
-        `;
-        uploadedHeader.style.cursor = 'pointer';
-        uploadedCard.appendChild(uploadedHeader);
-
-        const uploadedBody = document.createElement('div');
-        uploadedBody.id = 'uploaded-tokenizers-body';
-        uploadedBody.className = 'tokenizer-section-body card-body';
-        uploadedBody.style.display = expandedTokenizerSections.uploaded ? 'block' : 'none';
-        uploadedCard.appendChild(uploadedBody);
-
-        uploadedHeader.addEventListener('click', function(event) {
-            if (event.target.closest('button')) {
-                return;
-            }
-            const isExpanded = expandedTokenizerSections.uploaded;
-            expandedTokenizerSections.uploaded = !isExpanded;
-            setTokenizerSectionCollapsedState('uploaded', !isExpanded);
-        });
-
-        setTokenizerSectionCollapsedState('uploaded', expandedTokenizerSections.uploaded);
-
         uploaded.forEach(tokenizer_id => {
             const tokenizerItem = document.createElement('div');
-            tokenizerItem.className = 'tokenizer-item mb-2 d-flex justify-content-between align-items-center';
+            tokenizerItem.className = 'd-flex justify-content-between align-items-center mb-2';
             tokenizerItem.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <span class="tokenizer-name">${tokenizer_id}</span>
-                </div>
-                <div>
-                    <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn" data-tokenizer-id="${tokenizer_id}">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
+                <span>${tokenizer_id}</span>
+                <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn" data-tokenizer-id="${tokenizer_id}">
+                    <i class="bi bi-trash"></i>
+                </button>
             `;
             uploadedBody.appendChild(tokenizerItem);
 
             const deleteBtn = tokenizerItem.querySelector('.delete-tokenizer-btn');
-            deleteBtn.addEventListener('click', function() {
+            deleteBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 deleteTokenizer(this.dataset.tokenizerId);
             });
         });
+    } else {
+        const noUploadedMsg = document.createElement('div');
+        noUploadedMsg.className = 'text-muted';
+        noUploadedMsg.textContent = 'No custom tokenizers uploaded';
+        uploadedBody.appendChild(noUploadedMsg);
     }
+
+    const uploadButtonContainer = document.createElement('div');
+    uploadButtonContainer.className = 'card mb-3';
+    uploadButtonContainer.style.border = '1px dashed #dee2e6';
+    uploadButtonContainer.style.backgroundColor = 'transparent';
+
+    const uploadButtonDiv = document.createElement('div');
+    uploadButtonDiv.className = 'card-body text-center py-3';
+    uploadButtonDiv.innerHTML = `
+        <button id="upload-tokenizer-btn" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Upload Tokenizer
+        </button>
+    `;
+    uploadButtonContainer.appendChild(uploadButtonDiv);
+    tokenizersContainer.appendChild(uploadButtonContainer);
+
+    document.getElementById('upload-tokenizer-btn').addEventListener('click', function() {
+        document.getElementById('tokenizer-upload-form').reset();
+        document.getElementById('tokenizer-upload-error').classList.add('d-none');
+        tokenizer_upload_modal.show();
+    });
 }
 
 function initializeTokenizerModals() {
-    const uploadTokenizerBtn = document.getElementById('upload-tokenizer-btn');
     const tokenizer_upload_modal_element = document.getElementById('tokenizer-upload-modal');
 
     if (tokenizer_upload_modal_element._bsModal) {
@@ -1388,12 +1362,6 @@ function initializeTokenizerModals() {
 
         document.getElementById('tokenizer-upload-form').reset();
         document.getElementById('tokenizer-upload-error').classList.add('d-none');
-    });
-
-    uploadTokenizerBtn.addEventListener('click', function() {
-        document.getElementById('tokenizer-upload-form').reset();
-        document.getElementById('tokenizer-upload-error').classList.add('d-none');
-        tokenizer_upload_modal.show();
     });
 
     document.getElementById('tokenizer-upload-submit').onclick = function() {
