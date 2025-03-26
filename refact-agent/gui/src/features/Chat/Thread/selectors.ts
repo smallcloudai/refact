@@ -1,9 +1,9 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import {
+  CompressionStrength,
   isToolMessage,
   isUserMessage,
-  UserMessage,
 } from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
@@ -23,6 +23,7 @@ export const selectCheckpointsEnabled = (state: RootState) =>
 export const selectThreadBoostReasoning = (state: RootState) =>
   state.chat.thread.boost_reasoning;
 
+// TBD: only used when `/links` suggests a new chat.
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;
 export const selectThreadMaximumTokens = (state: RootState) =>
@@ -77,14 +78,24 @@ export const selectThreadMode = createSelector(
 export const selectLastSentCompression = createSelector(
   selectMessages,
   (messages) => {
-    const lastUserMessage = messages.reduce<null | UserMessage>(
+    const lastCompression = messages.reduce<null | CompressionStrength>(
       (acc, message) => {
-        if (isUserMessage(message)) return message;
+        if (isUserMessage(message) && message.compression_strength) {
+          return message.compression_strength;
+        }
+        if (isToolMessage(message) && message.content.compression_strength) {
+          return message.content.compression_strength;
+        }
         return acc;
       },
       null,
     );
 
-    return lastUserMessage?.compression_strength ?? null;
+    return lastCompression;
   },
+);
+
+export const selectThreadPaused = createSelector(
+  selectThread,
+  (thread) => thread.paused ?? false,
 );
