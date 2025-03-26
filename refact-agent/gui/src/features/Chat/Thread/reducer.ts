@@ -39,6 +39,7 @@ import {
   setIsNewChatSuggestionRejected,
   upsertToolCall,
   setIncreaseMaxTokens,
+  setThreadPaused,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -78,6 +79,7 @@ const createChatThread = (
     boost_reasoning: false,
     automatic_patch: false,
     increase_max_tokens: false,
+    paused: false,
   };
   return chat;
 };
@@ -275,6 +277,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = true;
     state.thread.read = false;
     state.prevent_send = false;
+    state.thread.paused = false;
   });
 
   builder.addCase(removeChatFromCache, (state, action) => {
@@ -420,6 +423,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIncreaseMaxTokens, (state, action) => {
     state.thread.increase_max_tokens = action.payload;
+  });
+
+  builder.addCase(setThreadPaused, (state, action) => {
+    state.thread.paused = action.payload;
   });
 
   builder.addMatcher(

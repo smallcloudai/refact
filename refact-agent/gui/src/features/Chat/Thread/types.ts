@@ -29,6 +29,7 @@ export type ChatThread = {
   currentMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
   increase_max_tokens?: boolean;
+  paused?: boolean;
 };
 
 export type SuggestedChat = {

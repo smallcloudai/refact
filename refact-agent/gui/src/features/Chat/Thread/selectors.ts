@@ -1,6 +1,7 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import {
+  CompressionStrength,
   isToolMessage,
   isUserMessage,
   UserMessage,
@@ -77,14 +78,24 @@ export const selectThreadMode = createSelector(
 export const selectLastSentCompression = createSelector(
   selectMessages,
   (messages) => {
-    const lastUserMessage = messages.reduce<null | UserMessage>(
+    const lastCompression = messages.reduce<null | CompressionStrength>(
       (acc, message) => {
-        if (isUserMessage(message)) return message;
+        if (isUserMessage(message) && message.compression_strength) {
+          return message.compression_strength;
+        }
+        if (isToolMessage(message) && message.content.compression_strength) {
+          return message.content.compression_strength;
+        }
         return acc;
       },
       null,
     );
 
-    return lastUserMessage?.compression_strength ?? null;
+    return lastCompression;
   },
+);
+
+export const selectThreadPaused = createSelector(
+  selectThread,
+  (thread) => thread.paused ?? false,
 );
