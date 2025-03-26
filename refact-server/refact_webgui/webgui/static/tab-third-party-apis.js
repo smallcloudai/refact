@@ -562,31 +562,6 @@ function showAddModelModal(providerId) {
                 </div>
             </div>
         </div>
-
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="mb-3" id="custom-model-api-base-container">
-                    <label for="custom-model-api-base" class="form-label">API Base</label>
-                    <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
-                </div>
-
-                <div class="mb-3">
-                    <label for="custom-model-tokenizer-id" class="form-label">Tokenizer (Optional)</label>
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle form-control text-start" type="button" id="tokenizer-dropdown-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                            Default (None)
-                        </button>
-                        <ul class="dropdown-menu w-100" id="tokenizer-dropdown-menu">
-                            <li><a class="dropdown-item" href="#" data-value="">Default (None)</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <!-- Custom tokenizers will be populated here -->
-                        </ul>
-                        <input type="hidden" id="custom-model-tokenizer-id" value="">
-                    </div>
-                    <div class="form-text">Tokenizer for this model. Leave as default or select from available tokenizers.</div>
-                </div>
-            </div>
-        </div>
     `;
 
     // Create the unified model configuration form
@@ -599,6 +574,27 @@ function showAddModelModal(providerId) {
             <div id="custom-model-api-key-input-container" style="display: none; margin-top: 10px;">
                 <input type="text" class="form-control" id="custom-model-api-key-input" placeholder="Enter custom API key">
             </div>
+        </div>
+
+        <div class="mb-3" id="custom-model-api-base-container">
+            <label for="custom-model-api-base" class="form-label">API Base</label>
+            <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
+        </div>
+
+        <div class="mb-3">
+            <label for="custom-model-tokenizer-id" class="form-label">Tokenizer</label>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle form-control text-start" type="button" id="tokenizer-dropdown-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                    Default (None)
+                </button>
+                <ul class="dropdown-menu w-100" id="tokenizer-dropdown-menu">
+                    <li><a class="dropdown-item" href="#" data-value="">Default (None)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <!-- Custom tokenizers will be populated here -->
+                </ul>
+                <input type="hidden" id="custom-model-tokenizer-id" value="">
+            </div>
+            <div class="form-text">Tokenizer for this model. Leave as default or select from available tokenizers.</div>
         </div>
 
         <div role="button" id="advancedOptionsCollapseButton" data-bs-toggle="collapse" data-bs-target="#advancedOptionsCollapse" aria-expanded="false" aria-controls="advancedOptionsCollapse" class="mb-3">
