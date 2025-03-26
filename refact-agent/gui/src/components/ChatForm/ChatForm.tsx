@@ -19,7 +19,7 @@ import {
   useSendChatRequest,
   useCompressChat,
   useAutoFocusOnce,
-  useTotalTokenUsage,
+  // useTotalTokenUsage,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -35,7 +35,7 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  setInformation,
+  // setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
@@ -97,18 +97,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest } = useCompressChat();
   const autoFocus = useAutoFocusOnce();
-
-  const { limitReached, tokens, limit } = useTotalTokenUsage();
-
-  useEffect(() => {
-    if (limitReached) {
-      dispatch(
-        setInformation(
-          `Token Limit reached, ${tokens} out of ${limit} used. Consider clicking the compress button to reduce the size.`,
-        ),
-      );
-    }
-  }, [tokens, limit, limitReached, dispatch]);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";

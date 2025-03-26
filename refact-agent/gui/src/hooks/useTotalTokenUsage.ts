@@ -9,6 +9,7 @@ import {
 } from "../utils/calculateUsageInputTokens";
 
 const TOKEN_LIMIT = 200_000;
+// TODO: maybe remove this
 export function useTotalTokenUsage() {
   const messages = useAppSelector(selectMessages);
 

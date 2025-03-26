@@ -23,6 +23,7 @@ export const selectCheckpointsEnabled = (state: RootState) =>
 export const selectThreadBoostReasoning = (state: RootState) =>
   state.chat.thread.boost_reasoning;
 
+// TODO: this should be safe to remove
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;
 export const selectThreadMaximumTokens = (state: RootState) =>
