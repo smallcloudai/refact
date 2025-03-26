@@ -19,7 +19,7 @@ import {
   useSendChatRequest,
   useCompressChat,
   useAutoFocusOnce,
-  useTotalTokenUsage,
+  // useTotalTokenUsage,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -35,7 +35,7 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  setInformation,
+  // setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
@@ -98,18 +98,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const { compressChat, compressChatRequest } = useCompressChat();
   const autoFocus = useAutoFocusOnce();
 
-  const { limitReached, tokens, limit } = useTotalTokenUsage();
-
-  useEffect(() => {
-    if (limitReached) {
-      dispatch(
-        setInformation(
-          `Token Limit reached, ${tokens} out of ${limit} used. To continue click the compress button or start a new chat.`,
-        ),
-      );
-    }
-  }, [tokens, limit, limitReached, dispatch]);
-
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
   }, [threadToolUse]);
@@ -131,7 +119,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
-    if (limitReached) return true;
     // if (
     //   currentThreadMaximumContextTokens &&
     //   currentThreadUsage?.prompt_tokens &&
@@ -143,7 +130,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return isWaiting || isStreaming || !isOnline || preventSend;
   }, [
     allDisabled,
-    limitReached,
     messages.length,
     isWaiting,
     isStreaming,
@@ -321,11 +307,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (information) {
     return (
-      <InformationCallout
-        mt="2"
-        onClick={onClearInformation}
-        timeout={limitReached ? null : 2000}
-      >
+      <InformationCallout mt="2" onClick={onClearInformation} timeout={2000}>
         {information}
       </InformationCallout>
     );
@@ -385,7 +367,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 data-testid="chat-form-textarea"
                 required={true}
                 // disabled={isStreaming}
-                disabled={limitReached}
                 {...props}
                 autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
