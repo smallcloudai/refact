@@ -1120,15 +1120,16 @@ function initializeTokenizerModals() {
         tokenizer_upload_modal.show();
     });
 
-    document.getElementById('tokenizer-upload-submit').addEventListener('click', function() {
+    document.getElementById('tokenizer-upload-submit').onclick = function() {
         uploadTokenizer();
-    });
+    };
 }
 
 function uploadTokenizer() {
     const tokenizerId = document.getElementById('tokenizer-id').value.trim();
     const tokenizerFile = document.getElementById('tokenizer-file').files[0];
     const errorElement = document.getElementById('tokenizer-upload-error');
+    errorElement.classList.add('d-none');
 
     // Validate inputs
     if (!tokenizerId) {
@@ -1139,6 +1140,12 @@ function uploadTokenizer() {
 
     if (!tokenizerFile) {
         errorElement.textContent = "Please select a tokenizer file";
+        errorElement.classList.remove('d-none');
+        return;
+    }
+
+    if (!tokenizerFile.name.endsWith('.json')) {
+        errorElement.textContent = "Tokenizer file must have a .json extension";
         errorElement.classList.remove('d-none');
         return;
     }
