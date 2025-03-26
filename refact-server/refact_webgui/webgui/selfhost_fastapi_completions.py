@@ -16,6 +16,7 @@ from fastapi.responses import Response, StreamingResponse
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
 from refact_utils.third_party.utils import available_third_party_models
+from refact_utils.third_party.utils import get_tokenizer
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -339,24 +340,19 @@ class BaseCompletionsRouter(APIRouter):
 
         return data
 
-    async def _passthrough_tokenizer(self, uri: str) -> str:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(uri) as resp:
-                    return await resp.text()
-        except:
-            raise HTTPException(404, detail=f"can't load tokenizer.json from `{uri}`")
-
     async def _tokenizer(self, model_name: str):
         model_name = model_name.replace("--", "/")
-        if model_name in self._model_assigner.models_db:
-            model_path = self._model_assigner.models_db[model_name]["model_path"]
-            data = await self._local_tokenizer(model_path)
-        elif model := available_third_party_models().get(model_name):
-            data = await self._passthrough_tokenizer(model.tokenizer_uri())
-        else:
-            raise HTTPException(404, detail=f"model '{model_name}' does not exists in db")
-        return Response(content=data, media_type='application/json')
+        try:
+            if model_name in self._model_assigner.models_db:
+                model_path = self._model_assigner.models_db[model_name]["model_path"]
+                data = await self._local_tokenizer(model_path)
+            elif model := available_third_party_models().get(model_name):
+                data = await get_tokenizer(model)
+            else:
+                raise RuntimeError(f"model '{model_name}' does not exist in db")
+            return Response(content=data, media_type='application/json')
+        except RuntimeError as e:
+            raise HTTPException(404, detail=str(e))
 
     async def _login(self, authorization: str = Header(None)) -> Dict:
         account = await self._account_from_bearer(authorization)
