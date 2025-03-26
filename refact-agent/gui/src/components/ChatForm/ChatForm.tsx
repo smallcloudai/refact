@@ -307,11 +307,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   if (information) {
     return (
-      <InformationCallout
-        mt="2"
-        onClick={onClearInformation}
-        timeout={limitReached ? null : 2000}
-      >
+      <InformationCallout mt="2" onClick={onClearInformation} timeout={2000}>
         {information}
       </InformationCallout>
     );
