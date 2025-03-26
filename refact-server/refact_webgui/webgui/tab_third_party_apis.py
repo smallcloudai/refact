@@ -7,6 +7,7 @@ from refact_utils.third_party.utils.models import ThirdPartyApiConfig
 from refact_utils.third_party.utils.models import load_third_party_config
 from refact_utils.third_party.utils.models import save_third_party_config
 from refact_utils.third_party.utils.models import get_provider_models
+from refact_utils.third_party.utils.tokenizers import get_default_tokenizers
 from refact_utils.third_party.utils.tokenizers import get_tokenizers
 from refact_utils.third_party.utils.tokenizers import upload_tokenizer
 from refact_utils.third_party.utils.tokenizers import delete_tokenizer
@@ -49,7 +50,10 @@ class TabThirdPartyApisRouter(APIRouter):
 
     async def _tab_third_party_apis_get_tokenizers(self):
         try:
-            return JSONResponse(get_tokenizers()["custom"])  # TODO: new API in UI
+            return JSONResponse({
+                "defaults": get_default_tokenizers(),
+                "uploaded": get_tokenizers(),
+            })
         except Exception as e:
             return JSONResponse({"detail": f"Error get tokenizers: {e}"}, status_code=400)
 

@@ -2,13 +2,14 @@ import aiohttp
 import aiofiles
 
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from refact_utils.scripts import env
 
 
 __all__ = [
     "load_tokenizer",
+    "get_default_tokenizers",
     "get_tokenizers",
     "upload_tokenizer",
     "delete_tokenizer",
@@ -59,28 +60,44 @@ def _tokenizer_id_to_file(tokenizer_id: str) -> Path:
     return _tokenizers_dir() / f"{tokenizer_id}.json"
 
 
-def get_tokenizers() -> Dict[str, List[str]]:
-    default_tokenizers = []
-    custom_tokenizers = []
+def get_default_tokenizers() -> List[str]:
+    # TODO: for migration
+    # Xenova/gpt-4o
+    # Xenova/claude-tokenizer
+    # Xenova/Meta-Llama-3.1-Tokenizer
+    # Xenova/gemma2-tokenizer
+    # Xenova/grok-1-tokenizer
+    # deepseek-ai/DeepSeek-V3
+    # deepseek-ai/DeepSeek-R1
+    default_tokenizers_dir = Path(__file__).parent.parent / "tokenizers"
+    return [
+        ".".join(filename.name.split(".")[:-1])
+        for filename in sorted(default_tokenizers_dir.iterdir())
+        if str(filename).endswith(".json")
+    ]
+
+
+def get_tokenizers() -> List[str]:
+    tokenizers = []
     for filename in sorted(_tokenizers_dir().iterdir()):
         try:
-            custom_tokenizers.append(_tokenizer_file_to_id(filename))
+            tokenizers.append(_tokenizer_file_to_id(filename))
         except Exception:
             pass
-    return {
-        "default": default_tokenizers,
-        "custom": custom_tokenizers,
-    }
+    return tokenizers
 
 
 async def upload_tokenizer(tokenizer_id: str, file):
     if not _tokenizers_dir().exists():
         raise RuntimeError(f"no tokenizers dir `{_tokenizers_dir()}`")
 
-    filename = _tokenizer_id_to_file(tokenizer_id)
-    if filename.exists():
-        raise RuntimeError(f"can't upload tokenizer with id `{tokenizer_id}`, already exists")
+    if tokenizer_id in get_default_tokenizers():
+        raise RuntimeError(f"tokenizer with id `{tokenizer_id}` already exists in default")
 
+    if tokenizer_id in get_tokenizers():
+        raise RuntimeError(f"tokenizer with id `{tokenizer_id}` already exists")
+
+    filename = _tokenizer_id_to_file(tokenizer_id)
     tmp_filename = Path(f"{filename}.tmp")
     tmp_filename.unlink(missing_ok=True)
     try:
