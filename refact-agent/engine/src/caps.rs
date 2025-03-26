@@ -533,7 +533,7 @@ pub async fn load_caps(
     for e in error_log {
         tracing::error!("{e}");
     }
-    populate_with_known_models(&mut providers)?;
+    populate_provider_model_records(&mut providers)?;
     apply_models_dict_patch(&mut providers);
     for provider in &mut providers {
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
@@ -605,7 +605,7 @@ fn apply_models_dict_patch(providers: &mut Vec<CapsProvider>) {
     }
 }
 
-fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), String> {
+fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Result<(), String> {
     #[derive(Deserialize)]
     struct KnownModels {
         code_completion_models: IndexMap<String, CompletionModelRecord>,
@@ -623,17 +623,25 @@ fn populate_with_known_models(providers: &mut Vec<CapsProvider>) -> Result<(), S
             let model_stripped = strip_model_from_finetune(model_name);
 
             if !provider.code_completion_models.contains_key(&model_stripped) {
-                for (known_model_name, known_model_rec) in &known_models.code_completion_models {
-                    if known_model_name == &model_stripped || known_model_rec.base.similar_models.contains(&model_stripped) {
-                        provider.code_completion_models.insert(model_name.clone(), known_model_rec.clone());
+                let models_to_try = provider.code_completion_models.iter()
+                    .chain(&known_models.code_completion_models);
+                
+                for (candidate_model_name, candidate_model_rec) in models_to_try {
+                    if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
+                        provider.code_completion_models.insert(model_name.clone(), candidate_model_rec.clone());
+                        break;
                     }
                 }
             }
 
             if !provider.code_chat_models.contains_key(&model_stripped) {
-                for (known_model_name, known_model_rec) in &known_models.code_chat_models {
-                    if known_model_name == &model_stripped || known_model_rec.base.similar_models.contains(&model_stripped) {
-                        provider.code_chat_models.insert(model_name.clone(), known_model_rec.clone());
+                let models_to_try = provider.code_chat_models.iter()
+                    .chain(&known_models.code_chat_models);
+                
+                for (candidate_model_name, candidate_model_rec) in models_to_try {
+                    if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
+                        provider.code_chat_models.insert(model_name.clone(), candidate_model_rec.clone());
+                        break;
                     }
                 }
             }
