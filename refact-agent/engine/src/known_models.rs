@@ -1,6 +1,6 @@
 pub const KNOWN_MODELS: &str = r####"
 {
-    "code_completion_models": {
+    "completion_models": {
         "bigcode/starcoder": {
             "n_ctx": 4096,
             "supports_scratchpads": {
@@ -373,7 +373,7 @@ pub const KNOWN_MODELS: &str = r####"
             ]
         }
     },
-    "code_chat_models": {
+    "chat_models": {
         "gpt-4o": {
             "n_ctx": 128000,
             "supports_tools": true,

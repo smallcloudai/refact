@@ -12,7 +12,7 @@ class CapsModel(BaseModel):
 
 
 class Caps(BaseModel):
-    code_chat_models: Dict[str, CapsModel]
+    chat_models: Dict[str, CapsModel]
     code_chat_default_model: str
 
 
@@ -70,7 +70,7 @@ class CmdlineArgs:
         self.chat_remote = chat_remote
 
     def n_ctx(self):
-        return self.caps.code_chat_models[self.model].n_ctx
+        return self.caps.chat_models[self.model].n_ctx
 
 
 args: Optional[CmdlineArgs] = None

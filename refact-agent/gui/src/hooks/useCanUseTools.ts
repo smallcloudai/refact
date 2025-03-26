@@ -21,8 +21,8 @@ export const useCanUseTools = () => {
     if (toolsRequest.data.length === 0) return false;
     const modelName = chatModel || capsRequest.data.code_chat_default_model;
 
-    if (!(modelName in capsRequest.data.code_chat_models)) return false;
-    const model: CodeChatModel = capsRequest.data.code_chat_models[modelName];
+    if (!(modelName in capsRequest.data.chat_models)) return false;
+    const model: CodeChatModel = capsRequest.data.chat_models[modelName];
     if ("supports_tools" in model && model.supports_tools) return true;
     return false;
   }, [capsRequest.data, toolsRequest.data, chatModel]);

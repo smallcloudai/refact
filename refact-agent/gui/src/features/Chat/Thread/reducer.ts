@@ -437,10 +437,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
       const defaultModel = action.payload.code_chat_default_model;
 
       const model = state.thread.model || defaultModel;
-      if (!(model in action.payload.code_chat_models)) return;
+      if (!(model in action.payload.chat_models)) return;
 
       const currentModelMaximumContextTokens =
-        action.payload.code_chat_models[model].n_ctx;
+        action.payload.chat_models[model].n_ctx;
 
       state.thread.currentMaximumContextTokens =
         currentModelMaximumContextTokens;

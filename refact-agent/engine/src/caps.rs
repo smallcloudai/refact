@@ -135,9 +135,9 @@ pub struct CodeAssistantCaps {
     pub telemetry_basic_retrieve_my_own: String,
 
     #[serde(skip_deserializing)]
-    pub code_completion_models: IndexMap<String, Arc<CompletionModelRecord>>,
+    pub completion_models: IndexMap<String, Arc<CompletionModelRecord>>,
     #[serde(skip_deserializing)]
-    pub code_chat_models: IndexMap<String, Arc<ChatModelRecord>>,
+    pub chat_models: IndexMap<String, Arc<ChatModelRecord>>,
     #[serde(skip_deserializing)]
     pub embedding_model: EmbeddingModelRecord,
 
@@ -186,9 +186,9 @@ pub struct CapsProvider {
     pub support_metadata: bool,
 
     #[serde(default)]
-    pub code_completion_models: IndexMap<String, CompletionModelRecord>,
+    pub completion_models: IndexMap<String, CompletionModelRecord>,
     #[serde(default)]
-    pub code_chat_models: IndexMap<String, ChatModelRecord>,
+    pub chat_models: IndexMap<String, ChatModelRecord>,
     #[serde(default, alias = "default_embeddings_model", deserialize_with = "deserialize_embedding_model")]
     pub embedding_model: EmbeddingModelRecord,
 
@@ -324,8 +324,8 @@ async fn read_providers_d(
             &provider.default_models.completion_model,
             &provider.default_models.multiline_completion_model,
         ];
-        models_to_add.extend(provider.code_chat_models.keys());
-        models_to_add.extend(provider.code_completion_models.keys());
+        models_to_add.extend(provider.chat_models.keys());
+        models_to_add.extend(provider.completion_models.keys());
 
         for model in models_to_add {
             if !model.is_empty() && !provider.running_models.contains(model) {
@@ -384,7 +384,7 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
     
     for mut provider in providers {
 
-        let completion_models = std::mem::take(&mut provider.code_completion_models);
+        let completion_models = std::mem::take(&mut provider.completion_models);
         for (model_name, mut model_rec) in completion_models {
             model_rec.base.name = model_name.to_string();
             model_rec.base.id = format!("{}/{}", provider.name, model_name);
@@ -400,10 +400,10 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
                 }
             }
             
-            caps.code_completion_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
+            caps.completion_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
-        let chat_models = std::mem::take(&mut provider.code_chat_models);
+        let chat_models = std::mem::take(&mut provider.chat_models);
         for (model_name, mut model_rec) in chat_models {
             model_rec.base.name = model_name.to_string();
             model_rec.base.id = format!("{}/{}", provider.name, model_name);
@@ -414,7 +414,7 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
                 );
             }
 
-            caps.code_chat_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
+            caps.chat_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
         if provider.embedding_model.is_configured() {
@@ -583,13 +583,13 @@ fn relative_to_full_url(
 fn apply_models_dict_patch(providers: &mut Vec<CapsProvider>) {
     for provider in providers {
         for (model_name, rec_patched) in provider.models_dict_patch.iter() {
-            if let Some(completion_rec) = provider.code_completion_models.get_mut(model_name) {
+            if let Some(completion_rec) = provider.completion_models.get_mut(model_name) {
                 if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
                     completion_rec.base.n_ctx = n_ctx as usize;
                 }
             }
             
-            if let Some(chat_rec) = provider.code_chat_models.get_mut(model_name) {
+            if let Some(chat_rec) = provider.chat_models.get_mut(model_name) {
                 if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
                     chat_rec.base.n_ctx = n_ctx as usize;
                 }
@@ -608,8 +608,8 @@ fn apply_models_dict_patch(providers: &mut Vec<CapsProvider>) {
 fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Result<(), String> {
     #[derive(Deserialize)]
     struct KnownModels {
-        code_completion_models: IndexMap<String, CompletionModelRecord>,
-        code_chat_models: IndexMap<String, ChatModelRecord>,
+        completion_models: IndexMap<String, CompletionModelRecord>,
+        chat_models: IndexMap<String, ChatModelRecord>,
         embedding_models: IndexMap<String, EmbeddingModelRecord>,
     }
     let known_models: KnownModels = serde_json::from_str(KNOWN_MODELS).map_err(|e| {
@@ -622,25 +622,25 @@ fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Result<
         for model_name in &provider.running_models {
             let model_stripped = strip_model_from_finetune(model_name);
 
-            if !provider.code_completion_models.contains_key(&model_stripped) {
-                let models_to_try = provider.code_completion_models.iter()
-                    .chain(&known_models.code_completion_models);
+            if !provider.completion_models.contains_key(&model_stripped) {
+                let models_to_try = provider.completion_models.iter()
+                    .chain(&known_models.completion_models);
                 
                 for (candidate_model_name, candidate_model_rec) in models_to_try {
                     if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
-                        provider.code_completion_models.insert(model_name.clone(), candidate_model_rec.clone());
+                        provider.completion_models.insert(model_name.clone(), candidate_model_rec.clone());
                         break;
                     }
                 }
             }
 
-            if !provider.code_chat_models.contains_key(&model_stripped) {
-                let models_to_try = provider.code_chat_models.iter()
-                    .chain(&known_models.code_chat_models);
+            if !provider.chat_models.contains_key(&model_stripped) {
+                let models_to_try = provider.chat_models.iter()
+                    .chain(&known_models.chat_models);
                 
                 for (candidate_model_name, candidate_model_rec) in models_to_try {
                     if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
-                        provider.code_chat_models.insert(model_name.clone(), candidate_model_rec.clone());
+                        provider.chat_models.insert(model_name.clone(), candidate_model_rec.clone());
                         break;
                     }
                 }
@@ -648,8 +648,8 @@ fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Result<
         }
 
         for model in &provider.running_models {
-            if !provider.code_completion_models.contains_key(model) && 
-                !provider.code_chat_models.contains_key(model) &&
+            if !provider.completion_models.contains_key(model) && 
+                !provider.chat_models.contains_key(model) &&
                 !(model == &provider.embedding_model.base.name) {
                 tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
             }
@@ -690,7 +690,7 @@ pub fn resolve_chat_model<'a>(
     requested_model_id: &str,
 ) -> Result<Arc<ChatModelRecord>, String> {
     resolve_model(
-        &caps.code_chat_models, 
+        &caps.chat_models, 
         requested_model_id, 
         &caps.default_models.chat_model
     )
@@ -701,7 +701,7 @@ pub fn resolve_completion_model<'a>(
     requested_model_id: &str,
 ) -> Result<Arc<CompletionModelRecord>, String> {
     resolve_model(
-        &caps.code_completion_models, 
+        &caps.completion_models, 
         requested_model_id, 
         &caps.default_models.completion_model
     )

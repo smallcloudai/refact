@@ -81,9 +81,9 @@ export type CapsResponse = {
   cloud_name: string;
   code_chat_default_model: string;
   code_chat_default_system_prompt: string;
-  code_chat_models: Record<string, CodeChatModel>;
+  chat_models: Record<string, CodeChatModel>;
   code_completion_default_model: string;
-  code_completion_models: Record<string, CodeCompletionModel>;
+  completion_models: Record<string, CodeCompletionModel>;
   code_completion_n_ctx: number;
   endpoint_chat_passthrough: string;
   endpoint_style: string;
@@ -100,7 +100,7 @@ export function isCapsResponse(json: unknown): json is CapsResponse {
   if (typeof json !== "object") return false;
   if (!("code_chat_default_model" in json)) return false;
   if (typeof json.code_chat_default_model !== "string") return false;
-  if (!("code_chat_models" in json)) return false;
+  if (!("chat_models" in json)) return false;
   return true;
 }
 
