@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional
 
 from refact_utils.scripts import env
-from refact_webgui.webgui.selfhost_webutils import log
 
 
 __all__ = [
@@ -158,8 +157,7 @@ def load_third_party_config() -> ThirdPartyApiConfig:
             data = json.load(f)
         config = ThirdPartyApiConfig.model_validate(data)
         return _validate_config(config, raise_on_error=False)
-    except Exception as e:
-        log(f"Can't read third-party providers config, fallback to empty: {e}")
+    except Exception:
         return ThirdPartyApiConfig()
 
 
@@ -187,8 +185,8 @@ def available_third_party_models() -> Dict[str, ModelConfig]:
             continue
         try:
             models_available[model_name] = model_config
-        except Exception as e:
-            log(f"model listed as available but it's not supported: {e}")
+        except Exception:
+            pass
 
     return models_available
 
