@@ -370,9 +370,6 @@ pub async fn get_latest_provider_mtime(config_dir: &Path) -> Option<u64> {
 
 fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>) {
     fn add_provider_details_to_model(base_model_rec: &mut BaseModelRecord, provider: &CapsProvider, model_name: &str, custom_endpoint: &str) {
-        base_model_rec.name = model_name.to_string();
-        base_model_rec.id = format!("{}/{}", provider.name, model_name);
-        
         base_model_rec.api_key = provider.api_key.clone();
             
         let endpoint = if !custom_endpoint.is_empty() {
@@ -389,13 +386,18 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
 
         let completion_models = std::mem::take(&mut provider.code_completion_models);
         for (model_name, mut model_rec) in completion_models {
-            add_provider_details_to_model(
-                &mut model_rec.base, &provider, &model_name, &provider.completion_endpoint
-            );
+            model_rec.base.name = model_name.to_string();
+            model_rec.base.id = format!("{}/{}", provider.name, model_name);
 
-            if provider.code_completion_n_ctx > 0 && provider.code_completion_n_ctx < model_rec.base.n_ctx {
-                // model is capable of more, but we may limit it from server or provider, e.x. for latency
-                model_rec.base.n_ctx = provider.code_completion_n_ctx; 
+            if model_rec.base.endpoint.is_empty() {
+                add_provider_details_to_model(
+                    &mut model_rec.base, &provider, &model_name, &provider.completion_endpoint
+                );
+
+                if provider.code_completion_n_ctx > 0 && provider.code_completion_n_ctx < model_rec.base.n_ctx {
+                    // model is capable of more, but we may limit it from server or provider, e.x. for latency
+                    model_rec.base.n_ctx = provider.code_completion_n_ctx; 
+                }
             }
             
             caps.code_completion_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
@@ -403,28 +405,37 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
 
         let chat_models = std::mem::take(&mut provider.code_chat_models);
         for (model_name, mut model_rec) in chat_models {
-            add_provider_details_to_model(
-                &mut model_rec.base, &provider, &model_name, &provider.chat_endpoint
-            );
+            model_rec.base.name = model_name.to_string();
+            model_rec.base.id = format!("{}/{}", provider.name, model_name);
+
+            if model_rec.base.endpoint.is_empty() {
+                add_provider_details_to_model(
+                    &mut model_rec.base, &provider, &model_name, &provider.chat_endpoint
+                );
+            }
 
             caps.code_chat_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
         if provider.embedding_model.is_configured() {
             let mut embedding_model = std::mem::take(&mut provider.embedding_model);
-            let model_name = embedding_model.base.name.clone();
-            add_provider_details_to_model(
-                &mut embedding_model.base, &provider, &model_name, &provider.embedding_endpoint
-            );
+            embedding_model.base.id = format!("{}/{}", provider.name, embedding_model.base.name);
 
-            embedding_model.embedding_batch = match embedding_model.embedding_batch {
-                0 => 64,
-                b if b > 256 => {
-                    tracing::warn!("embedding_batch can't be higher than 256");
-                    64
-                },
-                b => b,
-            };
+            if embedding_model.base.endpoint.is_empty() {
+                let model_name = embedding_model.base.name.clone();
+                add_provider_details_to_model(
+                    &mut embedding_model.base, &provider, &model_name, &provider.embedding_endpoint
+                );
+
+                embedding_model.embedding_batch = match embedding_model.embedding_batch {
+                    0 => 64,
+                    b if b > 256 => {
+                        tracing::warn!("embedding_batch can't be higher than 256");
+                        64
+                    },
+                    b => b,
+                };
+            }
             caps.embedding_model = embedding_model;
         }
     }
