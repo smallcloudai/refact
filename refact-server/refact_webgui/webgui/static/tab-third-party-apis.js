@@ -1258,8 +1258,8 @@ function uploadTokenizer() {
     }
 
     const formData = new FormData();
-    // TODO: we need to pass tokenizer_id instead of filename
-    formData.append('file', tokenizerFile, `${tokenizerId}.json`);
+    formData.append('tokenizer_id', tokenizerId);
+    formData.append('file', tokenizerFile);
 
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'modal-overlay';
