@@ -20,6 +20,7 @@ import {
   selectChatId,
   selectMessages,
   getSelectedToolUse,
+  selectThreadNewChatSuggested,
 } from "../../features/Chat/Thread";
 import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
@@ -54,7 +55,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const compressionStop = useLastSentCompressionStop();
-  // const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
+  const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
   const capsForToolUse = useCapsForToolUse();
   const { disableInput } = useAgentUsage();
@@ -103,7 +104,13 @@ export const Chat: React.FC<ChatProps> = ({
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 
         <AgentUsage />
-        <SuggestNewChat shouldBeVisible={compressionStop.stopped} />
+        <SuggestNewChat
+          shouldBeVisible={
+            compressionStop.stopped ||
+            (threadNewChatSuggested.wasSuggested &&
+              !threadNewChatSuggested.wasRejectedByUser)
+          }
+        />
         {!isStreaming && preventSend && unCalledTools && (
           <Flex py="4">
             <Card style={{ width: "100%" }}>
