@@ -15,8 +15,12 @@ let apiConfig = {
     models: {}
 };
 
-// Track expanded/collapsed state of providers
+// Track expanded/collapsed state of providers and tokenizer sections
 let expandedProviders = {};
+let expandedTokenizerSections = {
+    defaults: false,
+    uploaded: true,
+};
 
 export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
@@ -1042,6 +1046,9 @@ export function tab_switched_here() {
         setTimeout(() => {
             initializeProvidersList();
             updateUI();
+            Object.keys(expandedTokenizerSections).forEach(sectionId => {
+                setTokenizerSectionCollapsedState(sectionId, expandedTokenizerSections[sectionId]);
+            });
         }, 100);
     } catch (error) {
         console.error("Error reloading providers:", error);
@@ -1070,8 +1077,60 @@ export function tab_update_each_couple_of_seconds() {
     // Nothing to update periodically
 }
 
-// Tokenizer Management Functions
 function initializeTokenizers() {
+    // Add CSS for tokenizer sections
+    const style = document.createElement('style');
+    style.textContent = `
+        #tokenizers-list {
+            max-height: none !important;
+            overflow: visible !important;
+        }
+        .tokenizer-section-header {
+            cursor: pointer;
+        }
+        .tokenizer-section-body {
+            padding: 15px;
+        }
+        .tokenizer-section-body.collapse {
+            display: none;
+        }
+        .tokenizer-item {
+            padding: 8px 12px;
+            background-color: #fff;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+            margin-bottom: 8px;
+        }
+        .tokenizer-item:last-child {
+            margin-bottom: 0;
+        }
+        #upload-tokenizer-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #upload-tokenizer-btn i {
+            margin-right: 5px;
+        }
+    `;
+    document.head.appendChild(style);
+
+    const uploadTokenizerBtn = document.getElementById('upload-tokenizer-btn');
+    if (uploadTokenizerBtn) {
+        uploadTokenizerBtn.className = 'btn btn-primary';
+
+        uploadTokenizerBtn.innerHTML = '<i class="bi bi-plus-circle"></i> Upload Tokenizer';
+
+        const btnContainer = document.createElement('div');
+        btnContainer.className = 'card mb-3';
+        btnContainer.innerHTML = '<div class="card-body text-center py-3"></div>';
+
+        const parent = uploadTokenizerBtn.parentNode;
+
+        parent.insertBefore(btnContainer, uploadTokenizerBtn);
+        btnContainer.querySelector('.card-body').appendChild(uploadTokenizerBtn);
+    }
+
     loadTokenizers();
 }
 
@@ -1198,6 +1257,26 @@ function populateTokenizerDropdown(tokenizers) {
     }
 }
 
+function setTokenizerSectionCollapsedState(sectionId, isExpanded) {
+    const sectionBody = document.getElementById(`${sectionId}-tokenizers-body`);
+    const sectionHeader = document.querySelector(`.tokenizer-section-header[data-section="${sectionId}"]`);
+
+    if (sectionBody && sectionHeader) {
+        sectionBody.style.display = isExpanded ? 'block' : 'none';
+
+        const chevron = sectionHeader.querySelector('.bi');
+        if (chevron) {
+            chevron.className = isExpanded ? 'bi bi-chevron-down' : 'bi bi-chevron-right';
+        }
+
+        if (isExpanded) {
+            sectionHeader.classList.remove('collapsed');
+        } else {
+            sectionHeader.classList.add('collapsed');
+        }
+    }
+}
+
 function updateTokenizersList(data) {
     const tokenizersContainer = document.getElementById('tokenizers-list');
     const noTokenizersMsg = document.getElementById('no-tokenizers-msg');
@@ -1216,10 +1295,33 @@ function updateTokenizersList(data) {
     noTokenizersMsg.style.display = 'none';
 
     if (defaults.length > 0) {
+        const defaultsCard = document.createElement('div');
+        defaultsCard.className = 'card mb-3';
+        tokenizersContainer.appendChild(defaultsCard);
+
         const defaultsHeader = document.createElement('div');
-        defaultsHeader.className = 'tokenizer-section-header mb-2';
-        defaultsHeader.innerHTML = '<h6>Default Tokenizers</h6>';
-        tokenizersContainer.appendChild(defaultsHeader);
+        defaultsHeader.className = 'tokenizer-section-header d-flex justify-content-between align-items-center card-header';
+        defaultsHeader.dataset.section = 'defaults';
+        defaultsHeader.innerHTML = `
+            <h6 class="mb-0">Default Tokenizers</h6>
+            <i class="bi bi-chevron-down"></i>
+        `;
+        defaultsHeader.style.cursor = 'pointer';
+        defaultsCard.appendChild(defaultsHeader);
+
+        const defaultsBody = document.createElement('div');
+        defaultsBody.id = 'defaults-tokenizers-body';
+        defaultsBody.className = 'tokenizer-section-body card-body';
+        defaultsBody.style.display = expandedTokenizerSections.defaults ? 'block' : 'none';
+        defaultsCard.appendChild(defaultsBody);
+
+        defaultsHeader.addEventListener('click', function() {
+            const isExpanded = expandedTokenizerSections.defaults;
+            expandedTokenizerSections.defaults = !isExpanded;
+            setTokenizerSectionCollapsedState('defaults', !isExpanded);
+        });
+
+        setTokenizerSectionCollapsedState('defaults', expandedTokenizerSections.defaults);
 
         defaults.forEach(tokenizer_id => {
             const tokenizerItem = document.createElement('div');
@@ -1233,15 +1335,41 @@ function updateTokenizersList(data) {
                     <!-- No delete button for default tokenizers -->
                 </div>
             `;
-            tokenizersContainer.appendChild(tokenizerItem);
+            defaultsBody.appendChild(tokenizerItem);
         });
     }
 
     if (uploaded.length > 0) {
+        const uploadedCard = document.createElement('div');
+        uploadedCard.className = 'card mb-3';
+        tokenizersContainer.appendChild(uploadedCard);
+
         const uploadedHeader = document.createElement('div');
-        uploadedHeader.className = 'tokenizer-section-header mb-2 mt-3';
-        uploadedHeader.innerHTML = '<h6>Custom Tokenizers</h6>';
-        tokenizersContainer.appendChild(uploadedHeader);
+        uploadedHeader.className = 'tokenizer-section-header d-flex justify-content-between align-items-center card-header';
+        uploadedHeader.dataset.section = 'uploaded';
+        uploadedHeader.innerHTML = `
+            <h6 class="mb-0">Custom Tokenizers</h6>
+            <i class="bi bi-chevron-down"></i>
+        `;
+        uploadedHeader.style.cursor = 'pointer';
+        uploadedCard.appendChild(uploadedHeader);
+
+        const uploadedBody = document.createElement('div');
+        uploadedBody.id = 'uploaded-tokenizers-body';
+        uploadedBody.className = 'tokenizer-section-body card-body';
+        uploadedBody.style.display = expandedTokenizerSections.uploaded ? 'block' : 'none';
+        uploadedCard.appendChild(uploadedBody);
+
+        uploadedHeader.addEventListener('click', function(event) {
+            if (event.target.closest('button')) {
+                return;
+            }
+            const isExpanded = expandedTokenizerSections.uploaded;
+            expandedTokenizerSections.uploaded = !isExpanded;
+            setTokenizerSectionCollapsedState('uploaded', !isExpanded);
+        });
+
+        setTokenizerSectionCollapsedState('uploaded', expandedTokenizerSections.uploaded);
 
         uploaded.forEach(tokenizer_id => {
             const tokenizerItem = document.createElement('div');
@@ -1256,7 +1384,7 @@ function updateTokenizersList(data) {
                     </button>
                 </div>
             `;
-            tokenizersContainer.appendChild(tokenizerItem);
+            uploadedBody.appendChild(tokenizerItem);
 
             const deleteBtn = tokenizerItem.querySelector('.delete-tokenizer-btn');
             deleteBtn.addEventListener('click', function() {
