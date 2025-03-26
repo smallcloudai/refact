@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Flex, Box } from "@radix-ui/themes";
+import { Flex, Box, Text } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { HistoryItem } from "./HistoryItem";
 import {
@@ -25,6 +25,7 @@ export const ChatHistory = memo(
     currentChatId,
   }: ChatHistoryProps) => {
     const sortedHistory = getHistory({ history });
+
     return (
       <Box
         style={{
@@ -36,21 +37,28 @@ export const ChatHistory = memo(
         <ScrollArea scrollbars="vertical">
           <Flex
             justify="center"
-            align="center"
+            align={sortedHistory.length > 0 ? "center" : "start"}
             pl="2"
             pr="2"
             direction="column"
           >
-            {sortedHistory.map((item) => (
-              <HistoryItem
-                onClick={() => onHistoryItemClick(item)}
-                onOpenInTab={onOpenChatInTab}
-                onDelete={onDeleteHistoryItem}
-                key={item.id}
-                historyItem={item}
-                disabled={item.id === currentChatId}
-              />
-            ))}
+            {sortedHistory.length !== 0 ? (
+              sortedHistory.map((item) => (
+                <HistoryItem
+                  onClick={() => onHistoryItemClick(item)}
+                  onOpenInTab={onOpenChatInTab}
+                  onDelete={onDeleteHistoryItem}
+                  key={item.id}
+                  historyItem={item}
+                  disabled={item.id === currentChatId}
+                />
+              ))
+            ) : (
+              <Text as="p" size="2" mt="2">
+                Your chat history is currently empty. Click &quot;New Chat&quot;
+                to start a conversation.
+              </Text>
+            )}
           </Flex>
         </ScrollArea>
       </Box>
