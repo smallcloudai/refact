@@ -4,7 +4,6 @@ import {
   CompressionStrength,
   isToolMessage,
   isUserMessage,
-  UserMessage,
 } from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;

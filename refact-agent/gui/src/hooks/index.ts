@@ -35,3 +35,4 @@ export * from "./useCompressChat";
 export * from "./useAutoFocusOnce";
 export * from "./useHideScroll";
 export * from "./useTotalTokenUsage";
+export * from "./useCompressionStop";
