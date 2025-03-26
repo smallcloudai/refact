@@ -141,7 +141,7 @@ pub struct CodeAssistantCaps {
     #[serde(skip_deserializing)]
     pub embedding_model: EmbeddingModelRecord,
 
-    #[serde(flatten)]
+    #[serde(flatten, skip_deserializing)]
     pub default_models: DefaultModels,
     
     #[serde(default)]
@@ -437,6 +437,16 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
                 };
             }
             caps.embedding_model = embedding_model;
+        }
+
+        if !provider.default_models.chat_model.is_empty() {
+            caps.default_models.chat_model = format!("{}/{}", provider.name, provider.default_models.chat_model);
+        }
+        if !provider.default_models.completion_model.is_empty() {
+            caps.default_models.completion_model = format!("{}/{}", provider.name, provider.default_models.completion_model);
+        }
+        if !provider.default_models.multiline_completion_model.is_empty() {
+            caps.default_models.multiline_completion_model = format!("{}/{}", provider.name, provider.default_models.multiline_completion_model);
         }
     }
 }
