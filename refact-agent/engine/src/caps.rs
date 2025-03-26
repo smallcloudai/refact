@@ -208,16 +208,16 @@ fn default_code_completion_n_ctx() -> usize { 2048 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DefaultModels {
-    #[serde(default, alias = "code_completion_default_model")]
-    #[serde(rename(serialize = "code_completion_default_model"))]
+    #[serde(default, alias = "code_completion_default_model", alias = "completion_default_model")]
+    #[serde(rename(serialize = "completion_default_model"))]
     pub completion_model: String,
 
-    #[serde(default, alias = "multiline_code_completion_default_model")]
-    #[serde(rename(serialize = "multiline_code_completion_default_model"))]
+    #[serde(default, alias = "multiline_code_completion_default_model", alias = "multiline_completion_default_model")]
+    #[serde(rename(serialize = "multiline_completion_default_model"))]
     pub multiline_completion_model: String,
 
-    #[serde(default, alias = "code_chat_default_model")]
-    #[serde(rename(serialize = "code_chat_default_model"))]
+    #[serde(default, alias = "code_chat_default_model", alias = "chat_default_model")]
+    #[serde(rename(serialize = "chat_default_model"))]
     pub chat_model: String,
 }
 
