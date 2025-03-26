@@ -907,15 +907,19 @@ function showEditModelModal(providerId, modelId) {
         tokenizerIdElement.value = modelConfig.tokenizer_id || '';
     }
 
-    // Load tokenizers for dropdown and highlight the selected one if applicable
     loadTokenizersForDropdown();
 
-    // Change the modal labels and button text to indicate edit mode
+    const dropdownBtn = document.getElementById('tokenizer-dropdown-btn');
+    if (modelConfig.tokenizer_id) {
+        dropdownBtn.textContent = modelConfig.tokenizer_id;
+    } else {
+        dropdownBtn.textContent = 'Default (None)';
+    }
+
     document.getElementById('add-third-party-model-modal-label').textContent = 'Edit Model';
     const submitBtn = document.getElementById('add-third-party-model-submit');
     submitBtn.textContent = 'Save Changes';
 
-    // Replace the submit click handler to update the model instead of adding a new one
     submitBtn.onclick = function() {
         updateModel();
     };
@@ -1099,109 +1103,167 @@ function loadTokenizersForDropdown() {
             return response.json();
         })
         .then(data => {
-            if (Array.isArray(data)) {
-                populateTokenizerDropdown(data);
+            if (data && (data.defaults || data.uploaded)) {
+                const allTokenizers = {
+                    defaults: data.defaults || [],
+                    uploaded: data.uploaded || []
+                };
+                populateTokenizerDropdown(allTokenizers);
             } else {
                 console.warn("Unexpected tokenizer data format:", data);
-                populateTokenizerDropdown([]);
+                populateTokenizerDropdown({ defaults: [], uploaded: [] });
             }
         })
         .catch(error => {
             console.error("Error loading tokenizers for dropdown:", error);
-            populateTokenizerDropdown([]);
+            populateTokenizerDropdown({ defaults: [], uploaded: [] });
         });
 }
 
 function populateTokenizerDropdown(tokenizers) {
     const dropdownMenu = document.getElementById('tokenizer-dropdown-menu');
-    const currentValue = document.getElementById('custom-model-tokenizer-id').value.trim();
+    const tokenizerId = document.getElementById('custom-model-tokenizer-id');
+    const currentValue = tokenizerId.value.trim();
 
-    // Keep the default option and divider
-    const defaultItems = `
-        <li><a class="dropdown-item ${!currentValue ? 'active' : ''}" href="#" data-value="">Default (None)</a></li>
-        <li><hr class="dropdown-divider"></li>
-    `;
+    const defaults = tokenizers.defaults || [];
+    const uploaded = tokenizers.uploaded || [];
+    const hasDefaults = defaults.length > 0;
+    const firstDefaultTokenizer = hasDefaults ? defaults[0] : '';
 
-    let tokenizersHtml = '';
-
-    if (tokenizers && tokenizers.length > 0) {
-        tokenizers.forEach(tokenizer => {
-            const isActive = currentValue === tokenizer;
-            tokenizersHtml += `<li><a class="dropdown-item ${isActive ? 'active' : ''}" href="#" data-value="${tokenizer}">${tokenizer}</a></li>`;
-        });
-    } else {
-        tokenizersHtml = '<li><a class="dropdown-item disabled" href="#">No custom tokenizers available</a></li>';
+    if (!currentValue && firstDefaultTokenizer) {
+        tokenizerId.value = firstDefaultTokenizer;
     }
 
-    dropdownMenu.innerHTML = defaultItems + tokenizersHtml;
+    const updatedCurrentValue = tokenizerId.value.trim();
 
-    // Add event listeners to dropdown items
-    dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    let tokenizersHtml = '';
+    if (!hasDefaults) {
+        tokenizersHtml += `
+            <li><a class="dropdown-item ${!updatedCurrentValue ? 'active' : ''}" href="#" data-value="">Default (None)</a></li>
+            <li><hr class="dropdown-divider"></li>
+        `;
+    }
+
+    if (hasDefaults) {
+        tokenizersHtml += '<li><h6 class="dropdown-header">Default Tokenizers</h6></li>';
+        defaults.forEach(tokenizer => {
+            const isActive = updatedCurrentValue === tokenizer;
+            tokenizersHtml += `<li><a class="dropdown-item ${isActive ? 'active' : ''}" href="#" data-value="${tokenizer}">${tokenizer}</a></li>`;
+        });
+    }
+
+    if (uploaded.length > 0) {
+        if (hasDefaults) {
+            tokenizersHtml += '<li><hr class="dropdown-divider"></li>';
+        }
+        tokenizersHtml += '<li><h6 class="dropdown-header">Custom Tokenizers</h6></li>';
+        uploaded.forEach(tokenizer => {
+            const isActive = updatedCurrentValue === tokenizer;
+            tokenizersHtml += `<li><a class="dropdown-item ${isActive ? 'active' : ''}" href="#" data-value="${tokenizer}">${tokenizer}</a></li>`;
+        });
+    } else if (hasDefaults) {
+        tokenizersHtml += '<li><hr class="dropdown-divider"></li>';
+        tokenizersHtml += '<li><a class="dropdown-item disabled" href="#">No custom tokenizers available</a></li>';
+    }
+
+    if (!hasDefaults && uploaded.length === 0) {
+        tokenizersHtml += '<li><a class="dropdown-item disabled" href="#">No tokenizers available</a></li>';
+    }
+
+    dropdownMenu.innerHTML = tokenizersHtml;
+
+    dropdownMenu.querySelectorAll('.dropdown-item:not(.disabled)').forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
-            const tokenizerId = this.getAttribute('data-value');
-            document.getElementById('custom-model-tokenizer-id').value = tokenizerId;
+            const selectedTokenizerId = this.getAttribute('data-value');
+            document.getElementById('custom-model-tokenizer-id').value = selectedTokenizerId;
 
-            // Update the dropdown button text to show the selected tokenizer
             const dropdownBtn = document.getElementById('tokenizer-dropdown-btn');
-            if (tokenizerId) {
-                dropdownBtn.textContent = tokenizerId;
+            if (selectedTokenizerId) {
+                dropdownBtn.textContent = selectedTokenizerId;
             } else {
                 dropdownBtn.textContent = 'Default (None)';
             }
 
-            // Update active state
             dropdownMenu.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('active'));
             this.classList.add('active');
         });
     });
 
-    // Update the dropdown button text to show the currently selected tokenizer
     const dropdownBtn = document.getElementById('tokenizer-dropdown-btn');
-    if (currentValue) {
-        dropdownBtn.textContent = currentValue;
+    if (updatedCurrentValue) {
+        dropdownBtn.textContent = updatedCurrentValue;
     } else {
         dropdownBtn.textContent = 'Default (None)';
     }
 }
 
-function updateTokenizersList(tokenizers) {
+function updateTokenizersList(data) {
     const tokenizersContainer = document.getElementById('tokenizers-list');
     const noTokenizersMsg = document.getElementById('no-tokenizers-msg');
 
-    // Clear existing tokenizers
     tokenizersContainer.innerHTML = '';
     tokenizersContainer.appendChild(noTokenizersMsg);
 
-    if (tokenizers.length === 0) {
+    const defaults = data.defaults || [];
+    const uploaded = data.uploaded || [];
+
+    if (defaults.length === 0 && uploaded.length === 0) {
         noTokenizersMsg.style.display = 'block';
         return;
     }
 
     noTokenizersMsg.style.display = 'none';
 
-    // Create tokenizer items
-    tokenizers.forEach(tokenizer_id => {
-        const tokenizerItem = document.createElement('div');
-        tokenizerItem.className = 'tokenizer-item mb-2 d-flex justify-content-between align-items-center';
-        tokenizerItem.innerHTML = `
-            <div class="d-flex align-items-center">
-                <span class="tokenizer-name">${tokenizer_id}</span>
-            </div>
-            <div>
-                <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn" data-tokenizer-id="${tokenizer_id}">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        `;
-        tokenizersContainer.appendChild(tokenizerItem);
+    if (defaults.length > 0) {
+        const defaultsHeader = document.createElement('div');
+        defaultsHeader.className = 'tokenizer-section-header mb-2';
+        defaultsHeader.innerHTML = '<h6>Default Tokenizers</h6>';
+        tokenizersContainer.appendChild(defaultsHeader);
 
-        // Add delete event listener
-        const deleteBtn = tokenizerItem.querySelector('.delete-tokenizer-btn');
-        deleteBtn.addEventListener('click', function() {
-            deleteTokenizer(this.dataset.tokenizerId);
+        defaults.forEach(tokenizer_id => {
+            const tokenizerItem = document.createElement('div');
+            tokenizerItem.className = 'tokenizer-item mb-2 d-flex justify-content-between align-items-center';
+            tokenizerItem.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <span class="tokenizer-name">${tokenizer_id}</span>
+                    <span class="badge bg-secondary ms-2">Default</span>
+                </div>
+                <div>
+                    <!-- No delete button for default tokenizers -->
+                </div>
+            `;
+            tokenizersContainer.appendChild(tokenizerItem);
         });
-    });
+    }
+
+    if (uploaded.length > 0) {
+        const uploadedHeader = document.createElement('div');
+        uploadedHeader.className = 'tokenizer-section-header mb-2 mt-3';
+        uploadedHeader.innerHTML = '<h6>Custom Tokenizers</h6>';
+        tokenizersContainer.appendChild(uploadedHeader);
+
+        uploaded.forEach(tokenizer_id => {
+            const tokenizerItem = document.createElement('div');
+            tokenizerItem.className = 'tokenizer-item mb-2 d-flex justify-content-between align-items-center';
+            tokenizerItem.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <span class="tokenizer-name">${tokenizer_id}</span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-outline-danger delete-tokenizer-btn" data-tokenizer-id="${tokenizer_id}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            tokenizersContainer.appendChild(tokenizerItem);
+
+            const deleteBtn = tokenizerItem.querySelector('.delete-tokenizer-btn');
+            deleteBtn.addEventListener('click', function() {
+                deleteTokenizer(this.dataset.tokenizerId);
+            });
+        });
+    }
 }
 
 function initializeTokenizerModals() {
@@ -1215,7 +1277,6 @@ function initializeTokenizerModals() {
         tokenizer_upload_modal_element._bsModal = tokenizer_upload_modal;
     }
 
-    // Initialize the tokenizer dropdown in the model modal
     const modelModal = document.getElementById('add-third-party-model-modal');
     if (modelModal) {
         modelModal.addEventListener('show.bs.modal', function() {

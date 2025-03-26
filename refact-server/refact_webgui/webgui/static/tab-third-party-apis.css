@@ -116,6 +116,18 @@
 }
 
 /* Tokenizer styling */
+.tokenizer-section-header {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.tokenizer-section-header h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
 .tokenizer-item {
     padding: 8px 12px;
     background-color: #f8f9fa;
@@ -124,18 +136,36 @@
     margin-bottom: 8px;
 }
 
+.tokenizer-item .badge {
+    font-size: 0.7rem;
+    font-weight: normal;
+}
+
 .tokenizer-name {
     font-family: monospace;
     font-weight: 500;
 }
 
 #tokenizers-list {
-    max-height: 300px;
+    max-height: 400px;
     overflow-y: auto;
+    padding-right: 5px;
 }
 
 /* Tokenizer dropdown styling */
 #tokenizer-dropdown-menu .dropdown-item.active {
     background-color: var(--bs-primary);
     color: white;
+}
+
+#tokenizer-dropdown-menu .dropdown-header {
+    color: #495057;
+    font-weight: 600;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+#tokenizer-dropdown-menu {
+    max-height: 350px;
+    overflow-y: auto;
 }
