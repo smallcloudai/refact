@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List
 
 from refact_utils.scripts import env
-from refact_utils.third_party.utils import available_third_party_models
+from refact_utils.third_party.utils.models import available_third_party_models
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 from typing import Any, Dict, Union
