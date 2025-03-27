@@ -16,31 +16,32 @@ __all__ = [
 ]
 
 
-async def _passthrough_tokenizer(uri: str) -> str:
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(uri) as resp:
-                return await resp.text()
-    except Exception as e:
-        raise RuntimeError(f"Failed to download tokenizer from '{uri}': {str(e)}")
-
-
 async def load_tokenizer(tokenizer_id: Optional[str]) -> str:
+    default_tokenizers = get_default_tokenizers()
+    if tokenizer_id is None and default_tokenizers:
+        tokenizer_id = default_tokenizers[0]
     if tokenizer_id is not None:
-        tokenizer_path = Path(env.DIR_TOKENIZERS) / f"{tokenizer_id}.json"
-        if tokenizer_path.exists():
-            try:
-                async with aiofiles.open(tokenizer_path, mode='r') as f:
-                    return await f.read()
-            except Exception as e:
-                raise RuntimeError(f"Failed to read tokenizer file '{tokenizer_path}': {str(e)}")
-        else:
+        tokenizer_path = _tokenizer_id_to_file(DEFAULT_TOKENIZERS_DIR, tokenizer_id)
+        if not tokenizer_path.exists():
+            tokenizer_path = _tokenizer_id_to_file(_tokenizers_dir(), tokenizer_id)
+        if not tokenizer_path.exists():
             raise RuntimeError(f"Tokenizer '{tokenizer_id}' not found")
+        try:
+            async with aiofiles.open(tokenizer_path, mode='r') as f:
+                return await f.read()
+        except Exception as e:
+            raise RuntimeError(f"Failed to read tokenizer file '{tokenizer_path}': {str(e)}")
     else:
-        model_path = "Xenova/gpt-4o"
-        tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
-        return await _passthrough_tokenizer(tokenizer_url)
+        url = f"https://huggingface.co/Xenova/gpt-4o/resolve/main/tokenizer.json"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as resp:
+                    return await resp.text()
+        except Exception as e:
+            raise RuntimeError(f"Failed to download tokenizer from '{url}': {str(e)}")
 
+
+DEFAULT_TOKENIZERS_DIR = Path(__file__).parent.parent / "tokenizers"
 
 def _tokenizers_dir() -> Path:
     return Path(env.DIR_TOKENIZERS)
@@ -56,15 +57,14 @@ def _tokenizer_file_to_id(filename: Path) -> str:
     return ".".join(filename.name.split(".")[:-1])
 
 
-def _tokenizer_id_to_file(tokenizer_id: str) -> Path:
+def _tokenizer_id_to_file(tokenizers_dir: Path, tokenizer_id: str) -> Path:
     return _tokenizers_dir() / f"{tokenizer_id}.json"
 
 
 def get_default_tokenizers() -> List[str]:
-    default_tokenizers_dir = Path(__file__).parent.parent / "tokenizers"
     return [
         ".".join(filename.name.split(".")[:-1])
-        for filename in sorted(default_tokenizers_dir.iterdir())
+        for filename in sorted(DEFAULT_TOKENIZERS_DIR.iterdir())
         if str(filename).endswith(".json")
     ]
 
@@ -89,7 +89,7 @@ async def upload_tokenizer(tokenizer_id: str, file):
     if tokenizer_id in get_tokenizers():
         raise RuntimeError(f"tokenizer with id `{tokenizer_id}` already exists")
 
-    filename = _tokenizer_id_to_file(tokenizer_id)
+    filename = _tokenizer_id_to_file(_tokenizers_dir(), tokenizer_id)
     tmp_filename = Path(f"{filename}.tmp")
     tmp_filename.unlink(missing_ok=True)
     try:
@@ -106,5 +106,5 @@ async def upload_tokenizer(tokenizer_id: str, file):
 
 
 def delete_tokenizer(tokenizer_id: str):
-    filename = _tokenizer_id_to_file(tokenizer_id)
+    filename = _tokenizer_id_to_file(_tokenizers_dir(), tokenizer_id)
     filename.unlink(missing_ok=True)
