@@ -14,34 +14,6 @@ deepseek_coder_supports_scratchpads = {
     },
 }
 
-deepseek_coder_instruct_supports_scratchpad = {
-    "CHAT-GENERIC": {
-        "token_bos": "",
-        "token_esc": "",
-        "keyword_system": "",
-        "keyword_user": "### Instruction:\n",
-        "keyword_assistant": "### Response:\n",
-        "stop_list": [],
-        "eot": "<|EOT|>",
-    },
-}
-
-mixtral_supports_scratchpads = {
-    "CHAT-GENERIC": {
-        "token_bos": "",
-        "token_esc": "",
-        "keyword_system": "",
-        "keyword_user": "[INST] ",
-        "keyword_assistant": "[/INST]\n",
-        "stop_list": [],
-        "eot": "</s>",
-    },
-}
-
-stable_supports_scratchpads = {
-    "FIM-PSM": {},
-}
-
 llama_supports_scratchpads = {
     "REPLACE": {
         "token_bos": "<|begin_of_text|>",
@@ -164,66 +136,7 @@ huggingface_mini_db = {
         },
         "filter_caps": ["completion", "finetune"],
     },
-    "deepseek-coder/33b/instruct": {
-        "backend": "transformers",
-        "model_path": "deepseek-ai/deepseek-coder-33b-instruct",
-        "model_class_kwargs": {
-            "load_in_4bit": True,
-        },
-        "required_memory_mb": 24000,
-        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "supports_scratchpads": {
-            "chat": deepseek_coder_instruct_supports_scratchpad,
-        },
-        "deprecated": True,
-        "filter_caps": ["chat"],
-    },
-    # mixtral
-    "mixtral/8x7b/instruct-v0.1": {
-        "backend": "transformers",
-        "model_path": "mistralai/Mixtral-8x7B-Instruct-v0.1",
-        "model_class_kwargs": {
-            "load_in_4bit": True,
-        },
-        "required_memory_mb": 35000,
-        "T": 4096,  # in fact this model allows 8k context, but we have 4k context at max in hf inference
-        "supports_scratchpads": {
-            "chat": mixtral_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["chat"],
-    },
-    # stable
-    "stable/3b/code": {
-        "backend": "transformers",
-        "model_path": "stabilityai/stable-code-3b",
-        "model_class_kwargs": {
-            "attn_implementation": "flash_attention_2",
-        },
-        "required_memory_mb": 8000,
-        "T": 4096,  # in fact this model allows 16k context, but we have 4k context at max in hf inference
-        "supports_scratchpads": {
-            "completion": stable_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion"],
-    },
     # llama
-    "llama3/8b/instruct": {
-        "backend": "transformers",
-        "model_path": "meta-llama/Meta-Llama-3-8B-Instruct",
-        "model_class_kwargs": {
-            "torch_dtype": "bf16",
-        },
-        "required_memory_mb": 20000,
-        "T": 8192,
-        "supports_scratchpads": {
-            "completion": llama_supports_scratchpads,
-            "chat": llama_chat_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion", "chat"],
-    },
     "llama3.1/8b/instruct": {
         "backend": "transformers",
         "model_path": "meta-llama/Llama-3.1-8B-Instruct",
