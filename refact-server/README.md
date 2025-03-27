@@ -114,10 +114,6 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 | [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                                    | +          |      | +           |                                                     |
 | [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)                 | +          |      | +           |                                                     |
 | [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)          | +          |      | +           |                                                     |
-| [mixtral/8x7b/instruct-v0.1](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1)               |            | +    |             |                                                     |
-| [deepseek-coder/33b/instruct](https://huggingface.co/deepseek-ai/deepseek-coder-33b-instruct)           |            | +    |             |                                                     |
-| [stable/3b/code](https://huggingface.co/stabilityai/stable-code-3b)                                     | +          |      |             | +                                                   |
-| [llama3/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct)                        | +          | +    |             | +                                                   |
 | [llama3.1/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)                    | +          | +    |             |                                                     |
 | [llama3.2/1b/instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)                         | +          | +    |             |                                                     |
 | [llama3.2/3b/instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)                         | +          | +    |             |                                                     |
