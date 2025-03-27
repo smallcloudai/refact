@@ -1248,14 +1248,13 @@ mod tests {
 
     impl HasTokenizerAndEot {
         fn mock() -> Arc<Self> {
-            use std::sync::RwLock;
             use tokenizers::Tokenizer;
             use tokenizers::models::wordpiece::WordPiece;
             let wordpiece = WordPiece::default();
             let mock_tokenizer = Tokenizer::new(wordpiece);
 
             Arc::new(Self {
-                tokenizer: Arc::new(RwLock::new(mock_tokenizer)),
+                tokenizer: Some(Arc::new(mock_tokenizer)),
                 eot: "".to_string(),
                 eos: "".to_string(),
                 context_format: "".to_string(),

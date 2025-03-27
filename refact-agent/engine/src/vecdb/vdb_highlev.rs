@@ -65,15 +65,17 @@ async fn do_i_need_to_reload_vecdb(
         return (true, None);
     }
 
-    let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
+    let tokenizer_result = crate::tokens::cached_tokenizer(
         gcx.clone(), &consts.embedding_model.base,
     ).await;
-    if tokenizer_maybe.is_err() {
-        error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
-        return (false, None);
-    }
-    consts.tokenizer = Some(tokenizer_maybe.clone().unwrap());
-
+    
+    consts.tokenizer = match tokenizer_result {
+        Ok(tokenizer) => tokenizer,
+        Err(err) => {
+            error!("vecdb launch failed, embedding model tokenizer didn't load: {}", err);
+            return (false, None);
+        }
+    };
     return (true, Some(consts));
 }
 

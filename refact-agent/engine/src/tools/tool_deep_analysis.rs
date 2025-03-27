@@ -7,14 +7,13 @@ use async_trait::async_trait;
 use axum::http::StatusCode;
 use crate::caps::resolve_chat_model;
 use crate::subchat::subchat_single;
+use crate::tokens::count_text_tokens_with_fallback;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::cached_tokenizers;
 use crate::custom_error::ScratchError;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::scratchpads::scratchpad_utils::count_tokens;
 
 pub struct ToolDeepAnalysis;
 
@@ -31,12 +30,12 @@ async fn _make_prompt(
     let gcx = ccx.lock().await.global_context.clone();
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
     let model_rec = resolve_chat_model(caps, &subchat_params.subchat_model)?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(gcx.clone(), &model_rec.base).await
+    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
     let final_message = format!("***Problem:***\n{problem_statement}\n\n***Problem context:***\n");
-    tokens_budget -= count_tokens(&tokenizer.read().unwrap(), &final_message) as i64;
+    tokens_budget -= count_text_tokens_with_fallback(tokenizer.clone(), &final_message) as i64;
     let mut context = "".to_string(); 
     let mut context_files: Vec<ContextFile> = vec![];
     for message in previous_messages.iter().rev() {
@@ -64,7 +63,7 @@ async fn _make_prompt(
                 continue;
             }
         };
-        let left_tokens = tokens_budget - count_tokens(&tokenizer.read().unwrap(), &message_row) as i64;
+        let left_tokens = tokens_budget - count_text_tokens_with_fallback(tokenizer.clone(), &message_row) as i64;
         if left_tokens < 0 {
             // we do not end here, maybe there are smaller useful messages at the beginning
             continue;

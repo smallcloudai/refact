@@ -556,7 +556,7 @@ pub struct CodeCompletionReplaceScratchpad {
 
 impl CodeCompletionReplaceScratchpad {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
@@ -843,7 +843,7 @@ pub struct CodeCompletionReplacePassthroughScratchpad {
 
 impl CodeCompletionReplacePassthroughScratchpad {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,

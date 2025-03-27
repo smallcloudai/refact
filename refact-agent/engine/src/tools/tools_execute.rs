@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use glob::Pattern;
 use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
@@ -107,7 +107,7 @@ pub async fn run_tools_remotely(
 pub async fn run_tools_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tools: &mut IndexMap<String, Box<dyn Tool + Send>>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -129,7 +129,7 @@ pub async fn run_tools_locally(
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tools: &mut IndexMap<String, Box<dyn Tool+Send>>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     style: &Option<String>,
@@ -274,7 +274,7 @@ async fn pp_run_tools(
     generated_other: Vec<ChatMessage>,
     context_files_for_pp: &mut Vec<ContextFile>,
     tokens_for_rag: usize,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
     let mut generated_tool = generated_tool.to_vec();

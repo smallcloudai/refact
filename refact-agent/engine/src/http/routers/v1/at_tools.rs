@@ -9,7 +9,6 @@ use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSettings, SubchatParameters};
 use crate::caps::resolve_chat_model;
 use crate::http::http_post_json;
@@ -212,7 +211,7 @@ pub async fn handle_v1_tools_execute(
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let model_rec = resolve_chat_model(caps, &tools_execute_post.model_name)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(gcx.clone(), &model_rec.base).await
+    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
 
     let mut ccx = AtCommandsContext::new(

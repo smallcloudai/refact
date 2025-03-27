@@ -1,9 +1,10 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::Arc;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall};
-use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, count_tokens as count_tokens_simple_text, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
+use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
+use crate::tokens::count_text_tokens;
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
@@ -76,13 +77,9 @@ impl MultimodalElement {
         })
     }
 
-    pub fn count_tokens(&self, tokenizer: Option<&RwLockReadGuard<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
+    pub fn count_tokens(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
         if self.is_text() {
-            if let Some(tokenizer) = tokenizer {
-                Ok(count_tokens_simple_text(&tokenizer, &self.m_content) as i32)
-            } else {
-                return Err("count_tokens() received no tokenizer".to_string());
-            }
+            Ok(count_text_tokens(tokenizer, &self.m_content)? as i32)
         } else if self.is_image() {
             let style = style.clone().unwrap_or("openai".to_string());
             match style.as_str() {
@@ -171,7 +168,7 @@ impl ChatContent {
         }
     }
 
-    pub fn size_estimate(&self, tokenizer: Arc<RwLock<Tokenizer>>, style: &Option<String>) -> usize {
+    pub fn size_estimate(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> usize {
         match self {
             ChatContent::SimpleText(text) => text.len(),
             ChatContent::Multimodal(_elements) => {
@@ -181,12 +178,11 @@ impl ChatContent {
         }
     }
 
-    pub fn count_tokens(&self, tokenizer: Arc<RwLock<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
-        let tokenizer_lock = tokenizer.read().unwrap();
+    pub fn count_tokens(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
         match self {
-            ChatContent::SimpleText(text) => Ok(count_tokens_simple_text(&tokenizer_lock, text) as i32),
+            ChatContent::SimpleText(text) => Ok(count_text_tokens(tokenizer, text)? as i32),
             ChatContent::Multimodal(elements) => elements.iter()
-                .map(|e|e.count_tokens(Some(&tokenizer_lock), style))
+                .map(|e|e.count_tokens(tokenizer.clone(), style))
                 .collect::<Result<Vec<_>, _>>()
                 .map(|counts| counts.iter().sum()),
         }

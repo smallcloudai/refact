@@ -39,7 +39,7 @@ pub struct FillInTheMiddleScratchpad {
 
 impl FillInTheMiddleScratchpad {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,

@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
-use std::sync::RwLock as StdRwLock;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
@@ -24,7 +23,7 @@ pub trait VecdbSearch: Send {
 pub struct VecdbConstants {
     // constant in a sense it cannot be changed without creating a new db
     pub embedding_model: EmbeddingModelRecord,
-    pub tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
+    pub tokenizer: Option<Arc<Tokenizer>>,
     pub splitter_window_size: usize,
     pub vecdb_max_files: usize,
 }

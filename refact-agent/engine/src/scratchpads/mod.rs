@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tokenizers::Tokenizer;
 
 pub mod code_completion_fim;
 pub mod chat_generic;
@@ -26,7 +25,7 @@ use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
-use crate::cached_tokenizers;
+use crate::tokens;
 
 
 fn verify_has_send<T: Send>(_x: &T) {}
@@ -41,7 +40,7 @@ pub async fn create_code_completion_scratchpad(
     ast_module: Option<Arc<AMutex<AstIndexService>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(global_context.clone(), &model_rec.base).await?;
+    let tokenizer_arc = crate::tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await?;
     if model_rec.scratchpad == "FIM-PSM" {
         result = Box::new(code_completion_fim::FillInTheMiddleScratchpad::new(
             tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()
@@ -75,7 +74,7 @@ pub async fn create_chat_scratchpad(
     allow_at: bool,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc = cached_tokenizers::cached_tokenizer(global_context.clone(), &model_rec.base).await?;
+    let tokenizer_arc = tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await?;
     if model_rec.scratchpad == "CHAT-GENERIC" {
         result = Box::new(chat_generic::GenericChatScratchpad::new(
             tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at

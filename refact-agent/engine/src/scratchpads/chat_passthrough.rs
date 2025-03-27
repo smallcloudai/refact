@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -69,7 +68,7 @@ pub struct ChatPassthrough {
 
 impl ChatPassthrough {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
         prepend_system_prompt: bool,

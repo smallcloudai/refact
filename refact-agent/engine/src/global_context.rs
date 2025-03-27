@@ -155,7 +155,7 @@ pub struct GlobalContext {
     pub caps_reading_lock: Arc<AMutex<bool>>,
     pub caps_last_error: String,
     pub caps_last_attempted_ts: u64,
-    pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
+    pub tokenizer_map: HashMap<String, Option<Arc<Tokenizer>>>,
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,

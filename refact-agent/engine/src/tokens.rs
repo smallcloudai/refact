@@ -1,6 +1,6 @@
 use tokio::io::AsyncWriteExt;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock as StdRwLock};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
@@ -123,25 +123,23 @@ async fn try_download_tokenizer_file_and_open(
 pub async fn cached_tokenizer(
     global_context: Arc<ARwLock<GlobalContext>>,
     model_rec: &BaseModelRecord,
-) -> Result<Arc<StdRwLock<Tokenizer>>, String> {
+) -> Result<Option<Arc<Tokenizer>>, String> {
     let model_id = strip_model_from_finetune(&model_rec.id);
     let tokenizer_download_lock: Arc<AMutex<bool>> = global_context.read().await.tokenizer_download_lock.clone();
     let _tokenizer_download_locked = tokenizer_download_lock.lock().await;
 
-    let (client2, cache_dir, tokenizer_arc) = {
+    let (client2, cache_dir, tokenizer_in_gcx) = {
         let cx_locked = global_context.read().await;
         (cx_locked.http_client.clone(), cx_locked.cache_dir.clone(), cx_locked.tokenizer_map.clone().get(&model_id).cloned())
     };
 
-    if tokenizer_arc.is_some() {
-        return Ok(tokenizer_arc.unwrap().clone())
+    if let Some(tokenizer) = tokenizer_in_gcx {
+        return Ok(tokenizer)
     }
 
     let (mut tok_file_path, tok_url) = match &model_rec.tokenizer {
         empty_tok if empty_tok.is_empty() => return Err(format!("failed to load tokenizer: empty tokenizer for {model_id}")),
-        fake_tok if fake_tok.starts_with("fake://") => {
-            todo!()
-        }
+        fake_tok if fake_tok.starts_with("fake") => return Ok(None),
         hf_tok if hf_tok.starts_with("hf://") => {
             let hf_tok = hf_tok.strip_prefix("hf://").unwrap();
             (PathBuf::new(), format!("https://huggingface.co/{hf_tok}/resolve/main/tokenizer.json"))
@@ -177,8 +175,37 @@ pub async fn cached_tokenizer(
         .map_err(|e| format!("failed to load tokenizer: {}", e))?;
     let _ = tokenizer.with_truncation(None);
     tokenizer.with_padding(None);
-    let arc = Arc::new(StdRwLock::new(tokenizer));
+    let arc = Some(Arc::new(tokenizer));
 
     global_context.write().await.tokenizer_map.insert(model_id, arc.clone());
     Ok(arc)
+}
+
+fn estimate_tokens(text: &str) -> usize { 1 + text.len() / 3 }
+
+pub fn count_text_tokens(
+    tokenizer: Option<Arc<Tokenizer>>,
+    text: &str,
+) -> Result<usize, String> {
+    match tokenizer {
+        Some(tokenizer) => {
+            match tokenizer.encode_fast(text, false) {
+                Ok(tokens) => Ok(tokens.len()),
+                Err(e) => Err(format!("Encoding error: {e}")),
+            }
+        }
+        None => {
+            Ok(estimate_tokens(text))
+        }
+    }
+}
+
+pub fn count_text_tokens_with_fallback(
+    tokenizer: Option<Arc<Tokenizer>>,
+    text: &str,
+) -> usize {
+    count_text_tokens(tokenizer, text).unwrap_or_else(|e| {
+        tracing::error!("{e}");
+        estimate_tokens(text)
+    })
 }

@@ -4,7 +4,6 @@ use hyper::{Body, Response, StatusCode};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
@@ -14,7 +13,7 @@ use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::at_commands::execute_at::run_at_commands_locally;
-use crate::cached_tokenizers;
+use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::call_validation::{ChatMeta, PostprocessSettings, SubchatParameters};
@@ -131,7 +130,7 @@ pub async fn handle_v1_command_completion(
         .unwrap())
 }
 
-async fn count_tokens(tokenizer_arc: Arc<StdRwLock<Tokenizer>>, messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
+async fn count_tokens(tokenizer_arc: Option<Arc<Tokenizer>>, messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
     let mut accum: u64 = 0;
 
     for message in messages {
@@ -173,7 +172,7 @@ pub async fn handle_v1_command_preview(
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let model_rec = resolve_chat_model(caps, &post.model)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = match cached_tokenizers::cached_tokenizer(global_context.clone(), &model_rec.base).await {
+    let tokenizer_arc = match tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await {
         Ok(x) => x,
         Err(e) => {
             let err_msg = format!("Can't load tokenizer for preview: {}", e);
@@ -283,7 +282,7 @@ pub async fn handle_v1_at_command_execute(
     let model_rec = resolve_chat_model(caps, &post.model_name)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    let tokenizer = cached_tokenizers::cached_tokenizer(global_context.clone(), &model_rec.base).await
+    let tokenizer = tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
 
     let mut ccx = AtCommandsContext::new(

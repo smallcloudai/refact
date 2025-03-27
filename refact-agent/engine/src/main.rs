@@ -47,7 +47,7 @@ mod at_commands;
 mod tools;
 mod postprocessing;
 mod completion_cache;
-mod cached_tokenizers;
+mod tokens;
 mod scratchpad_abstract;
 mod scratchpads;
 
