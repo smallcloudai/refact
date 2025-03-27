@@ -84,7 +84,7 @@ def _populate_models_for_provider(provider_id: str, api_key: str) -> Dict[str, M
                 model_dict,
             )
             model_configs[config.model_id] = config
-        except:
+        except Exception:
             pass
 
     return model_configs
@@ -104,11 +104,6 @@ def migrate_third_party_config():
 
     integrations_cfg = Path(env.CONFIG_INTEGRATIONS)
     integrations = json.loads(integrations_cfg.read_text())
-    with integrations_cfg.open("w") as f:
-        json.dump({
-            k: v for k, v in integrations.items()
-            if k not in KEY_PROVIDER_MAPPING
-        }, f)
 
     providers = {}
     models = {}
@@ -120,6 +115,11 @@ def migrate_third_party_config():
         models.update(_populate_models_for_provider(provider_id, api_key))
 
     integrations_cfg.rename(Path(f"{integrations_cfg}.bak"))
+    with integrations_cfg.open("w") as f:
+        json.dump({
+            k: v for k, v in integrations.items()
+            if k not in KEY_PROVIDER_MAPPING
+        }, f, indent=4)
 
     return ThirdPartyApiConfig(
         providers=providers,

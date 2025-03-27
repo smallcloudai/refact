@@ -10,6 +10,7 @@ from refact_utils.third_party.utils.configs import ProviderConfig
 from refact_utils.third_party.utils.configs import ModelConfig
 from refact_utils.third_party.utils.configs import ModelCapabilities
 from refact_utils.third_party.utils.migration import migrate_third_party_config
+from refact_webgui.webgui.selfhost_webutils import log
 
 
 __all__ = [
@@ -44,7 +45,11 @@ def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
 
 def load_third_party_config() -> ThirdPartyApiConfig:
     if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_THIRD_PARTY_MODELS):
-        migrate_third_party_config()
+        try:
+            config = migrate_third_party_config()
+            save_third_party_config(config)
+        except Exception as e:
+            log(f"third party config migration failed: {e}")
     try:
         if not os.path.exists(env.CONFIG_THIRD_PARTY_MODELS):
             raise FileNotFoundError(f"No third party config found")
@@ -52,12 +57,12 @@ def load_third_party_config() -> ThirdPartyApiConfig:
             data = json.load(f)
         config = ThirdPartyApiConfig.model_validate(data)
         return _validate_config(config, raise_on_error=False)
-    except Exception:
+    except Exception as e:
+        log(f"third party config loading failed: {e}")
         return ThirdPartyApiConfig()
 
 
 def save_third_party_config(config: ThirdPartyApiConfig):
-    os.makedirs(os.path.dirname(env.CONFIG_THIRD_PARTY_MODELS), exist_ok=True)
     config = _validate_config(config, raise_on_error=True)
     with open(env.CONFIG_THIRD_PARTY_MODELS + ".tmp", "w") as f:
         json.dump(config.model_dump(), f, indent=4)
