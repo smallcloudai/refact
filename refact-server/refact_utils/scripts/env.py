@@ -24,7 +24,7 @@ DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
 DIR_TOKENIZERS   = os.path.join(PERMDIR, "tokenizers")
 
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
-CONFIG_INTEGRATIONS_MODELS = os.path.join(DIR_CONFIG, "integrations_models.cfg")
+CONFIG_THIRD_PARTY_MODELS = os.path.join(DIR_CONFIG, "third_party_models.cfg")
 CONFIG_ENUM_DEVICES = os.path.join(DIR_CONFIG, "device_enum_result.out")
 CONFIG_BUSY_DEVICES = os.path.join(DIR_CONFIG, "devices_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
