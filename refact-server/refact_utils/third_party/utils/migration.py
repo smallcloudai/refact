@@ -54,6 +54,7 @@ def _model_config_from_model_dict(
     model_id = model_dict["resolve_as"]
     tools = bool(litellm.supports_function_calling(model_id))
     multimodal = bool(litellm.supports_vision(model_id))
+    reasoning = provider_id if "reasoning" in model_dict.get("filter_caps", []) else None
     return ModelConfig(
         model_id=model_dict["resolve_as"],
         provider_id=provider_id,
@@ -67,6 +68,8 @@ def _model_config_from_model_dict(
             agent=tools and "agent" in model_dict.get("filter_caps", []),
             clicks=multimodal and "clicks" in model_dict.get("filter_caps", []),
             completion="completion" in model_dict.get("filter_caps", []),
+            reasoning=reasoning,
+            boost_reasoning=reasoning in ["openai", "anthropic"],
         ),
         tokenizer_id=TOKENIZER_MAPPING.get(model_dict["tokenizer_path"]),
     )

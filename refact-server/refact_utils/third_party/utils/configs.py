@@ -17,6 +17,8 @@ class ModelCapabilities(BaseModel):
     agent: bool
     clicks: bool
     completion: bool
+    reasoning: Optional[str] = False
+    boost_reasoning: bool = False
 
 
 class ModelConfig(BaseModel):
@@ -63,6 +65,9 @@ class ModelConfig(BaseModel):
             "supports_multimodality": self.capabilities.multimodal,
             "supports_clicks": self.capabilities.clicks,
             "supports_agent": self.capabilities.agent,
+            "supports_reasoning": self.capabilities.reasoning,
+            "supports_boost_reasoning": self.capabilities.boost_reasoning,
+            "default_temperature": 0.6 if self.capabilities.reasoning == "deepseek" else None,
         }
 
 
