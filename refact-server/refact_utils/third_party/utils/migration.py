@@ -108,7 +108,7 @@ def migrate_third_party_config():
     integrations_cfg.rename(Path(f"{integrations_cfg}.bak"))
     with integrations_cfg.open("w") as f:
         json.dump({
-            k: v for k, v in integrations
+            k: v for k, v in integrations.items()
             if k not in KEY_PROVIDER_MAPPING
         }, f)
 

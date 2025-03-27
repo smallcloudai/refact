@@ -43,12 +43,12 @@ def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
 
 
 def load_third_party_config() -> ThirdPartyApiConfig:
-    if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+    if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_THIRD_PARTY_MODELS):
         migrate_third_party_config()
     try:
-        if not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+        if not os.path.exists(env.CONFIG_THIRD_PARTY_MODELS):
             raise FileNotFoundError(f"No third party config found")
-        with open(env.CONFIG_INTEGRATIONS_MODELS, "r") as f:
+        with open(env.CONFIG_THIRD_PARTY_MODELS, "r") as f:
             data = json.load(f)
         config = ThirdPartyApiConfig.model_validate(data)
         return _validate_config(config, raise_on_error=False)
@@ -57,11 +57,11 @@ def load_third_party_config() -> ThirdPartyApiConfig:
 
 
 def save_third_party_config(config: ThirdPartyApiConfig):
-    os.makedirs(os.path.dirname(env.CONFIG_INTEGRATIONS_MODELS), exist_ok=True)
+    os.makedirs(os.path.dirname(env.CONFIG_THIRD_PARTY_MODELS), exist_ok=True)
     config = _validate_config(config, raise_on_error=True)
-    with open(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", "w") as f:
+    with open(env.CONFIG_THIRD_PARTY_MODELS + ".tmp", "w") as f:
         json.dump(config.model_dump(), f, indent=4)
-    os.rename(env.CONFIG_INTEGRATIONS_MODELS + ".tmp", env.CONFIG_INTEGRATIONS_MODELS)
+    os.rename(env.CONFIG_THIRD_PARTY_MODELS + ".tmp", env.CONFIG_THIRD_PARTY_MODELS)
 
 
 def available_third_party_models() -> Dict[str, ModelConfig]:
