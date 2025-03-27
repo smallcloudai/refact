@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel
 
-from refact_utils.third_party.utils.models import ThirdPartyApiConfig
+from refact_utils.third_party.utils.configs import ThirdPartyApiConfig
 from refact_utils.third_party.utils.models import load_third_party_config
 from refact_utils.third_party.utils.models import save_third_party_config
 from refact_utils.third_party.utils.models import get_provider_models
