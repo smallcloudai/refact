@@ -2,10 +2,13 @@ import json
 import os
 import litellm
 
-from pydantic import BaseModel, Field
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Optional
 
 from refact_utils.scripts import env
+from refact_utils.third_party.utils.configs import ThirdPartyApiConfig
+from refact_utils.third_party.utils.configs import ProviderConfig
+from refact_utils.third_party.utils.configs import ModelConfig
+from refact_utils.third_party.utils.configs import ModelCapabilities
 from refact_utils.third_party.utils.migration import migrate_third_party_config
 
 
@@ -14,77 +17,7 @@ __all__ = [
     "save_third_party_config",
     "available_third_party_models",
     "get_provider_models",
-    "ThirdPartyApiConfig",
-    "ProviderConfig",
-    "ModelConfig",
-    "ModelCapabilities",
 ]
-
-
-class ModelCapabilities(BaseModel):
-    tools: bool
-    multimodal: bool
-    agent: bool
-    clicks: bool
-    completion: bool
-
-
-class ModelConfig(BaseModel):
-    model_id: str
-    provider_id: str
-    api_base: Optional[str]
-    api_key: Optional[str]
-    n_ctx: int
-    max_tokens: int
-    capabilities: ModelCapabilities
-    tokenizer_id: Optional[str] = None
-
-    # TODO: validation of the config
-
-    # NOTE: weird function for backward compatibility
-    def compose_usage_dict(self, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:
-        def _pp1000t(cost_entry_name: str) -> int:
-            cost = litellm.model_cost.get(self.model_id, {}).get(cost_entry_name, 0)
-            return int(cost * 1_000_000 * 1_000)
-        return {
-            "pp1000t_prompt": _pp1000t("input_cost_per_token"),
-            "pp1000t_generated": _pp1000t("output_cost_per_token"),
-            "metering_prompt_tokens_n": prompt_tokens_n,
-            "metering_generated_tokens_n": generated_tokens_n,
-        }
-
-    def to_completion_model_record(self) -> Dict[str, Any]:
-        assert self.capabilities.completion
-        return {
-            "n_ctx": self.n_ctx,
-            "supports_scratchpads": {
-                "REPLACE_PASSTHROUGH": {
-                    "context_format": "chat",
-                    "rag_ratio": 0.5,
-                }
-            },
-        }
-
-    def to_chat_model_record(self) -> Dict[str, Any]:
-        return {
-            "n_ctx": self.n_ctx,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {},
-            },
-            "supports_tools": self.capabilities.tools,
-            "supports_multimodality": self.capabilities.multimodal,
-            "supports_clicks": self.capabilities.clicks,
-            "supports_agent": self.capabilities.agent,
-        }
-
-
-class ProviderConfig(BaseModel):
-    enabled: bool = True
-
-
-class ThirdPartyApiConfig(BaseModel):
-    providers: Dict[str, ProviderConfig] = Field(default_factory=dict)
-    models: Dict[str, ModelConfig] = Field(default_factory=dict)
 
 
 def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
