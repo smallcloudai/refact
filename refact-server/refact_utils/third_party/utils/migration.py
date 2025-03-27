@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Dict
 
 from refact_utils.scripts import env
-from refact_utils.third_party.utils.models import ThirdPartyApiConfig
-from refact_utils.third_party.utils.models import ModelConfig
-from refact_utils.third_party.utils.models import ModelCapabilities
-from refact_utils.third_party.utils.models import ProviderConfig
+from refact_utils.third_party.utils.configs import ThirdPartyApiConfig
+from refact_utils.third_party.utils.configs import ModelConfig
+from refact_utils.third_party.utils.configs import ModelCapabilities
+from refact_utils.third_party.utils.configs import ProviderConfig
 
 
 KEY_PROVIDER_MAPPING = {
