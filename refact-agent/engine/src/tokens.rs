@@ -181,7 +181,8 @@ pub async fn cached_tokenizer(
     Ok(arc)
 }
 
-fn estimate_tokens(text: &str) -> usize { 1 + text.len() / 3 }
+/// Estimate as length / 3.5, since 3 is reasonable estimate for code, and 4 for natural language
+fn estimate_tokens(text: &str) -> usize {  1 + text.len() * 2 / 7 }
 
 pub fn count_text_tokens(
     tokenizer: Option<Arc<Tokenizer>>,
