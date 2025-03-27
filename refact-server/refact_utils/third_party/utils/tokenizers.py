@@ -58,7 +58,7 @@ def _tokenizer_file_to_id(filename: Path) -> str:
 
 
 def _tokenizer_id_to_file(tokenizers_dir: Path, tokenizer_id: str) -> Path:
-    return _tokenizers_dir() / f"{tokenizer_id}.json"
+    return tokenizers_dir / f"{tokenizer_id}.json"
 
 
 def get_default_tokenizers() -> List[str]:
