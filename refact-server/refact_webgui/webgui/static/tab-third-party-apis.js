@@ -314,6 +314,13 @@ function updateUI() {
                         if (modelConfig.capabilities.multimodal) {
                             capabilitiesBadges += '<span class="badge bg-primary me-1" title="Supports Images and Other Media">Multimodal</span>';
                         }
+                        if (modelConfig.capabilities.reasoning) {
+                            const reasoningType = modelConfig.capabilities.reasoning;
+                            capabilitiesBadges += `<span class="badge bg-warning me-1" title="Supports ${reasoningType} Reasoning">Reasoning: ${reasoningType}</span>`;
+                        }
+                        if (modelConfig.capabilities.boost_reasoning) {
+                            capabilitiesBadges += '<span class="badge bg-warning-subtle text-dark me-1" title="Boost Reasoning Enabled">Boost</span>';
+                        }
 
                         // Force refresh of badges by adding a timestamp to ensure DOM updates
                         capabilitiesBadges += `<span class="d-none">${Date.now()}</span>`;
@@ -542,6 +549,16 @@ function showAddModelModal(providerId) {
                             </label>
                             <div class="form-text">Enable if this model supports autonomous agent functionality.</div>
                         </div>
+                        <div class="mb-3">
+                            <label for="third-party-model-reasoning-type" class="form-label">Reasoning Type</label>
+                            <select class="form-select" id="third-party-model-reasoning-type">
+                                <option value="">None</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="deepseek">DeepSeek</option>
+                            </select>
+                            <div class="form-text">Select the reasoning type supported by this model.</div>
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <div class="form-check mb-3">
@@ -557,6 +574,13 @@ function showAddModelModal(providerId) {
                                 Supports Clicks
                             </label>
                             <div class="form-text">Enable if this model supports click interactions.</div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="third-party-model-boost-reasoning" disabled>
+                            <label class="form-check-label" for="third-party-model-boost-reasoning">
+                                Boost Reasoning
+                            </label>
+                            <div class="form-text">Enable to boost reasoning capabilities (requires reasoning type).</div>
                         </div>
                     </div>
                 </div>
@@ -631,6 +655,12 @@ function showAddModelModal(providerId) {
     customOption.value = 'custom';
     customOption.textContent = '-- Enter custom API key --';
     customOption.selected = !hasPredefined || !selectedApiKey;
+    if (customOption.selected) {
+        const customInputContainer = document.getElementById('custom-model-api-key-input-container');
+        customInputContainer.style.display = 'block';
+        document.getElementById('custom-model-api-key-input').value = '';
+        document.getElementById('custom-model-api-key-input').focus();
+    }
     apiKeySelect.appendChild(customOption);
 
     apiKeySelect.addEventListener('change', function() {
@@ -680,6 +710,18 @@ function showAddModelModal(providerId) {
                     selectedModel.n_ctx;
                 document.getElementById('custom-model-max-tokens').value =
                     selectedModel.max_tokens;
+
+                if (selectedModel.capabilities.reasoning) {
+                    document.getElementById('third-party-model-reasoning-type').value =
+                        selectedModel.capabilities.reasoning;
+                    document.getElementById('third-party-model-boost-reasoning').disabled = false;
+                    document.getElementById('third-party-model-boost-reasoning').checked =
+                        selectedModel.capabilities.boost_reasoning || false;
+                } else {
+                    document.getElementById('third-party-model-reasoning-type').value = '';
+                    document.getElementById('third-party-model-boost-reasoning').disabled = true;
+                    document.getElementById('third-party-model-boost-reasoning').checked = false;
+                }
             }
 
             dependentCheckboxSet('custom-model-supports-tools', 'third-party-model-supports-agentic');
@@ -691,6 +733,17 @@ function showAddModelModal(providerId) {
     dependentCheckboxListener('custom-model-supports-tools', 'third-party-model-supports-agentic');
     dependentCheckboxSet('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
     dependentCheckboxListener('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
+
+    const reasoningTypeSelect = document.getElementById('third-party-model-reasoning-type');
+    reasoningTypeSelect.addEventListener('change', function() {
+        const boostReasoningCheckbox = document.getElementById('third-party-model-boost-reasoning');
+        if (this.value) {
+            boostReasoningCheckbox.disabled = false;
+        } else {
+            boostReasoningCheckbox.checked = false;
+            boostReasoningCheckbox.disabled = true;
+        }
+    });
 
     document.getElementById('add-third-party-model-modal-label').textContent = 'Add Model';
     document.getElementById('add-third-party-model-submit').textContent = 'Add Model';
@@ -711,6 +764,16 @@ function addModel() {
     // If we're in edit mode, call updateModel instead
     if (isEdit) {
         updateModel();
+        return;
+    }
+
+    let reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
+    let boostReasoning = document.getElementById('third-party-model-boost-reasoning').checked;
+
+    if (boostReasoning && !reasoningType) {
+        const error_message = "Boost reasoning requires a reasoning type to be selected";
+        console.error(error_message);
+        general_error(error_message);
         return;
     }
 
@@ -748,6 +811,8 @@ function addModel() {
             const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
             const supportsTools = document.getElementById('custom-model-supports-tools').checked;
             const supportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
+            reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
+            boostReasoning = document.getElementById('third-party-model-boost-reasoning').checked;
             const customApiBase = document.getElementById('custom-model-api-base').value.trim();
 
             // Get API key from either dropdown or custom input
@@ -790,18 +855,15 @@ function addModel() {
                 n_ctx: customNCtx,
                 max_tokens: customMaxTokens,
                 capabilities: {
-                    agent: supportsAgentic,
-                    clicks: supportsClicks,
-                    tools: supportsTools,
-                    multimodal: supportsMultimodality,
-                    completion: defaultModelConfig ? defaultModelConfig.capabilities.completion : false
+                    agent: !!supportsAgentic,
+                    clicks: !!supportsClicks,
+                    tools: !!supportsTools,
+                    multimodal: !!supportsMultimodality,
+                    completion: !!(defaultModelConfig ? defaultModelConfig.capabilities.completion : false),
+                    reasoning: reasoningType || null,
+                    boost_reasoning: !!boostReasoning
                 }
             };
-
-            // Ensure all capability fields are explicitly set as booleans
-            Object.keys(modelConfig.capabilities).forEach(key => {
-                modelConfig.capabilities[key] = !!modelConfig.capabilities[key];
-            });
 
             // Add tokenizer ID if provided
             if (customTokenizerId) {
@@ -885,12 +947,21 @@ function showEditModelModal(providerId, modelId) {
     document.getElementById('third-party-model-supports-agentic').checked = capabilities.agent || false;
     document.getElementById('third-party-model-supports-clicks').checked = capabilities.clicks || false;
 
+    const reasoningTypeSelect = document.getElementById('third-party-model-reasoning-type');
+    reasoningTypeSelect.value = capabilities.reasoning || '';
+    document.getElementById('third-party-model-boost-reasoning').checked = capabilities.boost_reasoning || false;
+
+    if (capabilities.reasoning) {
+        document.getElementById('third-party-model-boost-reasoning').disabled = false;
+    } else {
+        document.getElementById('third-party-model-boost-reasoning').disabled = true;
+    }
+
     dependentCheckboxSet('custom-model-supports-tools', 'third-party-model-supports-agentic');
     dependentCheckboxSet('custom-model-supports-multimodality', 'third-party-model-supports-clicks');
 
     // Handle API key selection
     const apiKeySelect = document.getElementById('custom-model-api-key');
-    const customApiKeyInput = document.getElementById('custom-model-api-key-input');
     const customApiKeyInputContainer = document.getElementById('custom-model-api-key-input-container');
 
     const keyIndex = providerApiKeys(providerId).indexOf(modelConfig.api_key);
@@ -938,6 +1009,16 @@ function updateModel() {
         return;
     }
 
+    let reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
+    let boostReasoning = document.getElementById('third-party-model-boost-reasoning').checked;
+
+    if (boostReasoning && !reasoningType) {
+        const error_message = "Boost reasoning requires a reasoning type to be selected";
+        console.error(error_message);
+        general_error(error_message);
+        return;
+    }
+
     // Check if the model exists
     if (!apiConfig.models[modelId] || apiConfig.models[modelId].provider_id !== providerId) {
         const error_message = "No model in config, can't update model";
@@ -951,6 +1032,8 @@ function updateModel() {
     const supportsClicks = document.getElementById('third-party-model-supports-clicks').checked;
     const supportsTools = document.getElementById('custom-model-supports-tools').checked;
     const supportsMultimodality = document.getElementById('custom-model-supports-multimodality').checked;
+    reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
+    boostReasoning = document.getElementById('third-party-model-boost-reasoning').checked;
     const customApiBase = document.getElementById('custom-model-api-base').value.trim();
 
     // Get API key from either dropdown or custom input
@@ -987,6 +1070,8 @@ function updateModel() {
     modelConfig.capabilities.clicks = supportsClicks;
     modelConfig.capabilities.tools = supportsTools;
     modelConfig.capabilities.multimodal = supportsMultimodality;
+    modelConfig.capabilities.reasoning = reasoningType || null;
+    modelConfig.capabilities.boost_reasoning = boostReasoning;
 
     modelConfig.n_ctx = customNCtx;
     modelConfig.max_tokens = customMaxTokens;
