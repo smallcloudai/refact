@@ -345,8 +345,8 @@ async def actual_chat(
     app = Application(key_bindings=kb, layout=layout)
     app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
-    if cli_settings.args.model not in caps.code_chat_models:
-        known_models = list(caps.code_chat_models.keys())
+    if cli_settings.args.model not in caps.chat_models:
+        known_models = list(caps.chat_models.keys())
         print(f"model {cli_settings.args.model} is unknown, pick one of {known_models}")
         return
 

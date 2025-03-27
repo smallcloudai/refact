@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::sync::RwLock as StdRwLock;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tokenizers::Tokenizer;
 
 pub mod code_completion_fim;
 pub mod chat_generic;
@@ -20,12 +19,13 @@ mod completon_rag;
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::call_validation::{ChatMessage, CodeCompletionPost};
 use crate::call_validation::ChatPost;
+use crate::caps::ChatModelRecord;
+use crate::caps::CompletionModelRecord;
 use crate::global_context::GlobalContext;
-use crate::caps::CodeAssistantCaps;
 use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
-use crate::cached_tokenizers;
+use crate::tokens;
 
 
 fn verify_has_send<T: Send>(_x: &T) {}
@@ -33,66 +33,58 @@ fn verify_has_send<T: Send>(_x: &T) {}
 
 pub async fn create_code_completion_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    model_name_for_tokenizer: String,
+    model_rec: &CompletionModelRecord,
     post: &CodeCompletionPost,
-    scratchpad_name: &str,
-    scratchpad_patch: &serde_json::Value,
     cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
     tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
     ast_module: Option<Arc<AMutex<AstIndexService>>>,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-    if scratchpad_name == "FIM-PSM" {
+    let tokenizer_arc = crate::tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await?;
+    if model_rec.scratchpad == "FIM-PSM" {
         result = Box::new(code_completion_fim::FillInTheMiddleScratchpad::new(
             tokenizer_arc, &post, "PSM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()
         ))
-    } else if scratchpad_name == "FIM-SPM" {
+    } else if model_rec.scratchpad == "FIM-SPM" {
         result = Box::new(code_completion_fim::FillInTheMiddleScratchpad::new(
             tokenizer_arc, &post, "SPM".to_string(), cache_arc, tele_storage, ast_module, global_context.clone()
         ))
-    } else if scratchpad_name == "REPLACE" {
+    } else if model_rec.scratchpad == "REPLACE" {
         result = Box::new(code_completion_replace::CodeCompletionReplaceScratchpad::new(
             tokenizer_arc, &post, cache_arc, tele_storage, ast_module, global_context.clone()
         ))
-    } else if scratchpad_name == "REPLACE_PASSTHROUGH" {
+    } else if model_rec.scratchpad == "REPLACE_PASSTHROUGH" {
         result = Box::new(code_completion_replace::CodeCompletionReplacePassthroughScratchpad::new(
             tokenizer_arc, &post, cache_arc, tele_storage, ast_module, global_context.clone()
         ))
     } else {
-        return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", scratchpad_name));
+        return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", model_rec.scratchpad));
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, false, false).await?;
+    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch, false, false).await?;
     verify_has_send(&result);
     Ok(result)
 }
 
 pub async fn create_chat_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
-    caps: Arc<StdRwLock<CodeAssistantCaps>>,
-    model_name_for_tokenizer: String,
     post: &mut ChatPost,
     messages: &Vec<ChatMessage>,
     prepend_system_prompt: bool,
-    scratchpad_name: &str,
-    scratchpad_patch: &serde_json::Value,
+    model_rec: &ChatModelRecord,
     allow_at: bool,
-    supports_tools: bool,
-    supports_clicks: bool,
 ) -> Result<Box<dyn ScratchpadAbstract>, String> {
     let mut result: Box<dyn ScratchpadAbstract>;
-    let tokenizer_arc = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), model_name_for_tokenizer).await?;
-    if scratchpad_name == "CHAT-GENERIC" {
+    let tokenizer_arc = tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await?;
+    if model_rec.scratchpad == "CHAT-GENERIC" {
         result = Box::new(chat_generic::GenericChatScratchpad::new(
             tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at
         ));
-    } else if scratchpad_name == "PASSTHROUGH" {
+    } else if model_rec.scratchpad == "PASSTHROUGH" {
         result = Box::new(chat_passthrough::ChatPassthrough::new(
-            tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at, supports_tools, supports_clicks
+            tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at, model_rec.supports_tools, model_rec.supports_clicks
         ));
     } else {
-        return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", scratchpad_name));
+        return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", model_rec.scratchpad));
     }
     let mut exploration_tools: bool = false;
     let mut agentic_tools: bool = false;
@@ -111,7 +103,7 @@ pub async fn create_chat_scratchpad(
             }
         }
     }
-    result.apply_model_adaptation_patch(scratchpad_patch, exploration_tools, agentic_tools).await?;
+    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch, exploration_tools, agentic_tools).await?;
     verify_has_send(&result);
     Ok(result)
 }

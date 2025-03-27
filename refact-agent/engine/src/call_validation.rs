@@ -69,8 +69,6 @@ pub struct CodeCompletionPost {
     #[serde(default)]
     pub model: String,
     #[serde(default)]
-    pub scratchpad: String,
-    #[serde(default)]
     pub stream: bool,
     #[serde(default)]
     pub no_cache: bool,
@@ -198,8 +196,6 @@ pub struct ChatPost {
     pub parameters: SamplingParameters,
     #[serde(default)]
     pub model: String,
-    #[serde(default)]
-    pub scratchpad: String,
     pub stream: Option<bool>,
     pub temperature: Option<f32>,
     #[serde(default)]
@@ -352,7 +348,6 @@ mod tests {
                 ..Default::default()
             },
             model: "".to_string(),
-            scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
             use_ast: true,
@@ -380,7 +375,6 @@ mod tests {
                 ..Default::default()
             },
             model: "".to_string(),
-            scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
             use_ast: true,
@@ -408,7 +402,6 @@ mod tests {
                 ..Default::default()
             },
             model: "".to_string(),
-            scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
             use_ast: true,
@@ -436,7 +429,6 @@ mod tests {
                 ..Default::default()
             },
             model: "".to_string(),
-            scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
             use_ast: true,

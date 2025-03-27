@@ -143,7 +143,6 @@ impl LspBackend {
                 ..Default::default()
             },
             model: "".to_string(),
-            scratchpad: "".to_string(),
             stream: false,
             no_cache: false,
             use_ast: false,

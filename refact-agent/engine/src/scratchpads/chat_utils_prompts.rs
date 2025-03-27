@@ -19,12 +19,7 @@ pub async fn get_default_system_prompt(
     let mut error_log = Vec::new();
     let tconfig = crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true, &mut error_log).await;
     for e in error_log.iter() {
-        tracing::error!(
-            "{}:{} {:?}",
-            crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-            e.error_line,
-            e.error_msg,
-        );
+        tracing::error!("{e}");
     }
     let prompt_key = match chat_mode {
         ChatMode::NO_TOOLS => "default",

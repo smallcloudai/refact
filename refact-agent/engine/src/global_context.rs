@@ -16,7 +16,7 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Semaphore, Notify as ANoti
 use tracing::{error, info};
 
 use crate::ast::ast_indexer_thread::AstIndexService;
-use crate::caps::CodeAssistantCaps;
+use crate::caps::{get_latest_provider_mtime, CodeAssistantCaps};
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;
@@ -151,11 +151,11 @@ pub struct GlobalContext {
     pub http_client_slowdown: Arc<Semaphore>,
     pub cache_dir: PathBuf,
     pub config_dir: PathBuf,
-    pub caps: Option<Arc<StdRwLock<CodeAssistantCaps>>>,
+    pub caps: Option<Arc<CodeAssistantCaps>>,
     pub caps_reading_lock: Arc<AMutex<bool>>,
     pub caps_last_error: String,
     pub caps_last_attempted_ts: u64,
-    pub tokenizer_map: HashMap< String, Arc<StdRwLock<Tokenizer>>>,
+    pub tokenizer_map: HashMap<String, Option<Arc<Tokenizer>>>,
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
@@ -209,37 +209,38 @@ pub async fn migrate_to_config_folder(
 pub async fn try_load_caps_quickly_if_not_present(
     gcx: Arc<ARwLock<GlobalContext>>,
     max_age_seconds: u64,
-) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, ScratchError> {
+) -> Result<Arc<CodeAssistantCaps>, ScratchError> {
     let cmdline = CommandLine::from_args();  // XXX make it Arc and don't reload all the time
+    let (caps_reading_lock, config_dir) = {
+        let gcx_locked = gcx.read().await;
+        (gcx_locked.caps_reading_lock.clone(), gcx_locked.config_dir.clone())
+    };
 
-    let caps_reading_lock: Arc<AMutex<bool>> = gcx.read().await.caps_reading_lock.clone();
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
     let caps_last_attempted_ts;
+    let latest_provider_mtime = get_latest_provider_mtime(&config_dir).await.unwrap_or(0);
 
     {
         // gcx is not locked, but a specialized async mutex is, up until caps are saved
         let _caps_reading_locked = caps_reading_lock.lock().await;
 
-        let caps_url = cmdline.address_url.clone();
-        if caps_url.to_lowercase() == "refact" || caps_url.starts_with("http") {
-            let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
-            {
-                let mut cx_locked = gcx.write().await;
-                if cx_locked.caps_last_attempted_ts + max_age < now {
-                    cx_locked.caps = None;
-                    cx_locked.caps_last_attempted_ts = 0;
-                    caps_last_attempted_ts = 0;
-                } else {
-                    if let Some(caps_arc) = cx_locked.caps.clone() {
-                        return Ok(caps_arc.clone());
-                    }
-                    caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
+        let max_age = if max_age_seconds > 0 { max_age_seconds } else { CAPS_BACKGROUND_RELOAD };
+        {
+            let mut cx_locked = gcx.write().await;
+            if cx_locked.caps_last_attempted_ts + max_age < now || latest_provider_mtime >= cx_locked.caps_last_attempted_ts {
+                cx_locked.caps = None;
+                cx_locked.caps_last_attempted_ts = 0;
+                caps_last_attempted_ts = 0;
+            } else {
+                if let Some(caps_arc) = cx_locked.caps.clone() {
+                    return Ok(caps_arc.clone());
                 }
+                caps_last_attempted_ts = cx_locked.caps_last_attempted_ts;
             }
-            if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
-                let gcx_locked = gcx.write().await;
-                return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, gcx_locked.caps_last_error.clone()));
-            }
+        }
+        if caps_last_attempted_ts + CAPS_RELOAD_BACKOFF > now {
+            let gcx_locked = gcx.write().await;
+            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, gcx_locked.caps_last_error.clone()));
         }
 
         let caps_result = crate::caps::load_caps(
@@ -275,9 +276,8 @@ pub async fn look_for_piggyback_fields(
         let new_caps_version = dict.get("caps_version").and_then(|v| v.as_i64()).unwrap_or(0);
         if new_caps_version > 0 {
             if let Some(caps) = gcx_locked.caps.clone() {
-                let caps_locked = caps.read().unwrap();
-                if caps_locked.caps_version < new_caps_version {
-                    info!("detected biggyback caps version {} is newer than the current version {}", new_caps_version, caps_locked.caps_version);
+                if caps.caps_version < new_caps_version {
+                    info!("detected biggyback caps version {} is newer than the current version {}", new_caps_version, caps.caps_version);
                     gcx_locked.caps = None;
                     gcx_locked.caps_last_attempted_ts = 0;
                 }
@@ -395,14 +395,4 @@ pub async fn create_global_context(
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
     (gcx, ask_shutdown_receiver, cmdline)
-}
-
-pub async fn is_metadata_supported(gcx: Arc<ARwLock<GlobalContext>>) -> bool {
-    let gcx_locked = gcx.read().await;
-    if let Some(caps_arc) = gcx_locked.caps.clone() {
-        if let Ok(caps) = caps_arc.read() {
-            return caps.support_metadata;
-        }
-    }
-    false
 }

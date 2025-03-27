@@ -1,4 +1,5 @@
 use std::error::Error;
+use serde::Serialize;
 use tracing::error;
 use hyper::{Body, Response, StatusCode};
 use serde_json::json;
@@ -58,6 +59,35 @@ impl ScratchError {
             .body(Body::from(body))
             .unwrap();
         response
+    }
+}
+
+#[derive(Serialize, Default)]
+pub struct YamlError {
+    pub path: String,
+    pub error_line: usize,  // starts with 1, zero if invalid
+    pub error_msg: String,
+}
+
+impl From<(&str, &serde_yaml::Error)> for YamlError {
+    fn from((path, err): (&str, &serde_yaml::Error)) -> Self {
+        YamlError {
+            path: path.to_string(),
+            error_line: err.location().map(|loc| loc.line()).unwrap_or(0),
+            error_msg: err.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for YamlError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}:{} {:?}",
+            crate::nicer_logs::last_n_chars(&self.path, 40),
+            self.error_line,
+            self.error_msg
+        )
     }
 }
 
