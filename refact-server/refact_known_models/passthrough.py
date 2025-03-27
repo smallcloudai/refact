@@ -1,4 +1,5 @@
 # refer to https://docs.litellm.ai/docs/providers/
+# NOTE: static file for third party migration only
 
 passthrough_mini_db = {
     # OpenAI models
@@ -55,18 +56,7 @@ passthrough_mini_db = {
         "T_out": 32_000,
         "pp1000t_prompt": 15_000,      # $15.00 / 1M tokens (2025 january)
         "pp1000t_generated": 60_000,   # $60.00 / 1M tokens (2025 january)
-        "filter_caps": ["chat", "tools"],
-    },
-    "o1-mini": {
-        "backend": "litellm",
-        "provider": "openai",
-        "tokenizer_path": "Xenova/gpt-4o",
-        "resolve_as": "o1-mini-2024-09-12",
-        "T": 128_000,
-        "T_out": 64_000,
-        "pp1000t_prompt": 3_000,       # $3.00 / 1M tokens (2025 january)
-        "pp1000t_generated": 12_000,   # $12.00 / 1M tokens (2025 january)
-        "filter_caps": ["chat", "tools"],
+        "filter_caps": ["chat", "tools", "reasoning"],
     },
     "o3-mini": {
         "backend": "litellm",
@@ -77,7 +67,7 @@ passthrough_mini_db = {
         "T_out": 64_000,
         "pp1000t_prompt": 1_100,  # $1.10 / 1M tokens (2025 january)
         "pp1000t_generated": 4_400,  # $4.40 / 1M tokens (2025 january)
-        "filter_caps": ["chat", "tools", "agent"],
+        "filter_caps": ["chat", "tools", "agent", "reasoning"],
     },
 
     # Anthropic models
@@ -145,7 +135,7 @@ passthrough_mini_db = {
         "T_out": 128_000,
         "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2025 feb)
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2025 feb)
-        "filter_caps": ["chat", "tools", "completion", "agent", "clicks"],
+        "filter_caps": ["chat", "tools", "completion", "agent", "clicks", "reasoning"],
     },
 
     # Groq models
@@ -362,6 +352,6 @@ passthrough_mini_db = {
         "T_out": 8_000,
         "pp1000t_prompt": 550,
         "pp1000t_generated": 2_190,
-        "filter_caps": ["chat"],
+        "filter_caps": ["chat", "reasoning"],
     },
 }

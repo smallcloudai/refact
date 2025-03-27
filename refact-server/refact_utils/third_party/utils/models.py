@@ -40,6 +40,10 @@ def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
             if raise_on_error:
                 raise RuntimeError(f"clicks capability requires multimodal")
             model_config.capabilities.clicks = False
+        if model_config.capabilities.boost_reasoning and not model_config.capabilities.reasoning:
+            if raise_on_error:
+                raise RuntimeError(f"boost_reasoning capability requires reasoning")
+            model_config.capabilities.boost_reasoning = False
     return config
 
 
@@ -114,6 +118,8 @@ def _get_default_model_config(provider_id: str, model_id: str) -> ModelConfig:
             agent=False,
             clicks=False,
             completion=False,
+            reasoning=None,
+            boost_reasoning=False,
         ),
         tokenizer_id=None,
     )
