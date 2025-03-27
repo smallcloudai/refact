@@ -21,7 +21,8 @@ const messageLengthSelector = createSelector(
   (messages) => messages.length,
 );
 
-const useAttachActiveFile = (
+// TODO: delete this
+const _useAttachActiveFile = (
   interacted: boolean,
   hasSnippet: boolean,
 ): [Checkbox, () => void] => {
@@ -167,66 +168,45 @@ const useAttachSelectedSnippet = (
 };
 
 export type Checkboxes = {
-  file_upload: Checkbox;
+  // file_upload: Checkbox;
   selected_lines: Checkbox;
 };
 
 export const useCheckboxes = () => {
-  // creating 2 different states instead of only one being used for both checkboxes
+  // creating different states instead of only one being used for checkboxes
   const [lineSelectionInteracted, setLineSelectionInteracted] = useState(false);
-  const [fileInteracted, setFileInteracted] = useState(false);
 
   const [attachedSelectedSnippet, onToggleAttachedSelectedSnippet] =
     useAttachSelectedSnippet(lineSelectionInteracted);
 
-  const [attachFileCheckboxData, onToggleAttachFile] = useAttachActiveFile(
-    fileInteracted,
-    attachedSelectedSnippet.checked,
-  );
-
   const checkboxes = useMemo(
     () => ({
-      file_upload: attachFileCheckboxData,
       selected_lines: attachedSelectedSnippet,
     }),
-    [attachFileCheckboxData, attachedSelectedSnippet],
+    [attachedSelectedSnippet],
   );
 
   const onToggleCheckbox = useCallback(
     (name: string) => {
       switch (name) {
-        case "file_upload":
-          onToggleAttachFile();
-          setFileInteracted(true);
-          break;
         case "selected_lines":
           onToggleAttachedSelectedSnippet();
-          setFileInteracted(true);
           setLineSelectionInteracted(true);
           break;
       }
     },
-    [onToggleAttachFile, onToggleAttachedSelectedSnippet],
+    [onToggleAttachedSelectedSnippet],
   );
 
   const unCheckAll = useCallback(() => {
-    if (attachFileCheckboxData.checked) {
-      onToggleAttachFile();
-    }
     if (attachedSelectedSnippet.checked) {
       onToggleAttachedSelectedSnippet();
     }
-  }, [
-    attachFileCheckboxData.checked,
-    attachedSelectedSnippet.checked,
-    onToggleAttachFile,
-    onToggleAttachedSelectedSnippet,
-  ]);
+  }, [attachedSelectedSnippet.checked, onToggleAttachedSelectedSnippet]);
 
   return {
     checkboxes,
     onToggleCheckbox,
-    setFileInteracted,
     setLineSelectionInteracted,
     unCheckAll,
   };

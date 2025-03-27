@@ -19,7 +19,6 @@ import {
   useSendChatRequest,
   useCompressChat,
   useAutoFocusOnce,
-  // useTotalTokenUsage,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -35,7 +34,6 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  // setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
@@ -51,7 +49,6 @@ import {
   selectLastSentCompression,
   selectMessages,
   selectPreventSend,
-  // selectThreadMaximumTokens,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
@@ -59,7 +56,6 @@ import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
-// import { useUsageCounter } from "../UsageCounter/useUsageCounter";
 import classNames from "classnames";
 import { ArchiveIcon } from "@radix-ui/react-icons";
 
@@ -161,7 +157,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
     onToggleCheckbox,
     unCheckAll,
-    setFileInteracted,
     setLineSelectionInteracted,
   } = useCheckboxes();
 
@@ -188,7 +183,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         trimmedValue,
         checkboxes,
       );
-      setFileInteracted(false);
       setLineSelectionInteracted(false);
       onSubmit(valueIncludingChecks);
       setValue(() => "");
@@ -198,7 +192,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     value,
     disableSend,
     checkboxes,
-    setFileInteracted,
     setLineSelectionInteracted,
     onSubmit,
     setValue,
@@ -241,7 +234,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       setValue(command);
       const trimmedCommand = command.trim();
       if (!trimmedCommand) {
-        setFileInteracted(false);
         setLineSelectionInteracted(false);
       }
 
@@ -251,7 +243,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         handleHelpInfo(null);
       }
     },
-    [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
+    [handleHelpInfo, setValue, setLineSelectionInteracted],
   );
 
   const handleAgentIntegrationsClick = useCallback(() => {
