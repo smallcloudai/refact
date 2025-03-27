@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use indexmap::IndexMap;
 use serde::Deserializer;
@@ -16,7 +15,6 @@ use crate::custom_error::MapErrToString;
 use crate::custom_error::YamlError;
 use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
-use crate::known_models::KNOWN_MODELS;
 
 
 const CAPS_FILENAME: &str = "refact-caps";
@@ -50,38 +48,14 @@ pub struct BaseModelRecord {
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
-pub struct ScratchpadSupport {
-    #[serde(default, rename = "supports_scratchpads")]
-    pub supported: HashMap<String, Value>,
-    #[serde(default, rename = "default_scratchpad")]
-    pub default: String,
-}
-
-impl ScratchpadSupport {
-    pub fn resolve<'a>(&'a self, user_wants: &str) -> Result<(String, &'a Value), String> {
-        let name = if !user_wants.is_empty() { user_wants } else { &self.default };
-        
-        // Special case: no default but exactly one scratchpad exists
-        if name.is_empty() && self.supported.len() == 1 {
-            let (name, scratchpad) = self.supported.iter().next().unwrap();
-            return Ok((name.to_string(), scratchpad));
-        }
-        
-        self.supported.get(name)
-            .map(|value| (name.to_string(), value))
-            .ok_or_else(|| format!(
-                "Scratchpad '{}' not found. Available scratchpads: {:?}",
-                name, self.supported.keys()
-            ))
-    }
-}
-
-#[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct ChatModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
-    #[serde(flatten)]
-    pub scratchpads: ScratchpadSupport,
+
+    #[serde(default = "default_chat_scratchpad")]
+    pub scratchpad: String,
+    #[serde(default)]
+    pub scratchpad_patch: serde_json::Value,
 
     #[serde(default)]
     pub supports_tools: bool,
@@ -99,12 +73,16 @@ pub struct ChatModelRecord {
     pub default_temperature: Option<f32>,
 }
 
+fn default_chat_scratchpad() -> String { "PASSTHROUGH".to_string() }
+
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct CompletionModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
-    #[serde(flatten)]
-    pub scratchpads: ScratchpadSupport,
+
+    pub scratchpad: String,
+    #[serde(default)]
+    pub scratchpad_patch: serde_json::Value,
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default, PartialEq)]
@@ -612,6 +590,7 @@ fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Result<
         chat_models: IndexMap<String, ChatModelRecord>,
         embedding_models: IndexMap<String, EmbeddingModelRecord>,
     }
+    const KNOWN_MODELS: &'static str = include_str!("known_models.json");
     let known_models: KnownModels = serde_json::from_str(KNOWN_MODELS).map_err(|e| {
         let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
         error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);

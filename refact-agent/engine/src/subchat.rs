@@ -58,7 +58,6 @@ pub async fn create_chat_post_and_scratchpad(
             ..Default::default()  // TODO
         },
         model: model_id.to_string(),
-        scratchpad: "".to_string(),
         stream: Some(false),
         temperature,
         n: Some(n),
@@ -77,7 +76,6 @@ pub async fn create_chat_post_and_scratchpad(
     }
 
     chat_post.max_tokens = Some(model_rec.base.n_ctx);
-    (chat_post.scratchpad, _) = model_rec.scratchpads.resolve("")?;
 
     {
         let mut ccx_locked = ccx.lock().await;

@@ -32,18 +32,13 @@ pub async fn handle_v1_code_completion(
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let model_rec = resolve_completion_model(caps, &code_completion_post.model)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
-    let (scratchpad_name, _) = model_rec.scratchpads.resolve(&code_completion_post.scratchpad)
-        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
     }
     if code_completion_post.model == "" {
         code_completion_post.model = model_rec.base.id.clone();
     }
-    if code_completion_post.scratchpad == "" {
-        code_completion_post.scratchpad = scratchpad_name;
-    }
-    info!("chosen completion model: {}, scratchpad: {}", code_completion_post.model, code_completion_post.scratchpad);
+    info!("chosen completion model: {}, scratchpad: {}", code_completion_post.model, model_rec.scratchpad);
     code_completion_post.parameters.temperature = Some(code_completion_post.parameters.temperature.unwrap_or(0.2));
     let (cache_arc, tele_storage) = {
         let gcx_locked = gcx.write().await;

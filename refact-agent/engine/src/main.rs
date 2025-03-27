@@ -48,7 +48,6 @@ mod tools;
 mod postprocessing;
 mod completion_cache;
 mod cached_tokenizers;
-mod known_models;
 mod scratchpad_abstract;
 mod scratchpads;
 
