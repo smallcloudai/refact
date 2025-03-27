@@ -11,7 +11,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 5_000,
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 may)
-        "filter_caps": ["chat", "tools", "completion"],
+        "filter_caps": ["chat", "tools", "completion", "agent"],
     },
     "gpt-4o-2024-05-13": {
         "backend": "litellm",
@@ -22,7 +22,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 5_000,
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion"],
+        "filter_caps": ["chat", "tools", "completion", "agent"],
     },
     "gpt-4o-2024-08-06": {
         "backend": "litellm",
@@ -33,7 +33,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 2_500,
         "pp1000t_generated": 10_000,  # $15.00 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion"]
+        "filter_caps": ["chat", "tools", "completion", "agent"]
     },
     "gpt-4o-mini": {
         "backend": "litellm",
@@ -77,7 +77,7 @@ passthrough_mini_db = {
         "T_out": 64_000,
         "pp1000t_prompt": 1_100,  # $1.10 / 1M tokens (2025 january)
         "pp1000t_generated": 4_400,  # $4.40 / 1M tokens (2025 january)
-        "filter_caps": ["chat", "tools"],
+        "filter_caps": ["chat", "tools", "agent"],
     },
 
     # Anthropic models
@@ -90,7 +90,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2024 jun)
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 jun)
-        "filter_caps": ["chat", "tools", "completion"],
+        "filter_caps": ["chat", "tools", "completion", "agent"],
     },
     "claude-3-haiku": {
         "backend": "litellm",
@@ -134,7 +134,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2024 oct)
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2024 oct)
-        "filter_caps": ["chat", "tools", "completion"],
+        "filter_caps": ["chat", "tools", "completion", "agent", "clicks"],
     },
     "claude-3-7-sonnet": {
         "backend": "litellm",
@@ -145,7 +145,7 @@ passthrough_mini_db = {
         "T_out": 128_000,
         "pp1000t_prompt": 3_000,  # $3.00 / 1M tokens (2025 feb)
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens (2025 feb)
-        "filter_caps": ["chat", "tools", "completion"],
+        "filter_caps": ["chat", "tools", "completion", "agent", "clicks"],
     },
 
     # Groq models
@@ -288,7 +288,7 @@ passthrough_mini_db = {
         "T_out": 8_192,
         "pp1000t_prompt": 1250,  # $1.25 / 1M tokens
         "pp1000t_generated": 5000,  # $5.00 / 1M tokens
-        "filter_caps": ["chat", "tools", "completion", "vision"],
+        "filter_caps": ["chat", "tools", "completion", "vision", "agent"],
     },
     # XAI Models
     # WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models
@@ -305,7 +305,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 5_000,
         "pp1000t_generated": 15_000,  # $15.00 / 1M tokens
-        "filter_caps": ["chat", "completion"],
+        "filter_caps": ["chat", "completion", "agent"],
     },
     "grok-vision-beta": {
         "backend": "litellm",
@@ -338,7 +338,7 @@ passthrough_mini_db = {
         "T_out": 4096,
         "pp1000t_prompt": 2_000,
         "pp1000t_generated": 10_000,  # $10.00 / 1M tokens
-        "filter_caps": ["chat", "completion"],
+        "filter_caps": ["chat", "completion", "agent"],
     },
 
     # DeepSeek Models
@@ -351,7 +351,7 @@ passthrough_mini_db = {
         "T_out": 8_000,
         "pp1000t_prompt": 270,
         "pp1000t_generated": 1_100,
-        "filter_caps": ["chat", "completion"],
+        "filter_caps": ["chat", "completion", "agent"],
     },
     "deepseek-reasoner": {
         "backend": "litellm",
