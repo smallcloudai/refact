@@ -83,7 +83,7 @@ def _populate_models_for_provider(provider_id: str, api_key: str) -> Dict[str, M
                 api_key,
                 model_dict,
             )
-            model_configs[config.model_id] = model_dict
+            model_configs[config.model_id] = config
         except:
             pass
 
