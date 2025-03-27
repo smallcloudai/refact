@@ -260,15 +260,22 @@ pub fn read_integrations_d(
     }
 
     // 4. Replace vars in config_unparsed
+    fn replace_string_with_vars(value: &str, vars_for_replacements: &HashMap<String, String>) -> String {
+        for (var, replacement) in vars_for_replacements.iter() {
+            if !value.contains(&format!("${}", var)) {
+                continue;
+            }
+            return value
+                    .split(&format!("${}", var)).map(|s| replace_string_with_vars(s, vars_for_replacements))
+                    .collect::<Vec<String>>()
+                    .join(replacement);
+        }
+        value.to_string()
+    }
     fn replace_with_vars(value: &mut serde_json::Value, vars_for_replacements: &HashMap<String, String>) {
         match value {
             serde_json::Value::String(str_value) => {
-                // TODO: avoid particular corner cases like:
-                // variables: $1 -> 3, $23 -> 5
-                // $2$1 -> $23 -> 5
-                for (var, replacement) in vars_for_replacements.iter() {
-                    *str_value = str_value.replace(&format!("${}", var), replacement);
-                }
+                *str_value = replace_string_with_vars(str_value, vars_for_replacements);
             }
             serde_json::Value::Object(map) => {
                 for (_key, value) in map.iter_mut() {
