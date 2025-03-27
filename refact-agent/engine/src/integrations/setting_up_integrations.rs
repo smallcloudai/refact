@@ -260,17 +260,32 @@ pub fn read_integrations_d(
     }
 
     // 4. Replace vars in config_unparsed
-    for rec in &mut result {
-        if let serde_json::Value::Object(map) = &mut rec.config_unparsed {
-            for (_key, value) in map.iter_mut() {
-                if let Some(str_value) = value.as_str() {
-                    let replaced_value = vars_for_replacements.iter().fold(str_value.to_string(), |acc, (var, replacement)| {
-                        acc.replace(&format!("${}", var), replacement)
-                    });
-                    *value = serde_json::Value::String(replaced_value);
+    fn replace_with_vars(value: &mut serde_json::Value, vars_for_replacements: &HashMap<String, String>) {
+        match value {
+            serde_json::Value::String(str_value) => {
+                // TODO: avoid particular corner cases like:
+                // variables: $1 -> 3, $23 -> 5
+                // $2$1 -> $23 -> 5
+                for (var, replacement) in vars_for_replacements.iter() {
+                    *str_value = str_value.replace(&format!("${}", var), replacement);
                 }
             }
+            serde_json::Value::Object(map) => {
+                for (_key, value) in map.iter_mut() {
+                    replace_with_vars(value, vars_for_replacements);
+                }
+            }
+            serde_json::Value::Array(array) => {
+                for value in array {
+                    replace_with_vars(value, vars_for_replacements);
+                }
+            }
+            _ => {}
         }
+    }
+
+    for rec in &mut result {
+        replace_with_vars(&mut rec.config_unparsed, vars_for_replacements);
     }
 
     // 5. Fill on_your_laptop/when_isolated in each record
