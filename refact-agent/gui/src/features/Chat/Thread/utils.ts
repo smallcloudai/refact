@@ -232,6 +232,17 @@ export function formatChatResponse(
 
   const currentUsage = response.usage;
 
+  if (currentUsage && response.choices.length === 0) {
+    const lastAssistantIndex = lastIndexOf(messages, isAssistantMessage);
+    if (lastAssistantIndex === -1) return messages;
+
+    return messages.map((message, index) =>
+      index === lastAssistantIndex
+        ? { ...message, usage: currentUsage }
+        : message,
+    );
+  }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       const msg = { role: cur.delta.role, content: cur.delta.content };
