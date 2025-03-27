@@ -103,9 +103,7 @@ def migrate_third_party_config():
     # }
 
     integrations_cfg = Path(env.CONFIG_INTEGRATIONS)
-
     integrations = json.loads(integrations_cfg.read_text())
-    integrations_cfg.rename(Path(f"{integrations_cfg}.bak"))
     with integrations_cfg.open("w") as f:
         json.dump({
             k: v for k, v in integrations.items()
@@ -120,6 +118,8 @@ def migrate_third_party_config():
         provider_id = KEY_PROVIDER_MAPPING[provider_key]
         providers[provider_id] = ProviderConfig(enabled=True)
         models.update(_populate_models_for_provider(provider_id, api_key))
+
+    integrations_cfg.rename(Path(f"{integrations_cfg}.bak"))
 
     return ThirdPartyApiConfig(
         providers=providers,
