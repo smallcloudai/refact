@@ -1,94 +1,61 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { selectSelectedSnippet } from "../../features/Chat/selectedSnippet";
-import { selectActiveFile } from "../../features/Chat/activeFile";
+import { FileInfo, selectActiveFile } from "../../features/Chat/activeFile";
 import { useConfig, useAppSelector } from "../../hooks";
 import type { Checkbox } from "./ChatControls";
-import {
-  selectIsStreaming,
-  selectMessages,
-} from "../../features/Chat/Thread/selectors";
+import { selectMessages } from "../../features/Chat/Thread/selectors";
 import { createSelector } from "@reduxjs/toolkit";
-
-const shouldShowSelector = createSelector(
-  [selectMessages, selectIsStreaming],
-  (messages, isStreaming) => {
-    return messages.length === 0 && !isStreaming;
-  },
-);
 
 const messageLengthSelector = createSelector(
   [selectMessages],
   (messages) => messages.length,
 );
 
-// TODO: delete this
-const _useAttachActiveFile = (
-  interacted: boolean,
-  hasSnippet: boolean,
-): [Checkbox, () => void] => {
+export function useAttachedFiles() {
+  const [files, setFiles] = useState<FileInfo[]>([]);
   const activeFile = useAppSelector(selectActiveFile);
-  const shouldShow = useAppSelector(shouldShowSelector);
-  const messageLength = useAppSelector(messageLengthSelector);
 
-  const filePathWithLines = useMemo(() => {
-    const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
+  const attached = useMemo(() => {
+    const maybeAttached = files.find((file) => file.path === activeFile.path);
+    return !!maybeAttached;
+  }, [activeFile.path, files]);
 
-    if (!hasLines) return activeFile.path;
-    return `${activeFile.path}:${
-      activeFile.cursor ? activeFile.cursor + 1 : activeFile.line1
-    }`;
-  }, [activeFile.path, activeFile.cursor, activeFile.line1, activeFile.line2]);
+  const addFile = useCallback(() => {
+    if (attached) return;
+    setFiles((prev) => {
+      return [...prev, activeFile];
+    });
+  }, [attached, activeFile]);
 
-  const [attachFileCheckboxData, setAttachFile] = useState<Checkbox>({
-    name: "file_upload",
-    checked: !!activeFile.name && messageLength === 0 && hasSnippet,
-    label: "Attach",
-    value: filePathWithLines,
-    disabled: !activeFile.name,
-    fileName: activeFile.name,
-    hide: !shouldShow,
-    info: {
-      text: "Attaches the current file as context. If the file is large, it prefers the code near the current cursor position. Equivalent to @file name.ext:CURSOR_LINE in the text.",
-      link: "https://docs.refact.ai/features/ai-chat/",
-      linkText: "documentation",
-    },
-  });
-
-  useEffect(() => {
-    if (!interacted) {
-      setAttachFile((prev) => {
-        return {
-          ...prev,
-          hide: !shouldShow,
-          value: filePathWithLines,
-          disabled: !activeFile.name,
-          fileName: activeFile.name,
-          // checked: interacted ? prev.checked : !!activeFile.name && shouldShow,
-          checked: !!activeFile.name && shouldShow && hasSnippet,
-        };
-      });
-    }
-  }, [activeFile.name, filePathWithLines, hasSnippet, interacted, shouldShow]);
-
-  useEffect(() => {
-    if (messageLength > 0 && attachFileCheckboxData.hide === false) {
-      setAttachFile((prev) => {
-        return { ...prev, hide: true, checked: false };
-      });
-    }
-  }, [attachFileCheckboxData.hide, messageLength]);
-
-  const onToggleAttachFile = useCallback(() => {
-    setAttachFile((prev) => {
-      return {
-        ...prev,
-        checked: !prev.checked,
-      };
+  const removeFile = useCallback((fileToRemove: FileInfo) => {
+    setFiles((prev) => {
+      return prev.filter((file) => file.path !== fileToRemove.path);
     });
   }, []);
 
-  return [attachFileCheckboxData, onToggleAttachFile];
-};
+  const addFilesToInput = useCallback(
+    (str: string) => {
+      if (files.length === 0) return str;
+      const result = files.reduce<string>((acc, file) => {
+        const hasLines = file.line1 !== null && file.line2 !== null;
+        if (!hasLines) return `@file ${file.path}\n${acc}`;
+        const line = file.cursor ? file.cursor + 1 : file.line1;
+        return `@file ${file.path}:${line}\n${acc}`;
+      }, str);
+      return result;
+    },
+    [files],
+  );
+
+  return {
+    files,
+    activeFile,
+    addFile,
+    removeFile,
+    attached,
+    addFilesToInput,
+  };
+}
 
 const useAttachSelectedSnippet = (
   interacted: boolean,

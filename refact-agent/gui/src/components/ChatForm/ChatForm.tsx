@@ -29,7 +29,7 @@ import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPr
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import { clearError, getErrorMessage } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
-import { useCheckboxes } from "./useCheckBoxes";
+import { useAttachedFiles, useCheckboxes } from "./useCheckBoxes";
 import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
@@ -38,7 +38,7 @@ import {
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
-import { AttachFileButton, FileList } from "../Dropzone";
+import { AttachImagesButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
   enableSend,
@@ -93,6 +93,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest } = useCompressChat();
   const autoFocus = useAutoFocusOnce();
+  const attachedFiles = useAttachedFiles();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -179,10 +180,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (!disableSend && trimmedValue.length > 0) {
+      const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
       const valueIncludingChecks = addCheckboxValuesToInput(
-        trimmedValue,
+        valueWithFiles,
         checkboxes,
       );
+      // TODO: add @files
       setLineSelectionInteracted(false);
       onSubmit(valueIncludingChecks);
       setValue(() => "");
@@ -191,6 +194,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }, [
     value,
     disableSend,
+    attachedFiles,
     checkboxes,
     setLineSelectionInteracted,
     onSubmit,
@@ -415,7 +419,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 />
               )}
               {config.features?.images !== false &&
-                isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
+                isMultimodalitySupportedForCurrentModel && (
+                  <AttachImagesButton />
+                )}
               {/* TODO: Reserved space for microphone button coming later on */}
               <PaperPlaneButton
                 disabled={disableSend}
@@ -427,12 +433,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           </Flex>
         </Form>
       </Flex>
-      <FileList />
+      <FileList attachedFiles={attachedFiles} />
 
       <ChatControls
+        // handle adding files
         host={config.host}
         checkboxes={checkboxes}
         onCheckedChange={onToggleCheckbox}
+        attachedFiles={attachedFiles}
       />
     </Card>
   );
