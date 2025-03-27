@@ -61,14 +61,6 @@ def _tokenizer_id_to_file(tokenizer_id: str) -> Path:
 
 
 def get_default_tokenizers() -> List[str]:
-    # TODO: for migration
-    # Xenova/gpt-4o
-    # Xenova/claude-tokenizer
-    # Xenova/Meta-Llama-3.1-Tokenizer
-    # Xenova/gemma2-tokenizer
-    # Xenova/grok-1-tokenizer
-    # deepseek-ai/DeepSeek-V3
-    # deepseek-ai/DeepSeek-R1
     default_tokenizers_dir = Path(__file__).parent.parent / "tokenizers"
     return [
         ".".join(filename.name.split(".")[:-1])

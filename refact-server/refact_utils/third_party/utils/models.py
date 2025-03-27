@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional
 
 from refact_utils.scripts import env
+from refact_utils.third_party.utils.migration import migrate_third_party_config
 
 
 __all__ = [
@@ -14,6 +15,9 @@ __all__ = [
     "available_third_party_models",
     "get_provider_models",
     "ThirdPartyApiConfig",
+    "ProviderConfig",
+    "ModelConfig",
+    "ModelCapabilities",
 ]
 
 
@@ -83,46 +87,6 @@ class ThirdPartyApiConfig(BaseModel):
     models: Dict[str, ModelConfig] = Field(default_factory=dict)
 
 
-# TODO: migration logic
-# def _migrate_third_party_config():
-#     """
-#     Migrate from the old configuration format to the new one.
-#     """
-#     try:
-#         # Load the old API keys
-#         api_keys = {}
-#         if os.path.exists(env.CONFIG_INTEGRATIONS):
-#             with open(str(env.CONFIG_INTEGRATIONS), "r") as f:
-#                 api_keys = json.load(f)
-#
-#         # Load the old enabled models
-#         enabled_models = {}
-#         if os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
-#             with open(str(env.CONFIG_INTEGRATIONS_MODELS), "r") as f:
-#                 enabled_models = json.load(f)
-#
-#         # Create the new configuration
-#         providers_dict = {}
-#         for provider_id, api_key in api_keys.items():
-#             providers_dict[provider_id] = ThirdPartyProviderConfig(
-#                 provider_name=provider_id,
-#                 api_key=api_key,
-#                 enabled=True,
-#                 enabled_models=enabled_models.get(provider_id, []),
-#             )
-#
-#         # Save the new configuration
-#         config = ThirdPartyApiConfig(providers=providers_dict)
-#         save_third_party_config(config)
-#
-#         # Rename the old configuration file to .bak
-#         if os.path.exists(env.CONFIG_INTEGRATIONS):
-#             os.rename(env.CONFIG_INTEGRATIONS, env.CONFIG_INTEGRATIONS + ".bak")
-#     except Exception as e:
-#         # If migration fails, log the error and continue
-#         log(f"Error migrating old configuration: {e}")
-
-
 def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
     # Filter out models whose provider is not in the current configuration
     models = {}
@@ -146,10 +110,8 @@ def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
 
 
 def load_third_party_config() -> ThirdPartyApiConfig:
-    # Check if the old config exists and migrate it
-    # if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
-    #     _migrate_third_party_config()
-
+    if os.path.exists(env.CONFIG_INTEGRATIONS) and not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
+        migrate_third_party_config()
     try:
         if not os.path.exists(env.CONFIG_INTEGRATIONS_MODELS):
             raise FileNotFoundError(f"No third party config found")
@@ -191,7 +153,7 @@ def available_third_party_models() -> Dict[str, ModelConfig]:
     return models_available
 
 
-def _get_default_model_config(provider_id: str, model_id: str) -> Optional[ModelConfig]:
+def _get_default_model_config(provider_id: str, model_id: str) -> ModelConfig:
     def _get_context_size(model_name: str) -> int:
         PASSTHROUGH_N_CTX_LIMIT = 128_000
         model_info = litellm.get_model_info(model_name)
