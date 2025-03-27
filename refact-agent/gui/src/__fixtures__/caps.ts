@@ -207,7 +207,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       supports_clicks: false,
     },
   },
-  code_completion_default_model: "qwen2.5/coder/1.5b/base",
+  completion_default_model: "qwen2.5/coder/1.5b/base",
   code_completion_n_ctx: 4000,
   chat_models: {
     "groq-llama-3.1-70b": {
@@ -324,7 +324,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       supports_clicks: false,
     },
   },
-  code_chat_default_model: "gpt-4o-mini",
+  chat_default_model: "gpt-4o-mini",
   running_models: [
     "smallcloudai/Refact-1_6B-fim",
     "Refact/1.6B",
@@ -348,10 +348,10 @@ export const EMPTY_CAPS_RESPONSE: CapsResponse = {
   support_metadata: false,
   caps_version: 0,
   cloud_name: "",
-  code_chat_default_model: "",
+  chat_default_model: "",
   code_chat_default_system_prompt: "",
   chat_models: {},
-  code_completion_default_model: "",
+  completion_default_model: "",
   completion_models: {},
   code_completion_n_ctx: 0,
   endpoint_chat_passthrough: "",

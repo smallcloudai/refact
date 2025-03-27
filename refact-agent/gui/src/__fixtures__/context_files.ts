@@ -5,7 +5,7 @@ const some_text = `import { CapsResponse } from "../services/refact";
 export const STUB_CAPS_RESPONSE: CapsResponse = {
   caps_version: 0,
   cloud_name: "Refact",
-  code_chat_default_model: "gpt-3.5-turbo",
+  chat_default_model: "gpt-3.5-turbo",
   chat_models: {
     "gpt-3.5-turbo": {
       default_scratchpad: "",
@@ -30,7 +30,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       },
     },
   },
-  code_completion_default_model: "smallcloudai/Refact-1_6B-fim",
+  completion_default_model: "smallcloudai/Refact-1_6B-fim",
   completion_models: {
     "smallcloudai/Refact-1_6B-fim": {
       default_scratchpad: "FIM-SPM",

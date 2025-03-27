@@ -434,7 +434,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addMatcher(
     capsApi.endpoints.getCaps.matchFulfilled,
     (state, action) => {
-      const defaultModel = action.payload.code_chat_default_model;
+      const defaultModel = action.payload.chat_default_model;
 
       const model = state.thread.model || defaultModel;
       if (!(model in action.payload.chat_models)) return;

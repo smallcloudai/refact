@@ -19,7 +19,7 @@ export const useCanUseTools = () => {
     if (!capsRequest.data) return false;
     if (!toolsRequest.data) return false;
     if (toolsRequest.data.length === 0) return false;
-    const modelName = chatModel || capsRequest.data.code_chat_default_model;
+    const modelName = chatModel || capsRequest.data.chat_default_model;
 
     if (!(modelName in capsRequest.data.chat_models)) return false;
     const model: CodeChatModel = capsRequest.data.chat_models[modelName];

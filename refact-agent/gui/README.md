@@ -339,7 +339,7 @@ type ChatUserMessageResponse = {
 };
 
 type CapsResponse = {
-  code_chat_default_model: string;
+  chat_default_model: string;
   chat_models: Record<string, CodeChatModel>;
 };
 

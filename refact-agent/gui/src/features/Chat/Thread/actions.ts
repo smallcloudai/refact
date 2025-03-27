@@ -200,7 +200,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   const caps = await thunkAPI
     .dispatch(capsApi.endpoints.getCaps.initiate(undefined))
     .unwrap();
-  const model = caps.code_chat_default_model;
+  const model = caps.chat_default_model;
   const messagesForLsp = formatMessagesForLsp([
     ...messagesToSend,
     {

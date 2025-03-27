@@ -30,7 +30,7 @@ export function useCapsForToolUse() {
   const toolUse = useAppSelector(selectThreadToolUse);
   const dispatch = useAppDispatch();
 
-  const defaultCap = caps.data?.code_chat_default_model ?? "";
+  const defaultCap = caps.data?.chat_default_model ?? "";
 
   const selectedModel = useAppSelector(getSelectedChatModel);
 
@@ -38,14 +38,14 @@ export function useCapsForToolUse() {
 
   const setCapModel = useCallback(
     (value: string) => {
-      const model = caps.data?.code_chat_default_model === value ? "" : value;
+      const model = caps.data?.chat_default_model === value ? "" : value;
       const action = setChatModel(model);
       dispatch(action);
       const tokens =
         caps.data?.chat_models[value]?.n_ctx ?? DEFAULT_MAX_NEW_TOKENS;
       dispatch(setMaxNewTokens(tokens));
     },
-    [caps.data?.code_chat_default_model, caps.data?.chat_models, dispatch],
+    [caps.data?.chat_default_model, caps.data?.chat_models, dispatch],
   );
 
   const isMultimodalitySupportedForCurrentModel = useMemo(() => {
