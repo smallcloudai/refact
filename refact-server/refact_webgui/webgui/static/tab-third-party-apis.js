@@ -327,9 +327,19 @@ function updateUI() {
 
                         const modelItem = document.createElement('div');
                         modelItem.className = 'enabled-model-item mb-2 d-flex justify-content-between align-items-center';
-                            modelItem.innerHTML = `
+
+                        // Display model_name (which is modelId in the UI) and actual model_id for inference
+                        const modelName = modelId; // This is actually the model_name on the server
+                        const actualModelId = modelConfig.model_id; // This is the actual model_id for litellm inference
+
+                        let modelDisplayName = modelName;
+                        if (modelName !== actualModelId) {
+                            modelDisplayName = `${modelName} <span class="text-muted small">(${actualModelId})</span>`;
+                        }
+
+                        modelItem.innerHTML = `
                                 <div class="d-flex align-items-center model-info" data-provider="${providerId}" data-model="${modelId}">
-                                    <span class="model-name">${modelId}</span>
+                                    <span class="model-name">${modelDisplayName}</span>
                                     <div class="ms-2">${capabilitiesBadges}</div>
                                 </div>
                                 <button class="btn btn-sm btn-outline-danger remove-model-btn" 
@@ -487,7 +497,7 @@ function showAddModelModal(providerId) {
     let modelIdSelectionHtml = '';
     if (hasPredefined) {
         modelIdSelectionHtml = `
-            <label for="third-party-model-id" class="form-label">Model ID</label>
+            <label for="third-party-model-id" class="form-label">Model Name</label>
             <select class="form-select" id="third-party-model-id">
                 <option value="" selected>-- Select a model --</option>
                 ${providerModels.map(model => `<option value="${model.model_id}">${model.model_id}</option>`).join('')}
@@ -496,9 +506,13 @@ function showAddModelModal(providerId) {
         `;
     } else {
         modelIdSelectionHtml = `
-            <label for="third-party-model-id" class="form-label">Model ID</label>
-            <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., gpt-4, claude-3-opus">
-            <div class="form-text mb-3">Enter the model ID as recognized by the provider.</div>
+            <label for="third-party-model-id" class="form-label">Model Name</label>
+            <input type="text" class="form-control" id="third-party-model-id" placeholder="e.g., My GPT-4, My Claude">
+            <div class="form-text mb-3">Enter a name for this model (used for display purposes).</div>
+
+            <label for="third-party-actual-model-id" class="form-label">Actual Model ID</label>
+            <input type="text" class="form-control" id="third-party-actual-model-id" placeholder="e.g., gpt-4, claude-3-opus">
+            <div class="form-text mb-3">Enter the model ID as recognized by the provider for inference.</div>
         `;
     }
 
@@ -779,21 +793,41 @@ function addModel() {
 
     // Get the model ID from either the input field or the select dropdown
     let modelId;
+    let actualModelId;
     const providerId = modelIdContainer.dataset.providerId;
     const modelIdElement = document.getElementById('third-party-model-id');
+    const actualModelIdElement = document.getElementById('third-party-actual-model-id');
 
     if (!modelIdElement) {
         return;
     }
 
-    // Get the model ID value
+    // Get the model ID value (which is actually the model_name)
     modelId = modelIdElement.value.trim();
 
     if (!modelId) {
-        const error_message = "Model ID is required";
+        const error_message = "Model Name is required";
         console.error(error_message);
         general_error(error_message);
         return;
+    }
+
+    // For predefined models, the actual model ID is the same as the model name
+    // For custom models, get the actual model ID from the separate field
+    const hasPredefined = hasPredefinedModels(providerId);
+    if (hasPredefined) {
+        actualModelId = modelId;
+    } else {
+        if (!actualModelIdElement) {
+            return;
+        }
+        actualModelId = actualModelIdElement.value.trim();
+        if (!actualModelId) {
+            const error_message = "Actual Model ID is required";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
     }
 
     // Find the provider in the configuration
@@ -848,7 +882,7 @@ function addModel() {
 
             // Create a new model config with capabilities
             const modelConfig = {
-                model_id: modelId,
+                model_id: actualModelId, // Use the actual model ID for inference
                 provider_id: providerId,
                 api_base: customApiBase,
                 api_key: customApiKey,
@@ -930,9 +964,23 @@ function showEditModelModal(providerId, modelId) {
     // Now pre-populate the fields with the data from the existing model configuration
     const modelIdElement = document.getElementById('third-party-model-id');
     if (modelIdElement) {
+        // Display model_name (which is modelId in the UI)
         modelIdElement.value = modelId;
+
         // Disable the model id field - we do not allow changing a model's id
         modelIdElement.disabled = true;
+
+        // For custom models, populate the actual model ID field
+        const actualModelIdElement = document.getElementById('third-party-actual-model-id');
+        if (actualModelIdElement && !hasPredefinedModels(providerId)) {
+            actualModelIdElement.value = modelConfig.model_id;
+        } else if (modelId !== modelConfig.model_id) {
+            // For predefined models, add a note about the actual model_id if it's different
+            const modelIdNote = document.createElement('div');
+            modelIdNote.className = 'form-text text-info';
+            modelIdNote.innerHTML = `<strong>Note:</strong> This model uses <code>${modelConfig.model_id}</code> as the actual model ID for inference.`;
+            modelIdElement.parentNode.appendChild(modelIdNote);
+        }
     }
 
     // Ensure capabilities object exists
@@ -1065,6 +1113,15 @@ function updateModel() {
 
     // Get the current model configuration
     const modelConfig = apiConfig.models[modelId];
+
+    // If we have a custom model with a separate actual model ID field, update it
+    const actualModelIdElement = document.getElementById('third-party-actual-model-id');
+    if (actualModelIdElement && !hasPredefinedModels(providerId)) {
+        const newActualModelId = actualModelIdElement.value.trim();
+        if (newActualModelId && newActualModelId !== modelConfig.model_id) {
+            modelConfig.model_id = newActualModelId;
+        }
+    }
 
     modelConfig.capabilities.agent = supportsAgentic;
     modelConfig.capabilities.clicks = supportsClicks;

@@ -94,6 +94,11 @@
     font-weight: 500;
 }
 
+.enabled-model-item .model-name .text-muted {
+    font-weight: normal;
+    font-size: 0.85em;
+}
+
 .enabled-model-item .model-info[title] {
     cursor: pointer;
     border-bottom: 1px dashed #ccc;
