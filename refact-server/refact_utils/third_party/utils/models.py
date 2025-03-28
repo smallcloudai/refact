@@ -134,12 +134,12 @@ def _get_default_model_config(provider_id: str, model_id: str) -> ModelConfig:
 
     default_tokenizers = get_default_tokenizers()
     TOKENIZER_DEFAULTS = {
-        k: v for k, v in TOKENIZER_DEFAULTS.values()
+        k: v for k, v in TOKENIZER_DEFAULTS.items()
         if v in default_tokenizers
     }
 
     return ModelConfig(
-        model_id=model_id,
+        model_id=_validate_model_name_strict(model_id),
         provider_id=provider_id,
         api_base=None,
         api_key=None,
