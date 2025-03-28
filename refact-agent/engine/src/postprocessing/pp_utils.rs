@@ -23,7 +23,7 @@ pub fn color_with_gradient_type(msg: &ContextFile, lines: &mut Vec<FileLine>) {
         (m, c)
     }
 
-    if msg.gradient_type < 0 || msg.gradient_type > 4 {
+    if msg.gradient_type < 0 || msg.gradient_type > 5 {
         return;
     }
 
@@ -49,6 +49,13 @@ pub fn color_with_gradient_type(msg: &ContextFile, lines: &mut Vec<FileLine>) {
                     line_n as f32 * m22 + c22
                 }
             }.max(0.),
+            5 => {
+                if line_n >= msg.line1 && line_n <= msg.line2 {
+                    100.
+                } else {
+                    -1.
+                }
+            },
             _ => 0.0,
         };
         set_useful_for_line(line, usefulness, format!("gradient_type: {:?}", msg.gradient_type));
