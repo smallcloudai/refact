@@ -2,6 +2,6 @@ export {
   DropzoneProvider,
   DropzoneConsumer,
   FileUploadContext,
-  AttachFileButton,
+  AttachImagesButton,
   FileList,
 } from "./Dropzone";

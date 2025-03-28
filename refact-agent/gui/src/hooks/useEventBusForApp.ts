@@ -13,6 +13,9 @@ import {
   selectPages,
 } from "../features/Pages/pagesSlice";
 import { ideToolCallResponse } from "./useEventBusForIDE";
+import { createAction } from "@reduxjs/toolkit/react";
+
+export const ideAttachFileToChat = createAction<string>("ide/attachFileToChat");
 
 export function useEventBusForApp() {
   const config = useConfig();
