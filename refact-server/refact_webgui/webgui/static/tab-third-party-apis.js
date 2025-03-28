@@ -22,6 +22,8 @@ let expandedTokenizerSections = {
     uploaded: false,
 };
 
+const modelNamePattern = /^[a-zA-Z0-9_\.\-\/]+$/;
+
 export async function init(general_error) {
     let req = await fetch('/tab-third-party-apis.html');
     document.querySelector('#third-party-apis').innerHTML = await req.text();
@@ -812,9 +814,20 @@ function addModel() {
         return;
     }
 
+    const hasPredefined = hasPredefinedModels(providerId);
+
+    // Validate model name pattern for custom providers
+    if (!hasPredefined) {
+        if (!modelNamePattern.test(modelId)) {
+            const error_message = "Model Name can only contain letters, numbers, underscores, dots, and hyphens";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
+    }
+
     // For predefined models, the actual model ID is the same as the model name
     // For custom models, get the actual model ID from the separate field
-    const hasPredefined = hasPredefinedModels(providerId);
     if (hasPredefined) {
         actualModelId = modelId;
     } else {
@@ -1055,6 +1068,16 @@ function updateModel() {
         console.error(error_message);
         general_error(error_message);
         return;
+    }
+
+    // Validate model name pattern for custom providers
+    if (!hasPredefinedModels(providerId)) {
+        if (!modelNamePattern.test(modelId)) {
+            const error_message = "Model Name can only contain letters, numbers, underscores, dots, and hyphens";
+            console.error(error_message);
+            general_error(error_message);
+            return;
+        }
     }
 
     let reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
