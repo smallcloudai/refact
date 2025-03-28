@@ -5,11 +5,15 @@ import { useConfig, useAppSelector } from "../../hooks";
 import type { Checkbox } from "./ChatControls";
 import { selectMessages } from "../../features/Chat/Thread/selectors";
 import { createSelector } from "@reduxjs/toolkit";
+import { filename } from "../../utils";
+import { ideAttachFileToChat } from "../../hooks";
 
 const messageLengthSelector = createSelector(
   [selectMessages],
   (messages) => messages.length,
 );
+
+// TODO: add ide event here.
 
 export function useAttachedFiles() {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -46,6 +50,35 @@ export function useAttachedFiles() {
     },
     [files],
   );
+
+  useEffect(() => {
+    const handleIdeAttachFile = (filePath: string) => {
+      const fileInfo: FileInfo = {
+        name: filename(filePath),
+        path: filePath,
+        line1: null,
+        line2: null,
+        cursor: null,
+        can_paste: false,
+      };
+      setFiles((prev) => {
+        const maybeEntered = prev.find((file) => file.path === filePath);
+        if (maybeEntered) return prev;
+        return [...prev, fileInfo];
+      });
+    };
+
+    const listener = (event: MessageEvent) => {
+      if (ideAttachFileToChat.match(event.data)) {
+        handleIdeAttachFile(event.data.payload);
+      }
+    };
+
+    window.addEventListener("message", listener);
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  }, []);
 
   return {
     files,
