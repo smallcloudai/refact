@@ -9,6 +9,7 @@ from refact_utils.third_party.utils.configs import ThirdPartyApiConfig
 from refact_utils.third_party.utils.configs import ProviderConfig
 from refact_utils.third_party.utils.configs import ModelConfig
 from refact_utils.third_party.utils.configs import ModelCapabilities
+from refact_utils.third_party.utils.tokenizers import get_default_tokenizers
 from refact_utils.third_party.utils.migration import migrate_third_party_config
 from refact_webgui.webgui.selfhost_webutils import log
 
@@ -105,6 +106,20 @@ def _get_default_model_config(provider_id: str, model_id: str) -> ModelConfig:
         PASSTHROUGH_MAX_TOKENS_LIMIT = 16_000
         return min(litellm.get_max_tokens(model_name) or 8192, PASSTHROUGH_MAX_TOKENS_LIMIT)
 
+    TOKENIZER_DEFAULTS = {
+        "openai": "gpt-4o",
+        "anthropic": "claude",
+        "gemini": "gemma2",
+        "xai": "grok-1",
+        "deepseek": "deepseek-v3",
+    }
+
+    default_tokenizers = get_default_tokenizers()
+    TOKENIZER_DEFAULTS = {
+        k: v for k, v in TOKENIZER_DEFAULTS.values()
+        if v in default_tokenizers
+    }
+
     return ModelConfig(
         model_id=model_id,
         provider_id=provider_id,
@@ -121,7 +136,7 @@ def _get_default_model_config(provider_id: str, model_id: str) -> ModelConfig:
             reasoning=None,
             boost_reasoning=False,
         ),
-        tokenizer_id=None,
+        tokenizer_id=TOKENIZER_DEFAULTS.get(provider_id, TOKENIZER_DEFAULTS.get("openai")),
     )
 
 
