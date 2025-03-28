@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import litellm
 
 from typing import Dict, List, Optional
@@ -22,7 +23,24 @@ __all__ = [
 ]
 
 
+def _validate_model_name_strict(model_name: str) -> str:
+    pattern = r"^[a-z/A-Z0-9_\.\-]+$"
+    if not re.match(pattern, model_name):
+        raise ValueError(f"Invalid model name: {model_name}. Model names must only contain letters, numbers, underscores, dots, hyphens, and forward slashes.")
+    return model_name
+
+
 def _validate_config(config: ThirdPartyApiConfig, raise_on_error: bool):
+    # Filter out models with invalid name
+    models = {}
+    for model_id, model_config in config.models.items():
+        try:
+            _validate_model_name_strict(model_id)
+            models[model_id] = model_config
+        except Exception as e:
+            if raise_on_error:
+                raise e
+    config.models = models
     # Filter out models whose provider is not in the current configuration
     models = {}
     for model_id, model_config in config.models.items():
