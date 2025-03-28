@@ -62,11 +62,20 @@ def _tokenizer_id_to_file(tokenizers_dir: Path, tokenizer_id: str) -> Path:
 
 
 def get_default_tokenizers() -> List[str]:
-    return [
+    tokenizers = [
         ".".join(filename.name.split(".")[:-1])
         for filename in sorted(DEFAULT_TOKENIZERS_DIR.iterdir())
         if str(filename).endswith(".json")
     ]
+    # gpt-4o at the top
+    default_model_maybe = "gpt-4o"
+    if default_model_maybe in tokenizers:
+        tokenizers = [default_model_maybe] + [
+            tokenizer_id
+            for tokenizer_id in tokenizers
+            if tokenizer_id != default_model_maybe
+        ]
+    return tokenizers
 
 
 def get_tokenizers() -> List[str]:
