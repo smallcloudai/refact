@@ -602,7 +602,7 @@ function showAddModelModal(providerId) {
 
         <div class="mb-3" id="custom-model-api-base-container">
             <label for="custom-model-api-base" class="form-label">API Base</label>
-            <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model">
+            <input type="text" class="form-control" id="custom-model-api-base" placeholder="Enter API base for this model, ex. http://localhost:8888/v1">
         </div>
 
         <div class="mb-3">
