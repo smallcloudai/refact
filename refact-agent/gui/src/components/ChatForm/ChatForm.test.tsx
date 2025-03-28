@@ -115,11 +115,7 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
-    const cursor = app.store.getState().active_file.cursor;
-
-    const expected = `@file foo.txt:${
-      cursor ? cursor + 1 : 1
-    }\n${markdown}\nfoo\n`;
+    const expected = `${markdown}\nfoo\n`;
     expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 
