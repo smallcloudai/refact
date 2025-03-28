@@ -259,7 +259,7 @@ async def ask_using_http(
         # meta["current_config_file"] = "/Users/user/.config/refact/integrations.d/postgres.yaml"
     post_me["meta"] = meta
     choices: List[Optional[Message]] = [None] * n_answers
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5000)) as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
             if not stream:
                 text = await response.text()
@@ -563,18 +563,21 @@ def print_messages(
                 con(t)
 
         elif m.role == "diff" and m.content is not None:
-            for chunk in json.loads(m.content):
-                message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
-                message_str.append(message)
-                con(message)
-                if len(chunk["lines_add"]) > 0:
-                    message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+            try:
+                for chunk in json.loads(m.content):
+                    message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
                     message_str.append(message)
-                    con(_wrap_color(message, "green"))
-                if len(chunk["lines_remove"]) > 0:
-                    message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
-                    message_str.append(message)
-                    con(_wrap_color(message, "red"))
+                    con(message)
+                    if len(chunk["lines_add"]) > 0:
+                        message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+                        message_str.append(message)
+                        con(_wrap_color(message, "green"))
+                    if len(chunk["lines_remove"]) > 0:
+                        message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
+                        message_str.append(message)
+                        con(_wrap_color(message, "red"))
+            except:
+                con(f"Error while diff rendering: {m.content}")
 
         elif m.role in ["tool", "user", "assistant", "system", "cd_instruction"]:
             if m.subchats is not None:  # actually subchats can only appear in role="tool", but code is the same anyway
