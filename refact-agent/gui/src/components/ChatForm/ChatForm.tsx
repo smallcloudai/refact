@@ -190,6 +190,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       onSubmit(valueIncludingChecks);
       setValue(() => "");
       unCheckAll();
+      attachedFiles.removeAll();
     }
   }, [
     value,

@@ -51,6 +51,10 @@ export function useAttachedFiles() {
     [files],
   );
 
+  const removeAll = useCallback(() => {
+    setFiles([]);
+  }, []);
+
   useEffect(() => {
     const handleIdeAttachFile = (filePath: string) => {
       const fileInfo: FileInfo = {
@@ -87,6 +91,7 @@ export function useAttachedFiles() {
     removeFile,
     attached,
     addFilesToInput,
+    removeAll,
   };
 }
 
