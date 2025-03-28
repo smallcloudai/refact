@@ -1,3 +1,7 @@
+refact_supports_scratchpads = {
+    "FIM-SPM": {},
+}
+
 refact_mini_db = {
     "Refact/1.6B": {
         "backend": "transformers",
@@ -7,6 +11,9 @@ refact_mini_db = {
         },
         "T": 4096,
         "required_memory_mb": 6000,
+        "supports_scratchpads": {
+            "completion": refact_supports_scratchpads,
+        },
         "filter_caps": ["completion", "finetune"],
     },
     # "Refact/1.6B/cpu": {

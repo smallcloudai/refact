@@ -1,0 +1,199 @@
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+#third-party-model-select {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+/* Provider card styling */
+.api-provider-container {
+    border-left: 4px solid #007bff;
+    transition: box-shadow 0.3s;
+    margin-bottom: 1rem;
+}
+
+.api-provider-container:hover {
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Provider header styling for collapsible behavior */
+.provider-header {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.provider-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.provider-header:after {
+    content: "\f107"; /* Bootstrap icon for caret down */
+    font-family: "bootstrap-icons";
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+    transition: transform 0.3s;
+}
+
+.provider-header.collapsed:after {
+    transform: translateY(-50%) rotate(-90deg);
+}
+
+.provider-title {
+    cursor: pointer;
+    margin-left: 15px;
+}
+
+/* Add provider card styling */
+.add-provider-card {
+    border: 2px dashed #dee2e6;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+}
+
+.add-provider-card:hover {
+    background-color: #e9ecef;
+}
+
+/* Remove provider button styling */
+.remove-provider-btn {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.remove-provider-btn:hover {
+    opacity: 1;
+}
+
+.models-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+/* Styling for enabled models list */
+.enabled-model-item {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.enabled-model-item .model-name {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.enabled-model-item .model-name .text-muted {
+    font-weight: normal;
+    font-size: 0.85em;
+}
+
+.enabled-model-item .model-info[title] {
+    cursor: pointer;
+    border-bottom: 1px dashed #ccc;
+}
+
+.enabled-model-item .remove-model-btn {
+    padding: 2px 6px;
+    font-size: 0.8rem;
+}
+
+/* Custom badge styling */
+.badge.bg-warning {
+    background-color: #fd7e14 !important;
+    color: white;
+}
+
+/* Styling for API key input */
+.api-key-input {
+    font-family: monospace;
+}
+
+/* Tokenizer styling */
+.tokenizer-section-header {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #dee2e6;
+    cursor: pointer;
+}
+
+.tokenizer-section-header h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.tokenizer-section-body {
+    padding: 15px;
+}
+
+.tokenizer-section-body.collapse {
+    display: none;
+}
+
+.tokenizer-item {
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.tokenizer-item:last-child {
+    margin-bottom: 0;
+}
+
+.tokenizer-item .badge {
+    font-size: 0.7rem;
+    font-weight: normal;
+}
+
+.tokenizer-name {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+#tokenizers-list {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 5px;
+}
+
+#upload-tokenizer-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#upload-tokenizer-btn i {
+    margin-right: 5px;
+}
+
+/* Tokenizer dropdown styling */
+#tokenizer-dropdown-menu .dropdown-item.active {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+#tokenizer-dropdown-menu .dropdown-header {
+    color: #495057;
+    font-weight: 600;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+}
+
+#tokenizer-dropdown-menu {
+    max-height: 350px;
+    overflow-y: auto;
+}

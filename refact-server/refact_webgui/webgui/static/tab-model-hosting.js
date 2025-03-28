@@ -182,12 +182,7 @@ function render_devices(data) {
     });
 }
 
-function integration_switch_init(integration_checkbox_id, checked) {
-    const enable_switch = document.getElementById(integration_checkbox_id);
-    enable_switch.removeEventListener('change', save_model_assigned);
-    enable_switch.checked = checked;
-    enable_switch.addEventListener('change', save_model_assigned);
-}
+// Function removed as it's no longer needed
 
 function get_models()
 {
@@ -198,14 +193,6 @@ function get_models()
     .then(function(data) {
         models_data = data;
         render_models_assigned(data.model_assign);
-
-        integration_switch_init('enable_chat_gpt', models_data['openai_api_enable']);
-        integration_switch_init('enable_anthropic', models_data['anthropic_api_enable']);
-        integration_switch_init('enable_groq', models_data['groq_api_enable']);
-        integration_switch_init('enable_cerebras', models_data['cerebras_api_enable']);
-        integration_switch_init('enable_gemini', models_data['gemini_api_enable']);
-        integration_switch_init('enable_xai', models_data['xai_api_enable']);
-        integration_switch_init('enable_deepseek', models_data['deepseek_api_enable']);
 
         const more_gpus_notification = document.querySelector('.model-hosting-error');
         if(data.hasOwnProperty('more_models_than_gpus') && data.more_models_than_gpus) {
@@ -227,25 +214,10 @@ function get_models()
 }
 
 function save_model_assigned() {
-    const openai_enable = document.querySelector('#enable_chat_gpt');
-    const anthropic_enable = document.querySelector('#enable_anthropic');
-    const groq_enable = document.querySelector('#enable_groq');
-    const cerebras_enable = document.querySelector('#enable_cerebras');
-    const gemini_enable = document.querySelector('#enable_gemini');
-    const xai_enable = document.querySelector('#enable_xai');
-    const deepseek_enable = document.querySelector('#enable_deepseek');
-
     const data = {
         model_assign: {
             ...models_data.model_assign,
         },
-        openai_api_enable: openai_enable.checked,
-        anthropic_api_enable: anthropic_enable.checked,
-        groq_api_enable: groq_enable.checked,
-        cerebras_api_enable: cerebras_enable.checked,
-        gemini_api_enable: gemini_enable.checked,
-        xai_api_enable: xai_enable.checked,
-        deepseek_api_enable: deepseek_enable.checked,
     };
 
     fetch("/tab-host-models-assign", {
@@ -694,9 +666,12 @@ function render_models(models) {
                         <p>Next upload obtained archive to the server.</p>
                     `;
                     document.querySelector('label[for="model_weights"] span').innerHTML = e.target.dataset.model_path;
-                    document.querySelector('#weights-code').addEventListener('click', (help_text) => {
-                        navigator.clipboard.writeText(help_text);
-                    });
+                    const weightsCode = document.querySelector('#weights-code');
+                    if (weightsCode) {
+                        weightsCode.addEventListener('click', function() {
+                            navigator.clipboard.writeText(this.textContent || this.innerText);
+                        });
+                    }
                     add_model_modal.hide();
                     upload_weights_modal.show();
                 } else {
@@ -921,10 +896,10 @@ export async function init(general_error) {
     add_model_modal.addEventListener('show.bs.modal', function () {
         render_models(models_data);
     });
-    const redirect2credentials = document.getElementById('redirect2credentials');
-    redirect2credentials.addEventListener('click', function() {
-        document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
-    });
+//    const redirect2credentials = document.getElementById('redirect2credentials');
+//    redirect2credentials.addEventListener('click', function() {
+//        document.querySelector(`[data-tab=${redirect2credentials.getAttribute('data-tab')}]`).click();
+//    });
     const weights_modal_submit = document.querySelector('.weights-modal-submit');
     weights_modal_submit.addEventListener('click', function() {
         const fileInput = document.querySelector('#model_weights');
@@ -936,10 +911,15 @@ export async function init(general_error) {
         }
     });
     const code_snippet_wrapper = document.querySelector('.weights-modal-code');
-    code_snippet_wrapper.addEventListener("click", function () {
-        const text = code_snippet.innerText || code_snippet.textContent;
-        navigator.clipboard.writeText(text);
-    });
+    if (code_snippet_wrapper) {
+        code_snippet_wrapper.addEventListener("click", function () {
+            const code_snippet = document.querySelector('#weights-code');
+            if (code_snippet) {
+                const text = code_snippet.innerText || code_snippet.textContent;
+                navigator.clipboard.writeText(text);
+            }
+        });
+    }
     // const enable_chat_gpt_switch = document.getElementById('enable_chat_gpt');
 }
 

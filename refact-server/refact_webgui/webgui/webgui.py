@@ -32,6 +32,7 @@ from refact_webgui.webgui.tab_loras import TabLorasRouter
 from refact_webgui.webgui.tab_models_host import TabHostRouter
 from refact_webgui.webgui.tab_server_logs import TabServerLogRouter
 from refact_webgui.webgui.tab_settings import TabSettingsRouter
+from refact_webgui.webgui.tab_third_party_apis import TabThirdPartyApisRouter
 from refact_webgui.webgui.tab_upload import TabUploadRouter
 
 
@@ -117,7 +118,8 @@ class WebGUI(FastAPI):
             TabFinetuneRouter(
                 model_assigner=model_assigner),
             TabHostRouter(model_assigner),
-            TabSettingsRouter(model_assigner),
+            TabSettingsRouter(),
+            TabThirdPartyApisRouter(),
             TabAboutRouter(),
             StaticRouter(),
         ]
