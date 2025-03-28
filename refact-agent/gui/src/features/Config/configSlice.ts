@@ -34,7 +34,7 @@ const initialState: Config = {
     vecdb: true,
     ast: true,
     images: true,
-    knowledge: false,
+    knowledge: true,
   },
   themeProps: {
     appearance: "dark",
