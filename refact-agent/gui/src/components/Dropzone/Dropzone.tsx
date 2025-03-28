@@ -6,6 +6,7 @@ import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { TruncateLeft } from "../Text";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { useCapsForToolUse } from "../../hooks";
+import { useAttachedFiles } from "../ChatForm/useCheckBoxes";
 
 export const FileUploadContext = createContext<{
   open: () => void;
@@ -77,7 +78,7 @@ export const DropzoneProvider: React.FC<
 
 export const DropzoneConsumer = FileUploadContext.Consumer;
 
-export const AttachFileButton = () => {
+export const AttachImagesButton = () => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const attachFileOnClick = useCallback(
@@ -121,29 +122,52 @@ export const AttachFileButton = () => {
   );
 };
 
-export const FileList = () => {
+type FileListProps = {
+  attachedFiles: ReturnType<typeof useAttachedFiles>;
+};
+export const FileList: React.FC<FileListProps> = ({ attachedFiles }) => {
   const { images, removeImage } = useAttachedImages();
-  if (images.length === 0) return null;
+  if (images.length === 0 && attachedFiles.files.length === 0) return null;
   return (
     <Flex wrap="wrap" gap="1" py="2">
       {images.map((file, index) => {
         const key = `image-${file.name}-${index}`;
         return (
-          <Button
-            // variant="surface"
-            // variant="outline"
-            variant="soft"
-            radius="full"
+          <FileButton
             key={key}
-            size="1"
             onClick={() => removeImage(index)}
-            style={{ maxWidth: "100%" }}
-          >
-            <TruncateLeft wrap="wrap">{file.name}</TruncateLeft>{" "}
-            <Cross1Icon width="10" style={{ flexShrink: 0 }} />
-          </Button>
+            fileName={file.name}
+          />
+        );
+      })}
+      {attachedFiles.files.map((file, index) => {
+        const key = `file-${file.path}-${index}`;
+        return (
+          <FileButton
+            key={key}
+            fileName={file.name}
+            onClick={() => attachedFiles.removeFile(file)}
+          />
         );
       })}
     </Flex>
+  );
+};
+
+const FileButton: React.FC<{ fileName: string; onClick: () => void }> = ({
+  fileName,
+  onClick,
+}) => {
+  return (
+    <Button
+      variant="soft"
+      radius="full"
+      size="1"
+      onClick={onClick}
+      style={{ maxWidth: "100%" }}
+    >
+      <TruncateLeft wrap="wrap">{fileName}</TruncateLeft>{" "}
+      <Cross1Icon width="10" style={{ flexShrink: 0 }} />
+    </Button>
   );
 };
