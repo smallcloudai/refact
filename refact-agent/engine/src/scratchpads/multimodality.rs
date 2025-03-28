@@ -253,10 +253,11 @@ impl ChatMessage {
     pub fn into_value(&self, style: &Option<String>) -> Value {
         let mut dict = serde_json::Map::new();
         let chat_content_raw = self.content.into_raw(style);
-
         dict.insert("role".to_string(), Value::String(self.role.clone()));
         dict.insert("content".to_string(), json!(chat_content_raw));
-        dict.insert("tool_calls".to_string(), json!(self.tool_calls.clone()));
+        if let Some(tool_calls) = self.tool_calls.clone() {
+            dict.insert("tool_calls".to_string(), json!(tool_calls));
+        }
         dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
         if let Some(thinking_blocks) = self.thinking_blocks.clone() {
             dict.insert("thinking_blocks".to_string(), json!(thinking_blocks));
