@@ -738,6 +738,23 @@ function showAddModelModal(providerId) {
                     document.getElementById('third-party-model-boost-reasoning').disabled = true;
                     document.getElementById('third-party-model-boost-reasoning').checked = false;
                 }
+
+                if (selectedModel.tokenizer_id) {
+                    document.getElementById('custom-model-tokenizer-id').value = selectedModel.tokenizer_id;
+                    const dropdownBtn = document.getElementById('tokenizer-dropdown-btn');
+                    if (dropdownBtn) {
+                        dropdownBtn.textContent = selectedModel.tokenizer_id;
+                    }
+                    const dropdownMenu = document.getElementById('tokenizer-dropdown-menu');
+                    if (dropdownMenu) {
+                        dropdownMenu.querySelectorAll('.dropdown-item').forEach(item => {
+                            item.classList.remove('active');
+                            if (item.getAttribute('data-value') === selectedModel.tokenizer_id) {
+                                item.classList.add('active');
+                            }
+                        });
+                    }
+                }
             }
 
             dependentCheckboxSet('custom-model-supports-tools', 'third-party-model-supports-agentic');
