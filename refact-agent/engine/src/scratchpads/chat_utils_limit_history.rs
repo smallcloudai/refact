@@ -136,6 +136,7 @@ fn process_compression_stage(
     message_filter: impl Fn(usize, &ChatMessage, i32) -> bool,
     sort_by_size: bool,
 ) -> Result<(i32, i32, bool), String> {
+    tracing::info!("n_ctx={n_ctx}, max_new_tokens={max_new_tokens}");
     tracing::info!("STAGE: {}", stage_name);
     let (mut occupied_tokens, tokens_limit) = 
         recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_name);
