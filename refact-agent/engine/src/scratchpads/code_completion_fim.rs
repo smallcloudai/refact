@@ -91,12 +91,14 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         self.t.eos = patch.get("eos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.t.context_format = patch.get("context_format").and_then(|x| x.as_str()).unwrap_or_default().to_string();
         self.t.rag_ratio = patch.get("rag_ratio").and_then(|x| x.as_f64()).unwrap_or(0.5);
-        self.t.assert_one_token(&self.fim_prefix.as_str())?;
-        self.t.assert_one_token(&self.fim_suffix.as_str())?;
-        self.t.assert_one_token(&self.fim_middle.as_str())?;
-        self.t.assert_one_token(&self.t.eot.as_str())?;
-        if !self.t.eos.is_empty() {
-            self.t.assert_one_token(&self.t.eos.as_str())?;
+        if self.t.tokenizer.is_some() {
+            self.t.assert_one_token(&self.fim_prefix.as_str())?;
+            self.t.assert_one_token(&self.fim_suffix.as_str())?;
+            self.t.assert_one_token(&self.fim_middle.as_str())?;
+            self.t.assert_one_token(&self.t.eot.as_str())?;
+            if !self.t.eos.is_empty() {
+                self.t.assert_one_token(&self.t.eos.as_str())?;
+            }
         }
         Ok(())
     }

@@ -646,17 +646,19 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             .get("rag_ratio")
             .and_then(|x| x.as_f64())
             .unwrap_or(0.5);
-        if !self.token_bos.is_empty() {
-            self.t.assert_one_token(&self.token_bos.as_str())?;
-        }
-        if !self.token_esc.is_empty() {
-            self.t.assert_one_token(&self.token_esc.as_str())?;
-        }
-        if !self.t.eot.is_empty() {
-            self.t.assert_one_token(&self.t.eot.as_str())?;
-        }
-        if !self.t.eos.is_empty() {
-            self.t.assert_one_token(&self.t.eos.as_str())?;
+        if self.t.tokenizer.is_some() {
+            if !self.token_bos.is_empty() {
+                self.t.assert_one_token(&self.token_bos.as_str())?;
+            }
+            if !self.token_esc.is_empty() {
+                self.t.assert_one_token(&self.token_esc.as_str())?;
+            }
+            if !self.t.eot.is_empty() {
+                self.t.assert_one_token(&self.t.eot.as_str())?;
+            }
+            if !self.t.eos.is_empty() {
+                self.t.assert_one_token(&self.t.eos.as_str())?;
+            }
         }
         Ok(())
     }
