@@ -19,7 +19,6 @@ import {
   useSendChatRequest,
   useCompressChat,
   useAutoFocusOnce,
-  // useTotalTokenUsage,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
@@ -30,17 +29,16 @@ import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPr
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import { clearError, getErrorMessage } from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
-import { useCheckboxes } from "./useCheckBoxes";
+import { useAttachedFiles, useCheckboxes } from "./useCheckBoxes";
 import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
-  // setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
-import { AttachFileButton, FileList } from "../Dropzone";
+import { AttachImagesButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
   enableSend,
@@ -51,7 +49,6 @@ import {
   selectLastSentCompression,
   selectMessages,
   selectPreventSend,
-  // selectThreadMaximumTokens,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
@@ -59,7 +56,6 @@ import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
-// import { useUsageCounter } from "../UsageCounter/useUsageCounter";
 import classNames from "classnames";
 import { ArchiveIcon } from "@radix-ui/react-icons";
 
@@ -97,6 +93,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest } = useCompressChat();
   const autoFocus = useAutoFocusOnce();
+  const attachedFiles = useAttachedFiles();
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -161,7 +158,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     checkboxes,
     onToggleCheckbox,
     unCheckAll,
-    setFileInteracted,
     setLineSelectionInteracted,
   } = useCheckboxes();
 
@@ -184,21 +180,23 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const handleSubmit = useCallback(() => {
     const trimmedValue = value.trim();
     if (!disableSend && trimmedValue.length > 0) {
+      const valueWithFiles = attachedFiles.addFilesToInput(trimmedValue);
       const valueIncludingChecks = addCheckboxValuesToInput(
-        trimmedValue,
+        valueWithFiles,
         checkboxes,
       );
-      setFileInteracted(false);
+      // TODO: add @files
       setLineSelectionInteracted(false);
       onSubmit(valueIncludingChecks);
       setValue(() => "");
       unCheckAll();
+      attachedFiles.removeAll();
     }
   }, [
     value,
     disableSend,
+    attachedFiles,
     checkboxes,
-    setFileInteracted,
     setLineSelectionInteracted,
     onSubmit,
     setValue,
@@ -241,7 +239,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       setValue(command);
       const trimmedCommand = command.trim();
       if (!trimmedCommand) {
-        setFileInteracted(false);
         setLineSelectionInteracted(false);
       }
 
@@ -251,7 +248,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         handleHelpInfo(null);
       }
     },
-    [handleHelpInfo, setValue, setFileInteracted, setLineSelectionInteracted],
+    [handleHelpInfo, setValue, setLineSelectionInteracted],
   );
 
   const handleAgentIntegrationsClick = useCallback(() => {
@@ -423,7 +420,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 />
               )}
               {config.features?.images !== false &&
-                isMultimodalitySupportedForCurrentModel && <AttachFileButton />}
+                isMultimodalitySupportedForCurrentModel && (
+                  <AttachImagesButton />
+                )}
               {/* TODO: Reserved space for microphone button coming later on */}
               <PaperPlaneButton
                 disabled={disableSend}
@@ -435,12 +434,14 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           </Flex>
         </Form>
       </Flex>
-      <FileList />
+      <FileList attachedFiles={attachedFiles} />
 
       <ChatControls
+        // handle adding files
         host={config.host}
         checkboxes={checkboxes}
         onCheckedChange={onToggleCheckbox}
+        attachedFiles={attachedFiles}
       />
     </Card>
   );
