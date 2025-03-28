@@ -8,6 +8,7 @@ import {
   Box,
   Switch,
   Badge,
+  Button,
 } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -36,6 +37,7 @@ import {
   setToolUse,
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
+import { useAttachedFiles } from "./useCheckBoxes";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -223,6 +225,7 @@ export type ChatControlsProps = {
   ) => void;
 
   host: Config["host"];
+  attachedFiles: ReturnType<typeof useAttachedFiles>;
 };
 
 const ChatControlCheckBox: React.FC<{
@@ -294,6 +297,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
   host,
+  attachedFiles,
 }) => {
   const refs = useTourRefs();
   const dispatch = useAppDispatch();
@@ -342,6 +346,18 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           />
         );
       })}
+
+      {host !== "web" && (
+        <Button
+          title="Attach current file"
+          onClick={attachedFiles.addFile}
+          disabled={!attachedFiles.activeFile.name || attachedFiles.attached}
+          size="1"
+          radius="medium"
+        >
+          Attach: {attachedFiles.activeFile.name}
+        </Button>
+      )}
 
       {showControls && (
         <Flex gap="2" direction="column">

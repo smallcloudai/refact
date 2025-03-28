@@ -78,6 +78,8 @@ export {
   ideToolCallResponse,
 } from "../hooks/useEventBusForIDE";
 
+export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
+
 export const fim = {
   request,
   ready,
