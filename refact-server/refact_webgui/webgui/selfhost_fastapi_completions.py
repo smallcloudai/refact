@@ -221,6 +221,10 @@ class BaseCompletionsRouter(APIRouter):
         raise NotImplementedError()
 
     async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
+        data = self._caps_data(user_agent=user_agent)
+        return Response(content=json.dumps(data, indent=4), media_type="application/json")
+
+    def _caps_data(self, user_agent: str = Header(None)):
         # TODO: this is new caps! it shouldn't be used by old refact-lsp
         if isinstance(user_agent, str):
             m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
@@ -228,11 +232,6 @@ class BaseCompletionsRouter(APIRouter):
                 major, minor, patch = map(int, m.groups())
                 log("user version %d.%d.%d" % (major, minor, patch))
 
-        data = self._caps_data()
-
-        return Response(content=json.dumps(data, indent=4), media_type="application/json")
-
-    def _caps_data(self):
         # NOTE: we need completely rewrite all about running models
         running_models = running_models_and_loras(self._model_assigner)
 
@@ -329,7 +328,7 @@ class BaseCompletionsRouter(APIRouter):
             "caps_version": self._caps_version,
         }
 
-        return Response(content=json.dumps(data, indent=4), media_type="application/json")
+        return data
 
     async def _local_tokenizer(self, model_path: str) -> str:
         model_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
