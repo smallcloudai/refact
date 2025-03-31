@@ -39,8 +39,7 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { compressChat, compressChatRequest, isCompressing } =
-    useCompressChat();
+  const { compressChat, isCompressing } = useCompressChat();
   const lastSentCompression = useLastSentCompressionStop();
 
   useEffect(() => {
