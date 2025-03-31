@@ -28,8 +28,6 @@ def has_context_switch(filter_caps: List[str]) -> bool:
 def get_default_n_ctx(model_name: str, model_info: Dict[str, Any]) -> int:
     if "T" in model_info:
         return model_info["T"]
-    if "n_ctx" in model_info:
-        return model_info["n_ctx"]
     raise ValueError(f"context size is not specified for '{model_name}'")
 
 
