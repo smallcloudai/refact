@@ -115,7 +115,7 @@ describe("ChatForm", () => {
     await user.type(textarea, "foo");
     await user.keyboard("{Enter}");
     const markdown = "```python\nprint(1)\n```\n";
-    const expected = `${markdown}\nfoo\n`;
+    const expected = `${markdown}\n@file foo.txt:3\nfoo\n`;
     expect(fakeOnSubmit).toHaveBeenCalledWith(expected);
   });
 
