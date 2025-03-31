@@ -188,8 +188,6 @@ fn default_code_completion_n_ctx() -> usize { 2048 }
 pub struct DefaultModels {
     #[serde(default, alias = "code_completion_default_model", alias = "completion_model")]
     pub completion_default_model: String,
-    #[serde(default, alias = "multiline_code_completion_default_model", alias = "multiline_completion_model")]
-    pub multiline_completion_default_model: String,
     #[serde(default, alias = "code_chat_default_model", alias = "chat_model")]
     pub chat_default_model: String,
     #[serde(default)]
@@ -299,7 +297,6 @@ async fn read_providers_d(
         let mut models_to_add = vec![
             &provider.defaults.chat_default_model,
             &provider.defaults.completion_default_model,
-            &provider.defaults.multiline_completion_default_model,
         ];
         models_to_add.extend(provider.chat_models.keys());
         models_to_add.extend(provider.completion_models.keys());
@@ -421,9 +418,6 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
         }
         if !provider.defaults.completion_default_model.is_empty() {
             caps.defaults.completion_default_model = format!("{}/{}", provider.name, provider.defaults.completion_default_model);
-        }
-        if !provider.defaults.multiline_completion_default_model.is_empty() {
-            caps.defaults.multiline_completion_default_model = format!("{}/{}", provider.name, provider.defaults.multiline_completion_default_model);
         }
         if !provider.defaults.chat_thinking_model.is_empty() {
             caps.defaults.chat_thinking_model = format!("{}/{}", provider.name, provider.defaults.chat_thinking_model);
