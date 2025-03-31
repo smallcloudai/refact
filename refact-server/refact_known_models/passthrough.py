@@ -290,6 +290,17 @@ passthrough_mini_db = {
         "pp1000t_generated": 5000,  # $5.00 / 1M tokens
         "filter_caps": ["chat", "tools", "completion", "vision"],
     },
+    "gemini-2.5-pro": {
+        "backend": "litellm",
+        "provider": "gemini",
+        "tokenizer_path": "Xenova/gemma2-tokenizer",
+        "resolve_as": "gemini/gemini-2.5-pro-exp-03-25",
+        "T": 1_000_000,
+        "T_out": 8_192,
+        "pp1000t_prompt": 1250,  # $1.25 / 1M tokens
+        "pp1000t_generated": 5000,  # $5.00 / 1M tokens
+        "filter_caps": ["chat", "tools", "completion", "vision"],
+    },
     # XAI Models
     # WARNING: tokenizer is non-precise as there's no publicly available tokenizer for these models
     # XAI says that for exact same model different tokenizers could be used

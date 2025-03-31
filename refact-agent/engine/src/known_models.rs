@@ -494,7 +494,8 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {}
             },
             "similar_models": [
-                "gemini-2.0-exp-advanced"
+                "gemini-2.0-exp-advanced",
+                "gemini-2.5-pro"
             ]
         },
         "llama3/8b/instruct": {
