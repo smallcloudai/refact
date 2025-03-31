@@ -228,6 +228,11 @@ class BaseCompletionsRouter(APIRouter):
                 major, minor, patch = map(int, m.groups())
                 log("user version %d.%d.%d" % (major, minor, patch))
 
+        data = self._caps_data()
+
+        return Response(content=json.dumps(data, indent=4), media_type="application/json")
+
+    def _caps_data(self):
         # NOTE: we need completely rewrite all about running models
         running_models = running_models_and_loras(self._model_assigner)
 
