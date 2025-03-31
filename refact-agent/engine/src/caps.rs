@@ -120,7 +120,7 @@ pub struct CodeAssistantCaps {
     pub embedding_model: EmbeddingModelRecord,
 
     #[serde(flatten, skip_deserializing)]
-    pub default_models: DefaultModels,
+    pub defaults: DefaultModels,
     
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
@@ -174,7 +174,7 @@ pub struct CapsProvider {
     pub models_dict_patch: IndexMap<String, Value>, // Used to patch some params from cloud, like n_ctx for pro/free users
 
     #[serde(flatten)]
-    pub default_models: DefaultModels,
+    pub defaults: DefaultModels,
 
     #[serde(default)]
     pub running_models: Vec<String>,
@@ -186,17 +186,13 @@ fn default_code_completion_n_ctx() -> usize { 2048 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct DefaultModels {
-    #[serde(default, alias = "code_completion_default_model", alias = "completion_default_model")]
-    #[serde(rename(serialize = "completion_default_model"))]
-    pub completion_model: String,
-
-    #[serde(default, alias = "multiline_code_completion_default_model", alias = "multiline_completion_default_model")]
-    #[serde(rename(serialize = "multiline_completion_default_model"))]
-    pub multiline_completion_model: String,
-
-    #[serde(default, alias = "code_chat_default_model", alias = "chat_default_model")]
-    #[serde(rename(serialize = "chat_default_model"))]
-    pub chat_model: String,
+    #[serde(default, alias = "code_completion_default_model", alias = "completion_model")]
+    pub completion_default_model: String,
+    #[serde(default, alias = "multiline_code_completion_default_model", alias = "multiline_completion_model")]
+    pub multiline_completion_default_model: String,
+    #[serde(default, alias = "code_chat_default_model", alias = "chat_model")]
+    pub chat_default_model: String,
+    #[serde(default)]
 }
 
 fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
@@ -298,9 +294,9 @@ async fn read_providers_d(
         provider.name = provider_name;
 
         let mut models_to_add = vec![
-            &provider.default_models.chat_model,
-            &provider.default_models.completion_model,
-            &provider.default_models.multiline_completion_model,
+            &provider.defaults.chat_default_model,
+            &provider.defaults.completion_default_model,
+            &provider.defaults.multiline_completion_default_model,
         ];
         models_to_add.extend(provider.chat_models.keys());
         models_to_add.extend(provider.completion_models.keys());
@@ -417,14 +413,15 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
             caps.embedding_model = embedding_model;
         }
 
-        if !provider.default_models.chat_model.is_empty() {
-            caps.default_models.chat_model = format!("{}/{}", provider.name, provider.default_models.chat_model);
+        if !provider.defaults.chat_default_model.is_empty() {
+            caps.defaults.chat_default_model = format!("{}/{}", provider.name, provider.defaults.chat_default_model);
         }
-        if !provider.default_models.completion_model.is_empty() {
-            caps.default_models.completion_model = format!("{}/{}", provider.name, provider.default_models.completion_model);
+        if !provider.defaults.completion_default_model.is_empty() {
+            caps.defaults.completion_default_model = format!("{}/{}", provider.name, provider.defaults.completion_default_model);
         }
-        if !provider.default_models.multiline_completion_model.is_empty() {
-            caps.default_models.multiline_completion_model = format!("{}/{}", provider.name, provider.default_models.multiline_completion_model);
+        if !provider.defaults.multiline_completion_default_model.is_empty() {
+            caps.defaults.multiline_completion_default_model = format!("{}/{}", provider.name, provider.defaults.multiline_completion_default_model);
+        }
         }
     }
 }
@@ -671,7 +668,7 @@ pub fn resolve_chat_model<'a>(
     resolve_model(
         &caps.chat_models, 
         requested_model_id, 
-        &caps.default_models.chat_model
+        &caps.defaults.chat_default_model
     )
 }
 
@@ -682,7 +679,7 @@ pub fn resolve_completion_model<'a>(
     resolve_model(
         &caps.completion_models, 
         requested_model_id, 
-        &caps.default_models.completion_model
+        &caps.defaults.completion_default_model
     )
 }
 
