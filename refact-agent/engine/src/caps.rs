@@ -193,6 +193,9 @@ pub struct DefaultModels {
     #[serde(default, alias = "code_chat_default_model", alias = "chat_model")]
     pub chat_default_model: String,
     #[serde(default)]
+    pub chat_thinking_model: String,
+    #[serde(default)]
+    pub chat_light_model: String,
 }
 
 fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
@@ -422,6 +425,11 @@ fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>
         if !provider.defaults.multiline_completion_default_model.is_empty() {
             caps.defaults.multiline_completion_default_model = format!("{}/{}", provider.name, provider.defaults.multiline_completion_default_model);
         }
+        if !provider.defaults.chat_thinking_model.is_empty() {
+            caps.defaults.chat_thinking_model = format!("{}/{}", provider.name, provider.defaults.chat_thinking_model);
+        }
+        if !provider.defaults.chat_light_model.is_empty() {
+           caps.defaults.chat_light_model = format!("{}/{}", provider.name, provider.defaults.chat_light_model);
         }
     }
 }

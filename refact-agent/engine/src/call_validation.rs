@@ -182,8 +182,25 @@ pub struct ChatMessage {
     pub thinking_blocks: Option<Vec<serde_json::Value>>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum ChatModelType {
+    Light,
+    Default,
+    Thinking
+}
+
+impl Default for ChatModelType {
+    fn default() -> Self {
+        ChatModelType::Default
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubchatParameters {
+    #[serde(default)]
+    pub subchat_model_type: ChatModelType,
+    #[serde(default)]
     pub subchat_model: String,
     pub subchat_n_ctx: usize,
     #[serde(default)]

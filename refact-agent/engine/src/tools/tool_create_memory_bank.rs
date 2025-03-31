@@ -427,7 +427,7 @@ impl Tool for ToolCreateMemoryBank {
                     MB_EXPERT_WRAP_UP,
                     1,
                     None,
-                    Some(ReasoningEffort::High),
+                    None,
                     Some(tool_call_id.clone()),
                     Some(format!("{log_prefix}-memory-bank-dir-{}", target.target_name.replace("/", "_"))),
                     Some(false),

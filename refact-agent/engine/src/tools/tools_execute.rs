@@ -9,7 +9,7 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ContextEnum, ContextFile, SubchatParameters};
 use crate::custom_error::MapErrToString;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::http::http_post_json;
@@ -46,14 +46,34 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 
     // check if the models exist otherwise use the external chat model
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
-    match resolve_chat_model(caps, &params.subchat_model) {
-        Ok(_) => {}
-        Err(err) => {
+
+    if !params.subchat_model.is_empty() {
+        match resolve_chat_model(caps.clone(), &params.subchat_model) {
+            Ok(_) => return Ok(params),
+            Err(e) => {
+                tracing::warn!("Specified subchat_model {} is not available: {}", params.subchat_model, e);
+            }
+        }
+    }
+
+    let model_rec_result = match params.subchat_model_type {
+        ChatModelType::Light => resolve_chat_model(caps.clone(), &caps.defaults.chat_light_model),
+        ChatModelType::Default => resolve_chat_model(caps.clone(), &caps.defaults.chat_default_model),
+        ChatModelType::Thinking => resolve_chat_model(caps.clone(), &caps.defaults.chat_thinking_model),
+    };
+
+    match model_rec_result {
+        Ok(model_rec) => {
+            params.subchat_model = model_rec.base.id.clone();
+        },
+        Err(e) => {
             let current_model = ccx.lock().await.current_model.clone();
-            warn!("subchat_model {} is not available: {}. Using {} model as a fallback", params.subchat_model, err, current_model);
+            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.", params.subchat_model_type, e, current_model);
             params.subchat_model = current_model;
         }
     }
+
+    tracing::info!("using model for subchat: {}", params.subchat_model);
     Ok(params)
 }
 
