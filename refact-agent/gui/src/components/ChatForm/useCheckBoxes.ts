@@ -17,7 +17,9 @@ const messageLengthSelector = createSelector(
 
 export function useAttachedFiles() {
   const [files, setFiles] = useState<FileInfo[]>([]);
+  const [interacted, setInteracted] = useState<boolean>(false);
   const activeFile = useAppSelector(selectActiveFile);
+  const snippet = useAppSelector(selectSelectedSnippet);
 
   const attached = useMemo(() => {
     const maybeAttached = files.find((file) => file.path === activeFile.path);
@@ -29,9 +31,11 @@ export function useAttachedFiles() {
     setFiles((prev) => {
       return [...prev, activeFile];
     });
+    setInteracted(true);
   }, [attached, activeFile]);
 
   const removeFile = useCallback((fileToRemove: FileInfo) => {
+    setInteracted(true);
     setFiles((prev) => {
       return prev.filter((file) => file.path !== fileToRemove.path);
     });
@@ -53,7 +57,19 @@ export function useAttachedFiles() {
 
   const removeAll = useCallback(() => {
     setFiles([]);
+    setInteracted(false);
   }, []);
+
+  useEffect(() => {
+    if (interacted) return;
+    if (!activeFile.name) return;
+    if (attached) return;
+    setFiles(() => {
+      if (!snippet.code) return [];
+      return [activeFile];
+    });
+    setInteracted(true);
+  }, [activeFile, attached, interacted, snippet.code]);
 
   useEffect(() => {
     const handleIdeAttachFile = (filePath: string) => {
@@ -92,6 +108,7 @@ export function useAttachedFiles() {
     attached,
     addFilesToInput,
     removeAll,
+    setInteracted,
   };
 }
 
