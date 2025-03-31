@@ -16,7 +16,8 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Semaphore, Notify as ANoti
 use tracing::{error, info};
 
 use crate::ast::ast_indexer_thread::AstIndexService;
-use crate::caps::{get_latest_provider_mtime, CodeAssistantCaps};
+use crate::caps::CodeAssistantCaps;
+use crate::providers::get_latest_provider_mtime;
 use crate::completion_cache::CompletionCache;
 use crate::custom_error::ScratchError;
 use crate::files_in_workspace::DocumentsState;

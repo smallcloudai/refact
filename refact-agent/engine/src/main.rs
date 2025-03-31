@@ -24,6 +24,7 @@ mod version;
 mod custom_error;
 mod nicer_logs;
 mod caps;
+mod providers;
 mod telemetry;
 mod global_context;
 mod background_tasks;

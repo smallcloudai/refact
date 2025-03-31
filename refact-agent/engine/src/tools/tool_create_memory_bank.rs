@@ -23,7 +23,6 @@ use crate::{
     tools::tools_description::Tool,
 };
 use crate::caps::resolve_chat_model;
-use crate::call_validation::ReasoningEffort;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 
 const MAX_EXPLORATION_STEPS: usize = 1000;
