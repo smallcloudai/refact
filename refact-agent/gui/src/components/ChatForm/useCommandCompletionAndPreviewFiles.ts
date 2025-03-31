@@ -130,9 +130,16 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
   return previewFileResponse;
 }
 
-export function useCommandCompletionAndPreviewFiles(checkboxes: Checkboxes) {
+export function useCommandCompletionAndPreviewFiles(
+  checkboxes: Checkboxes,
+  addFilesToInput: (str: string) => string,
+) {
   const { commands, requestCompletion, query } = useCommandCompletion();
-  const previewFileResponse = useGetPreviewFiles(query, checkboxes);
+
+  const previewFileResponse = useGetPreviewFiles(
+    addFilesToInput(query),
+    checkboxes,
+  );
 
   return {
     commands,
