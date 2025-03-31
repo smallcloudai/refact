@@ -126,10 +126,9 @@ export const SuggestNewChat = ({
               <Link
                 size="1"
                 onClick={() => {
-                  if (isCompressing) return;
                   void compressChat();
                 }}
-                color={isCompressing ? "gray" : "indigo"}
+                color="indigo"
                 asChild
               >
                 <Flex
