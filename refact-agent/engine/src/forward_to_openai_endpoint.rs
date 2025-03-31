@@ -128,8 +128,8 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
     } else if let Some(thinking) = sampling_parameters.thinking.clone() {
         data["thinking"] = thinking.clone();
-    } else {
-        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
+    } else if let Some(temperature) = sampling_parameters.temperature {
+        data["temperature"] = serde_json::Value::from(temperature);
     }
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
 
