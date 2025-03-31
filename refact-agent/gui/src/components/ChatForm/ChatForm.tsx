@@ -91,7 +91,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const messages = useAppSelector(selectMessages);
   const preventSend = useAppSelector(selectPreventSend);
   const lastSentCompression = useAppSelector(selectLastSentCompression);
-  const { compressChat, compressChatRequest } = useCompressChat();
+  const { compressChat, compressChatRequest, isCompressing } =
+    useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
 
@@ -403,7 +404,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                   lastSentCompression === null ||
                   lastSentCompression === "absent"
                 }
-                loading={compressChatRequest.isLoading}
+                loading={compressChatRequest.isLoading || isCompressing}
               >
                 <ArchiveIcon />
               </IconButton>
