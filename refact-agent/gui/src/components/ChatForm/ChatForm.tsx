@@ -173,7 +173,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   );
 
   const { previewFiles, commands, requestCompletion } =
-    useCommandCompletionAndPreviewFiles(checkboxes);
+    useCommandCompletionAndPreviewFiles(
+      checkboxes,
+      attachedFiles.addFilesToInput,
+    );
 
   const refs = useTourRefs();
 
@@ -378,7 +381,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           >
             <ThinkingButton />
             <Flex gap="2" align="center" className={styles.buttonGroup}>
-              <TokensPreview currentMessageQuery={value} />
+              <TokensPreview
+                currentMessageQuery={attachedFiles.addFilesToInput(value)}
+              />
 
               <IconButton
                 size="1"
