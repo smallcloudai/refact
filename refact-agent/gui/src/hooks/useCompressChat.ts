@@ -11,7 +11,9 @@ export function useCompressChat() {
   const dispatch = useAppDispatch();
   const thread = useAppSelector(selectThread);
 
-  const [submit, request] = knowledgeApi.useCompressMessagesMutation();
+  const [submit, request] = knowledgeApi.useCompressMessagesMutation({
+    fixedCacheKey: thread.id,
+  });
 
   const compressChat = useCallback(async () => {
     dispatch(setIsWaitingForResponse(true));
@@ -30,15 +32,19 @@ export function useCompressChat() {
 
     if (result.data) {
       const content =
-        "I am continuing from a compressed chat history. Here is what happened so far: " +
+        "🗜️ I am continuing from a compressed chat history. Here is what happened so far: " +
         result.data.trajectory;
       const messages: ChatMessages = [{ role: "user", content }];
-      // TODO: better title?
-      const action = newChatAction({ messages });
+
+      const action = newChatAction({ messages, title: `🗜️ ${thread.title}` });
       dispatch(action);
       dispatch(setSendImmediately(true));
     }
-  }, [submit, thread.messages, thread.project_name, dispatch]);
+  }, [dispatch, submit, thread.messages, thread.project_name, thread.title]);
 
-  return { compressChat, compressChatRequest: request };
+  return {
+    compressChat,
+    compressChatRequest: request,
+    isCompressing: request.isLoading,
+  };
 }

@@ -39,7 +39,8 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { compressChat, compressChatRequest } = useCompressChat();
+  const { compressChat, compressChatRequest, isCompressing } =
+    useCompressChat();
   const lastSentCompression = useLastSentCompressionStop();
 
   useEffect(() => {
@@ -99,6 +100,8 @@ export const SuggestNewChat = ({
     return "For best results, consider starting a new chat when switching topics.";
   }, [isWarning, isContextOverflown]);
 
+  if (isCompressing) return null;
+
   return (
     <Box
       py="3"
@@ -124,10 +127,10 @@ export const SuggestNewChat = ({
               <Link
                 size="1"
                 onClick={() => {
-                  if (compressChatRequest.isLoading) return;
+                  if (isCompressing) return;
                   void compressChat();
                 }}
-                color="indigo"
+                color={isCompressing ? "gray" : "indigo"}
                 asChild
               >
                 <Flex
