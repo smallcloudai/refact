@@ -47,6 +47,14 @@ pub struct ModelRecord {
     pub default_temperature: Option<f32>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct EmbeddingModelRecord {
+    #[serde(default)]
+    pub n_ctx: usize,
+    #[serde(default)]
+    pub size: i32,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ModelsOnly {
     pub code_completion_models: IndexMap<String, ModelRecord>,
@@ -182,7 +190,7 @@ pub struct CodeAssistantCapsChat {
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct CodeAssistantCapsEmbedding {
     pub endpoint: String,
-    pub models: IndexMap<String, ModelRecord>,
+    pub models: IndexMap<String, EmbeddingModelRecord>,
     pub default_model: String,
 }
 
@@ -316,8 +324,7 @@ fn load_caps_from_buf_v2(
         endpoint_embeddings_template: relative_to_full_url(&caps_url, &caps_v2.embedding.endpoint)?,
         embedding_model: caps_v2.embedding.default_model.clone(),
         embedding_n_ctx: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx,
-        // embedding_size: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx as i32,
-        embedding_size: 768,  // TODO: this is wrong but vecdb requires it
+        embedding_size: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().size,
 
         // Telemetry endpoints
         telemetry_basic_dest: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
@@ -336,12 +343,12 @@ fn load_caps_from_buf_v2(
         // Version
         caps_version: caps_v2.caps_version,
 
-        // Collect all models from completion, chat and embeddings sections
+        // Collect all models from completion and chat sections
         running_models: {
             let mut models = std::collections::HashSet::new();
             models.extend(caps_v2.completion.models.keys().cloned());
             models.extend(caps_v2.chat.models.keys().cloned());
-            models.extend(caps_v2.embedding.models.keys().cloned());
+            // models.extend(caps_v2.embedding.models.keys().cloned());
             models.into_iter().collect()
         },
 
