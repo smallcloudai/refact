@@ -221,7 +221,7 @@ class BaseCompletionsRouter(APIRouter):
         raise NotImplementedError()
 
     async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
-        client_version = self._check_deprecated_client_version(user_agent)
+        client_version = self._parse_client_version(user_agent)
         data = self._caps_data()
         if client_version is not None and client_version < (0, 10, 15):
             log(f"{user_agent} is deprecated, fallback to old caps format. Please upgrade client's plugin.")
@@ -337,7 +337,7 @@ class BaseCompletionsRouter(APIRouter):
             log(f"can't parse client version `{user_agent}`")
             return None
         major, minor, patch = map(int, m.groups())
-        log(f"user version {major}.{minor}.{patch}")
+        log(f"client version {major}.{minor}.{patch}")
         return major, minor, patch
 
     @staticmethod
