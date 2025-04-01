@@ -1,6 +1,7 @@
 import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { CodeChatModel, CodeCompletionModel, EmbeddingModel } from "./models";
 
 export const capsApi = createApi({
   reducerPath: "caps",
@@ -48,43 +49,20 @@ export const capsApi = createApi({
 
 export const capsEndpoints = capsApi.endpoints;
 
-export type CodeChatModel = {
-  default_scratchpad: string;
-  n_ctx: number;
-  similar_models: string[];
-  supports_tools?: boolean | null | undefined;
-  supports_scratchpads: Record<
-    string,
-    {
-      default_system_message?: string;
-    }
-  >;
-  supports_multimodality?: boolean;
-  supports_clicks?: boolean;
-  // TODO: could be defined
-  supports_agent?: boolean;
-  supports_boost_reasoning?: boolean;
-};
-
-export type CodeCompletionModel = {
-  default_scratchpad: string;
-  n_ctx: number;
-  similar_models: string[];
-  supports_scratchpads: Record<string, Record<string, unknown>>;
-  supports_tools?: boolean;
-  supports_multimodality?: boolean;
-  supports_clicks?: boolean;
-};
-
 export type CapsResponse = {
   caps_version: number;
   cloud_name: string;
+
   chat_default_model: string;
-  code_chat_default_system_prompt: string;
   chat_models: Record<string, CodeChatModel>;
-  completion_default_model: string;
+  code_chat_default_system_prompt: string;
   completion_models: Record<string, CodeCompletionModel>;
+  completion_default_model: string;
   code_completion_n_ctx: number;
+  embedding_model: EmbeddingModel;
+  chat_thinking_model: string;
+  chat_light_model: string;
+
   endpoint_chat_passthrough: string;
   endpoint_style: string;
   endpoint_template: string;

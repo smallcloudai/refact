@@ -1,0 +1,328 @@
+import { RootState } from "../../app/store";
+import { MODEL_URL, MODELS_URL } from "./consts";
+import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { hasProperty } from "./providers";
+
+export const modelsApi = createApi({
+  reducerPath: "models",
+  tagTypes: ["MODELS", "MODEL"],
+  baseQuery: fetchBaseQuery({
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).config.apiKey;
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
+  endpoints: (builder) => ({
+    getModels: builder.query<ModelsResponse, GetModelsArgs>({
+      queryFn: async (args, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${MODELS_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "GET",
+          url,
+          params: {
+            provider: args.providerName,
+          },
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) {
+          return { error: result.error };
+        }
+        if (!isModelsResponse(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from /v1/models",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+    getModel: builder.query<Model, GetModelArgs>({
+      queryFn: async (args, api, extraOptions, baseQuery) => {
+        const { modelName, modelType, providerName } = args;
+
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${MODELS_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "GET",
+          url,
+          params: {
+            provider: providerName,
+            model: modelName,
+            type: modelType,
+          },
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) {
+          return { error: result.error };
+        }
+        if (!isModel(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from /v1/model",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+    updateModel: builder.mutation<unknown, UpdateModelRequestBody>({
+      invalidatesTags: (_result, _error, args) => [
+        { type: "MODEL", id: args.model },
+      ],
+      queryFn: async (args, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${MODEL_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "POST",
+          url,
+          body: { ...args },
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) {
+          return { error: result.error };
+        }
+        if (!isModel(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from /v1/model",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+    deleteModel: builder.mutation<unknown, DeleteModelRequestBody>({
+      invalidatesTags: (_result, _error, args) => [
+        { type: "MODEL", id: args.model },
+      ],
+      queryFn: async (args, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${MODEL_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "DELETE",
+          url,
+          params: { ...args },
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) {
+          return { error: result.error };
+        }
+        if (!isModel(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from /v1/model",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+  }),
+  refetchOnMountOrArgChange: true,
+});
+
+export type ModelsResponse = {
+  completion_models: CodeCompletionModel[];
+  chat_models: CodeChatModel[];
+  embedding_model: EmbeddingModel;
+};
+
+export type ModelType = "embedding" | "completion" | "chat";
+
+export type GetModelArgs = {
+  modelName: string;
+  providerName: string;
+  modelType: ModelType;
+};
+
+export type GetModelsArgs = {
+  providerName: string;
+};
+
+export type UpdateModelRequestBody = {
+  provider: string;
+  model: string;
+  data: Model;
+  type: ModelType;
+};
+
+export type DeleteModelRequestBody = Omit<UpdateModelRequestBody, "data">;
+
+export type SupportsReasoningStyle = "openai" | "anthropic" | "deepseek";
+
+export type CodeChatModel = {
+  n_ctx: number;
+  name: string;
+  tokenizer: string;
+
+  supports_tools: boolean;
+  supports_multimodality: boolean;
+  supports_clicks: boolean;
+  supports_agent: boolean;
+  supports_reasoning: SupportsReasoningStyle;
+  supports_boost_reasoning: boolean;
+  default_temperature: number | null;
+
+  enabled: boolean;
+};
+
+export type CodeCompletionModel = {
+  n_ctx: number;
+  name: string;
+  tokenizer: string;
+  enabled: boolean;
+};
+
+export type EmbeddingModel = {
+  n_ctx: number;
+  name: string;
+  tokenizer: string;
+
+  embedding_size: number;
+  rejection_threshold: number;
+  embedding_batch: number;
+
+  enabled: boolean;
+};
+
+export function isModelsResponse(data: unknown): data is ModelsResponse {
+  // Check if data is an object
+  if (typeof data !== "object" || data === null) return false;
+
+  if (
+    !hasProperty(data, "completion_models") ||
+    !hasProperty(data, "chat_models") ||
+    !hasProperty(data, "embedding_model")
+  )
+    return false;
+
+  return true;
+}
+
+export type Model = CodeChatModel | CodeCompletionModel | EmbeddingModel;
+// TODO: not sure about name of this constant
+const SUPPORTS_REASONING_STYLES = ["openai", "anthropic", "deepseek"];
+
+export function isCodeChatModel(data: unknown): data is CodeChatModel {
+  if (!data || typeof data !== "object") return false;
+
+  if (!("n_ctx" in data) || typeof data.n_ctx !== "number") return false;
+  if (!("name" in data) || typeof data.name !== "string") return false;
+  if (!("tokenizer" in data) || typeof data.tokenizer !== "string")
+    return false;
+
+  if (!("supports_tools" in data) || typeof data.supports_tools !== "boolean")
+    return false;
+  if (
+    !("supports_multimodality" in data) ||
+    typeof data.supports_multimodality !== "boolean"
+  )
+    return false;
+  if (!("supports_clicks" in data) || typeof data.supports_clicks !== "boolean")
+    return false;
+  if (!("supports_agent" in data) || typeof data.supports_agent !== "boolean")
+    return false;
+
+  if (!("supports_reasoning" in data)) return false;
+  if (!SUPPORTS_REASONING_STYLES.includes(data.supports_reasoning as string))
+    return false;
+
+  if (
+    !("supports_boost_reasoning" in data) ||
+    typeof data.supports_boost_reasoning !== "boolean"
+  )
+    return false;
+
+  if (!("default_temperature" in data)) return false;
+  if (
+    data.default_temperature !== null &&
+    typeof data.default_temperature !== "number"
+  )
+    return false;
+
+  if (!("enabled" in data) || typeof data.enabled !== "boolean") return false;
+
+  return true;
+}
+
+export function isCodeCompletionModel(
+  data: unknown,
+): data is CodeCompletionModel {
+  if (!data || typeof data !== "object") return false;
+
+  if (!("n_ctx" in data) || typeof data.n_ctx !== "number") return false;
+  if (!("name" in data) || typeof data.name !== "string") return false;
+  if (!("tokenizer" in data) || typeof data.tokenizer !== "string")
+    return false;
+  if (!("enabled" in data) || typeof data.enabled !== "boolean") return false;
+
+  return true;
+}
+
+export function isEmbeddingModel(data: unknown): data is EmbeddingModel {
+  if (!data || typeof data !== "object") return false;
+
+  if (!("n_ctx" in data) || typeof data.n_ctx !== "number") return false;
+  if (!("name" in data) || typeof data.name !== "string") return false;
+  if (!("tokenizer" in data) || typeof data.tokenizer !== "string")
+    return false;
+
+  if (!("embedding_size" in data) || typeof data.embedding_size !== "number")
+    return false;
+  if (
+    !("rejection_threshold" in data) ||
+    typeof data.rejection_threshold !== "number"
+  )
+    return false;
+  if (!("embedding_batch" in data) || typeof data.embedding_batch !== "number")
+    return false;
+
+  if (!("enabled" in data) || typeof data.enabled !== "boolean") return false;
+
+  return true;
+}
+
+export function isModel(data: unknown): data is Model {
+  return (
+    isCodeChatModel(data) ||
+    isCodeCompletionModel(data) ||
+    isEmbeddingModel(data)
+  );
+}
