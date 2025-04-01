@@ -1,15 +1,19 @@
-use std::{path::{Path, PathBuf}, sync::Arc};
+use std::path::{Path, PathBuf}; 
+use std::sync::{Arc, OnceLock};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{caps::{strip_model_from_finetune, BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord}, custom_error::YamlError};
-
+use crate::caps::{strip_model_from_finetune, BaseModelRecord, ChatModelRecord, 
+    CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord};
+use crate::custom_error::YamlError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CapsProvider {
     #[serde(alias = "cloud_name", default)]
     pub name: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 
     #[serde(default = "default_endpoint_style")]
     pub endpoint_style: String,
@@ -52,6 +56,8 @@ fn default_endpoint_style() -> String { "openai".to_string() }
 
 fn default_code_completion_n_ctx() -> usize { 2048 }
 
+fn default_true() -> bool { true }
+
 fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
     deserializer: D
 ) -> Result<EmbeddingModelRecord, D::Error> {
@@ -68,6 +74,26 @@ fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
     }
 }
 
+const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
+    ("openai", include_str!("yaml_configs/default_providers/openai.yaml")),
+    ("openrouter", include_str!("yaml_configs/default_providers/openrouter.yaml")),
+];
+static PARSED_PROVIDERS: OnceLock<IndexMap<String, CapsProvider>> = OnceLock::new();
+
+pub fn get_provider_templates() -> &'static IndexMap<String, CapsProvider> {
+    PARSED_PROVIDERS.get_or_init(|| {
+        let mut map = IndexMap::new();
+        for (name, yaml) in PROVIDER_TEMPLATES {
+            if let Ok(mut provider) = serde_yaml::from_str::<CapsProvider>(yaml) {
+                provider.name = name.to_string();
+                map.insert(name.to_string(), provider);
+            } else {
+                panic!("Failed to parse template for provider {}", name);
+            }
+        }
+        map
+    })
+}
 
 /// Returns yaml files from providers.d directory, and list of errors from reading 
 /// directory or listing files
@@ -387,5 +413,15 @@ pub fn resolve_provider_api_key(provider: &CapsProvider, cmdline_api_key: &str) 
             }
         }
         k => k.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_provider_templates() {
+        let _ = get_provider_templates(); // This will panic if any template fails to parse
     }
 }
