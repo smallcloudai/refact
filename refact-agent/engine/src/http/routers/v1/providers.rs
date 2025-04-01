@@ -36,11 +36,9 @@ pub async fn handle_v1_providers(
 pub async fn handle_v1_provider_templates() -> Response<Body> {
     let provider_templates = get_provider_templates();
     
-    let result = provider_templates.keys().map(|name| {
-        json!({
-            "name": name
-        })
-    }).collect::<Vec<_>>();
+    let result = provider_templates.keys().map(|name| { json!({
+        "name": name
+    })}).collect::<Vec<_>>();
 
     Response::builder()
         .status(StatusCode::OK)

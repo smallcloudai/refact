@@ -165,9 +165,13 @@
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
-                "openai/gpt-4o",
                 "gpt-4o-mini",
-                "gpt-4o-mini-2024-07-18"
+                "gpt-4o-mini-2024-07-18",
+                "openai/gpt-4o",
+                "openai/gpt-4o-2024-05-13",
+                "openai/gpt-4o-2024-08-06",
+                "openai/gpt-4o-mini",
+                "openai/gpt-4o-mini-2024-07-18"
             ]
         },
         "claude-3-sonnet": {
@@ -186,7 +190,16 @@
                 "claude-3-5-sonnet",
                 "claude-3-5-sonnet-20241022",
                 "claude-3-7-sonnet",
-                "claude-3-7-sonnet-20250219"
+                "claude-3-7-sonnet-20250219",
+                "anthropic/claude-3-sonnet",
+                "anthropic/claude-3-haiku",
+                "anthropic/claude-3-5-haiku",
+                "anthropic/claude-3-5-haiku-20241022",
+                "anthropic/claude-3-opus",
+                "anthropic/claude-3-5-sonnet",
+                "anthropic/claude-3-5-sonnet-20241022",
+                "anthropic/claude-3-7-sonnet",
+                "anthropic/claude-3-7-sonnet-20250219"
             ]
         },
         "groq-llama-3.1-8b": {
@@ -354,7 +367,9 @@
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
-                "openai/gpt-4o"
+                "openai/gpt-4o",
+                "openai/gpt-4o-2024-05-13",
+                "openai/gpt-4o-2024-08-06"
             ]
         },
         "gpt-4o-mini": {
@@ -363,7 +378,9 @@
             "supports_multimodality": true,
             "scratchpad": "PASSTHROUGH",
             "similar_models": [
-                "gpt-4o-mini-2024-07-18"
+                "gpt-4o-mini-2024-07-18",
+                "openai/gpt-4o-mini",
+                "openai/gpt-4o-min-2024-07-18"
             ],
             "tokenizer": "hf://Xenova/gpt-4o"
         },
@@ -374,14 +391,20 @@
             "supports_reasoning": "openai",
             "supports_boost_reasoning": true,
             "scratchpad": "PASSTHROUGH",
-            "tokenizer": "hf://Xenova/gpt-4o"
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "openai/o1"
+            ]
         },
         "o1-mini": {
             "n_ctx": 128000,
             "supports_tools": true,
             "supports_reasoning": "openai",
             "scratchpad": "PASSTHROUGH",
-            "tokenizer": "hf://Xenova/gpt-4o"
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "openai/o1-mini"
+            ]
         },
         "o3-mini": {
             "n_ctx": 200000,
@@ -391,7 +414,21 @@
             "supports_reasoning": "openai",
             "supports_boost_reasoning": true,
             "scratchpad": "PASSTHROUGH",
-            "tokenizer": "hf://Xenova/gpt-4o"
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "openai/o3-mini"
+            ]
+        },
+        "gpt-4.5-preview": {
+            "n_ctx": 128000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "openai/gpt-4.5-preview"
+            ]
         },
         "claude-instant-1.2": {
             "n_ctx": 8096,
@@ -400,7 +437,12 @@
                 "claude-2.1",
                 "claude-3-haiku",
                 "claude-3-opus",
-                "claude-3-sonnet"
+                "claude-3-sonnet",
+                "anthropic/claude-instant-1.2",
+                "anthropic/claude-2.1",
+                "anthropic/claude-3-haiku",
+                "anthropic/claude-3-opus",
+                "anthropic/claude-3-sonnet"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },
@@ -412,7 +454,9 @@
             "scratchpad": "PASSTHROUGH",
             "tokenizer": "hf://Xenova/claude-tokenizer",
             "similar_models": [
-                "claude-3-5-sonnet-20240620"
+                "claude-3-5-sonnet-20240620",
+                "anthropic/claude-3-5-sonnet-20240620",
+                "anthropic/claude-3.5-sonnet"
             ]
         },
         "claude-3-5-sonnet-20241022": {
@@ -431,7 +475,8 @@
             "supports_agent": false,
             "scratchpad": "PASSTHROUGH",
             "similar_models": [
-                "claude-3-5-haiku-20241022"
+                "claude-3-5-haiku-20241022",
+                "anthropic/claude-3-5-haiku"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },
@@ -445,7 +490,8 @@
             "supports_boost_reasoning": true,
             "scratchpad": "PASSTHROUGH",
             "similar_models": [
-                "claude-3-7-sonnet-20250219"
+                "claude-3-7-sonnet-20250219",
+                "anthropic/claude-3-7-sonnet"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },
