@@ -281,6 +281,7 @@ class BaseCompletionsRouter(APIRouter):
             if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
                 embedding_models[model_name] = {
                     "n_ctx": model_info["T"],
+                    "size": model_info["size"],
                 }
             else:
                 log(f"embedding model `{model_name}` is listed as running but not found in configs, skip")

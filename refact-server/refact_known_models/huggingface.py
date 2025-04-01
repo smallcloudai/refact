@@ -313,6 +313,7 @@ huggingface_mini_db = {
         "model_path": "thenlper/gte-base",
         "model_class_kwargs": {},
         "T": 512,
+        "size": 768,
         "filter_caps": ["embeddings"],
     },
     "thenlper/gte-base/cpu": {
@@ -321,6 +322,7 @@ huggingface_mini_db = {
         "model_class_kwargs": {},
         "cpu": True,
         "T": 512,
+        "size": 768,
         "filter_caps": ["embeddings"],
     },
 }
