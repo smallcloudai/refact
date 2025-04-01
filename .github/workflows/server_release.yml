@@ -5,10 +5,6 @@ on:
       - server/v*
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: refact-server
-
 jobs:
   build:
     name: Build
@@ -49,6 +45,13 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF_NAME#server/}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Inject cache docker image
         working-directory: refact-server
@@ -80,7 +83,7 @@ jobs:
           push: true
           context: refact-server
           tags: |
-            smallcloud/refact_self_hosting:${{github.ref_name}}
+            smallcloud/refact_self_hosting:${{ env.VERSION }}
             smallcloud/refact_self_hosting:latest
           platforms: |
             linux/amd64

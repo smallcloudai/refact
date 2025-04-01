@@ -18,6 +18,10 @@
   margin-top: 0;
 }
 
+.apply_button {
+  --cursor-disabled: default;
+}
+
 /* :global(.radix-themes) .textdoc.textdoc__update :global(.hljs.language-diff) {
   --hlbg: var(--gray-3);
   --hlcolor1: var(--gray-12);

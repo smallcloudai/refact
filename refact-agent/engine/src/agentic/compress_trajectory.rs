@@ -6,6 +6,7 @@ use crate::agentic::generate_commit_message::remove_fencing;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
+use tracing::warn;
 use crate::caps::strip_model_from_finetune;
 
 const COMPRESSION_MESSAGE: &str = r#"
@@ -42,14 +43,26 @@ Write only the json and nothing else.
 "#;
 const TEMPERATURE: f32 = 0.0;
 
-fn parse_goal(trajectory: &String) -> Result<String, String> {
-    let traj_message_parsed: Vec<(String, String)> = serde_json::from_str(trajectory.as_str())
-        .map_err(|e| format!("Error while parsing: {}\nTrajectory:\n{}", e, trajectory))?;
-    let (name, content) = traj_message_parsed.first().ok_or("Empty trajectory".to_string())?;
+fn parse_goal(trajectory: &String) -> Option<String> {
+    let traj_message_parsed: Vec<(String, String)> = match serde_json::from_str(trajectory.as_str()) {
+        Ok(data) => data,
+        Err(e) => {
+            warn!("Error while parsing: {}\nTrajectory:\n{}", e, trajectory);
+            return None;
+        }
+    };
+    let (name, content) = match traj_message_parsed.first() {
+        Some(data) => data,
+        None => {
+            warn!("Empty trajectory:\n{}", trajectory);
+            return None;
+        }
+    };
     if name != "goal" {
-        Err("Goal should be first item in trajectory".to_string())
+        warn!("Trajectory does not have a goal message");
+        None
     } else {
-        Ok(content.clone())
+        Some(content.clone())
     }
 }
 
@@ -140,8 +153,12 @@ pub async fn compress_trajectory(
         .flatten()
         .flatten()
         .ok_or("No traj message was generated".to_string())?;
-    let trajectory = remove_fencing(&content);
-    let goal = parse_goal(&trajectory)?;
-
+    let code_blocks = remove_fencing(&content);
+    let trajectory = if !code_blocks.is_empty() {
+        code_blocks[0].clone()
+    } else {
+        content.clone()
+    };
+    let goal = parse_goal(&trajectory).unwrap_or("".to_string());
     Ok((goal, trajectory))
 }

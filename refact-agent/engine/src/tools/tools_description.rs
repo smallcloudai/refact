@@ -137,7 +137,7 @@ pub async fn tools_merged_and_filtered(
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
-        ("think".to_string(), Box::new(crate::tools::tool_deep_thinking::ToolDeepThinking{}) as Box<dyn Tool + Send>),
+        ("deep_analysis".to_string(), Box::new(crate::tools::tool_deep_analysis::ToolDeepAnalysis{}) as Box<dyn Tool + Send>),
         ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
@@ -195,9 +195,6 @@ tools:
       - name: "symbol"
         type: "string"
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
-      - name: "skeleton"
-        type: "boolean"
-        description: "Skeletonize ouput. Set true to explore, set false when as much context as possible is needed."
     parameters_required:
       - "symbol"
 
@@ -207,9 +204,6 @@ tools:
       - name: "symbol"
         type: "string"
         description: "The exact name of a function, method, class, type alias. No spaces allowed."
-      - name: "skeleton"
-        type: "boolean"
-        description: "Skeletonize ouput. Set true to explore, set false when as much context as possible is needed."
     parameters_required:
       - "symbol"
 
@@ -234,17 +228,14 @@ tools:
       - "url"
 
   - name: "cat"
-    description: "Like cat in console, but better: it can read multiple files and skeletonize them. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full. It can also read images just fine."
+    description: "Like cat in console, but better: it can read multiple files and images. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext, dir3/dir4"
+        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4."
       - name: "symbols"
         type: "string"
         description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
-      - name: "skeleton"
-        type: "boolean"
-        description: "if true, files will be skeletonized - mostly only AST symbols will be visible"
     parameters_required:
       - "paths"
 
@@ -284,7 +275,7 @@ tools:
 
   - name: "create_textdoc"
     agentic: false
-    description: "Creates a new text document or code or completely replaces the content of an existing document"
+    description: "Creates a new text document or code or completely replaces the content of an existing document. Avoid trailing spaces and tabs."
     parameters:
       - name: "path"
         type: "string"
@@ -298,7 +289,7 @@ tools:
 
   - name: "update_textdoc"
     agentic: false
-    description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient."
+    description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient. Avoid trailing spaces and tabs."
     parameters:
       - name: "path"
         type: "string"
@@ -320,7 +311,7 @@ tools:
 
   - name: "update_textdoc_regex"
     agentic: false
-    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns."
+    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. Avoid trailing spaces and tabs."
     parameters:
       - name: "path"
         type: "string"
@@ -347,13 +338,13 @@ tools:
     parameters:
       - name: "problem_statement"
         type: "string"
-        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words."
+        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words. Avoid trailing spaces and tabs from all lines."
     parameters_required:
       - "problem_statement"
 
-  - name: "think"
+  - name: "deep_analysis"
     agentic: true
-    description: "Think about a complex problem to make a plan."
+    description: "Deeply analyze a complex problem to make a good solution or a plan to follow. Do not call it unless the user asks explicitly."
     parameters:
       - name: "problem_statement"
         type: "string"

@@ -24,21 +24,74 @@ pub struct ToolCat;
 
 const CAT_MAX_IMAGES_CNT: usize = 1;
 
-pub fn parse_skeleton_from_args(args: &HashMap<String, Value>) -> Result<bool, String> {
-    Ok(match args.get("skeleton") {
-        Some(Value::Bool(s)) => *s,
+fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap<String, Option<(usize, usize)>>, Vec<String>), String> {
+    let raw_paths = match args.get("paths") {
         Some(Value::String(s)) => {
-            if s == "true" {
-                true
-            } else if s == "false" {
-                false
+            s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>()
+        },
+        Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
+        None => return Err("Missing argument `paths`".to_string())
+    };
+    
+    let mut paths = Vec::new();
+    let mut path_line_ranges = HashMap::new();
+    
+    for path_str in raw_paths {
+        if let Some(colon_pos) = path_str.find(':') {
+            let (file_path, range_str) = path_str.split_at(colon_pos);
+            let file_path = file_path.trim().to_string();
+            let range_str = range_str[1..].trim(); // Remove the colon
+            
+            // Parse the line range
+            if range_str.contains('-') {
+                let range_parts: Vec<&str> = range_str.split('-').collect();
+                if range_parts.len() == 2 {
+                    let start = match range_parts[0].trim().parse::<usize>() {
+                        Ok(n) => n,
+                        Err(_) => return Err(format!("Invalid start line: {}", range_parts[0]))
+                    };
+                    let end = match range_parts[1].trim().parse::<usize>() {
+                        Ok(n) => n,
+                        Err(_) => return Err(format!("Invalid end line: {}", range_parts[1]))
+                    };
+                    if start > end {
+                        return Err(format!("Start line ({}) cannot be greater than end line ({})", start, end));
+                    }
+                    path_line_ranges.insert(file_path.clone(), Some((start, end)));
+                } else {
+                    return Err(format!("Invalid line range format: {}", range_str));
+                }
             } else {
-                return Err(format!("argument `skeleton` is not a bool: {:?}", s));
+                // Single line case
+                match range_str.parse::<usize>() {
+                    Ok(n) => path_line_ranges.insert(file_path.clone(), Some((n, n))),
+                    Err(_) => return Err(format!("Invalid line number: {}", range_str))
+                };
             }
+            
+            paths.push(file_path);
+        } else {
+            paths.push(path_str.clone());
+            path_line_ranges.insert(path_str, None);
         }
-        Some(v) => return Err(format!("argument `skeleton` is not a bool: {:?}", v)),
-        None => false
-    })
+    }
+    
+    let symbols = match args.get("symbols") {
+        Some(Value::String(s)) => {
+            if s == "*" {
+                vec![]
+            } else {
+                s.split(",")
+                    .map(|x| x.trim().to_string())
+                    .filter(|x| !x.is_empty())
+                    .collect::<Vec<_>>()
+            }
+        },
+        Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
+        None => vec![],
+    };
+    
+    Ok((paths, path_line_ranges, symbols))
 }
 
 #[async_trait]
@@ -52,32 +105,9 @@ impl Tool for ToolCat {
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
-        let paths = match args.get("paths") {
-            Some(Value::String(s)) => {
-                let paths = s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>();
-                paths
-            },
-            Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
-            None => return Err("Missing argument `paths`".to_string())
-        };
-        let symbols = match args.get("symbols") {
-            Some(Value::String(s)) => {
-                if s == "*" {
-                    vec![]
-                } else {
-                    s.split(",")
-                        .map(|x| x.trim().to_string())
-                        .filter(|x| !x.is_empty())
-                        .collect::<Vec<_>>()
-                }
-            },
-            Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
-            None => vec![],
-        };
-        let skeleton = parse_skeleton_from_args(args)?;
-        ccx.lock().await.pp_skeleton = skeleton;
-
-        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = paths_and_symbols_to_cat(ccx.clone(), paths, symbols).await;
+        let (paths, path_line_ranges, symbols) = parse_cat_args(args)?;
+        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = 
+            paths_and_symbols_to_cat_with_path_ranges(ccx.clone(), paths, path_line_ranges, symbols).await;
 
         let mut content = "".to_string();
         if !filenames_present.is_empty() {
@@ -181,9 +211,10 @@ async fn load_image(path: &String, f_type: &String) -> Result<MultimodalElement,
     )
 }
 
-pub async fn paths_and_symbols_to_cat(
+pub async fn paths_and_symbols_to_cat_with_path_ranges(
     ccx: Arc<AMutex<AtCommandsContext>>,
     paths: Vec<String>,
+    path_line_ranges: HashMap<String, Option<(usize, usize)>>,
     arg_symbols: Vec<String>,
 ) -> (Vec<String>, Vec<String>, Vec<String>, Vec<ContextEnum>, Vec<MultimodalElement>)
 {
@@ -195,6 +226,7 @@ pub async fn paths_and_symbols_to_cat(
 
     let mut not_found_messages = vec![];
     let mut corrected_paths = vec![];
+    let mut corrected_path_to_original = HashMap::new();
 
     for p in paths {
         // both not fuzzy
@@ -206,7 +238,8 @@ pub async fn paths_and_symbols_to_cat(
                 Ok(f) => f,
                 Err(e) => { not_found_messages.push(e); continue;}
             };
-            corrected_paths.push(file_path);
+            corrected_paths.push(file_path.clone());
+            corrected_path_to_original.insert(file_path, p.clone());
         } else {
             let candidate = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
                 Ok(f) => f,
@@ -215,7 +248,11 @@ pub async fn paths_and_symbols_to_cat(
             let path = PathBuf::from(candidate);
             let indexing_everywhere = crate::files_blocklist::reload_indexing_everywhere_if_needed(gcx.clone()).await;
             let files_in_dir = ls_files(&indexing_everywhere, &path, false).unwrap_or(vec![]);
-            corrected_paths.extend(files_in_dir.into_iter().map(|x|x.to_string_lossy().to_string()));
+            for file in files_in_dir {
+                let file_str = file.to_string_lossy().to_string();
+                corrected_paths.push(file_str.clone());
+                corrected_path_to_original.insert(file_str, p.clone());
+            }
         }
     }
 
@@ -230,6 +267,9 @@ pub async fn paths_and_symbols_to_cat(
     if let Some(ast_service) = ast_service_opt {
         let ast_index = ast_service.lock().await.ast_index.clone();
         for p in unique_paths.iter() {
+            let original_path = corrected_path_to_original.get(p).unwrap_or(p);
+            let line_range = path_line_ranges.get(original_path).cloned().flatten();
+            
             let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p).await;
             // s.name() means the last part of the path
             // symbols.contains means exact match in comma-separated list
@@ -245,13 +285,30 @@ pub async fn paths_and_symbols_to_cat(
             }
 
             for sym in syms_def_in_this_file {
+                let sym_start = sym.full_line1();
+                let sym_end = sym.full_line2();
+
+                // If line range is specified, check overlap
+                let (start_line, end_line) = match line_range {
+                    Some((start, end)) => {
+                        // If symbol doesn't overlap with requested line range, skip it
+                        if end < sym_start || start > sym_end {
+                            // Symbol is completely outside requested range
+                            continue;
+                        }
+                        // Show the intersection of symbol range and requested range
+                        (start.max(sym_start), end.min(sym_end))
+                    },
+                    None => (sym_start, sym_end)
+                };
+                
                 let cf = ContextFile {
                     file_name: p.clone(),
                     file_content: "".to_string(),
-                    line1: sym.full_line1(),
-                    line2: sym.full_line2(),
+                    line1: start_line,
+                    line2: end_line,
                     symbols: vec![sym.path()],
-                    gradient_type: -1,
+                    gradient_type: 5,
                     usefulness: 100.0,
                 };
                 context_enums.push(ContextEnum::ContextFile(cf));
@@ -271,6 +328,9 @@ pub async fn paths_and_symbols_to_cat(
 
     let mut image_counter = 0;
     for p in unique_paths.iter().filter(|x|!filenames_got_symbols_for.contains(x)) {
+        let original_path = corrected_path_to_original.get(p).unwrap_or(p);
+        let line_range = path_line_ranges.get(original_path).cloned().flatten();
+        
         // don't have symbols for these, so we need to mention them as files, without a symbol, analog of @file
         let f_type = get_file_type(&PathBuf::from(p));
 
@@ -292,14 +352,32 @@ pub async fn paths_and_symbols_to_cat(
         } else {
             match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(p)).await {
                 Ok(text) => {
+                    let total_lines = text.lines().count();
+                    let (start_line, end_line) = match line_range {
+                        Some((start, end)) => {
+                            let start = start.max(1);
+                            let end = end.min(total_lines);
+                            if start > end {
+                                not_found_messages.push(format!(
+                                    "Requested line range {}-{} is outside file bounds (file has {} lines)", 
+                                    start, end, total_lines
+                                ));
+                                (1, total_lines)
+                            } else {
+                                (start, end)
+                            }
+                        },
+                        None => (1, total_lines)
+                    };
+                    
                     let cf = ContextFile {
                         file_name: p.clone(),
                         file_content: "".to_string(),
-                        line1: 1,
-                        line2: text.lines().count(),
+                        line1: start_line,
+                        line2: end_line,
                         symbols: vec![],
-                        gradient_type: -1,
-                        usefulness: 0.0,
+                        gradient_type: 5,
+                        usefulness: 100.0,
                     };
                     context_enums.push(ContextEnum::ContextFile(cf));
                 },

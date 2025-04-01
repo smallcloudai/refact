@@ -1,0 +1,203 @@
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&display=swap');
+/* Dark mode colors. */
+:root {
+    --sl-color-accent-low: #311514;
+    --sl-color-accent: #E7150D;
+    --sl-color-accent-high: #FEF4F4;
+    --sl-color-white: #ffffff;
+    --sl-color-gray-1: #FAFAFA;
+    --sl-color-gray-2: #F3F3F3;
+    --sl-color-gray-3: #D8D8D9;
+    --sl-color-gray-4: #585858;
+    --sl-color-gray-5: #383838;
+    --sl-color-gray-6: #272727;
+    --sl-color-black: #181818;
+
+    /* Sidebar specific colors */
+    --sl-sidebar-color-text-active: var(--sl-color-white);
+    --sl-sidebar-color-bg-active: var(--sl-color-accent);
+    --sl-sidebar-color-bg-hover: var(--sl-color-gray-6);
+}
+
+/* Light mode colors. */
+:root[data-theme='light'] {
+    --sl-color-accent-low: #311514;
+    --sl-color-accent: #E7150D;
+    --sl-color-accent-high: #FEF4F4;
+    --sl-color-white: #181818;
+    --sl-color-gray-1: #272727;
+    --sl-color-gray-2: #383838;
+    --sl-color-gray-3: #585858;
+    --sl-color-gray-4: #8b8b8b;
+    --sl-color-gray-5: #c2c2c2;
+    --sl-color-gray-6: #eeeeee;
+    --sl-color-gray-7: #f6f6f6;
+    --sl-color-black: #ffffff;
+
+    /* Sidebar specific colors */
+    --sl-sidebar-color-text-active: var(--sl-color-white);
+    --sl-sidebar-color-bg-active: var(--sl-color-accent);
+    --sl-sidebar-color-bg-hover: var(--sl-color-gray-6);
+}
+
+/* Main content layout */
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Search container */
+.search-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding: 1rem 0;
+}
+
+/* Rounded corners for various elements */
+a,
+.icon,
+button,
+input,
+.sidebar-content a,
+.pagefind-ui__search-input,
+.search-item,
+.current-page {
+    border-radius: 6px !important;
+    transition: all 0.2s ease;
+}
+
+/* Main sidebar items - first level */
+.sidebar-content > .sidebar-groups > li > details > summary,
+.sidebar-content > .sidebar-groups > li > a {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+/* Second level items - ensure all items at this level match */
+.sidebar-content > .sidebar-groups > li > details li > a,
+.sidebar-content > .sidebar-groups > li > details li > details > summary {
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Third level and deeper items */
+.sidebar-content > .sidebar-groups > li > details li > details li > a,
+.sidebar-content > .sidebar-groups > li > details li > details li > details > summary {
+    font-size: 0.9rem;
+    font-weight: 400;
+    padding-left: 0.5rem;
+    color: var(--sl-color-gray-3);
+}
+
+/* Light mode colors. */
+:root[data-theme='light'] {
+    --sl-color-accent-low: #311514;
+    --sl-color-accent: #E7150D;
+    --sl-color-accent-high: #FEF4F4;
+    --sl-color-white: #181818;
+    --sl-color-gray-1: #272727;
+    --sl-color-gray-2: #383838;
+    --sl-color-gray-3: #585858;
+    --sl-color-gray-4: #8b8b8b;
+    --sl-color-gray-5: #c2c2c2;
+    --sl-color-gray-6: #eeeeee;
+    --sl-color-gray-7: #f6f6f6;
+    --sl-color-black: #ffffff;
+
+    /* Sidebar specific colors */
+    --sl-sidebar-color-text-active: var(--sl-color-white);
+    --sl-sidebar-color-bg-active: var(--sl-color-accent);
+    --sl-sidebar-color-bg-hover: var(--sl-color-gray-6);
+}
+
+body {
+    font-family: "Manrope", sans-serif;
+    font-optical-sizing: auto;
+    font-size: 16px;
+}
+
+/* theme overrides */
+kbd {
+    font-size: 10px !important;
+    font-family: "Manrope", sans-serif !important;
+    font-weight: 800 !important;
+} 
+
+.site-title {
+    max-width: 140px;
+}
+
+header.dialog {
+    background-color: #fff !important;
+    border-radius: 8px;
+    margin: 1rem;
+}
+
+.pagefind-ui__search-input {
+    border: 0 !important;
+    border-radius: 6px !important;
+    padding: 0.75rem 1rem !important;
+}
+
+.full-table {
+    width: 100% !important;
+    table-layout:fixed;
+}
+
+.full-table thead,
+.full-table tbody,
+.full-table tr {
+    width: 100% !important;   
+}
+
+.full-table td,
+.full-table th {
+    width: 100vw;
+}
+
+.full-table td:nth-child(2) {
+    text-align: center;
+}
+
+code {
+    font-family: "Azeret Mono", monospace !important;
+    border-radius: 4px;
+}
+
+/* Video frame styles */
+.video-frame {
+    border: 2px solid var(--sl-color-accent);
+    border-radius: 8px;
+    padding: 1rem;
+    background: var(--sl-color-accent-low);
+}
+
+/* Hover effect only for non-active sidebar links */
+.sidebar-content a:not([aria-current]):hover {
+    background-color: var(--sl-color-gray-6);
+}
+
+/* Current page styling - no hover effects */
+.sidebar-content .current-page {
+    background-color: var(--sl-color-accent-high);
+    color: var(--sl-color-accent);
+    pointer-events: none;
+}
+
+/* Ensure proper contrast for nested items */
+.sidebar-content li > a.current-page,
+.sidebar-content li > a.current-page:hover,
+.sidebar-content li > a.current-page:focus {
+    background-color: var(--sl-color-accent-high) !important;
+    color: var(--sl-color-accent) !important;
+}
+
+/* Video frame styles */
+.video-frame {
+    border: 2px solid var(--sl-color-accent);
+    border-radius: 8px;
+    padding: 1rem;
+    background: var(--sl-color-accent-low);
+}

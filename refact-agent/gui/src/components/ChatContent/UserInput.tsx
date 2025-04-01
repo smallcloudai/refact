@@ -15,6 +15,7 @@ import { RetryForm } from "../ChatForm";
 import { DialogImage } from "../DialogImage";
 import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
+import { Reveal } from "../Reveal";
 
 export type UserInputProps = {
   children: UserMessage["content"];
@@ -33,7 +34,6 @@ export const UserInput: React.FC<UserInputProps> = ({
 
   const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
-  // const ref = React.useRef<HTMLButtonElement>(null);
 
   const handleSubmit = useCallback(
     (value: UserMessage["content"]) => {
@@ -64,9 +64,20 @@ export const UserInput: React.FC<UserInputProps> = ({
     return maybeUserMessage.checkpoints;
   }, [messageIndex, messages]);
 
+  const isCompressed = useMemo(() => {
+    if (typeof children !== "string") return false;
+    return children.startsWith("🗜️ ");
+  }, [children]);
+
   return (
     <Container position="relative" pt="1">
-      {showTextArea ? (
+      {isCompressed ? (
+        <Reveal defaultOpen={false}>
+          <Flex direction="row" my="1" className={styles.userInput}>
+            {elements}
+          </Flex>
+        </Reveal>
+      ) : showTextArea ? (
         <RetryForm
           onSubmit={handleSubmit}
           // TODO
@@ -130,7 +141,6 @@ function process(items: UserInputProps["children"]) {
   if (typeof items !== "string") {
     return processUserInputArray(items);
   }
-
   return processLines(items.split("\n"));
 }
 

@@ -16,10 +16,6 @@ export function addCheckboxValuesToInput(
     result = `${checkboxes.selected_lines.value ?? ""}\n` + result;
   }
 
-  if (checkboxes.file_upload.checked && checkboxes.file_upload.hide !== true) {
-    result = `@file ${checkboxes.file_upload.value ?? ""}\n` + result;
-  }
-
   if (!result.endsWith("\n")) {
     result += "\n";
   }
@@ -27,6 +23,7 @@ export function addCheckboxValuesToInput(
   return result;
 }
 
+// TODO: delete this if unused
 export function activeFileToContextFile(fileInfo: FileInfo): ChatContextFile {
   const content = fileInfo.content ?? "";
   return {

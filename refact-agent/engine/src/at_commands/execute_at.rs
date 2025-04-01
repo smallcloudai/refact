@@ -159,9 +159,7 @@ pub async fn run_at_commands_locally(
         }
     }
 
-    ccx.lock().await.pp_skeleton = false;
-
-    return (rebuilt_messages, any_context_produced)
+    (rebuilt_messages, any_context_produced)
 }
 
 pub async fn run_at_commands_remotely(
@@ -264,7 +262,8 @@ pub async fn execute_at_commands_in_query(
                 clips.push((text_on_clip, cmd_member.pos1, arg_members.last().map(|x|x.pos2).unwrap_or(cmd_member.pos2)));
             },
             Err(e) => {
-                cmd_member.ok = false; cmd_member.reason = Some(format!("incorrect argument; failed to complete: {}", e));
+                cmd_member.ok = false;
+                cmd_member.reason = Some(format!("incorrect argument; failed to complete: {}", e));
                 warn!("can't execute command that indicated it can execute: {}", e);
             }
         }

@@ -1,4 +1,4 @@
-import React, { CSSProperties, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   Text,
   Flex,
@@ -8,6 +8,7 @@ import {
   Box,
   Switch,
   Badge,
+  Button,
 } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -30,22 +31,21 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
-  selectThreadMode,
   selectToolUse,
   setAutomaticPatch,
-  setChatMode,
   setEnabledCheckpoints,
   setToolUse,
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
-import { getChatById } from "../../features/History/historySlice";
+import { useAttachedFiles } from "./useCheckBoxes";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
+  const chatId = useAppSelector(selectChatId);
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
 
   const handleAutomaticPatchChange = (checked: boolean) => {
-    dispatch(setAutomaticPatch(checked));
+    dispatch(setAutomaticPatch({ chatId, value: checked }));
   };
 
   return (
@@ -160,64 +160,6 @@ export const AgentRollbackSwitch: React.FC = () => {
   );
 };
 
-export const ReasoningModeSwitch: React.FC = () => {
-  const DEFAULT_MODE = "AGENT";
-  const ALLOWED_MODES_TO_DISPLAY_SWITCH = ["AGENT", "THINKING_AGENT"];
-  const dispatch = useAppDispatch();
-  const chatId = useAppSelector(selectChatId);
-  const currentMode = useAppSelector(selectThreadMode);
-  const modeFromHistory = useAppSelector(
-    (state) => getChatById(state, chatId)?.mode ?? DEFAULT_MODE,
-    { devModeChecks: { stabilityCheck: "never" } },
-  );
-
-  const isReasoningEnabled = currentMode === "THINKING_AGENT";
-
-  const handleReasoningModeChange = (checked: boolean) => {
-    // TODO: if default mode wasn't agent, but configure or project summary, what should we do?
-    const newMode = checked
-      ? "THINKING_AGENT"
-      : modeFromHistory === "THINKING_AGENT"
-        ? DEFAULT_MODE
-        : modeFromHistory;
-
-    dispatch(setChatMode(newMode));
-  };
-
-  const tooltipStyles: CSSProperties = {
-    marginLeft: 4,
-    visibility: "hidden",
-    opacity: 0,
-  };
-
-  if (currentMode && !ALLOWED_MODES_TO_DISPLAY_SWITCH.includes(currentMode)) {
-    return null;
-  }
-
-  return (
-    <Flex
-      gap="2"
-      align="center"
-      wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
-      justify="between"
-      width="100%"
-    >
-      <Text size="2">Use a o3-mini reasoning model for planning</Text>
-      <Flex gap="2" align="center">
-        <Switch
-          size="1"
-          title="Enable/disable reasoner for Agent"
-          checked={isReasoningEnabled}
-          onCheckedChange={handleReasoningModeChange}
-        />
-        <QuestionMarkCircledIcon style={tooltipStyles} />
-      </Flex>
-    </Flex>
-  );
-};
-
 const CapsSelect: React.FC = () => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
@@ -283,6 +225,7 @@ export type ChatControlsProps = {
   ) => void;
 
   host: Config["host"];
+  attachedFiles: ReturnType<typeof useAttachedFiles>;
 };
 
 const ChatControlCheckBox: React.FC<{
@@ -354,6 +297,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   checkboxes,
   onCheckedChange,
   host,
+  attachedFiles,
 }) => {
   const refs = useTourRefs();
   const dispatch = useAppDispatch();
@@ -402,6 +346,18 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
           />
         );
       })}
+
+      {host !== "web" && (
+        <Button
+          title="Attach current file"
+          onClick={attachedFiles.addFile}
+          disabled={!attachedFiles.activeFile.name || attachedFiles.attached}
+          size="1"
+          radius="medium"
+        >
+          Attach: {attachedFiles.activeFile.name}
+        </Button>
+      )}
 
       {showControls && (
         <Flex gap="2" direction="column">

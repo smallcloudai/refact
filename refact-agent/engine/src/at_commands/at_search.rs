@@ -52,7 +52,7 @@ fn results2message(results: &Vec<vecdb::vdb_structs::VecdbRecord>) -> Vec<Contex
             line1: r.start_line as usize + 1,
             line2: r.end_line as usize + 1,
             symbols: vec![],
-            gradient_type: -1,
+            gradient_type: 4,
             usefulness,
         });
     }

@@ -1,0 +1,24 @@
+---
+import { ViewTransitions } from 'astro:transitions';
+---
+
+<ViewTransitions fallback="swap" />
+
+<script>
+  // To preserve scroll position across page navigations
+  const scrollPositions = new Map();
+
+  // Before the new page's content is prepared, store the current scrollY
+  document.addEventListener('astro:before-preparation', () => {
+    scrollPositions.set(window.location.pathname, window.scrollY);
+  });
+
+  // Once the new page loads, restore the scroll position if available
+  document.addEventListener('astro:page-load', () => {
+    const pos = scrollPositions.get(window.location.pathname);
+    if (pos !== undefined) {
+      window.scrollTo(0, pos);
+      scrollPositions.delete(window.location.pathname);
+    }
+  });
+</script>

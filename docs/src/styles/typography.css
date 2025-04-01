@@ -1,0 +1,43 @@
+/* Base typography styles */
+body {
+    font-family: var(--font-family-base);
+    font-optical-sizing: auto;
+    font-size: var(--font-size-md);
+}
+
+/* Code blocks */
+code {
+    font-family: var(--font-family-mono) !important;
+    border-radius: var(--border-radius-sm);
+}
+
+/* Keyboard shortcuts */
+kbd {
+    font-size: var(--font-size-xs) !important;
+    font-family: var(--font-family-base) !important;
+    font-weight: 800 !important;
+}
+
+/* Sidebar typography hierarchy */
+/* Main sidebar items - first level */
+.sidebar-content > .sidebar-groups > li > details > summary,
+.sidebar-content > .sidebar-groups > li > a {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+/* Second level items */
+.sidebar-content > .sidebar-groups > li > details li > a,
+.sidebar-content > .sidebar-groups > li > details li > details > summary {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+}
+
+/* Third level and deeper items */
+.sidebar-content > .sidebar-groups > li > details li > details li > a,
+.sidebar-content > .sidebar-groups > li > details li > details li > details > summary {
+    font-size: var(--font-size-xs);
+    font-weight: 400;
+    padding-left: var(--space-sm);
+    color: var(--sl-color-gray-3);
+}

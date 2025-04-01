@@ -9,7 +9,6 @@ use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
-use crate::tools::tool_cat::parse_skeleton_from_args;
 
 pub struct ToolAstDefinition;
 
@@ -31,9 +30,6 @@ impl Tool for ToolAstDefinition {
         };
 
         symbol = symbol.replace('.', "::");
-
-        let skeleton = parse_skeleton_from_args(args)?;
-        ccx.lock().await.pp_skeleton = skeleton;
 
         let gcx = ccx.lock().await.global_context.clone();
         let ast_service_opt = gcx.read().await.ast_service.clone();
@@ -63,7 +59,7 @@ impl Tool for ToolAstDefinition {
                         line1: res.full_line1(),
                         line2: res.full_line2(),
                         symbols: vec![res.path_drop0()],
-                        gradient_type: -1,
+                        gradient_type: 4,
                         usefulness: 100.0,
                     })
                 }).collect::<Vec<ContextEnum>>();

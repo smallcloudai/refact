@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use glob::Pattern;
 use indexmap::IndexMap;
-use itertools::Itertools;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -15,7 +14,7 @@ use crate::http::http_post_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
-use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat};
+use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::get_model_record;
@@ -138,15 +137,8 @@ pub async fn run_tools(
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let n_ctx = ccx.lock().await.n_ctx;
-    let reserve_for_context = max_tokens_for_rag_chat(n_ctx, maxgen);
-    let tokens_for_rag = reserve_for_context;
-    ccx.lock().await.tokens_for_rag = tokens_for_rag;
-    info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
-
-    if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
-        warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
-        return Ok((vec![], false));
-    }
+    // Default tokens limit for tools that perform internal compression (`tree()`, ...) 
+    ccx.lock().await.tokens_for_rag = 4096;
 
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
         Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
@@ -155,13 +147,13 @@ pub async fn run_tools(
     if last_msg_tool_calls.is_empty() {
         return Ok((vec![], false));
     }
-
+    
     let mut context_files_for_pp = vec![];
     let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
     let mut any_corrections = false;
 
-    for t_call in last_msg_tool_calls {
+    for t_call in last_msg_tool_calls.iter() {
         let cmd = match tools.get_mut(&t_call.function.name) {
             Some(cmd) => cmd,
             None => {
@@ -243,6 +235,19 @@ pub async fn run_tools(
         assert!(have_answer);
     }
 
+    let reserve_for_context = max_tokens_for_rag_chat_by_tools(
+        &last_msg_tool_calls,
+        &context_files_for_pp,
+        n_ctx, maxgen
+    );
+    let tokens_for_rag = reserve_for_context;
+    ccx.lock().await.tokens_for_rag = tokens_for_rag;
+    info!("run_tools: reserve_for_context {} tokens", reserve_for_context);
+    if tokens_for_rag < MIN_RAG_CONTEXT_LIMIT {
+        warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.");
+        return Ok((vec![], false));
+    }
+
     let (generated_tool, generated_other) = pp_run_tools(
         ccx.clone(),
         original_messages,
@@ -321,6 +326,7 @@ async fn pp_run_tools(
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.postprocess_parameters.clone(), ccx_locked.pp_skeleton)
         };
+        pp_settings.close_small_gaps = true;
         if pp_settings.max_files_n == 0 {
             pp_settings.max_files_n = top_n;
         }
@@ -339,20 +345,11 @@ async fn pp_run_tools(
 
         if !context_file_vec.is_empty() {
             let json_vec: Vec<_> = context_file_vec.iter().map(|p| json!(p)).collect();
-            let filenames = context_file_vec.iter().map(|x| &x.file_name).join("\n");
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap()
             );
-            let duplicate_found = original_messages.iter().any(|msg| msg.content == message.content);
-            if duplicate_found {
-                generated_other.push(ChatMessage::new(
-                    "cd_instruction".to_string(),
-                    format!("💿 You already have these files in the context:\n{filenames}"),
-                ));
-            } else {
-                generated_other.push(message);
-            }
+            generated_other.push(message);
         }
 
     } else {

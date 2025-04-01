@@ -99,6 +99,7 @@ export function useAgentUsage() {
 
   return {
     shouldShow,
+    currentAgentUsage: agentUsage,
     maxAgentUsageAmount,
     aboveUsageLimit,
     startPollingForUser,

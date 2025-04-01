@@ -3,9 +3,8 @@ use image::ImageReader;
 use regex::Regex;
 use serde_json::Value;
 use tokenizers::Tokenizer;
-
+use crate::call_validation::{ChatToolCall, ContextFile};
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
-
 
 pub struct HasRagResults {
     pub was_sent: bool,
@@ -55,8 +54,48 @@ pub fn parse_image_b64_from_image_url_openai(image_url: &str) -> Option<(String,
     })
 }
 
+pub fn max_tokens_for_rag_chat_by_tools(
+    tools: &Vec<ChatToolCall>,
+    context_files: &Vec<ContextFile>,
+    n_ctx: usize,
+    maxgen: usize,
+) -> usize {
+    let base_limit = n_ctx.saturating_sub(maxgen).saturating_sub(RESERVE_FOR_QUESTION_AND_FOLLOWUP);
+    if tools.is_empty() {
+        return base_limit.min(4096);
+    }
+    let context_files_len = context_files.len().min(crate::http::routers::v1::chat::CHAT_TOP_N);
+    let mut overall_tool_limit: usize = 0;
+    for tool in tools {
+        let is_cat_with_lines = if tool.function.name == "cat" {
+            // Look for patterns like "filename:10-20" in the arguments
+            let re = Regex::new(r":[0-9]+-[0-9]+").unwrap();
+            re.is_match(&tool.function.arguments)
+        } else {
+            false
+        };
+        
+        let tool_limit = match tool.function.name.as_str() {
+            "search" | "regex_search" | "definition" | "references" | "cat" if is_cat_with_lines => {
+                if context_files_len < crate::http::routers::v1::chat::CHAT_TOP_N {
+                    // Scale down proportionally to how much we exceed the context limit
+                    let scaling_factor = crate::http::routers::v1::chat::CHAT_TOP_N as f64 / context_files_len as f64;
+                    (4096.0 * scaling_factor) as usize
+                } else {
+                    4096
+                }
+            },
+            "cat" | "locate" => 8192,
+            _ => 4096,  // Default limit for other tools
+        };
+        
+        overall_tool_limit += tool_limit;
+    }
+    base_limit.min(overall_tool_limit)
+}
+
 pub fn max_tokens_for_rag_chat(n_ctx: usize, maxgen: usize) -> usize {
-    (n_ctx/2).saturating_sub(maxgen).saturating_sub(RESERVE_FOR_QUESTION_AND_FOLLOWUP)
+    (n_ctx / 4).saturating_sub(maxgen).saturating_sub(RESERVE_FOR_QUESTION_AND_FOLLOWUP)
 }
 
 fn calculate_image_tokens_by_dimensions_openai(mut width: u32, mut height: u32) -> i32 {

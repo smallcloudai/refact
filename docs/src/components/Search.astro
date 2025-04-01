@@ -1,0 +1,25 @@
+---
+import "@docsearch/css";
+---
+
+<div id="docsearch" transition:persist></div>
+
+<script>
+    import docsearch from "@docsearch/js";
+    
+    let searchInstance: ReturnType<typeof docsearch> | null = null;
+
+    const initSearch = () => {
+        if (!searchInstance) {
+            searchInstance = docsearch({
+                container: "#docsearch",
+                appId: "ANAV9NA8H5",
+                indexName: "refact",
+                apiKey: "2bae895dcb109e0a9b87ee935c121c85",
+            });
+        }
+    };
+
+    // Initialize on first load only
+    document.addEventListener('astro:page-load', initSearch, { once: true });
+</script>

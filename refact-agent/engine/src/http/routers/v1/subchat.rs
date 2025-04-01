@@ -48,6 +48,7 @@ pub async fn handle_v1_subchat(
         None,
         None,
         None,
+        None,
         Some(false),  
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 

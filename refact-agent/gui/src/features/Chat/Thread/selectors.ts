@@ -1,6 +1,10 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
-import { isToolMessage } from "../../../services/refact/types";
+import {
+  CompressionStrength,
+  isToolMessage,
+  isUserMessage,
+} from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
@@ -11,18 +15,21 @@ export const selectToolUse = (state: RootState) => state.chat.tool_use;
 export const selectThreadToolUse = (state: RootState) =>
   state.chat.thread.tool_use;
 export const selectAutomaticPatch = (state: RootState) =>
-  state.chat.automatic_patch;
+  state.chat.thread.automatic_patch;
 
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;
 
+export const selectThreadBoostReasoning = (state: RootState) =>
+  state.chat.thread.boost_reasoning;
+
+// TBD: only used when `/links` suggests a new chat.
 export const selectThreadNewChatSuggested = (state: RootState) =>
   state.chat.thread.new_chat_suggested;
 export const selectThreadMaximumTokens = (state: RootState) =>
   state.chat.thread.currentMaximumContextTokens;
 export const selectThreadCurrentMessageTokens = (state: RootState) =>
   state.chat.thread.currentMessageContextTokens;
-export const selectThreadUsage = (state: RootState) => state.chat.thread.usage;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
@@ -66,4 +73,29 @@ export const selectIntegration = createSelector(
 export const selectThreadMode = createSelector(
   selectThread,
   (thread) => thread.mode,
+);
+
+export const selectLastSentCompression = createSelector(
+  selectMessages,
+  (messages) => {
+    const lastCompression = messages.reduce<null | CompressionStrength>(
+      (acc, message) => {
+        if (isUserMessage(message) && message.compression_strength) {
+          return message.compression_strength;
+        }
+        if (isToolMessage(message) && message.content.compression_strength) {
+          return message.content.compression_strength;
+        }
+        return acc;
+      },
+      null,
+    );
+
+    return lastCompression;
+  },
+);
+
+export const selectThreadPaused = createSelector(
+  selectThread,
+  (thread) => thread.paused ?? false,
 );

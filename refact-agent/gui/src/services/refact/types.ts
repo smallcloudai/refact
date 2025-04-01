@@ -70,6 +70,7 @@ export interface BaseToolResult {
   tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
   content: ToolContent;
+  compression_strength?: CompressionStrength;
 }
 
 export interface SingleModelToolResult extends BaseToolResult {
@@ -146,6 +147,7 @@ export interface UserMessage extends BaseMessage {
     | string
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
   checkpoints?: Checkpoint[];
+  compression_strength?: CompressionStrength;
 }
 
 export type ProcessedUserMessageContentWithImages = {
@@ -155,8 +157,11 @@ export type ProcessedUserMessageContentWithImages = {
 export interface AssistantMessage extends BaseMessage {
   role: "assistant";
   content: string | null;
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[] | null;
+  thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
+  usage?: Usage;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -308,15 +313,27 @@ interface BaseDelta {
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
   tool_calls?: ToolCall[];
+  thinking_blocks?: ThinkingBlock[] | null;
 }
 
 export function isAssistantDelta(delta: unknown): delta is AssistantDelta {
   if (!delta) return false;
   if (typeof delta !== "object") return false;
-  if ("role" in delta && delta.role !== null && delta.role !== "assistant")
-    return false;
+  if ("role" in delta) {
+    if (delta.role === null) return true;
+    if (delta.role !== "assistant") return false;
+  }
   if (!("content" in delta)) return false;
+  if ("reasoning_content" in delta) {
+    // reasoning_content is optional, but if present, must be a string
+    if (
+      delta.reasoning_content !== null &&
+      typeof delta.reasoning_content !== "string"
+    )
+      return false;
+  }
   if (typeof delta.content !== "string") return false;
   return true;
 }
@@ -336,7 +353,6 @@ export function isChatContextFileDelta(
 
 interface ToolCallDelta extends BaseDelta {
   tool_calls: ToolCall[];
-  content?: string | null;
 }
 
 export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
@@ -347,7 +363,43 @@ export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {
   return Array.isArray(delta.tool_calls);
 }
 
-type Delta = AssistantDelta | ChatContextFileDelta | ToolCallDelta | BaseDelta;
+export type ThinkingBlock = {
+  type?: "thinking";
+  thinking: null | string;
+  signature: null | string;
+};
+
+interface ThinkingBlocksDelta extends BaseDelta {
+  thinking_blocks?: ThinkingBlock[];
+  reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
+}
+
+export function isThinkingBlocksDelta(
+  delta: unknown,
+): delta is ThinkingBlocksDelta {
+  if (!delta) return false;
+  if (typeof delta !== "object") return false;
+  if ("reasoning_content" in delta) {
+    // reasoning_content is optional, but if present, must be a string
+    if (
+      delta.reasoning_content !== null &&
+      typeof delta.reasoning_content !== "string"
+    )
+      return false;
+  }
+  if ("thinking_blocks" in delta) {
+    if (delta.thinking_blocks === null) return false;
+    return Array.isArray(delta.thinking_blocks);
+  }
+  return false;
+}
+
+type Delta =
+  | ThinkingBlocksDelta
+  | AssistantDelta
+  | ChatContextFileDelta
+  | ToolCallDelta
+  | BaseDelta;
 
 export type ChatChoice = {
   delta: Delta;
@@ -361,6 +413,7 @@ export type ChatUserMessageResponse =
       role: "user" | "context_file" | "context_memory";
       content: string;
       checkpoints?: Checkpoint[];
+      compression_strength?: CompressionStrength;
     }
   | {
       id: string;
@@ -372,6 +425,7 @@ export type ChatUserMessageResponse =
             | ProcessedUserMessageContentWithImages
           )[];
       checkpoints?: Checkpoint[];
+      compression_strength?: CompressionStrength;
     };
 
 export type ToolResponse = {
@@ -480,6 +534,8 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   return json.role === "tool";
 }
 
+// TODO: isThinkingBlocksResponse
+
 export type DiffResponse = {
   role: "diff";
   content: string;
@@ -555,6 +611,8 @@ export function isChatResponseChoice(
   return true;
 }
 
+// TODO: type checks for this.
+export type CompressionStrength = "absent" | "low" | "medium" | "high";
 export type ChatResponse =
   | ChatResponseChoice
   | ChatUserMessageResponse

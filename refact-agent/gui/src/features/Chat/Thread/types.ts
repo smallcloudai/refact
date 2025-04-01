@@ -19,20 +19,22 @@ export type ChatThread = {
   tool_use?: ToolUse;
   read?: boolean;
   isTitleGenerated?: boolean;
+  boost_reasoning?: boolean;
   integration?: IntegrationMeta | null;
   mode?: LspChatMode;
   project_name?: string;
   last_user_message_id?: string;
   new_chat_suggested: SuggestedChat;
-  usage?: Usage;
+  automatic_patch?: boolean;
   currentMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
+  increase_max_tokens?: boolean;
+  paused?: boolean;
 };
 
 export type SuggestedChat = {
   wasSuggested: boolean;
   wasRejectedByUser?: boolean;
-  isMandatory?: boolean;
 };
 
 export type ToolUse = "quick" | "explore" | "agent";
@@ -42,7 +44,6 @@ export type Chat = {
   thread: ChatThread;
   error: null | string;
   prevent_send: boolean;
-  automatic_patch?: boolean;
   checkpoints_enabled?: boolean;
   waiting_for_response: boolean;
   max_new_tokens?: number;
@@ -92,8 +93,17 @@ export type LspChatMode =
   | "EXPLORE"
   | "AGENT"
   | "CONFIGURE"
-  | "PROJECT_SUMMARY"
-  | "THINKING_AGENT";
+  | "PROJECT_SUMMARY";
+
+export function isLspChatMode(mode: string): mode is LspChatMode {
+  return (
+    mode === "NO_TOOLS" ||
+    mode === "EXPLORE" ||
+    mode === "AGENT" ||
+    mode === "CONFIGURE" ||
+    mode === "PROJECT_SUMMARY"
+  );
+}
 
 export function chatModeToLspMode({
   toolUse,
@@ -105,8 +115,6 @@ export function chatModeToLspMode({
   defaultMode?: LspChatMode;
 }): LspChatMode {
   if (defaultMode) {
-    if (defaultMode === "AGENT" || defaultMode === "THINKING_AGENT")
-      return "AGENT";
     return defaultMode;
   }
   if (mode) {

@@ -55,6 +55,7 @@ class Message(BaseModel):
     usage: Optional[Usage] = None
     subchats: Optional[DefaultDict[str, List[Message]]] = None
     model_config = ConfigDict()
+    thinking_blocks: Optional[List[Dict]] = None
 
 
 def format_multimodal(content: List[MultimodalElement]) -> str:
@@ -226,6 +227,7 @@ async def ask_using_http(
     callback: Optional[Callable] = None,
     chat_id: Optional[str] = None,
     chat_remote: bool = False,
+    boost_thinking: bool = False,
 ) -> List[List[Message]]:
     deterministic: List[Message] = []
     subchats: DefaultDict[str, List[Message]] = collections.defaultdict(list)
@@ -245,6 +247,10 @@ async def ask_using_http(
     }
     if postprocess_parameters is not None:
         post_me["postprocess_parameters"] = postprocess_parameters
+    if boost_thinking:
+        post_me["parameters"] = {
+            "boost_reasoning": True,
+        }
     meta = {}
     if chat_id is not None:
         meta["chat_id"] = chat_id
@@ -253,7 +259,7 @@ async def ask_using_http(
         # meta["current_config_file"] = "/Users/user/.config/refact/integrations.d/postgres.yaml"
     post_me["meta"] = meta
     choices: List[Optional[Message]] = [None] * n_answers
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5000)) as session:
         async with session.post(base_url + "/chat", json=post_me) as response:
             if not stream:
                 text = await response.text()
@@ -267,6 +273,7 @@ async def ask_using_http(
                     msg = Message(
                         role=ch["message"]["role"],
                         content=ch["message"]["content"],
+                        thinking_blocks=ch["message"].get("thinking_blocks"),
                         tool_calls=[ToolCallDict(**x) for x in tool_calls] if tool_calls is not None else None,
                         finish_reason=ch["finish_reason"],
                         # NOTE: backend should send usage for each choice
@@ -556,18 +563,21 @@ def print_messages(
                 con(t)
 
         elif m.role == "diff" and m.content is not None:
-            for chunk in json.loads(m.content):
-                message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
-                message_str.append(message)
-                con(message)
-                if len(chunk["lines_add"]) > 0:
-                    message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+            try:
+                for chunk in json.loads(m.content):
+                    message = f"{chunk['file_name']}:{chunk['line1']}-{chunk['line2']}"
                     message_str.append(message)
-                    con(_wrap_color(message, "green"))
-                if len(chunk["lines_remove"]) > 0:
-                    message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
-                    message_str.append(message)
-                    con(_wrap_color(message, "red"))
+                    con(message)
+                    if len(chunk["lines_add"]) > 0:
+                        message = "\n".join([f"+{line}" for line in chunk['lines_add'].splitlines()])
+                        message_str.append(message)
+                        con(_wrap_color(message, "green"))
+                    if len(chunk["lines_remove"]) > 0:
+                        message = "\n".join([f"-{line}" for line in chunk['lines_remove'].splitlines()])
+                        message_str.append(message)
+                        con(_wrap_color(message, "red"))
+            except:
+                con(f"Error while diff rendering: {m.content}")
 
         elif m.role in ["tool", "user", "assistant", "system", "cd_instruction"]:
             if m.subchats is not None:  # actually subchats can only appear in role="tool", but code is the same anyway

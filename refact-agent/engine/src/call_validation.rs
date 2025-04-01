@@ -5,11 +5,9 @@ use axum::http::StatusCode;
 use indexmap::IndexMap;
 use ropey::Rope;
 
-
 use crate::custom_error::ScratchError;
 use crate::git::checkpoints::Checkpoint;
 use crate::scratchpads::multimodality::MultimodalElement;
-
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CursorPosition {
@@ -27,28 +25,34 @@ pub struct CodeCompletionInputs {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum ReasoningEffort {
     Low,
+    #[default]
     Medium,
     High,
 }
 
-impl Default for ReasoningEffort {
-    fn default() -> Self {
-        ReasoningEffort::Medium
-    }
+impl ReasoningEffort {
+    pub fn to_string(&self) -> String { format!("{:?}", self).to_lowercase() }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct SamplingParameters {
     #[serde(default)]
-    pub max_new_tokens: usize,  // TODO: rename it to `max_completion_tokens` everywhere, including chat-js
+    pub max_new_tokens: usize, // TODO: rename it to `max_completion_tokens` everywhere, including chat-js
     pub temperature: Option<f32>,
-    pub top_p: Option<f32>,
+    pub top_p: Option<f32>,  // NOTE: deprecated
     #[serde(default)]
     pub stop: Vec<String>,
     pub n: Option<usize>,
-    pub reasoning_effort: Option<ReasoningEffort>
+    #[serde(default)]
+    pub boost_reasoning: bool,
+    // NOTE: use the following arguments for direct API calls
+    #[serde(default)]
+    pub reasoning_effort: Option<ReasoningEffort>,  // OpenAI style reasoning
+    #[serde(default)]
+    pub thinking: Option<serde_json::Value>,  // Anthropic style reasoning
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -73,20 +77,35 @@ pub struct CodeCompletionPost {
     pub rag_tokens_n: usize,
 }
 
-pub fn code_completion_post_validate(code_completion_post: CodeCompletionPost) -> axum::response::Result<(), ScratchError> {
-    let pos = code_completion_post.inputs.cursor.clone();
-    let Some(source) = code_completion_post.inputs.sources.get(&code_completion_post.inputs.cursor.file) else {
-        return Err(ScratchError::new(StatusCode::BAD_REQUEST, "invalid post".to_string()))
+pub fn code_completion_post_validate(
+    code_completion_post: &CodeCompletionPost,
+) -> axum::response::Result<(), ScratchError> {
+    let pos = &code_completion_post.inputs.cursor;
+    let Some(source) = code_completion_post
+        .inputs
+        .sources
+        .get(&code_completion_post.inputs.cursor.file)
+    else {
+        return Err(ScratchError::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid post: cursor in a file that is not a source".to_string(),
+        ));
     };
-    let text = Rope::from_str(&*source);
+    let text = Rope::from_str(source);
     let line_number = pos.line as usize;
     if line_number >= text.len_lines() {
-        return Err(ScratchError::new(StatusCode::BAD_REQUEST, "invalid post".to_string()))
+        return Err(ScratchError::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid post: line number exceeds lines in file".to_string(),
+        ));
     }
     let line = text.line(line_number);
     let col = pos.character as usize;
     if col > line.len_chars() {
-        return Err(ScratchError::new(StatusCode::BAD_REQUEST, "invalid post".to_string()))
+        return Err(ScratchError::new(
+            StatusCode::BAD_REQUEST,
+            "Invalid post: char number exceeds chars in line".to_string(),
+        ));
     }
     Ok(())
 }
@@ -95,19 +114,17 @@ pub fn code_completion_post_validate(code_completion_post: CodeCompletionPost) -
 pub struct ContextFile {
     pub file_name: String,
     pub file_content: String,
-    pub line1: usize,   // starts from 1, zero means non-valid
-    pub line2: usize,   // starts from 1
+    pub line1: usize, // starts from 1, zero means non-valid
+    pub line2: usize, // starts from 1
     #[serde(default, skip_serializing)]
     pub symbols: Vec<String>,
     #[serde(default = "default_gradient_type_value", skip_serializing)]
     pub gradient_type: i32,
     #[serde(default, skip_serializing)]
-    pub usefulness: f32,  // higher is better
+    pub usefulness: f32, // higher is better
 }
 
-fn default_gradient_type_value() -> i32 {
-    -1
-}
+fn default_gradient_type_value() -> i32 { -1 }
 
 #[derive(Debug, Clone)]
 pub enum ContextEnum {
@@ -146,23 +163,25 @@ impl Default for ChatContent {
 pub struct ChatUsage {
     pub prompt_tokens: usize,
     pub completion_tokens: usize,
-    pub total_tokens: usize,   // TODO: remove (can produce self-contradictory data when prompt+completion != total)
+    pub total_tokens: usize, // TODO: remove (can produce self-contradictory data when prompt+completion != total)
 }
 
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct ChatMessage {
     pub role: String,
     pub content: ChatContent,
-    #[serde(default, skip_serializing_if="Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<String>,
-    #[serde(default, skip_serializing_if="Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<ChatToolCall>>,
-    #[serde(default, skip_serializing_if="String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub tool_call_id: String,
-    #[serde(default, skip_serializing_if="Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage: Option<ChatUsage>,
-    #[serde(default, skip_serializing_if="Vec::is_empty")]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub checkpoints: Vec<Checkpoint>,
+    #[serde(default, skip_serializing_if="Option::is_none")]
+    pub thinking_blocks: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -175,6 +194,8 @@ pub struct SubchatParameters {
     pub subchat_temperature: Option<f32>,
     #[serde(default)]
     pub subchat_max_new_tokens: usize,
+    #[serde(default)]
+    pub subchat_reasoning_effort: Option<ReasoningEffort>,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -189,7 +210,9 @@ pub struct ChatPost {
     pub stream: Option<bool>,
     pub temperature: Option<f32>,
     #[serde(default)]
-    pub max_tokens: usize,
+    pub max_tokens: Option<usize>,
+    #[serde(default)]
+    pub increase_max_tokens: bool,
     #[serde(default)]
     pub n: Option<usize>,
     #[serde(default)]
@@ -199,10 +222,10 @@ pub struct ChatPost {
     #[serde(default)]
     pub checkpoints_enabled: bool,
     #[serde(default)]
-    pub only_deterministic_messages: bool,  // means don't sample from the model
+    pub only_deterministic_messages: bool, // means don't sample from the model
     #[serde(default)]
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
-    #[serde(default="PostprocessSettings::new")]
+    #[serde(default = "PostprocessSettings::new")]
     pub postprocess_parameters: PostprocessSettings,
     #[serde(default)]
     pub meta: ChatMeta,
@@ -232,21 +255,19 @@ pub enum ChatMode {
     AGENT,
     CONFIGURE,
     PROJECT_SUMMARY,
-    THINKING_AGENT,
 }
 
 impl ChatMode {
     pub fn supports_checkpoints(self) -> bool {
         match self {
-            ChatMode::NO_TOOLS | ChatMode::EXPLORE => false,
-            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | 
-                ChatMode::THINKING_AGENT => true,
+            ChatMode::NO_TOOLS => false,
+            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | ChatMode::EXPLORE => true,
         }
     }
 
     pub fn is_agentic(self) -> bool {
         match self {
-            ChatMode::AGENT | ChatMode::THINKING_AGENT => true,
+            ChatMode::AGENT => true,
             ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE | 
                 ChatMode::PROJECT_SUMMARY => false,
         }
@@ -313,7 +334,6 @@ impl PostprocessSettings {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -324,7 +344,10 @@ mod tests {
     fn test_valid_post1() {
         let post = CodeCompletionPost {
             inputs: CodeCompletionInputs {
-                sources: HashMap::from_iter([("hello.py".to_string(), "def hello_world():".to_string())]),
+                sources: HashMap::from_iter([(
+                    "hello.py".to_string(),
+                    "def hello_world():".to_string(),
+                )]),
                 cursor: CursorPosition {
                     file: "hello.py".to_string(),
                     line: 0,
@@ -335,10 +358,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -348,14 +368,17 @@ mod tests {
             use_vecdb: true,
             rag_tokens_n: 0,
         };
-        assert!(code_completion_post_validate(post).is_ok());
+        assert!(code_completion_post_validate(&post).is_ok());
     }
 
     #[test]
     fn test_valid_post2() {
         let post = CodeCompletionPost {
             inputs: CodeCompletionInputs {
-                sources: HashMap::from_iter([("hello.py".to_string(), "你好世界Ωßåß🤖".to_string())]),
+                sources: HashMap::from_iter([(
+                    "hello.py".to_string(),
+                    "你好世界Ωßåß🤖".to_string(),
+                )]),
                 cursor: CursorPosition {
                     file: "hello.py".to_string(),
                     line: 0,
@@ -366,10 +389,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -379,14 +399,17 @@ mod tests {
             use_vecdb: true,
             rag_tokens_n: 0,
         };
-        assert!(code_completion_post_validate(post).is_ok());
+        assert!(code_completion_post_validate(&post).is_ok());
     }
 
     #[test]
     fn test_invalid_post_incorrect_line() {
         let post = CodeCompletionPost {
             inputs: CodeCompletionInputs {
-                sources: HashMap::from_iter([("hello.py".to_string(), "def hello_world():".to_string())]),
+                sources: HashMap::from_iter([(
+                    "hello.py".to_string(),
+                    "def hello_world():".to_string(),
+                )]),
                 cursor: CursorPosition {
                     file: "hello.py".to_string(),
                     line: 2,
@@ -397,10 +420,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -410,14 +430,17 @@ mod tests {
             use_vecdb: true,
             rag_tokens_n: 0,
         };
-        assert!(code_completion_post_validate(post).is_err());
+        assert!(code_completion_post_validate(&post).is_err());
     }
 
     #[test]
     fn test_invalid_post_incorrect_col() {
         let post = CodeCompletionPost {
             inputs: CodeCompletionInputs {
-                sources: HashMap::from_iter([("hello.py".to_string(), "def hello_world():".to_string())]),
+                sources: HashMap::from_iter([(
+                    "hello.py".to_string(),
+                    "def hello_world():".to_string(),
+                )]),
                 cursor: CursorPosition {
                     file: "hello.py".to_string(),
                     line: 0,
@@ -428,10 +451,7 @@ mod tests {
             parameters: SamplingParameters {
                 max_new_tokens: 20,
                 temperature: Some(0.1),
-                top_p: None,
-                stop: vec![],
-                n: None,
-                reasoning_effort: None
+                ..Default::default()
             },
             model: "".to_string(),
             scratchpad: "".to_string(),
@@ -441,6 +461,6 @@ mod tests {
             use_vecdb: true,
             rag_tokens_n: 0,
         };
-        assert!(code_completion_post_validate(post).is_err());
+        assert!(code_completion_post_validate(&post).is_err());
     }
 }

@@ -1,22 +1,22 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ChatMessages,
   isAssistantMessage,
   isChatContextFileMessage,
   isDiffMessage,
   isToolMessage,
+  isUserMessage,
   UserMessage,
 } from "../../services/refact";
 import { UserInput } from "./UserInput";
-import { ScrollArea } from "../ScrollArea";
+import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
 import { Spinner } from "../Spinner";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
 import { AssistantInput } from "./AssistantInput";
-import { useAutoScroll } from "./useAutoScroll";
 import { PlainText } from "./PlainText";
-import { useAppDispatch } from "../../hooks";
+import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
   selectIntegration,
@@ -24,17 +24,16 @@ import {
   selectIsWaiting,
   selectMessages,
   selectThread,
-  selectThreadUsage,
 } from "../../features/Chat/Thread/selectors";
 import { takeWhile } from "../../utils";
 import { GroupedDiffs } from "./DiffContent";
-import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -46,26 +45,16 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   onRetry,
 }) => {
   const dispatch = useAppDispatch();
-  const scrollRef = useRef<HTMLDivElement>(null);
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
-  const threadUsage = useAppSelector(selectThreadUsage);
+  const { shouldShow } = useUsageCounter();
   const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const integrationMeta = useAppSelector(selectIntegration);
   const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
-
-  const {
-    handleScroll,
-    handleWheel,
-    handleScrollButtonClick,
-    showFollowButton,
-  } = useAutoScroll({
-    scrollRef,
-  });
 
   const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
     onRetry(index, question);
@@ -105,14 +94,15 @@ export const ChatContent: React.FC<ChatContentProps> = ({
     return isConfig && !integrationMeta?.path?.includes("project_summary");
   }, [isConfig, integrationMeta?.path]);
 
+  // Dedicated hook for handling file reloads
+  useDiffFileReload();
+
   return (
-    <ScrollArea
-      ref={scrollRef}
+    <ScrollAreaWithAnchor.ScrollArea
       style={{ flexGrow: 1, height: "auto", position: "relative" }}
       scrollbars="vertical"
-      onScroll={handleScroll}
-      onWheel={handleWheel}
       type={isWaiting || isStreaming ? "auto" : "hover"}
+      fullHeight
     >
       <Flex
         direction="column"
@@ -122,19 +112,15 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         gap="1"
       >
         {messages.length === 0 && <PlaceHolderText />}
-        {renderMessages(messages, onRetryWrapper)}
+        {renderMessages(messages, onRetryWrapper, isWaiting)}
         <UncommittedChangesWarning />
-        {threadUsage && messages.length > 0 && <UsageCounter />}
-
+        {shouldShow && <UsageCounter />}
         <Container py="4">
           <Spinner
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
           />
         </Container>
       </Flex>
-      {showFollowButton && (
-        <ScrollToBottomButton onClick={handleScrollButtonClick} />
-      )}
 
       <Box
         style={{
@@ -170,7 +156,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
           </Flex>
         </ScrollArea>
       </Box>
-    </ScrollArea>
+    </ScrollAreaWithAnchor.ScrollArea>
   );
 };
 
@@ -179,19 +165,20 @@ ChatContent.displayName = "ChatContent";
 function renderMessages(
   messages: ChatMessages,
   onRetry: (index: number, question: UserMessage["content"]) => void,
+  waiting: boolean,
   memo: React.ReactNode[] = [],
   index = 0,
 ) {
   if (messages.length === 0) return memo;
   const [head, ...tail] = messages;
   if (head.role === "tool") {
-    return renderMessages(tail, onRetry, memo, index + 1);
+    return renderMessages(tail, onRetry, waiting, memo, index + 1);
   }
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
     const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (head.role === "assistant") {
@@ -202,30 +189,39 @@ function renderMessages(
       <AssistantInput
         key={key}
         message={head.content}
+        reasoningContent={head.reasoning_content}
         toolCalls={head.tool_calls}
         isLast={isLast}
       />,
     ];
 
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (head.role === "user") {
     const key = "user-input-" + index;
-
+    const isLastUserMessage = !tail.some(isUserMessage);
     const nextMemo = [
       ...memo,
+      isLastUserMessage && (
+        <ScrollAreaWithAnchor.ScrollAnchor
+          key={`${key}-anchor`}
+          behavior="smooth"
+          block="start"
+          // my="-2"
+        />
+      ),
       <UserInput onRetry={onRetry} key={key} messageIndex={index}>
         {head.content}
       </UserInput>,
     ];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
     const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
-    return renderMessages(tail, onRetry, nextMemo, index + 1);
+    return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
   if (isDiffMessage(head)) {
@@ -242,10 +238,11 @@ function renderMessages(
     return renderMessages(
       nextTail,
       onRetry,
+      waiting,
       nextMemo,
       index + diffMessages.length,
     );
   }
 
-  return renderMessages(tail, onRetry, memo, index + 1);
+  return renderMessages(tail, onRetry, waiting, memo, index + 1);
 }

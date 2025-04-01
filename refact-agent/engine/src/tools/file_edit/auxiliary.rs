@@ -32,12 +32,12 @@ pub fn convert_edit_to_diffchunks(
 
         let lines_remove = lines_remove.join("");
         let lines_add = lines_add.join("");
-        
+
         let line1 = line_nums.iter()
             .min()
             .map(|&x| x + 1)
             .unwrap_or(1);
-            
+
         let line2 = line_nums.iter()
             .zip(is_plus.iter())
             .map(|(&num, &is_plus)| {
@@ -211,7 +211,6 @@ pub async fn str_replace(
 
     let normalized_new_str = normalize_line_endings(new_str);
     let new_content = normalized_content.replace(&normalized_old_str, &normalized_new_str);
-
     let new_file_content = restore_line_endings(&new_content, has_crlf);
     write_file(gcx.clone(), path, &new_file_content, dry).await?;
     Ok((file_content, new_file_content))

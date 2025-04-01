@@ -1,0 +1,50 @@
+import { useCallback } from "react";
+import { selectThread } from "../features/Chat/Thread/selectors";
+import { useAppSelector } from "./useAppSelector";
+import { ChatMessages, knowledgeApi } from "../services/refact";
+import { newChatAction } from "../events";
+import { useAppDispatch } from "./useAppDispatch";
+import { setError } from "../features/Errors/errorsSlice";
+import { setIsWaitingForResponse, setSendImmediately } from "../features/Chat";
+
+export function useCompressChat() {
+  const dispatch = useAppDispatch();
+  const thread = useAppSelector(selectThread);
+
+  const [submit, request] = knowledgeApi.useCompressMessagesMutation({
+    fixedCacheKey: thread.id,
+  });
+
+  const compressChat = useCallback(async () => {
+    dispatch(setIsWaitingForResponse(true));
+    const result = await submit({
+      messages: thread.messages,
+      project: thread.project_name ?? "",
+    });
+    dispatch(setIsWaitingForResponse(false));
+
+    if (result.error) {
+      // TODO: handle errors
+      dispatch(
+        setError("Error compressing chat: " + JSON.stringify(result.error)),
+      );
+    }
+
+    if (result.data) {
+      const content =
+        "🗜️ I am continuing from a compressed chat history. Here is what happened so far: " +
+        result.data.trajectory;
+      const messages: ChatMessages = [{ role: "user", content }];
+
+      const action = newChatAction({ messages, title: `🗜️ ${thread.title}` });
+      dispatch(action);
+      dispatch(setSendImmediately(true));
+    }
+  }, [dispatch, submit, thread.messages, thread.project_name, thread.title]);
+
+  return {
+    compressChat,
+    compressChatRequest: request,
+    isCompressing: request.isLoading,
+  };
+}

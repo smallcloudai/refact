@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { forwardRef, useCallback, useMemo, useRef } from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import {
   Container,
@@ -22,7 +22,7 @@ import styles from "./ChatContent.module.css";
 import { CommandMarkdown } from "../Command";
 import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
-import { useAppSelector } from "../../hooks";
+import { useAppSelector, useHideScroll } from "../../hooks";
 import {
   selectManyToolResultsByIds,
   selectToolResultById,
@@ -30,7 +30,7 @@ import {
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
-import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 import { RootState } from "../../app/store";
 import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
@@ -38,15 +38,17 @@ import { TextDocTool } from "../Tools/Textdoc";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
+import { FadedButton } from "../Buttons";
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
+  onClose?: () => void;
 };
 
-const Result: React.FC<ResultProps> = ({ children }) => {
+const Result: React.FC<ResultProps> = ({ children, onClose }) => {
   const lines = children.split("\n");
   return (
-    <Reveal defaultOpen={lines.length < 9} isRevealingCode>
+    <Reveal defaultOpen={lines.length < 9} isRevealingCode onClose={onClose}>
       <MarkdownCodeBlock
         className={classNames(styles.tool_result)}
         style={resultStyle}
@@ -76,11 +78,9 @@ function toolCallArgsToString(toolCallArgs: string) {
 // TODO: Sort of duplicated
 const ToolMessage: React.FC<{
   toolCall: ToolCall;
-}> = ({ toolCall }) => {
+  onClose: () => void;
+}> = ({ toolCall, onClose }) => {
   const name = toolCall.function.name ?? "";
-
-  // ToolResult could be multi modal
-  // hoist this up
   const maybeResult = useAppSelector((state) =>
     selectToolResultById(state, toolCall.id),
   );
@@ -104,7 +104,9 @@ const ToolMessage: React.FC<{
         </Box>
       </ScrollArea>
       {maybeResult?.content && (
-        <Result isInsideScrollArea>{maybeResult.content}</Result>
+        <Result isInsideScrollArea onClose={onClose}>
+          {maybeResult.content}
+        </Result>
       )}
     </Flex>
   );
@@ -127,6 +129,13 @@ export const SingleModelToolContent: React.FC<{
   toolCalls: ToolCall[];
 }> = ({ toolCalls }) => {
   const [open, setOpen] = React.useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const handleHide = useHideScroll(ref);
+
+  const handleClose = useCallback(() => {
+    handleHide();
+    setOpen(false);
+  }, [handleHide]);
 
   if (toolCalls.length === 0) return null;
 
@@ -171,6 +180,7 @@ export const SingleModelToolContent: React.FC<{
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
           <ToolUsageSummary
+            ref={ref}
             toolUsageAmount={toolUsageAmount}
             hiddenFiles={hiddenFiles}
             shownAttachedFiles={shownAttachedFiles}
@@ -191,7 +201,7 @@ export const SingleModelToolContent: React.FC<{
             const key = `${toolCall.id}-${toolCall.index}`;
             return (
               <Box key={key} py="2">
-                <ToolMessage toolCall={toolCall} />
+                <ToolMessage toolCall={toolCall} onClose={handleClose} />
               </Box>
             );
           })}
@@ -299,7 +309,12 @@ const MultiModalToolContent: React.FC<{
   toolResults: MultiModalToolResult[];
 }> = ({ toolCalls, toolResults }) => {
   const [open, setOpen] = React.useState(false);
-
+  const ref = useRef<HTMLDivElement>(null);
+  const handleHide = useHideScroll(ref);
+  const handleClose = useCallback(() => {
+    handleHide();
+    setOpen(false);
+  }, [handleHide]);
   // const content = toolResults.map((toolResult) => toolResult.content);
 
   const hasImages = toolResults.some((toolResult) =>
@@ -337,6 +352,7 @@ const MultiModalToolContent: React.FC<{
             toolUsageAmount={toolUsageAmount}
             open={open}
             onClick={() => setOpen((prev) => !prev)}
+            ref={ref}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -367,6 +383,7 @@ const MultiModalToolContent: React.FC<{
                   direction="column"
                   key={`tool-call-command-${toolCall.id}-${i}`}
                   py="2"
+                  ref={ref}
                 >
                   <ScrollArea scrollbars="horizontal" style={{ width: "100%" }}>
                     <Box>
@@ -376,7 +393,7 @@ const MultiModalToolContent: React.FC<{
                     </Box>
                   </ScrollArea>
                   <Box>
-                    <Result>{texts}</Result>
+                    <Result onClose={handleClose}>{texts}</Result>
                   </Box>
                 </Flex>
               );
@@ -411,74 +428,88 @@ const MultiModalToolContent: React.FC<{
   );
 };
 
-const ToolUsageSummary: React.FC<{
+type ToolUsageSummaryProps = {
   toolUsageAmount: ToolUsage[];
   hiddenFiles?: number;
   shownAttachedFiles?: (string | undefined)[];
   subchat?: string;
   open: boolean;
   onClick?: () => void;
-}> = ({
-  toolUsageAmount,
-  hiddenFiles,
-  shownAttachedFiles,
-  subchat,
-  open,
-  onClick,
-}) => {
-  return (
-    <Flex gap="2" align="end" onClick={onClick}>
-      <Flex
-        gap="1"
-        align="start"
-        direction="column"
-        style={{ cursor: "pointer" }}
-      >
-        <Text weight="light" size="1">
-          🔨{" "}
-          {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
-            <span key={functionName}>
-              <ToolUsageDisplay
-                functionName={functionName}
-                amountOfCalls={amountOfCalls}
-              />
-              {index === toolUsageAmount.length - 1 ? "" : ", "}
-            </span>
-          ))}
-        </Text>
-        {hiddenFiles && hiddenFiles > 0 && (
-          <Text weight="light" size="1" ml="4">
-            {`🔎 <${hiddenFiles} files hidden>`}
-          </Text>
-        )}
-        {shownAttachedFiles?.map((file, index) => {
-          if (!file) return null;
-
-          return (
-            <Text weight="light" size="1" key={index} ml="4">
-              🔎 {file}
-            </Text>
-          );
-        })}
-        {subchat && (
-          <Flex ml="4">
-            <Spinner />
-            <Text weight="light" size="1" ml="4px">
-              {subchat}
-            </Text>
-          </Flex>
-        )}
-      </Flex>
-      <Chevron open={open} />
-    </Flex>
-  );
 };
+
+const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
+  (
+    {
+      toolUsageAmount,
+      hiddenFiles,
+      shownAttachedFiles,
+      subchat,
+      open,
+      onClick,
+    },
+    ref,
+  ) => {
+    return (
+      <Flex gap="2" align="end" onClick={onClick} ref={ref}>
+        <Flex
+          gap="1"
+          align="start"
+          direction="column"
+          style={{ cursor: "pointer" }}
+        >
+          <Text weight="light" size="1">
+            🔨{" "}
+            {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
+              <span key={functionName}>
+                <ToolUsageDisplay
+                  functionName={functionName}
+                  amountOfCalls={amountOfCalls}
+                />
+                {index === toolUsageAmount.length - 1 ? "" : ", "}
+              </span>
+            ))}
+          </Text>
+          {hiddenFiles && hiddenFiles > 0 && (
+            <Text weight="light" size="1" ml="4">
+              {`🔎 <${hiddenFiles} files hidden>`}
+            </Text>
+          )}
+          {shownAttachedFiles?.map((file, index) => {
+            if (!file) return null;
+
+            return (
+              <Text weight="light" size="1" key={index} ml="4">
+                🔎 {file}
+              </Text>
+            );
+          })}
+          {subchat && (
+            <Flex ml="4">
+              <Spinner />
+              <Text weight="light" size="1" ml="4px">
+                {subchat}
+              </Text>
+            </Flex>
+          )}
+        </Flex>
+        <Chevron open={open} />
+      </Flex>
+    );
+  },
+);
+ToolUsageSummary.displayName = "ToolUsageSummary";
 
 // TODO: make this look nicer.
 const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   const [open, setOpen] = React.useState(false);
+  const ref = useRef(null);
+  const scrollOnHide = useHideScroll(ref);
 
-  // TODO: add voting actions
+  const handleHide = useCallback(() => {
+    setOpen(false);
+    scrollOnHide();
+  }, [scrollOnHide]);
+
   const maybeResult = useAppSelector((state) =>
     selectToolResultById(state, toolCall.id),
   );
@@ -498,7 +529,12 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
         <Collapsible.Trigger asChild>
-          <Flex gap="2" align="end" onClick={() => setOpen((prev) => !prev)}>
+          <Flex
+            gap="2"
+            align="end"
+            onClick={() => setOpen((prev) => !prev)}
+            ref={ref}
+          >
             <Flex
               gap="1"
               align="start"
@@ -532,6 +568,9 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
                 );
               })}
             </Flex>
+            <FadedButton color="gray" onClick={handleHide} mx="2">
+              Hide Memories
+            </FadedButton>
           </Flex>
         </Collapsible.Content>
       </Collapsible.Root>
@@ -561,23 +600,23 @@ const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
           <Flex gap="2" align="center">
             <IconButton
               size="1"
-              title="Bad"
+              title="Down vote"
               onClick={handleBad}
               disabled={status.isLoading}
               variant="outline"
               color="tomato"
             >
-              <Cross2Icon />{" "}
+              <ArrowDownIcon />
             </IconButton>
             <IconButton
               size="1"
-              title="Good"
+              title="Up vote"
               onClick={handleGood}
               disabled={status.isLoading}
               variant="outline"
               color="grass"
             >
-              <CheckIcon />
+              <ArrowUpIcon />
             </IconButton>
           </Flex>
         </Flex>

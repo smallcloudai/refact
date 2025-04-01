@@ -1,17 +1,15 @@
 use std::error::Error;
-use tracing::error;
-use hyper::{Body, Response, StatusCode};
+use hyper::StatusCode;
 use serde_json::json;
 use std::fmt;
 use axum::Json;
 use axum::response::IntoResponse;
 
-
 #[derive(Debug, Clone)]
 pub struct ScratchError {
     pub status_code: StatusCode,
     pub message: String,
-    pub telemetry_skip: bool,    // because already posted a better description directly
+    pub telemetry_skip: bool, // because already posted a better description directly
 }
 
 impl IntoResponse for ScratchError {
@@ -19,7 +17,11 @@ impl IntoResponse for ScratchError {
         let payload = json!({
             "detail": self.message,
         });
-        (self.status_code, Json(payload)).into_response()
+        let mut response = (self.status_code, Json(payload)).into_response();
+        // This extension is used to let us know that this response used to be a ScratchError.
+        // Usage can be seen in telemetry_middleware.
+        response.extensions_mut().insert(self);
+        response
     }
 }
 
@@ -47,17 +49,6 @@ impl ScratchError {
             message,
             telemetry_skip: true,
         }
-    }
-
-    pub fn to_response(&self) -> Response<Body> {
-        let body = json!({"detail": self.message}).to_string();
-        error!("client will see {}", body);
-        let response = Response::builder()
-            .status(self.status_code)
-            .header("Content-Type", "application/json")
-            .body(Body::from(body))
-            .unwrap();
-        response
     }
 }
 

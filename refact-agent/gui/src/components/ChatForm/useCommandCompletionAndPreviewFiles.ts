@@ -110,8 +110,7 @@ function useGetCommandPreviewQuery(
 function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
   const queryWithCheckboxes = useMemo(
     () => addCheckboxValuesToInput(query, checkboxes),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [checkboxes, query, checkboxes.file_upload.value],
+    [checkboxes, query],
   );
   const [previewQuery, setPreviewQuery] = useState<string>(queryWithCheckboxes);
 
@@ -125,19 +124,22 @@ function useGetPreviewFiles(query: string, checkboxes: Checkboxes) {
 
   useEffect(() => {
     debounceSetPreviewQuery(queryWithCheckboxes);
-  }, [
-    debounceSetPreviewQuery,
-    queryWithCheckboxes,
-    checkboxes.file_upload.value,
-  ]);
+  }, [debounceSetPreviewQuery, queryWithCheckboxes]);
 
   const previewFileResponse = useGetCommandPreviewQuery(previewQuery);
   return previewFileResponse;
 }
 
-export function useCommandCompletionAndPreviewFiles(checkboxes: Checkboxes) {
+export function useCommandCompletionAndPreviewFiles(
+  checkboxes: Checkboxes,
+  addFilesToInput: (str: string) => string,
+) {
   const { commands, requestCompletion, query } = useCommandCompletion();
-  const previewFileResponse = useGetPreviewFiles(query, checkboxes);
+
+  const previewFileResponse = useGetPreviewFiles(
+    addFilesToInput(query),
+    checkboxes,
+  );
 
   return {
     commands,

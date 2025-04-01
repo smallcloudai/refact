@@ -135,7 +135,7 @@ async fn _cursor_position_to_context_file(
                 line1: def.full_line1(),
                 line2: def.full_line2(),
                 symbols: vec![def.path_drop0()],
-                gradient_type: -1,
+                gradient_type: 4,
                 usefulness: 100.,
             });
             let usage_dict = json!({
@@ -193,7 +193,7 @@ pub async fn retrieve_ast_based_extra_context(
             line1: (subblock_to_ignore_range.0 + 1) as usize,
             line2: (subblock_to_ignore_range.1 + 1) as usize,
             symbols: vec![],
-            gradient_type: -1,
+            gradient_type: 4,
             usefulness: -1.0,
         };
         ast_context_file_vec.push(fim_ban);

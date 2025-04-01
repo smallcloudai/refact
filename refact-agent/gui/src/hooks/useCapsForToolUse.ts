@@ -5,9 +5,11 @@ import { useAppSelector, useGetCapsQuery, useAppDispatch } from ".";
 import {
   getSelectedChatModel,
   setChatModel,
+  setMaxNewTokens,
   setToolUse,
   ToolUse,
 } from "../features/Chat";
+import { DEFAULT_MAX_NEW_TOKENS } from "../services/refact";
 
 // TODO: hard coded for now.
 export const PAID_AGENT_LIST = [
@@ -18,8 +20,6 @@ export const PAID_AGENT_LIST = [
   "gemini-2.0-flash-exp",
   "claude-3-7-sonnet",
 ];
-
-const THINKING_MODELS_LIST = ["o3-mini"];
 
 // TODO: hard coded for now. Unlimited usage models
 export const UNLIMITED_PRO_MODELS_LIST = ["gpt-4o-mini"];
@@ -41,8 +41,11 @@ export function useCapsForToolUse() {
       const model = caps.data?.code_chat_default_model === value ? "" : value;
       const action = setChatModel(model);
       dispatch(action);
+      const tokens =
+        caps.data?.code_chat_models[value]?.n_ctx ?? DEFAULT_MAX_NEW_TOKENS;
+      dispatch(setMaxNewTokens(tokens));
     },
-    [caps.data?.code_chat_default_model, dispatch],
+    [caps.data?.code_chat_default_model, caps.data?.code_chat_models, dispatch],
   );
 
   const isMultimodalitySupportedForCurrentModel = useMemo(() => {
@@ -71,7 +74,6 @@ export function useCapsForToolUse() {
     const models = caps.data?.code_chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
       (acc, [key, value]) => {
-        if (THINKING_MODELS_LIST.includes(key)) return acc;
         if (toolUse === "explore" && value.supports_tools) {
           return [...acc, key];
         }
@@ -157,5 +159,7 @@ export function useCapsForToolUse() {
     setCapModel,
     isMultimodalitySupportedForCurrentModel,
     loading: !caps.data && (caps.isFetching || caps.isLoading),
+    uninitialized: caps.isUninitialized,
+    data: caps.data,
   };
 }

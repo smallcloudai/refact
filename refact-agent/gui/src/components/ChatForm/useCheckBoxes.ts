@@ -1,93 +1,116 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { selectSelectedSnippet } from "../../features/Chat/selectedSnippet";
-import { selectActiveFile } from "../../features/Chat/activeFile";
+import { FileInfo, selectActiveFile } from "../../features/Chat/activeFile";
 import { useConfig, useAppSelector } from "../../hooks";
 import type { Checkbox } from "./ChatControls";
-import {
-  selectIsStreaming,
-  selectMessages,
-} from "../../features/Chat/Thread/selectors";
+import { selectMessages } from "../../features/Chat/Thread/selectors";
 import { createSelector } from "@reduxjs/toolkit";
-
-const shouldShowSelector = createSelector(
-  [selectMessages, selectIsStreaming],
-  (messages, isStreaming) => {
-    return messages.length === 0 && !isStreaming;
-  },
-);
+import { filename } from "../../utils";
+import { ideAttachFileToChat } from "../../hooks";
 
 const messageLengthSelector = createSelector(
   [selectMessages],
   (messages) => messages.length,
 );
 
-const useAttachActiveFile = (
-  interacted: boolean,
-  hasSnippet: boolean,
-): [Checkbox, () => void] => {
+// TODO: add ide event here.
+
+export function useAttachedFiles() {
+  const [files, setFiles] = useState<FileInfo[]>([]);
+  const [interacted, setInteracted] = useState<boolean>(false);
   const activeFile = useAppSelector(selectActiveFile);
-  const shouldShow = useAppSelector(shouldShowSelector);
-  const messageLength = useAppSelector(messageLengthSelector);
+  const snippet = useAppSelector(selectSelectedSnippet);
 
-  const filePathWithLines = useMemo(() => {
-    const hasLines = activeFile.line1 !== null && activeFile.line2 !== null;
+  const attached = useMemo(() => {
+    const maybeAttached = files.find((file) => file.path === activeFile.path);
+    return !!maybeAttached;
+  }, [activeFile.path, files]);
 
-    if (!hasLines) return activeFile.path;
-    return `${activeFile.path}:${
-      activeFile.cursor ? activeFile.cursor + 1 : activeFile.line1
-    }`;
-  }, [activeFile.path, activeFile.cursor, activeFile.line1, activeFile.line2]);
+  const addFile = useCallback(() => {
+    if (attached) return;
+    setFiles((prev) => {
+      return [...prev, activeFile];
+    });
+    setInteracted(true);
+  }, [attached, activeFile]);
 
-  const [attachFileCheckboxData, setAttachFile] = useState<Checkbox>({
-    name: "file_upload",
-    checked: !!activeFile.name && messageLength === 0 && hasSnippet,
-    label: "Attach",
-    value: filePathWithLines,
-    disabled: !activeFile.name,
-    fileName: activeFile.name,
-    hide: !shouldShow,
-    info: {
-      text: "Attaches the current file as context. If the file is large, it prefers the code near the current cursor position. Equivalent to @file name.ext:CURSOR_LINE in the text.",
-      link: "https://docs.refact.ai/features/ai-chat/",
-      linkText: "documentation",
-    },
-  });
-
-  useEffect(() => {
-    if (!interacted) {
-      setAttachFile((prev) => {
-        return {
-          ...prev,
-          hide: !shouldShow,
-          value: filePathWithLines,
-          disabled: !activeFile.name,
-          fileName: activeFile.name,
-          // checked: interacted ? prev.checked : !!activeFile.name && shouldShow,
-          checked: !!activeFile.name && shouldShow && hasSnippet,
-        };
-      });
-    }
-  }, [activeFile.name, filePathWithLines, hasSnippet, interacted, shouldShow]);
-
-  useEffect(() => {
-    if (messageLength > 0 && attachFileCheckboxData.hide === false) {
-      setAttachFile((prev) => {
-        return { ...prev, hide: true, checked: false };
-      });
-    }
-  }, [attachFileCheckboxData.hide, messageLength]);
-
-  const onToggleAttachFile = useCallback(() => {
-    setAttachFile((prev) => {
-      return {
-        ...prev,
-        checked: !prev.checked,
-      };
+  const removeFile = useCallback((fileToRemove: FileInfo) => {
+    setInteracted(true);
+    setFiles((prev) => {
+      return prev.filter((file) => file.path !== fileToRemove.path);
     });
   }, []);
 
-  return [attachFileCheckboxData, onToggleAttachFile];
-};
+  const addFilesToInput = useCallback(
+    (str: string) => {
+      if (files.length === 0) return str;
+      const result = files.reduce<string>((acc, file) => {
+        const hasLines = file.line1 !== null && file.line2 !== null;
+        if (!hasLines) return `@file ${file.path}\n${acc}`;
+        const line = file.cursor ? file.cursor + 1 : file.line1;
+        return `@file ${file.path}:${line}\n${acc}`;
+      }, str);
+      return result;
+    },
+    [files],
+  );
+
+  const removeAll = useCallback(() => {
+    setFiles([]);
+    setInteracted(false);
+  }, []);
+
+  useEffect(() => {
+    if (interacted) return;
+    if (!activeFile.name) return;
+    if (attached) return;
+    setFiles(() => {
+      if (!snippet.code) return [];
+      return [activeFile];
+    });
+    setInteracted(true);
+  }, [activeFile, attached, interacted, snippet.code]);
+
+  useEffect(() => {
+    const handleIdeAttachFile = (filePath: string) => {
+      const fileInfo: FileInfo = {
+        name: filename(filePath),
+        path: filePath,
+        line1: null,
+        line2: null,
+        cursor: null,
+        can_paste: false,
+      };
+      setFiles((prev) => {
+        const maybeEntered = prev.find((file) => file.path === filePath);
+        if (maybeEntered) return prev;
+        return [...prev, fileInfo];
+      });
+    };
+
+    const listener = (event: MessageEvent) => {
+      if (ideAttachFileToChat.match(event.data)) {
+        handleIdeAttachFile(event.data.payload);
+      }
+    };
+
+    window.addEventListener("message", listener);
+    return () => {
+      window.removeEventListener("message", listener);
+    };
+  }, []);
+
+  return {
+    files,
+    activeFile,
+    addFile,
+    removeFile,
+    attached,
+    addFilesToInput,
+    removeAll,
+    setInteracted,
+  };
+}
 
 const useAttachSelectedSnippet = (
   interacted: boolean,
@@ -167,66 +190,45 @@ const useAttachSelectedSnippet = (
 };
 
 export type Checkboxes = {
-  file_upload: Checkbox;
+  // file_upload: Checkbox;
   selected_lines: Checkbox;
 };
 
 export const useCheckboxes = () => {
-  // creating 2 different states instead of only one being used for both checkboxes
+  // creating different states instead of only one being used for checkboxes
   const [lineSelectionInteracted, setLineSelectionInteracted] = useState(false);
-  const [fileInteracted, setFileInteracted] = useState(false);
 
   const [attachedSelectedSnippet, onToggleAttachedSelectedSnippet] =
     useAttachSelectedSnippet(lineSelectionInteracted);
 
-  const [attachFileCheckboxData, onToggleAttachFile] = useAttachActiveFile(
-    fileInteracted,
-    attachedSelectedSnippet.checked,
-  );
-
   const checkboxes = useMemo(
     () => ({
-      file_upload: attachFileCheckboxData,
       selected_lines: attachedSelectedSnippet,
     }),
-    [attachFileCheckboxData, attachedSelectedSnippet],
+    [attachedSelectedSnippet],
   );
 
   const onToggleCheckbox = useCallback(
     (name: string) => {
       switch (name) {
-        case "file_upload":
-          onToggleAttachFile();
-          setFileInteracted(true);
-          break;
         case "selected_lines":
           onToggleAttachedSelectedSnippet();
-          setFileInteracted(true);
           setLineSelectionInteracted(true);
           break;
       }
     },
-    [onToggleAttachFile, onToggleAttachedSelectedSnippet],
+    [onToggleAttachedSelectedSnippet],
   );
 
   const unCheckAll = useCallback(() => {
-    if (attachFileCheckboxData.checked) {
-      onToggleAttachFile();
-    }
     if (attachedSelectedSnippet.checked) {
       onToggleAttachedSelectedSnippet();
     }
-  }, [
-    attachFileCheckboxData.checked,
-    attachedSelectedSnippet.checked,
-    onToggleAttachFile,
-    onToggleAttachedSelectedSnippet,
-  ]);
+  }, [attachedSelectedSnippet.checked, onToggleAttachedSelectedSnippet]);
 
   return {
     checkboxes,
     onToggleCheckbox,
-    setFileInteracted,
     setLineSelectionInteracted,
     unCheckAll,
   };

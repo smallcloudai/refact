@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Card } from "@radix-ui/themes";
@@ -10,12 +10,12 @@ import {
   useGetCapsQuery,
   useCapsForToolUse,
   useAgentUsage,
+  useLastSentCompressionStop,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
   enableSend,
   selectIsStreaming,
-  selectIsWaiting,
   selectPreventSend,
   selectChatId,
   selectMessages,
@@ -48,14 +48,13 @@ export const Chat: React.FC<ChatProps> = ({
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
   const caps = useGetCapsQuery();
 
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
-
+  const compressionStop = useLastSentCompressionStop();
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
   const capsForToolUse = useCapsForToolUse();
@@ -79,24 +78,9 @@ export const Chat: React.FC<ChatProps> = ({
     [submit, isViewingRawJSON],
   );
 
-  const focusTextarea = useCallback(() => {
-    const textarea = document.querySelector<HTMLTextAreaElement>(
-      '[data-testid="chat-form-textarea"]',
-    );
-    if (textarea) {
-      textarea.focus();
-    }
-  }, []);
-
   const handleThreadHistoryPage = useCallback(() => {
     dispatch(push({ name: "thread history page", chatId }));
   }, [chatId, dispatch]);
-
-  useEffect(() => {
-    if (!isWaiting && !isStreaming) {
-      focusTextarea();
-    }
-  }, [isWaiting, isStreaming, focusTextarea]);
 
   useAutoSend();
 
@@ -122,8 +106,9 @@ export const Chat: React.FC<ChatProps> = ({
         <AgentUsage />
         <SuggestNewChat
           shouldBeVisible={
-            threadNewChatSuggested.wasSuggested &&
-            !threadNewChatSuggested.wasRejectedByUser
+            compressionStop.stopped ||
+            (threadNewChatSuggested.wasSuggested &&
+              !threadNewChatSuggested.wasRejectedByUser)
           }
         />
         {!isStreaming && preventSend && unCalledTools && (

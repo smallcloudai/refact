@@ -58,7 +58,7 @@ impl AtCommandsContext {
             tokens_for_rag: 0,
             messages,
             is_preview,
-            pp_skeleton: false,
+            pp_skeleton: true,
             correction_only_up_to_step: 0,
             chat_id,
             current_model: "".to_string(),

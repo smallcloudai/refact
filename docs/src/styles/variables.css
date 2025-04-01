@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Azeret+Mono:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&display=swap');
+
+/* Design tokens */
+:root {
+    /* Border radius */
+    --border-radius-sm: 4px;
+    --border-radius-md: 6px;
+    --border-radius-lg: 8px;
+    
+    /* Spacing */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 2rem;
+    
+    /* Typography */
+    --font-family-base: "Manrope", sans-serif;
+    --font-family-mono: "Azeret Mono", monospace;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    
+    /* Transitions */
+    --transition-default: all 0.2s ease;
+}
+
+/* Dark mode colors. */
+:root {
+    --sl-color-accent-low: #311514;
+    --sl-color-accent: #E7150D;
+    --sl-color-accent-high: #FEF4F4;
+    --sl-color-white: #ffffff;
+    --sl-color-gray-1: #FAFAFA;
+    --sl-color-gray-2: #F3F3F3;
+    --sl-color-gray-3: #D8D8D9;
+    --sl-color-gray-4: #585858;
+    --sl-color-gray-5: #383838;
+    --sl-color-gray-6: #272727;
+    --sl-color-black: #181818;
+
+    /* Sidebar specific colors */
+    --sl-sidebar-color-text-active: var(--sl-color-white);
+    --sl-sidebar-color-bg-active: var(--sl-color-accent);
+    --sl-sidebar-color-bg-hover: var(--sl-color-gray-6);
+}
+
+/* Light mode colors. */
+:root[data-theme='light'] {
+    --sl-color-accent-low: #311514;
+    --sl-color-accent: #E7150D;
+    --sl-color-accent-high: #FEF4F4;
+    --sl-color-white: #181818;
+    --sl-color-gray-1: #272727;
+    --sl-color-gray-2: #383838;
+    --sl-color-gray-3: #585858;
+    --sl-color-gray-4: #8b8b8b;
+    --sl-color-gray-5: #c2c2c2;
+    --sl-color-gray-6: #eeeeee;
+    --sl-color-gray-7: #f6f6f6;
+    --sl-color-black: #ffffff;
+
+    /* Sidebar specific colors */
+    --sl-sidebar-color-text-active: var(--sl-color-white);
+    --sl-sidebar-color-bg-active: var(--sl-color-accent);
+    --sl-sidebar-color-bg-hover: var(--sl-color-gray-6);
+}

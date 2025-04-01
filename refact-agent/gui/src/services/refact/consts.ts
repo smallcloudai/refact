@@ -22,6 +22,7 @@ export const CHAT_COMMIT_LINK_URL = "/v1/git-commit";
 // Integrations
 export const INTEGRATIONS_URL = "/v1/integrations";
 export const INTEGRATION_GET_URL = "/v1/integration-get";
+export const INTEGRATION_MCP_LOGS_PATH = "/v1/integrations-mcp-logs";
 export const INTEGRATION_SAVE_URL = "/v1/integration-save";
 export const INTEGRATION_DELETE_URL = "/v1/integration-delete";
 // Docker endpoints
@@ -40,3 +41,5 @@ export const KNOWLEDGE_REMOVE_URL = "/v1/mem-erase";
 export const KNOWLEDGE_UPDATE_USED_URL = "/v1/mem-update-used";
 export const KNOWLEDGE_UPDATE_URL = "/v1/mem-upd";
 export const KNOWLEDGE_CREATE_URL = "/v1/trajectory-save";
+
+export const COMPRESS_MESSAGES_URL = "/v1/trajectory-compress";

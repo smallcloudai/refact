@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { Box, Button, Flex } from "@radix-ui/themes";
 import styles from "./reveal.module.css";
 import classNames from "classnames";
@@ -7,6 +7,7 @@ export type RevealProps = {
   children: React.ReactNode;
   defaultOpen: boolean;
   isRevealingCode?: boolean;
+  onClose?: () => void;
 };
 
 const RevealButton: React.FC<{
@@ -39,19 +40,26 @@ export const Reveal: React.FC<RevealProps> = ({
   children,
   defaultOpen,
   isRevealingCode = false,
+  onClose,
 }) => {
   const [open, setOpen] = React.useState(defaultOpen);
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     if (defaultOpen) return;
     setOpen((v) => !v);
-  };
+  }, [defaultOpen]);
+
+  const handleClose = useCallback(() => {
+    if (defaultOpen) return;
+    setOpen(false);
+    onClose && onClose();
+  }, [defaultOpen, onClose]);
 
   if (open) {
     return (
       <Box width="100%" position="relative" pb="5">
         {children}
-        <RevealButton onClick={handleClick} isInline={!isRevealingCode}>
+        <RevealButton onClick={handleClose} isInline={!isRevealingCode}>
           {!defaultOpen && (
             <Box
               className={classNames(

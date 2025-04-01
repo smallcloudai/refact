@@ -152,3 +152,209 @@ export const Knowledge: Story = {
     },
   },
 };
+
+export const EmptySpaceAtBottom: Story = {
+  args: {
+    thread: {
+      id: "test",
+      model: "gpt-4o", // or any model from STUB CAPS REQUEst
+      messages: [
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        // { role: "assistant", content: "👋" },
+      ],
+      new_chat_suggested: {
+        wasSuggested: false,
+      },
+    },
+  },
+
+  parameters: {
+    msw: {
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        // noChatLinks,
+        chatLinks,
+        noTools,
+        makeKnowledgeFromChat,
+      ],
+    },
+  },
+};
+
+export const UserMessageEmptySpaceAtBottom: Story = {
+  args: {
+    thread: {
+      id: "test",
+      model: "gpt-4o", // or any model from STUB CAPS REQUEst
+      messages: [
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+      ],
+      new_chat_suggested: {
+        wasSuggested: false,
+      },
+    },
+  },
+
+  parameters: {
+    msw: {
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        // noChatLinks,
+        chatLinks,
+        noTools,
+        makeKnowledgeFromChat,
+      ],
+    },
+  },
+};
+
+export const CompressButton: Story = {
+  args: {
+    thread: {
+      id: "test",
+      model: "gpt-4o", // or any model from STUB CAPS REQUEst
+      messages: [
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+        },
+        { role: "assistant", content: "👋" },
+        {
+          role: "user",
+          content: "Hello",
+        },
+        {
+          role: "assistant",
+          content: "Hi",
+        },
+        {
+          role: "user",
+          content: "👋",
+          // change this to see different button colours
+          compression_strength: "low",
+        },
+        { role: "assistant", content: "👋" },
+      ],
+      new_chat_suggested: {
+        wasSuggested: false,
+      },
+    },
+  },
+
+  parameters: {
+    msw: {
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        // noChatLinks,
+        chatLinks,
+        noTools,
+        makeKnowledgeFromChat,
+      ],
+    },
+  },
+};

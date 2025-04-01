@@ -1,24 +1,25 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import {
-  selectChatId,
-  selectThreadMaximumTokens,
-  selectThreadUsage,
-  setIsNewChatCreationMandatory,
-  setIsNewChatSuggested,
-  // setIsNewChatSuggestionRejected,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectMessages,
+  // selectLastSentCompression,
 } from "../../features/Chat";
-import { useAppDispatch, useAppSelector } from "../../hooks";
-import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens";
+import { useAppSelector, useLastSentCompressionStop } from "../../hooks";
+import {
+  calculateUsageInputTokens,
+  mergeUsages,
+} from "../../utils/calculateUsageInputTokens";
+import { isAssistantMessage } from "../../services/refact";
 
 export function useUsageCounter() {
-  const dispatch = useAppDispatch();
-
-  const chatId = useAppSelector(selectChatId);
-
-  const currentThreadUsage = useAppSelector(selectThreadUsage);
-  const currentThreadMaximumContextTokens = useAppSelector(
-    selectThreadMaximumTokens,
-  );
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const compressionStop = useLastSentCompressionStop();
+  const messages = useAppSelector(selectMessages);
+  const assistantMessages = messages.filter(isAssistantMessage);
+  const usages = assistantMessages.map((msg) => msg.usage);
+  const currentThreadUsage = mergeUsages(usages);
 
   const totalInputTokens = useMemo(() => {
     return calculateUsageInputTokens({
@@ -32,44 +33,26 @@ export function useUsageCounter() {
   }, [currentThreadUsage]);
 
   const isOverflown = useMemo(() => {
-    if (
-      currentThreadMaximumContextTokens &&
-      totalInputTokens > currentThreadMaximumContextTokens
-    )
-      return true;
+    if (!compressionStop.stopped) return false;
+    if (compressionStop.strength === "low") return true;
+    if (compressionStop.strength === "medium") return true;
+    if (compressionStop.strength === "high") return true;
     return false;
-  }, [totalInputTokens, currentThreadMaximumContextTokens]);
+  }, [compressionStop.stopped, compressionStop.strength]);
 
   const isWarning = useMemo(() => {
-    if (isOverflown) return false;
-    if (
-      currentThreadMaximumContextTokens &&
-      totalInputTokens > currentThreadMaximumContextTokens * 0.75
-    )
-      return true;
+    if (!compressionStop.stopped) return false;
+    if (compressionStop.strength === "medium") return true;
+    if (compressionStop.strength === "high") return true;
     return false;
-  }, [isOverflown, totalInputTokens, currentThreadMaximumContextTokens]);
+  }, [compressionStop.stopped, compressionStop.strength]);
 
-  useEffect(() => {
-    const actions = [
-      setIsNewChatSuggested({
-        chatId,
-        value: isWarning || isOverflown,
-      }),
-      // setIsNewChatSuggestionRejected({
-      //   chatId,
-      //   value: false,
-      // }),
-      setIsNewChatCreationMandatory({
-        chatId,
-        value: isOverflown,
-      }),
-    ];
-
-    actions.forEach((action) => dispatch(action));
-  }, [dispatch, chatId, isWarning, isOverflown]);
+  const shouldShow = useMemo(() => {
+    return messages.length > 0 && !isStreaming && !isWaiting;
+  }, [messages.length, isStreaming, isWaiting]);
 
   return {
+    shouldShow,
     currentThreadUsage,
     totalInputTokens,
     isOverflown,
