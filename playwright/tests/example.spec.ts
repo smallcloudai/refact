@@ -18,8 +18,3 @@ test("get started link", async ({ page }) => {
     page.getByRole("heading", { name: "Installation" })
   ).toBeVisible();
 });
-
-// test("loads", async ({ page }) => {
-//   await page.goto("/");
-//   await expect(page).toHaveTitle(/Playwright/);
-// });
