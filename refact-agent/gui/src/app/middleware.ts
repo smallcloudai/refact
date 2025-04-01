@@ -298,15 +298,8 @@ startListening({
 
 startListening({
   actionCreator: updateConfig,
-  effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
-    if (
-      action.payload.apiKey !== state.config.apiKey ||
-      action.payload.addressURL !== state.config.addressURL ||
-      action.payload.lspPort !== state.config.lspPort
-    ) {
-      listenerApi.dispatch(pingApi.util.resetApiState());
-    }
+  effect: (_action, listenerApi) => {
+    listenerApi.dispatch(pingApi.util.resetApiState());
   },
 });
 
