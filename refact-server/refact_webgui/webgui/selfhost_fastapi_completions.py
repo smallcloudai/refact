@@ -221,17 +221,14 @@ class BaseCompletionsRouter(APIRouter):
         raise NotImplementedError()
 
     async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
-        data = self._caps_data(user_agent=user_agent)
+        client_version = self._check_deprecated_client_version(user_agent)
+        data = self._caps_data()
+        if client_version is not None and client_version < (0, 10, 15):
+            log(f"{user_agent} is deprecated, fallback to old caps format. Please upgrade client's plugin.")
+            data = self._to_deprecated_caps_format(data)
         return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
-    def _caps_data(self, user_agent: str = Header(None)):
-        # TODO: this is new caps! it shouldn't be used by old refact-lsp
-        if isinstance(user_agent, str):
-            m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
-            if m:
-                major, minor, patch = map(int, m.groups())
-                log("user version %d.%d.%d" % (major, minor, patch))
-
+    def _caps_data(self):
         # NOTE: we need completely rewrite all about running models
         running_models = running_models_and_loras(self._model_assigner)
 
@@ -330,6 +327,46 @@ class BaseCompletionsRouter(APIRouter):
 
         return data
 
+    @staticmethod
+    def _parse_client_version(user_agent: str = Header(None)) -> Optional[Tuple[int, int, int]]:
+        if not isinstance(user_agent, str):
+            log(f"unknown client version `{user_agent}`")
+            return None
+        m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
+        if not m:
+            log(f"can't parse client version `{user_agent}`")
+            return None
+        major, minor, patch = map(int, m.groups())
+        log(f"user version {major}.{minor}.{patch}")
+        return major, minor, patch
+
+    @staticmethod
+    def _to_deprecated_caps_format(data: Dict[str, Any]):
+        return {
+            "cloud_name": data["cloud_name"],
+            "endpoint_template": data["completion"]["endpoint"],
+            "endpoint_chat_passthrough": data["chat"]["endpoint"],
+            "endpoint_style": "openai",
+            "telemetry_basic_dest": data["telemetry_endpoints"]["telemetry_basic_endpoint"],
+            "telemetry_corrected_snippets_dest": data["telemetry_endpoints"]["telemetry_corrected_snippets_endpoint"],
+            "telemetry_basic_retrieve_my_own": data["telemetry_endpoints"]["telemetry_basic_retrieve_my_own_endpoint"],
+            "running_models": list(data["completion"]["models"].keys()) + list(data["chat"]["models"].keys()),
+            "code_completion_default_model": data["completion"]["default_model"],
+            "multiline_code_completion_default_model": data["completion"]["default_multiline_model"],
+            "code_chat_default_model": data["chat"]["default_model"],
+            "models_dict_patch": {},  # NOTE: this actually should have n_ctx, but we're skiping it
+            "default_embeddings_model": data["embedding"]["default_model"],
+            "endpoint_embeddings_template": "v1/embeddings",
+            "endpoint_embeddings_style": "openai",
+            "size_embeddings": 768,
+            "tokenizer_path_template": "/tokenizer/$MODEL",
+            "tokenizer_rewrite_path": {
+                model_name: tokenizer_url.replace("/tokenizer/", "")
+                for model_name, tokenizer_url in data["tokenizer_endpoints"].items()
+            },
+            "caps_version": data["caps_version"],
+        }
+
     async def _local_tokenizer(self, model_path: str) -> str:
         model_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
         tokenizer_paths = list(sorted(model_dir.rglob("tokenizer.json"), key=lambda p: p.stat().st_ctime))
@@ -358,14 +395,6 @@ class BaseCompletionsRouter(APIRouter):
             return Response(content=data, media_type='application/json')
         except RuntimeError as e:
             raise HTTPException(404, detail=str(e))
-
-    async def _login(self, authorization: str = Header(None)) -> Dict:
-        account = await self._account_from_bearer(authorization)
-        return {
-            "account": account,
-            "retcode": "OK",
-            "chat-v1-style": 1,
-        }
 
     async def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
         running = running_models_and_loras(self._model_assigner)
