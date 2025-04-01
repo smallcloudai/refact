@@ -305,7 +305,7 @@ startListening({
       action.payload.addressURL !== state.config.addressURL ||
       action.payload.lspPort !== state.config.lspPort
     ) {
-      pingApi.util.resetApiState();
+      listenerApi.dispatch(pingApi.util.resetApiState());
     }
   },
 });
