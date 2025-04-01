@@ -18,9 +18,7 @@ export const pingApi = createApi({
         // Instead, get it fresh from the state each time we poll
         return new Promise((resolve, _reject) => {
           const poll = () => {
-            // Get the current port value from the state on each polling attempt
             const currentPort = (api.getState() as RootState).config.lspPort;
-
             const url = `http://127.0.0.1:${currentPort}${PING_URL}`;
             fetch(url, {
               method: "GET",
