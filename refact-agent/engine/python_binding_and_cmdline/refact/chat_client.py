@@ -306,7 +306,17 @@ async def ask_using_http(
                     # print(">>>", line_str)
                     if "choices" in j and len(j["choices"]) > 0:
                         if "usage" in j and j.get("usage") is not None:
-                            have_usage = Usage(**j["usage"])
+                            temp_usage = Usage(**j["usage"])
+                            if have_usage is not None:
+                                # merge usage by getting max for each field
+                                have_usage = Usage(
+                                    prompt_tokens=max(have_usage.prompt_tokens, temp_usage.prompt_tokens),
+                                    completion_tokens=max(have_usage.completion_tokens, temp_usage.completion_tokens),
+                                    cache_creation_input_tokens=max(have_usage.cache_creation_input_tokens, temp_usage.cache_creation_input_tokens),
+                                    cache_read_input_tokens=max(have_usage.cache_read_input_tokens, temp_usage.cache_read_input_tokens),
+                                )
+                            else:
+                                have_usage = temp_usage
                         deltas_collector.add_deltas(j["choices"])
                     elif "role" in j:
                         deterministic.append(Message(**j))
@@ -314,7 +324,17 @@ async def ask_using_http(
                         map_key = j["tool_call_id"] + "__" + j["subchat_id"]
                         subchats[map_key].append(Message(**j["add_message"]))
                     elif j.get("usage") is not None:
-                        have_usage = Usage(**j["usage"])
+                        temp_usage = Usage(**j["usage"])
+                        if have_usage is not None:
+                            # merge usage by getting max for each field
+                            have_usage = Usage(
+                                prompt_tokens=max(have_usage.prompt_tokens, temp_usage.prompt_tokens),
+                                completion_tokens=max(have_usage.completion_tokens, temp_usage.completion_tokens),
+                                cache_creation_input_tokens=max(have_usage.cache_creation_input_tokens, temp_usage.cache_creation_input_tokens),
+                                cache_read_input_tokens=max(have_usage.cache_read_input_tokens, temp_usage.cache_read_input_tokens),
+                            )
+                        else:
+                            have_usage = temp_usage
                     else:
                         print("unrecognized streaming data (2):", j)
                     if callback is not None:
