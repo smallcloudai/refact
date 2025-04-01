@@ -204,6 +204,11 @@ pub struct CodeAssistantCapsV2 {
     pub telemetry_endpoints: CodeAssistantCapsTelemetryEndpoints,
     pub tokenizer_endpoints: HashMap<String, String>,
 
+    #[serde(default)]
+    pub customization: String,
+    #[serde(default)]
+    pub default_system_prompt: String,
+
     pub caps_version: i64,
 }
 
@@ -339,6 +344,9 @@ fn load_caps_from_buf_v2(
             models.extend(caps_v2.embedding.models.keys().cloned());
             models.into_iter().collect()
         },
+
+        customization: caps_v2.customization.clone(),
+        code_chat_default_system_prompt: caps_v2.default_system_prompt.clone(),
 
         ..Default::default()
     };
