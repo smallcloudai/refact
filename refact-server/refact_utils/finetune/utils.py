@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List
 
 from refact_utils.scripts import env
+from refact_utils.third_party.utils.models import available_third_party_models
 from refact_utils.finetune.train_defaults import finetune_train_defaults
 
 from typing import Any, Dict, Union
@@ -85,58 +86,35 @@ def running_models_and_loras(model_assigner) -> Dict[str, List[str]]:
         **model_assigner.models_info,
         **model_assigner.model_assignment,
     }
+
     result = {
         "completion": [],
         "chat": [],
+        "embedding": [],
     }
 
-    def add_result(k: str, model_dict: Dict):
-        if model_dict.get('has_completion'):
-            result['completion'].append(k)
-        if model_dict.get('has_chat'):
-            result['chat'].append(k)
+    # local hosted models
+    def _add_result(model_name: str, model_dict: Dict):
+        if model_dict.get("has_completion"):
+            result["completion"].append(model_name)
+        if model_dict.get("has_chat"):
+            result["chat"].append(model_name)
+        if model_dict.get("has_embeddings"):
+            result["embedding"].append(model_name)
 
-    def _add_results_for_passthrough_provider(provider: str) -> None:
-        for k, v in model_assigner.passthrough_mini_db.items():
-            if v.get('provider') == provider:
-                result['chat'].append(k)
-                if 'completion' in v.get('filter_caps', []):
-                    result['completion'].append(k)
-
-    for k, v in data.get("model_assign", {}).items():
-        if model_dict := [d for d in data['models'] if d['name'] == k]:
+    for model_name, v in data.get("model_assign", {}).items():
+        if model_dict := [d for d in data["models"] if d["name"] == model_name]:
             model_dict = model_dict[0]
+            _add_result(model_name, model_dict)
+            for run in model_dict.get("finetune_info", []):
+                run_id, checkpoint_id = run["run_id"], run["checkpoint"]
+                _add_result(f"{model_name}:{run_id}:{checkpoint_id}", model_dict)
 
-            add_result(k, model_dict)
-
-            if not model_dict.get('has_finetune'):
-                continue
-
-            finetune_info = model_dict.get('finetune_info', []) or []
-            for run in finetune_info:
-                val = f"{k}:{run['run_id']}:{run['checkpoint']}"
-                add_result(val, model_dict)
-
-    if data.get("openai_api_enable"):
-        _add_results_for_passthrough_provider('openai')
-
-    if data.get('anthropic_api_enable'):
-        _add_results_for_passthrough_provider('anthropic')
-
-    if data.get('cerebras_api_enable'):
-        _add_results_for_passthrough_provider('cerebras')
-
-    if data.get('gemini_api_enable'):
-        _add_results_for_passthrough_provider('gemini')
-
-    if data.get('groq_api_enable'):
-        _add_results_for_passthrough_provider('groq')
-
-    if data.get('xai_api_enable'):
-        _add_results_for_passthrough_provider('xai')
-
-    if data.get('deepseek_api_enable'):
-        _add_results_for_passthrough_provider('deepseek')
+    # third party models
+    for model_name, model_config in available_third_party_models().items():
+        result["chat"].append(model_name)
+        if model_config.capabilities.completion:
+            result["completion"].append(model_name)
 
     return result
 
