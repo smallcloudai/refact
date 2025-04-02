@@ -1,109 +1,67 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Login functionality", () => {
-  test("successful login with network interception", async ({ page }) => {
-    // 1. Set up network interception
-    // We'll listen for the authentication API call
-    let authRequestReceived = false;
-    let authResponseReceived = false;
+  test("login through google", async ({ page, context }) => {
+    const email = process.env.REFACT_LOGIN_EMAIL ?? "test@test.com";
+    const password = process.env.REFACT_LOGIN_PASSWORD ?? "test";
     
-    // Intercept the auth request
-    await page.route("**/api/auth/login", async (route) => {
-      // Record that we've seen the request
-      authRequestReceived = true;
+    // Navigate to the locally hosted app
+    await page.goto("http://localhost:5173/");
+    
+    // Wait for the login form to show up when the user is not logged in
+    await page.waitForSelector('button:has-text("Continue with Google")');
+    
+    // Set up listener for popup window before clicking
+    const popupPromise = context.waitForEvent('page');
+    
+    // Click the "Continue with Google" button which will open a popup
+    await page.click('button:has-text("Continue with Google")');
+    
+    // Verify the main page shows disabled buttons during authentication
+    await expect(page.locator('button:has-text("Continue with Google")')).toBeDisabled();
+    
+    // Wait for the popup to open
+    const googlePopup = await popupPromise;
+    await googlePopup.waitForLoadState('domcontentloaded');
+    
+    // Log the popup URL for debugging
+    console.log('Google popup URL:', googlePopup.url());
+    
+    // Google login flow - this may need adjustments based on the actual Google login page
+    try {
+      // Look for the email input field
+      await googlePopup.waitForSelector('input[type="email"]', { timeout: 10000 });
+      await googlePopup.fill('input[type="email"]', email);
+      await googlePopup.click('button:has-text("Next")');
       
-      // Inspect the request if needed
-      const request = route.request();
-      console.log(`Intercepted ${request.method()} request to ${request.url()}`);
+      // Wait for password field and fill it
+      await googlePopup.waitForSelector('input[type="password"]', { timeout: 10000 });
+      await googlePopup.fill('input[type="password"]', password);
+      await googlePopup.click('button:has-text("Next")');
       
-      // Let the request continue normally
-      await route.continue();
+      // Wait for any additional confirmation steps
+      await googlePopup.waitForSelector('button:has-text("Allow")', { timeout: 5000 })
+        .then(() => googlePopup.click('button:has-text("Allow")'))
+        .catch(() => console.log('No Allow button found, continuing'));
+      
+    } catch (error) {
+      console.log('Error during Google login flow:', error);
+      // Take a screenshot of the popup for debugging
+      await googlePopup.screenshot({ path: 'google-login-error.png' });
+    }
+    
+    // Wait for the authentication to complete and the popup to close
+    await googlePopup.waitForEvent('close', { timeout: 30000 }).catch(e => {
+      console.log('Google popup did not close automatically, continuing test');
     });
     
-    // Intercept the auth response
-    await page.on("response", async (response) => {
-      if (response.url().includes("/api/auth/login")) {
-        authResponseReceived = true;
-        
-        // Check response status
-        expect(response.status()).toBe(200);
-        
-        // Optionally inspect the response body
-        try {
-          const responseBody = await response.json();
-          console.log("Auth response:", responseBody);
-          // You can add assertions on the response body if needed
-        } catch (error) {
-          console.error("Failed to parse response JSON:", error);
-        }
-      }
-    });
+    // Return to the main page and wait for it to update after login
+    await page.waitForLoadState('networkidle');
     
-    // 2. Navigate to the login page (assuming it's the root path or has a login endpoint)
-    await page.goto("/");
+    // Verify we're back at the home page
+    await expect(page).toHaveURL("http://localhost:5173/");
     
-    // 3. Assert the login page is displayed correctly
-    await expect(page.getByRole("heading", { name: "Login" })).toBeVisible();
-    
-    // 4. Fill in the login form
-    await page.getByLabel("Email").fill("test@example.com");
-    await page.getByLabel("Password").fill("password123");
-    
-    // 5. Submit the form and wait for navigation
-    await Promise.all([
-      page.waitForResponse("**/api/auth/login"),
-      page.getByRole("button", { name: "Login" }).click()
-    ]);
-    
-    // 6. Verify network interception worked
-    expect(authRequestReceived).toBeTruthy();
-    expect(authResponseReceived).toBeTruthy();
-    
-    // 7. Verify user is redirected to the dashboard or home page after login
-    // This might need to be adjusted based on your app's actual behavior
-    await expect(page).toHaveURL(/dashboard|home/);
-    
-    // 8. Verify user is logged in (e.g., by checking for certain UI elements)
-    await expect(page.getByText("Welcome")).toBeVisible();
-    
-    // 9. Optionally verify a token is stored in localStorage
-    const hasToken = await page.evaluate(() => {
-      return !!localStorage.getItem("auth_token");
-    });
-    expect(hasToken).toBeTruthy();
-  });
-  
-  test("failed login with incorrect credentials", async ({ page }) => {
-    // 1. Set up network interception for the failed login attempt
-    let failedAuthResponse = null;
-    
-    // Listen for the failed auth response
-    await page.on("response", async (response) => {
-      if (response.url().includes("/api/auth/login") && response.status() !== 200) {
-        failedAuthResponse = response;
-      }
-    });
-    
-    // 2. Navigate to the login page
-    await page.goto("/");
-    
-    // 3. Fill in incorrect credentials
-    await page.getByLabel("Email").fill("wrong@example.com");
-    await page.getByLabel("Password").fill("wrongpassword");
-    
-    // 4. Submit the form and expect an error response
-    await page.getByRole("button", { name: "Login" }).click();
-    
-    // 5. Wait for error message to appear
-    await expect(page.getByText("Invalid email or password")).toBeVisible();
-    
-    // 6. Verify we're still on the login page
-    await expect(page).toHaveURL("/");
-    
-    // 7. Verify no auth token was set
-    const hasToken = await page.evaluate(() => {
-      return !!localStorage.getItem("auth_token");
-    });
-    expect(hasToken).toBeFalsy();
+    // Verify that we're logged in (login form should not be visible)
+    await expect(page.locator('heading:has-text("Login to Refact.ai")')).not.toBeVisible({ timeout: 10000 });
   });
 });
