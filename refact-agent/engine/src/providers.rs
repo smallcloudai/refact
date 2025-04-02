@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::caps::{strip_model_from_finetune, BaseModelRecord, ChatModelRecord, 
-    CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord};
+    CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::YamlError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -117,7 +117,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
 
         #[derive(Deserialize)]
         struct EmbeddingModelRecordHelper {
-            #[serde(default)]
+            #[serde(flatten)]
             base: BaseModelRecord,
             #[serde(default)]
             embedding_size: i32,
@@ -403,29 +403,15 @@ pub fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Res
 
     for provider in providers {
         for model_name in &provider.running_models {
-            let model_stripped = strip_model_from_finetune(model_name);
-
-            if !provider.completion_models.contains_key(&model_stripped) {
-                let models_to_try = provider.completion_models.iter()
-                    .chain(&known_models.completion_models);
-                
-                for (candidate_model_name, candidate_model_rec) in models_to_try {
-                    if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
-                        provider.completion_models.insert(model_name.clone(), candidate_model_rec.clone());
-                        break;
-                    }
+            if !provider.completion_models.contains_key(model_name) {
+                if let Some(model_rec) = find_model_match(model_name, &provider.completion_models, &known_models.completion_models) {
+                    provider.completion_models.insert(model_name.clone(), model_rec);
                 }
             }
 
-            if !provider.chat_models.contains_key(&model_stripped) {
-                let models_to_try = provider.chat_models.iter()
-                    .chain(&known_models.chat_models);
-                
-                for (candidate_model_name, candidate_model_rec) in models_to_try {
-                    if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
-                        provider.chat_models.insert(model_name.clone(), candidate_model_rec.clone());
-                        break;
-                    }
+            if !provider.chat_models.contains_key(model_name) {
+                if let Some(model_rec) = find_model_match(model_name, &provider.chat_models, &known_models.chat_models) {
+                    provider.chat_models.insert(model_name.clone(), model_rec);
                 }
             }
         }
@@ -440,25 +426,50 @@ pub fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Res
 
         if !provider.embedding_model.is_configured() && !provider.embedding_model.base.name.is_empty() {
             let model_name = provider.embedding_model.base.name.clone();
-            let model_stripped = strip_model_from_finetune(&model_name);
-
-            let mut found = false;
-            for (candidate_model_name, candidate_model_rec) in &known_models.embedding_models {
-                if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
-                    provider.embedding_model = candidate_model_rec.clone();
-                    provider.embedding_model.base.name = model_name;
-                    found = true;
-                    break;
-                }
-            }
-            
-            if !found {
-                tracing::warn!("Unknown embedding model '{}', maybe configure it or update this binary", model_stripped);
+            if let Some(model_rec) = find_model_match(&model_name, &IndexMap::new(), &known_models.embedding_models) {
+                provider.embedding_model = model_rec;
+                provider.embedding_model.base.name = model_name;
+            } else {
+                tracing::warn!("Unknown embedding model '{}', maybe configure it or update this binary", model_name);
             }
         }
     }
 
     Ok(())
+}
+
+fn find_model_match<T: Clone + HasBaseModelRecord>(
+    model_name: &String,
+    provider_models: &IndexMap<String, T>,
+    known_models: &IndexMap<String, T>
+) -> Option<T> {
+    let model_stripped = strip_model_from_finetune(model_name);
+
+    if let Some(model) = provider_models.get(model_name)
+        .or_else(|| provider_models.get(&model_stripped)) {
+        return Some(model.clone());
+    }
+    
+    for model in provider_models.values() {
+        if model.base().similar_models.contains(model_name) ||
+            model.base().similar_models.contains(&model_stripped) {
+            return Some(model.clone());
+        }
+    }
+    
+    if let Some(model) = known_models.get(model_name)
+        .or_else(|| known_models.get(&model_stripped)) {
+        return Some(model.clone());
+    }
+    
+    for model in known_models.values() {
+        if model.base().similar_models.contains(&model_name.to_string()) ||
+            model.base().similar_models.contains(&model_stripped) {
+            return Some(model.clone());
+        }
+    }
+    
+    None
 }
 
 pub fn resolve_provider_api_key(provider: &CapsProvider, cmdline_api_key: &str) -> String {
