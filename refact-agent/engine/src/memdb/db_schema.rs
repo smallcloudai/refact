@@ -31,27 +31,19 @@ pub fn setup_triggers(conn: &Connection, table_name: &str, fields: Vec<&str>, id
 
 extern "C" fn pubsub_trigger_hook(
     user_data: *mut c_void,
-    action: c_int,
-    db_name: *const i8,
-    table_name: *const i8,
+    _: c_int,
+    db_name: *const std::os::raw::c_char,
+    table_name: *const std::os::raw::c_char,
     _: i64,
 ) {
     let notify = unsafe { &*(user_data as *const Notify) };
-    let db_name = unsafe { std::ffi::CStr::from_ptr(db_name).to_str().unwrap_or("unknown") };
-    let table_name = unsafe { std::ffi::CStr::from_ptr(table_name).to_str().unwrap_or("unknown") };
-    let operation = match action {
-        18 => "INSERT",
-        9 => "DELETE",
-        23 => "UPDATE",
-        _ => "UNKNOWN",
-    };
+    let db_name = unsafe { std::ffi::CStr::from_ptr(db_name as *const std::os::raw::c_char).to_str().unwrap_or("unknown") };
+    let table_name = unsafe { std::ffi::CStr::from_ptr(table_name as *const std::os::raw::c_char).to_str().unwrap_or("unknown") };
     if db_name != "main" && table_name != "pubsub_events" {
         return;
     }
-    info!("pubsub {} action triggered", operation);
     notify.notify_waiters();
 }
-
 
 pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, reset_memory: bool) -> Result<(), String> {
     if reset_memory {
