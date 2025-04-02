@@ -9,32 +9,30 @@ export const pingApi = createApi({
     ping: builder.query<string, number>({
       providesTags: (_result, _error, port) => [{ type: "PING", id: port }],
       forceRefetch: ({ currentArg, previousArg }) => currentArg !== previousArg,
-      queryFn: async (portArg, _api, _extraOptions, _baseQuery) => {
+      queryFn: async (portArg, _api, _extraOptions, baseQuery) => {
         const url = `http://127.0.0.1:${portArg}${PING_URL}`;
 
-        try {
-          const response = await fetch(url, {
-            method: "GET",
-            redirect: "follow",
-            cache: "no-cache",
-          });
+        const response = await baseQuery({
+          method: "GET",
+          url,
+          redirect: "follow",
+          cache: "no-cache",
+          responseHandler: "text",
+        });
 
-          if (response.ok) {
-            const text = await response.text();
-            return { data: text };
-          } else {
-            return {
-              error: {
-                status: "FETCH_ERROR",
-                error: response.statusText,
-              },
-            };
-          }
-        } catch (err) {
+        if (response.error) {
+          return {
+            error: response.error,
+          };
+        }
+
+        if (response.data && typeof response.data === "string") {
+          return { data: response.data };
+        } else {
           return {
             error: {
               status: "FETCH_ERROR",
-              error: err instanceof Error ? err.message : String(err),
+              error: "No data received in response",
             },
           };
         }
@@ -42,7 +40,7 @@ export const pingApi = createApi({
     }),
     reset: builder.mutation<null, undefined>({
       queryFn: () => ({ data: null }),
-      invalidatesTags: [{ type: "PING", id: undefined }],
+      invalidatesTags: ["PING"],
     }),
   }),
 });
