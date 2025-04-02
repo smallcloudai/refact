@@ -55,64 +55,31 @@ pub fn cthreads_from_rows(
     cthreads
 }
 
-pub fn cthread_set_lowlevel(
-    tx: &rusqlite::Transaction,
+pub fn cthread_set(
+    mdb: Arc<ParkMutex<MemDB>>,
     cthread: &CThread,
-) -> Result<usize, String> {
-    let updated_rows = tx.execute(
-        "UPDATE cthreads SET
-            cthread_belongs_to_chore_event_id = ?2,
-            cthread_title = ?3,
-            cthread_toolset = ?4,
-            cthread_model = ?5,
-            cthread_temperature = ?6,
-            cthread_max_new_tokens = ?7,
-            cthread_n = ?8,
-            cthread_error = ?9,
-            cthread_anything_new = ?10,
-            cthread_created_ts = ?11,
-            cthread_updated_ts = ?12,
-            cthread_archived_ts = ?13,
-            cthread_locked_by = ?14,
-            cthread_locked_ts = ?15
-        WHERE cthread_id = ?1",
-        rusqlite::params![
-            cthread.cthread_id,
-            cthread.cthread_belongs_to_chore_event_id,
-            cthread.cthread_title,
-            cthread.cthread_toolset,
-            cthread.cthread_model,
-            cthread.cthread_temperature,
-            cthread.cthread_max_new_tokens,
-            cthread.cthread_n,
-            cthread.cthread_error,
-            cthread.cthread_anything_new,
-            cthread.cthread_created_ts,
-            cthread.cthread_updated_ts,
-            cthread.cthread_archived_ts,
-            cthread.cthread_locked_by,
-            cthread.cthread_locked_ts,
-        ],
-    ).map_err(|e| e.to_string())?;
-    if updated_rows == 0 {
-        tx.execute(
-            "INSERT INTO cthreads (
-                cthread_id,
-                cthread_belongs_to_chore_event_id,
-                cthread_title,
-                cthread_toolset,
-                cthread_model,
-                cthread_temperature,
-                cthread_max_new_tokens,
-                cthread_n,
-                cthread_error,
-                cthread_anything_new,
-                cthread_created_ts,
-                cthread_updated_ts,
-                cthread_archived_ts,
-                cthread_locked_by,
-                cthread_locked_ts
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+) {
+    fn _cthread_set_lowlevel(
+        tx: &rusqlite::Transaction,
+        cthread: &CThread,
+    ) -> Result<usize, String> {
+        let updated_rows = tx.execute(
+            "UPDATE cthreads SET
+                cthread_belongs_to_chore_event_id = ?2,
+                cthread_title = ?3,
+                cthread_toolset = ?4,
+                cthread_model = ?5,
+                cthread_temperature = ?6,
+                cthread_max_new_tokens = ?7,
+                cthread_n = ?8,
+                cthread_error = ?9,
+                cthread_anything_new = ?10,
+                cthread_created_ts = ?11,
+                cthread_updated_ts = ?12,
+                cthread_archived_ts = ?13,
+                cthread_locked_by = ?14,
+                cthread_locked_ts = ?15
+            WHERE cthread_id = ?1",
             rusqlite::params![
                 cthread.cthread_id,
                 cthread.cthread_belongs_to_chore_event_id,
@@ -130,16 +97,49 @@ pub fn cthread_set_lowlevel(
                 cthread.cthread_locked_by,
                 cthread.cthread_locked_ts,
             ],
-        ).map_err(|e| e.to_string())
-    } else {
-        Ok(updated_rows)
+        ).map_err(|e| e.to_string())?;
+        if updated_rows == 0 {
+            tx.execute(
+                "INSERT INTO cthreads (
+                    cthread_id,
+                    cthread_belongs_to_chore_event_id,
+                    cthread_title,
+                    cthread_toolset,
+                    cthread_model,
+                    cthread_temperature,
+                    cthread_max_new_tokens,
+                    cthread_n,
+                    cthread_error,
+                    cthread_anything_new,
+                    cthread_created_ts,
+                    cthread_updated_ts,
+                    cthread_archived_ts,
+                    cthread_locked_by,
+                    cthread_locked_ts
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+                rusqlite::params![
+                    cthread.cthread_id,
+                    cthread.cthread_belongs_to_chore_event_id,
+                    cthread.cthread_title,
+                    cthread.cthread_toolset,
+                    cthread.cthread_model,
+                    cthread.cthread_temperature,
+                    cthread.cthread_max_new_tokens,
+                    cthread.cthread_n,
+                    cthread.cthread_error,
+                    cthread.cthread_anything_new,
+                    cthread.cthread_created_ts,
+                    cthread.cthread_updated_ts,
+                    cthread.cthread_archived_ts,
+                    cthread.cthread_locked_by,
+                    cthread.cthread_locked_ts,
+                ],
+            ).map_err(|e| e.to_string())
+        } else {
+            Ok(updated_rows)
+        }
     }
-}
 
-pub fn cthread_set(
-    mdb: Arc<ParkMutex<MemDB>>,
-    cthread: &CThread,
-) {
     let (lite, memdb_sleeping_point) = {
         let db = mdb.lock();
         (db.lite.clone(), db.memdb_sleeping_point.clone())
@@ -147,7 +147,7 @@ pub fn cthread_set(
     {
         let mut conn = lite.lock();
         let tx = conn.transaction().expect("Failed to start transaction");
-        if let Err(e) = cthread_set_lowlevel(&tx, cthread) {
+        if let Err(e) = _cthread_set_lowlevel(&tx, cthread) {
             tracing::error!("Failed to insert or replace cthread:\n{}", e);
         }
         if let Err(e) = tx.commit() {
@@ -180,7 +180,6 @@ pub async fn handle_db_v1_cthread_update(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    // TODO agent: avoid unwraps and expect
     let mdb = gcx.read().await.memdb.clone();
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
@@ -222,7 +221,6 @@ pub async fn handle_db_v1_cthreads_sub(
     if post.limit == 0 {
         post.limit = 100;
     }
-    // TODO agent: avoid unwraps and expect
 
     let mdb = gcx.read().await.memdb.clone();
     let lite_arc = mdb.lock().lite.clone();

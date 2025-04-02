@@ -31,8 +31,7 @@ pub async fn handle_v1_vecdb_search(
         let gcx_locked = gcx.read().await;
         let vecdb = gcx_locked.vecdb.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()))?;
-        let vectorizer_service = gcx_locked.vectorizer_service.clone();
-        (vecdb, vectorizer_service)
+        (vecdb, gcx_locked.vectorizer_service.clone())
     };
     let search_res = {
         let vecdb_locked = vecdb.lock().await;
@@ -53,6 +52,7 @@ pub async fn handle_v1_vecdb_search(
         }
     }
 }
+
 
 pub async fn handle_v1_vecdb_status(
     Extension(gcx): Extension<SharedGlobalContext>,

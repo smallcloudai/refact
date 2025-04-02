@@ -63,7 +63,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         conn.execute("DROP TABLE IF EXISTS memories", []).map_err(|e| e.to_string())?;
     }
     conn.execute(
-    "CREATE TABLE IF NOT EXISTS pubsub_events (
+        "CREATE TABLE IF NOT EXISTS pubsub_events (
             pubevent_id INTEGER PRIMARY KEY AUTOINCREMENT,
             pubevent_channel TEXT NOT NULL,
             pubevent_action TEXT NOT NULL,
@@ -74,7 +74,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-    "CREATE TRIGGER IF NOT EXISTS pubsub_events_delete_old
+        "CREATE TRIGGER IF NOT EXISTS pubsub_events_delete_old
          AFTER INSERT ON pubsub_events
          BEGIN
              DELETE FROM pubsub_events WHERE pubevent_ts <= datetime('now', '-15 minutes');
@@ -82,7 +82,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-    "CREATE TABLE IF NOT EXISTS chores (
+        "CREATE TABLE IF NOT EXISTS chores (
             chore_id TEXT PRIMARY KEY,
             chore_title TEXT NOT NULL,
             chore_spontaneous_work_enable BOOLEAN NOT NULL,
@@ -92,7 +92,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-    "CREATE TABLE IF NOT EXISTS chore_events (
+        "CREATE TABLE IF NOT EXISTS chore_events (
             chore_event_id TEXT PRIMARY KEY,
             chore_event_belongs_to_chore_id TEXT NOT NULL,
             chore_event_summary TEXT NOT NULL,
@@ -106,7 +106,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-    "CREATE TABLE IF NOT EXISTS cthreads (
+        "CREATE TABLE IF NOT EXISTS cthreads (
             cthread_id TEXT PRIMARY KEY,
             cthread_belongs_to_chore_event_id TEXT DEFAULT NULL,
             cthread_title TEXT NOT NULL,
@@ -129,7 +129,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-    "CREATE TABLE IF NOT EXISTS cmessages (
+        "CREATE TABLE IF NOT EXISTS cmessages (
             cmessage_belongs_to_cthread_id TEXT NOT NULL,
             cmessage_alt INT NOT NULL,
             cmessage_num INT NOT NULL,
@@ -146,7 +146,7 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
         [],
     ).map_err(|e| e.to_string())?;
     conn.execute(
-    "CREATE TABLE IF NOT EXISTS memories (
+        "CREATE TABLE IF NOT EXISTS memories (
             memid TEXT PRIMARY KEY,
             m_type TEXT NOT NULL,
             m_goal TEXT NOT NULL,

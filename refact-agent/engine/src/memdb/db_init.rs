@@ -6,9 +6,7 @@ use rusqlite::Connection;
 
 use crate::memdb::db_structs::MemDB;
 
-fn _make_connection(
-    config_dir: &PathBuf
-) -> Result<Arc<ParkMutex<MemDB>>, String> {
+fn _make_connection(config_dir: &PathBuf) -> Result<Arc<ParkMutex<MemDB>>, String> {
     let db_path = config_dir.join("memdb.sqlite");
     let db = Connection::open_with_flags(
         db_path,

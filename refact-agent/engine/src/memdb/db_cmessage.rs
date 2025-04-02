@@ -33,44 +33,25 @@ pub fn cmessages_from_rows(
     cmessages
 }
 
-pub fn cmessage_set_lowlevel(
+pub fn cmessage_set(
     tx: &rusqlite::Transaction,
-    cmessage: &CMessage,
-) -> Result<usize, String> {
-    let updated_rows = tx.execute(
-        "UPDATE cmessages SET
-            cmessage_belongs_to_cthread_id = ?1,
-            cmessage_alt = ?2,
-            cmessage_num = ?3,
-            cmessage_prev_alt = ?4,
-            cmessage_usage_model = ?5,
-            cmessage_usage_prompt = ?6,
-            cmessage_usage_completion = ?7,
-            cmessage_json = ?8
-        WHERE cmessage_belongs_to_cthread_id = ?1 AND cmessage_alt = ?2 AND cmessage_num = ?3",
-        params![
-            cmessage.cmessage_belongs_to_cthread_id,
-            cmessage.cmessage_alt,
-            cmessage.cmessage_num,
-            cmessage.cmessage_prev_alt,
-            cmessage.cmessage_usage_model,
-            cmessage.cmessage_usage_prompt,
-            cmessage.cmessage_usage_completion,
-            cmessage.cmessage_json,
-        ],
-    ).map_err(|e| e.to_string())?;
-    if updated_rows == 0 {
-        tx.execute(
-            "INSERT INTO cmessages (
-                cmessage_belongs_to_cthread_id,
-                cmessage_alt,
-                cmessage_num,
-                cmessage_prev_alt,
-                cmessage_usage_model,
-                cmessage_usage_prompt,
-                cmessage_usage_completion,
-                cmessage_json
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+    cmessage: CMessage,
+) {
+    fn _cmessage_set_lowlevel(
+        tx: &rusqlite::Transaction,
+        cmessage: &CMessage,
+    ) -> Result<usize, String> {
+        let updated_rows = tx.execute(
+            "UPDATE cmessages SET
+                cmessage_belongs_to_cthread_id = ?1,
+                cmessage_alt = ?2,
+                cmessage_num = ?3,
+                cmessage_prev_alt = ?4,
+                cmessage_usage_model = ?5,
+                cmessage_usage_prompt = ?6,
+                cmessage_usage_completion = ?7,
+                cmessage_json = ?8
+            WHERE cmessage_belongs_to_cthread_id = ?1 AND cmessage_alt = ?2 AND cmessage_num = ?3",
             params![
                 cmessage.cmessage_belongs_to_cthread_id,
                 cmessage.cmessage_alt,
@@ -81,18 +62,35 @@ pub fn cmessage_set_lowlevel(
                 cmessage.cmessage_usage_completion,
                 cmessage.cmessage_json,
             ],
-        ).map_err(|e| e.to_string())
-    } else {
-        Ok(updated_rows)
+        ).map_err(|e| e.to_string())?;
+        if updated_rows == 0 {
+            tx.execute(
+                "INSERT INTO cmessages (
+                    cmessage_belongs_to_cthread_id,
+                    cmessage_alt,
+                    cmessage_num,
+                    cmessage_prev_alt,
+                    cmessage_usage_model,
+                    cmessage_usage_prompt,
+                    cmessage_usage_completion,
+                    cmessage_json
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![
+                    cmessage.cmessage_belongs_to_cthread_id,
+                    cmessage.cmessage_alt,
+                    cmessage.cmessage_num,
+                    cmessage.cmessage_prev_alt,
+                    cmessage.cmessage_usage_model,
+                    cmessage.cmessage_usage_prompt,
+                    cmessage.cmessage_usage_completion,
+                    cmessage.cmessage_json,
+                ],
+            ).map_err(|e| e.to_string())
+        } else {
+            Ok(updated_rows)
+        }
     }
-}
-
-pub fn cmessage_set(
-    tx: &rusqlite::Transaction,
-    cmessage: CMessage,
-) {
-    // TODO agent: move cmessage_set_lowlevel here, like in the db_chore
-    if let Err(e) = cmessage_set_lowlevel(&tx, &cmessage) {
+    if let Err(e) = _cmessage_set_lowlevel(&tx, &cmessage) {
         tracing::error!("Failed to insert or replace cmessage:\n{}", e);
         return;
     }
@@ -131,7 +129,6 @@ pub async fn handle_db_v1_cmessages_update(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    // TODO agent: avoid unwraps and expect
     let mdb = gcx.read().await.memdb.clone();
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
@@ -208,7 +205,6 @@ pub async fn handle_db_v1_cmessages_sub(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    // TODO agent: avoid unwraps and expect
     let mdb = gcx.read().await.memdb.clone();
     let lite_arc = mdb.lock().lite.clone();
 

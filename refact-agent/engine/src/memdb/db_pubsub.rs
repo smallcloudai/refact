@@ -29,9 +29,7 @@ pub async fn pubsub_trigerred(
     match tokio::time::timeout(
         tokio::time::Duration::from_secs(sleep_seconds),
         sleeping_point.notified(),
-    )
-    .await
-    {
+    ).await {
         Ok(_) => {}
         Err(_) => {} // timeout
     }

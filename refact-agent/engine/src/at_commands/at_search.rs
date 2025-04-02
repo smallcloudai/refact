@@ -68,6 +68,7 @@ pub async fn execute_at_search(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.top_n)
     };
+
     let api_key = get_custom_embedding_api_key(gcx.clone())
         .await.map_err(|err| err.message)?;
     let (vecdb, vectorizer_service) = {

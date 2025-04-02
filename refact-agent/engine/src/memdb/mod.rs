@@ -7,8 +7,6 @@ pub mod db_structs;
 pub mod db_memories;
 pub mod db_pubsub;
 
-
-
 // TODO agent: move it to another more suitable file
 pub fn merge_json(a: &mut serde_json::Value, b: &serde_json::Value) {
     // if let serde_json::Value::Object(_) = b {

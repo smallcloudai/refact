@@ -32,7 +32,7 @@ pub fn chore_set(
         chore: &Chore,
     ) -> Result<usize, String> {
         let updated_rows = tx.execute(
-        "UPDATE chores SET
+            "UPDATE chores SET
                 chore_title = ?2,
                 chore_spontaneous_work_enable = ?3,
                 chore_created_ts = ?4,
@@ -68,7 +68,6 @@ pub fn chore_set(
         }
     }
 
-    // TODO agent: avoid unwraps and expect
     let lite = mdb.lock().lite.clone();
     let mut conn = lite.lock();
     let tx = conn.transaction().expect("Failed to start transaction");
@@ -86,7 +85,7 @@ pub fn chore_event_set(
         cevent: &ChoreEvent,
     ) -> Result<usize, String> {
         let updated_rows = tx.execute(
-        "UPDATE chore_events SET
+            "UPDATE chore_events SET
                 chore_event_belongs_to_chore_id = ?2,
                 chore_event_summary = ?3,
                 chore_event_ts = ?4,
@@ -126,7 +125,6 @@ pub fn chore_event_set(
         }
     }
 
-    // TODO agent: avoid unwraps and expect
     let lite = mdb.lock().lite.clone();
     let mut conn = lite.lock();
     let tx = conn.transaction().expect("Failed to start transaction");
@@ -155,7 +153,6 @@ pub fn chore_get(
         chores
     }
 
-    // TODO agent: avoid unwraps and expect
     let lite = mdb.lock().lite.clone();
     let conn = lite.lock();
     let mut stmt = conn.prepare("SELECT * FROM chores WHERE chore_id = ?1").unwrap();
@@ -202,7 +199,6 @@ pub async fn handle_db_v1_chore_update(
 
     let chore_id = incoming_json.get("chore_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
 
-    // TODO agent: avoid unwraps and expect
     let chore_rec = match chore_get(mdb.clone(), chore_id.clone()) {
         Ok(existing_chore) => existing_chore,
         Err(_) => Chore {
@@ -245,7 +241,6 @@ pub async fn handle_db_v1_chore_event_update(
 
     let chore_event_id = incoming_json.get("chore_event_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
 
-    // TODO agent: avoid unwraps and expect
     let chore_event_rec = match chore_event_get(mdb.clone(), chore_event_id.clone()) {
         Ok(existing_event) => existing_event,
         Err(_) => ChoreEvent {

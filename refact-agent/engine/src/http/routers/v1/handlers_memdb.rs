@@ -54,10 +54,9 @@ pub async fn handle_mem_add(
     })?;
     let (memdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
-        (memdb, vectorizer_service)
+        (gcx_locked.memdb.clone(), vectorizer_service)
     };
     let memid = crate::memdb::db_memories::memories_add(
         memdb,
@@ -112,10 +111,9 @@ pub async fn handle_mem_upd(
 
     let (memdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
-        (memdb, vectorizer_service)
+        (gcx_locked.memdb.clone(), vectorizer_service)
     };
     let upd_cnt = crate::memdb::db_memories::memories_update(
         memdb, vectorizer_service, &post.memid, &post.mem_type, &post.goal, &post.project, &post.payload, &post.origin,
@@ -202,10 +200,9 @@ pub async fn handle_mem_sub(
         .unwrap_or(MemSubscriptionPost::default());
     let (memdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
-        (memdb, vectorizer_service)
+        (gcx_locked.memdb.clone(), vectorizer_service)
     };
     let mut last_pubevent_id = _get_last_memid(
         &crate::memdb::db_pubsub::pubsub_poll(memdb.lock().lite.clone(), &"memories".to_string(), None)
@@ -289,6 +286,7 @@ pub async fn handle_mem_sub(
                     continue;
                 }
             };
+            
         }
     };
 
