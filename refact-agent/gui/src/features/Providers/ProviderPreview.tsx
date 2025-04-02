@@ -24,8 +24,6 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
 
   const handleSaveChanges = useCallback(
     async (updatedProviderData: Provider) => {
-      // TODO: save logic
-      console.log("updatedProviderData", updatedProviderData);
       const response = await updateProvider(updatedProviderData);
       if (response.error) return;
       dispatch(
