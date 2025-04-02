@@ -7,7 +7,6 @@ use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::Deserialize;
 use async_stream::stream;
-use tracing::error;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::memdb::db_structs::{MemDB, CThread};
@@ -339,12 +338,8 @@ pub fn cthread_subscription_poll(
         WHERE pubevent_id > ?1
         AND pubevent_channel = 'cthreads' AND (pubevent_action = 'update' OR pubevent_action = 'delete')
         ORDER BY pubevent_id ASC
-    ");
-    if let Err(err) = &stmt {
-        error!("{:?}", err);
-    };
-    let mut binding = stmt.unwrap();
-    let mut rows = binding.query([*seen_id]).map_err(|e| format!("Failed to execute query: {}", e))?;
+    ").unwrap();
+    let mut rows = stmt.query([*seen_id]).map_err(|e| format!("Failed to execute query: {}", e))?;
     let mut deleted_cthread_ids = Vec::new();
     let mut updated_cthread_ids = Vec::new();
     while let Some(row) = rows.next().map_err(|e| format!("Failed to fetch row: {}", e))? {

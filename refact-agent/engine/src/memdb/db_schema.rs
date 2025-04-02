@@ -2,7 +2,6 @@ use std::os::raw::{c_int, c_void};
 use std::sync::Arc;
 use rusqlite::Connection;
 use tokio::sync::Notify;
-use tracing::info;
 
 pub fn setup_triggers(conn: &Connection, table_name: &str, fields: Vec<&str>, id_field: &str) -> Result<(), String> {
     for method in ["INSERT", "UPDATE", "DELETE"] {
