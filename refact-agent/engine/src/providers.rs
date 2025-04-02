@@ -441,11 +441,19 @@ pub fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Res
         if !provider.embedding_model.is_configured() && !provider.embedding_model.base.name.is_empty() {
             let model_name = provider.embedding_model.base.name.clone();
             let model_stripped = strip_model_from_finetune(&model_name);
-            if let Some(known_model_rec) = known_models.embedding_models.get(&model_stripped) {
-                provider.embedding_model = known_model_rec.clone();
-                provider.embedding_model.base.name = model_name;
-            } else {
-                tracing::warn!("Unkown embedding model '{}', maybe configure it or update this binary", model_stripped);
+
+            let mut found = false;
+            for (candidate_model_name, candidate_model_rec) in &known_models.embedding_models {
+                if candidate_model_name == &model_stripped || candidate_model_rec.base.similar_models.contains(&model_stripped) {
+                    provider.embedding_model = candidate_model_rec.clone();
+                    provider.embedding_model.base.name = model_name;
+                    found = true;
+                    break;
+                }
+            }
+            
+            if !found {
+                tracing::warn!("Unknown embedding model '{}', maybe configure it or update this binary", model_stripped);
             }
         }
     }
