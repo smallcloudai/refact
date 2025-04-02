@@ -46,7 +46,7 @@ pub async fn look_for_a_job(
         if !pubsub_trigerred(gcx.clone(), mdb.clone(), sleep_seconds).await {
             break;
         }
-        let (deleted_cthread_ids, updated_cthread_ids) = match crate::memdb::db_cthread::cthread_subsription_poll(lite_arc.clone(), &mut last_pubsub_id) {
+        let (deleted_cthread_ids, updated_cthread_ids) = match crate::memdb::db_cthread::cthread_subscription_poll(lite_arc.clone(), &mut last_pubsub_id) {
             Ok(x) => x,
             Err(e) => {
                 tracing::error!("wait_for_cthread_to_work_on(1): {}", e);

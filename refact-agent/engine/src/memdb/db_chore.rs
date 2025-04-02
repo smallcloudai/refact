@@ -418,7 +418,7 @@ fn _chore_subscription_poll(
 ) -> Result<(Vec<String>, Vec<String>), String> {
     let conn = lite_arc.lock();
     let mut stmt = conn.prepare("
-        SELECT pubevent_id, pubevent_action, pubevent_json
+        SELECT pubevent_id, pubevent_action, pubevent_obj_json
         FROM pubsub_events
         WHERE pubevent_id > ?1
         AND pubevent_channel = 'chores' AND (pubevent_action = 'update' OR pubevent_action = 'delete')

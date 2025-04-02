@@ -7,7 +7,7 @@ use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
 use serde::Deserialize;
 use async_stream::stream;
-
+use tracing::error;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::memdb::db_structs::{MemDB, CThread};
@@ -261,7 +261,7 @@ pub async fn handle_db_v1_cthreads_sub(
             if !pubsub_trigerred(gcx.clone(), mdb.clone(), 10).await {
                 break;
             }
-            let (deleted_cthread_ids, updated_cthread_ids) = match cthread_subsription_poll(lite_arc.clone(), &mut last_pubsub_id) {
+            let (deleted_cthread_ids, updated_cthread_ids) = match cthread_subscription_poll(lite_arc.clone(), &mut last_pubsub_id) {
                 Ok(x) => x,
                 Err(e) => {
                     tracing::error!("handle_db_v1_cthreads_sub: Failed to poll for updates: {}", e);
@@ -328,19 +328,23 @@ pub fn cthread_quicksearch(
     Ok(cthreads_from_rows(rows))
 }
 
-pub fn cthread_subsription_poll(
+pub fn cthread_subscription_poll(
     lite_arc: Arc<ParkMutex<rusqlite::Connection>>,
     seen_id: &mut i64
 ) -> Result<(Vec<String>, Vec<String>), String> {
     let conn = lite_arc.lock();
     let mut stmt = conn.prepare("
-        SELECT pubevent_id, pubevent_action, pubevent_json
+        SELECT pubevent_id, pubevent_action, pubevent_obj_json
         FROM pubsub_events
         WHERE pubevent_id > ?1
         AND pubevent_channel = 'cthreads' AND (pubevent_action = 'update' OR pubevent_action = 'delete')
         ORDER BY pubevent_id ASC
-    ").unwrap();
-    let mut rows = stmt.query([*seen_id]).map_err(|e| format!("Failed to execute query: {}", e))?;
+    ");
+    if let Err(err) = &stmt {
+        error!("{:?}", err);
+    };
+    let mut binding = stmt.unwrap();
+    let mut rows = binding.query([*seen_id]).map_err(|e| format!("Failed to execute query: {}", e))?;
     let mut deleted_cthread_ids = Vec::new();
     let mut updated_cthread_ids = Vec::new();
     while let Some(row) = rows.next().map_err(|e| format!("Failed to fetch row: {}", e))? {

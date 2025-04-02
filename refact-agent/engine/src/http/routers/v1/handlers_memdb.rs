@@ -243,8 +243,8 @@ pub async fn handle_mem_sub(
             let e = json!({
                 "pubevent_id": -1,
                 "pubevent_action": "INSERT",
-                "pubevent_memid": memory.memid,
-                "pubevent_json": serde_json::to_string(&memory).expect("Failed to serialize event"),
+                "pubevent_obj_id": memory.memid,
+                "pubevent_obj_json": serde_json::to_string(&memory).expect("Failed to serialize event"),
             });
             yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&e).unwrap()));
         }
