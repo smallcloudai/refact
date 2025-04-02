@@ -12,6 +12,7 @@ use async_stream::stream;
 use crate::memdb::db_structs::{MemDB, Chore, ChoreEvent};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+use crate::memdb::db_utils::merge_json;
 
 #[derive(Deserialize, Default)]
 pub struct ChoresSubscriptionPost {
@@ -208,7 +209,7 @@ pub async fn handle_db_v1_chore_update(
     };
 
     let mut chore_json = serde_json::to_value(&chore_rec).unwrap();
-    crate::memdb::merge_json(&mut chore_json, &incoming_json);
+    merge_json(&mut chore_json, &incoming_json);
 
     let chore_rec: Chore = serde_json::from_value(chore_json).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
@@ -250,7 +251,7 @@ pub async fn handle_db_v1_chore_event_update(
     };
 
     let mut chore_event_json = serde_json::to_value(&chore_event_rec).unwrap();
-    crate::memdb::merge_json(&mut chore_event_json, &incoming_json);
+    merge_json(&mut chore_event_json, &incoming_json);
 
     let chore_event_rec: ChoreEvent = serde_json::from_value(chore_event_json).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))

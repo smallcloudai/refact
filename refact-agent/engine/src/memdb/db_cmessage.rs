@@ -12,6 +12,7 @@ use async_stream::stream;
 use crate::memdb::db_structs::CMessage;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+use crate::memdb::db_utils::merge_json;
 
 
 pub fn cmessages_from_rows(
@@ -166,7 +167,7 @@ pub async fn handle_db_v1_cmessages_update(
             };
 
             let mut cmessage_json = serde_json::to_value(&cmessage_rec).unwrap();
-            crate::memdb::merge_json(&mut cmessage_json, &update);
+            merge_json(&mut cmessage_json, &update);
 
             let cmessage_rec: CMessage = serde_json::from_value(cmessage_json).map_err(|e| {
                 ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
@@ -195,8 +196,6 @@ struct CMessagesSubscription {
     cmessage_belongs_to_cthread_id: String,
 }
 
-// HTTP handler
-// TODO agent: refactor the function a little bit (like in db_memories)
 pub async fn handle_db_v1_cmessages_sub(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -210,9 +209,13 @@ pub async fn handle_db_v1_cmessages_sub(
 
     let (pre_existing_cmessages, mut last_pubsub_id) = {
         let mut conn = lite_arc.lock();
-        let tx = conn.transaction().unwrap();
+        let tx = conn.transaction().map_err(|e| {
+            ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Transaction error: {}", e))
+        })?;
 
-        let mut stmt = tx.prepare("SELECT * FROM cmessages WHERE cmessage_belongs_to_cthread_id = ?1 ORDER BY cmessage_num, cmessage_alt").map_err(|e| {
+        let mut stmt = tx.prepare(
+            "SELECT * FROM cmessages WHERE cmessage_belongs_to_cthread_id = ?1 ORDER BY cmessage_num, cmessage_alt"
+        ).map_err(|e| {
             ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e))
         })?;
         let rows = stmt.query(rusqlite::params![post.cmessage_belongs_to_cthread_id]).map_err(|e| {
@@ -247,12 +250,13 @@ pub async fn handle_db_v1_cmessages_sub(
             let (deleted_cmessage_keys, updated_cmessage_keys) = match _cmessage_subscription_poll(lite_arc.clone(), &mut last_pubsub_id) {
                 Ok(x) => x,
                 Err(e) => {
-                    tracing::error!("handle_db_v1_cmessages_sub(1): {:?}", e);
+                    tracing::error!("handle_db_v1_cmessages_sub: Failed to poll for updates: {}", e);
                     break;
                 }
             };
             for deleted_key in deleted_cmessage_keys {
-                if post.cmessage_belongs_to_cthread_id.is_empty() || post.cmessage_belongs_to_cthread_id == deleted_key.cmessage_belongs_to_cthread_id {
+                if post.cmessage_belongs_to_cthread_id.is_empty() || 
+                   post.cmessage_belongs_to_cthread_id == deleted_key.cmessage_belongs_to_cthread_id {
                     let delete_event = json!({
                         "sub_event": "cmessage_delete",
                         "cmessage_belongs_to_cthread_id": deleted_key.cmessage_belongs_to_cthread_id,
@@ -263,25 +267,27 @@ pub async fn handle_db_v1_cmessages_sub(
                 }
             }
             for updated_key in updated_cmessage_keys {
-                let update_event = {
-                    match cmessage_get_with_lite_arc(lite_arc.clone(), updated_key.cmessage_belongs_to_cthread_id.clone(), updated_key.cmessage_alt, updated_key.cmessage_num) {
+                if post.cmessage_belongs_to_cthread_id.is_empty() || 
+                   post.cmessage_belongs_to_cthread_id == updated_key.cmessage_belongs_to_cthread_id {
+                    match cmessage_get_with_lite_arc(
+                        lite_arc.clone(), 
+                        updated_key.cmessage_belongs_to_cthread_id.clone(), 
+                        updated_key.cmessage_alt, 
+                        updated_key.cmessage_num
+                    ) {
                         Ok(updated_cmessage) => {
-                            if post.cmessage_belongs_to_cthread_id.is_empty() || post.cmessage_belongs_to_cthread_id == updated_key.cmessage_belongs_to_cthread_id {
-                                json!({
-                                    "sub_event": "cmessage_update",
-                                    "cmessage_rec": updated_cmessage
-                                })
-                            } else {
-                                continue;
-                            }
+                            let update_event = json!({
+                                "sub_event": "cmessage_update",
+                                "cmessage_rec": updated_cmessage
+                            });
+                            yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&update_event).unwrap()));
                         },
                         Err(e) => {
-                            tracing::error!("handle_db_v1_cmessages_sub(2): {}", e);
-                            break;
+                            tracing::error!("handle_db_v1_cmessages_sub: Failed to get updated cmessage: {}", e);
+                            continue;
                         }
                     }
-                };
-                yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&update_event).unwrap()));
+                }
             }
         }
     };
