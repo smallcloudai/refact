@@ -3,7 +3,7 @@ import { useAppSelector } from "./useAppSelector";
 import { useGetToolsQuery } from "./useGetToolsQuery";
 import { useGetCapsQuery } from "./useGetCapsQuery";
 import { selectModel } from "../features/Chat/Thread/selectors";
-import { CodeChatModel } from "../services/refact/caps";
+import { CodeChatModel } from "../services/refact/models";
 
 export const useCanUseTools = () => {
   const capsRequest = useGetCapsQuery();
