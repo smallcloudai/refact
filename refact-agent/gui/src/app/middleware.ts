@@ -28,7 +28,7 @@ import {
   setError,
   setIsAuthError,
 } from "../features/Errors/errorsSlice";
-import { updateConfig } from "../features/Config/configSlice";
+import { setThemeMode, updateConfig } from "../features/Config/configSlice";
 import { resetAttachedImagesSlice } from "../features/AttachedImages";
 import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
@@ -518,6 +518,21 @@ startListening({
           agent_usage: 0,
         }),
       );
+    }
+  },
+});
+
+startListening({
+  matcher: isAnyOf(updateConfig.match, setThemeMode.match),
+  effect: (_action, listenerApi) => {
+    const appearance = listenerApi.getState().config.themeProps.appearance;
+    if (appearance === "light" && document.body.className !== "vscode-light") {
+      document.body.className = "vscode-light";
+    } else if (
+      appearance === "dark" &&
+      document.body.className !== "vscode-dark"
+    ) {
+      document.body.className = "vscode-dark";
     }
   },
 });
