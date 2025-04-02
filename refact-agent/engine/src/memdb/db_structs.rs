@@ -2,7 +2,6 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Notify as ANotify;
 use parking_lot::Mutex as ParkMutex;
-use crate::vecdb::vdb_structs::VecdbConstants;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Chore {
@@ -89,7 +88,6 @@ pub struct CMessage {
 
 pub struct MemDB {
     pub lite: Arc<ParkMutex<rusqlite::Connection>>,
-    pub vecdb_constants: VecdbConstants,
     pub dirty_memids: Vec<String>,
     pub dirty_everything: bool,
     pub memdb_sleeping_point: Arc<ANotify>,

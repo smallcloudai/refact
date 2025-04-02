@@ -58,8 +58,7 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         let gcx_locked = gcx.read().await;
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| "vecdb is not initialized".to_string())?;
-        let memdb = gcx_locked.memdb.clone()
-            .ok_or_else(|| "memdb is not initialized".to_string())?;
+        let memdb = gcx_locked.memdb.clone();
         (vectorizer_service, memdb, gcx_locked.cmdline.api_key.clone())
     };
 

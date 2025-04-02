@@ -132,7 +132,7 @@ pub async fn handle_db_v1_cmessages_update(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     // TODO agent: avoid unwraps and expect
-    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let mdb = gcx.read().await.memdb.clone();
 
     let incoming_json: serde_json::Value = serde_json::from_slice(&body_bytes).map_err(|e| {
         tracing::error!("cannot parse input:\n{:?}", body_bytes);
@@ -209,7 +209,7 @@ pub async fn handle_db_v1_cmessages_sub(
     })?;
 
     // TODO agent: avoid unwraps and expect
-    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let mdb = gcx.read().await.memdb.clone();
     let lite_arc = mdb.lock().lite.clone();
 
     let (pre_existing_cmessages, mut last_pubsub_id) = {

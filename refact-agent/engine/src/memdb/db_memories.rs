@@ -190,13 +190,12 @@ pub async fn memories_search(
     }
     let (lite, vecdb_emb_client, constants) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone().expect("memdb not initialized");
-        let constants = memdb.lock().vecdb_constants.clone();
-        let vecdb_emb_client = gcx_locked.vecdb.clone()
-            .ok_or("VecDb is not initialized")?
-            .lock().await
-            .vecdb_emb_client
-            .clone();
+        let memdb = gcx_locked.memdb.clone();
+        let vecdb = gcx_locked.vecdb.clone().ok_or("VecDb is not initialized")?;
+        let vecdb_locked = vecdb.lock().await;
+        let (vecdb_emb_client, constants) = (
+            vecdb_locked.vecdb_emb_client.clone(), vecdb_locked.constants.clone()
+        );
         let x = (memdb.lock().lite.clone(), vecdb_emb_client, constants);
         x
     };
@@ -336,7 +335,7 @@ pub async fn vectorize_dirty_memories(
     _status: Arc<AMutex<VecDbStatus>>,
     client: Arc<AMutex<Client>>,
     api_key: &String,
-    #[allow(non_snake_case)] B: usize,
+    constants: &VecdbConstants,
 ) -> rusqlite::Result<(), String> {
     let (memids, mut todo) = recall_dirty_memories_and_mark_them_not_dirty(mdb.clone()).await?;
     if memids.is_empty() {
@@ -362,14 +361,13 @@ pub async fn vectorize_dirty_memories(
         todo_len,
         to_vectorize.len()
     );
-    let my_constants: VecdbConstants = mdb.lock().vecdb_constants.clone();
-    for chunk in to_vectorize.chunks_mut(B) {
+    for chunk in to_vectorize.chunks_mut(constants.embedding_batch) {
         let texts: Vec<String> = chunk.iter().map(|x| x.window_text.clone()).collect();
         let embedding_mb = crate::fetch_embedding::get_embedding_with_retry(
             client.clone(),
-            &my_constants.endpoint_embeddings_style,
-            &my_constants.embedding_model,
-            &my_constants.endpoint_embeddings_template,
+            &constants.endpoint_embeddings_style,
+            &constants.embedding_model,
+            &constants.endpoint_embeddings_template,
             texts,
             api_key,
             1,

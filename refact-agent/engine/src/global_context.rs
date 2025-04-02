@@ -155,9 +155,9 @@ pub struct GlobalContext {
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
+    pub memdb: Arc<ParkMutex<crate::memdb::db_structs::MemDB>>,
     pub vecdb: Option<Arc<AMutex<crate::vecdb::vdb_highlev::VecDb>>>,
     pub vectorizer_service: Option<Arc<AMutex<crate::vecdb::vectorizer_service::FileVectorizerService>>>,
-    pub memdb: Option<Arc<ParkMutex<crate::memdb::db_structs::MemDB>>>,
     pub vec_db_error: String,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
@@ -283,7 +283,7 @@ pub async fn look_for_piggyback_fields(
 pub async fn block_until_signal(
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
     shutdown_flag: Arc<AtomicBool>,
-    memdb_sleeping_point_mb: Option<Arc<ANotify>>,
+    memdb_sleeping_point: Arc<ANotify>,
 ) {
     let ctrl_c = async {
         signal::ctrl_c()
@@ -331,9 +331,7 @@ pub async fn block_until_signal(
             info!("graceful shutdown to store telemetry");
         }
     }
-    if let Some(memdb_sleeping_point) = memdb_sleeping_point_mb {
-        memdb_sleeping_point.notify_waiters();
-    }
+    memdb_sleeping_point.notify_waiters();
 }
 
 pub async fn create_global_context(
@@ -353,6 +351,7 @@ pub async fn create_global_context(
         let path = crate::files_correction::canonical_path(&cmdline.workspace_folder);
         workspace_dirs = vec![path];
     }
+
     let cx = GlobalContext {
         shutdown_flag: Arc::new(AtomicBool::new(false)),
         cmdline: cmdline.clone(),
@@ -368,9 +367,9 @@ pub async fn create_global_context(
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
+        memdb: crate::memdb::db_init::memdb_init(&config_dir, cmdline.reset_memory).await,
         vecdb: None,
         vectorizer_service: None,
-        memdb: None,
         vec_db_error: String::new(),
         ast_service: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
@@ -384,6 +383,9 @@ pub async fn create_global_context(
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
+    if cmdline.vecdb {
+        crate::vecdb::vdb_highlev::vecdb_init(gcx.clone()).await
+    };
     (gcx, ask_shutdown_receiver, cmdline)
 }
 

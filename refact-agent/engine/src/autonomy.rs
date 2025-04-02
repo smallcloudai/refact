@@ -21,7 +21,7 @@ pub async fn look_for_a_job(
 ) {
     let worker_pid = std::process::id();
     let worker_name = format!("aworker-{}-{}", worker_pid, worker_n);
-    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let mdb = gcx.read().await.memdb.clone();
     let lite_arc = mdb.lock().lite.clone();
 
     let (mut might_work_on_cthread_id, mut last_pubsub_id) = {
@@ -81,7 +81,7 @@ async fn look_if_the_job_for_me(
     cthread_id: &String,
 ) -> Result<bool, String> {
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs_f64();
-    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let mdb = gcx.read().await.memdb.clone();
     let lite_arc = mdb.lock().lite.clone();
     let (cthread_rec, cmessages) = {
         let mut conn = lite_arc.lock();
@@ -153,7 +153,7 @@ async fn do_the_job(
     cthread_rec: &CThread,
     cmessages: &Vec<CMessage>,
 ) -> Result<serde_json::Value, String> {
-    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let mdb = gcx.read().await.memdb.clone();
     let (lite, memdb_sleeping_point) = {
         let db = mdb.lock();
         (db.lite.clone(), db.memdb_sleeping_point.clone())

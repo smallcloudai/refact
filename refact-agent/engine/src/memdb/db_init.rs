@@ -5,11 +5,9 @@ use parking_lot::Mutex as ParkMutex;
 use rusqlite::Connection;
 
 use crate::memdb::db_structs::MemDB;
-use crate::vecdb::vdb_structs::VecdbConstants;
 
 fn _make_connection(
-    config_dir: &PathBuf,
-    constants: &VecdbConstants,
+    config_dir: &PathBuf
 ) -> Result<Arc<ParkMutex<MemDB>>, String> {
     let db_path = config_dir.join("memdb.sqlite");
     let db = Connection::open_with_flags(
@@ -33,7 +31,6 @@ fn _make_connection(
     ).map_err(|err| format!("Failed to set db params: {}", err))?;
     let db = MemDB {
         lite: Arc::new(ParkMutex::new(db)),
-        vecdb_constants: constants.clone(),
         dirty_memids: Vec::new(),
         dirty_everything: true,
         memdb_sleeping_point: Arc::new(ANotify::new()),
@@ -41,12 +38,8 @@ fn _make_connection(
     Ok(Arc::new(ParkMutex::new(db)))
 }
 
-pub async fn memdb_init(
-    config_dir: &PathBuf,
-    constants: &VecdbConstants,
-    reset_memory: bool,
-) -> Arc<ParkMutex<MemDB>> {
-    let db = match _make_connection(config_dir, constants) {
+pub async fn memdb_init(config_dir: &PathBuf, reset_memory: bool) -> Arc<ParkMutex<MemDB>> {
+    let db = match _make_connection(config_dir) {
         Ok(db) => db,
         Err(err) => panic!("Failed to initialize chore database: {}", err),
     };

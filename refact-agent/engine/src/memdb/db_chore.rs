@@ -203,7 +203,7 @@ pub async fn handle_db_v1_chore_update(
     let chore_id = incoming_json.get("chore_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
 
     // TODO agent: avoid unwraps and expect
-    let chore_rec = match chore_get(mdb.clone().expect("memdb not initialized"), chore_id.clone()) {
+    let chore_rec = match chore_get(mdb.clone(), chore_id.clone()) {
         Ok(existing_chore) => existing_chore,
         Err(_) => Chore {
             chore_id,
@@ -218,7 +218,7 @@ pub async fn handle_db_v1_chore_update(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
     })?;
 
-    if let Err(e) = chore_set(mdb.clone().expect("memdb not initialized"), chore_rec) {
+    if let Err(e) = chore_set(mdb.clone(), chore_rec) {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to set chore: {}", e)));
     }
 
@@ -246,7 +246,7 @@ pub async fn handle_db_v1_chore_event_update(
     let chore_event_id = incoming_json.get("chore_event_id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
 
     // TODO agent: avoid unwraps and expect
-    let chore_event_rec = match chore_event_get(mdb.clone().expect("memdb not initialized"), chore_event_id.clone()) {
+    let chore_event_rec = match chore_event_get(mdb.clone(), chore_event_id.clone()) {
         Ok(existing_event) => existing_event,
         Err(_) => ChoreEvent {
             chore_event_id,
@@ -261,7 +261,7 @@ pub async fn handle_db_v1_chore_event_update(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("Deserialization error: {}", e))
     })?;
 
-    if let Err(e) = chore_event_set(mdb.clone().expect("memdb not initialized"), chore_event_rec) {
+    if let Err(e) = chore_event_set(mdb.clone(), chore_event_rec) {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to set chore event: {}", e)));
     }
 
@@ -357,7 +357,7 @@ pub async fn handle_db_v1_chores_sub(
     let post = serde_json::from_slice::<ChoresSubscriptionPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e)))?;
 
-    let mdb = gcx.read().await.memdb.clone().expect("memdb not initialized");
+    let mdb = gcx.read().await.memdb.clone();
     let lite = mdb.lock().lite.clone();
     
     let sse = stream! {

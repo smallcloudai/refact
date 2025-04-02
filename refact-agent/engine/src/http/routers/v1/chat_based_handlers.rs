@@ -85,8 +85,7 @@ pub async fn handle_v1_trajectory_save(
     })?;
     let (memdb, vectorizer_service) = {
         let gcx_locked = global_context.read().await;
-        let memdb = gcx_locked.memdb.clone()
-            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
         (memdb, vectorizer_service)

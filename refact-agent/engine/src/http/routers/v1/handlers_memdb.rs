@@ -54,8 +54,7 @@ pub async fn handle_mem_add(
     })?;
     let (memdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone()
-            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
         (memdb, vectorizer_service)
@@ -89,8 +88,7 @@ pub async fn handle_mem_erase(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let memdb = gcx.read().await.memdb.clone()
-        .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+    let memdb = gcx.read().await.memdb.clone();
     let erased_cnt = crate::memdb::db_memories::memories_erase(memdb, &post.memid).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
@@ -114,8 +112,7 @@ pub async fn handle_mem_upd(
 
     let (memdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone()
-            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
         (memdb, vectorizer_service)
@@ -143,8 +140,7 @@ pub async fn handle_mem_update_used(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let memdb = gcx.read().await.memdb.clone()
-        .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+    let memdb = gcx.read().await.memdb.clone();
     let updated_cnt = crate::memdb::db_memories::memories_update_used(
         memdb,
         &post.memid,
@@ -206,8 +202,7 @@ pub async fn handle_mem_sub(
         .unwrap_or(MemSubscriptionPost::default());
     let (memdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
-        let memdb = gcx_locked.memdb.clone()
-            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+        let memdb = gcx_locked.memdb.clone();
         let vectorizer_service = gcx_locked.vectorizer_service.clone()
             .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
         (memdb, vectorizer_service)

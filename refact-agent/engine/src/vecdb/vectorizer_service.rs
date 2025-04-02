@@ -284,7 +284,7 @@ async fn vectorize_thread(
                         vstatus.clone(),
                         client.clone(),
                         &api_key,
-                        constants.embedding_batch,
+                        &constants,
                     ).await;
                     info!("/MEMDB {:?}", r);
                     continue;
@@ -518,14 +518,13 @@ pub async fn vectorizer_service_init_and_start(
     gcx: Arc<ARwLock<GlobalContext>>,
     constants: VecdbConstants
 ) -> Result<(), String> {
-    let (vecdb_mb, memdb_mb) = {
+    let (vecdb_mb, memdb) = {
         let gcx_locked = gcx.read().await;
         let vecdb = gcx_locked.vecdb.clone();
         let memdb = gcx_locked.memdb.clone();
         (vecdb, memdb)
     };
     let vecdb = vecdb_mb.ok_or_else(|| "Vecdb is not initialized, cannot start vectorizer service".to_string())?;
-    let memdb = memdb_mb.ok_or_else(|| "Memdb is not initialized, cannot start vectorizer service".to_string())?;
 
     let api_key = crate::caps::get_custom_embedding_api_key(gcx.clone()).await
         .map_err(|e | format!("Failed to get API key for vectorizer service: {}", e))?;

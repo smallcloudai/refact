@@ -60,8 +60,7 @@ impl Tool for ToolCreateKnowledge {
         };
         let (memdb, vectorizer_service) = {
             let gcx_locked = gcx.read().await;
-            let memdb = gcx_locked.memdb.clone()
-                .ok_or_else(|| "memdb not initialized".to_string())?;
+            let memdb = gcx_locked.memdb.clone();
             let vectorizer_service = gcx_locked.vectorizer_service.clone()
                 .ok_or_else(|| "vectorizer_service not initialized".to_string())?;
             (memdb, vectorizer_service)
