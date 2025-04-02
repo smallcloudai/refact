@@ -15,7 +15,8 @@ from fastapi.responses import Response, StreamingResponse
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
-from refact_webgui.webgui.selfhost_model_resolve import resolve_model_context_size
+from refact_utils.third_party.utils.models import available_third_party_models
+from refact_utils.third_party.utils.tokenizers import load_tokenizer
 from refact_webgui.webgui.selfhost_model_resolve import static_resolve_model
 from refact_webgui.webgui.selfhost_queue import Ticket
 from refact_webgui.webgui.selfhost_webutils import log
@@ -198,11 +199,6 @@ class BaseCompletionsRouter(APIRouter):
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # deprecated APIs
-        self.add_api_route("/coding_assistant_caps.json", self._coding_assistant_caps, methods=["GET"])
-        self.add_api_route("/v1/login", self._login, methods=["GET"])
-
-        # API for LSP server
         self.add_api_route("/refact-caps", self._caps, methods=["GET"])
         self.add_api_route("/v1/completions", self._completions, methods=["POST"])
         self.add_api_route("/v1/embeddings", self._embeddings_style_openai, methods=["POST"])
@@ -218,116 +214,159 @@ class BaseCompletionsRouter(APIRouter):
     @property
     def _caps_version(self) -> int:
         cfg_active_lora_mtime = int(os.path.getmtime(env.CONFIG_ACTIVE_LORA)) if os.path.isfile(env.CONFIG_ACTIVE_LORA) else 0
-        return max(self._model_assigner.config_inference_mtime(), cfg_active_lora_mtime)
+        cfg_third_party_mtime = int(os.path.getmtime(env.CONFIG_THIRD_PARTY_MODELS)) if os.path.isfile(env.CONFIG_THIRD_PARTY_MODELS) else 0
+        return max(self._model_assigner.config_inference_mtime(), cfg_active_lora_mtime, cfg_third_party_mtime)
 
     async def _account_from_bearer(self, authorization: str) -> str:
         raise NotImplementedError()
 
-    @staticmethod
-    def _integrations_env_setup():
-        inference = {}
-        if os.path.exists(env.CONFIG_INFERENCE):
-            inference = json.load(open(env.CONFIG_INFERENCE, 'r'))
-        integrations = {}
-        if os.path.exists(env.CONFIG_INTEGRATIONS):
-            integrations = json.load(open(env.CONFIG_INTEGRATIONS, 'r'))
+    async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
+        client_version = self._parse_client_version(user_agent)
+        data = self._caps_data()
+        if client_version is not None and client_version < (0, 10, 15):
+            log(f"{user_agent} is deprecated, fallback to old caps format. Please upgrade client's plugin.")
+            data = self._to_deprecated_caps_format(data)
+        return Response(content=json.dumps(data, indent=4), media_type="application/json")
 
-        def _integrations_env_setup(env_var_name: str, api_key_name: str, api_enable_name: str):
-            os.environ[env_var_name] = integrations.get(api_key_name, "") if inference.get(api_enable_name, False) else ""
+    def _caps_data(self):
+        # NOTE: we need completely rewrite all about running models
+        running_models = running_models_and_loras(self._model_assigner)
 
-        litellm.modify_params = True  # NOTE: for Anthropic API
-        litellm.drop_params = True    # NOTE: for OpenAI API
-        _integrations_env_setup("OPENAI_API_KEY", "openai_api_key", "openai_api_enable")
-        _integrations_env_setup("ANTHROPIC_API_KEY", "anthropic_api_key", "anthropic_api_enable")
-        _integrations_env_setup("GROQ_API_KEY", "groq_api_key", "groq_api_enable")
-        _integrations_env_setup("CEREBRAS_API_KEY", "cerebras_api_key", "cerebras_api_enable")
-        _integrations_env_setup("GEMINI_API_KEY", "gemini_api_key", "gemini_api_enable")
-        _integrations_env_setup("XAI_API_KEY", "xai_api_key", "xai_api_enable")
-        _integrations_env_setup("DEEPSEEK_API_KEY", "deepseek_api_key", "deepseek_api_enable")
+        def _get_base_model_info(model_name: str) -> str:
+            return model_name.split(":")[0]
 
-    def _models_available_dict_rewrite(self, models_available: List[str]) -> Dict[str, Any]:
-        rewrite_dict = {}
-        for model in models_available:
-            d = {}
-            if n_ctx := resolve_model_context_size(model, self._model_assigner):
-                d["n_ctx"] = n_ctx
-            if "tools" in self._model_assigner.models_db_with_passthrough.get(model, {}).get("filter_caps", []):
-                d["supports_tools"] = True
+        def _select_default_model(models: List[str]) -> str:
+            if not models:
+                return ""
+            default_model = models[0]
+            default_model_loras = [
+                model_name for model_name in models
+                if model_name.startswith(f"{default_model}:")
+            ]
+            if default_model_loras:
+                return default_model_loras[0]
+            return default_model
 
-            rewrite_dict[model] = d
-        return rewrite_dict
+        # completion models
+        completion_models = {}
+        for model_name in running_models.get("completion", []):
+            if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
+                completion_models[model_name] = {
+                    "n_ctx": model_info["T"],
+                    "supports_scratchpads": model_info["supports_scratchpads"]["completion"],
+                }
+            elif model := available_third_party_models().get(model_name):
+                completion_models[model_name] = model.to_completion_model_record()
+            else:
+                log(f"completion model `{model_name}` is listed as running but not found in configs, skip")
+        completion_default_model = _select_default_model(list(completion_models.keys()))
 
-    def _caps_base_data(self) -> Dict[str, Any]:
-        running = running_models_and_loras(self._model_assigner)
-        models_available = self._inference_queue.models_available(force_read=True)
-        code_completion_default_model, _ = self._inference_queue.completion_model()
-        multiline_code_completion_default_model, _ = self._inference_queue.multiline_completion_default_model()
-        code_chat_default_model = ""
-        embeddings_default_model = ""
-        for model_name in models_available:
-            if "chat" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []) or model_name in litellm.model_list:
-                if not code_chat_default_model:
-                    code_chat_default_model = model_name
-            if "embeddings" in self._model_assigner.models_db.get(model_name, {}).get("filter_caps", []):
-                if not embeddings_default_model:
-                    embeddings_default_model = model_name
+        # chat models
+        chat_models = {}
+        for model_name in running_models.get("chat", []):
+            if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
+                chat_models[model_name] = {
+                    "n_ctx": model_info["T"],
+                    "supports_scratchpads": model_info["supports_scratchpads"]["chat"],
+                }
+            elif model := available_third_party_models().get(model_name):
+                chat_models[model_name] = model.to_chat_model_record()
+            else:
+                log(f"chat model `{model_name}` is listed as running but not found in configs, skip")
+        chat_default_model = _select_default_model(list(chat_models.keys()))
+
+        # embedding models
+        embedding_models = {}
+        for model_name in running_models.get("embedding", []):
+            if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
+                embedding_models[model_name] = {
+                    "n_ctx": model_info["T"],
+                    "size": model_info["size"],
+                }
+            else:
+                log(f"embedding model `{model_name}` is listed as running but not found in configs, skip")
+        embedding_default_model = _select_default_model(list(embedding_models.keys()))
+
+        # tokenizer endpoints
+        tokenizer_endpoints = {}
+        for model_list in running_models.values():
+            for model_name in model_list:
+                tokenizer_endpoints[model_name] = "/tokenizer/" + _get_base_model_info(model_name).replace("/", "--")
+
         data = {
             "cloud_name": "Refact Self-Hosted",
-            "endpoint_template": "/v1/completions",
-            "endpoint_chat_passthrough": "/v1/chat/completions",
-            "endpoint_style": "openai",
-            "telemetry_basic_dest": "/stats/telemetry-basic",
-            "telemetry_corrected_snippets_dest": "/stats/telemetry-snippets",
-            "telemetry_basic_retrieve_my_own": "/stats/rh-stats",
-            "running_models": list(set(r for r in [*running['completion'], *running['chat']])),
-            "code_completion_default_model": code_completion_default_model,
-            "multiline_code_completion_default_model": multiline_code_completion_default_model,
-            "code_chat_default_model": code_chat_default_model,
-            "models_dict_patch": self._models_available_dict_rewrite(models_available),
 
-            "default_embeddings_model": embeddings_default_model,
-            "endpoint_embeddings_template": "v1/embeddings",
-            "endpoint_embeddings_style": "openai",
-            "size_embeddings": 768,
+            "completion": {
+                "endpoint": "/v1/completions",
+                "models": completion_models,
+                "default_model": completion_default_model,
+                "default_multiline_model": completion_default_model,
+            },
 
-            "tokenizer_path_template": "/tokenizer/$MODEL",
-            "tokenizer_rewrite_path": {model: model.replace("/", "--") for model in models_available},
+            "chat": {
+                "endpoint": "/v1/chat/completions",
+                "models": chat_models,
+                "default_model": chat_default_model,
+            },
+
+            "embedding": {
+                "endpoint": "v1/embeddings",
+                "models": embedding_models,
+                "default_model": embedding_default_model,
+            },
+
+            "telemetry_endpoints": {
+                "telemetry_basic_endpoint": "/stats/telemetry-basic",
+                "telemetry_corrected_snippets_endpoint": "/stats/telemetry-snippets",
+                "telemetry_basic_retrieve_my_own_endpoint": "/stats/rh-stats",
+            },
+
+            "tokenizer_endpoints": tokenizer_endpoints,
+
             "caps_version": self._caps_version,
         }
 
         return data
 
-    async def _coding_assistant_caps(self):
-        log(f"Your refact-lsp version is deprecated, finetune is unavailable. Please update your plugin.")
-        return Response(content=json.dumps(self._caps_base_data(), indent=4), media_type="application/json")
+    @staticmethod
+    def _parse_client_version(user_agent: str = Header(None)) -> Optional[Tuple[int, int, int]]:
+        if not isinstance(user_agent, str):
+            log(f"unknown client version `{user_agent}`")
+            return None
+        m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
+        if not m:
+            log(f"can't parse client version `{user_agent}`")
+            return None
+        major, minor, patch = map(int, m.groups())
+        log(f"client version {major}.{minor}.{patch}")
+        return major, minor, patch
 
-    async def _caps(self, authorization: str = Header(None), user_agent: str = Header(None)):
-        if isinstance(user_agent, str):
-            m = re.match(r"^refact-lsp (\d+)\.(\d+)\.(\d+)$", user_agent)
-            if m:
-                major, minor, patch = map(int, m.groups())
-                log("user version %d.%d.%d" % (major, minor, patch))
-        data = self._caps_base_data()
-        running = running_models_and_loras(self._model_assigner)
-
-        def _select_default_lora_if_exists(model_name: str, running_models: List[str]):
-            model_variants = [r for r in running_models if r.split(":")[0] == model_name and r != model_name]
-            return model_variants[0] if model_variants else model_name
-
-        data["code_completion_default_model"] = _select_default_lora_if_exists(
-            data["code_completion_default_model"],
-            running['completion'],
-        )
-        data["multiline_code_completion_default_model"] = _select_default_lora_if_exists(
-            data["multiline_code_completion_default_model"],
-            running['completion'],
-        )
-        data["code_chat_default_model"] = _select_default_lora_if_exists(
-            data["code_chat_default_model"],
-            running['chat'],
-        )
-
-        return Response(content=json.dumps(data, indent=4), media_type="application/json")
+    @staticmethod
+    def _to_deprecated_caps_format(data: Dict[str, Any]):
+        return {
+            "cloud_name": data["cloud_name"],
+            "endpoint_template": data["completion"]["endpoint"],
+            "endpoint_chat_passthrough": data["chat"]["endpoint"],
+            "endpoint_style": "openai",
+            "telemetry_basic_dest": data["telemetry_endpoints"]["telemetry_basic_endpoint"],
+            "telemetry_corrected_snippets_dest": data["telemetry_endpoints"]["telemetry_corrected_snippets_endpoint"],
+            "telemetry_basic_retrieve_my_own": data["telemetry_endpoints"]["telemetry_basic_retrieve_my_own_endpoint"],
+            "running_models": list(data["completion"]["models"].keys()) + list(data["chat"]["models"].keys()),
+            "code_completion_default_model": data["completion"]["default_model"],
+            "multiline_code_completion_default_model": data["completion"]["default_multiline_model"],
+            "code_chat_default_model": data["chat"]["default_model"],
+            "models_dict_patch": {},  # NOTE: this actually should have n_ctx, but we're skiping it
+            "default_embeddings_model": data["embedding"]["default_model"],
+            "endpoint_embeddings_template": "v1/embeddings",
+            "endpoint_embeddings_style": "openai",
+            "size_embeddings": 768,
+            "tokenizer_path_template": "/tokenizer/$MODEL",
+            "tokenizer_rewrite_path": {
+                model_name: tokenizer_url.replace("/tokenizer/", "")
+                for model_name, tokenizer_url in data["tokenizer_endpoints"].items()
+            },
+            "caps_version": data["caps_version"],
+        }
 
     async def _local_tokenizer(self, model_path: str) -> str:
         model_dir = Path(env.DIR_WEIGHTS) / f"models--{model_path.replace('/', '--')}"
@@ -344,34 +383,19 @@ class BaseCompletionsRouter(APIRouter):
 
         return data
 
-    async def _passthrough_tokenizer(self, model_path: str) -> str:
-        try:
-            async with aiohttp.ClientSession() as session:
-                tokenizer_url = f"https://huggingface.co/{model_path}/resolve/main/tokenizer.json"
-                async with session.get(tokenizer_url) as resp:
-                    return await resp.text()
-        except:
-            raise HTTPException(404, detail=f"can't load tokenizer.json for passthrough {model_path}")
-
     async def _tokenizer(self, model_name: str):
         model_name = model_name.replace("--", "/")
-        if model_name in self._model_assigner.models_db:
-            model_path = self._model_assigner.models_db[model_name]["model_path"]
-            data = await self._local_tokenizer(model_path)
-        elif model_name in self._model_assigner.passthrough_mini_db:
-            model_path = self._model_assigner.passthrough_mini_db[model_name]["tokenizer_path"]
-            data = await self._passthrough_tokenizer(model_path)
-        else:
-            raise HTTPException(404, detail=f"model '{model_name}' does not exists in db")
-        return Response(content=data, media_type='application/json')
-
-    async def _login(self, authorization: str = Header(None)) -> Dict:
-        account = await self._account_from_bearer(authorization)
-        return {
-            "account": account,
-            "retcode": "OK",
-            "chat-v1-style": 1,
-        }
+        try:
+            if model_name in self._model_assigner.models_db:
+                model_path = self._model_assigner.models_db[model_name]["model_path"]
+                data = await self._local_tokenizer(model_path)
+            elif model := available_third_party_models().get(model_name):
+                data = await load_tokenizer(model.tokenizer_id)
+            else:
+                raise RuntimeError(f"model `{model_name}` is not serving")
+            return Response(content=data, media_type='application/json')
+        except RuntimeError as e:
+            raise HTTPException(404, detail=str(e))
 
     async def _resolve_model_lora(self, model_name: str) -> Tuple[str, Optional[Dict[str, str]]]:
         running = running_models_and_loras(self._model_assigner)
@@ -484,14 +508,6 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
-        def compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n) -> Dict[str, Any]:
-            usage_dict = dict()
-            usage_dict["pp1000t_prompt"] = model_dict.get("pp1000t_prompt", 0)
-            usage_dict["pp1000t_generated"] = model_dict.get("pp1000t_generated", 0)
-            usage_dict["metering_prompt_tokens_n"] = prompt_tokens_n
-            usage_dict["metering_generated_tokens_n"] = generated_tokens_n
-            return usage_dict
-
         _account = await self._account_from_bearer(authorization)
         caps_version = self._caps_version
 
@@ -513,20 +529,23 @@ class BaseCompletionsRouter(APIRouter):
         def _wrap_output(output: str) -> str:
             return prefix + output + postfix
 
-        model_dict = self._model_assigner.models_db_with_passthrough.get(post.model, {})
-        assert model_dict.get('backend') == 'litellm'
+        model_config = available_third_party_models().get(post.model)
+        if model_config:
+            log(f"chat/completions: resolve {post.model} -> {model_config.model_id}")
+        else:
+            err_message = f"model {post.model} is not running on server"
+            log(f"chat/completions: {err_message}")
+            raise HTTPException(status_code=400, detail=err_message)
 
-        model_name = model_dict.get('resolve_as', post.model)
-        if model_name not in litellm.model_list:
-            log(f"warning: requested model {model_name} is not in the litellm.model_list (this might not be the issue for some providers)")
-        log(f"chat/completions: model resolve {post.model} -> {model_name}")
-        prompt_tokens_n = litellm.token_counter(model_name, messages=messages)
+        prompt_tokens_n = litellm.token_counter(model_config.model_id, messages=messages)
         if post.tools:
-            prompt_tokens_n += litellm.token_counter(model_name, text=json.dumps(post.tools))
+            prompt_tokens_n += litellm.token_counter(model_config.model_id, text=json.dumps(post.tools))
 
-        max_tokens = min(model_dict.get('T_out', post.actual_max_tokens), post.actual_max_tokens)
+        max_tokens = min(model_config.max_tokens, post.actual_max_tokens)
         completion_kwargs = {
-            "model": model_name,
+            "model": model_config.model_id,
+            "api_base": model_config.api_base,
+            "api_key": model_config.api_key,
             "messages": messages,
             "temperature": post.temperature,
             "top_p": post.top_p,
@@ -549,7 +568,6 @@ class BaseCompletionsRouter(APIRouter):
         async def litellm_streamer():
             generated_tokens_n = 0
             try:
-                self._integrations_env_setup()
                 response = await litellm.acompletion(
                     **completion_kwargs, stream=True,
                 )
@@ -561,14 +579,14 @@ class BaseCompletionsRouter(APIRouter):
                         finish_reason = choice0["finish_reason"]
                         if delta := choice0.get("delta"):
                             if text := delta.get("content"):
-                                generated_tokens_n += litellm.token_counter(model_name, text=text)
+                                generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
 
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
                     yield _wrap_output(json.dumps(_patch_caps_version(data)))
 
-                final_msg = {"choices": []}
-                usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                final_msg: Dict[str, Any] = {"choices": []}
+                usage_dict = model_config.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                 final_msg.update(usage_dict)
                 yield _wrap_output(json.dumps(_patch_caps_version(final_msg)))
 
@@ -582,7 +600,6 @@ class BaseCompletionsRouter(APIRouter):
         async def litellm_non_streamer():
             generated_tokens_n = 0
             try:
-                self._integrations_env_setup()
                 model_response = await litellm.acompletion(
                     **completion_kwargs, stream=False,
                 )
@@ -591,9 +608,9 @@ class BaseCompletionsRouter(APIRouter):
                     data = model_response.dict()
                     for choice in data.get("choices", []):
                         if text := choice.get("message", {}).get("content"):
-                            generated_tokens_n += litellm.token_counter(model_name, text=text)
+                            generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
                         finish_reason = choice.get("finish_reason")
-                    usage_dict = compose_usage_dict(model_dict, prompt_tokens_n, generated_tokens_n)
+                    usage_dict = model_config.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
