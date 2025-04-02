@@ -43,6 +43,10 @@ pub struct BaseModelRecord {
     pub tokenizer: String,
 }
 
+pub trait HasBaseModelRecord {
+    fn base(&self) -> &BaseModelRecord;
+}
+
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct ChatModelRecord {
     #[serde(flatten)]
@@ -69,6 +73,10 @@ pub struct ChatModelRecord {
     pub default_temperature: Option<f32>,
 }
 
+impl HasBaseModelRecord for ChatModelRecord {
+    fn base(&self) -> &BaseModelRecord { &self.base }
+}
+
 fn default_chat_scratchpad() -> String { "PASSTHROUGH".to_string() }
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
@@ -81,6 +89,10 @@ pub struct CompletionModelRecord {
     pub scratchpad_patch: serde_json::Value,
 }
 
+impl HasBaseModelRecord for CompletionModelRecord {
+    fn base(&self) -> &BaseModelRecord { &self.base }
+}
+
 #[derive(Debug, Serialize, Clone, Default, PartialEq)]
 pub struct EmbeddingModelRecord {
     #[serde(flatten)]
@@ -89,6 +101,10 @@ pub struct EmbeddingModelRecord {
     pub embedding_size: i32,
     pub rejection_threshold: f32,
     pub embedding_batch: usize,
+}
+
+impl HasBaseModelRecord for EmbeddingModelRecord {
+    fn base(&self) -> &BaseModelRecord { &self.base }
 }
 
 impl EmbeddingModelRecord {
