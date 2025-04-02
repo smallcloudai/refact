@@ -584,7 +584,7 @@ impl ToolDesc {
         if !model_supports_array_param_type(model) {
             for param in &self.parameters {
                 if param.param_type == "array" {
-                    tracing::error!("Tool {} has array parameter, but model {} does not support it", self.name, model);
+                    tracing::warn!("Tool {} has array parameter, but model {} does not support it", self.name, model);
                     return false;
                 }
             }
