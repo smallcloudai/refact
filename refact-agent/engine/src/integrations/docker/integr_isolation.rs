@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
-use serde_inline_default::serde_inline_default;
 use serde_json::Value;
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
@@ -10,7 +9,6 @@ use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, s
 use crate::integrations::docker::docker_container_manager::Port;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 
-#[serde_inline_default]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsIsolation {
     pub container_workspace_folder: String,
@@ -22,11 +20,13 @@ pub struct SettingsIsolation {
     pub ports: Vec<Port>,
     #[serde(serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub keep_containers_alive_for_x_minutes: u64,
-    #[serde_inline_default("sh".to_string())]
+    #[serde(default = "default_docker_entrypoint")]
     pub docker_entrypoint: String,
     #[serde(default)]
     pub docker_extra_params: Vec<String>,
 }
+
+fn default_docker_entrypoint() -> String { "sh".to_string() }
 
 #[derive(Clone, Default)]
 pub struct IntegrationIsolation {

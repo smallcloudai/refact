@@ -40,7 +40,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
   },
   telemetry_basic_dest: "https://www.smallcloud.ai/v1/telemetry-basic",
 
-  code_completion_models: {
+  completion_models: {
     "Refact/1.6B": {
       n_ctx: 4096,
       supports_scratchpads: {
@@ -207,9 +207,9 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       supports_clicks: false,
     },
   },
-  code_completion_default_model: "qwen2.5/coder/1.5b/base",
+  completion_default_model: "qwen2.5/coder/1.5b/base",
   code_completion_n_ctx: 4000,
-  code_chat_models: {
+  chat_models: {
     "groq-llama-3.1-70b": {
       n_ctx: 32000,
       supports_scratchpads: {
@@ -324,7 +324,7 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
       supports_clicks: false,
     },
   },
-  code_chat_default_model: "gpt-4o-mini",
+  chat_default_model: "gpt-4o-mini",
   running_models: [
     "smallcloudai/Refact-1_6B-fim",
     "Refact/1.6B",
@@ -348,11 +348,11 @@ export const EMPTY_CAPS_RESPONSE: CapsResponse = {
   support_metadata: false,
   caps_version: 0,
   cloud_name: "",
-  code_chat_default_model: "",
+  chat_default_model: "",
   code_chat_default_system_prompt: "",
-  code_chat_models: {},
-  code_completion_default_model: "",
-  code_completion_models: {},
+  chat_models: {},
+  completion_default_model: "",
+  completion_models: {},
   code_completion_n_ctx: 0,
   endpoint_chat_passthrough: "",
   endpoint_style: "",
