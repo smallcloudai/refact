@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use indexmap::IndexMap;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::caps::{strip_model_from_finetune, BaseModelRecord, ChatModelRecord, 
     CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord};
@@ -39,7 +39,7 @@ pub struct CapsProvider {
     pub completion_models: IndexMap<String, CompletionModelRecord>,
     #[serde(default)]
     pub chat_models: IndexMap<String, ChatModelRecord>,
-    #[serde(default, alias = "default_embeddings_model", deserialize_with = "deserialize_embedding_model")]
+    #[serde(default, alias = "default_embeddings_model")]
     pub embedding_model: EmbeddingModelRecord,
 
     #[serde(default)]
@@ -52,25 +52,102 @@ pub struct CapsProvider {
     pub running_models: Vec<String>,
 }
 
+impl CapsProvider {
+    pub fn apply_override(&mut self, value: serde_yaml::Value) -> Result<(), String> {
+        set_field_if_exists::<bool>(&mut self.enabled, "enabled", &value)?;
+        set_field_if_exists::<String>(&mut self.endpoint_style, "endpoint_style", &value)?;
+        set_field_if_exists::<String>(&mut self.completion_endpoint, "completion_endpoint", &value)?;
+        set_field_if_exists::<String>(&mut self.chat_endpoint, "chat_endpoint", &value)?;
+        set_field_if_exists::<String>(&mut self.embedding_endpoint, "embedding_endpoint", &value)?;
+        set_field_if_exists::<String>(&mut self.api_key, "api_key", &value)?;
+        set_field_if_exists::<EmbeddingModelRecord>(&mut self.embedding_model, "embedding_model", &value)?;
+
+        extend_collection::<IndexMap<String, ChatModelRecord>>(&mut self.chat_models, "chat_models", &value)?;
+        extend_collection::<IndexMap<String, CompletionModelRecord>>(&mut self.completion_models, "completion_models", &value)?;
+        extend_collection::<Vec<String>>(&mut self.running_models, "running_models", &value)?;
+
+        match serde_yaml::from_value::<DefaultModels>(value) {
+            Ok(default_models) => {
+                self.defaults.apply_override(&default_models);
+            },
+            Err(e) => return Err(e.to_string()),
+        }
+        
+        Ok(())
+    }
+}
+
+fn set_field_if_exists<T: for<'de> serde::Deserialize<'de>>(
+    target: &mut T, field: &str, value: &serde_yaml::Value
+) -> Result<(), String> {
+    if let Some(val) = value.get(field) {
+        *target = serde_yaml::from_value(val.clone())
+            .map_err(|_| format!("Field '{}' has incorrect type", field))?;
+    }
+    Ok(())
+}
+
+fn extend_collection<C: for<'de> serde::Deserialize<'de> + Extend<C::Item> + IntoIterator>(
+    target: &mut C, field: &str, value: &serde_yaml::Value
+) -> Result<(), String> {
+    if let Some(value) = value.get(field) {
+        let imported_collection = serde_yaml::from_value::<C>(value.clone())
+            .map_err(|_| format!("Invalid format for {field}"))?;
+        
+        target.extend(imported_collection);
+    }
+    Ok(())
+}
+
 fn default_endpoint_style() -> String { "openai".to_string() }
 
 fn default_code_completion_n_ctx() -> usize { 2048 }
 
 fn default_true() -> bool { true }
 
-fn deserialize_embedding_model<'de, D: Deserializer<'de>>(
-    deserializer: D
-) -> Result<EmbeddingModelRecord, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Input { String(String), Full(EmbeddingModelRecord) }
-    
-    match Input::deserialize(deserializer)? {
-        Input::String(name) => {
-            Ok(EmbeddingModelRecord { 
-            base: BaseModelRecord { name, ..Default::default() }, ..Default::default() 
-        })},
-        Input::Full(record) => Ok(record),
+impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error>
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Input {
+            String(String),
+            Full(EmbeddingModelRecordHelper),
+        }
+
+        #[derive(Deserialize)]
+        struct EmbeddingModelRecordHelper {
+            #[serde(default)]
+            base: BaseModelRecord,
+            #[serde(default)]
+            embedding_size: i32,
+            #[serde(default = "default_rejection_threshold")]
+            rejection_threshold: f32,
+            #[serde(default = "default_embedding_batch")]
+            embedding_batch: usize,
+        }
+        fn default_rejection_threshold() -> f32 { 0.63 }
+        fn default_embedding_batch() -> usize { 64 }
+
+        match Input::deserialize(deserializer)? {
+            Input::String(name) => Ok(EmbeddingModelRecord {
+                base: BaseModelRecord { name, ..Default::default() },
+                ..Default::default()
+            }),
+            Input::Full(mut helper) => {
+                if helper.embedding_batch > 256 {
+                    tracing::warn!("embedding_batch can't be higher than 256");
+                    helper.embedding_batch = default_embedding_batch();
+                }
+                
+                Ok(EmbeddingModelRecord {
+                    base: helper.base,
+                    embedding_batch: helper.embedding_batch,
+                    rejection_threshold: helper.rejection_threshold,
+                    embedding_size: helper.embedding_size,
+                })
+            },
+        }
     }
 }
 
@@ -277,34 +354,13 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
                 add_provider_details_to_model(
                     &mut embedding_model.base, &provider, &model_name, &provider.embedding_endpoint
                 );
-
-                embedding_model.embedding_batch = match embedding_model.embedding_batch {
-                    0 => 64,
-                    b if b > 256 => {
-                        tracing::warn!("embedding_batch can't be higher than 256");
-                        64
-                    },
-                    b => b,
-                };
             }
             caps.embedding_model = embedding_model;
         }
 
-        if !provider.defaults.chat_default_model.is_empty() {
-            caps.defaults.chat_default_model = format!("{}/{}", provider.name, provider.defaults.chat_default_model);
-        }
-        if !provider.defaults.completion_default_model.is_empty() {
-            caps.defaults.completion_default_model = format!("{}/{}", provider.name, provider.defaults.completion_default_model);
-        }
-        if !provider.defaults.chat_thinking_model.is_empty() {
-            caps.defaults.chat_thinking_model = format!("{}/{}", provider.name, provider.defaults.chat_thinking_model);
-        }
-        if !provider.defaults.chat_light_model.is_empty() {
-           caps.defaults.chat_light_model = format!("{}/{}", provider.name, provider.defaults.chat_light_model);
-        }
+        caps.defaults.apply_override(&provider.defaults);
     }
 }
-
 
 pub fn apply_models_dict_patch(providers: &mut Vec<CapsProvider>) {
     for provider in providers {

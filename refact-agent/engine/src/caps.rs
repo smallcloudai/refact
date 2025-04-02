@@ -81,19 +81,15 @@ pub struct CompletionModelRecord {
     pub scratchpad_patch: serde_json::Value,
 }
 
-#[derive(Debug, Serialize, Clone, Deserialize, Default, PartialEq)]
+#[derive(Debug, Serialize, Clone, Default, PartialEq)]
 pub struct EmbeddingModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
 
     pub embedding_size: i32,
-    #[serde(default = "default_rejection_threshold")]
     pub rejection_threshold: f32,
-    #[serde(default)]
     pub embedding_batch: usize,
 }
-
-fn default_rejection_threshold() -> f32 { 0.63 }
 
 impl EmbeddingModelRecord {
     pub fn is_configured(&self) -> bool {
@@ -143,6 +139,23 @@ pub struct DefaultModels {
     pub chat_thinking_model: String,
     #[serde(default)]
     pub chat_light_model: String,
+}
+
+impl DefaultModels {
+    pub fn apply_override(&mut self, other: &DefaultModels) {
+        if !other.completion_default_model.is_empty() {
+            self.completion_default_model = other.completion_default_model.clone();
+        }
+        if !other.chat_default_model.is_empty() {
+            self.chat_default_model = other.chat_default_model.clone();
+        }
+        if !other.chat_thinking_model.is_empty() {
+            self.chat_thinking_model = other.chat_thinking_model.clone();
+        }
+        if !other.chat_light_model.is_empty() {
+            self.chat_light_model = other.chat_light_model.clone();
+        }
+    }
 }
 
 async fn load_caps_value_from_url(
