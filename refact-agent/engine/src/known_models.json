@@ -815,6 +815,9 @@
             "n_ctx": 8191,
             "embedding_size": 1536,
             "rejection_threshold": 0.63,
+            "similar_models": [
+                "openai/text-embedding-3-small"
+            ],
             "tokenizer": "hf://Xenova/text-embedding-ada-002"
         }
     },
