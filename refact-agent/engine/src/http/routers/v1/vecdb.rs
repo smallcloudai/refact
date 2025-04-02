@@ -27,17 +27,17 @@ pub async fn handle_v1_vecdb_search(
     })?;
 
     let api_key = get_custom_embedding_api_key(gcx.clone()).await?;
-    let cx_locked = gcx.read().await;
-
-    let search_res = match *cx_locked.vec_db.lock().await {
-        Some(ref db) => db.vecdb_search(post.query.to_string(), post.top_n, None, &api_key).await,
-        None => {
-            return Err(ScratchError::new(
-                StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string(),
-            ));
-        }
+    let (vecdb, vectorizer_service) = {
+        let gcx_locked = gcx.read().await;
+        let vecdb = gcx_locked.vecdb.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vecdb not initialized".to_string()))?;
+        let vectorizer_service = gcx_locked.vectorizer_service.clone();
+        (vecdb, vectorizer_service)
     };
-
+    let search_res = {
+        let vecdb_locked = vecdb.lock().await;
+        vecdb_locked.vecdb_search(post.query.to_string(), post.top_n, None, &api_key, vectorizer_service.clone()).await
+    };
     match search_res {
         Ok(search_res) => {
             let json_string = serde_json::to_string_pretty(&search_res).map_err(|e| {
@@ -54,25 +54,22 @@ pub async fn handle_v1_vecdb_search(
     }
 }
 
-
 pub async fn handle_v1_vecdb_status(
     Extension(gcx): Extension<SharedGlobalContext>,
     _: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let gcx_locked = gcx.read().await;
-    let vec_db = gcx_locked.vec_db.clone();
-    let vectorizer_service = gcx_locked.vectorizer_service.clone();
-    
-    let status_str = match crate::vecdb::vdb_highlev::get_status(vec_db, vectorizer_service).await {
-        Ok(Some(status)) => serde_json::to_string_pretty(&status).unwrap(),
-        Ok(None) => "{\"success\": 0, \"detail\": \"turned_off\"}".to_string(),
-        Err(err) => {
-            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, err));
+    let vectorizer_service_mb = gcx.read().await.vectorizer_service.clone();
+    let status_str = if let Some(vectorizer_service) = vectorizer_service_mb {
+        match crate::vecdb::vdb_highlev::get_status(vectorizer_service).await {
+            Ok(Some(status)) => serde_json::to_string_pretty(&status).unwrap(),
+            Ok(None) => "{\"success\": 0, \"detail\": \"turned_off\"}".to_string(),
+            Err(err) => return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, err))
         }
+    } else {
+        "{\"success\": 0, \"detail\": \"turned_off\"}".to_string()
     };
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(status_str))
         .unwrap())
 }
-

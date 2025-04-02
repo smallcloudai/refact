@@ -18,7 +18,7 @@ pub struct PubSubEvent {
 
 pub async fn pubsub_trigerred(
     gcx: Arc<ARwLock<GlobalContext>>,
-    mdb: &Arc<ParkMutex<MemDB>>,
+    mdb: Arc<ParkMutex<MemDB>>,
     sleep_seconds: u64,
 ) -> bool {
     let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();

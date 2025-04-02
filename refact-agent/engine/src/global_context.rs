@@ -64,16 +64,12 @@ pub struct CommandLine {
     #[structopt(long, default_value="", help="Give it a path for AST database to make it permanent, if there is the database already, process starts without parsing all the files (careful). This quick start is helpful for automated solution search.")]
     pub ast_permanent: String,
 
-    #[cfg(feature="vecdb")]
     #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
     pub vecdb: bool,
-    #[cfg(feature="vecdb")]
     #[structopt(long, help="Delete all memories, start with empty memory.")]
     pub reset_memory: bool,
-    #[cfg(feature="vecdb")]
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
-    #[cfg(feature="vecdb")]
     #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
     pub vecdb_force_path: String,
 
@@ -159,13 +155,10 @@ pub struct GlobalContext {
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
-    #[cfg(feature="vecdb")]
-    pub vec_db: Arc<AMutex<Option<crate::vecdb::vdb_highlev::VecDb>>>,
-    #[cfg(not(feature="vecdb"))]
-    pub vec_db: bool,
+    pub vecdb: Option<Arc<AMutex<crate::vecdb::vdb_highlev::VecDb>>>,
+    pub vectorizer_service: Option<Arc<AMutex<crate::vecdb::vectorizer_service::FileVectorizerService>>>,
+    pub memdb: Option<Arc<ParkMutex<crate::memdb::db_structs::MemDB>>>,
     pub vec_db_error: String,
-    #[cfg(feature="vecdb")]
-    pub vectorizer_service: Arc<AMutex<Option<crate::vecdb::vectorizer_service::FileVectorizerService>>>,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
     pub documents_state: DocumentsState,
@@ -175,9 +168,6 @@ pub struct GlobalContext {
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
-    #[cfg(feature="vecdb")]
-    pub memdb: Option<Arc<ParkMutex<crate::memdb::db_structs::MemDB>>>,
-    pub background_tasks: Option<crate::background_tasks::BackgroundTasksHolder>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -378,13 +368,10 @@ pub async fn create_global_context(
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
-        #[cfg(feature="vecdb")]
-        vec_db: Arc::new(AMutex::new(None)),
-        #[cfg(not(feature="vecdb"))]
-        vec_db: false,
+        vecdb: None,
+        vectorizer_service: None,
+        memdb: None,
         vec_db_error: String::new(),
-        #[cfg(feature="vecdb")]
-        vectorizer_service: Arc::new(AMutex::new(None)),
         ast_service: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
         documents_state: DocumentsState::new(workspace_dirs).await,
@@ -394,9 +381,6 @@ pub async fn create_global_context(
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
-        #[cfg(feature="vecdb")]
-        memdb: None,
-        background_tasks: None,
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;

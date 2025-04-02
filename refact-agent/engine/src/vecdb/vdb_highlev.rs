@@ -3,7 +3,6 @@ use std::sync::Arc;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
 use tracing::{error, info};
-use indexmap::IndexMap;
 
 use crate::background_tasks::BackgroundTasksHolder;
 use crate::fetch_embedding;
@@ -21,42 +20,6 @@ fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
         _ => 0.63,
     }
 }
-
-pub async fn memories_block_until_vectorized(
-    vectorizer_service: Arc<AMutex<FileVectorizerService>>,
-    max_blocking_time_ms: usize
-) -> Result<(), String> {
-    let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
-    let start_time = std::time::Instant::now();
-    let (vstatus, vstatus_notify) = {
-        let service = vectorizer_service.lock().await;
-        (service.vstatus.clone(), service.vstatus_notify.clone())
-    };
-    loop {
-        let future: tokio::sync::futures::Notified = vstatus_notify.notified();
-        {
-            let vstatus_locked = vstatus.lock().await;
-            if vstatus_locked.state == "done" && !vstatus_locked.queue_additions ||
-                start_time.elapsed() >= max_blocking_duration
-            {
-                break;
-            }
-        }
-        let remaining_time = max_blocking_duration
-            .checked_sub(start_time.elapsed())
-            .unwrap_or_else(|| tokio::time::Duration::from_millis(0));
-        let sleep_duration = remaining_time
-            .checked_add(tokio::time::Duration::from_millis(50))
-            .unwrap_or_else(|| tokio::time::Duration::from_millis(50))
-            .max(tokio::time::Duration::from_millis(1));
-        tokio::select! {
-            _ = future => {},
-            _ = tokio::time::sleep(sleep_duration) => {},
-        }
-    };
-    Ok(())
-}
-
 
 pub struct VecDb {
     pub vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
@@ -100,17 +63,18 @@ async fn do_i_need_to_reload_vecdb(
         }
     };
 
-    let vec_db = gcx.write().await.vec_db.clone();
-    match *vec_db.lock().await {
+    let vec_db = gcx.read().await.vecdb.clone();
+    match vec_db {
         None => {}
-        Some(ref db) => {
+        Some(db) => {
+            let vecdb_locked = db.lock().await;
             if
-                db.constants.embedding_model == consts.embedding_model &&
-                db.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
-                db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
-                db.constants.splitter_window_size == consts.splitter_window_size &&
-                db.constants.embedding_batch == consts.embedding_batch &&
-                db.constants.embedding_size == consts.embedding_size
+                vecdb_locked.constants.embedding_model == consts.embedding_model &&
+                vecdb_locked.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
+                vecdb_locked.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
+                vecdb_locked.constants.splitter_window_size == consts.splitter_window_size &&
+                vecdb_locked.constants.embedding_batch == consts.embedding_batch &&
+                vecdb_locked.constants.embedding_size == consts.embedding_size
             {
                 return (false, None);
             }
@@ -129,8 +93,7 @@ async fn do_i_need_to_reload_vecdb(
         return (false, None);
     }
     consts.tokenizer = Some(tokenizer_maybe.clone().unwrap());
-
-    return (true, Some(consts));
+    (true, Some(consts))
 }
 
 pub async fn vecdb_background_reload(
@@ -150,12 +113,7 @@ pub async fn vecdb_background_reload(
         }
         if need_reload && consts.is_some() {
             background_tasks = BackgroundTasksHolder::new(vec![]);
-
-            // Initialize MemDb first if not already present
-            let _config_dir = gcx.read().await.config_dir.clone();
-            let _constants = consts.clone().unwrap();
-            let _reset_memory = gcx.read().await.cmdline.reset_memory;
-
+            
             // Use the fail-safe initialization with retries
             let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
                 max_attempts: 5,
@@ -201,8 +159,9 @@ impl VecDb {
         constants: VecdbConstants,
     ) -> Result<VecDb, String> {
         let emb_table_name = crate::vecdb::vdb_emb_aux::create_emb_table_name(&vec![cmdline.workspace_folder]);
-        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size, &emb_table_name).await?;
-        let vecdb_handler = Arc::new(AMutex::new(handler));
+        let vecdb_handler = Arc::new(AMutex::new(
+            VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size, &emb_table_name).await?
+        ));
 
         let mut http_client_builder = reqwest::Client::builder();
         if cmdline.insecure {
@@ -224,36 +183,53 @@ impl VecDb {
     }
 }
 
+pub async fn memories_block_until_vectorized(
+    vectorizer_service: Arc<AMutex<FileVectorizerService>>,
+    max_blocking_time_ms: usize
+) -> Result<(), String> {
+    let max_blocking_duration = tokio::time::Duration::from_millis(max_blocking_time_ms as u64);
+    let start_time = std::time::Instant::now();
+    let (vstatus, vstatus_notify) = {
+        let service = vectorizer_service.lock().await;
+        (service.vstatus.clone(), service.vstatus_notify.clone())
+    };
+    loop {
+        let future: tokio::sync::futures::Notified = vstatus_notify.notified();
+        {
+            let vstatus_locked = vstatus.lock().await;
+            if vstatus_locked.state == "done" && !vstatus_locked.queue_additions ||
+                start_time.elapsed() >= max_blocking_duration
+            {
+                break;
+            }
+        }
+        let remaining_time = max_blocking_duration
+            .checked_sub(start_time.elapsed())
+            .unwrap_or_else(|| tokio::time::Duration::from_millis(0));
+        let sleep_duration = remaining_time
+            .checked_add(tokio::time::Duration::from_millis(50))
+            .unwrap_or_else(|| tokio::time::Duration::from_millis(50))
+            .max(tokio::time::Duration::from_millis(1));
+        tokio::select! {
+            _ = future => {},
+            _ = tokio::time::sleep(sleep_duration) => {},
+        }
+    };
+    Ok(())
+}
+
+
 pub async fn get_status(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    vectorizer_service: Arc<AMutex<Option<FileVectorizerService>>>
+    vectorizer_service: Arc<AMutex<FileVectorizerService>>
 ) -> Result<Option<VecDbStatus>, String> {
-    // Get the status from the vectorizer service if available
-    if let Some(service) = vectorizer_service.lock().await.as_ref() {
-        let vstatus = service.vstatus.lock().await.clone();
-        return Ok(Some(vstatus));
-    }
-    
-    // If vectorizer service is not available, get basic status from VecDb
-    let vecdb_handler = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.vecdb_handler.clone()
+    let (vstatus, vecdb_handler) = {
+        let vectorizer_locked = vectorizer_service.lock().await;
+        (
+            vectorizer_locked.vstatus.clone(),
+            vectorizer_locked.vecdb.clone(),
+        )
     };
-    
-    // Create a placeholder status
-    let mut vstatus_copy = VecDbStatus {
-        files_unprocessed: 0,
-        files_total: 0,
-        requests_made_since_start: 0,
-        vectors_made_since_start: 0,
-        db_size: 0,
-        db_cache_size: 0,
-        state: "running".to_string(),
-        queue_additions: false,
-        vecdb_max_files_hit: false,
-        vecdb_errors: IndexMap::new(),
-    };
+    let mut vstatus_copy = vstatus.lock().await.clone();
     vstatus_copy.db_size = match vecdb_handler.lock().await.size().await {
         Ok(res) => res,
         Err(err) => return Err(err)
@@ -262,7 +238,9 @@ pub async fn get_status(
         Ok(res) => res,
         Err(err) => return Err(err.to_string())
     };
-    
+    if vstatus_copy.state == "done" && vstatus_copy.queue_additions {
+        vstatus_copy.state = "cooldown".to_string();
+    }
     Ok(Some(vstatus_copy))
 }
 
@@ -274,6 +252,7 @@ impl VecdbSearch for VecDb {
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
         api_key: &String,
+        vectorizer_service: Option<Arc<AMutex<FileVectorizerService>>>,
     ) -> Result<SearchResult, String> {
         // TODO: move out of struct, replace self with Arc
         let t0 = std::time::Instant::now();
@@ -290,10 +269,9 @@ impl VecdbSearch for VecDb {
             return Err(embedding_mb.unwrap_err().to_string());
         }
         info!("search query {:?}, it took {:.3}s to vectorize the query", query, t0.elapsed().as_secs_f64());
-
-        // Note: In the previous implementation, we would wait for vectorization to complete
-        // but in the current architecture, vectorization is handled separately
-
+        if let Some(vectorizer_service) = vectorizer_service {
+            memories_block_until_vectorized(vectorizer_service.clone(), 5_000).await?;
+        }
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
         let mut results = match handler_locked.vecdb_search(&embedding_mb.unwrap()[0], top_n, vecdb_scope_filter_mb).await {

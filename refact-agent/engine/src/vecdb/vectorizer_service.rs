@@ -11,7 +11,6 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Notify as ANotify;
 use tracing::{info, warn};
 
-
 use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retry;
 use crate::files_in_workspace::{is_path_to_enqueue_valid, Document};
@@ -21,198 +20,141 @@ use crate::memdb::db_structs::MemDB;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{SimpleTextHashVector, SplitResult, VecDbStatus, VecdbConstants, VecdbRecord};
 
-// Constants
 const DEBUG_WRITE_VECDB_FILES: bool = false;
 const COOLDOWN_SECONDS: u64 = 10;
 
-pub enum MessageToVecdbThread {
+
+enum MessageToVecdbThread {
     RegularDocument(String),
     ImmediatelyRegularDocument(String),
     MemoriesSomethingDirty(),
 }
+
 pub struct FileVectorizerService {
-    pub vecdb_handler: Arc<AMutex<VecDBSqlite>>,
+    pub vecdb: Arc<AMutex<VecDBSqlite>>,
+    pub memdb: Arc<ParkMutex<MemDB>>,
     pub vstatus: Arc<AMutex<VecDbStatus>>,
     pub vstatus_notify: Arc<ANotify>,
     pub constants: VecdbConstants,
     pub api_key: String,
-    pub memdb: Arc<ParkMutex<MemDB>>,
     pub vecdb_todo: Arc<AMutex<VecDeque<MessageToVecdbThread>>>,
 }
 
-impl FileVectorizerService {
-    pub async fn new(
-        vecdb_handler: Arc<AMutex<VecDBSqlite>>,
-        constants: VecdbConstants,
-        api_key: String,
-        memdb: Arc<ParkMutex<MemDB>>,
-    ) -> Self {
-        let vstatus = Arc::new(AMutex::new(
-            VecDbStatus {
-                files_unprocessed: 0,
-                files_total: 0,
-                requests_made_since_start: 0,
-                vectors_made_since_start: 0,
-                db_size: 0,
-                db_cache_size: 0,
-                state: "starting".to_string(),
-                queue_additions: true,
-                vecdb_max_files_hit: false,
-                vecdb_errors: IndexMap::new(),
-            }
-        ));
-        
-        FileVectorizerService {
-            vecdb_handler,
-            vstatus,
-            vstatus_notify: Arc::new(ANotify::new()),
-            constants,
-            api_key,
-            memdb,
-            vecdb_todo: Default::default(),
-        }
-    }
-    
-    // Start background tasks for vectorization
-    pub async fn start_background_tasks(
-        &self,
-        vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
-        gcx: Arc<ARwLock<GlobalContext>>,
-    ) -> Vec<JoinHandle<()>> {
-        info!("vectorizer_service: start_background_tasks");
-        self.enqueue_dirty_memory().await;
-        
-        let retrieve_thread_handle = tokio::spawn(
-            vectorize_thread(
-                vecdb_emb_client.clone(),
-                Arc::new(AMutex::new(self.clone())),
-                gcx.clone(),
-            )
-        );
-        
-        vec![retrieve_thread_handle]
-    }
-    
-    // Enqueue dirty memories for vectorization
-    pub async fn enqueue_dirty_memory(&self) {
-        let (vecdb_todo, vstatus, vstatus_notify) = (
-            self.vecdb_todo.clone(),
-            self.vstatus.clone(),
-            self.vstatus_notify.clone(),
-        );
-        
-        {
-            // two locks in sequence, vecdb_todo.lock -> vstatus.lock
-            let mut qlocked = vecdb_todo.lock().await;
-            qlocked.push_back(MessageToVecdbThread::MemoriesSomethingDirty());
-            vstatus.lock().await.queue_additions = true;
-        }
-        vstatus_notify.notify_waiters();
-    }
-    
-    // Enqueue files for vectorization
-    pub async fn enqueue_files(&self, documents: &Vec<String>, process_immediately: bool) {
-        info!("adding {} files", documents.len());
-        let documents = _filter_docs_to_enqueue(documents);
-        
-        let (vecdb_todo, vstatus, vstatus_notify, vecdb_max_files) = (
-            self.vecdb_todo.clone(),
-            self.vstatus.clone(),
-            self.vstatus_notify.clone(),
-            self.constants.vecdb_max_files
-        );
-        
-        let mut documents_my_copy = documents.clone();
-        if documents_my_copy.len() > vecdb_max_files {
-            info!("that's more than {} allowed in the command line, reduce the number", vecdb_max_files);
-            documents_my_copy.truncate(vecdb_max_files);
-            vstatus.lock().await.vecdb_max_files_hit = true;
-        }
-        
-        {
-            {
-                // two locks in sequence, vecdb_todo.lock -> vstatus.lock
-                let mut vecdb_todo_locked = vecdb_todo.lock().await;
-                for doc in documents.iter() {
-                    if process_immediately {
-                        vecdb_todo_locked.push_back(MessageToVecdbThread::ImmediatelyRegularDocument(doc.clone()));
-                    } else {
-                        vecdb_todo_locked.push_back(MessageToVecdbThread::RegularDocument(doc.clone()));
-                    }
-                }
-                vstatus.lock().await.queue_additions = true;
-            }
-            if process_immediately {
-                vstatus_notify.notify_waiters();
-            }
-        }
-    }
-}
+async fn vectorize_batch_from_q(
+    run_actual_model_on_these: &mut Vec<SplitResult>,
+    ready_to_vecdb: &mut Vec<VecdbRecord>,
+    vstatus: Arc<AMutex<VecDbStatus>>,
+    client: Arc<AMutex<reqwest::Client>>,
+    constants: &VecdbConstants,
+    api_key: &String,
+    vecdb_arc: Arc<AMutex<VecDBSqlite>>,
+    #[allow(non_snake_case)]
+    B: usize,
+) -> Result<(), String> {
+    let batch = run_actual_model_on_these.drain(..B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
+    assert!(batch.len() > 0);
 
-// Clone implementation for FileVectorizerService
-impl Clone for FileVectorizerService {
-    fn clone(&self) -> Self {
-        FileVectorizerService {
-            vecdb_handler: self.vecdb_handler.clone(),
-            vstatus: self.vstatus.clone(),
-            vstatus_notify: self.vstatus_notify.clone(),
-            constants: self.constants.clone(),
-            api_key: self.api_key.clone(),
-            memdb: self.memdb.clone(),
-            vecdb_todo: self.vecdb_todo.clone(),
+    let batch_result = match get_embedding_with_retry(
+        client.clone(),
+        &constants.endpoint_embeddings_style.clone(),
+        &constants.embedding_model.clone(),
+        &constants.endpoint_embeddings_template.clone(),
+        batch.iter().map(|x| x.window_text.clone()).collect(),
+        api_key,
+        10,
+    ).await {
+        Ok(res) => res,
+        Err(e) => {
+            let mut vstatus_locked = vstatus.lock().await;
+            vstatus_locked.vecdb_errors.entry(e.clone()).and_modify(|counter| *counter += 1).or_insert(1);
+            return Err(e);
         }
+    };
+
+    if batch_result.len() != batch.len() {
+        return Err(format!("vectorize: batch_result.len() != batch.len(): {} vs {}", batch_result.len(), batch.len()));
     }
-}
 
-// Helper function to filter documents for enqueuing
-fn _filter_docs_to_enqueue(docs: &Vec<String>) -> Vec<String> {
-    let mut rejected_reasons = HashMap::new();
-    let mut filtered_docs = vec![];
+    {
+        let mut vstatus_locked = vstatus.lock().await;
+        vstatus_locked.requests_made_since_start += 1;
+        vstatus_locked.vectors_made_since_start += batch_result.len();
+    }
 
-    for d in docs {
-        let path: std::path::PathBuf = d.clone().into();
-        match is_path_to_enqueue_valid(&path) {
-            Ok(_) => {
-                filtered_docs.push(d.clone());
+    let mut send_to_cache = vec![];
+    for (i, data_res) in batch.iter().enumerate() {
+        if batch_result[i].is_empty() {
+            info!("skipping an empty embedding split");
+            continue;
+        }
+        ready_to_vecdb.push(
+            VecdbRecord {
+                vector: Some(batch_result[i].clone()),
+                file_path: data_res.file_path.clone(),
+                start_line: data_res.start_line,
+                end_line: data_res.end_line,
+                distance: -1.0,
+                usefulness: 0.0,
             }
+        );
+        send_to_cache.push(
+            SimpleTextHashVector {
+                vector: Some(batch_result[i].clone()),
+                window_text: data_res.window_text.clone(),
+                window_text_hash: data_res.window_text_hash.clone(),
+            }
+        );
+    }
+
+    if send_to_cache.len() > 0 {
+        match vecdb_arc.lock().await.cache_add_new_records(send_to_cache).await {
             Err(e) => {
-                rejected_reasons.entry(e.to_string()).and_modify(|x| *x += 1).or_insert(1);
+                warn!("Error adding records to the cacheDB: {}", e);
             }
+            _ => {}
         }
     }
-    if !rejected_reasons.is_empty() {
-        info!("VecDB rejected docs to enqueue reasons:");
-        for (reason, count) in &rejected_reasons {
-            info!("    {:>6} {}", count, reason);
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;  // be nice to the server: up to 60 requests per minute
+
+    Ok(())
+}
+
+async fn from_splits_to_vecdb_records_applying_cache(
+    splits: &mut Vec<SplitResult>,
+    ready_to_vecdb: &mut Vec<VecdbRecord>,
+    run_actual_model_on_these: &mut Vec<SplitResult>,
+    vecdb_handler_arc: Arc<AMutex<VecDBSqlite>>,
+    group_size: usize,
+) {
+    while !splits.is_empty() {
+        let batch: Vec<SplitResult> = splits
+            .drain(..group_size.min(splits.len()))
+            .collect::<Vec<_>>();
+        // let t0 = std::time::Instant::now();
+        let vectors_maybe = vecdb_handler_arc.lock().await.fetch_vectors_from_cache(&batch).await;
+        if let Ok(vectors) = vectors_maybe {
+            // info!("query cache {} -> {} records {:.3}s", batch.len(), vectors.len(), t0.elapsed().as_secs_f32());
+            for (split, maybe_vector) in batch.iter().zip(vectors.iter()) {
+                if maybe_vector.is_none() {
+                    run_actual_model_on_these.push(split.clone());
+                    continue;
+                }
+                ready_to_vecdb.push(VecdbRecord {
+                    vector: maybe_vector.clone(),
+                    file_path: split.file_path.clone(),
+                    start_line: split.start_line,
+                    end_line: split.end_line,
+                    distance: -1.0,
+                    usefulness: 0.0,
+                });
+            }
+        } else if let Err(err) = vectors_maybe {
+            tracing::error!("{}", err);
         }
     }
-    filtered_docs
 }
 
-// Helper functions for vectorization
-pub async fn vectorizer_enqueue_dirty_memory(
-    vservice: Arc<AMutex<FileVectorizerService>>
-) {
-    vservice.lock().await.enqueue_dirty_memory().await;
-}
-
-pub async fn vectorizer_enqueue_files(
-    vservice: Arc<AMutex<FileVectorizerService>>,
-    documents: &Vec<String>,
-    process_immediately: bool,
-) {
-    vservice.lock().await.enqueue_files(documents, process_immediately).await;
-}
-
-pub async fn start_vectorizer_background_tasks(
-    vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
-    vservice: Arc<AMutex<FileVectorizerService>>,
-    gcx: Arc<ARwLock<GlobalContext>>,
-) -> Vec<JoinHandle<()>> {
-    vservice.lock().await.start_background_tasks(vecdb_emb_client, gcx).await
-}
-
-// Main vectorization thread function
 async fn vectorize_thread(
     client: Arc<AMutex<reqwest::Client>>,
     vservice: Arc<AMutex<FileVectorizerService>>,
@@ -227,7 +169,7 @@ async fn vectorize_thread(
     let (vecdb_todo,
         memdb,
         constants,
-        vecdb_handler_arc,
+        vecdb_arc,
         vstatus,
         vstatus_notify,
         api_key
@@ -237,7 +179,7 @@ async fn vectorize_thread(
             vservice_locked.vecdb_todo.clone(),
             vservice_locked.memdb.clone(),
             vservice_locked.constants.clone(),
-            vservice_locked.vecdb_handler.clone(),
+            vservice_locked.vecdb.clone(),
             vservice_locked.vstatus.clone(),
             vservice_locked.vstatus_notify.clone(),
             vservice_locked.api_key.clone()
@@ -307,7 +249,7 @@ async fn vectorize_thread(
                     client.clone(),
                     &constants,
                     &api_key,
-                    vecdb_handler_arc.clone(),
+                    vecdb_arc.clone(),
                     constants.embedding_batch,
                 ).await {
                     tracing::error!("{}", err);
@@ -321,7 +263,7 @@ async fn vectorize_thread(
         if flush {
             assert!(run_actual_model_on_these.len() == 0);
             // This function assumes it can delete records with the filenames mentioned, therefore assert above
-            _send_to_vecdb(vecdb_handler_arc.clone(), &mut ready_to_vecdb).await;
+            _send_to_vecdb(vecdb_arc.clone(), &mut ready_to_vecdb).await;
         }
 
         if (files_unprocessed + 99).div(100) != (reported_unprocessed + 99).div(100) {
@@ -338,7 +280,7 @@ async fn vectorize_thread(
                     info!("MEMDB VECTORIZER START");
                     let r = vectorize_dirty_memories(
                         memdb.clone(),
-                        vecdb_handler_arc.clone(),
+                        vecdb_arc.clone(),
                         vstatus.clone(),
                         client.clone(),
                         &api_key,
@@ -369,7 +311,7 @@ async fn vectorize_thread(
                     if !reported_vecdb_complete {
                         // For now, we do not create index because it hurts the quality of retrieval
                         // info!("VECDB Creating index");
-                        // match vecdb_handler_arc.lock().await.create_index().await {
+                        // match vecdb_arc.lock().await.create_index().await {
                         //     Ok(_) => info!("VECDB CREATED INDEX"),
                         //     Err(err) => info!("VECDB Error creating index: {}", err)
                         // }
@@ -398,7 +340,7 @@ async fn vectorize_thread(
         let mut doc: Document = Document { doc_path: cpath.clone().into(), doc_text: None };
         if let Err(_) = doc.update_text_from_disk(gcx.clone()).await {
             info!("{} cannot read, deleting from index", last_30_chars);  // don't care what the error is, trivial (or privacy)
-            match vecdb_handler_arc.lock().await.vecdb_records_remove(vec![doc.doc_path.to_string_lossy().to_string()]).await {
+            match vecdb_arc.lock().await.vecdb_records_remove(vec![doc.doc_path.to_string_lossy().to_string()]).await {
                 Ok(_) => {}
                 Err(err) => {
                     info!("VECDB Error removing: {}", err);                    
@@ -447,51 +389,14 @@ async fn vectorize_thread(
             &mut splits,
             &mut ready_to_vecdb,
             &mut run_actual_model_on_these,
-            vecdb_handler_arc.clone(),
+            vecdb_arc.clone(),
             1024,
         ).await;
     }
 }
 
-// Helper functions for vectorization process
-
-async fn from_splits_to_vecdb_records_applying_cache(
-    splits: &mut Vec<SplitResult>,
-    ready_to_vecdb: &mut Vec<VecdbRecord>,
-    run_actual_model_on_these: &mut Vec<SplitResult>,
-    vecdb_handler_arc: Arc<AMutex<VecDBSqlite>>,
-    group_size: usize,
-) {
-    while !splits.is_empty() {
-        let batch: Vec<SplitResult> = splits
-            .drain(..group_size.min(splits.len()))
-            .collect::<Vec<_>>();
-        // let t0 = std::time::Instant::now();
-        let vectors_maybe = vecdb_handler_arc.lock().await.fetch_vectors_from_cache(&batch).await;
-        if let Ok(vectors) = vectors_maybe {
-            // info!("query cache {} -> {} records {:.3}s", batch.len(), vectors.len(), t0.elapsed().as_secs_f32());
-            for (split, maybe_vector) in batch.iter().zip(vectors.iter()) {
-                if maybe_vector.is_none() {
-                    run_actual_model_on_these.push(split.clone());
-                    continue;
-                }
-                ready_to_vecdb.push(VecdbRecord {
-                    vector: maybe_vector.clone(),
-                    file_path: split.file_path.clone(),
-                    start_line: split.start_line,
-                    end_line: split.end_line,
-                    distance: -1.0,
-                    usefulness: 0.0,
-                });
-            }
-        } else if let Err(err) = vectors_maybe {
-            tracing::error!("{}", err);
-        }
-    }
-}
-
 async fn _send_to_vecdb(
-    vecdb_handler_arc: Arc<AMutex<VecDBSqlite>>,
+    vecdb_arc: Arc<AMutex<VecDBSqlite>>,
     ready_to_vecdb: &mut Vec<VecdbRecord>,
 ) {
     while !ready_to_vecdb.is_empty() {
@@ -499,7 +404,7 @@ async fn _send_to_vecdb(
             .map(|x| x.file_path.to_str().unwrap_or("No filename").to_string())
             .collect();
         let unique_file_paths_vec: Vec<String> = unique_file_paths.into_iter().collect();
-        match vecdb_handler_arc.lock().await.vecdb_records_remove(unique_file_paths_vec).await {
+        match vecdb_arc.lock().await.vecdb_records_remove(unique_file_paths_vec).await {
             Ok(_) => {}
             Err(err) => {
                 info!("VECDB Error removing: {}", err);                                    
@@ -507,7 +412,7 @@ async fn _send_to_vecdb(
         };
         let batch: Vec<VecdbRecord> = ready_to_vecdb.drain(..).collect();
         if !batch.is_empty() {
-            match vecdb_handler_arc.lock().await.vecdb_records_add(&batch).await {
+            match vecdb_arc.lock().await.vecdb_records_add(&batch).await {
                 Ok(_) => {}
                 Err(err) => {
                     info!("VECDB Error adding: {}", err);                                                        
@@ -516,82 +421,185 @@ async fn _send_to_vecdb(
         }
     }
 }
-async fn vectorize_batch_from_q(
-    run_actual_model_on_these: &mut Vec<SplitResult>,
-    ready_to_vecdb: &mut Vec<VecdbRecord>,
-    vstatus: Arc<AMutex<VecDbStatus>>,
-    client: Arc<AMutex<reqwest::Client>>,
-    constants: &VecdbConstants,
-    api_key: &String,
-    vecdb_handler_arc: Arc<AMutex<VecDBSqlite>>,
-    #[allow(non_snake_case)]
-    B: usize,
-) -> Result<(), String> {
-    let batch = run_actual_model_on_these.drain(..B.min(run_actual_model_on_these.len())).collect::<Vec<_>>();
-    assert!(batch.len() > 0);
 
-    let batch_result = match get_embedding_with_retry(
-        client.clone(),
-        &constants.endpoint_embeddings_style.clone(),
-        &constants.embedding_model.clone(),
-        &constants.endpoint_embeddings_template.clone(),
-        batch.iter().map(|x| x.window_text.clone()).collect(),
-        api_key,
-        10,
-    ).await {
-        Ok(res) => res,
-        Err(e) => {
-            let mut vstatus_locked = vstatus.lock().await;
-            vstatus_locked.vecdb_errors.entry(e.clone()).and_modify(|counter| *counter += 1).or_insert(1);
-            return Err(e);
+impl FileVectorizerService {
+    pub async fn new(
+        vecdb: Arc<AMutex<VecDBSqlite>>,
+        memdb: Arc<ParkMutex<MemDB>>,
+        constants: VecdbConstants,
+        api_key: String,
+    ) -> Self {
+        let vstatus = Arc::new(AMutex::new(
+            VecDbStatus {
+                files_unprocessed: 0,
+                files_total: 0,
+                requests_made_since_start: 0,
+                vectors_made_since_start: 0,
+                db_size: 0,
+                db_cache_size: 0,
+                state: "starting".to_string(),
+                queue_additions: true,
+                vecdb_max_files_hit: false,
+                vecdb_errors: IndexMap::new(),
+            }
+        ));
+        FileVectorizerService {
+            vecdb,
+            vstatus,
+            vstatus_notify: Arc::new(ANotify::new()),
+            constants,
+            api_key,
+            memdb,
+            vecdb_todo: Default::default(),
         }
+    }
+}
+
+pub async fn vecdb_start_background_tasks(
+    vecdb_client: Arc<AMutex<reqwest::Client>>,
+    vservice: Arc<AMutex<FileVectorizerService>>,
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Vec<JoinHandle<()>> {
+    let retrieve_thread_handle = tokio::spawn(
+        vectorize_thread(
+            vecdb_client.clone(),
+            vservice.clone(),
+            gcx.clone(),
+        )
+    );
+    vec![retrieve_thread_handle]
+}
+
+pub async fn vectorizer_enqueue_dirty_memory(
+    vservice: Arc<AMutex<FileVectorizerService>>
+) {
+    let (vecdb_todo, vstatus, vstatus_notify) = {
+        let service = vservice.lock().await;
+        (
+            service.vecdb_todo.clone(),
+            service.vstatus.clone(),
+            service.vstatus_notify.clone(),
+        )
     };
-
-    if batch_result.len() != batch.len() {
-        return Err(format!("vectorize: batch_result.len() != batch.len(): {} vs {}", batch_result.len(), batch.len()));
-    }
-
     {
-        let mut vstatus_locked = vstatus.lock().await;
-        vstatus_locked.requests_made_since_start += 1;
-        vstatus_locked.vectors_made_since_start += batch_result.len();
+        // two locks in sequence, vecdb_todo.lock -> vstatus.lock
+        let mut qlocked = vecdb_todo.lock().await;
+        qlocked.push_back(MessageToVecdbThread::MemoriesSomethingDirty());
+        vstatus.lock().await.queue_additions = true;
     }
+    vstatus_notify.notify_waiters();
+}
 
-    let mut send_to_cache = vec![];
-    for (i, data_res) in batch.iter().enumerate() {
-        if batch_result[i].is_empty() {
-            info!("skipping an empty embedding split");
-            continue;
-        }
-        ready_to_vecdb.push(
-            VecdbRecord {
-                vector: Some(batch_result[i].clone()),
-                file_path: data_res.file_path.clone(),
-                start_line: data_res.start_line,
-                end_line: data_res.end_line,
-                distance: -1.0,
-                usefulness: 0.0,
-            }
-        );
-        send_to_cache.push(
-            SimpleTextHashVector {
-                vector: Some(batch_result[i].clone()),
-                window_text: data_res.window_text.clone(),
-                window_text_hash: data_res.window_text_hash.clone(),
-            }
-        );
-    }
+fn _filter_docs_to_enqueue(docs: &Vec<String>) -> Vec<String> {
+    let mut rejected_reasons = HashMap::new();
+    let mut filtered_docs = vec![];
 
-    if send_to_cache.len() > 0 {
-        match vecdb_handler_arc.lock().await.cache_add_new_records(send_to_cache).await {
+    for d in docs {
+        let path: std::path::PathBuf = d.clone().into();
+        match is_path_to_enqueue_valid(&path) {
+            Ok(_) => {
+                filtered_docs.push(d.clone());
+            }
             Err(e) => {
-                warn!("Error adding records to the cacheDB: {}", e);
+                rejected_reasons.entry(e.to_string()).and_modify(|x| *x += 1).or_insert(1);
             }
-            _ => {}
         }
     }
+    if !rejected_reasons.is_empty() {
+        info!("VecDB rejected docs to enqueue reasons:");
+        for (reason, count) in &rejected_reasons {
+            info!("    {:>6} {}", count, reason);
+        }
+    }
+    filtered_docs
+}
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;  // be nice to the server: up to 60 requests per minute
+pub async fn vectorizer_service_init_and_start(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    constants: VecdbConstants
+) -> Result<(), String> {
+    let (vecdb_mb, memdb_mb) = {
+        let gcx_locked = gcx.read().await;
+        let vecdb = gcx_locked.vecdb.clone();
+        let memdb = gcx_locked.memdb.clone();
+        (vecdb, memdb)
+    };
+    let vecdb = vecdb_mb.ok_or_else(|| "Vecdb is not initialized, cannot start vectorizer service".to_string())?;
+    let memdb = memdb_mb.ok_or_else(|| "Memdb is not initialized, cannot start vectorizer service".to_string())?;
 
+    let api_key = crate::caps::get_custom_embedding_api_key(gcx.clone()).await
+        .map_err(|e | format!("Failed to get API key for vectorizer service: {}", e))?;
+
+    info!("Initializing vectorizer service");
+    let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
+        vecdb.lock().await.vecdb_handler.clone(),
+        memdb.clone(),
+        constants,
+        api_key,
+    ).await));
+    {
+        let mut gcx_locked = gcx.write().await;
+        gcx_locked.vectorizer_service = Some(vectorizer_service.clone());
+    }
+    info!("Vectorizer service initialized");
+
+    info!("Starting background tasks for vectorization");
+    let tasks = start_vectorizer_background_tasks(
+        vecdb.lock().await.vecdb_emb_client.clone(),
+        vectorizer_service.clone(),
+        gcx.clone()
+    ).await;
+    {
+        let mut gcx_locked = gcx.write().await;
+        let bg_tasks = gcx_locked.background_tasks.as_mut()
+            .expect("Background tasks holder must be initialized before vectorizer service");
+        bg_tasks.extend(tasks);
+    }
+    info!("Vectorizer background tasks started successfully");
+
+    info!("Enqueuing workspace files for vectorization");
+    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, true).await;
+    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, true).await;
     Ok(())
+}
+
+pub async fn vectorizer_enqueue_files(
+    vservice: Arc<AMutex<FileVectorizerService>>,
+    documents: &Vec<String>,
+    process_immediately: bool,
+) {
+    info!("adding {} files", documents.len());
+    let documents = _filter_docs_to_enqueue(documents);
+    let (vecdb_todo, vstatus, vstatus_notify, vecdb_max_files) = {
+        let service = vservice.lock().await;
+        (
+            service.vecdb_todo.clone(),
+            service.vstatus.clone(),
+            service.vstatus_notify.clone(),
+            service.constants.vecdb_max_files
+        )
+    };
+    let mut documents_my_copy = documents.clone();
+    if documents_my_copy.len() > vecdb_max_files {
+        info!("that's more than {} allowed in the command line, reduce the number", vecdb_max_files);
+        documents_my_copy.truncate(vecdb_max_files);
+        vstatus.lock().await.vecdb_max_files_hit = true;
+    }
+    {
+        {
+            // two locks in sequence, vecdb_todo.lock -> vstatus.lock
+            let mut vecdb_todo_locked = vecdb_todo.lock().await;
+            for doc in documents.iter() {
+                if process_immediately {
+                    vecdb_todo_locked.push_back(MessageToVecdbThread::ImmediatelyRegularDocument(doc.clone()));
+                } else {
+                    vecdb_todo_locked.push_back(MessageToVecdbThread::RegularDocument(doc.clone()));
+                }
+            }
+            vstatus.lock().await.queue_additions = true;
+        }
+        if process_immediately {
+            vstatus_notify.notify_waiters();
+        }
+    }
 }

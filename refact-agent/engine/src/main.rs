@@ -36,7 +36,6 @@ mod files_blocklist;
 mod fuzzy_search;
 mod files_correction;
 
-#[cfg(feature="vecdb")]
 mod vecdb;
 
 mod ast;
@@ -50,7 +49,6 @@ mod known_models;
 mod scratchpad_abstract;
 mod scratchpads;
 
-#[cfg(feature="vecdb")]
 mod fetch_embedding;
 mod forward_to_hf_endpoint;
 mod forward_to_openai_endpoint;
@@ -181,75 +179,6 @@ async fn main() {
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
     let mut background_tasks = start_background_tasks(gcx.clone()).await;
-
-    // Initialize memdb if vecdb is enabled
-    #[cfg(feature="vecdb")]
-    if cmdline.vecdb && gcx.read().await.memdb.is_none() {
-        let config_dir = gcx.read().await.config_dir.clone();
-        let caps = match crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-            Ok(caps) => caps,
-            Err(e) => {
-                tracing::error!("Failed to load caps for memdb initialization: {}", e);
-                std::sync::Arc::new(std::sync::RwLock::new(crate::caps::CodeAssistantCaps::default()))
-            }
-        };
-        
-        let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
-        let constants = {
-            let caps_locked = caps.read().unwrap();
-            let mut b = caps_locked.embedding_batch;
-            if b == 0 {
-                b = 64;
-            }
-            if b > 256 {
-                tracing::warn!("embedding_batch can't be higher than 256");
-                b = 64;
-            }
-            crate::vecdb::vdb_structs::VecdbConstants {
-                embedding_model: caps_locked.embedding_model.clone(),
-                embedding_size: caps_locked.embedding_size,
-                embedding_batch: b,
-                vectorizer_n_ctx: caps_locked.embedding_n_ctx,
-                tokenizer: None,
-                endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
-                endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
-                splitter_window_size: caps_locked.embedding_n_ctx / 2,
-                vecdb_max_files: vecdb_max_files,
-            }
-        };
-        
-        info!("Initializing memdb in main");
-        let memdb = crate::memdb::db_init::memdb_init(&config_dir, &constants, cmdline.reset_memory).await;
-        let mut gcx_locked = gcx.write().await;
-        gcx_locked.memdb = Some(memdb.clone());
-        
-        // Initialize vectorizer service if not already initialized
-        if gcx_locked.vectorizer_service.lock().await.is_none() {
-            if let Some(vec_db) = &*gcx_locked.vec_db.lock().await {
-                let api_key = match crate::caps::get_custom_embedding_api_key(gcx.clone()).await {
-                    Ok(key) => key,
-                    Err(err) => {
-                        tracing::error!("Failed to get API key for vectorizer service: {}", err);
-                        String::new() // Return empty string instead of continue
-                    }
-                };
-                
-                // Only proceed if we have a valid API key
-                if !api_key.is_empty() {
-                    info!("Initializing vectorizer service");
-                    let vectorizer_service = crate::vecdb::vectorizer_service::FileVectorizerService::new(
-                        vec_db.vecdb_handler.clone(),
-                        constants.clone(),
-                        api_key,
-                        memdb.clone()
-                    ).await;
-                    
-                    *gcx_locked.vectorizer_service.lock().await = Some(vectorizer_service);
-                }
-            }
-        }
-    }
-    
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;

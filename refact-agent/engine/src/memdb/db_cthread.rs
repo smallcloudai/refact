@@ -246,7 +246,7 @@ pub async fn handle_db_v1_cthreads_sub(
             yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&e).unwrap()));
         }
         loop {
-            if !pubsub_trigerred(gcx.clone(), &mdb, 10).await {
+            if !pubsub_trigerred(gcx.clone(), mdb.clone(), 10).await {
                 break;
             }
             let (deleted_cthread_ids, updated_cthread_ids) = match cthread_subsription_poll(lite_arc.clone(), &mut last_pubsub_id) {

@@ -83,31 +83,28 @@ pub async fn handle_v1_trajectory_save(
             format!("JSON problem: {}", e),
         )
     })?;
-
+    let (memdb, vectorizer_service) = {
+        let gcx_locked = global_context.read().await;
+        let memdb = gcx_locked.memdb.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string()))?;
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
+        (memdb, vectorizer_service)
+    };
     let mem_type = "trajectory";
     let (goal, trajectory) = compress_trajectory(global_context.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-
-    let _memdb = match global_context.read().await.memdb.clone() {
-        Some(db) => db,
-        None => return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "memdb not initialized".to_string())),
-    };
-    
-    // We'll use a dummy implementation for now since we're transitioning to the new architecture
-    // In a real implementation, we would get the vectorizer_service from the global context
-    // For now, we'll just proceed with adding the memory without vectorization
-    // Use a dummy implementation for now
-    // In a real implementation, we would use the vectorizer_service from the global context
-    let memid = "dummy-memid-12345".to_string();
-    
-    // Log the memory details for debugging
-    tracing::info!(
-        "Would add memory: type={}, goal={}, project={}, payload={}",
-        mem_type,
-        goal,
-        post.project,
-        &trajectory[..std::cmp::min(100, trajectory.len())]
-    );
+    let memid = crate::memdb::db_memories::memories_add(
+        memdb,
+        vectorizer_service,
+        &mem_type,
+        &goal.as_str(),
+        &post.project.as_str(),
+        &trajectory.as_str(),
+        "local-compressed-traj",
+    ).await.map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
+    })?;
 
     let response = serde_json::json!({
         "memid": memid,

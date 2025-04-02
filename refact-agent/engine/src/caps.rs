@@ -282,7 +282,6 @@ async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<Str
     Ok(get_api_key_macro!(gcx, caps, chat_apikey))
 }
 
-#[cfg(feature="vecdb")]
 pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     Ok(get_api_key_macro!(gcx, caps, embedding_apikey))

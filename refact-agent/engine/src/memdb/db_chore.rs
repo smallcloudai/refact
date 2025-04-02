@@ -379,7 +379,7 @@ pub async fn handle_db_v1_chores_sub(
         
         // Poll for updates
         loop {
-            if !crate::memdb::db_pubsub::pubsub_trigerred(gcx.clone(), &mdb, 10).await {
+            if !crate::memdb::db_pubsub::pubsub_trigerred(gcx.clone(), mdb.clone(), 10).await {
                 break;
             }
             

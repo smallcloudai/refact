@@ -34,12 +34,7 @@ pub async fn start_server(
         return None
     }
     let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
-    let memdb = gcx.read().await.memdb.clone();
-    let memdb_sleeping_point_mb = if let Some(memdb) = memdb {
-        Some(memdb.lock().memdb_sleeping_point.clone())
-    } else {
-        None
-    };
+    let memdb_sleeping_point_mb = gcx.read().await.memdb.clone().and_then(|x| Some(x.lock().memdb_sleeping_point.clone()));
     Some(tokio::spawn(async move {
         let addr = if is_inside_container { ([0, 0, 0, 0], port).into() } else { ([127, 0, 0, 1], port).into() };
         let builder = Server::try_bind(&addr).map_err(|e| {

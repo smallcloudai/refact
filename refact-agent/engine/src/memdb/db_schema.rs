@@ -205,10 +205,5 @@ pub fn create_tables_202412(conn: &Connection, sleeping_point: Arc<Notify>, rese
             Arc::into_raw(sleeping_point.clone()) as *mut c_void,
         );
     }
-
-    // Useful to speed up SELECT .. JOIN
-    // conn.execute("CREATE INDEX IF NOT EXISTS idx_chore_event_belongs_to_chore_id ON chore_events (chore_event_belongs_to_chore_id)", []).map_err(|e| e.to_string())?;
-    // conn.execute("CREATE INDEX IF NOT EXISTS idx_cthread_belongs_to_chore_event_id ON cthreads (cthread_belongs_to_chore_event_id)", []).map_err(|e| e.to_string())?;
-    // conn.execute("CREATE INDEX IF NOT EXISTS idx_cmessage_belongs_to_cthread_id ON cmessages (cmessage_belongs_to_cthread_id)", []).map_err(|e| e.to_string())?;
     Ok(())
 }

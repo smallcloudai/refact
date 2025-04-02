@@ -190,12 +190,11 @@ pub async fn memories_search(
     }
     let (lite, vecdb_emb_client, constants) = {
         let gcx_locked = gcx.read().await;
-        let vecdb_locked = gcx_locked.vec_db.lock().await;
         let memdb = gcx_locked.memdb.clone().expect("memdb not initialized");
         let constants = memdb.lock().vecdb_constants.clone();
-        let vecdb_emb_client = vecdb_locked
-            .as_ref()
+        let vecdb_emb_client = gcx_locked.vecdb.clone()
             .ok_or("VecDb is not initialized")?
+            .lock().await
             .vecdb_emb_client
             .clone();
         let x = (memdb.lock().lite.clone(), vecdb_emb_client, constants);

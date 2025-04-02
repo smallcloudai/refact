@@ -1,12 +1,13 @@
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::sync::RwLock as StdRwLock;
+use tokio::sync::Mutex as AMutex;
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use indexmap::IndexMap;
 use tokenizers::Tokenizer;
 use async_trait::async_trait;
-
+use crate::vecdb::vectorizer_service::FileVectorizerService;
 
 #[async_trait]
 pub trait VecdbSearch: Send {
@@ -16,6 +17,7 @@ pub trait VecdbSearch: Send {
         top_n: usize,
         filter_mb: Option<String>,
         api_key: &String,
+        vectorizer_service: Option<Arc<AMutex<FileVectorizerService>>>,
     ) -> Result<SearchResult, String>;
 }
 

@@ -31,10 +31,7 @@ use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::system_prompt::handle_v1_prepend_system_prompt_and_maybe_more_initial_messages;
-
-#[cfg(feature = "vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
-#[cfg(feature="vecdb")]
 use crate::http::routers::v1::handlers_memdb::{handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized};
 use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integration_delete, handle_v1_integrations, handle_v1_integrations_filtered, handle_v1_integrations_mcp_logs};
 use crate::memdb::db_cthread::{handle_db_v1_cthread_update, handle_db_v1_cthreads_sub};
@@ -68,10 +65,8 @@ pub mod telemetry_chat;
 pub mod telemetry_network;
 
 mod file_edit_tools;
-#[cfg(feature = "vecdb")]
 pub mod handlers_memdb;
 mod v1_integrations;
-#[cfg(feature = "vecdb")]
 pub mod vecdb;
 
 pub fn make_v1_router() -> Router {
@@ -150,10 +145,8 @@ pub fn make_v1_router() -> Router {
         // to remove
         .route("/subchat", post(handle_v1_subchat))
         .route("/subchat-single", post(handle_v1_subchat_single))
-        ;
 
-    #[cfg(feature = "vecdb")]
-    let builder = builder
+        // vecdb related
         .route("/vdb-search", post(handle_v1_vecdb_search))
         .route("/vdb-status", get(handle_v1_vecdb_status))
         .route("/mem-add", post(handle_mem_add))

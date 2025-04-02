@@ -8,7 +8,7 @@ use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::AsyncBufReadExt;
 use tokio::io::BufReader;
-use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
+use tokio::sync::{RwLock as ARwLock};
 
 use crate::global_context::GlobalContext;
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
@@ -27,32 +27,28 @@ pub async fn enqueue_all_docs_from_jsonl(
     for d in paths.iter() {
         docs.push(d.to_string_lossy().to_string());
     }
-    let (vectorizer_service, ast_service) = {
+    let (vectorizer_service_mb, ast_service_mb) = {
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
         let gcx_locked = gcx.write().await;
         *gcx_locked.documents_state.cache_dirty.lock().await = now;
         let jsonl_files = &mut gcx_locked.documents_state.jsonl_files.lock().unwrap();
         jsonl_files.clear();
         jsonl_files.extend(paths);
-        #[cfg(feature="vecdb")]
         let vectorizer_service = gcx_locked.vectorizer_service.clone();
         (vectorizer_service, gcx_locked.ast_service.clone())
     };
-    if let Some(ast) = &ast_service {
+    if let Some(ast_service) = &ast_service_mb {
         if !vecdb_only {
-            ast_indexer_enqueue_files(ast.clone(), &docs, force).await;
+            ast_indexer_enqueue_files(ast_service.clone(), &docs, force).await;
         }
     }
-    #[cfg(feature="vecdb")]
-    if let Some(vs) = &*vectorizer_service.lock().await {
+    if let Some(vectorizer_service) = &vectorizer_service_mb {
         crate::vecdb::vectorizer_service::vectorizer_enqueue_files(
-            Arc::new(AMutex::new(vs.clone())), 
-            &docs, 
+            vectorizer_service.clone(),
+            &docs,
             false
         ).await;
-    };
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
+    }
 }
 
 pub async fn enqueue_all_docs_from_jsonl_but_read_first(

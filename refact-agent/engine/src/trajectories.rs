@@ -2,9 +2,11 @@ use crate::global_context::GlobalContext;
 use crate::memdb::db_memories::{memories_add, memories_erase, memories_select_all};
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
+use tokio::sync::{RwLock as ARwLock};
 use tracing::info;
 use chrono::{NaiveDateTime, Utc};
+use parking_lot::Mutex;
+use crate::memdb::db_structs::MemDB;
 
 // NOTE: if you're going to use it with local https proxy make sure that you set insecure flag from cmdline
 static URL: &str = "https://www.smallcloud.ai/v1/trajectory-get-all";
@@ -37,12 +39,7 @@ async fn is_time_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     Ok(duration_since_last_download.num_days() >= TRAJECTORIES_UPDATE_EACH_N_DAYS)
 }
 
-async fn remove_legacy_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
-    let memdb = match gcx.read().await.memdb.clone() {
-        Some(db) => db,
-        None => return Err("memdb not initialized".to_string()),
-    };
-    
+async fn remove_legacy_trajectories(memdb: Arc<Mutex<MemDB>>) -> Result<(), String> {
     for memo in memories_select_all(memdb.clone())
         .await?
         .iter()
@@ -57,25 +54,16 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     if !is_time_to_download_trajectories(gcx.clone()).await? {
         return Ok(());
     }
-    
-    let (vec_db, api_key) = {
+    let (vectorizer_service, memdb, api_key) = {
         let gcx_locked = gcx.read().await;
-        (
-            gcx_locked.vec_db.clone(),
-            gcx_locked.cmdline.api_key.clone(),
-        )
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| "vecdb is not initialized".to_string())?;
+        let memdb = gcx_locked.memdb.clone()
+            .ok_or_else(|| "memdb is not initialized".to_string())?;
+        (vectorizer_service, memdb, gcx_locked.cmdline.api_key.clone())
     };
-    if vec_db.lock().await.is_none() {
-        return Err("vecdb is not initialized".to_string());        
-    }
-    if let Some(_service) = &*gcx.read().await.vectorizer_service.lock().await {
-        if let Some(vs) = &*gcx.read().await.vectorizer_service.lock().await {
-            crate::vecdb::vdb_highlev::memories_block_until_vectorized(
-                Arc::new(AMutex::new(vs.clone())), 
-                20_000
-            ).await?;
-        }
-    }
+
+    crate::vecdb::vdb_highlev::memories_block_until_vectorized(vectorizer_service.clone(), 20_000).await?;
 
     info!("starting to download trajectories...");
     let client = reqwest::Client::new();
@@ -94,7 +82,7 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         Some(arr) => arr,
         None => return Err("Invalid response format: 'data' field is not an array".to_string()),
     };
-    remove_legacy_trajectories(gcx.clone()).await?;
+    remove_legacy_trajectories(memdb.clone()).await?;
     for trajectory in trajectories {
         let m_type = trajectory["kind"].as_str().unwrap_or("unknown");
         let m_goal = trajectory["goal"].as_str().unwrap_or("unknown");
@@ -105,25 +93,9 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
             info!("empty or no payload for the trajectory, skipping it");
             continue;            
         }
-        let memdb = match gcx.read().await.memdb.clone() {
-            Some(db) => db,
-            None => {
-                info!("memdb not initialized, skipping trajectory");
-                continue;
-            },
-        };
-        
-        let vectorizer_service = match gcx.read().await.vectorizer_service.lock().await.as_ref() {
-            Some(service) => Arc::new(AMutex::new(service.clone())),
-            None => {
-                info!("vectorizer service not initialized, skipping trajectory");
-                continue;
-            },
-        };
-        
         match memories_add(
-            memdb,
-            vectorizer_service,
+            memdb.clone(),
+            vectorizer_service.clone(),
             m_type,
             m_goal,
             m_project,

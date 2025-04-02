@@ -58,14 +58,14 @@ impl Tool for ToolCreateKnowledge {
             Some(v) => return Err(format!("argument `knowledge_entry` is not a string: {:?}", v)),
             None => return Err("argument `knowledge_entry` is missing".to_string())
         };
-
-        let memdb = gcx.read().await.memdb.clone().ok_or("memdb not initialized")?;
-        let vectorizer_service = match &*gcx.read().await.vectorizer_service.lock().await {
-            Some(service) => Arc::new(AMutex::new(service.clone())),
-            None => return Err("vectorizer service not initialized".to_string()),
+        let (memdb, vectorizer_service) = {
+            let gcx_locked = gcx.read().await;
+            let memdb = gcx_locked.memdb.clone()
+                .ok_or_else(|| "memdb not initialized".to_string())?;
+            let vectorizer_service = gcx_locked.vectorizer_service.clone()
+                .ok_or_else(|| "vectorizer_service not initialized".to_string())?;
+            (memdb, vectorizer_service)
         };
-        
-        // Store the memory with type "knowledge-entry"
         let memid = match memories_add(
             memdb,
             vectorizer_service,
