@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import type { Provider, SimplifiedProvider } from "../../../services/refact";
-import { Button, Flex, Select, TextField } from "@radix-ui/themes";
+import { Button, Flex, Select, Switch, TextField } from "@radix-ui/themes";
 import { useGetProviderQuery } from "../../../hooks/useProvidersQuery";
 import { Spinner } from "../../../components/Spinner";
 import { toPascalCase } from "../../../utils/toPascalCase";
@@ -95,11 +95,27 @@ export function renderProviderFields({
   handleValuesChange,
 }: {
   providerData: Provider;
-  fields: Record<string, string>;
+  fields: Record<string, string | boolean>;
   handleValuesChange: (updatedProviderData: Provider) => void;
 }) {
   return Object.entries(fields).map(([key, value], idx) => {
-    if (key === "name" || key === "enabled" || key === "readonly") return null;
+    if (key === "name" || key === "readonly") return null;
+
+    if (key === "enabled") {
+      return (
+        <Flex key={`${key}_${idx}`} align="center" gap="3">
+          <label htmlFor={key}>{toPascalCase(key)}</label>
+          <Switch
+            id={key}
+            checked={Boolean(value)}
+            value={value ? "on" : "off"}
+            onCheckedChange={(checked) =>
+              handleValuesChange({ ...providerData, [key]: checked })
+            }
+          />
+        </Flex>
+      );
+    }
 
     if (key === "endpoint_style") {
       const availableOptions: Provider["endpoint_style"][] = ["openai", "hf"];

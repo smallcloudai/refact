@@ -1,5 +1,9 @@
 import React, { useCallback } from "react";
-import { Provider, SimplifiedProvider } from "../../services/refact";
+import {
+  Provider,
+  providersApi,
+  SimplifiedProvider,
+} from "../../services/refact";
 import { Flex } from "@radix-ui/themes";
 import { ProviderForm } from "./ProviderForm";
 import { useUpdateProviderMutation } from "../../hooks/useProvidersQuery";
@@ -26,13 +30,15 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
     async (updatedProviderData: Provider) => {
       const response = await updateProvider(updatedProviderData);
       if (response.error) return;
-      dispatch(
+      const actions = [
         setInformation(
           `Provider ${
             BEAUTIFUL_PROVIDER_NAMES[updatedProviderData.name]
           } updated successfully`,
         ),
-      );
+        providersApi.util.resetApiState(),
+      ];
+      actions.forEach((action) => dispatch(action));
       handleSetCurrentProvider(null);
     },
     [dispatch, handleSetCurrentProvider, updateProvider],

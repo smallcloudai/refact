@@ -1,8 +1,8 @@
 import type { Provider } from "../../../services/refact";
 
 export type AggregatedProviderFields = {
-  importantFields: Record<string, string>;
-  extraFields: Record<string, string>;
+  importantFields: Record<string, string | boolean>;
+  extraFields: Record<string, string | boolean>;
 };
 
 const EXTRA_FIELDS_KEYS = [
@@ -14,7 +14,7 @@ const EXTRA_FIELDS_KEYS = [
 export function aggregateProviderFields(providerData: Provider) {
   return Object.entries(providerData).reduce<AggregatedProviderFields>(
     (acc, [key, value]) => {
-      const stringValue = value.toString();
+      const stringValue = value;
 
       if (EXTRA_FIELDS_KEYS.some((extraField) => extraField === key)) {
         acc.extraFields[key] = stringValue;
