@@ -3,6 +3,7 @@ use axum::routing::get;
 use axum::routing::post;
 use axum::routing::delete;
 use providers::handle_v1_get_provider;
+use providers::handle_v1_models;
 use providers::handle_v1_post_provider;
 use tower_http::cors::CorsLayer;
 
@@ -149,6 +150,7 @@ pub fn make_v1_router() -> Router {
         .route("/provider-templates", get(handle_v1_provider_templates))
         .route("/provider", get(handle_v1_get_provider))
         .route("/provider", post(handle_v1_post_provider))
+        .route("/models", get(handle_v1_models))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))

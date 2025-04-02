@@ -10,7 +10,10 @@ use tracing::{info, warn};
 use crate::custom_error::MapErrToString;
 use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
-use crate::providers::{add_models_to_caps, apply_models_dict_patch, populate_provider_model_records, 
+use crate::providers::add_name_and_id_to_model_records;
+use crate::providers::add_running_models;
+use crate::providers::populate_model_records;
+use crate::providers::{add_models_to_caps, apply_models_dict_patch, 
     read_providers_d, resolve_provider_api_key, CapsProvider};
 
 const CAPS_FILENAME: &str = "refact-caps";
@@ -27,6 +30,8 @@ pub struct BaseModelRecord {
     /// provider/model_name, e.g. "openai/gpt-4o"
     #[serde(skip_deserializing)]
     pub id: String, 
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 
     #[serde(default, skip_serializing)]
     pub endpoint: String,
@@ -42,6 +47,8 @@ pub struct BaseModelRecord {
     #[serde(default, skip_serializing)]
     pub tokenizer: String,
 }
+
+fn default_true() -> bool { true }
 
 pub trait HasBaseModelRecord {
     fn base(&self) -> &BaseModelRecord;
@@ -255,9 +262,11 @@ pub async fn load_caps(
     for e in error_log {
         tracing::error!("{e}");
     }
-    populate_provider_model_records(&mut providers)?;
-    apply_models_dict_patch(&mut providers);
     for provider in &mut providers {
+        add_running_models(provider);
+        populate_model_records(provider);
+        apply_models_dict_patch(provider);
+        add_name_and_id_to_model_records(provider);
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     }
     add_models_to_caps(&mut caps, providers);

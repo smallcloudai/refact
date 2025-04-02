@@ -253,24 +253,27 @@ pub async fn read_providers_d(
             }
         };
         provider.name = provider_name;
-
-        let mut models_to_add = vec![
-            &provider.defaults.chat_default_model,
-            &provider.defaults.completion_default_model,
-        ];
-        models_to_add.extend(provider.chat_models.keys());
-        models_to_add.extend(provider.completion_models.keys());
-
-        for model in models_to_add {
-            if !model.is_empty() && !provider.running_models.contains(model) {
-                provider.running_models.push(model.clone());
-            }
-        }
-
         providers.push(provider);
     }
 
     (providers, error_log)
+}
+
+pub fn add_running_models(provider: &mut CapsProvider) {
+    let mut models_to_add = vec![
+        &provider.defaults.chat_default_model,
+        &provider.defaults.chat_light_model,
+        &provider.defaults.chat_thinking_model,
+        &provider.defaults.completion_default_model,
+    ];
+    models_to_add.extend(provider.chat_models.keys());
+    models_to_add.extend(provider.completion_models.keys());
+
+    for model in models_to_add {
+        if !model.is_empty() && !provider.running_models.contains(model) {
+            provider.running_models.push(model.clone());
+        }
+    }
 }
 
 /// Returns the latest modification timestamp in seconds of any YAML file in the providers.d directory
@@ -314,9 +317,6 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
 
         let completion_models = std::mem::take(&mut provider.completion_models);
         for (model_name, mut model_rec) in completion_models {
-            model_rec.base.name = model_name.to_string();
-            model_rec.base.id = format!("{}/{}", provider.name, model_name);
-
             if model_rec.base.endpoint.is_empty() {
                 add_provider_details_to_model(
                     &mut model_rec.base, &provider, &model_name, &provider.completion_endpoint
@@ -333,9 +333,6 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
 
         let chat_models = std::mem::take(&mut provider.chat_models);
         for (model_name, mut model_rec) in chat_models {
-            model_rec.base.name = model_name.to_string();
-            model_rec.base.id = format!("{}/{}", provider.name, model_name);
-
             if model_rec.base.endpoint.is_empty() {
                 add_provider_details_to_model(
                     &mut model_rec.base, &provider, &model_name, &provider.chat_endpoint
@@ -347,7 +344,6 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
 
         if provider.embedding_model.is_configured() {
             let mut embedding_model = std::mem::take(&mut provider.embedding_model);
-            embedding_model.base.id = format!("{}/{}", provider.name, embedding_model.base.name);
 
             if embedding_model.base.endpoint.is_empty() {
                 let model_name = embedding_model.base.name.clone();
@@ -362,80 +358,97 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
     }
 }
 
-pub fn apply_models_dict_patch(providers: &mut Vec<CapsProvider>) {
-    for provider in providers {
-        for (model_name, rec_patched) in provider.models_dict_patch.iter() {
-            if let Some(completion_rec) = provider.completion_models.get_mut(model_name) {
-                if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
-                    completion_rec.base.n_ctx = n_ctx as usize;
-                }
+pub fn add_name_and_id_to_model_records(provider: &mut CapsProvider) {
+    for (model_name, model_rec) in &mut provider.completion_models {
+        model_rec.base.name = model_name.to_string();
+        model_rec.base.id = format!("{}/{}", provider.name, model_name);
+    }
+
+    for (model_name, model_rec) in &mut provider.chat_models {
+        model_rec.base.name = model_name.to_string();
+        model_rec.base.id = format!("{}/{}", provider.name, model_name);
+    }
+
+    if provider.embedding_model.is_configured() {
+        provider.embedding_model.base.id = format!("{}/{}", provider.name, provider.embedding_model.base.name);
+    }
+}
+
+pub fn apply_models_dict_patch(provider: &mut CapsProvider) {
+    for (model_name, rec_patched) in provider.models_dict_patch.iter() {
+        if let Some(completion_rec) = provider.completion_models.get_mut(model_name) {
+            if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
+                completion_rec.base.n_ctx = n_ctx as usize;
+            }
+        }
+        
+        if let Some(chat_rec) = provider.chat_models.get_mut(model_name) {
+            if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
+                chat_rec.base.n_ctx = n_ctx as usize;
             }
             
-            if let Some(chat_rec) = provider.chat_models.get_mut(model_name) {
-                if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
-                    chat_rec.base.n_ctx = n_ctx as usize;
-                }
-                
-                if let Some(supports_tools) = rec_patched.get("supports_tools").and_then(|v| v.as_bool()) {
-                    chat_rec.supports_tools = supports_tools;
-                }
-                if let Some(supports_multimodality) = rec_patched.get("supports_multimodality").and_then(|v| v.as_bool()) {
-                    chat_rec.supports_multimodality = supports_multimodality;
-                }
+            if let Some(supports_tools) = rec_patched.get("supports_tools").and_then(|v| v.as_bool()) {
+                chat_rec.supports_tools = supports_tools;
+            }
+            if let Some(supports_multimodality) = rec_patched.get("supports_multimodality").and_then(|v| v.as_bool()) {
+                chat_rec.supports_multimodality = supports_multimodality;
             }
         }
     }
 }
 
-pub fn populate_provider_model_records(providers: &mut Vec<CapsProvider>) -> Result<(), String> {
-    #[derive(Deserialize)]
-    struct KnownModels {
-        completion_models: IndexMap<String, CompletionModelRecord>,
-        chat_models: IndexMap<String, ChatModelRecord>,
-        embedding_models: IndexMap<String, EmbeddingModelRecord>,
-    }
-    const KNOWN_MODELS: &'static str = include_str!("known_models.json");
-    let known_models: KnownModels = serde_json::from_str(KNOWN_MODELS).map_err(|e| {
-        let up_to_line = KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
-        tracing::error!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
-        format!("failed to parse KNOWN_MODELS: {}", e)
-    })?;
+#[derive(Deserialize)]
+struct KnownModels {
+    completion_models: IndexMap<String, CompletionModelRecord>,
+    chat_models: IndexMap<String, ChatModelRecord>,
+    embedding_models: IndexMap<String, EmbeddingModelRecord>,
+}
+const UNPARSED_KNOWN_MODELS: &'static str = include_str!("known_models.json");
+static KNOWN_MODELS: OnceLock<KnownModels> = OnceLock::new();
 
-    for provider in providers {
-        for model_name in &provider.running_models {
-            if !provider.completion_models.contains_key(model_name) {
-                if let Some(model_rec) = find_model_match(model_name, &provider.completion_models, &known_models.completion_models) {
-                    provider.completion_models.insert(model_name.clone(), model_rec);
-                }
-            }
+fn get_known_models() -> &'static KnownModels {
+    KNOWN_MODELS.get_or_init(|| {
+        serde_json::from_str::<KnownModels>(UNPARSED_KNOWN_MODELS).map_err(|e| {
+            let up_to_line = UNPARSED_KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
+            panic!("{}\nfailed to parse KNOWN_MODELS: {}", up_to_line, e);
+        }).unwrap()
+    })
+}
 
-            if !provider.chat_models.contains_key(model_name) {
-                if let Some(model_rec) = find_model_match(model_name, &provider.chat_models, &known_models.chat_models) {
-                    provider.chat_models.insert(model_name.clone(), model_rec);
-                }
-            }
-        }
+pub fn populate_model_records(provider: &mut CapsProvider) {
+    let known_models = get_known_models();
 
-        for model in &provider.running_models {
-            if !provider.completion_models.contains_key(model) && 
-                !provider.chat_models.contains_key(model) &&
-                !(model == &provider.embedding_model.base.name) {
-                tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
+    for model_name in &provider.running_models {
+        if !provider.completion_models.contains_key(model_name) {
+            if let Some(model_rec) = find_model_match(model_name, &provider.completion_models, &known_models.completion_models) {
+                provider.completion_models.insert(model_name.clone(), model_rec);
             }
         }
 
-        if !provider.embedding_model.is_configured() && !provider.embedding_model.base.name.is_empty() {
-            let model_name = provider.embedding_model.base.name.clone();
-            if let Some(model_rec) = find_model_match(&model_name, &IndexMap::new(), &known_models.embedding_models) {
-                provider.embedding_model = model_rec;
-                provider.embedding_model.base.name = model_name;
-            } else {
-                tracing::warn!("Unknown embedding model '{}', maybe configure it or update this binary", model_name);
+        if !provider.chat_models.contains_key(model_name) {
+            if let Some(model_rec) = find_model_match(model_name, &provider.chat_models, &known_models.chat_models) {
+                provider.chat_models.insert(model_name.clone(), model_rec);
             }
         }
     }
 
-    Ok(())
+    for model in &provider.running_models {
+        if !provider.completion_models.contains_key(model) && 
+            !provider.chat_models.contains_key(model) &&
+            !(model == &provider.embedding_model.base.name) {
+            tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
+        }
+    }
+
+    if !provider.embedding_model.is_configured() && !provider.embedding_model.base.name.is_empty() {
+        let model_name = provider.embedding_model.base.name.clone();
+        if let Some(model_rec) = find_model_match(&model_name, &IndexMap::new(), &known_models.embedding_models) {
+            provider.embedding_model = model_rec;
+            provider.embedding_model.base.name = model_name;
+        } else {
+            tracing::warn!("Unknown embedding model '{}', maybe configure it or update this binary", model_name);
+        }
+    }
 }
 
 fn find_model_match<T: Clone + HasBaseModelRecord>(
@@ -498,5 +511,10 @@ mod tests {
     #[test]
     fn test_parse_provider_templates() {
         let _ = get_provider_templates(); // This will panic if any template fails to parse
+    }
+
+    #[test]
+    fn test_parse_known_models() {
+        let _ = get_known_models(); // This will panic if any model fails to parse
     }
 }
