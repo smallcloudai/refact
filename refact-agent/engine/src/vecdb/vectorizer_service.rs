@@ -24,7 +24,7 @@ const DEBUG_WRITE_VECDB_FILES: bool = false;
 const COOLDOWN_SECONDS: u64 = 10;
 
 
-enum MessageToVecdbThread {
+pub enum MessageToVecdbThread {
     RegularDocument(String),
     ImmediatelyRegularDocument(String),
     MemoriesSomethingDirty(),
@@ -517,7 +517,7 @@ fn _filter_docs_to_enqueue(docs: &Vec<String>) -> Vec<String> {
 pub async fn vectorizer_service_init_and_start(
     gcx: Arc<ARwLock<GlobalContext>>,
     constants: VecdbConstants
-) -> Result<(), String> {
+) -> Result<Vec<JoinHandle<()>>, String> {
     let (vecdb_mb, memdb) = {
         let gcx_locked = gcx.read().await;
         let vecdb = gcx_locked.vecdb.clone();
@@ -543,23 +543,14 @@ pub async fn vectorizer_service_init_and_start(
     info!("Vectorizer service initialized");
 
     info!("Starting background tasks for vectorization");
-    let tasks = start_vectorizer_background_tasks(
+    let tasks = vecdb_start_background_tasks(
         vecdb.lock().await.vecdb_emb_client.clone(),
         vectorizer_service.clone(),
         gcx.clone()
     ).await;
-    {
-        let mut gcx_locked = gcx.write().await;
-        let bg_tasks = gcx_locked.background_tasks.as_mut()
-            .expect("Background tasks holder must be initialized before vectorizer service");
-        bg_tasks.extend(tasks);
-    }
-    info!("Vectorizer background tasks started successfully");
 
-    info!("Enqueuing workspace files for vectorization");
-    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, true).await;
-    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, true).await;
-    Ok(())
+    info!("Vectorizer background tasks started successfully");
+    Ok(tasks)
 }
 
 pub async fn vectorizer_enqueue_files(

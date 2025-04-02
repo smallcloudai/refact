@@ -383,9 +383,6 @@ pub async fn create_global_context(
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
-    if cmdline.vecdb {
-        crate::vecdb::vdb_highlev::vecdb_init(gcx.clone()).await
-    };
     (gcx, ask_shutdown_receiver, cmdline)
 }
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
 use tracing::{error, info};
-
+use crate::background_tasks::BackgroundTasksHolder;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::trajectories::try_to_download_trajectories;
@@ -26,8 +26,7 @@ pub struct VecDb {
     pub constants: VecdbConstants,
 }
 
-
-// TODO: remove from background tasks?
+// TODO: should it be used for reloading while refact-lsp is running?
 async fn do_i_need_to_reload_vecdb(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (bool, Option<VecdbConstants>) {
@@ -97,10 +96,19 @@ async fn do_i_need_to_reload_vecdb(
     (true, Some(consts))
 }
 
-pub async fn vecdb_init(gcx: Arc<ARwLock<GlobalContext>>) {
+pub async fn vecdb_background_reload(gcx: Arc<ARwLock<GlobalContext>>) {
+    let cmd_line = gcx.read().await.cmdline.clone();
+    if !cmd_line.vecdb {
+        return;
+    }
+
     let mut trajectories_updated_once: bool = false;
+    let mut background_tasks = BackgroundTasksHolder::new(vec![]);
     loop {
         let (need_reload, consts) = do_i_need_to_reload_vecdb(gcx.clone()).await;
+        if need_reload {
+            background_tasks.abort().await;
+        }
         if need_reload && consts.is_some() {
             // Use the fail-safe initialization with retries
             let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
@@ -115,7 +123,8 @@ pub async fn vecdb_init(gcx: Arc<ARwLock<GlobalContext>>) {
                 consts.unwrap(),
                 Some(init_config),
             ).await {
-                Ok(_) => {
+                Ok(tasks) => {
+                    background_tasks = tasks;
                     gcx.write().await.vec_db_error = "".to_string();
                     info!("vecdb: initialization successful");
                 }

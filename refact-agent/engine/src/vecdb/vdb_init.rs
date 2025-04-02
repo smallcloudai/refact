@@ -116,7 +116,7 @@ pub async fn initialize_vecdb_with_context(
     gcx: Arc<ARwLock<GlobalContext>>,
     constants: VecdbConstants,
     init_config: Option<VecDbInitConfig>,
-) -> Result<(), VecDbInitError> {
+) -> Result<crate::background_tasks::BackgroundTasksHolder, VecDbInitError> {
     let api_key = match get_custom_embedding_api_key(gcx.clone()).await {
         Ok(key) => key,
         Err(err) => return Err(VecDbInitError::ApiKeyError(err.message)),
@@ -136,7 +136,7 @@ pub async fn initialize_vecdb_with_context(
     let vec_db = init_vecdb_fail_safe(
         &base_dir_cache,
         cmdline.clone(),
-        constants,
+        constants.clone(),
         &api_key,
         config,
     ).await?;
@@ -147,7 +147,19 @@ pub async fn initialize_vecdb_with_context(
         gcx_locked.vecdb = Some(Arc::new(AMutex::new(vec_db)));
         gcx_locked.vec_db_error = "".to_string();
     }
+
+    info!("Enqueuing workspace files for vectorization");
+    crate::files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, true).await;
+    crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, true).await;
+
+    info!("Starting background tasks for vectorization");
+    let background_tasks = {
+        let tasks = crate::vecdb::vectorizer_service::vectorizer_service_init_and_start(
+            gcx.clone(), constants
+        ).await.map_err(|x| VecDbInitError::InitializationError(x))?;
+        crate::background_tasks::BackgroundTasksHolder::new(tasks)
+    };
     
     info!("VecDb initialization and setup complete");
-    Ok(())
+    Ok(background_tasks)
 }

@@ -30,7 +30,7 @@ pub async fn handle_v1_vecdb_search(
     let (vecdb, vectorizer_service) = {
         let gcx_locked = gcx.read().await;
         let vecdb = gcx_locked.vecdb.clone()
-            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vecdb not initialized".to_string()))?;
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, NO_VECDB.to_string()))?;
         let vectorizer_service = gcx_locked.vectorizer_service.clone();
         (vecdb, vectorizer_service)
     };
