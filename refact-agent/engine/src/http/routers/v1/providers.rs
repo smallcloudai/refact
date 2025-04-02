@@ -48,9 +48,12 @@ pub async fn handle_v1_providers(
         gcx_locked.config_dir.clone()
     };
 
+    let template_names = get_provider_templates().keys().collect::<Vec<_>>();
     let (providers, read_errors) = read_providers_d(Vec::new(), &config_dir).await;
     
-    let result = providers.into_iter().map(|p| { json!({
+    let result = providers.into_iter().filter(
+        |p| template_names.contains(&&p.name)
+    ).map(|p| { json!({
         "name": p.name,
         "enabled": p.enabled
     })}).collect::<Vec<_>>();
