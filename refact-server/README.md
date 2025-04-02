@@ -36,6 +36,7 @@ Install [Docker with NVidia GPU support](https://docs.nvidia.com/datacenter/clou
 On Windows you need to install WSL 2 first, [one guide to do this](https://docs.docker.com/desktop/install/windows-install).
 
 Run docker container with following command:
+
 ```commandline
 docker run -d --rm --gpus all --shm-size=256m -p 8008:8008 -v refact-perm-storage:/perm_storage smallcloud/refact_self_hosting:latest
 ```
@@ -46,7 +47,6 @@ To upgrade the docker, delete it using `docker kill XXX` (the volume `perm-stora
 data), run `docker pull smallcloud/refact_self_hosting` and run it again.
 
 Now you can visit http://127.0.0.1:8008 to see the server Web GUI.
-
 
 <details><summary>Docker commands super short refresher</summary>
 Add your yourself to docker group to run docker without sudo (works for Linux):
@@ -69,28 +69,29 @@ docker stop XXX
 ```
 
 Shows messages from a container:
+
 ```commandline
 docker logs -f XXX
 ```
 
 Remove a container and all its data (except data inside a volume):
+
 ```commandline
 docker rm XXX
 ```
 
 Check out or delete a docker volume:
+
 ```commandline
 docker volume inspect VVV
 docker volume rm VVV
 ```
+
 </details>
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for installation without a docker container.
 
-
-
 ### Setting Up Plugins
-
 
 Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
 
@@ -103,31 +104,30 @@ Settings > Tools > Refact.ai > Advanced > Inference URL
 Extensions > Refact.ai Assistant > Settings > Infurl
 </details>
 
-
 ## Supported models
 
-| Model                                                                                                   | Completion | Chat | Fine-tuning | [Deprecated](## "Will be removed in next versions") |
-|---------------------------------------------------------------------------------------------------------|------------|------|-------------|-----------------------------------------------------|
-| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                                      | +          |      | +           | +                                                   |
-| [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                                      | +          |      | +           | +                                                   |
-| [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                                      | +          |      | +           | +                                                   |
-| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                                    | +          |      | +           | +                                                   |
-| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)                 | +          |      | +           | +                                                   |
-| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base)          | +          |      | +           | +                                                   |
-| [llama3.1/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)                    | +          | +    |             |                                                     |
-| [llama3.2/1b/instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)                         | +          | +    |             |                                                     |
-| [llama3.2/3b/instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)                         | +          | +    |             |                                                     |
-| [qwen2.5/coder/0.5b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B)                               | +          |      | +           |                                                     |
-| [qwen2.5/coder/1.5b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B)                               | +          |      | +           |                                                     |
-| [qwen2.5/coder/3b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-3B)                                   | +          |      | +           |                                                     |
-| [qwen2.5/coder/7b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-7B)                                   | +          |      | +           |                                                     |
-| [qwen2.5/coder/14b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-14B)                                 | +          |      | +           |                                                     |
-| [qwen2.5/coder/32b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-32B)                                 | +          |      | +           |                                                     |
-| [qwen2.5/coder/1.5b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct)                  | +          | +    |             |                                                     |
-| [qwen2.5/coder/3b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct)                      | +          | +    |             |                                                     |
-| [qwen2.5/coder/7b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct)                      | +          | +    |             |                                                     |
-| [qwen2.5/coder/14b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct)                    | +          | +    |             |                                                     |
-| [qwen2.5/coder/32b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)                    | +          | +    |             |                                                     |
+| Model                                                                                          | Completion | Chat | Fine-tuning | [Deprecated](## "Will be removed in next versions") |
+| ---------------------------------------------------------------------------------------------- | ---------- | ---- | ----------- | --------------------------------------------------- |
+| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                             | +          |      | +           | +                                                   |
+| [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                             | +          |      | +           | +                                                   |
+| [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                             | +          |      | +           | +                                                   |
+| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                           | +          |      | +           | +                                                   |
+| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)        | +          |      | +           | +                                                   |
+| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base) | +          |      | +           | +                                                   |
+| [llama3.1/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)           | +          | +    |             |                                                     |
+| [llama3.2/1b/instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)                | +          | +    |             |                                                     |
+| [llama3.2/3b/instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)                | +          | +    |             |                                                     |
+| [qwen2.5/coder/0.5b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B)                      | +          |      | +           |                                                     |
+| [qwen2.5/coder/1.5b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B)                      | +          |      | +           |                                                     |
+| [qwen2.5/coder/3b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-3B)                          | +          |      | +           |                                                     |
+| [qwen2.5/coder/7b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-7B)                          | +          |      | +           |                                                     |
+| [qwen2.5/coder/14b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-14B)                        | +          |      | +           |                                                     |
+| [qwen2.5/coder/32b/base](https://huggingface.co/Qwen/Qwen2.5-Coder-32B)                        | +          |      | +           |                                                     |
+| [qwen2.5/coder/1.5b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct)         | +          | +    |             |                                                     |
+| [qwen2.5/coder/3b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct)             | +          | +    |             |                                                     |
+| [qwen2.5/coder/7b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct)             | +          | +    |             |                                                     |
+| [qwen2.5/coder/14b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct)           | +          | +    |             |                                                     |
+| [qwen2.5/coder/32b/instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)           | +          | +    |             |                                                     |
 
 ## Usage
 
@@ -136,10 +136,13 @@ Refact is free to use for individuals and small teams under BSD-3-Clause license
 ## Custom installation
 
 You can also install refact repo without docker:
+
 ```shell
 pip install .
 ```
+
 If you have a GPU with CUDA capability >= 8.0, you can also install it with flash-attention v2 support:
+
 ```shell
 FLASH_ATTENTION_FORCE_BUILD=TRUE MAX_JOBS=4 INSTALL_OPTIONAL=TRUE pip install .
 ```
