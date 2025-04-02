@@ -26,7 +26,6 @@ pub struct VecDb {
     pub constants: VecdbConstants,
 }
 
-// TODO: should it be used for reloading while refact-lsp is running?
 async fn do_i_need_to_reload_vecdb(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> (bool, Option<VecdbConstants>) {
