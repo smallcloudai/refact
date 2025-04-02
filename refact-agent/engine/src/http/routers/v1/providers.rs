@@ -2,13 +2,14 @@ use axum::extract::Query;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
+use std::path::Path;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::caps::DefaultModels;
-use crate::custom_error::ScratchError;
+use crate::custom_error::{MapErrToString, ScratchError};
 use crate::global_context::GlobalContext;
 use crate::providers::{get_provider_templates, read_providers_d, CapsProvider};
 
@@ -102,11 +103,8 @@ pub async fn handle_v1_get_provider(
     let mut provider = get_provider_templates().get(&params.provider_name).cloned()
         .ok_or(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "Provider template not found".to_string()))?;
 
-    let file_content = tokio::fs::read_to_string(&provider_path).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error reading provider file: {}", e)))?;
-
-    let file_value = serde_yaml::from_str::<serde_yaml::Value>(&file_content)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error parsing provider file: {}", e)))?;
+    let file_value = read_yaml_file_as_value_if_exists(&provider_path).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     provider.apply_override(file_value)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error applying provider override: {}", e)))?;
@@ -133,18 +131,8 @@ pub async fn handle_v1_post_provider(
     let provider_template = get_provider_templates().get(&provider_dto.name).cloned()
         .ok_or(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "Provider template not found".to_string()))?;
 
-    let mut file_value = match tokio::fs::read_to_string(&provider_path).await {
-        Ok(content) => {
-            serde_yaml::from_str::<serde_yaml::Value>(&content)
-                .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error parsing provider file: {}", e)))?
-        },
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
-        },
-        Err(e) => {
-            return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error reading provider file: {}", e)));
-        }
-    };
+    let mut file_value = read_yaml_file_as_value_if_exists(&provider_path).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     update_yaml_field_if_needed(&mut file_value, "endpoint_style", 
         provider_dto.endpoint_style, provider_template.endpoint_style);
@@ -186,5 +174,20 @@ fn update_yaml_field_if_needed(
 ) {
     if file_value.get(field_name).is_some() || dto_value != template_value {
         file_value[field_name] = serde_yaml::Value::String(dto_value);
+    }
+}
+
+async fn read_yaml_file_as_value_if_exists(path: &Path) -> Result<serde_yaml::Value, String> {
+    match tokio::fs::read_to_string(path).await {
+        Ok(content) => {
+            serde_yaml::from_str::<serde_yaml::Value>(&content)
+                .map_err_with_prefix("Error parsing file:")
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Ok(serde_yaml::Value::Mapping(serde_yaml::Mapping::new()))
+        },
+        Err(e) => {
+            Err(format!("Error reading file: {e}"))
+        }
     }
 }
