@@ -7,6 +7,7 @@ class PluginsRouter(APIRouter):
         super().__init__()
         self.plugins = [
             {"label": "Model Hosting", "tab": "model-hosting", "id": "default"},
+            {"label": "Third-Party APIs", "tab": "third-party-apis"},
             {"label": "Stats", "tab": "stats"},
             {"label": "Projects", "tab": "upload"},
             {"label": "Finetune", "tab": "finetune"},
