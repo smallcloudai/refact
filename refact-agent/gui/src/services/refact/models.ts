@@ -185,12 +185,13 @@ export type UpdateModelRequestBody = {
 
 export type DeleteModelRequestBody = Omit<UpdateModelRequestBody, "data">;
 
-export type SupportsReasoningStyle = "openai" | "anthropic" | "deepseek";
+export type SupportsReasoningStyle = "openai" | "anthropic" | "deepseek" | null;
 
 export type CodeChatModel = {
   n_ctx: number;
   name: string;
   tokenizer: string;
+  id: string;
 
   supports_tools: boolean;
   supports_multimodality: boolean;
@@ -206,6 +207,7 @@ export type CodeChatModel = {
 export type CodeCompletionModel = {
   n_ctx: number;
   name: string;
+  id: string;
   tokenizer: string;
   enabled: boolean;
 };
@@ -213,6 +215,7 @@ export type CodeCompletionModel = {
 export type EmbeddingModel = {
   n_ctx: number;
   name: string;
+  id: string;
   tokenizer: string;
 
   embedding_size: number;

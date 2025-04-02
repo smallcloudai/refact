@@ -1,4 +1,5 @@
 import { RootState } from "../../app/store";
+import { isDetailMessage } from "./commands";
 import {
   CONFIGURED_PROVIDERS_URL,
   PROVIDER_TEMPLATES_URL,
@@ -137,7 +138,7 @@ export const providersApi = createApi({
         if (result.error) {
           return { error: result.error };
         }
-        if (!isProvider(result.data)) {
+        if (isDetailMessage(result.data)) {
           return {
             meta: result.meta,
             error: {
@@ -169,6 +170,7 @@ export type Provider = {
   completion_default_model: string;
 
   enabled: boolean;
+  readonly: boolean;
 };
 
 export type SimplifiedProvider<T extends keyof Provider> = Pick<Provider, T>;
@@ -180,7 +182,7 @@ export type ErrorLogInstance = {
 };
 
 export type ConfiguredProvidersResponse = {
-  providers: SimplifiedProvider<"name" | "enabled">[];
+  providers: SimplifiedProvider<"name" | "enabled" | "readonly">[];
   error_log: ErrorLogInstance[];
 };
 
@@ -287,6 +289,12 @@ function isSimplifiedProvider(
   if (typeof provider !== "object" || provider === null) return false;
 
   if (!hasProperty(provider, "name") || !hasProperty(provider, "enabled"))
+    return false;
+
+  if (
+    hasProperty(provider, "readonly") &&
+    typeof provider.readonly !== "boolean"
+  )
     return false;
 
   return (

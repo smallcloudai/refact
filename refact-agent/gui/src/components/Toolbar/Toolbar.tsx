@@ -141,6 +141,13 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           success: true,
           error_message: "",
         });
+      } else if (to === "providers") {
+        dispatch(push({ name: "providers page" }));
+        void sendTelemetryEvent({
+          scope: `openProviders`,
+          success: true,
+          error_message: "",
+        });
       } else if (to === "chat") {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));

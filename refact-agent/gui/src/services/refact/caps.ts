@@ -59,7 +59,7 @@ export type CapsResponse = {
   completion_models: Record<string, CodeCompletionModel>;
   completion_default_model: string;
   code_completion_n_ctx: number;
-  embedding_model: EmbeddingModel;
+  embedding_model?: EmbeddingModel;
   chat_thinking_model: string;
   chat_light_model: string;
 
@@ -69,8 +69,10 @@ export type CapsResponse = {
   running_models: string[];
   telemetry_basic_dest: string;
   tokenizer_path_template: string;
+  telemetry_basic_retrieve_my_own: string;
   tokenizer_rewrite_path: Record<string, unknown>;
   support_metadata: boolean;
+  customization: string;
 };
 
 export function isCapsResponse(json: unknown): json is CapsResponse {
