@@ -68,7 +68,7 @@ impl CapsProvider {
 
         match serde_yaml::from_value::<DefaultModels>(value) {
             Ok(default_models) => {
-                self.defaults.apply_override(&default_models);
+                self.defaults.apply_override(&default_models, None);
             },
             Err(e) => return Err(e.to_string()),
         }
@@ -354,7 +354,7 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
             caps.embedding_model = embedding_model;
         }
 
-        caps.defaults.apply_override(&provider.defaults);
+        caps.defaults.apply_override(&provider.defaults, Some(&provider.name));
     }
 }
 

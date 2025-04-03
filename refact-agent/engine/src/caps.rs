@@ -40,11 +40,11 @@ pub struct BaseModelRecord {
     #[serde(default, skip_serializing)]
     pub api_key: String,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub support_metadata: bool,
     #[serde(default, skip_serializing)]
     pub similar_models: Vec<String>,
-    #[serde(default, skip_serializing)]
+    #[serde(default)]
     pub tokenizer: String,
 }
 
@@ -59,9 +59,9 @@ pub struct ChatModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
 
-    #[serde(default = "default_chat_scratchpad")]
+    #[serde(default = "default_chat_scratchpad", skip_serializing)]
     pub scratchpad: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub scratchpad_patch: serde_json::Value,
 
     #[serde(default)]
@@ -165,18 +165,30 @@ pub struct DefaultModels {
 }
 
 impl DefaultModels {
-    pub fn apply_override(&mut self, other: &DefaultModels) {
+    pub fn apply_override(&mut self, other: &DefaultModels, provider_name: Option<&str>) {
         if !other.completion_default_model.is_empty() {
-            self.completion_default_model = other.completion_default_model.clone();
+            self.completion_default_model = match provider_name {
+                Some(provider) => format!("{}/{}", provider, other.completion_default_model),
+                None => other.completion_default_model.clone(),
+            };
         }
         if !other.chat_default_model.is_empty() {
-            self.chat_default_model = other.chat_default_model.clone();
+            self.chat_default_model = match provider_name {
+                Some(provider) => format!("{}/{}", provider, other.chat_default_model),
+                None => other.chat_default_model.clone(),
+            };
         }
         if !other.chat_thinking_model.is_empty() {
-            self.chat_thinking_model = other.chat_thinking_model.clone();
+            self.chat_thinking_model = match provider_name {
+                Some(provider) => format!("{}/{}", provider, other.chat_thinking_model),
+                None => other.chat_thinking_model.clone(),
+            };
         }
         if !other.chat_light_model.is_empty() {
-            self.chat_light_model = other.chat_light_model.clone();
+            self.chat_light_model = match provider_name {
+                Some(provider) => format!("{}/{}", provider, other.chat_light_model),
+                None => other.chat_light_model.clone(),
+            };
         }
     }
 }
