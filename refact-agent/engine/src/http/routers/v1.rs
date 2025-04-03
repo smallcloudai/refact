@@ -2,6 +2,7 @@ use axum::Router;
 use axum::routing::get;
 use axum::routing::post;
 use axum::routing::delete;
+use providers::handle_v1_get_model;
 use providers::handle_v1_get_provider;
 use providers::handle_v1_models;
 use providers::handle_v1_post_provider;
@@ -151,6 +152,7 @@ pub fn make_v1_router() -> Router {
         .route("/provider", get(handle_v1_get_provider))
         .route("/provider", post(handle_v1_post_provider))
         .route("/models", get(handle_v1_models))
+        .route("/model", get(handle_v1_get_model))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))

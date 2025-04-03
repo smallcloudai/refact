@@ -3,10 +3,12 @@ use std::sync::{Arc, OnceLock};
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock as ARwLock;
 
 use crate::caps::{strip_model_from_finetune, BaseModelRecord, ChatModelRecord, 
     CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
-use crate::custom_error::YamlError;
+use crate::custom_error::{MapErrToString, YamlError};
+use crate::global_context::GlobalContext;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CapsProvider {
@@ -502,6 +504,38 @@ pub fn resolve_provider_api_key(provider: &CapsProvider, cmdline_api_key: &str) 
         }
         k => k.to_string(),
     }
+}
+
+pub async fn get_provider_from_template_and_config_file(
+    gcx: Arc<ARwLock<GlobalContext>>, name: &str, config_file_must_exist: bool
+) -> Result<CapsProvider, String> {
+    let config_dir = gcx.read().await.config_dir.clone();
+    
+    let mut provider = get_provider_templates().get(name).cloned()
+        .ok_or("Provider template not found")?;
+
+    let provider_path = config_dir.join("providers.d").join(format!("{name}.yaml"));
+    let config_file_value = match tokio::fs::read_to_string(&provider_path).await {
+        Ok(content) => {
+            serde_yaml::from_str::<serde_yaml::Value>(&content)
+                .map_err_with_prefix(format!("Error parsing file {}:", provider_path.display()))?
+        },
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound && !config_file_must_exist => {
+            serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
+        },
+        Err(e) => {
+            return Err(format!("Failed to read file {}: {}", provider_path.display(), e));
+        }
+    };
+
+    provider.apply_override(config_file_value)?;
+
+    add_running_models(&mut provider);
+    populate_model_records(&mut provider);
+    apply_models_dict_patch(&mut provider);
+    add_name_and_id_to_model_records(&mut provider);
+
+    Ok(provider)
 }
 
 #[cfg(test)]

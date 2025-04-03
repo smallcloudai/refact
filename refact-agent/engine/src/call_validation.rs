@@ -184,6 +184,14 @@ pub struct ChatMessage {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
+pub enum ModelType {
+    Chat,
+    Completion,
+    Embedding,    
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
 pub enum ChatModelType {
     Light,
     Default,
