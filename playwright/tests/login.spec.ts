@@ -1,67 +1,71 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("Login functionality", () => {
-  test("login through google", async ({ page, context }) => {
-    const email = process.env.REFACT_LOGIN_EMAIL ?? "test@test.com";
-    const password = process.env.REFACT_LOGIN_PASSWORD ?? "test";
-    
-    // Navigate to the locally hosted app
-    await page.goto("http://localhost:5173/");
-    
-    // Wait for the login form to show up when the user is not logged in
-    await page.waitForSelector('button:has-text("Continue with Google")');
-    
-    // Set up listener for popup window before clicking
-    const popupPromise = context.waitForEvent('page');
-    
-    // Click the "Continue with Google" button which will open a popup
-    await page.click('button:has-text("Continue with Google")');
-    
-    // Verify the main page shows disabled buttons during authentication
-    await expect(page.locator('button:has-text("Continue with Google")')).toBeDisabled();
-    
-    // Wait for the popup to open
-    const googlePopup = await popupPromise;
-    await googlePopup.waitForLoadState('domcontentloaded');
-    
-    // Log the popup URL for debugging
-    console.log('Google popup URL:', googlePopup.url());
-    
-    // Google login flow - this may need adjustments based on the actual Google login page
-    try {
-      // Look for the email input field
-      await googlePopup.waitForSelector('input[type="email"]', { timeout: 10000 });
-      await googlePopup.fill('input[type="email"]', email);
-      await googlePopup.click('button:has-text("Next")');
-      
-      // Wait for password field and fill it
-      await googlePopup.waitForSelector('input[type="password"]', { timeout: 10000 });
-      await googlePopup.fill('input[type="password"]', password);
-      await googlePopup.click('button:has-text("Next")');
-      
-      // Wait for any additional confirmation steps
-      await googlePopup.waitForSelector('button:has-text("Allow")', { timeout: 5000 })
-        .then(() => googlePopup.click('button:has-text("Allow")'))
-        .catch(() => console.log('No Allow button found, continuing'));
-      
-    } catch (error) {
-      console.log('Error during Google login flow:', error);
-      // Take a screenshot of the popup for debugging
-      await googlePopup.screenshot({ path: 'google-login-error.png' });
+test("login through google with API stub", async ({ page, context }) => {
+  // Mock API key from environment variable
+  const apiKey = process.env.REFACT_API_KEY ?? "test-api-key";
+
+  // Create a mock response that matches GoodPollingResponse type
+  const mockResponse = {
+    retcode: "OK",
+    account: "test@example.com",
+    inference_url: "https://inference.smallcloud.ai/",
+    inference: "PRO",
+    metering_balance: 1000,
+    questionnaire: true, // TODO: this disables the survey
+    refact_agent_max_request_num: 100,
+    refact_agent_request_available: null,
+    secret_key: apiKey,
+    tooltip_message: "Welcome to Refact!",
+    login_message: "You are now logged in",
+    "longthink-filters": [],
+    "longthink-functions-today": {},
+    "longthink-functions-today-v2": {},
+  };
+
+  // Set up route interception before navigating
+  await context.route(
+    "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
+    async (route) => {
+      // Return our mock response
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockResponse),
+      });
     }
-    
-    // Wait for the authentication to complete and the popup to close
-    await googlePopup.waitForEvent('close', { timeout: 30000 }).catch(e => {
-      console.log('Google popup did not close automatically, continuing test');
-    });
-    
-    // Return to the main page and wait for it to update after login
-    await page.waitForLoadState('networkidle');
-    
-    // Verify we're back at the home page
-    await expect(page).toHaveURL("http://localhost:5173/");
-    
-    // Verify that we're logged in (login form should not be visible)
-    await expect(page.locator('heading:has-text("Login to Refact.ai")')).not.toBeVisible({ timeout: 10000 });
-  });
+  );
+
+  // Navigate to the locally hosted app
+  await page.goto("http://localhost:5173/");
+
+  await expect(
+    page.getByRole("heading", { name: "Login to Refact.ai" })
+  ).toBeVisible({ timeout: 10000 });
+
+  // Wait for the login form to show up when the user is not logged in
+  await page.waitForSelector('button:has-text("Continue with Google")');
+
+  // Click the "Continue with Google" button
+  await page.click('button:has-text("Continue with Google")');
+
+  // Since we're stubbing the API, we don't need to handle the Google popup
+  // The app should receive our mock response and proceed with login
+
+  // Wait for the authentication to complete
+  await page.waitForLoadState("networkidle");
+
+  // Verify we're back at the home page
+  await expect(page).toHaveURL("http://localhost:5173/");
+
+  // Verify that we're logged in (login form should not be visible)
+  await expect(
+    page.getByRole("heading", { name: "Login to Refact.ai" })
+  ).not.toBeVisible({ timeout: 10000 });
+
+  // Additional verification that the API key was properly set
+  // This depends on how your app shows the logged-in state
+  // You might need to adjust this based on your UI
+
+  // Example: Check if user menu or profile is visible
+  // await expect(page.locator('button:has-text("User Profile")')).toBeVisible();
 });
