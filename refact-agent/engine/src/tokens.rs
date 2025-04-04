@@ -7,7 +7,6 @@ use tokio::sync::Mutex as AMutex;
 use tokenizers::Tokenizer;
 use reqwest::header::AUTHORIZATION;
 use reqwest::Response;
-use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::custom_error::MapErrToString;
@@ -30,7 +29,7 @@ async fn try_open_tokenizer(
         .map_err(|e| format!("failed to fetch bytes: {}", e))?
     ).await.map_err(|e| format!("failed to write to file: {}", e))?;
     file.flush().await.map_err(|e| format!("failed to flush file: {}", e))?;
-    info!("saved tokenizer to {}", to.as_ref().display());
+    tracing::info!("saved tokenizer to {}", to.as_ref().display());
     Ok(())
 }
 
@@ -47,7 +46,7 @@ async fn download_tokenizer_file(
         return Ok(());
     }
 
-    info!("downloading tokenizer from {}", http_path);
+    tracing::info!("downloading tokenizer from {}", http_path);
     let mut req = http_client.get(http_path);
     if api_token.to_lowercase().starts_with("hf_") {
         req = req.header(AUTHORIZATION, format!("Bearer {api_token}"))
@@ -81,43 +80,53 @@ async fn try_download_tokenizer_file_and_open(
 
     let tmp_file = std::env::temp_dir().join(Uuid::new_v4().to_string());
     let tmp_path = tmp_file.as_path();
-
+    
+    // Track the last error message
+    let mut last_error = String::from("");
     for i in 0..15 {
         if i != 0 {
             tokio::time::sleep(Duration::from_millis(200)).await;
         }
         let res = download_tokenizer_file(http_client, http_path, api_token, tmp_path).await;
-        if res.is_err() {
-            error!("failed to download tokenizer: {}", res.unwrap_err());
+        if let Err(err_msg) = res {
+            last_error = format!("failed to download tokenizer: {}", err_msg);
+            tracing::error!("{last_error}");
             continue;
         }
 
         let parent = path.parent();
         if parent.is_none() {
-            error!("failed to download tokenizer: parent is not set");
+            last_error = String::from("failed to download tokenizer: parent is not set");
+            tracing::error!("{last_error}");
             continue;
         }
 
         let res = tokio::fs::create_dir_all(parent.unwrap()).await;
-        if res.is_err() {
-            error!("failed to create parent dir: {}", res.unwrap_err());
+        if let Err(err_msg) = res {
+            last_error = format!("failed to create parent dir: {}", err_msg);
+            tracing::error!("{last_error}");
             continue;
         }
 
         if !check_json_file(tmp_path) {
-            error!("failed to download tokenizer: file is not a tokenizer");
+            last_error = String::from("failed to download tokenizer: file is not a tokenizer");
+            tracing::error!("{last_error}");
             continue;
         }
 
         match tokio::fs::copy(tmp_path, path).await {
             Ok(_) => {
-                info!("moved tokenizer to {}", path.display());
+                tracing::info!("moved tokenizer to {}", path.display());
                 return Ok(());
             },
-            Err(_) => { continue; }
+            Err(e) => { 
+                last_error = format!("failed to copy tokenizer file: {}", e);
+                tracing::error!("{last_error}");
+                continue; 
+            }
         }
     }
-    Err("failed to download tokenizer".to_string())
+    Err(last_error)
 }
 
 pub async fn cached_tokenizer(
@@ -170,7 +179,7 @@ pub async fn cached_tokenizer(
         try_download_tokenizer_file_and_open(&client2, &tok_url, &model_rec.api_key, &tok_file_path).await?;
     }
     
-    info!("loading tokenizer \"{}\"", tok_file_path.display());
+    tracing::info!("loading tokenizer \"{}\"", tok_file_path.display());
     let mut tokenizer = Tokenizer::from_file(tok_file_path)
         .map_err(|e| format!("failed to load tokenizer: {}", e))?;
     let _ = tokenizer.with_truncation(None);

@@ -212,7 +212,7 @@ pub async fn handle_v1_tools_execute(
     let model_rec = resolve_chat_model(caps, &tools_execute_post.model_name)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
