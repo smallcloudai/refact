@@ -107,6 +107,20 @@ class ModelAssigner:
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
 
+    @staticmethod
+    def to_completion_model_record(model_info: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "n_ctx": model_info["T"],
+            "supports_scratchpads": model_info["supports_scratchpads"]["completion"],
+        }
+
+    @staticmethod
+    def to_chat_model_record(model_info: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "n_ctx": model_info["T"],
+            "supports_scratchpads": model_info["supports_scratchpads"]["chat"],
+        }
+
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
         shared_group = ModelGroup()

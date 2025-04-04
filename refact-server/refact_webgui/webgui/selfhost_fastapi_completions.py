@@ -251,10 +251,7 @@ class BaseCompletionsRouter(APIRouter):
         completion_models = {}
         for model_name in running_models.get("completion", []):
             if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
-                completion_models[model_name] = {
-                    "n_ctx": model_info["T"],
-                    "supports_scratchpads": model_info["supports_scratchpads"]["completion"],
-                }
+                completion_models[model_name] = self._model_assigner.to_completion_model_record(model_info)
             elif model := available_third_party_models().get(model_name):
                 completion_models[model_name] = model.to_completion_model_record()
             else:
@@ -265,10 +262,7 @@ class BaseCompletionsRouter(APIRouter):
         chat_models = {}
         for model_name in running_models.get("chat", []):
             if model_info := self._model_assigner.models_db.get(_get_base_model_info(model_name)):
-                chat_models[model_name] = {
-                    "n_ctx": model_info["T"],
-                    "supports_scratchpads": model_info["supports_scratchpads"]["chat"],
-                }
+                chat_models[model_name] = self._model_assigner.to_chat_model_record(model_info)
             elif model := available_third_party_models().get(model_name):
                 chat_models[model_name] = model.to_chat_model_record()
             else:
