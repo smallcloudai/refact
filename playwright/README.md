@@ -30,32 +30,6 @@ REFACT_API_KEY=your_api_key_here
 
 To run tests with the Playwright UI, which provides a visual interface for debugging tests:
 
-Start the lsp
-
-```bash
-cd ../refact-agent/engine \
-&& cargo build \
-&& target/debug/refact-lsp \
---address-url Refact \
---http-port 8001 \
---logs-stderr \
---ast \
---vecdb \
--k your-api-key \
---experimental \
--w ../../
-```
-
-Start the webserver
-
-```bash
-cd ../refact-agent/engine/gui \
-npm ci \
-npm run dev
-```
-
-Then in this directory.
-
 ```bash
 npm start
 ```
@@ -67,6 +41,10 @@ This launches the Playwright UI, allowing you to:
 - Debug tests step by step
 - View test traces
 - Re-run specific tests
+
+#### Tip
+
+Press the `toogle output` button or press `` ^` `` to see the out put from the lsp web servers stdout and stderr.
 
 ### Headless Mode
 
