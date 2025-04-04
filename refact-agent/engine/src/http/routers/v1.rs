@@ -30,7 +30,8 @@ use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_sin
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::system_prompt::handle_v1_prepend_system_prompt_and_maybe_more_initial_messages;
 use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provider_templates,
-    handle_v1_get_model, handle_v1_get_provider, handle_v1_models, handle_v1_post_model, handle_v1_post_provider};
+    handle_v1_get_model, handle_v1_get_provider, handle_v1_models, handle_v1_post_model, handle_v1_post_provider,
+    handle_v1_delete_model};
 
 #[cfg(feature = "vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
@@ -149,6 +150,7 @@ pub fn make_v1_router() -> Router {
         .route("/models", get(handle_v1_models))
         .route("/model", get(handle_v1_get_model))
         .route("/model", post(handle_v1_post_model))
+        .route("/model", delete(handle_v1_delete_model))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))

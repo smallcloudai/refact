@@ -449,3 +449,67 @@ pub async fn handle_v1_post_model(
         .body(Body::from(json!({ "success": true }).to_string()))
         .unwrap())
 }
+
+pub async fn handle_v1_delete_model(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Query(params): Query<ModelQueryParams>,
+) -> Result<Response<Body>, ScratchError> {
+    let config_dir = gcx.read().await.config_dir.clone();
+    let provider_path = config_dir.join("providers.d").join(format!("{}.yaml", params.provider));
+
+    let _provider_template = get_provider_templates().get(&params.provider)
+        .ok_or(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "Provider template not found".to_string()))?;
+
+    let mut file_value = read_yaml_file_as_value_if_exists(&provider_path).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    match params.model_type {
+        ModelType::Chat => {
+            let model_name = params.model.as_ref()
+                .ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
+            let models_key = "chat_models";
+            
+            if !file_value.get(models_key).is_some() || !file_value[models_key].get(model_name).is_some() {
+                return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+                    format!("Chat model {} not found for provider {}", model_name, params.provider)));
+            }
+            
+            if let Some(mapping) = file_value[models_key].as_mapping_mut() {
+                mapping.remove(model_name);
+            }
+        },
+        ModelType::Completion => {
+            let model_name = params.model.as_ref()
+                .ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
+            let models_key = "completion_models";
+            
+            if !file_value.get(models_key).is_some() || !file_value[models_key].get(model_name).is_some() {
+                return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+                    format!("Completion model {} not found for provider {}", model_name, params.provider)));
+            }
+            
+            if let Some(mapping) = file_value[models_key].as_mapping_mut() {
+                mapping.remove(model_name);
+            }
+        },
+        ModelType::Embedding => {
+            if !file_value.get("embedding_model").is_some() {
+                return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+                    format!("Embedding model not found for provider {}", params.provider)));
+            }
+            
+            file_value.as_mapping_mut().unwrap().remove("embedding_model");
+        },
+    }
+
+    let file_content = serde_yaml::to_string(&file_value)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error parsing provider file: {}", e)))?;
+    tokio::fs::write(&provider_path, file_content.as_bytes()).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error writing provider file: {}", e)))?;
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(json!({ "success": true }).to_string()))
+        .unwrap())
+}
