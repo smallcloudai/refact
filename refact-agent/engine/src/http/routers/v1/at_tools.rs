@@ -153,7 +153,10 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         let tool = match all_tools.get(&tool_call.function.name) {
             Some(x) => x,
             None => {
-                return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Unknown tool: {}", tool_call.function.name)))
+                tracing::error!("Unknown tool: {}", tool_call.function.name);
+                // Not returning error here, because we don't want to stop the chat, it will fail later
+                // in `/chat` and provide error to the model
+                continue;
             }
         };
 
@@ -172,8 +175,15 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             }
         };
 
-        let should_confirm = tool.match_against_confirm_deny(ccx.clone(), &args).await
-            .map_err(|e| { ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e)})?;
+        let should_confirm = match tool.match_against_confirm_deny(ccx.clone(), &args).await {
+            Ok(should_confirm) => should_confirm,
+            Err(e) => {
+                tracing::error!("Error getting tool command to match: {e}");
+                // Not returning error here, because we don't want to stop the chat, it will fail later
+                // in `/chat` and provide error to the model
+                continue;
+            }
+        };
 
         match should_confirm.result {
             MatchConfirmDenyResult::DENY => {
