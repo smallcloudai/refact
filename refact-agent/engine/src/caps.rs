@@ -91,10 +91,18 @@ pub struct CompletionModelRecord {
     #[serde(flatten)]
     pub base: BaseModelRecord,
 
+    #[serde(default = "default_completion_scratchpad")]
     pub scratchpad: String,
-    #[serde(default)]
+    #[serde(default = "default_completion_scratchpad_patch")]
     pub scratchpad_patch: serde_json::Value,
 }
+
+fn default_completion_scratchpad() -> String { "REPLACE_PASSTHROUGH".to_string() }
+
+fn default_completion_scratchpad_patch() -> serde_json::Value { serde_json::json!({
+    "context_format": "chat",
+    "rag_ratio": 0.5
+}) }
 
 impl HasBaseModelRecord for CompletionModelRecord {
     fn base(&self) -> &BaseModelRecord { &self.base }
