@@ -1,10 +1,12 @@
 use crate::global_context::GlobalContext;
-use crate::vecdb::vdb_highlev::{memories_add, memories_block_until_vectorized, memories_erase, memories_select_all, VecDb};
+use crate::memdb::db_memories::{memories_add, memories_erase, memories_select_all};
 use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
+use tokio::sync::{RwLock as ARwLock};
 use tracing::info;
 use chrono::{NaiveDateTime, Utc};
+use parking_lot::Mutex;
+use crate::memdb::db_structs::MemDB;
 
 // NOTE: if you're going to use it with local https proxy make sure that you set insecure flag from cmdline
 static URL: &str = "https://www.smallcloud.ai/v1/trajectory-get-all";
@@ -37,12 +39,12 @@ async fn is_time_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     Ok(duration_since_last_download.num_days() >= TRAJECTORIES_UPDATE_EACH_N_DAYS)
 }
 
-async fn remove_legacy_trajectories(vecdb: Arc<AMutex<Option<VecDb>>>) -> Result<(), String> {
-    for memo in memories_select_all(vecdb.clone())
+async fn remove_legacy_trajectories(memdb: Arc<Mutex<MemDB>>) -> Result<(), String> {
+    for memo in memories_select_all(memdb.clone())
         .await?
         .iter()
         .filter(|x| x.m_origin == "refact-standard") {
-        memories_erase(vecdb.clone(), &memo.memid).await?;
+        memories_erase(memdb.clone(), &memo.memid).await?;
         info!("removed legacy trajectory: {}", memo.memid);
     }
     Ok(())
@@ -52,18 +54,15 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
     if !is_time_to_download_trajectories(gcx.clone()).await? {
         return Ok(());
     }
-    
-    let (vec_db, api_key) = {
+    let (vectorizer_service, memdb, api_key) = {
         let gcx_locked = gcx.read().await;
-        (
-            gcx_locked.vec_db.clone(),
-            gcx_locked.cmdline.api_key.clone(),
-        )
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| "vecdb is not initialized".to_string())?;
+        let memdb = gcx_locked.memdb.clone();
+        (vectorizer_service, memdb, gcx_locked.cmdline.api_key.clone())
     };
-    if vec_db.lock().await.is_none() {
-        return Err("vecdb is not initialized".to_string());        
-    }
-    memories_block_until_vectorized(vec_db.clone(), 20_000).await?;
+
+    crate::vecdb::vdb_highlev::memories_block_until_vectorized(vectorizer_service.clone(), 20_000).await?;
 
     info!("starting to download trajectories...");
     let client = reqwest::Client::new();
@@ -78,8 +77,11 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
         return Err(format!("failed to download trajectories: {:?}", response_json));
     }
 
-    let trajectories = response_json["data"].as_array().unwrap();
-    remove_legacy_trajectories(vec_db.clone()).await?;
+    let trajectories = match response_json["data"].as_array() {
+        Some(arr) => arr,
+        None => return Err("Invalid response format: 'data' field is not an array".to_string()),
+    };
+    remove_legacy_trajectories(memdb.clone()).await?;
     for trajectory in trajectories {
         let m_type = trajectory["kind"].as_str().unwrap_or("unknown");
         let m_goal = trajectory["goal"].as_str().unwrap_or("unknown");
@@ -91,7 +93,8 @@ pub async fn try_to_download_trajectories(gcx: Arc<ARwLock<GlobalContext>>) -> R
             continue;            
         }
         match memories_add(
-            vec_db.clone(),
+            memdb.clone(),
+            vectorizer_service.clone(),
             m_type,
             m_goal,
             m_project,
