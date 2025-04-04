@@ -322,25 +322,130 @@ pub async fn handle_v1_get_model(
             let model_name = params.model.ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
             let chat_model = provider.chat_models.get(&model_name).cloned()
                 .ok_or(ScratchError::new(StatusCode::NOT_FOUND, format!("Chat model {} not found for provider {}", model_name, params.provider)))?;
-            let chat_model_dto = ChatModelDTO::new(chat_model);
-            serde_json::json!(chat_model_dto)
+            serde_json::json!(ChatModelDTO::new(chat_model))
         },
         ModelType::Completion => {
             let model_name = params.model.ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
             let completion_model = provider.completion_models.get(&model_name).cloned()
                 .ok_or(ScratchError::new(StatusCode::NOT_FOUND, format!("Completion model {} not found for provider {}", model_name, params.provider)))?;
-            let completion_model_dto = CompletionModelDTO::new(completion_model);
-            serde_json::json!(completion_model_dto)
+            serde_json::json!(CompletionModelDTO::new(completion_model))
         },
         ModelType::Embedding => {
-            let embedding_model_dto = EmbeddingModelDTO::new(provider.embedding_model);
-            serde_json::json!(embedding_model_dto)
+            serde_json::json!(EmbeddingModelDTO::new(provider.embedding_model))
         },
     };
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&model).unwrap()))
+        .body(Body::from(serde_json::to_string(&serde_json::json!(model)).unwrap()))
+        .unwrap())
+}
+
+#[derive(Deserialize)]
+pub struct ModelPOST {
+    pub provider: String,
+    pub model: serde_json::Value,
+    #[serde(rename = "type")]
+    pub model_type: ModelType,
+}
+
+pub async fn handle_v1_post_model(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    body_bytes: hyper::body::Bytes,
+) -> Result<Response<Body>, ScratchError> {
+    let post = serde_json::from_slice::<ModelPOST>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing json: {}", e)))?;
+
+    let config_dir = gcx.read().await.config_dir.clone();
+    let provider_path = config_dir.join("providers.d").join(format!("{}.yaml", post.provider));
+
+    let _provider_template = get_provider_templates().get(&post.provider)
+        .ok_or(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, "Provider template not found".to_string()))?;
+
+    let mut file_value = read_yaml_file_as_value_if_exists(&provider_path).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    fn get_or_create_model_mapping(file_value: &mut serde_yaml::Value, models_key: &str, model_name: &str) -> serde_yaml::Mapping {
+        if !file_value.get(models_key).is_some() {
+            file_value[models_key] = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+        }
+        
+        let model_entry = if file_value[models_key].get(model_name).is_some() {
+            file_value[models_key][model_name].clone()
+        } else {
+            serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
+        };
+        
+        model_entry.as_mapping().unwrap_or(&serde_yaml::Mapping::new()).clone()
+    }
+    
+    match post.model_type {
+        ModelType::Chat => {
+            let chat_model = serde_json::from_value::<ChatModelDTO>(post.model)
+                .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing model: {}", e)))?;
+            let models_key = "chat_models";
+            
+            let mut model_value = get_or_create_model_mapping(&mut file_value, models_key, &chat_model.name);
+            
+            model_value.insert("n_ctx".into(), chat_model.n_ctx.into());
+            model_value.insert("tokenizer".into(), chat_model.tokenizer.into());
+            model_value.insert("enabled".into(), chat_model.enabled.into());
+            
+            model_value.insert("supports_tools".into(), chat_model.supports_tools.into());
+            model_value.insert("supports_multimodality".into(), chat_model.supports_multimodality.into());
+            model_value.insert("supports_clicks".into(), chat_model.supports_clicks.into());
+            model_value.insert("supports_agent".into(), chat_model.supports_agent.into());
+            model_value.insert("supports_boost_reasoning".into(), chat_model.supports_boost_reasoning.into());
+            
+            if let Some(supports_reasoning) = chat_model.supports_reasoning {
+                model_value.insert("supports_reasoning".into(), supports_reasoning.into());
+            }
+            if let Some(default_temperature) = chat_model.default_temperature {
+                model_value.insert("default_temperature".into(), serde_yaml::Value::Number(serde_yaml::Number::from(default_temperature as f64)));
+            }
+            
+            file_value[models_key][chat_model.name] = model_value.into();
+        },
+        ModelType::Completion => {
+            let completion_model = serde_json::from_value::<CompletionModelDTO>(post.model)
+                .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing model: {}", e)))?;
+            let models_key = "completion_models";
+            
+            let mut model_value = get_or_create_model_mapping(&mut file_value, models_key, &completion_model.name);
+            
+            model_value.insert("n_ctx".into(), completion_model.n_ctx.into());
+            model_value.insert("tokenizer".into(), completion_model.tokenizer.into());
+            model_value.insert("enabled".into(), completion_model.enabled.into());
+            
+            file_value[models_key][completion_model.name] = model_value.into();
+        },
+        ModelType::Embedding => {
+            let embedding_model = serde_json::from_value::<EmbeddingModelDTO>(post.model)
+                .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing model: {}", e)))?;
+            let mut model_value = serde_yaml::Mapping::new();
+            
+            model_value.insert("n_ctx".into(), embedding_model.n_ctx.into());
+            model_value.insert("name".into(), embedding_model.name.clone().into());
+            model_value.insert("tokenizer".into(), embedding_model.tokenizer.into());
+            model_value.insert("enabled".into(), embedding_model.enabled.into());
+            
+            model_value.insert("embedding_size".into(), embedding_model.embedding_size.into());
+            model_value.insert("rejection_threshold".into(), serde_yaml::Value::Number(serde_yaml::Number::from(embedding_model.rejection_threshold as f64)));
+            model_value.insert("embedding_batch".into(), embedding_model.embedding_batch.into());
+            
+            file_value["embedding_model"] = model_value.into();
+        },
+    }
+
+    let file_content = serde_yaml::to_string(&file_value)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error parsing provider file: {}", e)))?;
+    tokio::fs::write(&provider_path, file_content.as_bytes()).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error writing provider file: {}", e)))?;
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(json!({ "success": true }).to_string()))
         .unwrap())
 }
