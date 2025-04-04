@@ -1,8 +1,12 @@
+use futures::future::try_join3;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use tokio::process::ChildStdin;
+use tokio::process::{Child, ChildStdin, Command};
 use tokio::time::Duration;
+use std::pin::Pin;
+use std::process::Output;
 use std::time::Instant;
+use std::process::Stdio;
 use tracing::error;
 
 
@@ -109,4 +113,68 @@ pub fn last_n_lines(msg: &str, n: usize) -> String {
     output.push('\n');
 
     output
+}
+
+/// Reimplemented .wait_with_output() from tokio::process::Child to accept &mut self instead of self
+/// Suggested by others with this problem: https://github.com/tokio-rs/tokio/issues/7138
+fn wait_with_output<'a>(child: &'a mut Child) -> Pin<Box<dyn futures::Future<Output = Result<Output, futures::io::Error>> + Send + 'a>>
+{
+    Box::pin(async move {
+        async fn read_to_end<A: AsyncRead + Unpin>(io: &mut Option<A>) -> Result<Vec<u8>, futures::io::Error> {
+            let mut vec = Vec::new();
+            if let Some(io) = io.as_mut() {
+                io.read_to_end(&mut vec).await?;
+            }
+            Ok(vec)
+        }
+
+        let mut stdout_pipe = child.stdout.take();
+        let mut stderr_pipe = child.stderr.take();
+
+        let stdout_fut = read_to_end(&mut stdout_pipe);
+        let stderr_fut = read_to_end(&mut stderr_pipe);
+
+        let (status, stdout, stderr) =
+            try_join3(child.wait(), stdout_fut, stderr_fut).await?;
+
+        // Drop happens after `try_join` due to <https://github.com/tokio-rs/tokio/issues/4309>
+        drop(stdout_pipe);
+        drop(stderr_pipe);
+
+        Ok(Output {
+            status,
+            stdout,
+            stderr,
+        })
+    })
+}
+
+struct ChildWithKillOnDrop(Box<dyn process_wrap::tokio::TokioChildWrapper>);
+impl Drop for ChildWithKillOnDrop {
+    fn drop(&mut self) {
+        let _ = self.0.start_kill();
+    }
+}
+
+pub async fn execute_command(mut cmd: Command, timeout_secs: u64, cmd_str: &str) -> Result<Output, String> {
+    cmd.stdin(Stdio::null());
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+
+    let mut cmd = process_wrap::tokio::TokioCommandWrap::from(cmd);
+    #[cfg(unix)]
+    cmd.wrap(process_wrap::tokio::ProcessGroup::leader());
+    #[cfg(windows)]
+    cmd.wrap(process_wrap::tokio::JobObject);
+
+    let child = cmd.spawn()
+        .map_err(|e| format!("command '{cmd_str}' failed to spawn: {e}"))?;
+    let mut child = ChildWithKillOnDrop(child);
+
+    tokio::time::timeout(
+        tokio::time::Duration::from_secs(timeout_secs), 
+        wait_with_output(child.0.inner_mut())
+    ).await
+        .map_err(|_| format!("command '{cmd_str}' timed out after {timeout_secs} seconds"))?
+        .map_err(|e| format!("command '{cmd_str}' failed to execute: {e}"))
 }

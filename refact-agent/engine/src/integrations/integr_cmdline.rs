@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::process::Stdio;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use serde::Deserialize;
@@ -16,6 +15,7 @@ use shell_escape::escape;
 
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::integrations::process_io_utils::execute_command;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
@@ -213,42 +213,21 @@ pub async fn execute_blocking_command(
 ) -> Result<String, String> {
     info!("EXEC workdir {:?}:\n{:?}", command_workdir, command);
 
-    let command_future = async {
-        let mut cmd = create_command_from_string(command, command_workdir, env_variables, project_dirs)?;
-        let t0 = tokio::time::Instant::now();
-        let result = cmd
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await;
-        let duration = t0.elapsed();
-        info!("EXEC: /finished in {:?}", duration);
+    let timeout_secs = cfg.timeout.parse::<u64>().unwrap_or(10);
 
-        let output = match result {
-            Ok(output) => output,
-            Err(e) => {
-                let msg = format!("cannot run command: '{}'. workdir: '{}'. Error: {}", &command, command_workdir, e);
-                tracing::error!("{msg}");
-                return Err(msg);
-            }
-        };
+    let cmd = create_command_from_string(command, command_workdir, env_variables, project_dirs)?;
+    let t0 = tokio::time::Instant::now();
+    let output = execute_command(cmd, timeout_secs, command).await?;
+    let duration = t0.elapsed();
+    info!("EXEC: /finished in {:?}", duration);
 
-        let stdout = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stdout).to_string());
-        let stderr = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stderr).to_string());
+    let stdout = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stdout).to_string());
+    let stderr = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stderr).to_string());
 
-        let mut out = format_output(&stdout, &stderr);
-        let exit_code = output.status.code().unwrap_or_default();
-        out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
-        Ok(out)
-    };
-
-    let timeout_duration = tokio::time::Duration::from_secs(cfg.timeout.parse::<u64>().unwrap_or(10));
-    let result = tokio::time::timeout(timeout_duration, command_future).await;
-
-    match result {
-        Ok(res) => res,
-        Err(_) => Err(format!("command timed out after {:?}", timeout_duration)),
-    }
+    let mut out = format_output(&stdout, &stderr);
+    let exit_code = output.status.code().unwrap_or_default();
+    out.push_str(&format!("The command was running {:.3}s, finished with exit code {exit_code}\n", duration.as_secs_f64()));
+    Ok(out)
 }
 
 fn _parse_command_args(args: &HashMap<String, serde_json::Value>, cfg: &CmdlineToolConfig) -> Result<(String, String), String>
