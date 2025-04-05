@@ -151,12 +151,30 @@ pub async fn handle_v1_providers(
     let template_names = get_provider_templates().keys().collect::<Vec<_>>();
     let (providers, read_errors) = read_providers_d(Vec::new(), &config_dir).await;
     
-    let result = providers.into_iter().filter(
-        |p| template_names.contains(&&p.name)
-    ).map(|p| { json!({
-        "name": p.name,
-        "enabled": p.enabled
-    })}).collect::<Vec<_>>();
+    let mut result = providers.into_iter()
+        .filter(|p| template_names.contains(&&p.name))
+        .map(|p| json!({
+            "name": p.name,
+            "enabled": p.enabled,
+            "readonly": false
+        }))
+        .collect::<Vec<_>>();
+    
+    match crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => {
+            if !caps.cloud_name.is_empty() {
+                result.retain(|p| p["name"] != caps.cloud_name);
+                result.insert(0, json!({
+                    "name": caps.cloud_name.clone(),
+                    "enabled": true,
+                    "readonly": true
+                }));
+            }
+        },
+        Err(e) => {
+            tracing::error!("Failed to load caps, server provider will not be included: {}", e);
+        }
+    }
 
     Response::builder()
         .status(StatusCode::OK)

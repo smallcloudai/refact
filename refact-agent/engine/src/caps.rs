@@ -130,6 +130,9 @@ impl EmbeddingModelRecord {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
+    #[serde(default)]
+    pub cloud_name: String,
+
     #[serde(default = "default_telemetry_basic_dest")]
     pub telemetry_basic_dest: String,
     #[serde(default = "default_telemetry_retrieve_my_own")]
