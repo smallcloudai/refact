@@ -40,6 +40,7 @@ import {
 import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 import { ideToolCallResponse } from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
+import { modelsApi, providersApi } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -292,6 +293,40 @@ startListening({
       typeof action.payload === "string"
     ) {
       listenerApi.dispatch(setError(action.payload));
+    }
+
+    if (
+      (providersApi.endpoints.updateProvider.matchRejected(action) ||
+        providersApi.endpoints.getProvider.matchRejected(action) ||
+        providersApi.endpoints.getProviderTemplates.matchRejected(action) ||
+        providersApi.endpoints.getConfiguredProviders.matchRejected(action)) &&
+      !action.meta.condition
+    ) {
+      const errorStatus = action.payload?.status;
+      const isAuthError = errorStatus === 401;
+      const message = isAuthError
+        ? AUTH_ERROR_MESSAGE
+        : isDetailMessage(action.payload?.data)
+          ? action.payload.data.detail
+          : `provider update error.`;
+
+      listenerApi.dispatch(setError(message));
+      listenerApi.dispatch(setIsAuthError(isAuthError));
+    }
+    if (
+      modelsApi.endpoints.getModels.matchRejected(action) &&
+      !action.meta.condition
+    ) {
+      const errorStatus = action.payload?.status;
+      const isAuthError = errorStatus === 401;
+      const message = isAuthError
+        ? AUTH_ERROR_MESSAGE
+        : isDetailMessage(action.payload?.data)
+          ? action.payload.data.detail
+          : `provider update error.`;
+
+      listenerApi.dispatch(setError(message));
+      listenerApi.dispatch(setIsAuthError(isAuthError));
     }
   },
 });
