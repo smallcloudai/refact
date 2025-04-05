@@ -180,7 +180,7 @@ impl Tool for ToolDeepAnalysis {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec![]
+        vec!["thinking".to_string()]
     }
 }
 
