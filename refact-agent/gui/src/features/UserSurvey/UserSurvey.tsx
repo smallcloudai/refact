@@ -113,7 +113,7 @@ const SurveyForm: React.FC<SurveyFormProps> = ({
   }, []);
 
   return (
-    <form name="refact user survey" onSubmit={onSubmit}>
+    <form onSubmit={onSubmit}>
       {questions.map((question) => {
         if (isRadioQuestion(question)) {
           return (
