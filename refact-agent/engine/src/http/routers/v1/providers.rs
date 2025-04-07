@@ -11,8 +11,9 @@ use tokio::sync::RwLock as ARwLock;
 use crate::call_validation::ModelType;
 use crate::caps::{ChatModelRecord, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::{MapErrToString, ScratchError};
-use crate::global_context::GlobalContext;
-use crate::providers::{get_provider_from_template_and_config_file, get_provider_templates, read_providers_d, CapsProvider};
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::providers::{get_provider_from_server, get_provider_from_template_and_config_file, 
+    get_provider_templates, read_providers_d, CapsProvider};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProviderDTO {
@@ -27,10 +28,12 @@ pub struct ProviderDTO {
     defaults: DefaultModels,
     
     enabled: bool,
+    #[serde(default)]
+    readonly: bool,
 }
 
 impl ProviderDTO {
-    pub fn from_caps_provider(provider: CapsProvider) -> Self {
+    pub fn from_caps_provider(provider: CapsProvider, readonly: bool) -> Self {
         ProviderDTO {
             name: provider.name,
             endpoint_style: provider.endpoint_style,
@@ -40,6 +43,7 @@ impl ProviderDTO {
             api_key: provider.api_key,
             defaults: provider.defaults,
             enabled: provider.enabled,
+            readonly: readonly,
         }
     }
 }
@@ -212,16 +216,34 @@ pub async fn handle_v1_get_provider(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ProviderQueryParams>,
 ) -> Result<Response<Body>, ScratchError> {
+    fn respond_ok(provider_dto: ProviderDTO) -> Response<Body> {
+        Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Body::from(serde_json::to_string(&provider_dto).unwrap()))
+            .unwrap()
+    }
+
+    match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => {
+            if !caps.cloud_name.is_empty() && caps.cloud_name == params.provider_name {
+                let provider = get_provider_from_server(gcx.clone()).await
+                    .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+                let provider_dto = ProviderDTO::from_caps_provider(provider, true);
+                
+                return Ok(respond_ok(provider_dto));
+            }
+        },
+        Err(e) => tracing::error!("Failed to load caps: {}", e),
+    }
+    
     let provider = get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, false).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     
-    let provider_dto = ProviderDTO::from_caps_provider(provider);
+    let provider_dto = ProviderDTO::from_caps_provider(provider,false);
 
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&provider_dto).unwrap()))
-        .unwrap())
+    Ok(respond_ok(provider_dto))
 }
 
 pub async fn handle_v1_post_provider(
