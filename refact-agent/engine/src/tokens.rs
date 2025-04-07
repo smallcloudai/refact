@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::custom_error::MapErrToString;
 use crate::files_correction::canonical_path;
 use crate::global_context::GlobalContext;
-use crate::caps::{strip_model_from_finetune, BaseModelRecord};
+use crate::caps::{default_hf_tokenizer_template, strip_model_from_finetune, BaseModelRecord};
 
 
 async fn try_open_tokenizer(
@@ -36,7 +36,7 @@ async fn try_open_tokenizer(
 async fn download_tokenizer_file(
     http_client: &reqwest::Client,
     http_path: &str,
-    api_token: &str,
+    tokenizer_api_token: &str,
     to: &Path,
 ) -> Result<(), String> {
     tokio::fs::create_dir_all(
@@ -48,9 +48,11 @@ async fn download_tokenizer_file(
 
     tracing::info!("downloading tokenizer from {}", http_path);
     let mut req = http_client.get(http_path);
-    if api_token.to_lowercase().starts_with("hf_") {
-        req = req.header(AUTHORIZATION, format!("Bearer {api_token}"))
+    
+    if !tokenizer_api_token.is_empty() {
+        req = req.header(AUTHORIZATION, format!("Bearer {tokenizer_api_token}"))
     }
+    
     let res = req
         .send()
         .await
@@ -71,7 +73,7 @@ fn check_json_file(path: &Path) -> bool {
 async fn try_download_tokenizer_file_and_open(
     http_client: &reqwest::Client,
     http_path: &str,
-    api_token: &str,
+    tokenizer_api_token: &str,
     path: &Path,
 ) -> Result<(), String> {
     if path.exists() && check_json_file(path) {
@@ -87,7 +89,7 @@ async fn try_download_tokenizer_file_and_open(
         if i != 0 {
             tokio::time::sleep(Duration::from_millis(200)).await;
         }
-        let res = download_tokenizer_file(http_client, http_path, api_token, tmp_path).await;
+        let res = download_tokenizer_file(http_client, http_path, tokenizer_api_token, tmp_path).await;
         if let Err(err_msg) = res {
             last_error = format!("failed to download tokenizer: {}", err_msg);
             tracing::error!("{last_error}");
@@ -137,9 +139,11 @@ pub async fn cached_tokenizer(
     let tokenizer_download_lock: Arc<AMutex<bool>> = global_context.read().await.tokenizer_download_lock.clone();
     let _tokenizer_download_locked = tokenizer_download_lock.lock().await;
 
-    let (client2, cache_dir, tokenizer_in_gcx) = {
+    let (client2, cache_dir, tokenizer_in_gcx, hf_tokenizer_template) = {
         let cx_locked = global_context.read().await;
-        (cx_locked.http_client.clone(), cx_locked.cache_dir.clone(), cx_locked.tokenizer_map.clone().get(&model_id).cloned())
+        let template = cx_locked.caps.clone().map(|caps| caps.hf_tokenizer_template.clone())
+            .unwrap_or_else(default_hf_tokenizer_template);
+        (cx_locked.http_client.clone(), cx_locked.cache_dir.clone(), cx_locked.tokenizer_map.clone().get(&model_id).cloned(), template)
     };
 
     if let Some(tokenizer) = tokenizer_in_gcx {
@@ -150,8 +154,9 @@ pub async fn cached_tokenizer(
         empty_tok if empty_tok.is_empty() => return Err(format!("failed to load tokenizer: empty tokenizer for {model_id}")),
         fake_tok if fake_tok.starts_with("fake") => return Ok(None),
         hf_tok if hf_tok.starts_with("hf://") => {
-            let hf_tok = hf_tok.strip_prefix("hf://").unwrap();
-            (PathBuf::new(), format!("https://huggingface.co/{hf_tok}/resolve/main/tokenizer.json"))
+            let hf_model = hf_tok.strip_prefix("hf://").unwrap();
+            let url = hf_tokenizer_template.replace("$HF_MODEL", hf_model);
+            (PathBuf::new(), url)
         }
         http_tok if http_tok.starts_with("http://") || http_tok.starts_with("https://") => {
             (PathBuf::new(), http_tok.to_string())
@@ -176,7 +181,7 @@ pub async fn cached_tokenizer(
         
         tok_file_path = tokenizer_cache_dir.join(&sanitized_model_id).join("tokenizer.json");
 
-        try_download_tokenizer_file_and_open(&client2, &tok_url, &model_rec.api_key, &tok_file_path).await?;
+        try_download_tokenizer_file_and_open(&client2, &tok_url, &model_rec.tokenizer_api_key, &tok_file_path).await?;
     }
     
     tracing::info!("loading tokenizer \"{}\"", tok_file_path.display());

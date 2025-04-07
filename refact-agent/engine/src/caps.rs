@@ -159,10 +159,17 @@ pub struct CodeAssistantCaps {
 
     #[serde(default)]
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
+    
+    #[serde(default = "default_hf_tokenizer_template")]
+    pub hf_tokenizer_template: String,  // template for HuggingFace tokenizer URLs
 }
 
 fn default_telemetry_retrieve_my_own() -> String { 
     "https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string() 
+}
+
+pub fn default_hf_tokenizer_template() -> String {
+    "https://huggingface.co/$HF_MODEL/resolve/main/tokenizer.json".to_string()
 }
 
 fn default_telemetry_basic_dest() -> String { 
