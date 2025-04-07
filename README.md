@@ -41,6 +41,18 @@ Refact Agent works effortlessly with the tools and databases you already use:
 - ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions.  
 - 🛠️ **Supports 25+ Programming Languages:** Python, JavaScript, Java, Rust, TypeScript, PHP, C++, C#, Go, and many more!  
 
+### 🎉  Hear from our Community
+
+Our Ambassadors shared remarkable stories of how they transform weeks of coding into minutes with Refact.ai Agent!
+
+1️⃣ How Refact.ai built 99.9% of an IoT cloud app [Read](https://www.linkedin.com/posts/refactai_refactai-agent-activity-7308103386451578881-FO23/)
+
+2️⃣ How AI-coded prototypes help UX teams deliver real value [Read](https://medium.com/@siarheimardovich/how-ai-coded-prototypes-help-ux-teams-deliver-real-value-b51eb2ea5167)
+
+3️⃣ 80 hours of building from scratch — instead done in 30 minutes [Read more](https://www.linkedin.com/posts/refactai_refactai-users-stories-activity-7310996174864289793-692-/)
+
+4️⃣ 3 weeks of waiting for a functional GUI? Built in just 14 minutes [Read more](https://www.linkedin.com/posts/refactai_refactai-users-stories-activity-7310996174864289793-692-/)
+
 
 📜 [View Full List of Supported Models](https://docs.refact.ai/supported-models/) 
 
