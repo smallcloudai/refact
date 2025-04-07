@@ -216,34 +216,29 @@ pub async fn handle_v1_get_provider(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ProviderQueryParams>,
 ) -> Result<Response<Body>, ScratchError> {
-    fn respond_ok(provider_dto: ProviderDTO) -> Response<Body> {
-        Response::builder()
-            .status(StatusCode::OK)
-            .header("Content-Type", "application/json")
-            .body(Body::from(serde_json::to_string(&provider_dto).unwrap()))
-            .unwrap()
-    }
+    let is_server_provider = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => !caps.cloud_name.is_empty() && caps.cloud_name == params.provider_name,
+        Err(e) => {
+            tracing::error!("Failed to load caps: {}", e);
+            false
+        }
+    };
 
-    match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => {
-            if !caps.cloud_name.is_empty() && caps.cloud_name == params.provider_name {
-                let provider = get_provider_from_server(gcx.clone()).await
-                    .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let provider_dto = if is_server_provider {
+        let provider = get_provider_from_server(gcx.clone()).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        ProviderDTO::from_caps_provider(provider, true)
+    } else {
+        let provider = get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, false).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        ProviderDTO::from_caps_provider(provider, false)
+    };
 
-                let provider_dto = ProviderDTO::from_caps_provider(provider, true);
-                
-                return Ok(respond_ok(provider_dto));
-            }
-        },
-        Err(e) => tracing::error!("Failed to load caps: {}", e),
-    }
-    
-    let provider = get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, false).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    
-    let provider_dto = ProviderDTO::from_caps_provider(provider,false);
-
-    Ok(respond_ok(provider_dto))
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&provider_dto).unwrap()))
+        .unwrap())
 }
 
 pub async fn handle_v1_post_provider(
