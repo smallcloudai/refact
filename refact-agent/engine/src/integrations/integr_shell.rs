@@ -6,12 +6,12 @@ use serde::Serialize;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use async_trait::async_trait;
-use std::process::Stdio;
 use tokio::process::Command;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::files_correction::get_active_project_path;
 use crate::global_context::GlobalContext;
+use crate::integrations::process_io_utils::execute_command;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
@@ -201,16 +201,10 @@ pub async fn execute_shell_command(
     }
 
     cmd.arg(shell_arg).arg(command);
-    cmd.stdin(Stdio::null());
-    cmd.stdout(Stdio::piped());
-    cmd.stderr(Stdio::piped());
-
-    let t0 = tokio::time::Instant::now();
+    
     tracing::info!("SHELL: running command directory {:?}\n{:?}", workdir_maybe, command);
-    let output = tokio::time::timeout(tokio::time::Duration::from_secs(timeout), cmd.output())
-        .await
-        .map_err(|_| format!("Command timed out after {} seconds", timeout))?
-        .map_err(|e| format!("Failed to execute command: {}", e))?;
+    let t0 = tokio::time::Instant::now();
+    let output = execute_command(cmd, timeout, command).await?;
     let duration = t0.elapsed();
     tracing::info!("SHELL: /finished in {:.3}s", duration.as_secs_f64());
 

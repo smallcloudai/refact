@@ -8,7 +8,7 @@ from refact_utils.finetune.utils import get_active_loras
 from refact_utils.huggingface.utils import is_hf_hub_offline
 from refact_utils.huggingface.utils import get_repo_status
 from refact_webgui.webgui.selfhost_webutils import log
-from refact_known_models import models_mini_db, passthrough_mini_db
+from refact_known_models import models_mini_db
 
 from pathlib import Path
 from typing import List, Dict, Any, Set, Optional
@@ -28,8 +28,6 @@ def has_context_switch(filter_caps: List[str]) -> bool:
 def get_default_n_ctx(model_name: str, model_info: Dict[str, Any]) -> int:
     if "T" in model_info:
         return model_info["T"]
-    if "n_ctx" in model_info:
-        return model_info["n_ctx"]
     raise ValueError(f"context size is not specified for '{model_name}'")
 
 
@@ -109,13 +107,19 @@ class ModelAssigner:
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
 
-    @property
-    def passthrough_mini_db(self) -> Dict[str, Any]:
-        return passthrough_mini_db
+    @staticmethod
+    def to_completion_model_record(model_info: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "n_ctx": model_info["T"],
+            "supports_scratchpads": model_info["supports_scratchpads"]["completion"],
+        }
 
-    @property
-    def models_db_with_passthrough(self) -> Dict[str, Any]:
-        return {**self.models_db, **self.passthrough_mini_db}
+    @staticmethod
+    def to_chat_model_record(model_info: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "n_ctx": model_info["T"],
+            "supports_scratchpads": model_info["supports_scratchpads"]["chat"],
+        }
 
     def _model_assign_to_groups(self, model_assign: Dict[str, Dict]) -> List[ModelGroup]:
         model_groups: List[ModelGroup] = []
@@ -270,13 +274,6 @@ class ModelAssigner:
                     'share_gpu': False,
                 },
             },
-            "openai_api_enable": False,
-            "anthropic_api_enable": False,
-            "groq_api_enable": False,
-            "cerebras_api_enable": False,
-            "gemini_api_enable": False,
-            "xai_api_enable": False,
-            "deepseek_api_enable": False,
         }
         self.models_to_watchdog_configs(default_config)
 
@@ -306,14 +303,12 @@ class ModelAssigner:
         for k, rec in self.models_db.items():
             if rec.get("hidden", False):
                 continue
-            finetune_info = None
-            if k in active_loras:
-                finetune_info = [
-                    {
-                        "run_id": l["run_id"],
-                        "checkpoint": l["checkpoint"],
-                    } for l in active_loras[k].get('loras', [])
-                ]
+            finetune_info = [
+                {
+                    "run_id": l["run_id"],
+                    "checkpoint": l["checkpoint"],
+                } for l in active_loras.get(k, {}).get('loras', [])
+            ]
             has_finetune = bool("finetune" in rec["filter_caps"])
             finetune_model = rec.get("finetune_model", k if has_finetune else None)
             default_n_ctx = get_default_n_ctx(k, rec)
@@ -360,11 +355,6 @@ class ModelAssigner:
     def model_assignment(self):
         if os.path.exists(env.CONFIG_INFERENCE):
             j = json.load(open(env.CONFIG_INFERENCE, "r"))
-            j["groq_api_enable"] = j.get("groq_api_enable", False)
-            j["cerebras_api_enable"] = j.get("cerebras_api_enable", False)
-            j["gemini_api_enable"] = j.get("gemini_api_enable", False)
-            j["xai_api_enable"] = j.get("xai_api_enable", False)
-            j["deepseek_api_enable"] = j.get("deepseek_api_enable", False)
         else:
             j = {"model_assign": {}}
 

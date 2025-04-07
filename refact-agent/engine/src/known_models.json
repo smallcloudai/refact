@@ -250,7 +250,8 @@
             "scratchpad": "PASSTHROUGH",
             "tokenizer": "hf://Xenova/gemma2-tokenizer",
             "similar_models": [
-                "gemini-2.0-exp-advanced"
+                "gemini-2.0-exp-advanced",
+                "gemini-2.5-pro"
             ]
         },
         "grok-beta": {
@@ -384,6 +385,17 @@
             ],
             "tokenizer": "hf://Xenova/gpt-4o"
         },
+        "chatgpt-4o": {
+            "n_ctx": 128000,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": []
+        },
         "o1": {
             "n_ctx": 200000,
             "supports_tools": true,
@@ -514,7 +526,8 @@
             "supports_agent": true,
             "scratchpad": "PASSTHROUGH",
             "similar_models": [
-                "gemini-2.0-exp-advanced"
+                "gemini-2.0-exp-advanced",
+                "gemini-2.5-pro"
             ],
             "tokenizer": "hf://Xenova/gemma2-tokenizer"
         },

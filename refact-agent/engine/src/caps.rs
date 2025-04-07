@@ -90,6 +90,15 @@ impl HasBaseModelRecord for ChatModelRecord {
     fn base_mut(&mut self) -> &mut BaseModelRecord { &mut self.base }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CapsV2EmbeddingModelRecord {
+    #[serde(default)]
+    pub n_ctx: usize,
+    #[serde(default)]
+    pub size: i32,
+}
+
+
 fn default_chat_scratchpad() -> String { "PASSTHROUGH".to_string() }
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
@@ -138,7 +147,6 @@ impl EmbeddingModelRecord {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
-    #[serde(default)]
     pub cloud_name: String,
 
     #[serde(default = "default_telemetry_basic_dest")]
@@ -168,6 +176,54 @@ pub struct CodeAssistantCaps {
 
 fn default_telemetry_retrieve_my_own() -> String { 
     "https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string() 
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsV2Completion {
+    pub endpoint: String,
+    pub models: IndexMap<String, ModelRecord>,
+    pub default_model: String,
+    pub default_multiline_model: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsV2Chat {
+    pub endpoint: String,
+    pub models: IndexMap<String, ModelRecord>,
+    pub default_model: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsV2Embedding {
+    pub endpoint: String,
+    pub models: IndexMap<String, EmbeddingModelRecord>,
+    pub default_model: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsV2TelemetryEndpoints {
+    pub telemetry_basic_endpoint: String,
+    pub telemetry_corrected_snippets_endpoint: String,
+    pub telemetry_basic_retrieve_my_own_endpoint: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Default)]
+pub struct CodeAssistantCapsV2 {
+    pub cloud_name: String,
+
+    pub completion: CodeAssistantCapsV2Completion,
+    pub chat: CodeAssistantCapsV2Chat,
+    pub embedding: CodeAssistantCapsV2Embedding,
+
+    pub telemetry_endpoints: CodeAssistantCapsV2TelemetryEndpoints,
+    pub tokenizer_endpoints: HashMap<String, String>,
+
+    #[serde(default)]
+    pub customization: String,
+    #[serde(default)]
+    pub default_system_prompt: String,
+
+    pub caps_version: i64,
 }
 
 pub fn default_hf_tokenizer_template() -> String {
@@ -234,7 +290,165 @@ pub async fn load_caps_value_from_url(
             base_url.join(&CAPS_FILENAME_FALLBACK).map_err(|_| "failed to join fallback caps URL".to_string())?.to_string(),
         ]
     };
+}
 
+fn load_caps_from_buf_v2(
+    buffer: &String,
+    caps_url: &String,
+) -> Result<Arc<StdRwLock<CodeAssistantCaps>>, String> {
+    // Try to parse as V2 format
+    let caps_v2: CodeAssistantCapsV2 = match serde_json::from_str(buffer) {
+        Ok(v) => v,
+        Err(_) => return Err("failed to load in v2 format".to_string()),
+    };
+
+    // Convert V2 to V1 format
+    let mut caps = CodeAssistantCaps {
+        cloud_name: caps_v2.cloud_name,
+        endpoint_style: "openai".to_string(),
+        chat_endpoint_style: "openai".to_string(),
+        completion_endpoint_style: "openai".to_string(),
+        endpoint_embeddings_style: "openai".to_string(),
+
+        // Completion related fields
+        completion_endpoint: relative_to_full_url(&caps_url, &caps_v2.completion.endpoint)?,
+        code_completion_models: caps_v2.completion.models.clone(),
+        code_completion_default_model: caps_v2.completion.default_model.clone(),
+        multiline_code_completion_default_model: caps_v2.completion.default_multiline_model.clone(),
+
+        // Chat related fields
+        chat_endpoint: relative_to_full_url(&caps_url, &caps_v2.completion.endpoint)?,  // for completion-based chat
+        endpoint_chat_passthrough: relative_to_full_url(&caps_url, &caps_v2.chat.endpoint)?,
+        code_chat_models: caps_v2.chat.models.clone(),
+        code_chat_default_model: caps_v2.chat.default_model.clone(),
+
+        // Embeddings related fields
+        endpoint_embeddings_template: relative_to_full_url(&caps_url, &caps_v2.embedding.endpoint)?,
+        embedding_model: caps_v2.embedding.default_model.clone(),
+        embedding_n_ctx: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().n_ctx,
+        embedding_size: caps_v2.embedding.models.get(&caps_v2.embedding.default_model).cloned().unwrap_or_default().size,
+
+        // Telemetry endpoints
+        telemetry_basic_dest: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
+        telemetry_basic_retrieve_my_own: relative_to_full_url(&caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_retrieve_my_own_endpoint)?,
+
+        tokenizer_path_template: "".to_string(),
+        tokenizer_rewrite_path: {
+            let mut rewritten_paths = HashMap::new();
+            for (key, endpoint) in caps_v2.tokenizer_endpoints {
+                let full_url = relative_to_full_url(&caps_url, &endpoint)?;
+                rewritten_paths.insert(key, full_url);
+            }
+            rewritten_paths
+        },
+
+        // Version
+        caps_version: caps_v2.caps_version,
+
+        // Collect all models from completion and chat sections
+        running_models: {
+            let mut models = std::collections::HashSet::new();
+            models.extend(caps_v2.completion.models.keys().cloned());
+            models.extend(caps_v2.chat.models.keys().cloned());
+            // models.extend(caps_v2.embedding.models.keys().cloned());
+            models.into_iter().collect()
+        },
+
+        customization: caps_v2.customization.clone(),
+        code_chat_default_system_prompt: caps_v2.default_system_prompt.clone(),
+
+        ..Default::default()
+    };
+
+    // Convert relative URLs to absolute URLs
+    caps.endpoint_embeddings_template = relative_to_full_url(&caps_url, &caps.endpoint_embeddings_template)?;
+    caps.chat_endpoint = relative_to_full_url(&caps_url, &caps.chat_endpoint)?;
+    caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
+    caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
+
+    // Set default embedding context size if not set
+    if caps.embedding_n_ctx == 0 {
+        caps.embedding_n_ctx = 512;
+    }
+
+    Ok(Arc::new(StdRwLock::new(caps)))
+}
+
+macro_rules! get_api_key_macro {
+    ($gcx:expr, $caps:expr, $field:ident) => {{
+        let cx_locked = $gcx.read().await;
+        let custom_apikey = $caps.read().unwrap().$field.clone();
+        if custom_apikey.is_empty() {
+            cx_locked.cmdline.api_key.clone()
+        } else if custom_apikey.starts_with("$") {
+            let env_var_name = &custom_apikey[1..];
+            match std::env::var(env_var_name) {
+                Ok(env_value) => env_value,
+                Err(e) => {
+                    error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.config/refact/bring-your-own-key.yaml", env_var_name, e);
+                    cx_locked.cmdline.api_key.clone()
+                }
+            }
+        } else {
+            custom_apikey
+        }
+    }};
+}
+
+pub async fn get_api_key(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    use_this_fall_back_to_default_if_empty: String,
+) -> String {
+    let gcx_locked = gcx.write().await;
+    if use_this_fall_back_to_default_if_empty.is_empty() {
+        gcx_locked.cmdline.api_key.clone()
+    } else if use_this_fall_back_to_default_if_empty.starts_with("$") {
+        let env_var_name = &use_this_fall_back_to_default_if_empty[1..];
+        match std::env::var(env_var_name) {
+            Ok(env_value) => env_value,
+            Err(e) => {
+                error!("tried to read API key from env var {}, but failed: {}\nTry editing ~/.config/refact/bring-your-own-key.yaml", env_var_name, e);
+                gcx_locked.cmdline.api_key.clone()
+            }
+        }
+    } else {
+        use_this_fall_back_to_default_if_empty
+    }
+}
+
+#[allow(dead_code)]
+async fn get_custom_chat_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, chat_apikey))
+}
+
+#[cfg(feature="vecdb")]
+pub async fn get_custom_embedding_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, embedding_apikey))
+}
+
+#[allow(dead_code)]
+async fn get_custom_completion_api_key(gcx: Arc<ARwLock<GlobalContext>>) -> Result<String, ScratchError> {
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    Ok(get_api_key_macro!(gcx, caps, completion_apikey))
+}
+
+
+async fn load_caps_buf_from_file(
+    cmdline: crate::global_context::CommandLine,
+    gcx: Arc<ARwLock<GlobalContext>>,
+) -> Result<(serde_json::Value, String), String> {
+    let caps_urls = if cmdline.address_url.to_lowercase() == "refact" {
+        vec!["https://inference.smallcloud.ai/coding_assistant_caps.json".to_string()]
+    } else {
+        let base_url = Url::parse(&cmdline.address_url.clone()).map_err(|_| "failed to parse address url (1)".to_string())?;
+        let joined_url = base_url.join(&CAPS_FILENAME).map_err(|_| "failed to parse address url (2)".to_string())?;
+        let joined_url_fallback = base_url.join(&CAPS_FILENAME_FALLBACK).map_err(|_| "failed to parse address url (2)".to_string())?;
+        caps_urls.push(joined_url.to_string());
+        caps_urls.push(joined_url_fallback.to_string());
+    }
+    
     let http_client = gcx.read().await.http_client.clone();
     let mut headers = reqwest::header::HeaderMap::new();
     
