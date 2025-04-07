@@ -51,7 +51,7 @@ class LSPServerRunner:
             t0 = time.time()
             if self._verbose:
                 print("REFACT LSP start", program, " ".join(args))
-            self._refact_lsp_process = await asyncio.create_subprocess_exec(program, *args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, limit=1024*1024*32)
+            self._refact_lsp_process = await asyncio.create_subprocess_exec(program, *args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, limit=1024*1024*64)
             ast_ok, vecdb_ok, post_listening, post_busy = False, False, False, False
             while True:
                 while True:
