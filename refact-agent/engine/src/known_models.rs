@@ -382,6 +382,17 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4o-mini-2024-07-18"
             ]
         },
+        "chatgpt-4o": {
+            "n_ctx": 128000,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": []
+        },
         "o1": {
             "n_ctx": 200000,
             "supports_tools": true,
