@@ -176,8 +176,7 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4o-2024-08-06",
                 "openai/gpt-4o",
                 "gpt-4o-mini",
-                "gpt-4o-mini-2024-07-18",
-                "chatgpt-4o"
+                "gpt-4o-mini-2024-07-18"
             ]
         },
         "claude-3-sonnet": {
@@ -366,8 +365,7 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
-                "openai/gpt-4o",
-                "chatgpt-4o"
+                "openai/gpt-4o"
             ]
         },
         "gpt-4o-mini": {
@@ -381,6 +379,17 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gpt-4o-mini-2024-07-18"
             ]
+        },
+        "chatgpt-4o": {
+            "n_ctx": 128000,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": []
         },
         "o1": {
             "n_ctx": 200000,
