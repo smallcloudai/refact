@@ -23,6 +23,8 @@ pub struct ProviderDTO {
     completion_endpoint: String,
     embedding_endpoint: String,
     api_key: String,
+    #[serde(default)]
+    tokenizer_api_key: String,
     
     #[serde(flatten)]
     defaults: DefaultModels,
@@ -41,6 +43,7 @@ impl ProviderDTO {
             completion_endpoint: provider.completion_endpoint,
             embedding_endpoint: provider.embedding_endpoint,
             api_key: provider.api_key,
+            tokenizer_api_key: provider.tokenizer_api_key,
             defaults: provider.defaults,
             enabled: provider.enabled,
             readonly: readonly,
@@ -261,6 +264,8 @@ pub async fn handle_v1_post_provider(
         provider_dto.endpoint_style, provider_template.endpoint_style);
     update_yaml_field_if_needed(&mut file_value, "api_key", 
         provider_dto.api_key, provider_template.api_key);
+    update_yaml_field_if_needed(&mut file_value, "tokenizer_api_key", 
+        provider_dto.tokenizer_api_key, provider_template.tokenizer_api_key);
     update_yaml_field_if_needed(&mut file_value, "chat_endpoint",
         provider_dto.chat_endpoint, provider_template.chat_endpoint);
     update_yaml_field_if_needed(&mut file_value, "completion_endpoint",

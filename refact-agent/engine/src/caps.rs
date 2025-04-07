@@ -41,6 +41,8 @@ pub struct BaseModelRecord {
     pub endpoint_style: String,
     #[serde(default, skip_serializing)]
     pub api_key: String,
+    #[serde(default, skip_serializing)]
+    pub tokenizer_api_key: String,
 
     #[serde(default, skip_serializing)]
     pub support_metadata: bool,

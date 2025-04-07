@@ -30,6 +30,9 @@ pub struct CapsProvider {
 
     #[serde(default)]
     pub api_key: String,
+    
+    #[serde(default)]
+    pub tokenizer_api_key: String,
 
     #[serde(default = "default_code_completion_n_ctx")]
     pub code_completion_n_ctx: usize,
@@ -62,6 +65,7 @@ impl CapsProvider {
         set_field_if_exists::<String>(&mut self.chat_endpoint, "chat_endpoint", &value)?;
         set_field_if_exists::<String>(&mut self.embedding_endpoint, "embedding_endpoint", &value)?;
         set_field_if_exists::<String>(&mut self.api_key, "api_key", &value)?;
+        set_field_if_exists::<String>(&mut self.tokenizer_api_key, "tokenizer_api_key", &value)?;
         set_field_if_exists::<EmbeddingModelRecord>(&mut self.embedding_model, "embedding_model", &value)?;
         self.embedding_model.base.removable = true;
 
@@ -330,6 +334,7 @@ pub async fn get_latest_provider_mtime(config_dir: &Path) -> Option<u64> {
 pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvider>) {
     fn add_provider_details_to_model(base_model_rec: &mut BaseModelRecord, provider: &CapsProvider, model_name: &str, endpoint: &str) {
         base_model_rec.api_key = provider.api_key.clone();
+        base_model_rec.tokenizer_api_key = provider.tokenizer_api_key.clone();
         base_model_rec.endpoint = endpoint.replace("$MODEL", model_name);
         base_model_rec.support_metadata = provider.support_metadata;
         base_model_rec.endpoint_style = provider.endpoint_style.clone();
@@ -507,23 +512,31 @@ fn find_model_match<T: Clone + HasBaseModelRecord>(
     None
 }
 
-pub fn resolve_provider_api_key(provider: &CapsProvider, cmdline_api_key: &str) -> String {
-    match &provider.api_key {
-        k if k.is_empty() => cmdline_api_key.to_string(),
+pub fn resolve_api_key(provider: &CapsProvider, key: &str, fallback: &str, key_name: &str) -> String {
+    match key {
+        k if k.is_empty() => fallback.to_string(),
         k if k.starts_with("$") => {
             match std::env::var(&k[1..]) {
                 Ok(env_val) => env_val,
                 Err(e) => {
                     tracing::error!(
-                        "tried to read API key from env var {} for provider {}, but failed: {}", 
-                        k, provider.name, e
+                        "tried to read {} from env var {} for provider {}, but failed: {}", 
+                        key_name, k, provider.name, e
                     );
-                    cmdline_api_key.to_string()
+                    fallback.to_string()
                 }
             }
         }
         k => k.to_string(),
     }
+}
+
+pub fn resolve_provider_api_key(provider: &CapsProvider, cmdline_api_key: &str) -> String {
+    resolve_api_key(provider, &provider.api_key, &cmdline_api_key, "API key")
+}
+
+pub fn resolve_tokenizer_api_key(provider: &CapsProvider) -> String {
+    resolve_api_key(provider, &provider.tokenizer_api_key, "", "tokenizer API key")
 }
 
 pub async fn get_provider_from_template_and_config_file(
@@ -572,6 +585,7 @@ pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Resul
     apply_models_dict_patch(&mut provider);
     add_name_and_id_to_model_records(&mut provider);
     provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
+    provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
 
     Ok(provider)
 }
