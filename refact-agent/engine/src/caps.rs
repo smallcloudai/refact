@@ -32,6 +32,8 @@ pub struct BaseModelRecord {
     pub id: String, 
     #[serde(default = "default_true")]
     pub enabled: bool,
+    #[serde(skip_deserializing)]
+    pub removable: bool,
 
     #[serde(default, skip_serializing)]
     pub endpoint: String,
@@ -52,6 +54,7 @@ fn default_true() -> bool { true }
 
 pub trait HasBaseModelRecord {
     fn base(&self) -> &BaseModelRecord;
+    fn base_mut(&mut self) -> &mut BaseModelRecord;
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
@@ -82,6 +85,7 @@ pub struct ChatModelRecord {
 
 impl HasBaseModelRecord for ChatModelRecord {
     fn base(&self) -> &BaseModelRecord { &self.base }
+    fn base_mut(&mut self) -> &mut BaseModelRecord { &mut self.base }
 }
 
 fn default_chat_scratchpad() -> String { "PASSTHROUGH".to_string() }
@@ -106,6 +110,7 @@ fn default_completion_scratchpad_patch() -> serde_json::Value { serde_json::json
 
 impl HasBaseModelRecord for CompletionModelRecord {
     fn base(&self) -> &BaseModelRecord { &self.base }
+    fn base_mut(&mut self) -> &mut BaseModelRecord { &mut self.base }
 }
 
 #[derive(Debug, Serialize, Clone, Default, PartialEq)]
@@ -120,6 +125,7 @@ pub struct EmbeddingModelRecord {
 
 impl HasBaseModelRecord for EmbeddingModelRecord {
     fn base(&self) -> &BaseModelRecord { &self.base }
+    fn base_mut(&mut self) -> &mut BaseModelRecord { &mut self.base }
 }
 
 impl EmbeddingModelRecord {

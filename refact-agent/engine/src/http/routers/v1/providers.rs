@@ -52,15 +52,15 @@ impl ProviderDTO {
 pub struct ModelLightResponse {
     name: String,
     enabled: bool,
-    deletable: bool,
+    removable: bool,
 }
 
 impl ModelLightResponse {
-    pub fn new<T: HasBaseModelRecord>(model: T, deletable: bool) -> Self {
+    pub fn new<T: HasBaseModelRecord>(model: T) -> Self {
         ModelLightResponse {
             name: model.base().name.clone(),
             enabled: model.base().enabled,
-            deletable,
+            removable: model.base().removable,
         }
     }
 }
@@ -337,10 +337,10 @@ pub async fn handle_v1_models(
 
     let result = serde_json::json!({
         "chat_models": provider.chat_models.into_iter()
-            .map(|(_, model)| ModelLightResponse::new(model, true)).collect::<Vec<_>>(),
+            .map(|(_, model)| ModelLightResponse::new(model)).collect::<Vec<_>>(),
         "completion_models": provider.completion_models.into_iter()
-            .map(|(_, model)| ModelLightResponse::new(model, true)).collect::<Vec<_>>(),
-        "embedding_model": ModelLightResponse::new(provider.embedding_model, true),
+            .map(|(_, model)| ModelLightResponse::new(model)).collect::<Vec<_>>(),
+        "embedding_model": ModelLightResponse::new(provider.embedding_model),
     });
     
     Ok(Response::builder()

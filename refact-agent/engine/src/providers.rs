@@ -63,9 +63,10 @@ impl CapsProvider {
         set_field_if_exists::<String>(&mut self.embedding_endpoint, "embedding_endpoint", &value)?;
         set_field_if_exists::<String>(&mut self.api_key, "api_key", &value)?;
         set_field_if_exists::<EmbeddingModelRecord>(&mut self.embedding_model, "embedding_model", &value)?;
+        self.embedding_model.base.removable = true;
 
-        extend_collection::<IndexMap<String, ChatModelRecord>>(&mut self.chat_models, "chat_models", &value)?;
-        extend_collection::<IndexMap<String, CompletionModelRecord>>(&mut self.completion_models, "completion_models", &value)?;
+        extend_model_collection::<ChatModelRecord>(&mut self.chat_models, "chat_models", &value)?;
+        extend_model_collection::<CompletionModelRecord>(&mut self.completion_models, "completion_models", &value)?;
         extend_collection::<Vec<String>>(&mut self.running_models, "running_models", &value)?;
 
         match serde_yaml::from_value::<DefaultModels>(value) {
@@ -97,6 +98,25 @@ fn extend_collection<C: for<'de> serde::Deserialize<'de> + Extend<C::Item> + Int
             .map_err(|_| format!("Invalid format for {field}"))?;
         
         target.extend(imported_collection);
+    }
+    Ok(())
+}
+
+// Special implementation for ChatModelRecord and CompletionModelRecord collections
+// that sets removable=true for newly added models
+fn extend_model_collection<T: for<'de> serde::Deserialize<'de> + HasBaseModelRecord>(
+    target: &mut IndexMap<String, T>, field: &str, value: &serde_yaml::Value
+) -> Result<(), String> {
+    if let Some(value) = value.get(field) {
+        let imported_collection = serde_yaml::from_value::<IndexMap<String, T>>(value.clone())
+            .map_err(|_| format!("Invalid format for {field}"))?;
+        
+        for (key, mut model) in imported_collection {
+            if !target.contains_key(&key) {
+                model.base_mut().removable = true; 
+            }
+            target.insert(key, model);
+        }
     }
     Ok(())
 }
