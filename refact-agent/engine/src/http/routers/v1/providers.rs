@@ -216,7 +216,7 @@ pub async fn handle_v1_get_provider(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ProviderQueryParams>,
 ) -> Result<Response<Body>, ScratchError> {
-    let is_server_provider = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+    let use_server_provider = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => !caps.cloud_name.is_empty() && caps.cloud_name == params.provider_name,
         Err(e) => {
             tracing::error!("Failed to load caps: {}", e);
@@ -224,7 +224,7 @@ pub async fn handle_v1_get_provider(
         }
     };
 
-    let provider_dto = if is_server_provider {
+    let provider_dto = if use_server_provider {
         let provider = get_provider_from_server(gcx.clone()).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
         ProviderDTO::from_caps_provider(provider, true)
@@ -319,8 +319,21 @@ pub async fn handle_v1_models(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ProviderQueryParams>,
 ) -> Result<Response<Body>, ScratchError> {
-    let provider = get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, true).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let use_server_provider = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => !caps.cloud_name.is_empty() && caps.cloud_name == params.provider_name,
+        Err(e) => {
+            tracing::error!("Failed to load caps: {}", e);
+            false
+        }
+    };
+
+    let provider = if use_server_provider {
+        get_provider_from_server(gcx.clone()).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
+    } else {
+        get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, true).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
+    };
 
     let result = serde_json::json!({
         "chat_models": provider.chat_models.into_iter()
@@ -349,8 +362,21 @@ pub async fn handle_v1_get_model(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ModelQueryParams>,
 ) -> Result<Response<Body>, ScratchError> {
-    let provider = get_provider_from_template_and_config_file(gcx.clone(), &params.provider, true).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let use_server_provider = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => !caps.cloud_name.is_empty() && caps.cloud_name == params.provider,
+        Err(e) => {
+            tracing::error!("Failed to load caps: {}", e);
+            false
+        }
+    };
+
+    let provider = if use_server_provider {
+        get_provider_from_server(gcx.clone()).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
+    } else {
+        get_provider_from_template_and_config_file(gcx.clone(), &params.provider, true).await
+            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
+    };
 
     let model = match params.model_type {
         ModelType::Chat => {
@@ -373,7 +399,7 @@ pub async fn handle_v1_get_model(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
-        .body(Body::from(serde_json::to_string(&serde_json::json!(model)).unwrap()))
+        .body(Body::from(serde_json::to_string(&model).unwrap()))
         .unwrap())
 }
 
