@@ -4,11 +4,11 @@ use std::sync::{Arc, OnceLock};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
+use structopt::StructOpt;
 
-use crate::caps::{strip_model_from_finetune, BaseModelRecord, ChatModelRecord, 
-    CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
+use crate::caps::{load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune, BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::{MapErrToString, YamlError};
-use crate::global_context::GlobalContext;
+use crate::global_context::{CommandLine, GlobalContext};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CapsProvider {
@@ -534,6 +534,24 @@ pub async fn get_provider_from_template_and_config_file(
     populate_model_records(&mut provider);
     apply_models_dict_patch(&mut provider);
     add_name_and_id_to_model_records(&mut provider);
+
+    Ok(provider)
+}
+
+pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CapsProvider, String> {
+    let command_line = CommandLine::from_args();
+    let cmdline_api_key = command_line.api_key.clone();
+    let (caps_value, caps_url) = load_caps_value_from_url(command_line, gcx.clone()).await?;
+    
+    let mut provider = serde_json::from_value::<CapsProvider>(caps_value).map_err_to_string()?;
+    
+    resolve_relative_urls(&mut provider, &caps_url)?;
+    
+    add_running_models(&mut provider);
+    populate_model_records(&mut provider);
+    apply_models_dict_patch(&mut provider);
+    add_name_and_id_to_model_records(&mut provider);
+    provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
 
     Ok(provider)
 }

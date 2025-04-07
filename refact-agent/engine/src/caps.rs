@@ -204,7 +204,7 @@ impl DefaultModels {
     }
 }
 
-async fn load_caps_value_from_url(
+pub async fn load_caps_value_from_url(
     cmdline: CommandLine,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(serde_json::Value, String), String> {
@@ -275,9 +275,7 @@ pub async fn load_caps(
     let mut server_provider = serde_json::from_value::<CapsProvider>(caps_value)
         .map_err_with_prefix("Failed to parse caps provider:")?;
 
-    server_provider.chat_endpoint = relative_to_full_url(&caps_url, &server_provider.chat_endpoint)?;
-    server_provider.completion_endpoint = relative_to_full_url(&caps_url, &server_provider.completion_endpoint)?;
-    server_provider.embedding_endpoint = relative_to_full_url(&caps_url, &server_provider.embedding_endpoint)?;
+    resolve_relative_urls(&mut server_provider, &caps_url)?;
     caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
     
@@ -296,11 +294,18 @@ pub async fn load_caps(
     Ok(Arc::new(caps))
 }
 
+pub fn resolve_relative_urls(provider: &mut CapsProvider, caps_url: &str) -> Result<(), String> {
+    provider.chat_endpoint = relative_to_full_url(caps_url, &provider.chat_endpoint)?;
+    provider.completion_endpoint = relative_to_full_url(caps_url, &provider.completion_endpoint)?;
+    provider.embedding_endpoint = relative_to_full_url(caps_url, &provider.embedding_endpoint)?;
+    Ok(())
+}
+
 pub fn strip_model_from_finetune(model: &str) -> String {
     model.split(":").next().unwrap().to_string()
 }
 
-fn relative_to_full_url(
+pub fn relative_to_full_url(
     caps_url: &str,
     maybe_relative_url: &str,
 ) -> Result<String, String> {
