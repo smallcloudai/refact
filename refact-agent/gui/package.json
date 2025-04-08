@@ -102,6 +102,7 @@
     "lint-staged": ">=10",
     "lodash.groupby": "^4.6.0",
     "lodash.isequal": "^4.5.0",
+    "lottie-react": "^2.4.1",
     "msw": "^2.3.4",
     "msw-storybook-addon": "^2.0.3",
     "prettier": "3.1.1",
