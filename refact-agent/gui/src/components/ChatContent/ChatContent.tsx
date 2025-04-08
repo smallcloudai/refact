@@ -34,6 +34,7 @@ import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
+import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -116,9 +117,12 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         <UncommittedChangesWarning />
         {shouldShow && <UsageCounter />}
         <Container py="4">
-          <Spinner
+          {(isStreaming || isWaiting) && !isWaitingForConfirmation && (
+            <LogoAnimation size="6" />
+          )}
+          {/* <Spinner
             spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
-          />
+          /> */}
         </Container>
       </Flex>
 
