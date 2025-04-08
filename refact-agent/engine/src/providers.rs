@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use structopt::StructOpt;
 
-use crate::caps::{load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune, BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
+use crate::caps::{load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune, 
+    BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, 
+    EmbeddingModelRecord, HasBaseModelRecord, default_embedding_batch, default_rejection_threshold};
 use crate::custom_error::{MapErrToString, YamlError};
 use crate::global_context::{CommandLine, GlobalContext};
 
@@ -152,9 +154,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
             #[serde(default = "default_embedding_batch")]
             embedding_batch: usize,
         }
-        fn default_rejection_threshold() -> f32 { 0.63 }
-        fn default_embedding_batch() -> usize { 64 }
-
+        
         match Input::deserialize(deserializer)? {
             Input::String(name) => Ok(EmbeddingModelRecord {
                 base: BaseModelRecord { name, ..Default::default() },
