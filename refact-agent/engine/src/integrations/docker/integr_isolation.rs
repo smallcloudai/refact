@@ -14,6 +14,8 @@ use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsIsolation {
     pub container_workspace_folder: String,
+    #[serde(default)]
+    pub isolation_address_url: String,
     pub docker_image_id: String,
     #[serde(default)]
     pub docker_network: String,
@@ -87,6 +89,9 @@ fields:
   docker_extra_params:
     f_type: string_array
     f_desc: "Extra parameters to pass to the Docker command."
+  isolation_address_url:
+    f_type: string_long
+    f_desc: "The address url that refact binary will use inside the container, in case it needs to be different than the one used by the host."
 available:
   on_your_laptop_possible: true
   when_isolated_possible: false
