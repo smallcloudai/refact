@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio_tar::Archive;
+use tokio_tar::ArchiveBuilder;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use hyper::Body;
@@ -28,7 +28,10 @@ pub async fn handle_v1_sync_files_extract_tar(
     let tar_file = tokio::fs::File::open(&tar_path).await
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Can't open tar file: {}", e)))?;
 
-    Archive::new(tar_file).unpack(&extract_to).await
+    ArchiveBuilder::new(tar_file)
+        .set_preserve_permissions(true)
+        .build()
+        .unpack(&extract_to).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Can't unpack tar file: {}", e)))?;   
 
     tokio::fs::remove_file(&tar_path).await
