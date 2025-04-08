@@ -1,21 +1,41 @@
 ---
-title: Supported Models in Refact
-description: Supported Models in Refact
+title: Supported Models in Refact.ai
+description: Supported Models in Refact.ai
 ---
 
-## Cloud Version of Refact
+## Cloud Version
 
-### Completion models 
-- Refact/1.6B  
-- starcoder2/3b
+With Refact.ai, access state-of-the-art models in your VS Code or JetBrains plugin and select the optimal LLM for each task.
+
+### AI Agent models
+- Claude 3.7 Sonnet
+- Claude 3.5 Sonnet
+- GPT-4o
+- o3-mini
 
 ### Chat models
-- GPT 3.5
-- GPT 4 (Pro plan)
+- Claude 3.7 Sonnet
+- Claude 3.5 Sonnet
+- GPT-4o
+- GPT-4o-mini
+- o3-mini
 
-## Self-Hosted Version of Refact
+For select models, click the `💡Think` button to enable advanced reasoning, helping AI better solve complex tasks. Available only in [Refact.ai Pro plan](https://refact.ai/pricing/).
 
-In Refact self-hosted you can select between the following models: 
+
+### Code completion models 
+- Qwen2.5-Coder-1.5B
+
+
+## BYOK (Bring your own key)
+
+Refact.ai gives flexibility to connect your API key and use any external LLM like Gemini, Grok, OpenAI, Deepseek, and others. Read the guide in our [BYOK Documentation](https://docs.refact.ai/byok/).
+
+
+## Self-Hosted Version
+
+In Refact.ai Self-hosted, you can choose among 20+ model options — ready for any task. The full lineup (always up-to-date) is in the [Known Models file on GitHub](https://github.com/smallcloudai/refact-lsp/blob/main/src/known_models.rs).
+
 
 ### Completion models 
 <table class="full-table">
@@ -173,22 +193,21 @@ In Refact self-hosted you can select between the following models:
 </tbody>
 </table>
 
-For an up-to-date list of models, see the [Known Models file on GitHub](https://github.com/smallcloudai/refact-lsp/blob/main/src/known_models.rs).
 
-## Integrations
+### Integrations
 
-Refact.ai offers **OpenAI** and **Anthropic API** integrations.
+On a self-hosted mode, you can also configure **OpenAI** and **Anthropic API** integrations.
 
-To enable these integrations, navigate to the **Model Hosting** page activate the **OpenAI** and/or **Anthropic** integrations by pressing the switch button in the **3rd Party APIs** section.
+1. Go to **Model Hosting** page → **3rd Party APIs** section and toggle the switch buttons for **OpenAI** and/or **Anthropic**.
 
 ![3rd Party APIs Secction](../../assets/3-party-apis.png)
 
-Press **API Keys tab** link, you will be redirected to the integrations page. Alternatively, you can access the integrations page by clicking on the **Settings** dropdown menu in the header and selecting **Credentials**.
+2. Click the **API Keys tab** to be redirected to the integrations page (or go via **Settings** → **Credentials**)
 
 ![Model Hosting Page with Dropdown Expanded](../../assets/api-keys-link.png)
 
-In the **Credentials** page, you can specify your **OpenAI** and/or **Anthropic** API keys.
+3. Enter your **OpenAI** and/or **Anthropic** key.
 
 :::note
-Make sure the switch button is enabled for each API you want to use. Even if you specify the API key, it will not be used until the switch button is enabled.
+Make sure the switch button is enabled for each API you want to use — API keys won't be used unless activated.
 :::
