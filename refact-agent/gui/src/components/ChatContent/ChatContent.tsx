@@ -10,7 +10,6 @@ import {
 } from "../../services/refact";
 import { UserInput } from "./UserInput";
 import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
-import { Spinner } from "../Spinner";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
