@@ -3,7 +3,10 @@ import Lottie, { type LottieComponentProps } from "lottie-react";
 import logoAnimationData from "./animationData.json";
 import { defaultSize, type AnimationSize } from "./types";
 
-export type LogoAnimationProps = Omit<LottieComponentProps, "animationData"> & {
+export type LogoAnimationProps = Omit<
+  LottieComponentProps,
+  "animationData" | "size"
+> & {
   size?: AnimationSize;
 };
 
