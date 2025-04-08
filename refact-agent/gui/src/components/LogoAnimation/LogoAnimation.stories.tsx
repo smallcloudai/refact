@@ -1,6 +1,7 @@
 import React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { LogoAnimation, defaultSize, sizeValues } from "./LogoAnimation";
+import { LogoAnimation } from "./LogoAnimation";
+import { sizeValues, defaultSize } from "./types";
 import { Theme } from "../Theme";
 import { Provider } from "react-redux";
 import { setUpStore } from "../../app/store";
