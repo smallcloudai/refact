@@ -99,7 +99,7 @@
     "eslint-plugin-storybook": "^0.6.15",
     "husky": ">=6",
     "js-cookie": "^3.0.5",
-    "jsdom": "^23.0.1",
+    "jsdom": "^26.0.0",
     "lint-staged": ">=10",
     "lodash.groupby": "^4.6.0",
     "lodash.isequal": "^4.5.0",
