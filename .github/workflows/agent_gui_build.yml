@@ -36,6 +36,8 @@ jobs:
       # Disable Husky install during npm ci
       - name: Install dependencies
         run: |
+          sudo apt update
+          sudo apt install -y libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev
           npm pkg delete scripts.prepare
           npm ci
 
