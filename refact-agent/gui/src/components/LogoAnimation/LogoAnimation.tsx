@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import Lottie, {
+import {
   useLottie,
   type LottieOptions,
   type LottieComponentProps,
