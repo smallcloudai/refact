@@ -355,6 +355,18 @@
                 "qwen2.5/coder/14b/base/vllm",
                 "qwen2.5/coder/32b/base/vllm"
             ]
+        },
+        "qwen-2.5-coder-32b": {
+            "n_ctx": 131072,
+            "scratchpad": "REPLACE_PASSTHROUGH",
+            "scratchpad_patch": {
+                "context_format": "chat",
+                "rag_ratio": 0.5
+            },
+            "tokenizer": "hf://Qwen/Qwen2.5-Coder-32B",
+            "similar_models": [
+                "groq/qwen-2.5-coder-32b"
+            ]
         }
     },
     "chat_models": {
@@ -614,6 +626,16 @@
             "tokenizer": "hf://Qwen/QwQ-32B",
             "similar_models": [
                 "qwen-qwq/32b/awq/vllm"
+            ]
+        },
+        "qwen-qwq-32b": {
+            "n_ctx": 131072,
+            "supports_tools": true,
+            "supports_agent": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Qwen/QwQ-32B",
+            "similar_models": [
+                "groq/qwen-qwq-32b"
             ]
         },
         "wizardlm/7b": {

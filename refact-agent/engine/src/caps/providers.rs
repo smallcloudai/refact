@@ -178,6 +178,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
 }
 
 const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
+    ("groq", include_str!("../yaml_configs/default_providers/groq.yaml")),
     ("openai", include_str!("../yaml_configs/default_providers/openai.yaml")),
     ("openrouter", include_str!("../yaml_configs/default_providers/openrouter.yaml")),
 ];
