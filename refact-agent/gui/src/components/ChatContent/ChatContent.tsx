@@ -116,12 +116,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         <UncommittedChangesWarning />
         {shouldShow && <UsageCounter />}
         <Container py="4">
-          {(isStreaming || isWaiting) && !isWaitingForConfirmation && (
-            <LogoAnimation size="6" />
+          {!isWaitingForConfirmation && (
+            <LogoAnimation size="8" loop={isStreaming || isWaiting} />
           )}
-          {/* <Spinner
-            spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
-          /> */}
         </Container>
       </Flex>
 
