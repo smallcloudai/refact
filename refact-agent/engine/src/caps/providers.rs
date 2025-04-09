@@ -38,7 +38,7 @@ pub struct CapsProvider {
     #[serde(default)]
     pub tokenizer_api_key: String,
 
-    #[serde(default = "default_code_completion_n_ctx")]
+    #[serde(default)]
     pub code_completion_n_ctx: usize,
 
     #[serde(default)]
@@ -130,8 +130,6 @@ fn extend_model_collection<T: for<'de> serde::Deserialize<'de> + HasBaseModelRec
 }
 
 fn default_endpoint_style() -> String { "openai".to_string() }
-
-fn default_code_completion_n_ctx() -> usize { 2048 }
 
 fn default_true() -> bool { true }
 
