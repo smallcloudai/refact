@@ -86,6 +86,7 @@
     "@vitejs/plugin-react-swc": "^3.5.0",
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
+    "canvas": "^3.1.0",
     "classnames": "^2.3.2",
     "diff": "^7.0.0",
     "echarts": "^5.4.3",
