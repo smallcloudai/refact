@@ -12,7 +12,7 @@ use crate::call_validation::ModelType;
 use crate::caps::{ChatModelRecord, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::{MapErrToString, ScratchError};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::providers::{get_provider_from_server, get_provider_from_template_and_config_file, 
+use crate::caps::providers::{get_provider_from_server, get_provider_from_template_and_config_file, 
     get_provider_templates, read_providers_d, CapsProvider};
 
 #[derive(Serialize, Deserialize, Debug)]

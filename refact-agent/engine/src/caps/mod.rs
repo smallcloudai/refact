@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -11,14 +10,15 @@ use tracing::{info, warn};
 use crate::custom_error::MapErrToString;
 use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
-use crate::providers::add_name_and_id_to_model_records;
-use crate::providers::add_running_models;
-use crate::providers::populate_model_records;
-use crate::providers::{add_models_to_caps, apply_models_dict_patch, 
-    read_providers_d, resolve_provider_api_key, CapsProvider};
+use crate::caps::providers::{add_name_and_id_to_model_records, add_running_models, populate_model_records, 
+    add_models_to_caps, apply_models_dict_patch, read_providers_d, resolve_provider_api_key, CapsProvider};
+use crate::caps::self_hosted::{SelfHostedCaps, load_self_hosted_caps};
 
-const CAPS_FILENAME: &str = "refact-caps";
-const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
+pub const CAPS_FILENAME: &str = "refact-caps";
+pub const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
+
+pub mod providers;
+pub mod self_hosted;
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default, PartialEq)]
 pub struct BaseModelRecord {
@@ -86,21 +86,12 @@ pub struct ChatModelRecord {
     pub default_temperature: Option<f32>,
 }
 
+pub fn default_chat_scratchpad() -> String { "PASSTHROUGH".to_string() }
+
 impl HasBaseModelRecord for ChatModelRecord {
     fn base(&self) -> &BaseModelRecord { &self.base }
     fn base_mut(&mut self) -> &mut BaseModelRecord { &mut self.base }
 }
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct CapsV2EmbeddingModelRecord {
-    #[serde(default)]
-    pub n_ctx: usize,
-    #[serde(default)]
-    pub size: i32,
-}
-
-
-fn default_chat_scratchpad() -> String { "PASSTHROUGH".to_string() }
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct CompletionModelRecord {
@@ -113,9 +104,9 @@ pub struct CompletionModelRecord {
     pub scratchpad_patch: serde_json::Value,
 }
 
-fn default_completion_scratchpad() -> String { "REPLACE_PASSTHROUGH".to_string() }
+pub fn default_completion_scratchpad() -> String { "REPLACE_PASSTHROUGH".to_string() }
 
-fn default_completion_scratchpad_patch() -> serde_json::Value { serde_json::json!({
+pub fn default_completion_scratchpad_patch() -> serde_json::Value { serde_json::json!({
     "context_format": "chat",
     "rag_ratio": 0.5
 }) }
@@ -134,6 +125,10 @@ pub struct EmbeddingModelRecord {
     pub rejection_threshold: f32,
     pub embedding_batch: usize,
 }
+
+pub fn default_rejection_threshold() -> f32 { 0.63 }
+
+pub fn default_embedding_batch() -> usize { 64 }
 
 impl HasBaseModelRecord for EmbeddingModelRecord {
     fn base(&self) -> &BaseModelRecord { &self.base }
@@ -177,84 +172,6 @@ pub struct CodeAssistantCaps {
 
 fn default_telemetry_retrieve_my_own() -> String { 
     "https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string() 
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CapsV2ModelRecord {
-    #[serde(default)]
-    pub n_ctx: usize,
-    
-    #[serde(default)]
-    pub supports_scratchpads: HashMap<String, serde_json::Value>,
-    
-    #[serde(default)]
-    pub supports_tools: bool,
-    
-    #[serde(default)]
-    pub supports_multimodality: bool,
-    
-    #[serde(default)]
-    pub supports_clicks: bool,
-    
-    #[serde(default)]
-    pub supports_agent: bool,
-    
-    #[serde(default)]
-    pub supports_reasoning: Option<String>,
-    
-    #[serde(default)]
-    pub supports_boost_reasoning: bool,
-    
-    #[serde(default)]
-    pub default_temperature: Option<f32>,
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CodeAssistantCapsV2Completion {
-    pub endpoint: String,
-    pub models: IndexMap<String, CapsV2ModelRecord>,
-    pub default_model: String,
-    pub default_multiline_model: String,
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CodeAssistantCapsV2Chat {
-    pub endpoint: String,
-    pub models: IndexMap<String, CapsV2ModelRecord>,
-    pub default_model: String,
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CodeAssistantCapsV2Embedding {
-    pub endpoint: String,
-    pub models: IndexMap<String, CapsV2EmbeddingModelRecord>,
-    pub default_model: String,
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CodeAssistantCapsV2TelemetryEndpoints {
-    pub telemetry_basic_endpoint: String,
-    pub telemetry_corrected_snippets_endpoint: String,
-    pub telemetry_basic_retrieve_my_own_endpoint: String,
-}
-
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct CodeAssistantCapsV2 {
-    pub cloud_name: String,
-
-    pub completion: CodeAssistantCapsV2Completion,
-    pub chat: CodeAssistantCapsV2Chat,
-    pub embedding: CodeAssistantCapsV2Embedding,
-
-    pub telemetry_endpoints: CodeAssistantCapsV2TelemetryEndpoints,
-    pub tokenizer_endpoints: HashMap<String, String>,
-
-    #[serde(default)]
-    pub customization: String,
-    #[serde(default)]
-    pub default_system_prompt: String,
-
-    pub caps_version: i64,
 }
 
 pub fn default_hf_tokenizer_template() -> String {
@@ -306,124 +223,6 @@ impl DefaultModels {
     }
 }
 
-fn load_caps_v2(
-    caps_v2: CodeAssistantCapsV2,
-    caps_url: &String,
-    cmdline_api_key: &str,
-) -> Result<CodeAssistantCaps, String> {
-    let mut caps = CodeAssistantCaps {
-        cloud_name: caps_v2.cloud_name.clone(),
-
-        telemetry_basic_dest: relative_to_full_url(caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_endpoint)?,
-        telemetry_basic_retrieve_my_own: relative_to_full_url(caps_url, &caps_v2.telemetry_endpoints.telemetry_basic_retrieve_my_own_endpoint)?,
-        
-        completion_models: IndexMap::new(),
-        chat_models: IndexMap::new(),
-        embedding_model: EmbeddingModelRecord::default(),
-
-        defaults: DefaultModels { 
-            completion_default_model: format!("{}/{}", caps_v2.cloud_name, caps_v2.completion.default_model), 
-            chat_default_model: format!("{}/{}", caps_v2.cloud_name, caps_v2.chat.default_model),
-            chat_thinking_model: String::new(),
-            chat_light_model: String::new(),
-        },
-        customization: caps_v2.customization,
-        caps_version: caps_v2.caps_version,
-
-        hf_tokenizer_template: default_hf_tokenizer_template(),
-    };
-
-    let configure_base_model = |base_model: &mut BaseModelRecord, model_name: &str, endpoint: &str| -> Result<(), String> {
-        base_model.name = model_name.to_string();
-        base_model.id = format!("{}/{}", caps_v2.cloud_name, model_name);
-        if base_model.endpoint.is_empty() {
-            base_model.endpoint = relative_to_full_url(caps_url, &endpoint.replace("$MODEL", model_name))?;
-        }
-        if let Some(tokenizer) = caps_v2.tokenizer_endpoints.get(&base_model.name) {
-            base_model.tokenizer = relative_to_full_url(caps_url, &tokenizer)?;
-        }
-        base_model.api_key = cmdline_api_key.to_string();
-        base_model.endpoint_style = "openai".to_string();
-        Ok(())
-    };
-
-    for (model_name, model_rec) in caps_v2.completion.models {
-        // Create a new BaseModelRecord
-        let mut base = BaseModelRecord::default();
-        base.n_ctx = model_rec.n_ctx;
-        
-        // Configure the base model
-        configure_base_model(&mut base, &model_name, &caps_v2.completion.endpoint)?;
-        
-        // Get scratchpad name and patch
-        let (scratchpad, scratchpad_patch) = if !model_rec.supports_scratchpads.is_empty() {
-            let scratchpad_name = model_rec.supports_scratchpads.keys().next().unwrap_or(&default_completion_scratchpad()).clone();
-            let scratchpad_patch = model_rec.supports_scratchpads.values().next().unwrap_or(&serde_json::Value::Null).clone();
-            (scratchpad_name, scratchpad_patch)
-        } else {
-            (default_completion_scratchpad(), default_completion_scratchpad_patch())
-        };
-        
-        // Convert CapsV2ModelRecord to CompletionModelRecord
-        let completion_model = CompletionModelRecord {
-            base,
-            scratchpad,
-            scratchpad_patch,
-        };
-        
-        caps.completion_models.insert(completion_model.base.id.clone(), Arc::new(completion_model));
-    }
-
-    for (model_name, model_rec) in caps_v2.chat.models {
-        // Create a new BaseModelRecord
-        let mut base = BaseModelRecord::default();
-        base.n_ctx = model_rec.n_ctx;
-        
-        // Configure the base model
-        configure_base_model(&mut base, &model_name, &caps_v2.chat.endpoint)?;
-        
-        // Get scratchpad name and patch
-        let (scratchpad, scratchpad_patch) = if !model_rec.supports_scratchpads.is_empty() {
-            let scratchpad_name = model_rec.supports_scratchpads.keys().next().unwrap_or(&default_chat_scratchpad()).clone();
-            let scratchpad_patch = model_rec.supports_scratchpads.values().next().unwrap_or(&serde_json::Value::Null).clone();
-            (scratchpad_name, scratchpad_patch)
-        } else {
-            (default_chat_scratchpad(), serde_json::Value::Null)
-        };
-        
-        // Convert CapsV2ModelRecord to ChatModelRecord
-        let chat_model = ChatModelRecord {
-            base,
-            scratchpad,
-            scratchpad_patch,
-            supports_tools: model_rec.supports_tools,
-            supports_multimodality: model_rec.supports_multimodality,
-            supports_clicks: model_rec.supports_clicks,
-            supports_agent: model_rec.supports_agent,
-            supports_reasoning: model_rec.supports_reasoning,
-            supports_boost_reasoning: model_rec.supports_boost_reasoning,
-            default_temperature: model_rec.default_temperature,
-        };
-        
-        caps.chat_models.insert(chat_model.base.id.clone(), Arc::new(chat_model));
-    }
-
-    if let Some(server_embedding_model) = caps_v2.embedding.models
-        .get(&caps_v2.embedding.default_model).cloned() 
-    {
-        let mut embedding_model = EmbeddingModelRecord {
-            base: BaseModelRecord { n_ctx: server_embedding_model.n_ctx, ..Default::default() },
-            embedding_size: server_embedding_model.size,
-            rejection_threshold: default_rejection_threshold(),
-            embedding_batch: default_embedding_batch(),
-        };
-        configure_base_model(&mut embedding_model.base, &caps_v2.embedding.default_model, &caps_v2.embedding.endpoint)?;
-        caps.embedding_model = embedding_model;
-    }
-
-    Ok(caps)
-}
-
 pub async fn load_caps_value_from_url(
     cmdline: CommandLine,
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -469,9 +268,9 @@ pub async fn load_caps_value_from_url(
             warn!("status={}; server responded with:\n{}", last_status, json_value);
         }
     }
-
-    if let Some(json) = last_response_json {
-        if let Some(detail) = json.get("detail").and_then(|d| d.as_str()) {
+    
+    if let Some(json_value) = last_response_json {
+        if let Some(detail) = json_value.get("detail").and_then(|d| d.as_str()) {
             return Err(detail.to_string());
         }
     }
@@ -490,8 +289,8 @@ pub async fn load_caps(
     
     let (caps_value, caps_url) = load_caps_value_from_url(cmdline, gcx).await?;
 
-    let (mut caps, server_providers) = match serde_json::from_value::<CodeAssistantCapsV2>(caps_value.clone()) {
-        Ok(caps_v2) => (load_caps_v2(caps_v2, &caps_url, &cmdline_api_key)?, Vec::new()),
+    let (mut caps, server_providers) = match serde_json::from_value::<SelfHostedCaps>(caps_value.clone()) {
+        Ok(self_hosted_caps) => (load_self_hosted_caps(self_hosted_caps, &caps_url, &cmdline_api_key)?, Vec::new()),
         Err(_) => {
             let caps = serde_json::from_value::<CodeAssistantCaps>(caps_value.clone())
                 .map_err_with_prefix("Failed to parse caps:")?;
@@ -541,8 +340,10 @@ pub fn relative_to_full_url(
     } else if maybe_relative_url.is_empty() {
         Ok("".to_string())
     } else {
-        let base_url = Url::parse(caps_url).map_err(|_| "failed to parse address url (3)".to_string())?;
-        let joined_url = base_url.join(maybe_relative_url).map_err(|_| "failed to join URL \"{}\" and possibly relative \"{}\"".to_string())?;
+        let base_url = Url::parse(caps_url)
+            .map_err(|_| format!("failed to parse caps url: {}", caps_url))?;
+        let joined_url = base_url.join(maybe_relative_url)
+            .map_err(|_| format!("failed to join url: {}", maybe_relative_url))?;
         Ok(joined_url.to_string())
     }
 }
@@ -583,6 +384,3 @@ pub fn resolve_completion_model<'a>(
         &caps.defaults.completion_default_model
     )
 }
-
-pub fn default_rejection_threshold() -> f32 { 0.63 }
-pub fn default_embedding_batch() -> usize { 64 }

@@ -6,9 +6,11 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use structopt::StructOpt;
 
-use crate::caps::{load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune, 
+use crate::caps::{
     BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, 
-    EmbeddingModelRecord, HasBaseModelRecord, default_embedding_batch, default_rejection_threshold};
+    EmbeddingModelRecord, HasBaseModelRecord, default_embedding_batch, default_rejection_threshold,
+    load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune
+};
 use crate::custom_error::{MapErrToString, YamlError};
 use crate::global_context::{CommandLine, GlobalContext};
 
@@ -178,8 +180,8 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
 }
 
 const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
-    ("openai", include_str!("yaml_configs/default_providers/openai.yaml")),
-    ("openrouter", include_str!("yaml_configs/default_providers/openrouter.yaml")),
+    ("openai", include_str!("../yaml_configs/default_providers/openai.yaml")),
+    ("openrouter", include_str!("../yaml_configs/default_providers/openrouter.yaml")),
 ];
 static PARSED_PROVIDERS: OnceLock<IndexMap<String, CapsProvider>> = OnceLock::new();
 
@@ -430,7 +432,7 @@ struct KnownModels {
     chat_models: IndexMap<String, ChatModelRecord>,
     embedding_models: IndexMap<String, EmbeddingModelRecord>,
 }
-const UNPARSED_KNOWN_MODELS: &'static str = include_str!("known_models.json");
+const UNPARSED_KNOWN_MODELS: &'static str = include_str!("../known_models.json");
 static KNOWN_MODELS: OnceLock<KnownModels> = OnceLock::new();
 
 fn get_known_models() -> &'static KnownModels {
