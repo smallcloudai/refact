@@ -10,8 +10,8 @@ use tracing::{info, warn};
 use crate::custom_error::MapErrToString;
 use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
-use crate::caps::providers::{add_name_and_id_to_model_records, add_running_models, populate_model_records, 
-    add_models_to_caps, apply_models_dict_patch, read_providers_d, resolve_provider_api_key, CapsProvider};
+use crate::caps::providers::{add_models_to_caps, read_providers_d, resolve_provider_api_key, 
+    post_process_provider, CapsProvider};
 use crate::caps::self_hosted::{SelfHostedCaps, load_self_hosted_caps};
 
 pub const CAPS_FILENAME: &str = "refact-caps";
@@ -309,10 +309,7 @@ pub async fn load_caps(
         tracing::error!("{e}");
     }
     for provider in &mut providers {
-        add_running_models(provider);
-        populate_model_records(provider);
-        apply_models_dict_patch(provider);
-        add_name_and_id_to_model_records(provider);
+        post_process_provider(provider);
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     }
     add_models_to_caps(&mut caps, providers);

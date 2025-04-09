@@ -232,6 +232,13 @@ pub async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<St
     (yaml_paths, errors)
 }
 
+pub fn post_process_provider(provider: &mut CapsProvider) {
+    add_running_models(provider);
+    populate_model_records(provider);
+    apply_models_dict_patch(provider);
+    add_name_and_id_to_model_records(provider);
+}
+
 pub async fn read_providers_d(
     prev_providers: Vec<CapsProvider>, 
     config_dir: &Path
@@ -249,43 +256,60 @@ pub async fn read_providers_d(
         });
     }
 
+    let provider_templates = get_provider_templates();
+
     for yaml_path in yaml_paths {
         let provider_name = match yaml_path.file_stem() {
             Some(name) => name.to_string_lossy().to_string(),
             None => continue,
         };
 
-        let content = match tokio::fs::read_to_string(&yaml_path).await {
-            Ok(content) => content,
-            Err(e) => {
-                error_log.push(YamlError {
-                    path: yaml_path.to_string_lossy().to_string(),
-                    error_line: 0,
-                    error_msg: format!("Failed to read file: {}", e),
-                });
-                continue;
+        if provider_templates.contains_key(&provider_name) {
+            match get_provider_from_template_and_config_file(config_dir, &provider_name, false, false).await {
+                Ok(provider) => {
+                    providers.push(provider);
+                },
+                Err(e) => {
+                    error_log.push(YamlError {
+                        path: yaml_path.to_string_lossy().to_string(),
+                        error_line: 0,
+                        error_msg: e,
+                    });
+                }
             }
-        };
+        } else {
+            let content = match tokio::fs::read_to_string(&yaml_path).await {
+                Ok(content) => content,
+                Err(e) => {
+                    error_log.push(YamlError {
+                        path: yaml_path.to_string_lossy().to_string(),
+                        error_line: 0,
+                        error_msg: format!("Failed to read file: {}", e),
+                    });
+                    continue;
+                }
+            };
 
-        let mut provider: CapsProvider = match serde_yaml::from_str(&content) {
-            Ok(provider) => provider,
-            Err(e) => {
-                error_log.push(YamlError {
-                    path: yaml_path.to_string_lossy().to_string(),
-                    error_line: e.location().map_or(0, |loc| loc.line()),
-                    error_msg: format!("Failed to parse YAML: {}", e),
-                });
-                continue;
-            }
-        };
-        provider.name = provider_name;
-        providers.push(provider);
+            let mut provider: CapsProvider = match serde_yaml::from_str(&content) {
+                Ok(provider) => provider,
+                Err(e) => {
+                    error_log.push(YamlError {
+                        path: yaml_path.to_string_lossy().to_string(),
+                        error_line: e.location().map_or(0, |loc| loc.line()),
+                        error_msg: format!("Failed to parse YAML: {}", e),
+                    });
+                    continue;
+                }
+            };
+            provider.name = provider_name;
+            providers.push(provider);
+        }
     }
 
     (providers, error_log)
 }
 
-pub fn add_running_models(provider: &mut CapsProvider) {
+fn add_running_models(provider: &mut CapsProvider) {
     let mut models_to_add = vec![
         &provider.defaults.chat_default_model,
         &provider.defaults.chat_light_model,
@@ -385,7 +409,7 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
     }
 }
 
-pub fn add_name_and_id_to_model_records(provider: &mut CapsProvider) {
+fn add_name_and_id_to_model_records(provider: &mut CapsProvider) {
     for (model_name, model_rec) in &mut provider.completion_models {
         model_rec.base.name = model_name.to_string();
         model_rec.base.id = format!("{}/{}", provider.name, model_name);
@@ -401,7 +425,7 @@ pub fn add_name_and_id_to_model_records(provider: &mut CapsProvider) {
     }
 }
 
-pub fn apply_models_dict_patch(provider: &mut CapsProvider) {
+fn apply_models_dict_patch(provider: &mut CapsProvider) {
     for (model_name, rec_patched) in provider.models_dict_patch.iter() {
         if let Some(completion_rec) = provider.completion_models.get_mut(model_name) {
             if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
@@ -442,7 +466,7 @@ fn get_known_models() -> &'static KnownModels {
     })
 }
 
-pub fn populate_model_records(provider: &mut CapsProvider) {
+fn populate_model_records(provider: &mut CapsProvider) {
     let known_models = get_known_models();
 
     for model_name in &provider.running_models {
@@ -540,10 +564,8 @@ pub fn resolve_tokenizer_api_key(provider: &CapsProvider) -> String {
 }
 
 pub async fn get_provider_from_template_and_config_file(
-    gcx: Arc<ARwLock<GlobalContext>>, name: &str, config_file_must_exist: bool
+    config_dir: &Path, name: &str, config_file_must_exist: bool, post_process: bool
 ) -> Result<CapsProvider, String> {
-    let config_dir = gcx.read().await.config_dir.clone();
-    
     let mut provider = get_provider_templates().get(name).cloned()
         .ok_or("Provider template not found")?;
 
@@ -563,11 +585,10 @@ pub async fn get_provider_from_template_and_config_file(
 
     provider.apply_override(config_file_value)?;
 
-    add_running_models(&mut provider);
-    populate_model_records(&mut provider);
-    apply_models_dict_patch(&mut provider);
-    add_name_and_id_to_model_records(&mut provider);
-
+    if post_process {
+        post_process_provider(&mut provider);
+    }
+    
     Ok(provider)
 }
 
@@ -580,10 +601,7 @@ pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Resul
     
     resolve_relative_urls(&mut provider, &caps_url)?;
     
-    add_running_models(&mut provider);
-    populate_model_records(&mut provider);
-    apply_models_dict_patch(&mut provider);
-    add_name_and_id_to_model_records(&mut provider);
+    post_process_provider(&mut provider);
     provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
 

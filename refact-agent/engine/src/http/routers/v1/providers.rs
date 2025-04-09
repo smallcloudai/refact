@@ -232,7 +232,8 @@ pub async fn handle_v1_get_provider(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
         ProviderDTO::from_caps_provider(provider, true)
     } else {
-        let provider = get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, false).await
+        let config_dir = gcx.read().await.config_dir.clone();
+        let provider = get_provider_from_template_and_config_file(&config_dir, &params.provider_name, false, true).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
         ProviderDTO::from_caps_provider(provider, false)
     };
@@ -336,7 +337,8 @@ pub async fn handle_v1_models(
         get_provider_from_server(gcx.clone()).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     } else {
-        get_provider_from_template_and_config_file(gcx.clone(), &params.provider_name, true).await
+        let config_dir = gcx.read().await.config_dir.clone();
+        get_provider_from_template_and_config_file(&config_dir, &params.provider_name, true, true).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     };
 
@@ -379,7 +381,8 @@ pub async fn handle_v1_get_model(
         get_provider_from_server(gcx.clone()).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     } else {
-        get_provider_from_template_and_config_file(gcx.clone(), &params.provider, true).await
+        let config_dir = gcx.read().await.config_dir.clone();
+        get_provider_from_template_and_config_file(&config_dir, &params.provider, true, true).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     };
 
