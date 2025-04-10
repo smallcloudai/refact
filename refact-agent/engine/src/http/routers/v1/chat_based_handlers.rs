@@ -83,14 +83,18 @@ pub async fn handle_v1_trajectory_save(
             format!("JSON problem: {}", e),
         )
     })?;
-
+    let (memdb, vectorizer_service) = {
+        let gcx_locked = global_context.read().await;
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
+        (gcx_locked.memdb.clone(), vectorizer_service)
+    };
     let mem_type = "trajectory";
     let (goal, trajectory) = compress_trajectory(global_context.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-
-    let vec_db = global_context.read().await.vec_db.clone();
-    let memid = crate::vecdb::vdb_highlev::memories_add(
-        vec_db,
+    let memid = crate::memdb::db_memories::memories_add(
+        memdb,
+        vectorizer_service,
         &mem_type,
         &goal.as_str(),
         &post.project.as_str(),

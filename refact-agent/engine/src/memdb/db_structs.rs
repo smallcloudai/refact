@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Notify as ANotify;
 use parking_lot::Mutex as ParkMutex;
 
-
 #[derive(Serialize, Deserialize, Default)]
 pub struct Chore {
     pub chore_id: String,
@@ -87,7 +86,9 @@ pub struct CMessage {
 // db_v1/cmessage_update  { cthread_id, n_onwards } -> ok or detail
 
 
-pub struct ChoreDB {
+pub struct MemDB {
     pub lite: Arc<ParkMutex<rusqlite::Connection>>,
-    pub chore_sleeping_point: Arc<ANotify>,
+    pub dirty_memids: Vec<String>,
+    pub dirty_everything: bool,
+    pub memdb_sleeping_point: Arc<ANotify>,
 }

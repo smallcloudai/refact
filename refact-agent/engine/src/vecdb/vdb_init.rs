@@ -3,13 +3,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex as AMutex;
 use tokio::time::sleep;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 use crate::caps::get_custom_embedding_api_key;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::vecdb::vdb_highlev::VecDb;
 use crate::vecdb::vdb_structs::{VecdbConstants, VecdbSearch};
-use crate::background_tasks::BackgroundTasksHolder;
 use tokio::sync::RwLock as ARwLock;
 
 pub struct VecDbInitConfig {
@@ -51,7 +50,6 @@ impl std::fmt::Display for VecDbInitError {
 
 pub async fn init_vecdb_fail_safe(
     cache_dir: &PathBuf,
-    config_dir: &PathBuf,
     cmdline: CommandLine,
     constants: VecdbConstants,
     api_key: &String,
@@ -63,8 +61,7 @@ pub async fn init_vecdb_fail_safe(
     loop {
         attempt += 1;
         info!("VecDb init attempt {}/{}", attempt, init_config.max_attempts);
-        
-        match VecDb::init(cache_dir, config_dir, cmdline.clone(), constants.clone(), api_key).await {
+        match VecDb::init(cache_dir, cmdline.clone(), constants.clone()).await {
             Ok(vecdb) => {
                 info!("Successfully initialized VecDb on attempt {}", attempt);
                 
@@ -109,7 +106,7 @@ async fn vecdb_test_search(vecdb: &VecDb, api_key: &String) -> Result<(), String
     let top_n = 3;
     let filter = None;
     
-    match VecdbSearch::vecdb_search(vecdb, test_query, top_n, filter, api_key).await {
+    match VecdbSearch::vecdb_search(vecdb, test_query, top_n, filter, api_key, None).await {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("Test search failed: {}", e)),
     }
@@ -119,54 +116,50 @@ pub async fn initialize_vecdb_with_context(
     gcx: Arc<ARwLock<GlobalContext>>,
     constants: VecdbConstants,
     init_config: Option<VecDbInitConfig>,
-) -> Result<(), VecDbInitError> {
+) -> Result<crate::background_tasks::BackgroundTasksHolder, VecDbInitError> {
     let api_key = match get_custom_embedding_api_key(gcx.clone()).await {
         Ok(key) => key,
         Err(err) => return Err(VecDbInitError::ApiKeyError(err.message)),
     };
     
-    let (cache_dir, config_dir, cmdline) = {
+    let (cache_dir, cmdline) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
+        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
     };
     
-    let (base_dir_cache, base_dir_config) = match cmdline.vecdb_force_path.as_str() {
-        "" => (cache_dir, config_dir),
-        path => (PathBuf::from(path), PathBuf::from(path)),
+    let base_dir_cache = match cmdline.vecdb_force_path.as_str() {
+        "" => cache_dir,
+        path => PathBuf::from(path)
     };
     
     let config = init_config.unwrap_or_default();
     let vec_db = init_vecdb_fail_safe(
         &base_dir_cache,
-        &base_dir_config,
         cmdline.clone(),
-        constants,
+        constants.clone(),
         &api_key,
         config,
     ).await?;
     
-    debug!("VecDb initialization successful, updating global context");
-    
-    let vec_db_arc = Arc::new(AMutex::new(Some(vec_db)));
+    info!("VecDb initialization successful, updating global context");
     {
         let mut gcx_locked = gcx.write().await;
-        gcx_locked.vec_db = vec_db_arc.clone();
+        gcx_locked.vecdb = Some(Arc::new(AMutex::new(vec_db)));
         gcx_locked.vec_db_error = "".to_string();
     }
-    
-    debug!("Enqueuing workspace files for vectorization");
+
+    info!("Enqueuing workspace files for vectorization");
     crate::files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, true).await;
     crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, true).await;
-    
-    debug!("Starting background tasks for vectorization");
-    {
-        let vec_db_locked = vec_db_arc.lock().await;
-        if let Some(ref vec_db) = *vec_db_locked {
-            let tasks = vec_db.vecdb_start_background_tasks(gcx.clone()).await;
-            let _background_tasks = BackgroundTasksHolder::new(tasks);
-        }
-    }
+
+    info!("Starting background tasks for vectorization");
+    let background_tasks = {
+        let tasks = crate::vecdb::vectorizer_service::vectorizer_service_init_and_start(
+            gcx.clone(), constants
+        ).await.map_err(|x| VecDbInitError::InitializationError(x))?;
+        crate::background_tasks::BackgroundTasksHolder::new(tasks)
+    };
     
     info!("VecDb initialization and setup complete");
-    Ok(())
+    Ok(background_tasks)
 }

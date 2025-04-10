@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::header::HeaderMap;
@@ -5,7 +7,7 @@ use reqwest::header::HeaderValue;
 use serde_json::json;
 
 use crate::vecdb::vdb_structs::{SearchResult, VecdbSearch};
-
+use crate::vecdb::vectorizer_service::FileVectorizerService;
 
 #[derive(Debug)]
 pub struct VecDbRemote {}
@@ -18,6 +20,7 @@ impl VecdbSearch for VecDbRemote {
         top_n: usize,
         _vecdb_scope_filter_mb: Option<String>,
         _api_key: &String,
+        _vectorizer_service: Option<Arc<AMutex<FileVectorizerService>>>,
     ) -> Result<SearchResult, String> {
         // NOTE: if you're going to use https make sure that you set insecure flag from cmdline
         let url = "http://127.0.0.1:8008/v1/vdb-search".to_string();
