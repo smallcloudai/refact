@@ -1,7 +1,6 @@
-from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 from refact_webgui.webgui.selfhost_queue import InferenceQueue
 
-from typing import Tuple, List, Optional
+from typing import Tuple, List
 
 
 def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tuple[str, str]:
@@ -33,14 +32,3 @@ def static_resolve_model(model_name: str, inference_queue: InferenceQueue) -> Tu
             return have_model, ""
     else:
         return "", f"model \"{model_name}\" is not loaded (3)"
-
-
-def resolve_model_context_size(model_name: str, model_assigner: ModelAssigner) -> Optional[int]:
-    if model_name in model_assigner.models_db:
-        return model_assigner.model_assignment["model_assign"][model_name]["n_ctx"]
-
-    PASSTHROUGH_MAX_TOKENS_LIMIT = 128_000
-
-    if model_name in model_assigner.passthrough_mini_db:
-        if max_tokens := model_assigner.passthrough_mini_db[model_name].get('T'):
-            return min(PASSTHROUGH_MAX_TOKENS_LIMIT, max_tokens)

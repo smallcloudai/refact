@@ -400,9 +400,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 type="button"
                 onClick={() => void compressChat()}
                 disabled={
-                  unCalledTools ||
-                  lastSentCompression === null ||
-                  lastSentCompression === "absent"
+                  messages.length === 0 ||
+                  isStreaming ||
+                  isWaiting ||
+                  unCalledTools
                 }
                 loading={compressChatRequest.isLoading || isCompressing}
               >

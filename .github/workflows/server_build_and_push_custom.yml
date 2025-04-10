@@ -1,0 +1,86 @@
+name: Refact Server CICD Build and Push
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag for docker hub"
+        type: string
+        required: false
+
+jobs:
+  cicl:
+    name: Cicl
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.properties.outputs.version }}
+      changelog: ${{ steps.properties.outputs.changelog }}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Backup docker files
+        run: |
+          echo "backup moby/buildkit image"
+          sudo docker image save -o ${GITHUB_WORKSPACE}/images.tar moby/buildkit
+          echo "Back up /var/lib/docker folder structure and other files"
+          sudo rsync -aPq /var/lib/docker/ ${GITHUB_WORKSPACE}/docker
+
+      # Free GitHub Actions Environment Disk Space
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 512
+          temp-reserve-mb: 32
+          swap-size-mb: 32
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          build-mount-path: '/var/lib/docker/'
+
+      - name: Restore docker files
+        run: |
+          sudo rsync -aPq ${GITHUB_WORKSPACE}/docker/ /var/lib/docker
+          sudo rm -rf ${GITHUB_WORKSPACE}/docker
+          sudo ls ${GITHUB_WORKSPACE} -l
+          sudo docker image load -i ${GITHUB_WORKSPACE}/images.tar
+          sudo rm ${GITHUB_WORKSPACE}/images.tar
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject cache docker image
+        working-directory: refact-server
+        run: |
+          ./.github/scripts/cicl_docker_injection.sh
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GH_USER }}
+          password: ${{ secrets.GH_TOKEN }}
+
+      - name: Login to DockerHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          context: refact-server
+          tags: |
+            smallcloud/refact_self_hosting:${{ inputs.tag }}
+          platforms: |
+            linux/amd64
+          build-args: |
+            GIT_COMMIT_HASH=${{ github.sha }}

@@ -1,0 +1,113 @@
+<link rel="stylesheet" href="tab-third-party-apis.css">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h3 class="mb-4">Third-Party API Providers</h3>
+            <p class="mb-4">Configure API providers and select which models to enable for each provider.</p>
+            
+            <div id="providers-container">
+                <!-- Provider cards will be dynamically inserted here -->
+            </div>
+
+            <h3 class="mb-4 mt-5">Tokenizers</h3>
+            <p class="mb-4">Manage custom tokenizers for third-party models.</p>
+
+            <div id="tokenizers-list" class="mb-3">
+                <!-- Tokenizers will be dynamically inserted here -->
+                <div class="alert alert-info" id="no-tokenizers-msg">
+                    No custom tokenizers available. Use the buttons below to add a tokenizer.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div class="toast third-party-apis-toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">Success</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                Configuration saved successfully.
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Provider Modal -->
+    <div class="modal fade" id="add-third-party-provider-modal" tabindex="-1" aria-labelledby="add-third-party-provider-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add-third-party-provider-modal-label">Add Provider</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="third-party-provider-id" class="form-label">Provider ID</label>
+                        <select class="form-select" id="third-party-provider-id">
+                            <option value="" disabled selected>Select a provider</option>
+                            <!-- Available providers will be populated here -->
+                        </select>
+                        <div class="form-text">Select a provider from the available options.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="add-third-party-provider-submit">Add Provider</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Model Modal -->
+    <div class="modal fade" id="add-third-party-model-modal" tabindex="-1" aria-labelledby="add-third-party-model-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="add-third-party-model-modal-label">Add Model</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="add-third-party-model-modal-id-container">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="add-third-party-model-submit">Add Model</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Tokenizer Upload Modal -->
+    <div class="modal fade" id="tokenizer-upload-modal" tabindex="-1" aria-labelledby="tokenizer-upload-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="tokenizer-upload-modal-label">Upload Tokenizer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="tokenizer-upload-form">
+                        <div class="mb-3">
+                            <label for="tokenizer-id" class="form-label">Tokenizer ID</label>
+                            <input type="text" class="form-control" id="tokenizer-id" placeholder="Enter a unique identifier for this tokenizer">
+                            <div class="form-text">A unique name to identify this tokenizer (e.g., gpt-4-tokenizer)</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tokenizer-file" class="form-label">Tokenizer File</label>
+                            <input type="file" class="form-control" id="tokenizer-file" accept=".json">
+                            <div class="form-text">Select a tokenizer JSON file to upload</div>
+                        </div>
+                    </form>
+                    <div class="alert alert-danger d-none" id="tokenizer-upload-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="tokenizer-upload-submit">Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
