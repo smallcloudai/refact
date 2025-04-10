@@ -13,6 +13,7 @@ import {
   setIsWaitingForResponse,
   upsertToolCall,
   sendCurrentChatToLspAfterToolCallUpdate,
+  chatResponse,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -38,8 +39,12 @@ import {
   updateConfirmationAfterIdeToolUse,
 } from "../features/ToolConfirmation/confirmationSlice";
 import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
-import { ideToolCallResponse } from "../hooks/useEventBusForIDE";
+import {
+  ideToolCallResponse,
+  ideForceReload,
+} from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
+import { isToolResponse } from "../events";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -534,5 +539,18 @@ startListening({
     ) {
       document.body.className = "vscode-dark";
     }
+  },
+});
+
+// JB file refresh
+// TBD: this could include diff messages to
+startListening({
+  actionCreator: chatResponse,
+  effect: (action, listenerApi) => {
+    const state = listenerApi.getState();
+    if (state.config.host !== "jetbrains") return;
+    if (!isToolResponse(action.payload)) return;
+    if (!window.postIntellijMessage) return;
+    window.postIntellijMessage(ideForceReload());
   },
 });

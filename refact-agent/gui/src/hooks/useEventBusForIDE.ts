@@ -63,6 +63,8 @@ export const ideToolCallResponse = createAction<{
   accepted: boolean | "indeterminate";
 }>("ide/toolEditResponse");
 
+export const ideForceReload = createAction("ide/forceReload");
+
 export const useEventsBusForIDE = () => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
