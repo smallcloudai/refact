@@ -41,7 +41,7 @@ import {
 import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 import {
   ideToolCallResponse,
-  ideForceReload,
+  ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 import { isToolResponse } from "../events";
@@ -551,6 +551,6 @@ startListening({
     if (state.config.host !== "jetbrains") return;
     if (!isToolResponse(action.payload)) return;
     if (!window.postIntellijMessage) return;
-    window.postIntellijMessage(ideForceReload());
+    window.postIntellijMessage(ideForceReloadProjectTreeFiles());
   },
 });
