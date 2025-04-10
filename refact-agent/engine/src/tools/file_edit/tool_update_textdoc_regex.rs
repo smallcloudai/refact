@@ -73,8 +73,15 @@ async fn parse_args(
     };
     let multiple = match args.get("multiple") {
         Some(Value::Bool(b)) => b.clone(),
-        Some(v) => return Err(format!("argument 'multiple' should be a boolean: {:?}", v)),
-        None => return Err("argument 'multiple' is required".to_string())
+        Some(Value::String(v)) => match v.to_lowercase().as_str() {
+            "false" => false,
+            "true" => true,
+            _ => {
+                return Err(format!("argument 'multiple' should be a boolean: {:?}", v))
+            }
+        },
+        Some(v) => return Err(format!("Error: The 'multiple' argument must be a boolean (true/false) indicating whether to replace all occurrences, but received: {:?}", v)),
+        None => return Err("Error: The 'multiple' argument is required. Please specify true to replace all occurrences or false to replace only the first occurrence.".to_string())
     };
 
     Ok(ToolUpdateTextDocRegexArgs {
