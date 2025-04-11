@@ -321,6 +321,49 @@ async fn read_yaml_file_as_value_if_exists(path: &Path) -> Result<serde_yaml::Va
     }
 }
 
+pub async fn handle_v1_delete_provider(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Query(params): Query<ProviderQueryParams>,
+) -> Result<Response<Body>, ScratchError> {
+    let use_server_provider = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => !caps.cloud_name.is_empty() && caps.cloud_name == params.provider_name,
+        Err(e) => {
+            tracing::error!("Failed to load caps: {}", e);
+            false
+        }
+    };
+
+    if use_server_provider {
+        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, 
+            "Cannot delete server provider".to_string()));
+    }
+
+    let config_dir = gcx.read().await.config_dir.clone();
+
+    if !get_provider_templates().contains_key(&params.provider_name) {
+        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, 
+            format!("Provider template '{}' not found", params.provider_name)));
+    }
+    
+    let provider_path = config_dir.join("providers.d")
+        .join(format!("{}.yaml", params.provider_name));
+    
+    if !provider_path.exists() {
+        return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+            format!("Provider '{}' does not exist", params.provider_name)));
+    }
+    
+    tokio::fs::remove_file(&provider_path).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, 
+            format!("Failed to delete provider file: {}", e)))?;
+    
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(json!({ "success": true }).to_string()))
+        .unwrap())
+}
+
 pub async fn handle_v1_models(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ProviderQueryParams>,
