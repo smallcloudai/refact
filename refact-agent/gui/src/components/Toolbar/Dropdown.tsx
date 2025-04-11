@@ -27,6 +27,7 @@ import {
   HamburgerMenuIcon,
   DiscordLogoIcon,
   QuestionMarkCircledIcon,
+  GearIcon,
 } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
 import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
@@ -41,6 +42,7 @@ export type DropdownNavigationOptions =
   | "restart tour"
   | "login page"
   | "integrations"
+  | "providers"
   | KnowledgeListPage["name"]
   | "";
 
@@ -195,6 +197,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
             Manage Knowledge
           </DropdownMenu.Item>
         )}
+
+        <DropdownMenu.Item onSelect={() => handleNavigation("providers")}>
+          <GearIcon /> Configure Providers
+        </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           {refactProductType} Settings
