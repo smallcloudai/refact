@@ -9,6 +9,7 @@ import { isDiffMessage } from "../services/refact";
  * Hook to handle file reloading for diff messages in JetBrains IDE
  * Ensures each file is only reloaded once per message
  */
+// Note this won't work if the chat is in the cache.
 export function useDiffFileReload() {
   const messages = useAppSelector(selectMessages);
   const configIdeHost = useAppSelector(selectConfig).host;

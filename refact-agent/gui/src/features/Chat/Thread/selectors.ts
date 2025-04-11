@@ -94,8 +94,3 @@ export const selectLastSentCompression = createSelector(
     return lastCompression;
   },
 );
-
-export const selectThreadPaused = createSelector(
-  selectThread,
-  (thread) => thread.paused ?? false,
-);
