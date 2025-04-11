@@ -333,7 +333,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       lastUserMessage.compression_strength !== "absent"
     ) {
       state.thread.new_chat_suggested = {
-        ...state.thread.new_chat_suggested,
+        wasRejectedByUser: false,
         wasSuggested: true,
       };
     }

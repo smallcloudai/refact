@@ -17,7 +17,6 @@ import {
   newChatAction,
   selectChatId,
   setIsNewChatSuggestionRejected,
-  setPreventSend,
 } from "../../../features/Chat";
 
 import { Link } from "../../Link";
