@@ -15,11 +15,6 @@ export function useLastSentCompressionStop() {
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const messages = useAppSelector(selectMessages);
   const stopped = useAppSelector(selectThreadPaused);
-  useEffect(() => {
-    if (lastSentCompression && lastSentCompression !== "absent" && !stopped) {
-      dispatch(setThreadPaused(true));
-    }
-  }, [dispatch, lastSentCompression, stopped]);
 
   const messagesFromLastUserMessage = useMemo(() => {
     return takeFromEndWhile(messages, (message) => !isUserMessage(message))
