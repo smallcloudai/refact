@@ -13,9 +13,11 @@ import {
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
 import { telemetryApi } from "../../../services/refact";
 import {
+  enableSend,
   newChatAction,
   selectChatId,
   setIsNewChatSuggestionRejected,
+  setPreventSend,
 } from "../../../features/Chat";
 
 import { Link } from "../../Link";
@@ -64,6 +66,7 @@ export const SuggestNewChat = ({
 
   const handleClose = () => {
     dispatch(setIsNewChatSuggestionRejected({ chatId, value: true }));
+    dispatch(enableSend({ id: chatId }));
 
     void sendTelemetryEvent({
       scope: `dismissedNewChatSuggestionWarning`,
