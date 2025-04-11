@@ -197,6 +197,12 @@ struct EmbeddingsResultOpenAI {
 }
 
 #[cfg(feature="vecdb")]
+#[derive(serde::Deserialize)]
+struct EmbeddingsResultOpenAINoIndex {
+    pub embedding: Vec<f32>,
+}
+
+#[cfg(feature="vecdb")]
 pub async fn get_embedding_openai_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
@@ -235,19 +241,36 @@ pub async fn get_embedding_openai_style(
 
     // info!("get_embedding_openai_style: {:?}", json);
     // {"data":[{"embedding":[0.0121664945...],"index":0,"object":"embedding"}, {}, {}]}
-    let unordered: Vec<EmbeddingsResultOpenAI> = match serde_json::from_value(json["data"].clone()) {
-        Ok(x) => x,
-        Err(err) => {
-            return Err(format!("get_embedding_openai_style: failed to parse unordered: {:?}", err));
-        }
-    };
+    // or {"data":[{"embedding":[0.0121664945...]}, {}, {}]} without index
+    
     let mut result: Vec<Vec<f32>> = vec![vec![]; B];
-    for ures in unordered.into_iter() {
-        let index = ures.index;
-        if index >= B {
-            return Err(format!("get_embedding_openai_style: index out of bounds: {:?}", json));
+    match serde_json::from_value::<Vec<EmbeddingsResultOpenAI>>(json["data"].clone()) {
+        Ok(unordered) => {
+            for ures in unordered.into_iter() {
+                let index = ures.index;
+                if index >= B {
+                    return Err(format!("get_embedding_openai_style: index out of bounds: {:?}", json));
+                }
+                result[index] = ures.embedding;
+            }
+        },
+        Err(_) => {
+            match serde_json::from_value::<Vec<EmbeddingsResultOpenAINoIndex>>(json["data"].clone()) {
+                Ok(ordered) => {
+                    if ordered.len() != B {
+                        return Err(format!("get_embedding_openai_style: response length mismatch: expected {}, got {}", 
+                                          B, ordered.len()));
+                    }
+                    for (i, res) in ordered.into_iter().enumerate() {
+                        result[i] = res.embedding;
+                    }
+                },
+                Err(err) => {
+                    tracing::info!("get_embedding_openai_style: failed to parse response: {:?}, {:?}", err, json);
+                    return Err(format!("get_embedding_openai_style: failed to parse response: {:?}", err));
+                }
+            }
         }
-        result[index] = ures.embedding;
     }
     Ok(result)
 }
