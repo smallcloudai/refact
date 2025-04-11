@@ -14,6 +14,7 @@ refact_mini_db = {
         "supports_scratchpads": {
             "completion": refact_supports_scratchpads,
         },
+        "deprecated": True,
         "filter_caps": ["completion", "finetune"],
     },
     # "Refact/1.6B/cpu": {
