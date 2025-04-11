@@ -67,7 +67,7 @@ pub async fn get_dashboard_plots(
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
     let (http_client, api_key, url) = {
         let gcx_locked = global_context.read().await;
-        (gcx_locked.http_client.clone(), gcx_locked.cmdline.api_key.clone(), caps.read().unwrap().telemetry_basic_retrieve_my_own.clone())
+        (gcx_locked.http_client.clone(), gcx_locked.cmdline.api_key.clone(), caps.telemetry_basic_retrieve_my_own.clone())
     };
     if url.is_empty() {
         return Err(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error: no url provided from caps".to_string()));

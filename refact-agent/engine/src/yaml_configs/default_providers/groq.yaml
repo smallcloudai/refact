@@ -1,0 +1,8 @@
+completion_endpoint: https://api.groq.com/openai/v1/chat/completions
+chat_endpoint:       https://api.groq.com/openai/v1/chat/completions
+
+api_key: gsk_...
+
+running_models: 
+  - qwen-2.5-coder-32b
+  - qwen-qwq-32b

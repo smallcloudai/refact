@@ -265,11 +265,8 @@ pub async fn generate_commit_message_by_diff(
             },
         ]
     };
-    let model_name = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps
-            .read()
-            .map(|x| Ok(x.code_chat_default_model.clone()))
-            .map_err(|_| "Caps are not available".to_string())?,
+    let model_id = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => Ok(caps.defaults.chat_default_model.clone()),
         Err(_) => Err("No caps available".to_string()),
     }?;
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
@@ -286,7 +283,7 @@ pub async fn generate_commit_message_by_diff(
     ));
     let new_messages = subchat_single(
         ccx.clone(),
-        model_name.as_str(),
+        &model_id,
         messages,
         Some(vec![]),
         None,

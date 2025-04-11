@@ -339,8 +339,8 @@ type ChatUserMessageResponse = {
 };
 
 type CapsResponse = {
-  code_chat_default_model: string;
-  code_chat_models: Record<string, CodeChatModel>;
+  chat_default_model: string;
+  chat_models: Record<string, CodeChatModel>;
 };
 
 type CodeCompletionModel = {

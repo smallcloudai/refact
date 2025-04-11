@@ -139,7 +139,7 @@ export const Chat: React.FC<ChatProps> = ({
                 <Text size="1">
                   model:{" "}
                   {capsForToolUse.currentModel ||
-                    caps.data?.code_chat_default_model}{" "}
+                    caps.data?.chat_default_model}{" "}
                 </Text>{" "}
                 •{" "}
                 <Text

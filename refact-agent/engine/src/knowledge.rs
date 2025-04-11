@@ -242,7 +242,7 @@ impl MemoriesDatabase {
                 | rusqlite::OpenFlags::SQLITE_OPEN_URI,
         ).await.map_err(|err| format!("Failed to open database: {}", err))?;
         setup_db(&conn, pubsub_notifier.clone()).await?;
-        migrate_202501(&conn, constants.embedding_size, emb_table_name.clone(), reset_memory).await?;
+        migrate_202501(&conn, constants.embedding_model.embedding_size, emb_table_name.clone(), reset_memory).await?;
         crate::vecdb::vdb_emb_aux::cleanup_old_emb_tables(&conn, 7, 10).await?;
 
         let db = MemoriesDatabase {
@@ -504,7 +504,6 @@ pub async fn vectorize_dirty_memories(
     vecdb_handler: Arc<AMutex<VecDBSqlite>>,
     _status: Arc<AMutex<VecDbStatus>>,
     client: Arc<AMutex<Client>>,
-    api_key: &String,
     #[allow(non_snake_case)]
     B: usize,
 ) -> rusqlite::Result<(), String> {
@@ -525,13 +524,10 @@ pub async fn vectorize_dirty_memories(
     let my_constants: VecdbConstants = memdb.lock().await.vecdb_constants.clone();
     for chunk in to_vectorize.chunks_mut(B) {
         let texts: Vec<String> = chunk.iter().map(|x| x.window_text.clone()).collect();
-        let embedding_mb = crate::fetch_embedding::get_embedding_with_retry(
+        let embedding_mb = crate::fetch_embedding::get_embedding_with_retries(
             client.clone(),
-            &my_constants.endpoint_embeddings_style,
             &my_constants.embedding_model,
-            &my_constants.endpoint_embeddings_template,
             texts,
-            api_key,
             1,
         ).await?;
         for (chunk_save, x) in chunk.iter_mut().zip(embedding_mb.iter()) {
