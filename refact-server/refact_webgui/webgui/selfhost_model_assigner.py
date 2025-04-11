@@ -265,7 +265,7 @@ class ModelAssigner:
     def first_run(self):
         default_config = {
             "model_assign": {
-                "Refact/1.6B": {
+                "qwen2.5/coder/1.5b/base": {
                     'gpus_shard': 1,
                     'share_gpu': True,
                 },

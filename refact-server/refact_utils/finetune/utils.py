@@ -13,7 +13,7 @@ from refact_utils.finetune.train_defaults import finetune_train_defaults
 from typing import Any, Dict, Union
 
 legacy_finetune_model = "CONTRASTcode/3b/multi"
-default_finetune_model = "Refact/1.6B"
+default_finetune_model = "qwen2.5/coder/1.5b/base"
 
 
 def get_run_model_name(run_dir: str) -> str:
