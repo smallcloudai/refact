@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn simple_chunk_test_1_with_128_limit() {
         let tokenizer = Some(Arc::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
-        let orig = include_str!("../caps.rs").to_string();
+        let orig = include_str!("../caps/mod.rs").to_string();
         let token_limits = [10, 50, 100, 200, 300];
         for &token_limit in &token_limits {
             let chunks = get_chunks(

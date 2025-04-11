@@ -263,7 +263,7 @@ async fn read_and_compress_directory(
 
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
     let model_rec = resolve_chat_model(caps, &model)?;
-    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await.map_err(|e| format!("Tokenizer error: {}", e))?;
+    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
     let mut pp_settings = PostprocessSettings::new();
     pp_settings.max_files_n = context_files.len();
     let compressed = postprocess_context_files(

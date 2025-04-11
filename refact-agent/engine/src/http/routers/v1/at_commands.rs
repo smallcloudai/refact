@@ -175,9 +175,8 @@ pub async fn handle_v1_command_preview(
     let tokenizer_arc = match tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await {
         Ok(x) => x,
         Err(e) => {
-            let err_msg = format!("Can't load tokenizer for preview: {}", e);
-            tracing::error!(err_msg);
-            return Err(ScratchError::new(StatusCode::BAD_REQUEST, err_msg));
+            tracing::error!(e);
+            return Err(ScratchError::new(StatusCode::BAD_REQUEST, e));
         }
     };
 
@@ -283,7 +282,7 @@ pub async fn handle_v1_at_command_execute(
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let tokenizer = tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),

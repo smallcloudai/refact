@@ -21,8 +21,10 @@ DIR_LORAS      = os.path.join(PERMDIR, "loras")
 DIR_LOGS       = os.path.join(PERMDIR, "logs")
 DIR_PROJECTS   = os.path.join(PERMDIR, "projects")
 DIR_SSH_KEYS   = os.path.join(PERMDIR, "ssh-keys")
+DIR_TOKENIZERS   = os.path.join(PERMDIR, "tokenizers")
 
 CONFIG_INTEGRATIONS = os.path.join(DIR_CONFIG, "integrations.cfg")
+CONFIG_THIRD_PARTY_MODELS = os.path.join(DIR_CONFIG, "third_party_models.cfg")
 CONFIG_ENUM_DEVICES = os.path.join(DIR_CONFIG, "device_enum_result.out")
 CONFIG_BUSY_DEVICES = os.path.join(DIR_CONFIG, "devices_busy_result.out")
 CONFIG_INFERENCE = os.path.join(DIR_CONFIG, "inference.cfg")
@@ -70,6 +72,7 @@ def create_dirs():
     os.makedirs(DIR_LOGS, exist_ok=True)
     os.makedirs(DIR_SSH_KEYS, exist_ok=True)
     os.makedirs(DIR_PROJECTS, exist_ok=True)
+    os.makedirs(DIR_TOKENIZERS, exist_ok=True)
 
 
 create_dirs()

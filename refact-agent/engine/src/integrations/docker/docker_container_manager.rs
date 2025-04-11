@@ -223,9 +223,15 @@ async fn docker_container_create(
     }
     let host_lsp_path  = format!("{}/refact-lsp", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
 
-    let (address_url, api_key, integrations_yaml) = {
+    let (cmdline_address_url, api_key, integrations_yaml) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cmdline.address_url.clone(), gcx_locked.cmdline.api_key.clone(), gcx_locked.cmdline.integrations_yaml.clone())
+    };
+
+    let address_url = if !isolation.isolation_address_url.is_empty() {
+        &isolation.isolation_address_url
+    } else {
+        &cmdline_address_url
     };
 
     let mut lsp_command = format!(

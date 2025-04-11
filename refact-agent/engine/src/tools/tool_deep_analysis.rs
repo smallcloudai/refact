@@ -31,7 +31,7 @@ async fn _make_prompt(
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
     let model_rec = resolve_chat_model(caps, &subchat_params.subchat_model)?;
     let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
     let final_message = format!("***Problem:***\n{problem_statement}\n\n***Problem context:***\n");
@@ -180,7 +180,7 @@ impl Tool for ToolDeepAnalysis {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec![]
+        vec!["thinking".to_string()]
     }
 }
 

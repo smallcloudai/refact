@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from pathlib import Path
 
 from refact_utils.scripts import env
-from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
 
 from typing import Optional
 
@@ -20,19 +19,10 @@ class TabSettingsRouter(APIRouter):
         name: str
 
     class Integrations(BaseModel):
-        openai_api_key: Optional[str] = None
-        anthropic_api_key: Optional[str] = None
-        groq_api_key: Optional[str] = None
-        cerebras_api_key: Optional[str] = None
-        gemini_api_key: Optional[str] = None
-        xai_api_key: Optional[str] = None
-        deepseek_api_key: Optional[str] = None
-
         huggingface_api_key: Optional[str] = None
 
-    def __init__(self, models_assigner: ModelAssigner, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._models_assigner = models_assigner
         self.add_api_route("/tab-settings-integrations-get", self._tab_settings_integrations_get, methods=["GET"])
         self.add_api_route("/tab-settings-integrations-save", self._tab_settings_integrations_save, methods=["POST"])
         self.add_api_route("/tab-settings-create-ssh-key", self._tab_settings_create_ssh_key, methods=["POST"])
@@ -56,7 +46,6 @@ class TabSettingsRouter(APIRouter):
                 if v is not None
             }, f, indent=4)
         os.rename(env.CONFIG_INTEGRATIONS + ".tmp", env.CONFIG_INTEGRATIONS)
-        self._models_assigner.models_to_watchdog_configs()
         return JSONResponse("OK")
 
     async def _tab_settings_create_ssh_key(self, data: SSHKey):
