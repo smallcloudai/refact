@@ -173,7 +173,11 @@ export type Provider = {
   readonly: boolean;
 };
 
-export type SimplifiedProvider<T extends keyof Provider> = Pick<Provider, T>;
+export type SimplifiedProvider<
+  T extends keyof Provider | undefined = undefined,
+> = [T] extends [undefined]
+  ? Partial<Provider>
+  : Required<Pick<Provider, T & keyof Provider>>;
 
 export type ErrorLogInstance = {
   path: string;

@@ -8,7 +8,7 @@ import type {
   SimplifiedProvider,
 } from "../../../services/refact";
 import { useGetProviderTemplatesQuery } from "../../../hooks/useProvidersQuery";
-import { BEAUTIFUL_PROVIDER_NAMES } from "../constants";
+import { getProviderName } from "../getProviderName";
 
 export type ConfiguredProvidersViewProps = {
   configuredProviders: ConfiguredProvidersResponse["providers"];
@@ -83,7 +83,7 @@ export const ConfiguredProvidersView: React.FC<
               {providerTemplatesData.provider_templates.map((provider) => {
                 return (
                   <Select.Item key={provider.name} value={provider.name}>
-                    {BEAUTIFUL_PROVIDER_NAMES[provider.name]}
+                    {getProviderName(provider)}
                   </Select.Item>
                 );
               })}
@@ -91,8 +91,7 @@ export const ConfiguredProvidersView: React.FC<
           </Select.Root>
           {potentialCurrentProvider && (
             <Button variant="outline" onClick={handleAddNewProvider}>
-              Configure{" "}
-              {BEAUTIFUL_PROVIDER_NAMES[potentialCurrentProvider.name]}
+              Configure {getProviderName(potentialCurrentProvider)}
             </Button>
           )}
         </Flex>

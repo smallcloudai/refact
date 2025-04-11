@@ -11,12 +11,14 @@ const switches = [
 
 export type OnOffSwitchProps = {
   isEnabled: boolean;
+  isUnavailable?: boolean;
   isUpdating?: boolean;
   handleClick: MouseEventHandler<HTMLDivElement>;
 };
 
 export const OnOffSwitch: React.FC<OnOffSwitchProps> = ({
   isEnabled,
+  isUnavailable = false,
   isUpdating = false,
   handleClick,
 }) => {
@@ -37,6 +39,7 @@ export const OnOffSwitch: React.FC<OnOffSwitchProps> = ({
             color={isActive && !isUpdating ? "jade" : "gray"}
             variant="soft"
             radius="medium"
+            className={classNames({ [styles.unavailable]: isUnavailable })}
             style={{
               ...(leftRadius
                 ? {

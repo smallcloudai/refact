@@ -4,10 +4,10 @@ import type {
   Provider,
 } from "../../services/refact";
 import { Card, Flex, Heading } from "@radix-ui/themes";
-import { BEAUTIFUL_PROVIDER_NAMES } from "./constants";
 import { OnOffSwitch } from "../../components/OnOffSwitch/OnOffSwitch";
 
 import styles from "./ProviderCard.module.css";
+import { getProviderName } from "./getProviderName";
 
 export type ProviderCardProps =
   | {
@@ -50,11 +50,12 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
     >
       <Flex align="center" justify="between">
         <Heading as="h6" size="2">
-          {BEAUTIFUL_PROVIDER_NAMES[provider.name]}
+          {getProviderName(provider)}
         </Heading>
         <Flex align="center" gap="2">
           <OnOffSwitch
             isEnabled={provider.enabled}
+            isUnavailable={provider.readonly}
             handleClick={handleSwitchClick}
           />
         </Flex>

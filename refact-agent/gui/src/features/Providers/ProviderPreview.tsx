@@ -4,12 +4,12 @@ import {
   providersApi,
   SimplifiedProvider,
 } from "../../services/refact";
-import { Flex } from "@radix-ui/themes";
+import { Flex, Heading } from "@radix-ui/themes";
 import { ProviderForm } from "./ProviderForm";
 import { useUpdateProviderMutation } from "../../hooks/useProvidersQuery";
 import { useAppDispatch } from "../../hooks";
 import { setInformation } from "../Errors/informationSlice";
-import { BEAUTIFUL_PROVIDER_NAMES } from "./constants";
+import { getProviderName } from "./getProviderName";
 
 export type ProviderPreviewProps = {
   configuredProviders: SimplifiedProvider<"name" | "enabled" | "readonly">[];
@@ -32,9 +32,9 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
       if (response.error) return;
       const actions = [
         setInformation(
-          `Provider ${
-            BEAUTIFUL_PROVIDER_NAMES[updatedProviderData.name]
-          } updated successfully`,
+          `Provider ${getProviderName(
+            updatedProviderData,
+          )} updated successfully`,
         ),
         providersApi.util.resetApiState(),
       ];
@@ -49,7 +49,10 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
   }, [handleSetCurrentProvider]);
 
   return (
-    <Flex direction="column" align="start">
+    <Flex direction="column" align="start" height="100%">
+      <Heading as="h2" size="3" mb="4">
+        {getProviderName(currentProvider)} Configuration
+      </Heading>
       <ProviderForm
         currentProvider={currentProvider}
         handleSaveChanges={(updatedProviderData) =>

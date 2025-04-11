@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import type { Provider, SimplifiedProvider } from "../../../services/refact";
-import { Button, Flex, Select, Switch, TextField } from "@radix-ui/themes";
+import {
+  Button,
+  Flex,
+  Select,
+  Separator,
+  Switch,
+  TextField,
+} from "@radix-ui/themes";
 import { useGetProviderQuery } from "../../../hooks/useProvidersQuery";
 import { Spinner } from "../../../components/Spinner";
 import { toPascalCase } from "../../../utils/toPascalCase";
@@ -43,30 +50,53 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({
   const { extraFields, importantFields } = aggregateProviderFields(formValues);
 
   return (
-    <Flex direction="column" width="100%" gap="2">
-      {renderProviderFields({
-        providerData: formValues,
-        fields: importantFields,
-        handleValuesChange,
-      })}
+    <Flex direction="column" width="100%" height="100%" justify="between">
+      <Flex direction="column" width="100%" gap="2">
+        <Flex align="center" justify="between" gap="3" mb="2">
+          <label htmlFor={"enabled"}>{toPascalCase("enabled")}</label>
+          <Switch
+            id={"enabled"}
+            checked={Boolean(formValues.enabled)}
+            value={formValues.enabled ? "on" : "off"}
+            disabled={formValues.readonly}
+            className={classNames({
+              [styles.disabledSwitch]: formValues.readonly,
+            })}
+            onCheckedChange={(checked) =>
+              handleValuesChange({ ...formValues, ["enabled"]: checked })
+            }
+          />
+        </Flex>
+        <Separator size="4" mb="2" />
+        <Flex direction="column" gap="2">
+          {renderProviderFields({
+            providerData: formValues,
+            fields: importantFields,
+            handleValuesChange,
+          })}
+        </Flex>
 
-      {areShowingExtraFields &&
-        renderProviderFields({
-          providerData: formValues,
-          fields: extraFields,
-          handleValuesChange,
-        })}
-      <Flex my="2" align="center" justify="center">
-        <Button
-          className={classNames(styles.button, styles.extraButton)}
-          variant="ghost"
-          color="gray"
-          onClick={() => setAreShowingExtraFields((prev) => !prev)}
-        >
-          {areShowingExtraFields ? "Hide" : "Show"} advanced fields
-        </Button>
+        {areShowingExtraFields && (
+          <Flex direction="column" gap="2" mt="4">
+            {renderProviderFields({
+              providerData: formValues,
+              fields: extraFields,
+              handleValuesChange,
+            })}
+          </Flex>
+        )}
+        <Flex my="2" align="center" justify="center">
+          <Button
+            className={classNames(styles.button, styles.extraButton)}
+            variant="ghost"
+            color="gray"
+            onClick={() => setAreShowingExtraFields((prev) => !prev)}
+          >
+            {areShowingExtraFields ? "Hide" : "Show"} advanced fields
+          </Button>
+        </Flex>
       </Flex>
-      <Flex gap="2" align="center">
+      <Flex gap="2" align="center" mt="4">
         <Button
           className={styles.button}
           variant="outline"
@@ -77,7 +107,9 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({
         <Button
           className={styles.button}
           variant="solid"
-          disabled={isEqual(formValues, fullProviderData)}
+          disabled={
+            fullProviderData.readonly || isEqual(formValues, fullProviderData)
+          }
           title="Save Provider configuration"
           onClick={() => handleSaveChanges(formValues)}
         >
@@ -99,23 +131,7 @@ export function renderProviderFields({
   handleValuesChange: (updatedProviderData: Provider) => void;
 }) {
   return Object.entries(fields).map(([key, value], idx) => {
-    if (key === "name" || key === "readonly") return null;
-
-    if (key === "enabled") {
-      return (
-        <Flex key={`${key}_${idx}`} align="center" gap="3">
-          <label htmlFor={key}>{toPascalCase(key)}</label>
-          <Switch
-            id={key}
-            checked={Boolean(value)}
-            value={value ? "on" : "off"}
-            onCheckedChange={(checked) =>
-              handleValuesChange({ ...providerData, [key]: checked })
-            }
-          />
-        </Flex>
-      );
-    }
+    if (key === "name" || key === "readonly" || key === "enabled") return null;
 
     if (key === "endpoint_style") {
       const availableOptions: Provider["endpoint_style"][] = ["openai", "hf"];
@@ -128,9 +144,10 @@ export function renderProviderFields({
             onValueChange={(value: Provider["endpoint_style"]) =>
               handleValuesChange({ ...providerData, endpoint_style: value })
             }
+            disabled={providerData.readonly}
           >
             <Select.Trigger />
-            <Select.Content>
+            <Select.Content position="popper">
               {availableOptions.map((option) => (
                 <Select.Item key={option} value={option}>
                   {option}
@@ -150,6 +167,10 @@ export function renderProviderFields({
           onChange={(event) =>
             handleValuesChange({ ...providerData, [key]: event.target.value })
           }
+          className={classNames({
+            [styles.disabledField]: providerData.readonly,
+          })}
+          disabled={providerData.readonly}
         />
       </Flex>
     );
