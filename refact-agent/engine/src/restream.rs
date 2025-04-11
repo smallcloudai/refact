@@ -8,6 +8,7 @@ use reqwest_eventsource::Event;
 use reqwest_eventsource::Error as REError;
 use serde_json::{json, Value};
 use tracing::info;
+use uuid;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::caps::BaseModelRecord;
@@ -69,6 +70,8 @@ pub async fn scratchpad_interaction_not_stream_json(
             ));
         ScratchError::new_but_skip_telemetry(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     })?;
+    generate_uuid_for_empty_tool_call_ids(&mut model_says);
+    
     tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
         save_url.clone(),
         scope.clone(),
@@ -364,7 +367,8 @@ pub async fn scratchpad_interaction_stream(
                         if message.data.starts_with("[DONE]") {
                             break;
                         }
-                        let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
+                        let mut json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
+                        generate_uuid_for_empty_tool_call_ids(&mut json);
                         crate::global_context::look_for_piggyback_fields(gcx.clone(), &json).await;
                         match _push_streaming_json_into_scratchpad(
                             my_scratchpad,
@@ -492,6 +496,36 @@ pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
         return true;
     }
     return false;
+}
+
+/// Adds UUIDs to any empty tool call IDs in the given JSON value
+fn generate_uuid_for_empty_tool_call_ids(value: &mut serde_json::Value) {
+    fn process_tool_call(tool_call: &mut serde_json::Value) {
+        if let Some(id) = tool_call.get_mut("id") {
+            if id.is_string() && id.as_str().unwrap_or("").is_empty() {
+                let uuid = uuid::Uuid::new_v4().to_string().replace("-", "");
+                *id = json!(format!("call_{uuid}"));
+                tracing::info!("Generated UUID for empty tool call ID: call_{}", uuid);
+            }
+        }
+    }
+
+    if let Some(tool_calls) = value.get_mut("tool_calls").and_then(|tc| tc.as_array_mut()) {
+        tool_calls.iter_mut().for_each(process_tool_call);
+    }
+    
+    if let Some(choices) = value.get_mut("choices").and_then(|c| c.as_array_mut()) {
+        for choice in choices {
+            for field in ["delta", "message"] {
+                if let Some(tool_calls) = choice.get_mut(field)
+                    .and_then(|v| v.get_mut("tool_calls"))
+                    .and_then(|tc| tc.as_array_mut()) 
+                {
+                    tool_calls.iter_mut().for_each(process_tool_call);
+                }
+            }
+        }
+    }
 }
 
 fn _push_streaming_json_into_scratchpad(
