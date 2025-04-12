@@ -154,6 +154,13 @@ impl ChatContentRaw {
             }
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        match self {
+            ChatContentRaw::SimpleText(text) => text.is_empty(),
+            ChatContentRaw::Multimodal(elements) => elements.is_empty(),
+        }
+    }
 }
 
 impl ChatContent {
@@ -254,11 +261,15 @@ impl ChatMessage {
         let mut dict = serde_json::Map::new();
         let chat_content_raw = self.content.into_raw(style);
         dict.insert("role".to_string(), Value::String(self.role.clone()));
-        dict.insert("content".to_string(), json!(chat_content_raw));
+        if !chat_content_raw.is_empty() {
+            dict.insert("content".to_string(), json!(chat_content_raw));
+        }
         if let Some(tool_calls) = self.tool_calls.clone() {
             dict.insert("tool_calls".to_string(), json!(tool_calls));
         }
-        dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
+        if !self.tool_call_id.is_empty() {
+            dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
+        }
         if let Some(thinking_blocks) = self.thinking_blocks.clone() {
             dict.insert("thinking_blocks".to_string(), json!(thinking_blocks));
         }
