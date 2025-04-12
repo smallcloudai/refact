@@ -235,11 +235,15 @@ pub async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<St
     (yaml_paths, errors)
 }
 
-pub fn post_process_provider(provider: &mut CapsProvider) {
+pub fn post_process_provider(provider: &mut CapsProvider, include_disabled_models: bool) {
     add_running_models(provider);
     populate_model_records(provider);
     apply_models_dict_patch(provider);
     add_name_and_id_to_model_records(provider);
+    if !include_disabled_models {
+        provider.chat_models.retain(|_, model| model.base.enabled);
+        provider.completion_models.retain(|_, model| model.base.enabled);
+    }
 }
 
 pub async fn read_providers_d(
@@ -313,14 +317,12 @@ pub async fn read_providers_d(
 }
 
 fn add_running_models(provider: &mut CapsProvider) {
-    let mut models_to_add = vec![
+    let models_to_add = vec![
         &provider.defaults.chat_default_model,
         &provider.defaults.chat_light_model,
         &provider.defaults.chat_thinking_model,
         &provider.defaults.completion_default_model,
     ];
-    models_to_add.extend(provider.chat_models.keys());
-    models_to_add.extend(provider.completion_models.keys());
 
     for model in models_to_add {
         if !model.is_empty() && !provider.running_models.contains(model) {
@@ -589,7 +591,7 @@ pub async fn get_provider_from_template_and_config_file(
     provider.apply_override(config_file_value)?;
 
     if post_process {
-        post_process_provider(&mut provider);
+        post_process_provider(&mut provider, true);
     }
     
     Ok(provider)
@@ -604,7 +606,7 @@ pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Resul
     
     resolve_relative_urls(&mut provider, &caps_url)?;
     
-    post_process_provider(&mut provider);
+    post_process_provider(&mut provider, true);
     provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
 

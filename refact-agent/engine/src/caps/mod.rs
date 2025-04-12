@@ -305,11 +305,12 @@ pub async fn load_caps(
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
     
     let (mut providers, error_log) = read_providers_d(server_providers, &config_dir).await;
+    providers.retain(|p| p.enabled);
     for e in error_log {
         tracing::error!("{e}");
     }
     for provider in &mut providers {
-        post_process_provider(provider);
+        post_process_provider(provider, false);
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     }
     add_models_to_caps(&mut caps, providers);
