@@ -571,6 +571,8 @@ fn _push_streaming_json_into_scratchpad(
         }
         value["model"] = json!(model_name.clone());
         Ok((value, finish_reason))
+    } else if json.get("type").and_then(|t| t.as_str()) == Some("ping") {
+        Ok((serde_json::value::Value::Null, FinishReason::None))
     } else if let Some(err) = json.get("error") {
         Err(format!("{}", err))
     } else if let Some(msg) = json.get("human_readable_message") {
