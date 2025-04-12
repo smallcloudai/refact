@@ -398,7 +398,7 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
             caps.chat_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
-        if provider.embedding_model.is_configured() {
+        if provider.embedding_model.is_configured() && provider.embedding_model.base.enabled {
             let mut embedding_model = std::mem::take(&mut provider.embedding_model);
 
             if embedding_model.base.endpoint.is_empty() {
