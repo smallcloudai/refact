@@ -519,6 +519,33 @@
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },
+        "gemini-2.5-pro": {
+            "n_ctx": 1048576,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gemma2-tokenizer",
+            "similar_models": [
+                "gemini-2.5-pro-exp-03-25",
+                "gemini-2.5-pro-preview-03-25",
+                "google_gemini/gemini-2.5-pro",
+                "google_gemini/gemini-2.5-pro-exp-03-25",
+                "google_gemini/gemini-2.5-pro-preview-03-25"
+            ]
+        },
+        "gemini-2.0-flash": {
+            "n_ctx": 1048576,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gemma2-tokenizer",
+            "similar_models": [
+                "models/gemini-2.0-flash",
+                "google_gemini/models/gemini-2.0-flash"
+            ]
+        },
         "gemini-2.0-flash-exp": {
             "n_ctx": 128000,
             "supports_tools": true,
@@ -530,6 +557,18 @@
                 "gemini-1.5-flash-8b"
             ],
             "tokenizer": "hf://Xenova/gemma2-tokenizer"
+        },
+        "gemini-2.0-flash-lite": {
+            "n_ctx": 1048576,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gemma2-tokenizer",
+            "similar_models": [
+                "models/gemini-2.0-flash-lite",
+                "google_gemini/models/gemini-2.0-flash-lite"
+            ]
         },
         "gemini-1.5-pro": {
             "n_ctx": 128000,
@@ -854,6 +893,24 @@
                 "openai/text-embedding-3-small"
             ],
             "tokenizer": "hf://Xenova/text-embedding-ada-002"
+        },
+        "gemini-embedding-exp": {
+            "n_ctx": 8192,
+            "embedding_size": 3072,
+            "similar_models": [
+                "gemini-embedding-exp-03-07",
+                "google_gemini/gemini-embedding-exp",
+                "google_gemini/gemini-embedding-exp-03-07"
+            ],
+            "tokenizer": "hf://Xenova/gemma2-tokenizer"
+        },
+        "models/text-embedding-004": {
+            "n_ctx": 2048,
+            "embedding_size": 768,
+            "similar_models": [
+                "google_gemini/models/text-embedding-004"
+            ],
+            "tokenizer": "hf://Xenova/gemma2-tokenizer"
         }
     },
     "comments": [
