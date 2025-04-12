@@ -257,11 +257,11 @@ impl ChatMessage {
         }
     }
 
-    pub fn into_value(&self, style: &Option<String>) -> Value {
+    pub fn into_value(&self, style: &Option<String>, model_id: &str) -> Value {
         let mut dict = serde_json::Map::new();
         let chat_content_raw = self.content.into_raw(style);
         dict.insert("role".to_string(), Value::String(self.role.clone()));
-        if !chat_content_raw.is_empty() {
+        if model_supports_empty_strings(model_id) || !chat_content_raw.is_empty() {
             dict.insert("content".to_string(), json!(chat_content_raw));
         }
         if let Some(tool_calls) = self.tool_calls.clone() {
@@ -319,4 +319,9 @@ impl<'de> Deserialize<'de> for ChatMessage {
             ..Default::default()
         })
     }
+}
+
+/// If API supports sending fields with empty strings
+fn model_supports_empty_strings(model_id: &str) -> bool {
+    !model_id.starts_with("google_gemini/")
 }
