@@ -107,17 +107,15 @@ class ModelAssigner:
     def models_db(self) -> Dict[str, Any]:
         return models_mini_db
 
-    @staticmethod
-    def to_completion_model_record(model_info: Dict[str, Any]) -> Dict[str, Any]:
+    def to_completion_model_record(self, model_name: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "n_ctx": model_info["T"],
+            "n_ctx": min(self.model_assignment["model_assign"].get(model_name, {}).get("n_ctx", model_info["T"]), model_info["T"]),
             "supports_scratchpads": model_info["supports_scratchpads"]["completion"],
         }
 
-    @staticmethod
-    def to_chat_model_record(model_info: Dict[str, Any]) -> Dict[str, Any]:
+    def to_chat_model_record(self, model_name: str, model_info: Dict[str, Any]) -> Dict[str, Any]:
         return {
-            "n_ctx": model_info["T"],
+            "n_ctx": min(self.model_assignment["model_assign"].get(model_name, {}).get("n_ctx", model_info["T"]), model_info["T"]),
             "supports_scratchpads": model_info["supports_scratchpads"]["chat"],
         }
 
