@@ -158,6 +158,42 @@ export const providersApi = createApi({
         return { data: result.data };
       },
     }),
+    deleteProvider: builder.mutation<unknown, string>({
+      invalidatesTags: (_result, _error, args) => [
+        { type: "PROVIDER", id: args },
+      ],
+      queryFn: async (args, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${PROVIDER_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "DELETE",
+          url,
+          params: {
+            "provider-name": args,
+          },
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) {
+          return { error: result.error };
+        }
+        if (isDetailMessage(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from /v1/provider",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
   }),
   refetchOnMountOrArgChange: true,
 });

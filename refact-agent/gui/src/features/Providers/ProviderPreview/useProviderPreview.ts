@@ -1,7 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useAppDispatch } from "../../../hooks";
-import { useUpdateProviderMutation } from "../../../hooks/useProvidersQuery";
+import {
+  useDeleteProviderMutation,
+  useUpdateProviderMutation,
+} from "../../../hooks/useProvidersQuery";
 
 import { setInformation } from "../../Errors/informationSlice";
 import { providersApi } from "../../../services/refact";
@@ -16,12 +19,21 @@ export function useProviderPreview(
   ) => void,
 ) {
   const dispatch = useAppDispatch();
+
+  const [isSavingProvider, setIsSavingProvider] = useState(false);
+  const [isDeletingProvider, setIsDeletingProvider] = useState(false);
+
   const updateProvider = useUpdateProviderMutation();
+  const deleteProvider = useDeleteProviderMutation();
 
   const handleSaveChanges = useCallback(
     async (updatedProviderData: Provider) => {
+      setIsSavingProvider(true);
       const response = await updateProvider(updatedProviderData);
-      if (response.error) return;
+      if (response.error) {
+        setIsSavingProvider(false);
+        return;
+      }
       const actions = [
         setInformation(
           `Provider ${getProviderName(
@@ -36,13 +48,40 @@ export function useProviderPreview(
     [dispatch, handleSetCurrentProvider, updateProvider],
   );
 
+  const handleDeleteProvider = useCallback(
+    async (providerName: string) => {
+      setIsDeletingProvider(true);
+      const response = await deleteProvider(providerName);
+
+      if (response.error) {
+        setIsDeletingProvider(false);
+        return;
+      }
+
+      const actions = [
+        setInformation(
+          `${providerName}'s Provider configuration was deleted successfully`,
+        ),
+        providersApi.util.resetApiState(),
+      ];
+
+      actions.forEach((action) => dispatch(action));
+      handleSetCurrentProvider(null);
+      setIsDeletingProvider(false);
+    },
+    [dispatch, deleteProvider, handleSetCurrentProvider],
+  );
+
   const handleDiscardChanges = useCallback(() => {
     handleSetCurrentProvider(null);
   }, [handleSetCurrentProvider]);
 
   return {
     updateProvider,
+    handleDeleteProvider,
     handleDiscardChanges,
     handleSaveChanges,
+    isSavingProvider,
+    isDeletingProvider,
   };
 }

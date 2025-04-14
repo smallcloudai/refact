@@ -20,3 +20,8 @@ export function useUpdateProviderMutation() {
   const [mutationTrigger] = providersApi.useUpdateProviderMutation();
   return mutationTrigger;
 }
+
+export function useDeleteProviderMutation() {
+  const [mutationTrigger] = providersApi.useDeleteProviderMutation();
+  return mutationTrigger;
+}

@@ -62,14 +62,16 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
             {getProviderName(provider)}
           </Heading>
         </Flex>
-        <Flex align="center" gap="2">
-          <OnOffSwitch
-            isEnabled={provider.enabled}
-            isUpdating={isUpdatingEnabledState}
-            isUnavailable={isUpdatingEnabledState || provider.readonly}
-            handleClick={handleSwitchClick}
-          />
-        </Flex>
+        {!provider.readonly && (
+          <Flex align="center" gap="2">
+            <OnOffSwitch
+              isEnabled={provider.enabled}
+              isUpdating={isUpdatingEnabledState}
+              isUnavailable={isUpdatingEnabledState}
+              handleClick={handleSwitchClick}
+            />
+          </Flex>
+        )}
       </Flex>
     </Card>
   );

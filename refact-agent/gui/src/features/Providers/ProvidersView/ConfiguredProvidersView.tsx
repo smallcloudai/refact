@@ -1,14 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 
 import { Button, Flex, Heading, Select, Text } from "@radix-ui/themes";
 import { ProviderCard } from "../ProviderCard/ProviderCard";
 
-import type {
-  ConfiguredProvidersResponse,
-  SimplifiedProvider,
-} from "../../../services/refact";
-import { useGetProviderTemplatesQuery } from "../../../hooks/useProvidersQuery";
+import type { ConfiguredProvidersResponse } from "../../../services/refact";
 import { getProviderName } from "../getProviderName";
+import { useGetConfiguredProvidersView } from "./useConfiguredProvidersView";
 
 export type ConfiguredProvidersViewProps = {
   configuredProviders: ConfiguredProvidersResponse["providers"];
@@ -20,32 +17,15 @@ export type ConfiguredProvidersViewProps = {
 export const ConfiguredProvidersView: React.FC<
   ConfiguredProvidersViewProps
 > = ({ configuredProviders, handleSetCurrentProvider }) => {
-  const [potentialCurrentProvider, setPotentialCurrentProvider] =
-    useState<SimplifiedProvider<"name">>();
-
-  const { data: providerTemplatesData } = useGetProviderTemplatesQuery();
-
-  const handlePotentialCurrentProvider = useCallback((value: string) => {
-    setPotentialCurrentProvider({
-      name: value,
-    });
-  }, []);
-
-  const handleAddNewProvider = useCallback(() => {
-    if (!potentialCurrentProvider) return;
-
-    handleSetCurrentProvider({
-      name: potentialCurrentProvider.name,
-      enabled: true,
-      readonly: false,
-    });
-  }, [handleSetCurrentProvider, potentialCurrentProvider]);
-
-  useEffect(() => {
-    if (providerTemplatesData) {
-      setPotentialCurrentProvider(providerTemplatesData.provider_templates[0]);
-    }
-  }, [providerTemplatesData]);
+  const {
+    handleAddNewProvider,
+    handlePotentialCurrentProvider,
+    notConfiguredProviderTemplates,
+    potentialCurrentProvider,
+  } = useGetConfiguredProvidersView({
+    configuredProviders,
+    handleSetCurrentProvider,
+  });
 
   return (
     <Flex direction="column" gap="2" justify="between" height="100%">
@@ -68,19 +48,19 @@ export const ConfiguredProvidersView: React.FC<
           />
         ))}
       </Flex>
-      {providerTemplatesData && (
+      {notConfiguredProviderTemplates.length > 0 && (
         <Flex direction="column" gap="2">
           <Heading as="h3" size="3">
             Add new provider
           </Heading>
           <Select.Root
-            defaultValue={providerTemplatesData.provider_templates[0].name}
+            defaultValue={notConfiguredProviderTemplates[0].name}
             size="2"
             onValueChange={handlePotentialCurrentProvider}
           >
             <Select.Trigger />
             <Select.Content variant="solid" position="popper">
-              {providerTemplatesData.provider_templates.map((provider) => {
+              {notConfiguredProviderTemplates.map((provider) => {
                 return (
                   <Select.Item key={provider.name} value={provider.name}>
                     {getProviderName(provider)}

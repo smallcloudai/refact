@@ -7,6 +7,8 @@ import { RefactIcon } from "./Refact";
 
 export const iconsMap: Record<string, JSX.Element> = {
   Refact: <RefactIcon />,
+  refact: <RefactIcon />,
+  refact_self_hosted: <RefactIcon />,
   openai: <OpenAIIcon />,
   anthropic: <AnthropicIcon />,
   google_gemini: <GeminiIcon />,

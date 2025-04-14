@@ -38,7 +38,13 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({
   const { extraFields, importantFields } = aggregateProviderFields(formValues);
 
   return (
-    <Flex direction="column" width="100%" height="100%" justify="between">
+    <Flex
+      direction="column"
+      width="100%"
+      height="100%"
+      mt="2"
+      justify="between"
+    >
       <Flex direction="column" width="100%" gap="2">
         <Flex align="center" justify="between" gap="3" mb="2">
           <label htmlFor={"enabled"}>{toPascalCase("enabled")}</label>
