@@ -9,7 +9,12 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const providersApi = createApi({
   reducerPath: "providers",
-  tagTypes: ["PROVIDERS", "TEMPLATE_PROVIDERS", "PROVIDER"],
+  tagTypes: [
+    "PROVIDERS",
+    "TEMPLATE_PROVIDERS",
+    "CONFIGURED_PROVIDERS",
+    "PROVIDER",
+  ],
   baseQuery: fetchBaseQuery({
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).config.apiKey;
@@ -52,6 +57,7 @@ export const providersApi = createApi({
 
         return { data: result.data };
       },
+      providesTags: [{ type: "CONFIGURED_PROVIDERS", id: "LIST" }],
     }),
     getProviderTemplates: builder.query<ProviderTemplatesResponse, undefined>({
       queryFn: async (_args, api, extraOptions, baseQuery) => {

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
 import { Button, Flex, Heading, Select, Text } from "@radix-ui/themes";
-import { ProviderCard } from "../ProviderCard";
+import { ProviderCard } from "../ProviderCard/ProviderCard";
 
 import type {
   ConfiguredProvidersResponse,

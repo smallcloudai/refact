@@ -1,4 +1,4 @@
-import { SimplifiedProvider } from "../../services/refact";
+import type { SimplifiedProvider } from "../../services/refact";
 import { BEAUTIFUL_PROVIDER_NAMES } from "./constants";
 
 export function getProviderName(provider: SimplifiedProvider): string {
