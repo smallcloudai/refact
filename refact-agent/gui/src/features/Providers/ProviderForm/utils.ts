@@ -9,6 +9,7 @@ const EXTRA_FIELDS_KEYS = [
   "embedding_endpoint",
   "completion_endpoint",
   "chat_endpoint",
+  "tokenizer_api_key",
 ];
 
 export function aggregateProviderFields(providerData: Provider) {
