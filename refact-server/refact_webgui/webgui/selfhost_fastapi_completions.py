@@ -2,7 +2,6 @@ import time
 import json
 import copy
 import asyncio
-import aiohttp
 import aiofiles
 import termcolor
 import os
@@ -12,6 +11,8 @@ import traceback
 
 from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import Response, StreamingResponse
+
+from itertools import chain
 
 from refact_utils.scripts import env
 from refact_utils.finetune.utils import running_models_and_loras
@@ -339,6 +340,16 @@ class BaseCompletionsRouter(APIRouter):
 
     @staticmethod
     def _to_deprecated_caps_format(data: Dict[str, Any]):
+        models_dict_patch = {}
+        for model_name, model_record in chain(
+                data["completion"]["models"].items(),
+                data["completion"]["models"].items(),
+        ):
+            dict_patch = {}
+            if n_ctx := model_record.get("n_ctx"):
+                dict_patch["n_ctx"] = n_ctx
+            if dict_patch:
+                models_dict_patch[model_name] = dict_patch
         return {
             "cloud_name": data["cloud_name"],
             "endpoint_template": data["completion"]["endpoint"],
