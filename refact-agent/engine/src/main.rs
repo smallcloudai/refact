@@ -28,6 +28,7 @@ mod telemetry;
 mod global_context;
 mod background_tasks;
 mod yaml_configs;
+mod json_utils;
 
 mod file_filter;
 mod files_in_workspace;
