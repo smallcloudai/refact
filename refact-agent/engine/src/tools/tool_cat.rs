@@ -25,6 +25,32 @@ pub struct ToolCat;
 const CAT_MAX_IMAGES_CNT: usize = 1;
 
 fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap<String, Option<(usize, usize)>>, Vec<String>), String> {
+    fn try_parse_line_range(s: &str) -> Result<Option<(usize, usize)>, String> {
+        let s = s.trim();
+        
+        // Try parsing as a single number (like "10")
+        if let Ok(n) = s.parse::<usize>() {
+            return Ok(Some((n, n)));
+        }
+        
+        // Try parsing as a range (like "10-20")
+        if s.contains('-') {
+            let parts = s.split('-').collect::<Vec<_>>();
+            if parts.len() == 2 {
+                if let Ok(start) = parts[0].trim().parse::<usize>() {
+                    if let Ok(end) = parts[1].trim().parse::<usize>() {
+                        if start > end {
+                            return Err(format!("Start line ({}) cannot be greater than end line ({})", start, end));
+                        }
+                        return Ok(Some((start, end)));
+                    }
+                }
+            }
+        }
+        
+        Ok(None) // Not a line range - likely a Windows path
+    }
+    
     let raw_paths = match args.get("paths") {
         Some(Value::String(s)) => {
             s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>()
@@ -37,43 +63,18 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
     let mut path_line_ranges = HashMap::new();
     
     for path_str in raw_paths {
-        if let Some(colon_pos) = path_str.find(':') {
-            let (file_path, range_str) = path_str.split_at(colon_pos);
-            let file_path = file_path.trim().to_string();
-            let range_str = range_str[1..].trim(); // Remove the colon
-            
-            // Parse the line range
-            if range_str.contains('-') {
-                let range_parts: Vec<&str> = range_str.split('-').collect();
-                if range_parts.len() == 2 {
-                    let start = match range_parts[0].trim().parse::<usize>() {
-                        Ok(n) => n,
-                        Err(_) => return Err(format!("Invalid start line: {}", range_parts[0]))
-                    };
-                    let end = match range_parts[1].trim().parse::<usize>() {
-                        Ok(n) => n,
-                        Err(_) => return Err(format!("Invalid end line: {}", range_parts[1]))
-                    };
-                    if start > end {
-                        return Err(format!("Start line ({}) cannot be greater than end line ({})", start, end));
-                    }
-                    path_line_ranges.insert(file_path.clone(), Some((start, end)));
-                } else {
-                    return Err(format!("Invalid line range format: {}", range_str));
-                }
-            } else {
-                // Single line case
-                match range_str.parse::<usize>() {
-                    Ok(n) => path_line_ranges.insert(file_path.clone(), Some((n, n))),
-                    Err(_) => return Err(format!("Invalid line number: {}", range_str))
-                };
+        let (file_path, range) = if let Some(colon_pos) = path_str.rfind(':') {
+            match try_parse_line_range(&path_str[colon_pos+1..])? {
+                Some((start, end)) => {
+                    (path_str[..colon_pos].trim().to_string(), Some((start, end)))
+                },
+                None => (path_str, None),
             }
-            
-            paths.push(file_path);
         } else {
-            paths.push(path_str.clone());
-            path_line_ranges.insert(path_str, None);
-        }
+            (path_str, None)
+        };
+        path_line_ranges.insert(file_path.clone(), range);
+        paths.push(file_path);
     }
     
     let symbols = match args.get("symbols") {
