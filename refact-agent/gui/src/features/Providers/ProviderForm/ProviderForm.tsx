@@ -15,12 +15,14 @@ import styles from "./ProviderForm.module.css";
 
 export type ProviderFormProps = {
   currentProvider: SimplifiedProvider<"name" | "enabled" | "readonly">;
+  isSaving: boolean;
   handleDiscardChanges: () => void;
   handleSaveChanges: (updatedProviderData: Provider) => void;
 };
 
 export const ProviderForm: React.FC<ProviderFormProps> = ({
   currentProvider,
+  isSaving,
   handleDiscardChanges,
   handleSaveChanges,
 }) => {
@@ -101,11 +103,11 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({
         <Button
           className={styles.button}
           variant="solid"
-          disabled={shouldSaveButtonBeDisabled}
+          disabled={isSaving || shouldSaveButtonBeDisabled}
           title="Save Provider configuration"
           onClick={() => handleSaveChanges(formValues)}
         >
-          Save
+          {isSaving ? "Saving..." : "Save"}
         </Button>
       </Flex>
     </Flex>

@@ -26,6 +26,7 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
     handleSaveChanges,
     handleDeleteProvider,
     isDeletingProvider,
+    isSavingProvider,
   } = useProviderPreview(handleSetCurrentProvider);
 
   return (
@@ -49,6 +50,7 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
         handleSaveChanges={(updatedProviderData) =>
           void handleSaveChanges(updatedProviderData)
         }
+        isSaving={isSavingProvider}
         handleDiscardChanges={handleDiscardChanges}
       />
     </Flex>
