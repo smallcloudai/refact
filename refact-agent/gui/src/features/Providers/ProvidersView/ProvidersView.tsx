@@ -7,7 +7,7 @@ import type {
   ConfiguredProvidersResponse,
   SimplifiedProvider,
 } from "../../../services/refact";
-import { ProviderPreview } from "../ProviderPreview";
+import { ProviderPreview } from "../ProviderPreview/ProviderPreview";
 import {
   ErrorCallout,
   InformationCallout,
