@@ -27,7 +27,7 @@ export const modelsApi = createApi({
           method: "GET",
           url,
           params: {
-            provider: args.providerName,
+            "provider-name": args.providerName,
           },
           credentials: "same-origin",
           redirect: "follow",
@@ -55,7 +55,7 @@ export const modelsApi = createApi({
 
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${MODELS_URL}`;
+        const url = `http://127.0.0.1:${port}${MODEL_URL}`;
 
         const result = await baseQuery({
           ...extraOptions,
@@ -158,10 +158,16 @@ export const modelsApi = createApi({
   refetchOnMountOrArgChange: true,
 });
 
+export type SimplifiedModel = {
+  name: string;
+  enabled: boolean;
+  removable: boolean;
+};
+
 export type ModelsResponse = {
-  completion_models: CodeCompletionModel[];
-  chat_models: CodeChatModel[];
-  embedding_model: EmbeddingModel;
+  completion_models: SimplifiedModel[];
+  chat_models: SimplifiedModel[];
+  embedding_model: SimplifiedModel;
 };
 
 export type ModelType = "embedding" | "completion" | "chat";
@@ -264,7 +270,11 @@ export function isCodeChatModel(data: unknown): data is CodeChatModel {
     return false;
 
   if (!("supports_reasoning" in data)) return false;
-  if (!SUPPORTS_REASONING_STYLES.includes(data.supports_reasoning as string))
+
+  if (
+    typeof data.supports_reasoning === "string" &&
+    !SUPPORTS_REASONING_STYLES.includes(data.supports_reasoning)
+  )
     return false;
 
   if (

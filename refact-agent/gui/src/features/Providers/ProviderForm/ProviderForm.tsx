@@ -12,6 +12,7 @@ import { toPascalCase } from "../../../utils/toPascalCase";
 import { aggregateProviderFields } from "./utils";
 
 import styles from "./ProviderForm.module.css";
+import { ProviderModelsList } from "./ProviderModelsList/ProviderModelsList";
 
 export type ProviderFormProps = {
   currentProvider: SimplifiedProvider<"name" | "enabled" | "readonly">;
@@ -91,6 +92,7 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({
             {areShowingExtraFields ? "Hide" : "Show"} advanced fields
           </Button>
         </Flex>
+        <ProviderModelsList provider={currentProvider} />
       </Flex>
       <Flex gap="2" align="center" mt="4">
         <Button
