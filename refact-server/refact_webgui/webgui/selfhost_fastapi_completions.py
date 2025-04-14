@@ -348,6 +348,8 @@ class BaseCompletionsRouter(APIRouter):
             dict_patch = {}
             if n_ctx := model_record.get("n_ctx"):
                 dict_patch["n_ctx"] = n_ctx
+            if supports_tools := model_record.get("supports_tools"):
+                dict_patch["supports_tools"] = supports_tools
             if dict_patch:
                 models_dict_patch[model_name] = dict_patch
         return {
@@ -362,7 +364,7 @@ class BaseCompletionsRouter(APIRouter):
             "code_completion_default_model": data["completion"]["default_model"],
             "multiline_code_completion_default_model": data["completion"]["default_multiline_model"],
             "code_chat_default_model": data["chat"]["default_model"],
-            "models_dict_patch": {},  # NOTE: this actually should have n_ctx, but we're skiping it
+            "models_dict_patch": models_dict_patch,
             "default_embeddings_model": data["embedding"]["default_model"],
             "endpoint_embeddings_template": "v1/embeddings",
             "endpoint_embeddings_style": "openai",
