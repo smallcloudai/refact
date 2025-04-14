@@ -246,18 +246,34 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
                 let ccx_locked = ccx.lock().await;
                 ccx_locked.postprocess_parameters.clone()
             };
-            let extra_context = retrieve_ast_based_extra_context(
-                self.global_context.clone(),
-                self.ast_service.clone(),
-                &self.t,
-                &cpath,
-                &pos,
-                (fim_line1, fim_line2),
-                pp_settings,
-                rag_tokens_n,
-                &mut self.context_used
-            ).await;
-            prompt = format!("{extra_context}{prompt}");
+
+            // NOTE: why do we need this loop?
+            // postprocess_context_files doesn't care about additional tokens after lines skip
+            // in real world retrieve_ast_based_extra_context can produce context that doesn't fit in the budget
+            // if so we need to reduce budget and retrieve context again
+            let mut extra_content_collect_counter = 0;
+            let mut content_tokens_budget = rag_tokens_n as i32;
+            loop {
+                let extra_context = retrieve_ast_based_extra_context(
+                    self.global_context.clone(),
+                    self.ast_service.clone(),
+                    &self.t,
+                    &cpath,
+                    &pos,
+                    (fim_line1, fim_line2),
+                    pp_settings.clone(),
+                    content_tokens_budget as usize,
+                    &mut self.context_used
+                ).await;
+                let content_tokens_n = self.t.count_tokens(&extra_context.as_str())?;
+                if content_tokens_n <= content_tokens_budget || extra_content_collect_counter > 1 {
+                    prompt = format!("{extra_context}{prompt}");
+                    break;
+                } else {
+                    content_tokens_budget -= content_tokens_n - content_tokens_budget;
+                    extra_content_collect_counter += 1;
+                }
+            }
         }
 
         if DEBUG {
