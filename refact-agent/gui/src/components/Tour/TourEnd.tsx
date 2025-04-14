@@ -36,7 +36,10 @@ export const TourEnd = () => {
           <Text>
             -{" "}
             <Link
-              style={{ color: "black", textDecoration: "underline" }}
+              style={{
+                color: appearance === "light" ? "white" : "black",
+                textDecoration: "underline",
+              }}
               onClick={() => openUrl("https://docs.refact.ai")}
             >
               Check out our documentation
