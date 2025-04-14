@@ -2,7 +2,7 @@ completion_endpoint: https://openrouter.ai/api/v1/chat/completions
 chat_endpoint:       https://openrouter.ai/api/v1/chat/completions
 embedding_endpoint:  https://openrouter.ai/api/v1/embeddings
 
-api_key: "sk-..."
+api_key: "sk-or-..."
 
 running_models:
   - anthropic/claude-3.7-sonnet
