@@ -68,7 +68,7 @@ export const ModelCard: FC<ModelCardProps> = ({
             {name}
           </Text>
           <Badge size="1" color={enabled ? "green" : "gray"}>
-            {enabled ? "Active model" : "Disabled model"}
+            {enabled ? "Active" : "Inactive"}
           </Badge>
         </Flex>
 
