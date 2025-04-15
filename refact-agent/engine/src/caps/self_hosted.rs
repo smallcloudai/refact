@@ -8,7 +8,7 @@ use crate::caps::{
     BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels,
     EmbeddingModelRecord, default_chat_scratchpad, default_completion_scratchpad,
     default_completion_scratchpad_patch, default_embedding_batch, default_hf_tokenizer_template,
-    default_rejection_threshold, relative_to_full_url
+    default_rejection_threshold, relative_to_full_url, normalize_string
 };
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -75,6 +75,7 @@ pub struct SelfHostedCapsTelemetryEndpoints {
 
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct SelfHostedCaps {
+    #[serde(deserialize_with = "normalize_string")]
     pub cloud_name: String,
 
     pub completion: SelfHostedCapsCompletion,

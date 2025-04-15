@@ -143,6 +143,7 @@ impl EmbeddingModelRecord {
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
+    #[serde(deserialize_with = "normalize_string")]
     pub cloud_name: String,
 
     #[serde(default = "default_telemetry_basic_dest")]
@@ -180,6 +181,11 @@ pub fn default_hf_tokenizer_template() -> String {
 
 fn default_telemetry_basic_dest() -> String { 
     "https://www.smallcloud.ai/v1/telemetry-basic".to_string() 
+}
+
+pub fn normalize_string<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let s: String = String::deserialize(deserializer)?;
+    Ok(s.chars().map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { '_' }).collect())
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]

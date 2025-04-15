@@ -9,14 +9,14 @@ use structopt::StructOpt;
 use crate::caps::{
     BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, 
     EmbeddingModelRecord, HasBaseModelRecord, default_embedding_batch, default_rejection_threshold,
-    load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune
+    load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune, normalize_string
 };
 use crate::custom_error::{MapErrToString, YamlError};
 use crate::global_context::{CommandLine, GlobalContext};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CapsProvider {
-    #[serde(alias = "cloud_name", default)]
+    #[serde(alias = "cloud_name", default, deserialize_with = "normalize_string")]
     pub name: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
