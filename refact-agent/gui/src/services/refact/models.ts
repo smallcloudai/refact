@@ -2,6 +2,7 @@ import { RootState } from "../../app/store";
 import { MODEL_URL, MODELS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { hasProperty } from "./providers";
+import { isDetailMessage } from "./commands";
 
 export const modelsApi = createApi({
   reducerPath: "models",
@@ -17,6 +18,7 @@ export const modelsApi = createApi({
   }),
   endpoints: (builder) => ({
     getModels: builder.query<ModelsResponse, GetModelsArgs>({
+      providesTags: ["MODELS"],
       queryFn: async (args, api, extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
@@ -50,6 +52,7 @@ export const modelsApi = createApi({
       },
     }),
     getModel: builder.query<Model, GetModelArgs>({
+      providesTags: ["MODEL"],
       queryFn: async (args, api, extraOptions, baseQuery) => {
         const { modelName, modelType, providerName } = args;
 
@@ -88,7 +91,7 @@ export const modelsApi = createApi({
     }),
     updateModel: builder.mutation<unknown, UpdateModelRequestBody>({
       invalidatesTags: (_result, _error, args) => [
-        { type: "MODEL", id: args.model },
+        { type: "MODEL", id: args.model.name },
       ],
       queryFn: async (args, api, extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
@@ -103,10 +106,13 @@ export const modelsApi = createApi({
           credentials: "same-origin",
           redirect: "follow",
         });
+
         if (result.error) {
           return { error: result.error };
         }
-        if (!isModel(result.data)) {
+
+        // TODO: this doesn't really work, RTK Query gets FETCH_ERROR is request is failed and is dropping off actual response from the LSP :/
+        if (isDetailMessage(result.data)) {
           return {
             meta: result.meta,
             error: {
@@ -140,7 +146,7 @@ export const modelsApi = createApi({
         if (result.error) {
           return { error: result.error };
         }
-        if (!isModel(result.data)) {
+        if (isDetailMessage(result.data)) {
           return {
             meta: result.meta,
             error: {
@@ -184,12 +190,13 @@ export type GetModelsArgs = {
 
 export type UpdateModelRequestBody = {
   provider: string;
-  model: string;
-  data: Model;
+  model: Model;
   type: ModelType;
 };
 
-export type DeleteModelRequestBody = Omit<UpdateModelRequestBody, "data">;
+export type DeleteModelRequestBody = Omit<UpdateModelRequestBody, "model"> & {
+  model: string;
+};
 
 export type SupportsReasoningStyle = "openai" | "anthropic" | "deepseek" | null;
 

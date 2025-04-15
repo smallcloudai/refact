@@ -1,10 +1,6 @@
 import { modelsApi } from "../services/refact";
 
-import type {
-  DeleteModelRequestBody,
-  GetModelArgs,
-  UpdateModelRequestBody,
-} from "../services/refact";
+import type { GetModelArgs } from "../services/refact";
 
 export function useGetModelsByProviderNameQuery({
   providerName,
@@ -17,17 +13,17 @@ export function useGetModelsByProviderNameQuery({
 export function useGetModelConfiguration(args: GetModelArgs) {
   return modelsApi.useGetModelQuery(args);
 }
-
-export async function useUpdateModelMutation(
-  updateRequestBody: UpdateModelRequestBody,
-) {
-  const [mutationTrigger] = modelsApi.useUpdateModelMutation();
-  return await mutationTrigger(updateRequestBody).unwrap();
+export function useGetLazyModelConfiguration() {
+  const [mutationTrigger] = modelsApi.useLazyGetModelQuery();
+  return mutationTrigger;
 }
 
-export async function useDeleteModelMutation(
-  deleteRequestBody: DeleteModelRequestBody,
-) {
+export function useUpdateModelMutation() {
+  const [mutationTrigger] = modelsApi.useUpdateModelMutation();
+  return mutationTrigger;
+}
+
+export function useDeleteModelMutation() {
   const [mutationTrigger] = modelsApi.useDeleteModelMutation();
-  return await mutationTrigger(deleteRequestBody).unwrap();
+  return mutationTrigger;
 }
