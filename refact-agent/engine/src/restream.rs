@@ -70,7 +70,7 @@ pub async fn scratchpad_interaction_not_stream_json(
             ));
         ScratchError::new_but_skip_telemetry(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     })?;
-    generate_uuid_for_empty_tool_call_ids(&mut model_says);
+    generate_id_and_index_for_tool_calls_if_missing(&mut model_says);
     
     tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
         save_url.clone(),
@@ -368,7 +368,7 @@ pub async fn scratchpad_interaction_stream(
                             break;
                         }
                         let mut json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
-                        generate_uuid_for_empty_tool_call_ids(&mut json);
+                        generate_id_and_index_for_tool_calls_if_missing(&mut json);
                         crate::global_context::look_for_piggyback_fields(gcx.clone(), &json).await;
                         match _push_streaming_json_into_scratchpad(
                             my_scratchpad,
@@ -498,9 +498,9 @@ pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
     return false;
 }
 
-/// Adds UUIDs to any empty tool call IDs in the given JSON value
-fn generate_uuid_for_empty_tool_call_ids(value: &mut serde_json::Value) {
-    fn process_tool_call(tool_call: &mut serde_json::Value) {
+/// Generates tool call ID and index for tool calls missing them, required by providers like Gemini
+fn generate_id_and_index_for_tool_calls_if_missing(value: &mut serde_json::Value) {
+    fn process_tool_call(tool_call: &mut serde_json::Value, idx: usize) {
         if let Some(id) = tool_call.get_mut("id") {
             if id.is_string() && id.as_str().unwrap_or("").is_empty() {
                 let uuid = uuid::Uuid::new_v4().to_string().replace("-", "");
@@ -508,10 +508,15 @@ fn generate_uuid_for_empty_tool_call_ids(value: &mut serde_json::Value) {
                 tracing::info!("Generated UUID for empty tool call ID: call_{}", uuid);
             }
         }
+        if tool_call.get("index").is_none() {
+            tool_call["index"] = json!(idx);
+        }
     }
 
     if let Some(tool_calls) = value.get_mut("tool_calls").and_then(|tc| tc.as_array_mut()) {
-        tool_calls.iter_mut().for_each(process_tool_call);
+        for (i, tool_call) in tool_calls.iter_mut().enumerate() {
+            process_tool_call(tool_call, i);
+        }
     }
     
     if let Some(choices) = value.get_mut("choices").and_then(|c| c.as_array_mut()) {
@@ -521,12 +526,15 @@ fn generate_uuid_for_empty_tool_call_ids(value: &mut serde_json::Value) {
                     .and_then(|v| v.get_mut("tool_calls"))
                     .and_then(|tc| tc.as_array_mut()) 
                 {
-                    tool_calls.iter_mut().for_each(process_tool_call);
+                    for (i, tool_call) in tool_calls.iter_mut().enumerate() {
+                        process_tool_call(tool_call, i);
+                    }
                 }
             }
         }
     }
 }
+
 
 fn _push_streaming_json_into_scratchpad(
     scratch: &mut Box<dyn ScratchpadAbstract>,
