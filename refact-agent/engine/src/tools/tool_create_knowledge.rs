@@ -8,6 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::tools::tools_description::Tool;
+use crate::memdb::db_memories::memories_add;
 
 pub struct ToolCreateKnowledge;
 
@@ -57,12 +58,16 @@ impl Tool for ToolCreateKnowledge {
             Some(v) => return Err(format!("argument `knowledge_entry` is not a string: {:?}", v)),
             None => return Err("argument `knowledge_entry` is missing".to_string())
         };
-
-        let vec_db = gcx.read().await.vec_db.clone();
-        
-        // Store the memory with type "knowledge-entry"
-        let memid = match crate::vecdb::vdb_highlev::memories_add(
-            vec_db.clone(),
+        let (memdb, vectorizer_service) = {
+            let gcx_locked = gcx.read().await;
+            let memdb = gcx_locked.memdb.clone();
+            let vectorizer_service = gcx_locked.vectorizer_service.clone()
+                .ok_or_else(|| "vectorizer_service not initialized".to_string())?;
+            (memdb, vectorizer_service)
+        };
+        let memid = match memories_add(
+            memdb,
+            vectorizer_service,
             "knowledge-entry",
             &search_key,
             &im_going_to_apply_to,

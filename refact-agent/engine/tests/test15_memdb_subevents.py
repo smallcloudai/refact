@@ -28,8 +28,8 @@ class Memory:
 class MemdbSubEvent:
     pubevent_id: str
     pubevent_action: str
-    pubevent_memid: str
-    pubevent_json: str
+    pubevent_obj_id: str
+    pubevent_obj_json: str
 
     def print(self):
         colors = {
@@ -37,7 +37,7 @@ class MemdbSubEvent:
             "UPDATE": "yellow",
             "DELETE": "red",
         }
-        print(termcolor.colored(f"{self.pubevent_id} [{self.pubevent_action}]: {self.pubevent_json}",
+        print(termcolor.colored(f"{self.pubevent_id} [{self.pubevent_action}]: {self.pubevent_obj_json}",
                                 colors[self.pubevent_action]))
 
 

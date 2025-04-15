@@ -1,17 +1,17 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 use async_stream::stream;
-use tokio::sync::RwLock as ARwLock;
+use tokio::sync::{RwLock as ARwLock};
 use serde_json::json;
 
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use tracing::{error, warn};
+use tracing::warn;
 use serde::Deserialize;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::knowledge::MemdbSubEvent;
+use crate::memdb::db_pubsub::PubSubEvent;
 
 #[derive(Deserialize)]
 struct MemAddRequest {
@@ -52,10 +52,15 @@ pub async fn handle_mem_add(
         tracing::info!("cannot parse input:\n{:?}", body_bytes);
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
-
-    let vec_db = gcx.read().await.vec_db.clone();
-    let memid = crate::vecdb::vdb_highlev::memories_add(
-        vec_db,
+    let (memdb, vectorizer_service) = {
+        let gcx_locked = gcx.read().await;
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
+        (gcx_locked.memdb.clone(), vectorizer_service)
+    };
+    let memid = crate::memdb::db_memories::memories_add(
+        memdb,
+        vectorizer_service,
         &post.mem_type,
         &post.goal,
         &post.project,
@@ -82,8 +87,8 @@ pub async fn handle_mem_erase(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let vec_db = gcx.read().await.vec_db.clone();
-    let erased_cnt = crate::vecdb::vdb_highlev::memories_erase(vec_db, &post.memid).await.map_err(|e| {
+    let memdb = gcx.read().await.memdb.clone();
+    let erased_cnt = crate::memdb::db_memories::memories_erase(memdb, &post.memid).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
 
@@ -104,9 +109,14 @@ pub async fn handle_mem_upd(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let vec_db = gcx.read().await.vec_db.clone();
-    let upd_cnt = crate::vecdb::vdb_highlev::memories_update(
-        vec_db, &post.memid, &post.mem_type, &post.goal, &post.project, &post.payload, &post.origin,
+    let (memdb, vectorizer_service) = {
+        let gcx_locked = gcx.read().await;
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
+        (gcx_locked.memdb.clone(), vectorizer_service)
+    };
+    let upd_cnt = crate::memdb::db_memories::memories_update(
+        memdb, vectorizer_service, &post.memid, &post.mem_type, &post.goal, &post.project, &post.payload, &post.origin,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
@@ -128,9 +138,9 @@ pub async fn handle_mem_update_used(
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
 
-    let vec_db = gcx.read().await.vec_db.clone();
-    let updated_cnt = crate::vecdb::vdb_highlev::memories_update_used(
-        vec_db,
+    let memdb = gcx.read().await.memdb.clone();
+    let updated_cnt = crate::memdb::db_memories::memories_update_used(
+        memdb,
         &post.memid,
         post.correct,
         post.relevant,
@@ -152,8 +162,9 @@ pub async fn handle_mem_block_until_vectorized(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     _body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    let vec_db = gcx.read().await.vec_db.clone();
-    crate::vecdb::vdb_highlev::memories_block_until_vectorized(vec_db, 20_000)
+    let vectorizer_service = gcx.read().await.vectorizer_service.clone()
+        .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
+    crate::vecdb::vdb_highlev::memories_block_until_vectorized(vectorizer_service, 20_000)
         .await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e)))?;
 
@@ -177,25 +188,31 @@ pub async fn handle_mem_sub(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    fn _get_last_memid(events: &Vec<MemdbSubEvent>) -> i64 {
+    fn _get_last_memid(events: &Vec<PubSubEvent>) -> i64 {
         events
             .iter()
             .max_by_key(|x| x.pubevent_id)
             .map(|x| x.pubevent_id)
             .unwrap_or(0)
     }
-    let post: MemSubscriptionPost = serde_json::from_slice(&body_bytes).unwrap_or(MemSubscriptionPost::default());
-
-    let vec_db = gcx.read().await.vec_db.clone();
+    let post: MemSubscriptionPost = serde_json::from_slice(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e)))
+        .unwrap_or(MemSubscriptionPost::default());
+    let (memdb, vectorizer_service) = {
+        let gcx_locked = gcx.read().await;
+        let vectorizer_service = gcx_locked.vectorizer_service.clone()
+            .ok_or_else(|| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "vectorizer_service not initialized".to_string()))?;
+        (gcx_locked.memdb.clone(), vectorizer_service)
+    };
     let mut last_pubevent_id = _get_last_memid(
-        &crate::vecdb::vdb_highlev::memdb_subscription_poll(vec_db.clone(), None).await
+        &crate::memdb::db_pubsub::pubsub_poll(memdb.lock().lite.clone(), &"memories".to_string(), None)
             .map_err(|e| {
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
             })?
     );
 
     let (preexisting_memories, maybe_memids_to_keep) = if let Some(quick_search_query) = post.quick_search {
-        let mut preexisting_memories = crate::vecdb::vdb_highlev::memories_select_like(vec_db.clone(), &quick_search_query).await.
+        let mut preexisting_memories = crate::memdb::db_memories::memories_select_like(memdb.clone(), &quick_search_query).await.
             map_err(|e| {
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
             })?;
@@ -205,7 +222,7 @@ pub async fn handle_mem_sub(
         let memids_to_keep = preexisting_memories.iter().map(|x| x.memid.clone()).collect::<HashSet<String>>();
         (preexisting_memories, Some(memids_to_keep))
     } else {
-        let mut preexisting_memories = crate::vecdb::vdb_highlev::memories_select_all(vec_db.clone()).await.
+        let mut preexisting_memories = crate::memdb::db_memories::memories_select_all(memdb.clone()).await.
             map_err(|e| {
                 ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
             })?;
@@ -215,6 +232,7 @@ pub async fn handle_mem_sub(
         (preexisting_memories, None)
     };
 
+    let memdb_lite = memdb.lock().lite.clone();
     let sse = stream! {
         for memory in preexisting_memories.iter() {
             if let Some(memids_to_keep) = &maybe_memids_to_keep {
@@ -225,28 +243,21 @@ pub async fn handle_mem_sub(
             let e = json!({
                 "pubevent_id": -1,
                 "pubevent_action": "INSERT",
-                "pubevent_memid": memory.memid,
-                "pubevent_json": serde_json::to_string(&memory).unwrap(),
+                "pubevent_obj_id": memory.memid,
+                "pubevent_obj_json": serde_json::to_string(&memory).expect("Failed to serialize event"),
             });
             yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&e).unwrap()));
         }
         
         loop {
-            match crate::vecdb::vdb_highlev::memdb_pubsub_trigerred(gcx.clone(), vec_db.clone(), 5).await {
-                Ok(true) => {}
-                Ok(false) => {
-                    break;
-                }
-                Err(err) => {
-                    error!("Error while polling memdb: {}", err);
-                    break;
-                }
+            if !crate::memdb::db_pubsub::pubsub_trigerred(gcx.clone(), memdb.clone(), 5).await {
+                break;
             };
-            match crate::vecdb::vdb_highlev::memdb_subscription_poll(vec_db.clone(), Some(last_pubevent_id)).await {
+            match crate::memdb::db_pubsub::pubsub_poll(memdb_lite.clone(), &"memories".to_string(), Some(last_pubevent_id)) {
                 Ok(new_events) => {
                     for event in new_events.iter() {
                         if let Some(memids_to_keep) = &maybe_memids_to_keep {
-                            if !memids_to_keep.contains(&event.pubevent_memid) {
+                            if !memids_to_keep.contains(&event.pubevent_obj_id) {
                                 continue;
                             }
                         }
@@ -262,9 +273,9 @@ pub async fn handle_mem_sub(
                 }
             };
             
-            match crate::vecdb::vdb_highlev::get_status(vec_db.clone()).await {
+            match crate::vecdb::vdb_highlev::get_status(vectorizer_service.clone()).await {
                 Ok(Some(status)) => {
-                    yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&status).unwrap()));
+                    yield Ok::<_, ScratchError>(format!("data: {}\n\n", serde_json::to_string(&status).expect("Failed to serialize status")));
                 },
                 Err(err) => {
                     warn!("Error while getting vecdb status: {}", err);

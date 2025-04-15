@@ -1,20 +1,15 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tokio::task::JoinHandle;
 use async_trait::async_trait;
 use tracing::{error, info};
-
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
-use crate::knowledge::{MemdbSubEvent, MemoriesDatabase};
 use crate::trajectories::try_to_download_trajectories;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
-use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
-use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
+use crate::vecdb::vdb_structs::{SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
+use crate::vecdb::vectorizer_service::FileVectorizerService;
 
 
 fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
@@ -25,14 +20,10 @@ fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
     }
 }
 
-
 pub struct VecDb {
-    pub memdb: Arc<AMutex<MemoriesDatabase>>,
-    vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
-    vecdb_handler: Arc<AMutex<VecDBSqlite>>,
-    pub vectorizer_service: Arc<AMutex<FileVectorizerService>>,
-    // cmdline: CommandLine,  // TODO: take from command line what's needed, don't store a copy
-    constants: VecdbConstants,
+    pub vecdb_emb_client: Arc<AMutex<reqwest::Client>>,
+    pub vecdb_handler: Arc<AMutex<VecDBSqlite>>,
+    pub constants: VecdbConstants,
 }
 
 async fn do_i_need_to_reload_vecdb(
@@ -71,17 +62,18 @@ async fn do_i_need_to_reload_vecdb(
         }
     };
 
-    let vec_db = gcx.write().await.vec_db.clone();
-    match *vec_db.lock().await {
+    let vec_db = gcx.read().await.vecdb.clone();
+    match vec_db {
         None => {}
-        Some(ref db) => {
+        Some(db) => {
+            let vecdb_locked = db.lock().await;
             if
-                db.constants.embedding_model == consts.embedding_model &&
-                db.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
-                db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
-                db.constants.splitter_window_size == consts.splitter_window_size &&
-                db.constants.embedding_batch == consts.embedding_batch &&
-                db.constants.embedding_size == consts.embedding_size
+                vecdb_locked.constants.embedding_model == consts.embedding_model &&
+                vecdb_locked.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
+                vecdb_locked.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
+                vecdb_locked.constants.splitter_window_size == consts.splitter_window_size &&
+                vecdb_locked.constants.embedding_batch == consts.embedding_batch &&
+                vecdb_locked.constants.embedding_size == consts.embedding_size
             {
                 return (false, None);
             }
@@ -100,13 +92,10 @@ async fn do_i_need_to_reload_vecdb(
         return (false, None);
     }
     consts.tokenizer = Some(tokenizer_maybe.clone().unwrap());
-
-    return (true, Some(consts));
+    (true, Some(consts))
 }
 
-pub async fn vecdb_background_reload(
-    gcx: Arc<ARwLock<GlobalContext>>,
-) {
+pub async fn vecdb_background_reload(gcx: Arc<ARwLock<GlobalContext>>) {
     let cmd_line = gcx.read().await.cmdline.clone();
     if !cmd_line.vecdb {
         return;
@@ -120,8 +109,6 @@ pub async fn vecdb_background_reload(
             background_tasks.abort().await;
         }
         if need_reload && consts.is_some() {
-            background_tasks = BackgroundTasksHolder::new(vec![]);
-            
             // Use the fail-safe initialization with retries
             let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
                 max_attempts: 5,
@@ -135,7 +122,8 @@ pub async fn vecdb_background_reload(
                 consts.unwrap(),
                 Some(init_config),
             ).await {
-                Ok(_) => {
+                Ok(tasks) => {
+                    background_tasks = tasks;
                     gcx.write().await.vec_db_error = "".to_string();
                     info!("vecdb: initialization successful");
                 }
@@ -163,22 +151,13 @@ pub async fn vecdb_background_reload(
 impl VecDb {
     pub async fn init(
         cache_dir: &PathBuf,
-        config_dir: &PathBuf,
         cmdline: CommandLine,
         constants: VecdbConstants,
-        api_key: &String
     ) -> Result<VecDb, String> {
         let emb_table_name = crate::vecdb::vdb_emb_aux::create_emb_table_name(&vec![cmdline.workspace_folder]);
-        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size, &emb_table_name).await?;
-        let vecdb_handler = Arc::new(AMutex::new(handler));
-        let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, &emb_table_name, cmdline.reset_memory).await?));
-
-        let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
-            vecdb_handler.clone(),
-            constants.clone(),
-            api_key.clone(),
-            memdb.clone(),
-        ).await));
+        let vecdb_handler = Arc::new(AMutex::new(
+            VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size, &emb_table_name).await?
+        ));
 
         let mut http_client_builder = reqwest::Client::builder();
         if cmdline.insecure {
@@ -187,25 +166,10 @@ impl VecDb {
         let vecdb_emb_client = Arc::new(AMutex::new(http_client_builder.build().unwrap()));
 
         Ok(VecDb {
-            memdb: memdb.clone(),
             vecdb_emb_client,
             vecdb_handler,
-            vectorizer_service,
             constants: constants.clone(),
         })
-    }
-
-    pub async fn vecdb_start_background_tasks(
-        &self,
-        gcx: Arc<ARwLock<GlobalContext>>,
-    ) -> Vec<JoinHandle<()>> {
-        info!("vecdb: start_background_tasks");
-        vectorizer_enqueue_dirty_memory(self.vectorizer_service.clone()).await;
-        return vecdb_start_background_tasks(self.vecdb_emb_client.clone(), self.vectorizer_service.clone(), gcx.clone()).await;
-    }
-
-    pub async fn vectorizer_enqueue_files(&self, documents: &Vec<String>, process_immediately: bool) {
-        vectorizer_enqueue_files(self.vectorizer_service.clone(), documents, process_immediately).await;
     }
 
     pub async fn remove_file(&self, file_path: &PathBuf) -> Result<(), String> {
@@ -215,31 +179,7 @@ impl VecDb {
     }
 }
 
-pub async fn memories_add(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    m_type: &str,
-    m_goal: &str,
-    m_project: &str,
-    m_payload: &str,    // TODO: upgrade to serde_json::Value
-    m_origin: &str
-) -> Result<String, String> {
-    let (memdb, vectorizer_service) = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        (vec_db.memdb.clone(), vec_db.vectorizer_service.clone())
-    };
-
-    let memid = {
-        let mut memdb_locked = memdb.lock().await;
-        let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_origin).await?;
-        memdb_locked.dirty_memids.push(x.clone());
-        x
-    };
-    vectorizer_enqueue_dirty_memory(vectorizer_service).await;  // sets queue_additions inside
-    Ok(memid)
-}
-
-pub async fn memories_block_until_vectorized_from_vectorizer(
+pub async fn memories_block_until_vectorized(
     vectorizer_service: Arc<AMutex<FileVectorizerService>>,
     max_blocking_time_ms: usize
 ) -> Result<(), String> {
@@ -274,30 +214,15 @@ pub async fn memories_block_until_vectorized_from_vectorizer(
     Ok(())
 }
 
-pub async fn memories_block_until_vectorized(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    max_blocking_time_ms: usize
-) -> Result<(), String> {
 
-    let vectorizer_service = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.vectorizer_service.clone()
-    };
-    memories_block_until_vectorized_from_vectorizer(vectorizer_service, max_blocking_time_ms).await
-}
-
-pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<VecDbStatus>, String> {
-    let vectorizer_service = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.vectorizer_service.clone()
-    };
+pub async fn get_status(
+    vectorizer_service: Arc<AMutex<FileVectorizerService>>
+) -> Result<Option<VecDbStatus>, String> {
     let (vstatus, vecdb_handler) = {
         let vectorizer_locked = vectorizer_service.lock().await;
         (
             vectorizer_locked.vstatus.clone(),
-            vectorizer_locked.vecdb_handler.clone(),
+            vectorizer_locked.vecdb.clone(),
         )
     };
     let mut vstatus_copy = vstatus.lock().await.clone();
@@ -312,198 +237,8 @@ pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<Vec
     if vstatus_copy.state == "done" && vstatus_copy.queue_additions {
         vstatus_copy.state = "cooldown".to_string();
     }
-    return Ok(Some(vstatus_copy));
+    Ok(Some(vstatus_copy))
 }
-
-pub async fn memories_select_all(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-) -> Result<Vec<MemoRecord>, String> {
-    let memdb = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.memdb.clone()
-    };
-
-    let memdb_locked = memdb.lock().await;
-    let results = memdb_locked.permdb_select_all().await?;
-    Ok(results)
-}
-
-pub async fn memories_select_like(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    query: &String
-) -> Result<Vec<MemoRecord>, String> {
-    let memdb = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.memdb.clone()
-    };
-
-    let memdb_locked = memdb.lock().await;
-    let results = memdb_locked.permdb_select_like(query).await?;
-    Ok(results)
-}
-
-pub async fn memories_erase(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    memid: &str,
-) -> Result<usize, String> {
-    let memdb = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.memdb.clone()
-    };
-
-    let mut memdb_locked = memdb.lock().await;
-    let erased_cnt = memdb_locked.permdb_erase(memid).await?;
-    Ok(erased_cnt)
-}
-
-pub async fn memories_update(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    memid: &str,
-    m_type: &str,
-    m_goal: &str,
-    m_project: &str,
-    m_payload: &str,
-    m_origin: &str
-) -> Result<usize, String> {
-    let (memdb, vectorizer_service) = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        (vec_db.memdb.clone(), vec_db.vectorizer_service.clone())
-    };
-    let updated_cnt = {
-        let mut memdb_locked = memdb.lock().await;
-        let updated_cnt = memdb_locked.permdb_update(memid, m_type, m_goal, m_project, m_payload, m_origin).await?;
-        memdb_locked.dirty_memids.push(memid.to_string());
-        updated_cnt
-    };
-    vectorizer_enqueue_dirty_memory(vectorizer_service).await;
-    
-    Ok(updated_cnt)
-}
-
-pub async fn memories_update_used(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    memid: &str,
-    mstat_correct: i32,
-    mstat_relevant: i32,
-) -> Result<usize, String> {
-    let memdb = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.memdb.clone()
-    };
-
-    let memdb_locked = memdb.lock().await;
-    let updated_cnt = memdb_locked.permdb_update_used(memid, mstat_correct, mstat_relevant).await?;
-    Ok(updated_cnt)
-}
-
-pub async fn memories_search(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    query: &String,
-    top_n: usize,
-) -> Result<MemoSearchResult, String> {
-    let vec_db = gcx.read().await.vec_db.clone();
-    fn calculate_score(distance: f32, _times_used: i32) -> f32 {
-        distance
-        // distance - (times_used as f32) * 0.01
-    }
-
-    let t0 = std::time::Instant::now();
-    let (memdb, vecdb_emb_client, constants) = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        (
-            vec_db.memdb.clone(),
-            vec_db.vecdb_emb_client.clone(),
-            vec_db.constants.clone(),
-        )
-    };
-
-    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
-    if let Err(err) = api_key {
-        return Err(err.message);
-    }
-
-    let embedding = fetch_embedding::get_embedding_with_retry(
-        vecdb_emb_client,
-        &constants.endpoint_embeddings_style,
-        &constants.embedding_model,
-        &constants.endpoint_embeddings_template,
-        vec![query.clone()],
-        &api_key.unwrap(),
-        5,
-    ).await?;
-    if embedding.is_empty() {
-        return Err("memdb_search: empty embedding".to_string());
-    }
-    info!("search query {:?}, it took {:.3}s to vectorize the query", query, t0.elapsed().as_secs_f64());
-
-    let mut results = {
-        let memdb_locked = memdb.lock().await;
-        memdb_locked.search_similar_records(&embedding[0], top_n).await?
-    };
-    results.sort_by(|a, b| {
-        let score_a = calculate_score(a.distance, a.mstat_times_used);
-        let score_b = calculate_score(b.distance, b.mstat_times_used);
-        score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
-    });
-
-    let rejection_threshold = model_to_rejection_threshold(constants.embedding_model.as_str());
-    let mut filtered_results = Vec::new();
-    for rec in results.iter() {
-        if rec.distance.abs() >= rejection_threshold {
-            info!("distance {:.3} -> dropped memory {}", rec.distance, rec.memid);
-        } else {
-            info!("distance {:.3} -> kept memory {}", rec.distance, rec.memid);
-            filtered_results.push(rec.clone());
-        }
-    }
-    results = filtered_results;
-
-    Ok(MemoSearchResult { query_text: query.clone(), results })
-}
-
-pub async fn memdb_subscription_poll(
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    from_memid: Option<i64>
-) -> Result<Vec<MemdbSubEvent>, String> {
-    let memdb = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.memdb.clone()
-    };
-
-    let x = memdb.lock().await.permdb_sub_select_all(from_memid).await; x
-}
-
-
-pub async fn memdb_pubsub_trigerred(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    vec_db: Arc<AMutex<Option<VecDb>>>,
-    sleep_seconds: u64
-) -> Result<bool, String> {
-    let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
-    if shutdown_flag.load(std::sync::atomic::Ordering::Relaxed) {
-        return Ok(false);
-    }
-    let memdb = {
-        let vec_db_guard = vec_db.lock().await;
-        let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-        vec_db.memdb.clone()
-    };
-    let pubsub_notifier = memdb.lock().await.pubsub_notifier.clone();
-    match tokio::time::timeout(tokio::time::Duration::from_secs(sleep_seconds), pubsub_notifier.notified()).await {
-        Ok(_) => { },
-        Err(_) => { }
-    }
-    let should_continue = !shutdown_flag.load(std::sync::atomic::Ordering::Relaxed);
-    Ok(should_continue)
-}
-
 
 #[async_trait]
 impl VecdbSearch for VecDb {
@@ -513,6 +248,7 @@ impl VecdbSearch for VecDb {
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
         api_key: &String,
+        vectorizer_service: Option<Arc<AMutex<FileVectorizerService>>>,
     ) -> Result<SearchResult, String> {
         // TODO: move out of struct, replace self with Arc
         let t0 = std::time::Instant::now();
@@ -529,10 +265,9 @@ impl VecdbSearch for VecDb {
             return Err(embedding_mb.unwrap_err().to_string());
         }
         info!("search query {:?}, it took {:.3}s to vectorize the query", query, t0.elapsed().as_secs_f64());
-
-        memories_block_until_vectorized_from_vectorizer(self.vectorizer_service.clone(),
-                                                        5_000).await?;
-
+        if let Some(vectorizer_service) = vectorizer_service {
+            memories_block_until_vectorized(vectorizer_service.clone(), 5_000).await?;
+        }
         let mut handler_locked = self.vecdb_handler.lock().await;
         let t1 = std::time::Instant::now();
         let mut results = match handler_locked.vecdb_search(&embedding_mb.unwrap()[0], top_n, vecdb_scope_filter_mb).await {

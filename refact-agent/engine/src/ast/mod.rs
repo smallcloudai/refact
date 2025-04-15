@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-#[cfg(feature="vecdb")]
 use std::sync::RwLock as StdRwLock;
 use std::cell::RefCell;
 use uuid::Uuid;
@@ -15,16 +14,13 @@ pub mod ast_parse_anything;
 pub mod ast_indexer_thread;
 pub mod ast_db;
 
-#[cfg(feature="vecdb")]
 pub mod file_splitter;
-#[cfg(feature="vecdb")]
 pub mod chunk_utils;
 
 pub mod parse_python;
 pub mod parse_common;
 
 
-#[cfg(feature="vecdb")]
 pub fn count_tokens(
     tokenizer: Option<Arc<StdRwLock<tokenizers::Tokenizer>>>,
     text: &str,
