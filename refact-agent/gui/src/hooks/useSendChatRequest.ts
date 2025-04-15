@@ -356,7 +356,6 @@ export function useAutoSend() {
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
-
   const { sendMessages, abort, messagesWithSystemPrompt } =
     useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
