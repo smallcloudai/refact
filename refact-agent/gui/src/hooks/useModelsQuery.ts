@@ -11,7 +11,7 @@ export function useGetModelsByProviderNameQuery({
 }
 
 export function useGetModelConfiguration(args: GetModelArgs) {
-  return modelsApi.useGetModelQuery(args);
+  return modelsApi.useGetModelQuery(args, { skip: !args.modelName });
 }
 export function useGetLazyModelConfiguration() {
   const [mutationTrigger] = modelsApi.useLazyGetModelQuery();

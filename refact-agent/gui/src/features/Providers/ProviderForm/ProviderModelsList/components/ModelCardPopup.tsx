@@ -10,6 +10,7 @@ import { CapabilityBadge } from "./CapabilityBadge";
 
 import type {
   CodeChatModel,
+  CodeCompletionModel,
   EmbeddingModel,
   Model,
   ModelType,
@@ -19,6 +20,29 @@ import {
   isEmbeddingModel,
 } from "../../../../../services/refact";
 
+const DEFAULT_VALUES_FOR_NEW_CHAT_MODEL: CodeChatModel = {
+  default_temperature: null,
+  enabled: true,
+  id: "",
+  n_ctx: 16000,
+  name: "",
+  supports_agent: false,
+  supports_clicks: false,
+  supports_multimodality: false,
+  supports_tools: false,
+  supports_boost_reasoning: false,
+  supports_reasoning: null,
+  tokenizer: "hf://Xenova/gpt-4o",
+};
+
+const DEFAULT_VALUES_FOR_NEW_COMPLETION_MODEL: CodeCompletionModel = {
+  enabled: true,
+  id: "",
+  n_ctx: 16000,
+  name: "",
+  tokenizer: "hf://Xenova/gpt-4o",
+};
+
 export type ModelCardPopupProps = {
   isOpen: boolean;
   isSaving: boolean;
@@ -27,6 +51,7 @@ export type ModelCardPopupProps = {
   modelName: string;
   modelType: ModelType;
   providerName: string;
+  newModelCreation?: boolean;
 };
 
 export const ModelCardPopup: FC<ModelCardPopupProps> = ({
@@ -37,6 +62,7 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   modelName,
   modelType,
   providerName,
+  newModelCreation = false,
 }) => {
   const {
     data: modelData,
@@ -47,7 +73,13 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
     modelType,
     providerName,
   });
-  const [editedModelData, setEditedModelData] = useState(modelData);
+  const [editedModelData, setEditedModelData] = useState<Model | undefined>(
+    newModelCreation
+      ? modelType === "chat"
+        ? DEFAULT_VALUES_FOR_NEW_CHAT_MODEL
+        : DEFAULT_VALUES_FOR_NEW_COMPLETION_MODEL
+      : modelData,
+  );
 
   useEffect(() => {
     setEditedModelData(modelData);
@@ -60,17 +92,27 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
         return modelData;
       });
     }
-  }, [isOpen, modelData, currentData]);
+    if (newModelCreation) {
+      setEditedModelData(
+        modelType === "chat"
+          ? DEFAULT_VALUES_FOR_NEW_CHAT_MODEL
+          : DEFAULT_VALUES_FOR_NEW_COMPLETION_MODEL,
+      );
+    }
+  }, [isOpen, modelData, currentData, newModelCreation, modelType]);
 
   const handleSave = useCallback(async () => {
     if (!isOpen || !editedModelData) return;
 
     // eslint-disable-next-line no-console
-    console.log(`update ${modelName} model, data: `, editedModelData);
+    console.log(
+      `update ${editedModelData.name} model, data: `,
+      editedModelData,
+    );
     const isSuccess = await onSave(editedModelData);
     if (!isSuccess) return;
     setTimeout(() => setIsOpen(false), 0);
-  }, [isOpen, modelName, editedModelData, setIsOpen, onSave]);
+  }, [isOpen, editedModelData, setIsOpen, onSave]);
 
   const handleCancel = useCallback(() => {
     setTimeout(() => setIsOpen(false), 0);
@@ -101,18 +143,20 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
     });
   };
 
-  if (!isSuccess && !modelData) {
+  if (!isSuccess && !modelData && !newModelCreation) {
     return null;
   }
 
-  if (!modelData) return null;
+  if (!modelData && !newModelCreation) return null;
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
       <Dialog.Content maxWidth="450px">
         <Dialog.Title>Model Configuration</Dialog.Title>
         <Dialog.Description size="2" mb="4">
-          Make changes to {modelName} ({modelType} model)
+          {!newModelCreation
+            ? `Make changes to ${modelName} (${modelType} model)`
+            : `Setup new model for ${providerName} (${modelType} model)`}
         </Dialog.Description>
 
         <Flex direction="column" gap="3">
@@ -120,20 +164,21 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
             <CommonFields
               editedModelData={editedModelData}
               setEditedModelDataByField={updateFieldByKey}
+              newModelCreation={newModelCreation}
             />
           )}
 
-          {isCodeChatModel(modelData) && (
+          {isCodeChatModel(editedModelData) && (
             <ChatModelFields
-              editedModelData={editedModelData as CodeChatModel}
+              editedModelData={editedModelData}
               setEditedModelData={setEditedModelData}
               toggleCapability={toggleCapability}
             />
           )}
 
-          {isEmbeddingModel(modelData) && (
+          {isEmbeddingModel(editedModelData) && (
             <EmbeddingModelFields
-              editedModelData={editedModelData as EmbeddingModel}
+              editedModelData={editedModelData}
               setEditedModelDataByField={updateFieldByKey}
             />
           )}
@@ -156,11 +201,13 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
 type CommonFieldsProps = {
   editedModelData: Model;
   setEditedModelDataByField: (field: string, value: string | number) => void;
+  newModelCreation?: boolean;
 };
 
 const CommonFields: FC<CommonFieldsProps> = ({
   editedModelData,
   setEditedModelDataByField,
+  newModelCreation = false,
 }) => {
   const getValueByType = (value: string, valueType: string) => {
     if (valueType === "string") return value;
@@ -182,8 +229,9 @@ const CommonFields: FC<CommonFieldsProps> = ({
       <FormField
         label="Name"
         defaultValue={editedModelData.name}
+        onChange={(e) => handleFieldValueChange(e, "name")}
         placeholder="Model name"
-        isDisabled={true}
+        isDisabled={!newModelCreation}
       />
       <FormField
         label="Context Window (n_ctx)"

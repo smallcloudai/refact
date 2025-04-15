@@ -1,12 +1,24 @@
-import { Flex, Heading, Separator } from "@radix-ui/themes";
-import { FC } from "react";
-import { useGetModelsByProviderNameQuery } from "../../../../hooks/useModelsQuery";
+import type { FC } from "react";
+import { Flex, Heading, Separator, Text } from "@radix-ui/themes";
+
 import type { ProviderFormProps } from "../ProviderForm";
+
 import { Spinner } from "../../../../components/Spinner";
 import { ModelCard } from "./ModelCard";
+import { AddModelButton } from "./components";
+
+import { useGetModelsByProviderNameQuery } from "../../../../hooks/useModelsQuery";
 
 export type ProviderModelsListProps = {
   provider: ProviderFormProps["currentProvider"];
+};
+
+const NoModelsText: FC = () => {
+  return (
+    <Text as="span" size="2" color="gray">
+      No models available, but you can add one by clicking &apos;Add model&apos;
+    </Text>
+  );
 };
 
 export const ProviderModelsList: FC<ProviderModelsListProps> = ({
@@ -47,8 +59,9 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
           );
         })
       ) : (
-        <div>No models specified</div>
+        <NoModelsText />
       )}
+      <AddModelButton modelType="chat" providerName={provider.name} />
       <Heading as="h6" size="2" my="2">
         Completion Models
       </Heading>
@@ -64,8 +77,10 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
           );
         })
       ) : (
-        <div>No models specified</div>
+        <NoModelsText />
       )}
+
+      <AddModelButton modelType="completion" providerName={provider.name} />
       {/* TODO: do we want to expose embedding model configuration updates? */}
       {/* <Heading as="h6" size="2">
         Embedding Model
