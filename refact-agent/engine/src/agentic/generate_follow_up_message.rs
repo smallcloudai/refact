@@ -2,10 +2,12 @@ use std::sync::Arc;
 use serde::Deserialize;
 use tokio::sync::{RwLock as ARwLock, Mutex as AMutex};
 
+use crate::custom_error::MapErrToString;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::subchat::subchat_single;
 use crate::call_validation::{ChatContent, ChatMessage};
+use crate::json_utils;
 
 const PROMPT: &str = r#"
 Your task is to do two things for a conversation between a user and an assistant:
@@ -115,6 +117,7 @@ pub async fn generate_follow_up_message(
 
     tracing::info!("follow-up model says {:?}", response);
 
-    let response: FollowUpResponse = serde_json::from_str(&response).map_err(|e| e.to_string())?;
+    let response: FollowUpResponse = json_utils::extract_json_object(&response)
+        .map_err_with_prefix("Failed to parse json:")?;
     Ok(response)
 }
