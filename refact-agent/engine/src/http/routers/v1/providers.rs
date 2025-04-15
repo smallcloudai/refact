@@ -381,7 +381,7 @@ pub async fn handle_v1_models(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     } else {
         let config_dir = gcx.read().await.config_dir.clone();
-        get_provider_from_template_and_config_file(&config_dir, &params.provider_name, true, true).await
+        get_provider_from_template_and_config_file(&config_dir, &params.provider_name, false, true).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     };
 
@@ -425,7 +425,7 @@ pub async fn handle_v1_get_model(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     } else {
         let config_dir = gcx.read().await.config_dir.clone();
-        get_provider_from_template_and_config_file(&config_dir, &params.provider, true, true).await
+        get_provider_from_template_and_config_file(&config_dir, &params.provider, false, true).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     };
 
