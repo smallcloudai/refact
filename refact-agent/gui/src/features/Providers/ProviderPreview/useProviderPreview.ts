@@ -40,12 +40,15 @@ export function useProviderPreview(
             updatedProviderData,
           )} updated successfully`,
         ),
-        providersApi.util.resetApiState(),
+        providersApi.util.invalidateTags([
+          "PROVIDER",
+          { type: "CONFIGURED_PROVIDERS", id: "LIST" },
+        ]),
       ];
       actions.forEach((action) => dispatch(action));
-      handleSetCurrentProvider(null);
+      setIsSavingProvider(false);
     },
-    [dispatch, handleSetCurrentProvider, updateProvider],
+    [dispatch, updateProvider],
   );
 
   const handleDeleteProvider = useCallback(

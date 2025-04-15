@@ -60,6 +60,7 @@ export const providersApi = createApi({
       providesTags: [{ type: "CONFIGURED_PROVIDERS", id: "LIST" }],
     }),
     getProviderTemplates: builder.query<ProviderTemplatesResponse, undefined>({
+      providesTags: ["TEMPLATE_PROVIDERS"],
       queryFn: async (_args, api, extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
@@ -90,6 +91,7 @@ export const providersApi = createApi({
       },
     }),
     getProvider: builder.query<Provider, { providerName: string }>({
+      providesTags: ["PROVIDER"],
       queryFn: async (args, api, extraOptions, baseQuery) => {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;

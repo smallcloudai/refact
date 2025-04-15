@@ -18,6 +18,7 @@ export type ProviderPreviewProps = {
 };
 
 export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
+  configuredProviders,
   currentProvider,
   handleSetCurrentProvider,
 }) => {
@@ -51,6 +52,9 @@ export const ProviderPreview: React.FC<ProviderPreviewProps> = ({
           void handleSaveChanges(updatedProviderData)
         }
         isSaving={isSavingProvider}
+        isProviderConfigured={configuredProviders.some(
+          (p) => p.name === currentProvider.name,
+        )}
         handleDiscardChanges={handleDiscardChanges}
       />
     </Flex>

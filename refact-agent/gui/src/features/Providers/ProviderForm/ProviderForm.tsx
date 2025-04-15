@@ -16,6 +16,7 @@ import { ProviderModelsList } from "./ProviderModelsList/ProviderModelsList";
 
 export type ProviderFormProps = {
   currentProvider: SimplifiedProvider<"name" | "enabled" | "readonly">;
+  isProviderConfigured: boolean;
   isSaving: boolean;
   handleDiscardChanges: () => void;
   handleSaveChanges: (updatedProviderData: Provider) => void;
@@ -23,6 +24,7 @@ export type ProviderFormProps = {
 
 export const ProviderForm: React.FC<ProviderFormProps> = ({
   currentProvider,
+  isProviderConfigured,
   isSaving,
   handleDiscardChanges,
   handleSaveChanges,
@@ -92,7 +94,9 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({
             {areShowingExtraFields ? "Hide" : "Show"} advanced fields
           </Button>
         </Flex>
-        <ProviderModelsList provider={currentProvider} />
+        {isProviderConfigured && (
+          <ProviderModelsList provider={currentProvider} />
+        )}
       </Flex>
       <Flex gap="2" align="center" mt="4">
         <Button
