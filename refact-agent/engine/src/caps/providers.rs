@@ -73,8 +73,8 @@ impl CapsProvider {
         set_field_if_exists::<EmbeddingModelRecord>(&mut self.embedding_model, "embedding_model", &value)?;
         self.embedding_model.base.removable = true;
 
-        extend_model_collection::<ChatModelRecord>(&mut self.chat_models, "chat_models", &value)?;
-        extend_model_collection::<CompletionModelRecord>(&mut self.completion_models, "completion_models", &value)?;
+        extend_model_collection::<ChatModelRecord>(&mut self.chat_models, "chat_models", &value, &self.running_models)?;
+        extend_model_collection::<CompletionModelRecord>(&mut self.completion_models, "completion_models", &value, &self.running_models)?;
         extend_collection::<Vec<String>>(&mut self.running_models, "running_models", &value)?;
 
         match serde_yaml::from_value::<DefaultModels>(value) {
@@ -113,14 +113,14 @@ fn extend_collection<C: for<'de> serde::Deserialize<'de> + Extend<C::Item> + Int
 // Special implementation for ChatModelRecord and CompletionModelRecord collections
 // that sets removable=true for newly added models
 fn extend_model_collection<T: for<'de> serde::Deserialize<'de> + HasBaseModelRecord>(
-    target: &mut IndexMap<String, T>, field: &str, value: &serde_yaml::Value
+    target: &mut IndexMap<String, T>, field: &str, value: &serde_yaml::Value, prev_running_models: &Vec<String>
 ) -> Result<(), String> {
     if let Some(value) = value.get(field) {
         let imported_collection = serde_yaml::from_value::<IndexMap<String, T>>(value.clone())
             .map_err(|_| format!("Invalid format for {field}"))?;
         
         for (key, mut model) in imported_collection {
-            if !target.contains_key(&key) {
+            if !target.contains_key(&key) && !prev_running_models.contains(&key) {
                 model.base_mut().removable = true; 
             }
             target.insert(key, model);
@@ -182,6 +182,7 @@ const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("deepseek", include_str!("../yaml_configs/default_providers/deepseek.yaml")),
     ("google_gemini", include_str!("../yaml_configs/default_providers/google_gemini.yaml")),
     ("groq", include_str!("../yaml_configs/default_providers/groq.yaml")),
+    ("ollama", include_str!("../yaml_configs/default_providers/ollama.yaml")),
     ("openai", include_str!("../yaml_configs/default_providers/openai.yaml")),
     ("openrouter", include_str!("../yaml_configs/default_providers/openrouter.yaml")),
 ];

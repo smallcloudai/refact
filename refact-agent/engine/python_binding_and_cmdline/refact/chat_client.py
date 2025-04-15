@@ -178,12 +178,12 @@ class ChoiceDeltaCollector:
             choice: Message = self.choices[j_index]
             delta = j_choice["delta"]
             if (j_tool_calls := delta.get("tool_calls", None)) is not None:
-                for plus_tool in j_tool_calls:
+                for list_idx, plus_tool in enumerate(j_tool_calls):
                     # {'function': {'arguments': '', 'name': 'definition'}, 'id': 'call_gek85Z8bjtjo2VnlrrDE89WP', 'index': 0, 'type': 'function'}
                     # {'function': {'arguments': '{"sy'}, 'index': 0}]
                     # {'function': {'arguments': '', 'name': 'definition'}, 'id': 'call_OVdofaKjMgWIu5z0mmuHiMou', 'index': 1, 'type': 'function'}
                     # {'function': {'arguments': '{"sy'}, 'index': 1}
-                    tool_idx = plus_tool["index"]
+                    tool_idx = plus_tool.get("index", list_idx)
                     assert 0 <= tool_idx < 100, f"oops tool_idx is {tool_idx}"
                     if choice.tool_calls is None:
                         choice.tool_calls = []
