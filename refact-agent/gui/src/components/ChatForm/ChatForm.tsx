@@ -34,6 +34,7 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
+  setInformation,
 } from "../../features/Errors/informationSlice";
 import { InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
