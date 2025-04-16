@@ -13,6 +13,10 @@ use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
 
+
+// TODO: remove this dirty hack when we add light_chat_model in caps
+const LIGHT_MODEL_NAME: &str = "gpt-4o-mini";
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
     messages: Vec<ChatMessage>,
@@ -344,7 +348,7 @@ pub async fn handle_v1_links(
         && post.messages.last().map(|x| x.role == "assistant").unwrap_or(false)
     {
         let follow_up_response = generate_follow_up_message(
-            post.messages.clone(), gcx.clone(), Some("gpt-4o-mini".to_string()), &post.model_name, &post.meta.chat_id
+            post.messages.clone(), gcx.clone(), LIGHT_MODEL_NAME.to_string(), &post.model_name, &post.meta.chat_id
         ).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         new_chat_suggestion = follow_up_response.topic_changed;
