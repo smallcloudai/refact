@@ -2,3 +2,8 @@ completion_endpoint: "http://localhost:11434/v1/chat/completions"
 chat_endpoint:       "http://localhost:11434/v1/chat/completions"
 
 api_key: any-will-work
+
+model_defaults:
+  chat:
+    n_ctx: 2048
+    tokenizer: fake

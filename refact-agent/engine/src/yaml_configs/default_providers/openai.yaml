@@ -14,3 +14,11 @@ running_models:
   - o3-mini
   - o1-mini
   - o1
+
+model_defaults:
+  chat:
+    n_ctx: 200000
+    supports_tools: true
+    supports_multimodality: true
+    supports_agent: true
+    tokenizer: hf://Xenova/gpt-4o

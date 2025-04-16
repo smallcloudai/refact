@@ -177,6 +177,16 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
     }
 }
 
+#[derive(Deserialize, Default, Debug)]
+pub struct ModelDefaults {
+    #[serde(default)]
+    pub chat: ChatModelRecord,
+    #[serde(default)]
+    pub completion: CompletionModelRecord,
+    #[serde(default)]
+    pub embedding: EmbeddingModelRecord,
+}
+
 const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("anthropic", include_str!("../yaml_configs/default_providers/anthropic.yaml")),
     ("custom", ""),
@@ -190,6 +200,7 @@ const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("xai", include_str!("../yaml_configs/default_providers/xai.yaml")),
 ];
 static PARSED_PROVIDERS: OnceLock<IndexMap<String, CapsProvider>> = OnceLock::new();
+static PARSED_MODEL_DEFAULTS: OnceLock<IndexMap<String, ModelDefaults>> = OnceLock::new();
 
 pub fn get_provider_templates() -> &'static IndexMap<String, CapsProvider> {
     PARSED_PROVIDERS.get_or_init(|| {
@@ -201,6 +212,26 @@ pub fn get_provider_templates() -> &'static IndexMap<String, CapsProvider> {
             } else {
                 panic!("Failed to parse template for provider {}", name);
             }
+        }
+        map
+    })
+}
+
+pub fn get_provider_model_defaults() -> &'static IndexMap<String, ModelDefaults> {
+    PARSED_MODEL_DEFAULTS.get_or_init(|| {
+        let mut map = IndexMap::new();
+        for (name, yaml) in PROVIDER_TEMPLATES {
+            let yaml_value = serde_yaml::from_str::<serde_yaml::Value>(yaml)
+                .unwrap_or_else(|_| panic!("Failed to parse YAML for provider {}", name));
+            
+            let model_defaults = if let Some(defaults) = yaml_value.get("model_defaults") {
+                serde_yaml::from_value(defaults.clone())
+                    .unwrap_or_else(|e| panic!("Failed to parse model_defaults for provider {}: {}", name, e))
+            } else {
+                ModelDefaults::default()
+            };
+            
+            map.insert(name.to_string(), model_defaults);
         }
         map
     })

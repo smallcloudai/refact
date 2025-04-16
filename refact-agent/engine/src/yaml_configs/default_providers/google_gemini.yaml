@@ -9,3 +9,11 @@ running_models:
   - gemini-2.5-pro-preview-03-25
   - models/gemini-2.0-flash
   - models/gemini-2.0-flash-lite
+
+model_defaults:
+  chat:
+    n_ctx: 200000
+    supports_tools: true
+    supports_multimodality: true
+    supports_agent: true
+    tokenizer: hf://Xenova/gemma2-tokenizer

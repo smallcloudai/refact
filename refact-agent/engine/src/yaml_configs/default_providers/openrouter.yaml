@@ -8,3 +8,7 @@ running_models:
   - anthropic/claude-3.7-sonnet
   - openai/o3-mini
   - openai/gpt-4.1
+
+model_defaults:
+  chat:
+    tokenizer: fake

@@ -13,7 +13,7 @@ use crate::caps::{ChatModelRecord, CompletionModelRecord, DefaultModels, Embeddi
 use crate::custom_error::{MapErrToString, ScratchError};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::caps::providers::{get_provider_from_server, get_provider_from_template_and_config_file, 
-    get_provider_templates, read_providers_d, CapsProvider};
+    get_provider_templates, read_providers_d, get_provider_model_defaults, CapsProvider};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProviderDTO {
@@ -408,6 +408,13 @@ pub struct ModelQueryParams {
     model_type: ModelType,
 }
 
+#[derive(Deserialize)]
+pub struct ModelDefaultQueryParams {
+    provider: String,
+    #[serde(rename = "type")]
+    model_type: ModelType,
+}
+
 pub async fn handle_v1_get_model(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Query(params): Query<ModelQueryParams>,
@@ -629,5 +636,25 @@ pub async fn handle_v1_delete_model(
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(json!({ "success": true }).to_string()))
+        .unwrap())
+}
+
+pub async fn handle_v1_model_default(
+    Query(params): Query<ModelDefaultQueryParams>,
+) -> Result<Response<Body>, ScratchError> {
+    let model_defaults = get_provider_model_defaults().get(&params.provider).ok_or_else(|| 
+        ScratchError::new(StatusCode::NOT_FOUND, "Provider not found".to_string())
+    )?;
+
+    let response_json = match params.model_type {
+        ModelType::Chat => serde_json::json!(ChatModelDTO::new(model_defaults.chat.clone())),
+        ModelType::Completion => serde_json::json!(CompletionModelDTO::new(model_defaults.completion.clone())),
+        ModelType::Embedding => serde_json::json!(EmbeddingModelDTO::new(model_defaults.embedding.clone())),
+    };
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&response_json).unwrap()))
         .unwrap())
 }

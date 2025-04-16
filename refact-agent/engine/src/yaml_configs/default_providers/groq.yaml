@@ -6,3 +6,10 @@ api_key: gsk_...
 running_models: 
   - qwen-2.5-coder-32b
   - qwen-qwq-32b
+
+model_defaults:
+  chat:
+    n_ctx: 131072
+    supports_tools: true
+    supports_agent: true
+    tokenizer: fake
