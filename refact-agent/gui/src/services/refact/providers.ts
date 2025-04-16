@@ -1,4 +1,5 @@
 import { RootState } from "../../app/store";
+import { hasProperty } from "../../utils";
 import { isDetailMessage } from "./commands";
 import {
   CONFIGURED_PROVIDERS_URL,
@@ -322,13 +323,6 @@ function isSimplifiedProviderWithName(
   if (!hasProperty(template, "name")) return false;
 
   return typeof template.name === "string";
-}
-
-export function hasProperty<T extends string>(
-  obj: object,
-  prop: T,
-): obj is { [K in T]: unknown } {
-  return prop in obj;
 }
 
 function isSimplifiedProvider(
