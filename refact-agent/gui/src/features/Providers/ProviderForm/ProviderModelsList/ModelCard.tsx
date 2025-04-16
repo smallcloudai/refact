@@ -21,6 +21,7 @@ export type ModelCardProps = {
   model: SimplifiedModel;
   providerName: string;
   modelType: ModelType;
+  isReadonly: boolean;
 };
 
 /**
@@ -30,6 +31,7 @@ export const ModelCard: FC<ModelCardProps> = ({
   model,
   modelType,
   providerName,
+  isReadonly,
 }) => {
   const { enabled, name, removable } = model;
   const {
@@ -81,20 +83,20 @@ export const ModelCard: FC<ModelCardProps> = ({
           <DropdownMenu.Content side="bottom" align="end" size="1">
             <DropdownMenu.Item
               onClick={openDialogSafely}
-              disabled={isSavingModel}
+              disabled={isReadonly || isSavingModel}
             >
               Edit model&apos;s settings
             </DropdownMenu.Item>
             <DropdownMenu.Item
               onClick={() => void handleToggleModelEnabledState(model)}
-              disabled={isSavingModel}
+              disabled={isReadonly || isSavingModel}
             >
               {enabled ? "Disable model" : "Enable model"}
             </DropdownMenu.Item>
             <DropdownMenu.Item
               onClick={() => void handleRemoveModel(model)}
               color="red"
-              disabled={isSavingModel || !removable}
+              disabled={isReadonly || isSavingModel || !removable}
               title={
                 removable
                   ? "Remove model from the list of models"

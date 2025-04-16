@@ -20,6 +20,8 @@ import {
   isEmbeddingModel,
 } from "../../../../../services/refact";
 
+import { extractHumanReadableReasoningType } from "../utils";
+
 const DEFAULT_VALUES_FOR_NEW_CHAT_MODEL: CodeChatModel = {
   default_temperature: null,
   enabled: true,
@@ -242,6 +244,7 @@ const CommonFields: FC<CommonFieldsProps> = ({
       />
       <FormField
         label="Tokenizer"
+        description="'hf://' stands for 'https://huggingface.co/'"
         defaultValue={editedModelData.tokenizer}
         onChange={(e) => handleFieldValueChange(e, "tokenizer")}
         placeholder="Tokenizer name"
@@ -321,6 +324,9 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
           <CapabilityBadge
             name="Reasoning"
             enabled={!!editedModelData.supports_reasoning}
+            displayValue={extractHumanReadableReasoningType(
+              editedModelData.supports_reasoning,
+            )}
             interactive={false}
           />
 

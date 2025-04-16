@@ -2,6 +2,8 @@ import { AnthropicIcon } from "./Anthropic";
 import { DeepSeekIcon } from "./DeepSeek";
 import { GeminiIcon } from "./Gemini";
 import { GroqIcon } from "./Groq";
+import { LMStudioIcon } from "./LMStudio";
+import { OllamaIcon } from "./Ollama";
 import { OpenAIIcon } from "./OpenAI";
 import { OpenRouterIcon } from "./OpenRouter";
 import { RefactIcon } from "./Refact";
@@ -15,4 +17,6 @@ export const iconsMap: Record<string, JSX.Element> = {
   openrouter: <OpenRouterIcon />,
   deepseek: <DeepSeekIcon />,
   groq: <GroqIcon />,
+  ollama: <OllamaIcon />,
+  lmstudio: <LMStudioIcon />,
 };

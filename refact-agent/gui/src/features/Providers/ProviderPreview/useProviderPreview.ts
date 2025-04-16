@@ -63,7 +63,9 @@ export function useProviderPreview(
 
       const actions = [
         setInformation(
-          `${providerName}'s Provider configuration was deleted successfully`,
+          `${getProviderName(
+            providerName,
+          )}'s Provider configuration was deleted successfully`,
         ),
         providersApi.util.resetApiState(),
       ];

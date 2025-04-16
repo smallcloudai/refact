@@ -7,4 +7,6 @@ export const BEAUTIFUL_PROVIDER_NAMES: Record<string, string> = {
   anthropic: "Anthropic",
   deepseek: "DeepSeek",
   google_gemini: "Google Gemini",
+  ollama: "Ollama",
+  lmstudio: "LM Studio",
 };

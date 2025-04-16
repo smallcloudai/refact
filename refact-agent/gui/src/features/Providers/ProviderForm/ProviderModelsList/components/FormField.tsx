@@ -1,10 +1,12 @@
 import { Text, TextField } from "@radix-ui/themes";
 import { FC, ReactNode } from "react";
+import { Markdown } from "../../../../../components/Markdown";
 
 type FormFieldProps = {
   label: string;
   defaultValue?: string;
   placeholder?: string;
+  description?: string;
   type?: TextField.RootProps["type"];
   isDisabled?: boolean;
   max?: string;
@@ -19,6 +21,7 @@ export const FormField: FC<FormFieldProps> = ({
   label,
   defaultValue,
   placeholder,
+  description,
   isDisabled,
   type,
   max,
@@ -30,6 +33,11 @@ export const FormField: FC<FormFieldProps> = ({
       <Text as="div" size="2" mb="1" weight="bold">
         {label}
       </Text>
+      {description && (
+        <Text as="div" size="1" color="gray" my="1">
+          <Markdown>{description}</Markdown>
+        </Text>
+      )}
       {children ?? (
         <TextField.Root
           defaultValue={defaultValue}
