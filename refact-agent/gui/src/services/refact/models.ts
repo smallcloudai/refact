@@ -1,7 +1,7 @@
 import { RootState } from "../../app/store";
 import { MODEL_URL, MODELS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { hasProperty } from "./providers";
+import { hasProperty } from "../../utils";
 import { isDetailMessage } from "./commands";
 
 export const modelsApi = createApi({
