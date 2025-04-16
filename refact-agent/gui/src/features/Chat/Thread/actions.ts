@@ -163,10 +163,6 @@ export const setIncreaseMaxTokens = createAction<boolean>(
   "chatThread/setIncreaseMaxTokens",
 );
 
-export const setThreadPaused = createAction<boolean>(
-  "chatThread/setThreadPaused",
-);
-
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
