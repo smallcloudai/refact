@@ -253,8 +253,6 @@ export function isModelsResponse(data: unknown): data is ModelsResponse {
 }
 
 export type Model = CodeChatModel | CodeCompletionModel | EmbeddingModel;
-// TODO: not sure about name of this constant
-const SUPPORTS_REASONING_STYLES = ["openai", "anthropic", "deepseek"];
 
 export function isCodeChatModel(data: unknown): data is CodeChatModel {
   if (!data || typeof data !== "object") return false;
@@ -277,12 +275,6 @@ export function isCodeChatModel(data: unknown): data is CodeChatModel {
     return false;
 
   if (!("supports_reasoning" in data)) return false;
-
-  if (
-    typeof data.supports_reasoning === "string" &&
-    !SUPPORTS_REASONING_STYLES.includes(data.supports_reasoning)
-  )
-    return false;
 
   if (
     !("supports_boost_reasoning" in data) ||
