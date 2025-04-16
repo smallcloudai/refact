@@ -54,7 +54,6 @@ export const Chat: React.FC<ChatProps> = ({
   const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
-  const compressionStop = useLastSentCompressionStop();
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
   const capsForToolUse = useCapsForToolUse();

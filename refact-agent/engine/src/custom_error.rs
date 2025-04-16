@@ -23,6 +23,11 @@ impl IntoResponse for ScratchError {
         // Usage can be seen in telemetry_middleware.
         response.extensions_mut().insert(self);
         response
+        let mut response = (self.status_code, Json(payload)).into_response();
+        // This extension is used to let us know that this response used to be a ScratchError.
+        // Usage can be seen in telemetry_middleware.
+        response.extensions_mut().insert(self);
+        response
     }
 }
 
