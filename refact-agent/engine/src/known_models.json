@@ -167,11 +167,13 @@
                 "gpt-4o-2024-08-06",
                 "gpt-4o-mini",
                 "gpt-4o-mini-2024-07-18",
+                "chatgpt-4o",
                 "openai/gpt-4o",
                 "openai/gpt-4o-2024-05-13",
                 "openai/gpt-4o-2024-08-06",
                 "openai/gpt-4o-mini",
-                "openai/gpt-4o-mini-2024-07-18"
+                "openai/gpt-4o-mini-2024-07-18",
+                "openai/chatgpt-4o"
             ]
         },
         "claude-3-sonnet": {
@@ -397,17 +399,6 @@
             ],
             "tokenizer": "hf://Xenova/gpt-4o"
         },
-        "chatgpt-4o": {
-            "n_ctx": 128000,
-            "supports_tools": false,
-            "supports_multimodality": true,
-            "supports_agent": false,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                }
-            },
-            "similar_models": []
-        },
         "o1": {
             "n_ctx": 200000,
             "supports_tools": true,
@@ -452,6 +443,48 @@
             "tokenizer": "hf://Xenova/gpt-4o",
             "similar_models": [
                 "openai/gpt-4.5-preview"
+            ]
+        },
+        "gpt-4.1": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "gpt-4.1-2025-04-14",
+                "openai/gpt-4.1",
+                "openai/gpt-4.1-2025-04-14"
+            ]
+        },
+        "gpt-4.1-mini": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "gpt-4.1-nano",
+                "gpt-4.1-mini-2025-04-14",
+                "gpt-4.1-nano-2025-04-14",
+                "openai/gpt-4.1-mini",
+                "openai/gpt-4.1-nano",
+                "openai/gpt-4.1-mini-2025-04-14",
+                "openai/gpt-4.1-nano-2025-04-14"
+            ]
+        },
+        "chatgpt-4o": {
+            "n_ctx": 128000,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "chatgpt-4o-latest",
+                "openai/chatgpt-4o",
+                "openai/chatgpt-4o-latest"
             ]
         },
         "claude-instant-1.2": {
@@ -526,7 +559,7 @@
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },
         "gemini-2.5-pro": {
-            "n_ctx": 1048576,
+            "n_ctx": 200000,
             "supports_tools": true,
             "supports_multimodality": true,
             "supports_agent": true,
@@ -538,7 +571,7 @@
             ]
         },
         "gemini-2.0-flash": {
-            "n_ctx": 1048576,
+            "n_ctx": 200000,
             "supports_tools": true,
             "supports_multimodality": true,
             "supports_agent": true,
@@ -561,7 +594,7 @@
             "tokenizer": "hf://Xenova/gemma2-tokenizer"
         },
         "gemini-2.0-flash-lite": {
-            "n_ctx": 1048576,
+            "n_ctx": 200000,
             "supports_tools": false,
             "supports_multimodality": true,
             "supports_agent": false,
@@ -578,8 +611,7 @@
             "supports_agent": true,
             "scratchpad": "PASSTHROUGH",
             "similar_models": [
-                "gemini-2.0-exp-advanced",
-                "gemini-2.5-pro"
+                "gemini-2.0-exp-advanced"
             ],
             "tokenizer": "hf://Xenova/gemma2-tokenizer"
         },

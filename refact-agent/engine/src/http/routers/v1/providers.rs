@@ -510,12 +510,18 @@ pub async fn handle_v1_post_model(
             model_value.insert("supports_agent".into(), chat_model.supports_agent.into());
             model_value.insert("supports_boost_reasoning".into(), chat_model.supports_boost_reasoning.into());
             
-            if let Some(supports_reasoning) = chat_model.supports_reasoning {
-                model_value.insert("supports_reasoning".into(), supports_reasoning.into());
-            }
-            if let Some(default_temperature) = chat_model.default_temperature {
-                model_value.insert("default_temperature".into(), serde_yaml::Value::Number(serde_yaml::Number::from(default_temperature as f64)));
-            }
+            model_value.insert("supports_reasoning".into(),
+                match chat_model.supports_reasoning {
+                    Some(supports_reasoning) => supports_reasoning.into(),
+                    None => serde_yaml::Value::Null,
+                }
+            );
+            model_value.insert("default_temperature".into(),
+                match chat_model.default_temperature {
+                    Some(default_temperature) => serde_yaml::Value::Number(serde_yaml::Number::from(default_temperature as f64)),
+                    None => serde_yaml::Value::Null,
+                }
+            );
             
             file_value[models_key][chat_model.name] = model_value.into();
         },

@@ -2,10 +2,12 @@ import { useEffect, useCallback, useMemo } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
 import {
+  selectChatId,
   selectLastSentCompression,
   selectMessages,
-  selectThreadPaused,
-  setThreadPaused,
+  setIsNewChatSuggested,
+  setIsNewChatSuggestionRejected,
+  setPreventSend,
 } from "../features/Chat";
 import { takeFromEndWhile } from "../utils";
 import { isUserMessage } from "../events";
@@ -14,12 +16,7 @@ export function useLastSentCompressionStop() {
   const dispatch = useAppDispatch();
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const messages = useAppSelector(selectMessages);
-  const stopped = useAppSelector(selectThreadPaused);
-  useEffect(() => {
-    if (lastSentCompression && lastSentCompression !== "absent" && !stopped) {
-      dispatch(setThreadPaused(true));
-    }
-  }, [dispatch, lastSentCompression, stopped]);
+  const chatId = useAppSelector(selectChatId);
 
   const messagesFromLastUserMessage = useMemo(() => {
     return takeFromEndWhile(messages, (message) => !isUserMessage(message))
@@ -30,16 +27,16 @@ export function useLastSentCompressionStop() {
     if (
       lastSentCompression &&
       lastSentCompression !== "absent" &&
-      messagesFromLastUserMessage >= 40 &&
-      !stopped
+      messagesFromLastUserMessage >= 40
     ) {
-      dispatch(setThreadPaused(true));
+      dispatch(setPreventSend({ id: chatId }));
+      dispatch(setIsNewChatSuggested({ chatId, value: true }));
     }
-  }, [dispatch, lastSentCompression, messagesFromLastUserMessage, stopped]);
+  }, [chatId, dispatch, lastSentCompression, messagesFromLastUserMessage]);
 
   const resume = useCallback(() => {
-    dispatch(setThreadPaused(false));
-  }, [dispatch]);
+    dispatch(setIsNewChatSuggestionRejected({ chatId, value: true }));
+  }, [chatId, dispatch]);
 
-  return { stopped, resume, strength: lastSentCompression };
+  return { resume, strength: lastSentCompression };
 }

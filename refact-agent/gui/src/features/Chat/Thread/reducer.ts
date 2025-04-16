@@ -209,7 +209,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       action.payload.compression_strength !== "absent"
     ) {
       state.thread.new_chat_suggested = {
-        ...state.thread.new_chat_suggested,
+        wasRejectedByUser: false,
         wasSuggested: true,
       };
     }
@@ -251,7 +251,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIsNewChatSuggestionRejected, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.paused = false;
+    state.prevent_send = false;
     state.thread.new_chat_suggested = {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
@@ -337,7 +337,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       lastUserMessage.compression_strength !== "absent"
     ) {
       state.thread.new_chat_suggested = {
-        ...state.thread.new_chat_suggested,
+        wasRejectedByUser: false,
         wasSuggested: true,
       };
     }
