@@ -60,14 +60,20 @@ export class LoginPage {
 
     await this.page.waitForSelector('button:has-text("Continue with Google")');
 
+    expect(this.page).toHaveScreenshot();
+
     await this.page.click('button:has-text("Continue with Google")');
 
     await this.page.waitForLoadState("networkidle");
+
+    expect(this.page).toHaveScreenshot();
 
     await expect(this.page).toHaveURL("http://localhost:5173/");
     // wait for route to have been Called
     await expect(
       this.page.getByRole("heading", { name: "Login to Refact.ai" })
     ).not.toBeVisible({ timeout: 10000 });
+
+    expect(this.page).toHaveScreenshot();
   }
 }
