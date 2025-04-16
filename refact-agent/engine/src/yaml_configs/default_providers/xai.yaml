@@ -1,0 +1,8 @@
+completion_endpoint: https://api.x.ai/v1/chat/completions
+chat_endpoint:       https://api.x.ai/v1/chat/completions
+
+api_key: xai-...
+
+running_models:
+  - grok-3-beta
+  - grok-3-mini-beta

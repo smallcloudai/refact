@@ -816,6 +816,22 @@
                 "cerebras-llama3.1-70b"
             ]
         },
+        "grok-3-beta": {
+            "n_ctx": 131072, 
+            "supports_tools": true,
+            "supports_agent": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
+        },
+        "grok-3-mini-beta": {
+            "n_ctx": 131072, 
+            "supports_tools": true,
+            "supports_agent": true,
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/grok-1-tokenizer"
+        },
         "grok-beta": {
             "n_ctx": 128000,
             "supports_tools": true,

@@ -179,6 +179,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
 
 const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("anthropic", include_str!("../yaml_configs/default_providers/anthropic.yaml")),
+    ("custom", ""),
     ("deepseek", include_str!("../yaml_configs/default_providers/deepseek.yaml")),
     ("google_gemini", include_str!("../yaml_configs/default_providers/google_gemini.yaml")),
     ("groq", include_str!("../yaml_configs/default_providers/groq.yaml")),
@@ -186,6 +187,7 @@ const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("ollama", include_str!("../yaml_configs/default_providers/ollama.yaml")),
     ("openai", include_str!("../yaml_configs/default_providers/openai.yaml")),
     ("openrouter", include_str!("../yaml_configs/default_providers/openrouter.yaml")),
+    ("xai", include_str!("../yaml_configs/default_providers/xai.yaml")),
 ];
 static PARSED_PROVIDERS: OnceLock<IndexMap<String, CapsProvider>> = OnceLock::new();
 
