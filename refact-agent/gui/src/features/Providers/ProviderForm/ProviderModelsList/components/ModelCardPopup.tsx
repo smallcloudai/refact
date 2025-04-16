@@ -106,11 +106,6 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   const handleSave = useCallback(async () => {
     if (!isOpen || !editedModelData) return;
 
-    // eslint-disable-next-line no-console
-    console.log(
-      `update ${editedModelData.name} model, data: `,
-      editedModelData,
-    );
     const isSuccess = await onSave(editedModelData);
     if (!isSuccess) return;
     setTimeout(() => setIsOpen(false), 0);
