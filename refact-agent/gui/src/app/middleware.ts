@@ -44,7 +44,7 @@ import {
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
-import { modelsApi, providersApi } from "../services/refact";
+import { isToolResponse, modelsApi, providersApi } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";

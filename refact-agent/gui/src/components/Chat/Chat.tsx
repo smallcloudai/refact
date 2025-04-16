@@ -103,7 +103,7 @@ export const Chat: React.FC<ChatProps> = ({
 
         <AgentUsage />
         <SuggestNewChat
-          shouldBeVisible={            
+          shouldBeVisible={
             threadNewChatSuggested.wasSuggested &&
             !threadNewChatSuggested.wasRejectedByUser
           }
