@@ -200,6 +200,7 @@ async fn do_the_job(
         messages.clone(),
         cthread_rec.cthread_id.clone(),
         false,
+        cthread_rec.cthread_model.clone(),
     ).await));
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
     let chat_response_msgs = subchat_single(

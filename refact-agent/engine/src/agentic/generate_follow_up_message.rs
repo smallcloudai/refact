@@ -86,6 +86,7 @@ pub async fn generate_follow_up_message(
         messages.clone(),
         chat_id.to_string(),
         false,
+        current_model_name.clone(),
     ).await));
     let model_name = light_model_name.unwrap_or(current_model_name.to_string());
     let updated_messages: Vec<Vec<ChatMessage>> = subchat_single(
