@@ -176,7 +176,8 @@ pub const KNOWN_MODELS: &str = r####"
                 "gpt-4o-2024-08-06",
                 "openai/gpt-4o",
                 "gpt-4o-mini",
-                "gpt-4o-mini-2024-07-18"
+                "gpt-4o-mini-2024-07-18",
+                "chatgpt-4o"
             ]
         },
         "claude-3-sonnet": {
@@ -248,7 +249,8 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {}
             },
             "similar_models": [
-                "gemini-2.0-exp-advanced"
+                "gemini-2.0-exp-advanced",
+                "gemini-2.5-pro"
             ]
         },
         "grok-beta": {
@@ -364,7 +366,8 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gpt-4o-2024-05-13",
                 "gpt-4o-2024-08-06",
-                "openai/gpt-4o"
+                "openai/gpt-4o",
+                "chatgpt-4o"
             ]
         },
         "gpt-4o-mini": {
@@ -378,6 +381,44 @@ pub const KNOWN_MODELS: &str = r####"
             "similar_models": [
                 "gpt-4o-mini-2024-07-18"
             ]
+        },
+        "gpt-4.1": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": [
+                "gpt-4.1-2025-04-14"
+            ]
+        },
+        "gpt-4.1-mini": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": [
+                "gpt-4.1-nano",
+                "gpt-4.1-mini-2025-04-14",
+                "gpt-4.1-nano-2025-04-14"
+            ]
+        },
+        "chatgpt-4o": {
+            "n_ctx": 128000,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            },
+            "similar_models": []
         },
         "o1": {
             "n_ctx": 200000,
@@ -494,7 +535,8 @@ pub const KNOWN_MODELS: &str = r####"
                 "PASSTHROUGH": {}
             },
             "similar_models": [
-                "gemini-2.0-exp-advanced"
+                "gemini-2.0-exp-advanced",
+                "gemini-2.5-pro"
             ]
         },
         "llama3/8b/instruct": {
@@ -814,6 +856,14 @@ pub const KNOWN_MODELS: &str = r####"
         "o1-mini":                "Xenova/gpt-4o",
         "o3-mini":                "Xenova/gpt-4o",
         "openai/gpt-4o":          "Xenova/gpt-4o",
+        "chatgpt-4o":             "Xenova/gpt-4o",
+
+        "gpt-4.1":                    "Xenova/gpt-4o",
+        "gpt-4.1-2025-04-14":         "Xenova/gpt-4o",
+        "gpt-4.1-mini":               "Xenova/gpt-4o",
+        "gpt-4.1-mini-2025-04-14":    "Xenova/gpt-4o",
+        "gpt-4.1-nano":               "Xenova/gpt-4o",
+        "gpt-4.1-nano-2025-04-14":    "Xenova/gpt-4o",
 
         "claude-3-5-sonnet":          "Xenova/claude-tokenizer",
         "claude-3-5-haiku":           "Xenova/claude-tokenizer",
@@ -836,6 +886,7 @@ pub const KNOWN_MODELS: &str = r####"
         "gemini-1.5-flash-8b": "Xenova/gemma2-tokenizer",
         "gemini-1.5-pro": "Xenova/gemma2-tokenizer",
         "gemini-2.0-exp-advanced": "Xenova/gemma2-tokenizer",
+        "gemini-2.5-pro": "Xenova/gemma2-tokenizer",
 
         "deepseek-chat":     "deepseek-ai/DeepSeek-V3",
         "deepseek-reasoner": "deepseek-ai/DeepSeek-R1"
