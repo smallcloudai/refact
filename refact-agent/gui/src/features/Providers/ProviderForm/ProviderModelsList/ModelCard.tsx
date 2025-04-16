@@ -1,0 +1,113 @@
+import type { FC } from "react";
+import classNames from "classnames";
+import {
+  Badge,
+  Card,
+  DropdownMenu,
+  Flex,
+  IconButton,
+  Text,
+} from "@radix-ui/themes";
+import { DotsVerticalIcon } from "@radix-ui/react-icons";
+
+import { ModelCardPopup } from "./components/ModelCardPopup";
+import { useModelDialogState } from "./hooks/useModelDialogState";
+
+import type { ModelType, SimplifiedModel } from "../../../../services/refact";
+
+import styles from "./ModelCard.module.css";
+
+export type ModelCardProps = {
+  model: SimplifiedModel;
+  providerName: string;
+  modelType: ModelType;
+  isReadonly: boolean;
+};
+
+/**
+ * Card component that displays model information and provides access to model settings
+ */
+export const ModelCard: FC<ModelCardProps> = ({
+  model,
+  modelType,
+  providerName,
+  isReadonly,
+}) => {
+  const { enabled, name, removable } = model;
+  const {
+    isOpen: dialogOpen,
+    setIsOpen: setDialogOpen,
+    dropdownOpen,
+    setDropdownOpen,
+    openDialogSafely,
+    isSavingModel,
+    handleToggleModelEnabledState,
+    handleRemoveModel,
+    handleSaveModel,
+  } = useModelDialogState({
+    initialState: false,
+    modelType,
+    providerName,
+  });
+
+  return (
+    <Card className={classNames({ [styles.disabledCard]: isSavingModel })}>
+      {dialogOpen && (
+        <ModelCardPopup
+          isOpen={dialogOpen}
+          isSaving={isSavingModel}
+          setIsOpen={setDialogOpen}
+          modelName={name}
+          modelType={modelType}
+          providerName={providerName}
+          onSave={handleSaveModel}
+        />
+      )}
+
+      <Flex align="center" justify="between">
+        <Flex gap="2" align="center">
+          <Text as="span" size="2">
+            {name}
+          </Text>
+          <Badge size="1" color={enabled ? "green" : "gray"}>
+            {enabled ? "Active" : "Inactive"}
+          </Badge>
+        </Flex>
+
+        <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
+          <DropdownMenu.Trigger>
+            <IconButton size="1" variant="outline" color="gray">
+              <DotsVerticalIcon />
+            </IconButton>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content side="bottom" align="end" size="1">
+            <DropdownMenu.Item
+              onClick={openDialogSafely}
+              disabled={isReadonly || isSavingModel}
+            >
+              Edit model&apos;s settings
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              onClick={() => void handleToggleModelEnabledState(model)}
+              disabled={isReadonly || isSavingModel}
+            >
+              {enabled ? "Disable model" : "Enable model"}
+            </DropdownMenu.Item>
+            <DropdownMenu.Item
+              onClick={() => void handleRemoveModel(model)}
+              color="red"
+              disabled={isReadonly || isSavingModel || !removable}
+              title={
+                removable
+                  ? "Remove model from the list of models"
+                  : `${name} is not removable model`
+              }
+            >
+              Remove model
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+      </Flex>
+    </Card>
+  );
+};

@@ -103,7 +103,7 @@ export const Chat: React.FC<ChatProps> = ({
 
         <AgentUsage />
         <SuggestNewChat
-          shouldBeVisible={            
+          shouldBeVisible={
             threadNewChatSuggested.wasSuggested &&
             !threadNewChatSuggested.wasRejectedByUser
           }
@@ -135,8 +135,7 @@ export const Chat: React.FC<ChatProps> = ({
               <Flex align="center" gap="1">
                 <Text size="1">
                   model:{" "}
-                  {capsForToolUse.currentModel ||
-                    caps.data?.chat_default_model}{" "}
+                  {capsForToolUse.currentModel || caps.data?.chat_default_model}{" "}
                 </Text>{" "}
                 •{" "}
                 <Text

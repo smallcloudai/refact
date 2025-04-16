@@ -1,0 +1,5 @@
+.disabledCard {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: 0.15s ease-in-out;
+}
