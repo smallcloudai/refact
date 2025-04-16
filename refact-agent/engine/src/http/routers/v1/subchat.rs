@@ -32,9 +32,16 @@ pub async fn handle_v1_subchat(
 
     let top_n = 7;
     let fake_n_ctx = 4096;
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, messages.clone(), "".to_string(), false).await
-    ));
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        global_context.clone(),
+        fake_n_ctx,
+        top_n,
+        false,
+        messages.clone(),
+        "".to_string(),
+        false,
+        post.model_name.clone(),
+    ).await));
 
     let new_messages = subchat(
         ccx.clone(),
@@ -89,9 +96,16 @@ pub async fn handle_v1_subchat_single(
 
     let top_n = 7;
     let fake_n_ctx = 4096;
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, messages.clone(), "".to_string(), false).await)
-    );
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        global_context.clone(),
+        fake_n_ctx,
+        top_n,
+        false,
+        messages.clone(),
+        "".to_string(),
+        false,
+        post.model_name.clone(),
+    ).await));
 
     let new_messages = subchat_single(
         ccx.clone(),
