@@ -399,17 +399,6 @@
             ],
             "tokenizer": "hf://Xenova/gpt-4o"
         },
-        "chatgpt-4o": {
-            "n_ctx": 128000,
-            "supports_tools": false,
-            "supports_multimodality": true,
-            "supports_agent": false,
-            "supports_scratchpads": {
-                "PASSTHROUGH": {
-                }
-            },
-            "similar_models": []
-        },
         "o1": {
             "n_ctx": 200000,
             "supports_tools": true,
@@ -483,6 +472,19 @@
                 "openai/gpt-4.1-nano",
                 "openai/gpt-4.1-mini-2025-04-14",
                 "openai/gpt-4.1-nano-2025-04-14"
+            ]
+        },
+        "chatgpt-4o": {
+            "n_ctx": 128000,
+            "supports_tools": false,
+            "supports_multimodality": true,
+            "supports_agent": false,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "chatgpt-4o-latest",
+                "openai/chatgpt-4o",
+                "openai/chatgpt-4o-latest"
             ]
         },
         "claude-instant-1.2": {

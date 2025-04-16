@@ -10,7 +10,6 @@ import {
   useGetCapsQuery,
   useCapsForToolUse,
   useAgentUsage,
-  useLastSentCompressionStop,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
@@ -104,10 +103,9 @@ export const Chat: React.FC<ChatProps> = ({
 
         <AgentUsage />
         <SuggestNewChat
-          shouldBeVisible={
-            compressionStop.stopped ||
-            (threadNewChatSuggested.wasSuggested &&
-              !threadNewChatSuggested.wasRejectedByUser)
+          shouldBeVisible={            
+            threadNewChatSuggested.wasSuggested &&
+            !threadNewChatSuggested.wasRejectedByUser
           }
         />
         {!isStreaming && preventSend && unCalledTools && (
