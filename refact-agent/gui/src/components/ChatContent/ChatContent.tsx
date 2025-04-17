@@ -117,7 +117,11 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         {shouldShow && <UsageCounter />}
         <Container py="4">
           {!isWaitingForConfirmation && (
-            <LogoAnimation size="8" loop={isStreaming || isWaiting} />
+            <LogoAnimation
+              size="8"
+              isStreaming={isStreaming}
+              isWaiting={isWaiting}
+            />
           )}
         </Container>
       </Flex>

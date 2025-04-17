@@ -12,6 +12,8 @@ export type LogoAnimationProps = Omit<
   "animationData" | "size"
 > & {
   size?: AnimationSize;
+  isWaiting: boolean;
+  isStreaming: boolean;
 };
 
 function sizeToCssVariable(size: AnimationSize) {
@@ -19,8 +21,36 @@ function sizeToCssVariable(size: AnimationSize) {
   return { width: sizeString, height: sizeString };
 }
 
+const EYE_ANIMATION_FRAMES: [number, number] = [0, 70];
+const CHAR_ANIMATION_FRAMES: [number, number] = [79, 213];
+const SPIN_ANIMATION_FRAMES: [number, number] = [214, 254];
+const HAPPY_EYES: [number, number] = [242, 250];
+
+function selectFrames(
+  isWaiting: boolean,
+  isStreaming: boolean,
+): Pick<LottieOptions, "loop" | "initialSegment"> {
+  if (isStreaming) {
+    return {
+      loop: true,
+      initialSegment: CHAR_ANIMATION_FRAMES,
+    };
+  } else if (isWaiting) {
+    return {
+      loop: true,
+      initialSegment: EYE_ANIMATION_FRAMES,
+    };
+  }
+  return {
+    loop: 1,
+    initialSegment: HAPPY_EYES,
+  };
+}
+
 export const LogoAnimation: React.FC<LogoAnimationProps> = ({
   size = defaultSize,
+  isWaiting,
+  isStreaming,
   ...props
 }) => {
   const options: LottieOptions = useMemo(() => {
@@ -30,16 +60,16 @@ export const LogoAnimation: React.FC<LogoAnimationProps> = ({
       ...props,
       style: styleProps,
       animationData: logoAnimationData,
+      ...selectFrames(isWaiting, isStreaming),
     };
-  }, [props, size]);
+  }, [isStreaming, isWaiting, props, size]);
 
-  const { View, getDuration, goToAndStop } = useLottie(options);
+  const { View, playSegments } = useLottie(options);
   useEffect(() => {
-    const duration = getDuration();
-    if (!props.loop && duration) {
-      goToAndStop(duration);
+    if (isWaiting && !isStreaming) {
+      playSegments([EYE_ANIMATION_FRAMES, SPIN_ANIMATION_FRAMES]);
     }
-  }, [getDuration, goToAndStop, props.loop]);
+  }, [isStreaming, isWaiting, playSegments]);
 
   return View;
 };
