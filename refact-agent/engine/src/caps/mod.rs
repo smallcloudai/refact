@@ -31,11 +31,7 @@ pub struct BaseModelRecord {
     /// provider/model_name, e.g. "openai/gpt-4o"
     #[serde(skip_deserializing)]
     pub id: String, 
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-    #[serde(skip_deserializing)]
-    pub removable: bool,
-
+    
     #[serde(default, skip_serializing)]
     pub endpoint: String,
     #[serde(default, skip_serializing)]
@@ -51,6 +47,14 @@ pub struct BaseModelRecord {
     pub similar_models: Vec<String>,
     #[serde(default)]
     pub tokenizer: String,
+
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    // Fields used for Config/UI management
+    #[serde(skip_deserializing)]
+    pub removable: bool,
+    #[serde(skip_deserializing)]
+    pub user_configured: bool,
 }
 
 fn default_true() -> bool { true }

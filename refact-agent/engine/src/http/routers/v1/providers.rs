@@ -56,6 +56,7 @@ pub struct ModelLightResponse {
     name: String,
     enabled: bool,
     removable: bool,
+    user_configured: bool,
 }
 
 impl ModelLightResponse {
@@ -64,6 +65,7 @@ impl ModelLightResponse {
             name: model.base().name.clone(),
             enabled: model.base().enabled,
             removable: model.base().removable,
+            user_configured: model.base().user_configured,
         }
     }
 }

@@ -71,7 +71,10 @@ impl CapsProvider {
         set_field_if_exists::<String>(&mut self.api_key, "api_key", &value)?;
         set_field_if_exists::<String>(&mut self.tokenizer_api_key, "tokenizer_api_key", &value)?;
         set_field_if_exists::<EmbeddingModelRecord>(&mut self.embedding_model, "embedding_model", &value)?;
-        self.embedding_model.base.removable = true;
+        if value.get("embedding_model").is_some() {
+            self.embedding_model.base.removable = true;
+            self.embedding_model.base.user_configured = true;
+        }
 
         extend_model_collection::<ChatModelRecord>(&mut self.chat_models, "chat_models", &value, &self.running_models)?;
         extend_model_collection::<CompletionModelRecord>(&mut self.completion_models, "completion_models", &value, &self.running_models)?;
@@ -120,6 +123,7 @@ fn extend_model_collection<T: for<'de> serde::Deserialize<'de> + HasBaseModelRec
             .map_err(|_| format!("Invalid format for {field}"))?;
         
         for (key, mut model) in imported_collection {
+            model.base_mut().user_configured = true;
             if !target.contains_key(&key) && !prev_running_models.contains(&key) {
                 model.base_mut().removable = true; 
             }
