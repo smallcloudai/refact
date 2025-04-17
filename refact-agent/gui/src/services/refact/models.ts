@@ -1,5 +1,5 @@
 import { RootState } from "../../app/store";
-import { MODEL_URL, MODELS_URL } from "./consts";
+import { MODEL_DEFAULTS_URL, MODEL_URL, MODELS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { hasProperty } from "../../utils";
 import { isDetailMessage } from "./commands";
@@ -82,6 +82,39 @@ export const modelsApi = createApi({
               error: "Invalid response from /v1/model",
               data: result.data,
               status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+    getModelDefaults: builder.query<Model, GetModelDefaultsArgs>({
+      queryFn: async (args, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${MODEL_DEFAULTS_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "GET",
+          url,
+          params: {
+            provider: args.providerName,
+            type: args.modelType,
+          },
+        });
+
+        if (result.error) {
+          return { error: result.error };
+        }
+
+        if (!isModel(result.data)) {
+          return {
+            error: {
+              error: "Invalid response from /v1/model-defaults",
+              status: "CUSTOM_ERROR",
+              data: result.data,
             },
           };
         }
@@ -183,6 +216,8 @@ export type GetModelArgs = {
   providerName: string;
   modelType: ModelType;
 };
+
+export type GetModelDefaultsArgs = Omit<GetModelArgs, "modelName">;
 
 export type GetModelsArgs = {
   providerName: string;
