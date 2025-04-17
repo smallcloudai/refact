@@ -1,37 +1,29 @@
 import { test, expect } from "../fixtures";
 
-test("Tour", async ({ page, loginPage, baseURL }) => {
+test("Tour", async ({ page, loginPage, baseURL, tourPage }) => {
   page.goto("/");
-  // TODO: turn this into a fixture
-  await expect(page.getByText("Welcome to Refact.ai!")).toBeVisible();
+
+  await tourPage.step1();
   await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
 
-  await page.getByRole("button", { name: "Get Started" }).click();
-  await expect(page.getByText("Agent can accomplish tasks")).toBeVisible();
+  await tourPage.step2();
   await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
 
-  await page.getByText("next").click();
-  await expect(page.getByText("Integrations", { exact: true })).toBeVisible();
+  await tourPage.step3();
   await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
 
-  await page.getByText("next").click();
-  await expect(page.getByText("Chat modes / models")).toBeVisible();
+  await tourPage.step4();
   await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
 
-  await page.getByText("next").click();
-  await expect(page.getByText("Difference in Quick / Explore")).toBeVisible();
+  await tourPage.step5();
   await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
 
-  await page.getByText("next").click();
-  await expect(page.getByText("Code completion")).toBeVisible();
+  await tourPage.step6();
   await expect(page).toHaveScreenshot();
 
-  await page.getByText("next").click();
-  await expect(
-    page.getByText("Your Refact product tour is finished!")
-  ).toBeVisible();
+  await tourPage.step7();
   await expect(page).toHaveScreenshot();
 
-  await page.getByRole("button", { name: "Ready to use" }).click();
+  await tourPage.step8();
   await expect(page).toHaveScreenshot();
 });

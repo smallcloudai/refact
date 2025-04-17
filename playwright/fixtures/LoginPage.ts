@@ -1,5 +1,5 @@
-import type { Page, Locator, BrowserContext } from "@playwright/test";
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+
 const apiKey = process.env.REFACT_API_KEY ?? "test-api-key";
 
 // Create a mock response that matches GoodPollingResponse type

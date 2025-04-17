@@ -2,11 +2,13 @@ import { test as baseTest } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 import { LoginPage } from "./LoginPage";
+import { TourPage } from "./TourPage";
 
 export * from "@playwright/test";
 export const test = baseTest.extend<
   {
     loginPage: LoginPage;
+    tourPage: TourPage;
   },
   { workerStorageState: string }
 >({
@@ -47,5 +49,10 @@ export const test = baseTest.extend<
   loginPage: async ({ page }, use) => {
     const loginPage = new LoginPage(page);
     await use(loginPage);
+  },
+
+  tourPage: async ({ page }, use) => {
+    const tourPage = new TourPage(page);
+    await use(tourPage);
   },
 });
