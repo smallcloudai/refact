@@ -28,7 +28,7 @@ export type ToolCall = {
     arguments: string; // stringed json
     name?: string; // will be present when it's new
   };
-  index: number;
+  index?: number;
   type?: "function";
   id?: string;
   attached_files?: string[];
@@ -314,7 +314,7 @@ interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
-  tool_calls?: ToolCall[];
+  tool_calls?: ToolCall[] | null; // some models might return null as tool_calls :/
   thinking_blocks?: ThinkingBlock[] | null;
 }
 
@@ -352,7 +352,7 @@ export function isChatContextFileDelta(
 }
 
 interface ToolCallDelta extends BaseDelta {
-  tool_calls: ToolCall[];
+  tool_calls: ToolCall[] | null;
 }
 
 export function isToolCallDelta(delta: unknown): delta is ToolCallDelta {

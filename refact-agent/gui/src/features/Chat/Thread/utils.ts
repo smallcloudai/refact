@@ -78,9 +78,20 @@ POINT2 FOR_FUTURE_FEREFENCE: ...
 `;
 
 function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
-  const calls = prev.slice();
+  const calls = Array.isArray(prev) ? prev.filter(Boolean) : [];
 
-  if (calls[add.index]) {
+  // Handle Gemini model which doesn't provide index property :/
+  if (add.index === undefined) {
+    // Assign an index to this tool call
+    const newAdd = {
+      ...add,
+      index: calls.length, // Use array length as the next index
+    };
+
+    // Push the tool call with its new index
+    calls.push(newAdd);
+  } else if (typeof add.index === "number" && calls[add.index]) {
+    // Handle existing tool call at this index (GPT-4o case)
     const prevCall = calls[add.index];
     const prevArgs = prevCall.function.arguments;
     const nextArgs = prevArgs + add.function.arguments;
@@ -92,16 +103,31 @@ function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
       },
     };
     calls[add.index] = call;
-  } else {
+  } else if (typeof add.index === "number") {
+    // Normal case with valid index but no existing tool at that index
     calls[add.index] = add;
   }
-  return calls;
+
+  // Return a clean array with no sparse elements or invalid properties
+  return calls.filter(Boolean);
 }
 
 export function mergeToolCalls(prev: ToolCall[], add: ToolCall[]): ToolCall[] {
-  return add.reduce((acc, cur) => {
+  const prevArray = Array.isArray(prev) ? prev.filter(Boolean) : [];
+
+  // Ensure add is a proper array
+  const addArray = Array.isArray(add)
+    ? add.filter(Boolean) // Filter out undefined/null entries
+    : ([add] as ToolCall[]).filter(Boolean); // Cast single item to array and filter
+
+  if (addArray.length === 0) {
+    return prevArray;
+  }
+
+  // Process each tool call to merge
+  return addArray.reduce((acc, cur) => {
     return mergeToolCall(acc, cur);
-  }, prev);
+  }, prevArray);
 }
 
 function mergeThinkingBlock(
@@ -243,6 +269,9 @@ export function formatChatResponse(
     );
   }
 
+  // Create a variable to track if we've seen tool calls in this response
+  let hasSeenToolCalls = false;
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       const msg = { role: cur.delta.role, content: cur.delta.content };
@@ -270,21 +299,36 @@ export function formatChatResponse(
     const lastMessage = acc[acc.length - 1];
 
     if (isToolCallDelta(cur.delta)) {
+      // Mark that we've seen tool calls in this response
+      hasSeenToolCalls = true;
+
       if (!isAssistantMessage(lastMessage)) {
         return acc.concat([
           {
             role: "assistant",
             content: "", // should be like that?
-            tool_calls: cur.delta.tool_calls,
-            finish_reason: cur.finish_reason,
+            tool_calls: Array.isArray(cur.delta.tool_calls)
+              ? cur.delta.tool_calls.filter(Boolean)
+              : [],
+            finish_reason: "tool_calls", // Always set to tool_calls
           },
         ]);
       }
 
       const last = acc.slice(0, -1);
-      const collectedCalls = lastMessage.tool_calls ?? [];
-      const tool_calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
 
+      // Ensure we have a clean array of tool calls to start with
+      const collectedCalls = Array.isArray(lastMessage.tool_calls)
+        ? lastMessage.tool_calls.filter(Boolean)
+        : [];
+
+      // Safely handle incoming tool calls, which might be null, undefined, or not an array
+      const incomingCalls = Array.isArray(cur.delta.tool_calls)
+        ? cur.delta.tool_calls.filter(Boolean) // Filter out null/undefined entries
+        : []; // Handle null/undefined case
+
+      // Merge the tool calls with improved handling
+      const tool_calls = mergeToolCalls(collectedCalls, incomingCalls);
       return last.concat([
         {
           role: "assistant",
@@ -292,7 +336,7 @@ export function formatChatResponse(
           reasoning_content: lastMessage.reasoning_content ?? "",
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
-          finish_reason: cur.finish_reason,
+          finish_reason: "tool_calls", // Always use tool_calls when we have tool calls
           usage: lastMessage.usage ?? currentUsage,
         },
       ]);
@@ -339,6 +383,19 @@ export function formatChatResponse(
     ) {
       const last = acc.slice(0, -1);
 
+      // For content deltas, preserve existing tool_calls from the lastMessage
+      const toolCalls =
+        cur.delta.tool_calls !== null
+          ? cur.delta.tool_calls
+          : lastMessage.tool_calls;
+
+      // If we've seen tool calls in this response, don't let a content delta
+      // change the finish_reason from "tool_calls" to "stop"
+      const finishReason =
+        hasSeenToolCalls && cur.finish_reason === "stop"
+          ? "tool_calls"
+          : cur.finish_reason;
+
       return last.concat([
         {
           role: "assistant",
@@ -346,9 +403,9 @@ export function formatChatResponse(
           reasoning_content:
             (lastMessage.reasoning_content ?? "") +
             (cur.delta.reasoning_content ?? ""),
-          tool_calls: lastMessage.tool_calls,
+          tool_calls: toolCalls,
           thinking_blocks: lastMessage.thinking_blocks,
-          finish_reason: cur.finish_reason,
+          finish_reason: finishReason,
           usage: lastMessage.usage ?? currentUsage,
         },
       ]);
@@ -383,7 +440,8 @@ export function formatChatResponse(
             reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
-            finish_reason: cur.finish_reason,
+            // If we've seen tool calls, make sure the finish_reason is "tool_calls"
+            finish_reason: hasSeenToolCalls ? "tool_calls" : cur.finish_reason,
             usage: currentUsage,
           },
         ]);
@@ -394,6 +452,19 @@ export function formatChatResponse(
         (isAssistantMessage(lastMessage) || isToolCallMessage(lastMessage)) &&
         isAssistantDelta(cur.delta)
       ) {
+        // If this is a finish delta, preserve existing tool_calls in the message
+        const toolCalls =
+          cur.delta.tool_calls !== null
+            ? cur.delta.tool_calls
+            : lastMessage.tool_calls;
+
+        // If we've seen tool calls in this response, don't let a finish delta
+        // change the finish_reason from "tool_calls" to "stop"
+        const finishReason =
+          hasSeenToolCalls && cur.finish_reason === "stop"
+            ? "tool_calls"
+            : cur.finish_reason;
+
         return last.concat([
           {
             role: "assistant",
@@ -401,9 +472,9 @@ export function formatChatResponse(
             reasoning_content:
               (lastMessage.reasoning_content ?? "") +
               (cur.delta.reasoning_content ?? ""),
-            tool_calls: lastMessage.tool_calls,
+            tool_calls: toolCalls,
             thinking_blocks: lastMessage.thinking_blocks,
-            finish_reason: cur.finish_reason,
+            finish_reason: finishReason,
             usage: lastMessage.usage ?? currentUsage,
           },
         ]);
