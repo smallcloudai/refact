@@ -1,16 +1,24 @@
 import type { FC } from "react";
-import { useState, useEffect, useCallback, ChangeEvent } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  ChangeEvent,
+  useMemo,
+} from "react";
 import isEqual from "lodash.isequal";
 import { Button, Dialog, Flex, Text } from "@radix-ui/themes";
 
-import { useGetModelConfiguration } from "../../../../../hooks/useModelsQuery";
+import {
+  useGetModelConfiguration,
+  useGetModelDefaults,
+} from "../../../../../hooks/useModelsQuery";
 
 import { FormField } from "./FormField";
 import { CapabilityBadge } from "./CapabilityBadge";
 
 import type {
   CodeChatModel,
-  CodeCompletionModel,
   EmbeddingModel,
   Model,
   ModelType,
@@ -21,29 +29,7 @@ import {
 } from "../../../../../services/refact";
 
 import { extractHumanReadableReasoningType } from "../utils";
-
-const DEFAULT_VALUES_FOR_NEW_CHAT_MODEL: CodeChatModel = {
-  default_temperature: null,
-  enabled: true,
-  id: "",
-  n_ctx: 16000,
-  name: "",
-  supports_agent: false,
-  supports_clicks: false,
-  supports_multimodality: false,
-  supports_tools: false,
-  supports_boost_reasoning: false,
-  supports_reasoning: null,
-  tokenizer: "hf://Xenova/gpt-4o",
-};
-
-const DEFAULT_VALUES_FOR_NEW_COMPLETION_MODEL: CodeCompletionModel = {
-  enabled: true,
-  id: "",
-  n_ctx: 16000,
-  name: "",
-  tokenizer: "hf://Xenova/gpt-4o",
-};
+import { useEffectOnce } from "../../../../../hooks";
 
 export type ModelCardPopupProps = {
   isOpen: boolean;
@@ -67,41 +53,70 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   newModelCreation = false,
 }) => {
   const {
-    data: modelData,
-    isSuccess,
-    currentData,
+    data: configuredModelData,
+    isSuccess: _isConfiguredModelDataLoaded,
+    currentData: configuredModelCurrentData,
   } = useGetModelConfiguration({
     modelName,
     modelType,
     providerName,
   });
+
+  const { data: defaultModelData, isSuccess: isDefaultModelDataLoaded } =
+    useGetModelDefaults({
+      modelType,
+      providerName,
+    });
   const [editedModelData, setEditedModelData] = useState<Model | undefined>(
-    newModelCreation
-      ? modelType === "chat"
-        ? DEFAULT_VALUES_FOR_NEW_CHAT_MODEL
-        : DEFAULT_VALUES_FOR_NEW_COMPLETION_MODEL
-      : modelData,
+    configuredModelData,
   );
 
-  useEffect(() => {
-    setEditedModelData(modelData);
-  }, [modelData]);
+  const areDefaultsUnavailable = useMemo(() => {
+    const dataToCompare = {
+      ...editedModelData,
+      name: "",
+    };
+    return isEqual(defaultModelData, dataToCompare);
+  }, [defaultModelData, editedModelData]);
+
+  const isSavingDisabled = useMemo(() => {
+    return !editedModelData?.name;
+  }, [editedModelData]);
 
   useEffect(() => {
-    if (modelData) {
-      setEditedModelData((prev) => {
-        if (isEqual(prev, currentData)) return prev;
-        return modelData;
-      });
+    if (isOpen) {
+      if (configuredModelData) {
+        setEditedModelData((prev) => {
+          if (isEqual(prev, configuredModelCurrentData)) return prev;
+          return configuredModelData;
+        });
+        return;
+      }
+      setEditedModelData(defaultModelData);
     }
-    if (newModelCreation) {
-      setEditedModelData(
-        modelType === "chat"
-          ? DEFAULT_VALUES_FOR_NEW_CHAT_MODEL
-          : DEFAULT_VALUES_FOR_NEW_COMPLETION_MODEL,
-      );
-    }
-  }, [isOpen, modelData, currentData, newModelCreation, modelType]);
+  }, [
+    isOpen,
+    configuredModelData,
+    configuredModelCurrentData,
+    defaultModelData,
+    newModelCreation,
+    modelType,
+  ]);
+
+  useEffectOnce(() => {
+    return () => {
+      setEditedModelData(undefined);
+    };
+  });
+
+  const handleSetDefaultModelData = useCallback(() => {
+    if (!isDefaultModelDataLoaded) return;
+    const updatedData = {
+      ...defaultModelData,
+      name: newModelCreation ? defaultModelData.name : modelName,
+    };
+    setEditedModelData(updatedData);
+  }, [isDefaultModelDataLoaded, newModelCreation, modelName, defaultModelData]);
 
   const handleSave = useCallback(async () => {
     if (!isOpen || !editedModelData) return;
@@ -140,11 +155,11 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
     });
   };
 
-  if (!isSuccess && !modelData && !newModelCreation) {
+  if (!configuredModelData && !newModelCreation) {
     return null;
   }
 
-  if (!modelData && !newModelCreation) return null;
+  if (!configuredModelData && !newModelCreation) return null;
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={handleDialogChange}>
@@ -181,12 +196,30 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
           )}
         </Flex>
 
-        <Flex gap="3" mt="4" justify="end">
-          <Button variant="soft" color="gray" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button disabled={isSaving} onClick={() => void handleSave()}>
-            {isSaving ? "Saving..." : "Save"}
+        <Flex align="center" mt="4" justify="between" width="100%">
+          <Flex gap="3" justify="end">
+            <Button variant="soft" color="gray" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button
+              disabled={isSaving || isSavingDisabled}
+              onClick={() => void handleSave()}
+            >
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+          </Flex>
+          <Button
+            variant="outline"
+            color="gray"
+            onClick={handleSetDefaultModelData}
+            title={
+              areDefaultsUnavailable
+                ? "Your configuration matches default one"
+                : "Use model defaults"
+            }
+            disabled={areDefaultsUnavailable}
+          >
+            Use model defaults
           </Button>
         </Flex>
       </Dialog.Content>
@@ -212,27 +245,27 @@ const CommonFields: FC<CommonFieldsProps> = ({
     return value;
   };
 
-  const handleFieldValueChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    field: string,
-  ) => {
-    const valueType = typeof editedModelData[field as keyof Model];
-    const value = getValueByType(e.target.value, valueType);
-    setEditedModelDataByField(field, value);
-  };
+  const handleFieldValueChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>, field: string) => {
+      const valueType = typeof editedModelData[field as keyof Model];
+      const value = getValueByType(e.target.value, valueType);
+      setEditedModelDataByField(field, value);
+    },
+    [editedModelData, setEditedModelDataByField],
+  );
 
   return (
-    <>
+    <React.Fragment key={editedModelData.id}>
       <FormField
         label="Name"
-        defaultValue={editedModelData.name}
+        value={editedModelData.name}
         onChange={(e) => handleFieldValueChange(e, "name")}
         placeholder="Model name"
         isDisabled={!newModelCreation}
       />
       <FormField
         label="Context Window (n_ctx)"
-        defaultValue={editedModelData.n_ctx.toString()}
+        value={editedModelData.n_ctx.toString()}
         onChange={(e) => handleFieldValueChange(e, "n_ctx")}
         placeholder="Context window size"
         type="number"
@@ -240,11 +273,11 @@ const CommonFields: FC<CommonFieldsProps> = ({
       <FormField
         label="Tokenizer"
         description="'hf://' stands for 'https://huggingface.co/'"
-        defaultValue={editedModelData.tokenizer}
+        value={editedModelData.tokenizer}
         onChange={(e) => handleFieldValueChange(e, "tokenizer")}
         placeholder="Tokenizer name"
       />
-    </>
+    </React.Fragment>
   );
 };
 
@@ -284,7 +317,7 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
     <>
       <FormField
         label="Default Temperature"
-        defaultValue={editedModelData.default_temperature?.toString() ?? ""}
+        value={editedModelData.default_temperature?.toString() ?? ""}
         placeholder="Default temperature"
         type="number"
         max="1"
@@ -359,21 +392,21 @@ const EmbeddingModelFields: FC<EmbeddingModelFieldsProps> = ({
     <>
       <FormField
         label="Embedding Size"
-        defaultValue={editedModelData.embedding_size.toString()}
+        value={editedModelData.embedding_size.toString()}
         onChange={(e) => handleFieldValueChange(e, "embedding_size")}
         placeholder="Embedding size"
         type="number"
       />
       <FormField
         label="Rejection Threshold"
-        defaultValue={editedModelData.rejection_threshold.toString()}
+        value={editedModelData.rejection_threshold.toString()}
         onChange={(e) => handleFieldValueChange(e, "rejection_threshold")}
         placeholder="Rejection threshold"
         type="number"
       />
       <FormField
         label="Embedding Batch"
-        defaultValue={editedModelData.embedding_batch.toString()}
+        value={editedModelData.embedding_batch.toString()}
         onChange={(e) => handleFieldValueChange(e, "embedding_batch")}
         placeholder="Embedding batch"
         type="number"

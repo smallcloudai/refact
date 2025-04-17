@@ -115,9 +115,10 @@ export const useModelDialogState = ({
   );
 
   const handleRemoveModel = useCallback(
-    async (model: SimplifiedModel) => {
-      if (!model.removable) return;
-
+    async (
+      model: SimplifiedModel,
+      operationType: "remove" | "reset" = "remove",
+    ) => {
       const response = await deleteModel({
         model: model.name,
         provider: providerName,
@@ -127,7 +128,9 @@ export const useModelDialogState = ({
       if (response.error) {
         dispatch(
           setError(
-            `Something went wrong during removal of ${model.name} model. Please, try again`,
+            `Something went wrong during ${
+              operationType === "remove" ? "removal" : "reset"
+            } of ${model.name} model. Please, try again`,
           ),
         );
         setIsRemovingModel(false);
@@ -135,7 +138,11 @@ export const useModelDialogState = ({
       }
 
       const actions = [
-        setInformation(`Model ${model.name} was removed successfully!`),
+        setInformation(
+          `Model ${model.name} was ${
+            operationType === "remove" ? "removed" : "reset"
+          } successfully!`,
+        ),
         modelsApi.util.invalidateTags(["MODELS", "MODEL"]),
       ];
 
@@ -144,6 +151,16 @@ export const useModelDialogState = ({
       return true;
     },
     [dispatch, deleteModel, providerName, modelType],
+  );
+
+  const handleResetModel = useCallback(
+    async (model: SimplifiedModel) => {
+      const isSuccess = await handleRemoveModel(model, "reset");
+      if (isSuccess) {
+        dispatch(modelsApi.util.invalidateTags(["MODELS", "MODEL"]));
+      }
+    },
+    [dispatch, handleRemoveModel],
   );
 
   const handleSaveModel = useCallback(
@@ -189,6 +206,7 @@ export const useModelDialogState = ({
     resetBodyStyles,
     handleSaveModel,
     handleRemoveModel,
+    handleResetModel,
     handleToggleModelEnabledState,
   };
 };

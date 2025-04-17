@@ -4,7 +4,7 @@ import { Markdown } from "../../../../../components/Markdown";
 
 type FormFieldProps = {
   label: string;
-  defaultValue?: string;
+  value?: string;
   placeholder?: string;
   description?: string;
   type?: TextField.RootProps["type"];
@@ -19,7 +19,7 @@ type FormFieldProps = {
  */
 export const FormField: FC<FormFieldProps> = ({
   label,
-  defaultValue,
+  value,
   placeholder,
   description,
   isDisabled,
@@ -40,7 +40,7 @@ export const FormField: FC<FormFieldProps> = ({
       )}
       {children ?? (
         <TextField.Root
-          defaultValue={defaultValue}
+          value={value}
           placeholder={placeholder}
           type={type}
           max={max}

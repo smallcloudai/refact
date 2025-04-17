@@ -21,7 +21,7 @@ export type ModelCardProps = {
   model: SimplifiedModel;
   providerName: string;
   modelType: ModelType;
-  isReadonly: boolean;
+  isReadonlyProvider: boolean;
 };
 
 /**
@@ -31,7 +31,7 @@ export const ModelCard: FC<ModelCardProps> = ({
   model,
   modelType,
   providerName,
-  isReadonly,
+  isReadonlyProvider,
 }) => {
   const { enabled, name, removable } = model;
   const {
@@ -43,6 +43,7 @@ export const ModelCard: FC<ModelCardProps> = ({
     isSavingModel,
     handleToggleModelEnabledState,
     handleRemoveModel,
+    handleResetModel,
     handleSaveModel,
   } = useModelDialogState({
     initialState: false,
@@ -83,28 +84,35 @@ export const ModelCard: FC<ModelCardProps> = ({
           <DropdownMenu.Content side="bottom" align="end" size="1">
             <DropdownMenu.Item
               onClick={openDialogSafely}
-              disabled={isReadonly || isSavingModel}
+              disabled={isReadonlyProvider || isSavingModel}
             >
               Edit model&apos;s settings
             </DropdownMenu.Item>
             <DropdownMenu.Item
               onClick={() => void handleToggleModelEnabledState(model)}
-              disabled={isReadonly || isSavingModel}
+              disabled={isReadonlyProvider || isSavingModel}
             >
               {enabled ? "Disable model" : "Enable model"}
             </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onClick={() => void handleRemoveModel(model)}
-              color="red"
-              disabled={isReadonly || isSavingModel || !removable}
-              title={
-                removable
-                  ? "Remove model from the list of models"
-                  : `${name} is not removable model`
-              }
-            >
-              Remove model
-            </DropdownMenu.Item>
+            {removable ? (
+              <DropdownMenu.Item
+                onClick={() => void handleRemoveModel(model)}
+                color="red"
+                disabled={isSavingModel}
+                title={"Remove model from the list of models"}
+              >
+                Remove model
+              </DropdownMenu.Item>
+            ) : (
+              <DropdownMenu.Item
+                onClick={() => void handleResetModel(model)}
+                color="red"
+                disabled={isSavingModel}
+                title={"Reset model from the list of models"}
+              >
+                Reset model
+              </DropdownMenu.Item>
+            )}
           </DropdownMenu.Content>
         </DropdownMenu.Root>
       </Flex>

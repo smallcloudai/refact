@@ -1,6 +1,6 @@
 import { modelsApi } from "../services/refact";
 
-import type { GetModelArgs } from "../services/refact";
+import type { GetModelArgs, GetModelDefaultsArgs } from "../services/refact";
 
 export function useGetModelsByProviderNameQuery({
   providerName,
@@ -13,6 +13,11 @@ export function useGetModelsByProviderNameQuery({
 export function useGetModelConfiguration(args: GetModelArgs) {
   return modelsApi.useGetModelQuery(args, { skip: !args.modelName });
 }
+
+export function useGetModelDefaults(args: GetModelDefaultsArgs) {
+  return modelsApi.useGetModelDefaultsQuery(args, { skip: !args.providerName });
+}
+
 export function useGetLazyModelConfiguration() {
   const [mutationTrigger] = modelsApi.useLazyGetModelQuery();
   return mutationTrigger;

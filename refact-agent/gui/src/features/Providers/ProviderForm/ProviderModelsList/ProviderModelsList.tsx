@@ -55,7 +55,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
               model={m}
               providerName={provider.name}
               modelType="chat"
-              isReadonly={provider.readonly}
+              isReadonlyProvider={provider.readonly}
             />
           );
         })
@@ -76,7 +76,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
               model={m}
               providerName={provider.name}
               modelType="completion"
-              isReadonly={provider.readonly}
+              isReadonlyProvider={provider.readonly}
             />
           );
         })
