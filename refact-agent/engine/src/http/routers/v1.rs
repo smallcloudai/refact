@@ -153,7 +153,7 @@ pub fn make_v1_router() -> Router {
         .route("/model", get(handle_v1_get_model))
         .route("/model", post(handle_v1_post_model))
         .route("/model", delete(handle_v1_delete_model))
-        .route("/model_defaults", get(handle_v1_model_default))
+        .route("/model-defaults", get(handle_v1_model_default))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))
