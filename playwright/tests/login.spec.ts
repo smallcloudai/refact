@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { LoginPage } from "../fixtures/LoginPage";
 
+test.use({ storageState: { cookies: [], origins: [] } });
 test("login through google with API stub", async ({
   page,
   context,

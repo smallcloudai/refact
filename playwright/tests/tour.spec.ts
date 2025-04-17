@@ -1,6 +1,8 @@
 import { test, expect } from "../fixtures";
 
+test.use({ storageState: { cookies: [], origins: [] } });
 test("Tour", async ({ page, loginPage, baseURL, tourPage }) => {
+  await loginPage.doLogin(baseURL);
   page.goto("/");
 
   await tourPage.step1();
