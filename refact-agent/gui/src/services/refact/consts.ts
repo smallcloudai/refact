@@ -51,4 +51,4 @@ export const PROVIDER_URL = "/v1/provider";
 
 export const MODELS_URL = "/v1/models";
 export const MODEL_URL = "/v1/model";
-export const MODEL_DEFAULTS_URL = "/v1/model_defaults"; // should be "/v1/model-defaults"
+export const MODEL_DEFAULTS_URL = "/v1/model-defaults";
