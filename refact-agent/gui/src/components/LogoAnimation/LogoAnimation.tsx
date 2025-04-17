@@ -26,18 +26,6 @@ const CHAR_ANIMATION_FRAMES: [number, number] = [79, 213];
 const SPIN_ANIMATION_FRAMES: [number, number] = [214, 254];
 const HAPPY_EYES: [number, number] = [242, 250];
 
-function selectFrames(
-  isWaiting: boolean,
-  isStreaming: boolean,
-): LottieOptions["initialSegment"] {
-  if (isStreaming) {
-    return CHAR_ANIMATION_FRAMES;
-  } else if (isWaiting) {
-    return EYE_ANIMATION_FRAMES;
-  }
-  return HAPPY_EYES;
-}
-
 export const LogoAnimation: React.FC<LogoAnimationProps> = ({
   size = defaultSize,
   isWaiting,
