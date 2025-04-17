@@ -29,22 +29,13 @@ const HAPPY_EYES: [number, number] = [242, 250];
 function selectFrames(
   isWaiting: boolean,
   isStreaming: boolean,
-): Pick<LottieOptions, "loop" | "initialSegment"> {
+): LottieOptions["initialSegment"] {
   if (isStreaming) {
-    return {
-      loop: true,
-      initialSegment: CHAR_ANIMATION_FRAMES,
-    };
+    return CHAR_ANIMATION_FRAMES;
   } else if (isWaiting) {
-    return {
-      loop: true,
-      initialSegment: EYE_ANIMATION_FRAMES,
-    };
+    return EYE_ANIMATION_FRAMES;
   }
-  return {
-    loop: 1,
-    initialSegment: HAPPY_EYES,
-  };
+  return HAPPY_EYES;
 }
 
 export const LogoAnimation: React.FC<LogoAnimationProps> = ({
@@ -60,14 +51,18 @@ export const LogoAnimation: React.FC<LogoAnimationProps> = ({
       ...props,
       style: styleProps,
       animationData: logoAnimationData,
-      ...selectFrames(isWaiting, isStreaming),
+      loop: isStreaming || isWaiting,
     };
   }, [isStreaming, isWaiting, props, size]);
 
   const { View, playSegments } = useLottie(options);
   useEffect(() => {
     if (isWaiting && !isStreaming) {
-      playSegments([EYE_ANIMATION_FRAMES, SPIN_ANIMATION_FRAMES]);
+      playSegments([EYE_ANIMATION_FRAMES, SPIN_ANIMATION_FRAMES], true);
+    } else if (isStreaming) {
+      playSegments(CHAR_ANIMATION_FRAMES, true);
+    } else {
+      playSegments(HAPPY_EYES, true);
     }
   }, [isStreaming, isWaiting, playSegments]);
 
