@@ -82,7 +82,12 @@ pub struct ChatModelDTO {
     supports_reasoning: Option<String>,
     supports_boost_reasoning: bool,
     default_temperature: Option<f32>,
+
+    #[serde(skip_deserializing, rename = "type", default = "model_type_chat")]
+    model_type: ModelType,
 }
+
+fn model_type_chat() -> ModelType { ModelType::Chat }
 
 impl ChatModelDTO {
     pub fn new(chat_model: ChatModelRecord) -> Self {
@@ -98,6 +103,7 @@ impl ChatModelDTO {
             supports_reasoning: chat_model.supports_reasoning,
             supports_boost_reasoning: chat_model.supports_boost_reasoning,
             default_temperature: chat_model.default_temperature,
+            model_type: ModelType::Chat,
         }
     }
 }
@@ -108,7 +114,12 @@ pub struct CompletionModelDTO {
     name: String,
     tokenizer: String,
     enabled: bool,
+    
+    #[serde(skip_deserializing, rename = "type", default = "model_type_completion")]
+    model_type: ModelType,
 }
+
+fn model_type_completion() -> ModelType { ModelType::Completion }
 
 impl CompletionModelDTO {
     pub fn new(completion_model: CompletionModelRecord) -> Self {
@@ -117,6 +128,7 @@ impl CompletionModelDTO {
             name: completion_model.base.name,
             tokenizer: completion_model.base.tokenizer,
             enabled: completion_model.base.enabled,
+            model_type: ModelType::Completion,
         }
     }
 }
@@ -131,7 +143,12 @@ pub struct EmbeddingModelDTO {
     embedding_size: i32,
     rejection_threshold: f32,
     embedding_batch: usize,
+    
+    #[serde(skip_deserializing, rename = "type", default = "model_type_embedding")]
+    model_type: ModelType,
 }
+
+fn model_type_embedding() -> ModelType { ModelType::Embedding }
 
 impl EmbeddingModelDTO {
     pub fn new(embedding_model: EmbeddingModelRecord) -> Self {
@@ -143,6 +160,7 @@ impl EmbeddingModelDTO {
             embedding_size: embedding_model.embedding_size,
             rejection_threshold: embedding_model.rejection_threshold,
             embedding_batch: embedding_model.embedding_batch,
+            model_type: ModelType::Embedding,
         }
     }
 }
