@@ -39,6 +39,7 @@ export const test = baseTest.extend<
 
       const loginPage = new LoginPage(page);
       await loginPage.doLogin();
+      // TODO: tour and survey
       await page.context().storageState({ path: fileName });
       await page.close();
       await use(fileName);
