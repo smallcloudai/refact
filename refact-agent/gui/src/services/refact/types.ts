@@ -28,7 +28,7 @@ export type ToolCall = {
     arguments: string; // stringed json
     name?: string; // will be present when it's new
   };
-  index?: number;
+  index?: number; // Gemini doesn't send index of tool call at all :/
   type?: "function";
   id?: string;
   attached_files?: string[];
