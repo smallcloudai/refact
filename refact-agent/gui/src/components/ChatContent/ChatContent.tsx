@@ -111,11 +111,17 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         p="2"
         gap="1"
       >
-        {messages.length === 0 && <PlaceHolderText />}
+        {messages.length === 0 && (
+          <Container>
+            <PlaceHolderText />
+          </Container>
+        )}
         {renderMessages(messages, onRetryWrapper, isWaiting)}
-        <UncommittedChangesWarning />
+        <Container>
+          <UncommittedChangesWarning />
+        </Container>
         {shouldShow && <UsageCounter />}
-        <Container py="4">
+        <Container pt="4" pb="8">
           {!isWaitingForConfirmation && (
             <LogoAnimation
               size="8"
