@@ -163,7 +163,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       maybeMode: state.thread.mode,
     });
     next.cache = { ...state.cache };
-    if (state.streaming) {
+    if (state.streaming || state.waiting_for_response) {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
     next.thread.model = state.thread.model;
