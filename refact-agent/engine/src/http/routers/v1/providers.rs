@@ -685,3 +685,16 @@ pub async fn handle_v1_model_default(
         .body(Body::from(serde_json::to_string(&response_json).unwrap()))
         .unwrap())
 }
+
+pub async fn handle_v1_completion_model_families() -> Response<Body> {
+    let response_json = json!({
+        "model_families": CompletionModelFamily::all_variants()
+            .into_iter().map(|family| family.to_string()).collect::<Vec<_>>()
+    });
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&response_json).unwrap()))
+        .unwrap()
+}

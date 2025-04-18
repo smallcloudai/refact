@@ -114,16 +114,24 @@ pub struct CompletionModelRecord {
 pub enum CompletionModelFamily {
     #[serde(rename = "qwen2.5-coder")]
     Qwen2_5Coder,
-    #[serde(rename = "deepseek-coder")]
-    DeepseekCoder,
     #[serde(rename = "starcoder")]
     Starcoder,
+    #[serde(rename = "deepseek-coder")]
+    DeepseekCoder,
 }
 
 impl CompletionModelFamily {
     pub fn to_string(self) -> String {
         serde_json::to_value(self).ok()
             .and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default()
+    }
+    
+    pub fn all_variants() -> Vec<CompletionModelFamily> {
+        vec![
+            CompletionModelFamily::Qwen2_5Coder,
+            CompletionModelFamily::Starcoder,
+            CompletionModelFamily::DeepseekCoder,
+        ]
     }
 }
 
