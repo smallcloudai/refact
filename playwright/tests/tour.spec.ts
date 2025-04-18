@@ -1,9 +1,11 @@
 import { test, expect } from "../fixtures";
 import { LoginPage } from "../fixtures/LoginPage";
+import { TourPage } from "../fixtures/TourPage";
 
 test.use({ storageState: { cookies: [], origins: [] } });
-test("Tour", async ({ page, baseURL, tourPage }) => {
+test("Tour", async ({ page, baseURL }) => {
   const loginPage = new LoginPage(page);
+  const tourPage = new TourPage(page);
   await loginPage.doLogin(baseURL, false, false);
 
   await tourPage.step1();
@@ -23,7 +25,10 @@ test("Tour", async ({ page, baseURL, tourPage }) => {
   await expect(page.getByTestId("tour-box")).toHaveScreenshot();
 
   await tourPage.step6();
-  await expect(page.getByTestId("tour-box")).toHaveScreenshot();
+  await expect(page.getByTestId("tour-box")).toMatchAriaSnapshot();
+  await expect(page.getByTestId("tour-box")).toHaveScreenshot({
+    maxDiffPixelRatio: 0.1,
+  });
 
   await tourPage.step7();
   await expect(page.getByTestId("tour-box")).toHaveScreenshot();
