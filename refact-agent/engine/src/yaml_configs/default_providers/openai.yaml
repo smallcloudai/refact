@@ -1,4 +1,3 @@
-completion_endpoint: "https://api.openai.com/v1/chat/completions"
 chat_endpoint:       "https://api.openai.com/v1/chat/completions"
 embedding_endpoint:  "https://api.openai.com/v1/embeddings"
 

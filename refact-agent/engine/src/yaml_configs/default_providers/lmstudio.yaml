@@ -1,4 +1,4 @@
-completion_endpoint: http://localhost:1234/v1/chat/completions
+completion_endpoint: http://localhost:1234/v1/completions
 chat_endpoint:       http://localhost:1234/v1/chat/completions
 
 api_key: any-will-work

@@ -1,5 +1,4 @@
-completion_endpoint: https://api.deepseek.com/v1/chat/completions
-chat_endpoint:       https://api.deepseek.com/v1/chat/completions
+chat_endpoint: https://api.deepseek.com/v1/chat/completions
 
 api_key: sk-...
 

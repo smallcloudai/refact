@@ -1,4 +1,3 @@
-completion_endpoint: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
 chat_endpoint:       https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
 embedding_endpoint:  https://generativelanguage.googleapis.com/v1beta/openai/embeddings
 

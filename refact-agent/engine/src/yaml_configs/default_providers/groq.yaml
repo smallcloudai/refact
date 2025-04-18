@@ -1,5 +1,4 @@
-completion_endpoint: https://api.groq.com/openai/v1/chat/completions
-chat_endpoint:       https://api.groq.com/openai/v1/chat/completions
+chat_endpoint: https://api.groq.com/openai/v1/chat/completions
 
 api_key: gsk_...
 
