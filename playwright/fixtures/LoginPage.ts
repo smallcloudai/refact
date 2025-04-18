@@ -31,8 +31,36 @@ const StubResponse = {
 export class LoginPage {
   constructor(public readonly page: Page) {}
 
-  async doLogin(url?: string, openSurvey = false) {
+  async doLogin(url?: string, openSurvey = false, screenshots = false) {
     // Set up route interception before navigating;
+    await this.mockUserRequest(openSurvey);
+    // TODO: hard coded for now
+    await this.page.goto(url || "http://localhost:5173/");
+
+    await expect(
+      this.page.getByRole("heading", { name: "Login to Refact.ai" })
+    ).toBeVisible({ timeout: 10000 });
+
+    await this.page.waitForSelector('button:has-text("Continue with Google")');
+
+    if (screenshots) expect(this.page).toHaveScreenshot();
+
+    await this.page.click('button:has-text("Continue with Google")');
+
+    await this.page.waitForLoadState("networkidle");
+
+    if (screenshots) expect(this.page).toHaveScreenshot();
+
+    await expect(this.page).toHaveURL("http://localhost:5173/");
+    // wait for route to have been Called
+    await expect(
+      this.page.getByRole("heading", { name: "Login to Refact.ai" })
+    ).not.toBeVisible({ timeout: 10000 });
+
+    if (screenshots) expect(this.page).toHaveScreenshot();
+  }
+
+  async mockUserRequest(openSurvey = false) {
     const mockResponse = {
       ...StubResponse,
       questionnaire: !openSurvey,
@@ -51,29 +79,14 @@ export class LoginPage {
         }
       );
 
-    // TODO: hard coded for now
-    await this.page.goto(url || "http://localhost:5173/");
-
-    await expect(
-      this.page.getByRole("heading", { name: "Login to Refact.ai" })
-    ).toBeVisible({ timeout: 10000 });
-
-    await this.page.waitForSelector('button:has-text("Continue with Google")');
-
-    expect(this.page).toHaveScreenshot();
-
-    await this.page.click('button:has-text("Continue with Google")');
-
-    await this.page.waitForLoadState("networkidle");
-
-    expect(this.page).toHaveScreenshot();
-
-    await expect(this.page).toHaveURL("http://localhost:5173/");
-    // wait for route to have been Called
-    await expect(
-      this.page.getByRole("heading", { name: "Login to Refact.ai" })
-    ).not.toBeVisible({ timeout: 10000 });
-
-    expect(this.page).toHaveScreenshot();
+    await this.page
+      .context()
+      .route("https://www.smallcloud.ai/v1/login", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(mockResponse),
+        });
+      });
   }
 }

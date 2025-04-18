@@ -23,7 +23,7 @@ export const test = baseTest.extend<
       const fileName = path.resolve(
         test.info().project.outputDir,
         ".auth",
-        "{id}.json"
+        `${id}.json`
       );
 
       if (fs.existsSync(fileName)) {
@@ -38,8 +38,9 @@ export const test = baseTest.extend<
       });
 
       const loginPage = new LoginPage(page);
-      await loginPage.doLogin();
-      // TODO: tour and survey
+      await loginPage.doLogin(undefined, false, false);
+      const tourPage = new TourPage(page);
+      await tourPage.doTour();
       await page.context().storageState({ path: fileName });
       await page.close();
       await use(fileName);

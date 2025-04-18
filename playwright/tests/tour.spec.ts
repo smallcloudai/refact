@@ -1,9 +1,10 @@
 import { test, expect } from "../fixtures";
+import { LoginPage } from "../fixtures/LoginPage";
 
 test.use({ storageState: { cookies: [], origins: [] } });
-test("Tour", async ({ page, loginPage, baseURL, tourPage }) => {
-  await loginPage.doLogin(baseURL);
-  page.goto("/");
+test("Tour", async ({ page, baseURL, tourPage }) => {
+  const loginPage = new LoginPage(page);
+  await loginPage.doLogin(baseURL, false, false);
 
   await tourPage.step1();
   await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
