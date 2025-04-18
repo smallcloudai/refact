@@ -404,10 +404,31 @@ pub fn resolve_chat_model<'a>(
 pub fn resolve_completion_model<'a>(
     caps: Arc<CodeAssistantCaps>,
     requested_model_id: &str,
+    try_refact_fallbacks: bool,
 ) -> Result<Arc<CompletionModelRecord>, String> {
-    resolve_model(
+    match resolve_model(
         &caps.completion_models, 
         requested_model_id, 
         &caps.defaults.completion_default_model
-    )
+    ) {
+        Ok(model) => Ok(model),
+        Err(first_err) if try_refact_fallbacks => {
+            if let Ok(model) = resolve_model(
+                &caps.completion_models, 
+                &format!("refact/{requested_model_id}"), 
+                &caps.defaults.completion_default_model
+            ) {
+                return Ok(model);
+            }
+            if let Ok(model) = resolve_model(
+                &caps.completion_models, 
+                &format!("refact_self_hosted/{requested_model_id}"), 
+                &caps.defaults.completion_default_model
+            ) {
+                return Ok(model);
+            }
+            Err(first_err)
+        }
+        Err(first_err) => Err(first_err),
+    }
 }

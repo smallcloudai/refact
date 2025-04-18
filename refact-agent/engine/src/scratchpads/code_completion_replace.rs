@@ -1011,7 +1011,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             ..Default::default()
         });
 
-        let model = resolve_completion_model(caps.clone(), &self.post.model)?;
+        let model = resolve_completion_model(caps.clone(), &self.post.model, true)?;
         let json_messages = &serde_json::to_string(&json!({
             "messages":  messages.iter().map(|x| { x.into_value(&None, &model.base.id) }).collect::<Vec<_>>(),
         }))

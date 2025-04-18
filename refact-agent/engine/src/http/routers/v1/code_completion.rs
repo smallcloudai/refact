@@ -30,7 +30,7 @@ pub async fn handle_v1_code_completion(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let model_rec = resolve_completion_model(caps, &code_completion_post.model)
+    let model_rec = resolve_completion_model(caps, &code_completion_post.model, true)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
     if code_completion_post.parameters.max_new_tokens == 0 {
         code_completion_post.parameters.max_new_tokens = 50;
@@ -106,7 +106,7 @@ pub async fn handle_v1_code_completion_prompt(
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let model_rec = resolve_completion_model(caps, &post.model)
+    let model_rec = resolve_completion_model(caps, &post.model, true)
             .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
 
     // don't need cache, but go along
