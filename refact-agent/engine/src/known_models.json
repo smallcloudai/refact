@@ -1,14 +1,15 @@
 {
     "completion_models": {
-        "bigcode/starcoder": {
+        "starcoder": {
             "n_ctx": 4096,
             "scratchpad_patch": {
                 "context_format": "starcoder",
                 "rag_ratio": 0.5
             },
             "scratchpad": "FIM-PSM",
-            "tokenizer": "hf://bigcode/starcoder",
+            "tokenizer": "hf://bigcode/starcoder2-3b",
             "similar_models": [
+                "bigcode/starcoder",
                 "bigcode/starcoderbase",
                 "starcoder/15b/base",
                 "starcoder/15b/plus",
@@ -60,20 +61,22 @@
                 "codellama/7b"
             ]
         },
-        "deepseek-coder/1.3b/base": {
+        "deepseek-coder": {
             "n_ctx": 4096,
             "scratchpad_patch": {
-                "fim_prefix": "<\uff5cfim\u2581begin\uff5c>",
-                "fim_suffix": "<\uff5cfim\u2581hole\uff5c>",
-                "fim_middle": "<\uff5cfim\u2581end\uff5c>",
+                "fim_prefix": "<｜fim▁begin｜>",
+                "fim_suffix": "<｜fim▁hole｜>",
+                "fim_middle": "<｜fim▁end｜>",
                 "eot": "<|EOT|>"
             },
             "scratchpad": "FIM-PSM",
             "tokenizer": "hf://deepseek-ai/deepseek-coder-1.3b-base",
             "similar_models": [
+                "deepseek-coder/1.3b/base",
                 "deepseek-coder/5.7b/mqa-base",
                 "deepseek-coder/1.3b/vllm",
-                "deepseek-coder/5.7b/vllm"
+                "deepseek-coder/5.7b/vllm",
+                "deepseek-ai/deepseek-coder-1.3b-base"
             ]
         },
         "stable/3b/code": {
@@ -326,7 +329,7 @@
                 "qwen2.5/coder/32b/instruct"
             ]
         },
-        "qwen2.5/coder/0.5b/base": {
+        "qwen2.5-coder": {
             "n_ctx": 8192,
             "scratchpad_patch": {
                 "fim_prefix": "<|fim_prefix|>",
@@ -345,6 +348,7 @@
             "tokenizer": "hf://Qwen/Qwen2.5-Coder-0.5B",
             "scratchpad": "FIM-PSM",
             "similar_models": [
+                "qwen2.5/coder/0.5b/base",
                 "qwen2.5/coder/1.5b/base",
                 "qwen2.5/coder/3b/base",
                 "qwen2.5/coder/7b/base",

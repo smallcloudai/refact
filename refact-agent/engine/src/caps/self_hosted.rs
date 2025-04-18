@@ -150,6 +150,7 @@ pub fn load_self_hosted_caps(
             base,
             scratchpad,
             scratchpad_patch,
+            model_family: None,
         };
         
         caps.completion_models.insert(completion_model.base.id.clone(), Arc::new(completion_model));

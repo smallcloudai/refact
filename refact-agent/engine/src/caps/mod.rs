@@ -106,6 +106,25 @@ pub struct CompletionModelRecord {
     pub scratchpad: String,
     #[serde(default = "default_completion_scratchpad_patch")]
     pub scratchpad_patch: serde_json::Value,
+
+    pub model_family: Option<CompletionModelFamily>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionModelFamily {
+    #[serde(rename = "qwen2.5-coder")]
+    Qwen2_5Coder,
+    #[serde(rename = "deepseek-coder")]
+    DeepseekCoder,
+    #[serde(rename = "starcoder")]
+    Starcoder,
+}
+
+impl CompletionModelFamily {
+    pub fn to_string(self) -> String {
+        serde_json::to_value(self).ok()
+            .and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default()
+    }
 }
 
 pub fn default_completion_scratchpad() -> String { "REPLACE_PASSTHROUGH".to_string() }

@@ -9,11 +9,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::ModelType;
-use crate::caps::{ChatModelRecord, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
+use crate::caps::{ChatModelRecord, CompletionModelFamily, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::{MapErrToString, ScratchError};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::caps::providers::{get_provider_from_server, get_provider_from_template_and_config_file, 
-    get_provider_templates, read_providers_d, get_provider_model_defaults, CapsProvider};
+use crate::caps::providers::{get_known_models, get_provider_from_server, get_provider_from_template_and_config_file, get_provider_model_defaults, get_provider_templates, read_providers_d, CapsProvider};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProviderDTO {
@@ -114,9 +113,8 @@ impl ChatModelDTO {
 pub struct CompletionModelDTO {
     n_ctx: usize,
     name: String,
-    tokenizer: String,
     enabled: bool,
-    
+    model_family: Option<CompletionModelFamily>,
     #[serde(skip_deserializing, rename = "type", default = "model_type_completion")]
     model_type: ModelType,
 }
@@ -128,8 +126,8 @@ impl CompletionModelDTO {
         CompletionModelDTO {
             n_ctx: completion_model.base.n_ctx,
             name: completion_model.base.name,
-            tokenizer: completion_model.base.tokenizer,
             enabled: completion_model.base.enabled,
+            model_family: completion_model.model_family,
             model_type: ModelType::Completion,
         }
     }
@@ -558,9 +556,18 @@ pub async fn handle_v1_post_model(
             let models_key = "completion_models";
             
             let mut model_value = get_or_create_model_mapping(&mut file_value, models_key, &completion_model.name);
+
+            if let Some(model_family) = completion_model.model_family {
+                let family_model_rec = get_known_models().completion_models.get(&model_family.to_string())
+                    .expect(&format!("Model family {} not found in known models", model_family.to_string()));
+
+                model_value.insert("model_family".into(), model_family.to_string().into());
+                model_value.insert("scratchpad".into(), family_model_rec.scratchpad.clone().into());
+                model_value.insert("scratchpad_patch".into(), serde_yaml::from_str(&family_model_rec.scratchpad_patch.to_string()).unwrap());
+                model_value.insert("tokenizer".into(), family_model_rec.base.tokenizer.clone().into());
+            }
             
             model_value.insert("n_ctx".into(), completion_model.n_ctx.into());
-            model_value.insert("tokenizer".into(), completion_model.tokenizer.into());
             model_value.insert("enabled".into(), completion_model.enabled.into());
             
             file_value[models_key][completion_model.name] = model_value.into();

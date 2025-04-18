@@ -494,15 +494,15 @@ fn apply_models_dict_patch(provider: &mut CapsProvider) {
 }
 
 #[derive(Deserialize)]
-struct KnownModels {
-    completion_models: IndexMap<String, CompletionModelRecord>,
-    chat_models: IndexMap<String, ChatModelRecord>,
-    embedding_models: IndexMap<String, EmbeddingModelRecord>,
+pub struct KnownModels {
+    pub completion_models: IndexMap<String, CompletionModelRecord>,
+    pub chat_models: IndexMap<String, ChatModelRecord>,
+    pub embedding_models: IndexMap<String, EmbeddingModelRecord>,
 }
 const UNPARSED_KNOWN_MODELS: &'static str = include_str!("../known_models.json");
 static KNOWN_MODELS: OnceLock<KnownModels> = OnceLock::new();
 
-fn get_known_models() -> &'static KnownModels {
+pub fn get_known_models() -> &'static KnownModels {
     KNOWN_MODELS.get_or_init(|| {
         serde_json::from_str::<KnownModels>(UNPARSED_KNOWN_MODELS).map_err(|e| {
             let up_to_line = UNPARSED_KNOWN_MODELS.lines().take(e.line()).collect::<Vec<&str>>().join("\n");
