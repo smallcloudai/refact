@@ -20,6 +20,8 @@ pub struct CapsProvider {
     pub name: String,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub supports_completion: bool,
 
     #[serde(default = "default_endpoint_style")]
     pub endpoint_style: String,

@@ -31,21 +31,32 @@ pub struct ProviderDTO {
     enabled: bool,
     #[serde(default)]
     readonly: bool,
+    #[serde(default = "default_true")]
+    supports_completion: bool,
 }
+
+fn default_true() -> bool { true }
 
 impl ProviderDTO {
     pub fn from_caps_provider(provider: CapsProvider, readonly: bool) -> Self {
+        let mut defaults = provider.defaults.clone();
+        
+        if !provider.supports_completion {
+            defaults.completion_default_model = String::new();
+        }
+        
         ProviderDTO {
             name: provider.name,
             endpoint_style: provider.endpoint_style,
             chat_endpoint: provider.chat_endpoint,
-            completion_endpoint: provider.completion_endpoint,
+            completion_endpoint: if provider.supports_completion { provider.completion_endpoint } else { String::new() },
             embedding_endpoint: provider.embedding_endpoint,
             api_key: provider.api_key,
             tokenizer_api_key: provider.tokenizer_api_key,
-            defaults: provider.defaults,
+            defaults: defaults,
             enabled: provider.enabled,
             readonly: readonly,
+            supports_completion: provider.supports_completion,
         }
     }
 }
@@ -181,7 +192,8 @@ pub async fn handle_v1_providers(
         .map(|p| json!({
             "name": p.name,
             "enabled": p.enabled,
-            "readonly": false
+            "readonly": false,
+            "supports_completion": p.supports_completion
         }))
         .collect::<Vec<_>>();
     
@@ -192,7 +204,8 @@ pub async fn handle_v1_providers(
                 result.insert(0, json!({
                     "name": caps.cloud_name.clone(),
                     "enabled": true,
-                    "readonly": true
+                    "readonly": true,
+                    "supports_completion": true
                 }));
             }
         },
@@ -406,8 +419,12 @@ pub async fn handle_v1_models(
     let result = serde_json::json!({
         "chat_models": provider.chat_models.into_iter()
             .map(|(_, model)| ModelLightResponse::new(model)).collect::<Vec<_>>(),
-        "completion_models": provider.completion_models.into_iter()
-            .map(|(_, model)| ModelLightResponse::new(model)).collect::<Vec<_>>(),
+        "completion_models": if provider.supports_completion {
+            provider.completion_models.into_iter()
+                .map(|(_, model)| ModelLightResponse::new(model)).collect::<Vec<_>>()
+        } else {
+            Vec::<ModelLightResponse>::new()
+        },
         "embedding_model": ModelLightResponse::new(provider.embedding_model),
     });
     
@@ -462,6 +479,9 @@ pub async fn handle_v1_get_model(
             serde_json::json!(ChatModelDTO::new(chat_model))
         },
         ModelType::Completion => {
+            if !provider.supports_completion {
+                return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Provider {} does not support completion", params.provider)));
+            }
             let model_name = params.model.ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
             let completion_model = provider.completion_models.get(&model_name).cloned()
                 .ok_or(ScratchError::new(StatusCode::NOT_FOUND, format!("Completion model {} not found for provider {}", model_name, params.provider)))?;
