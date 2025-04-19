@@ -7,7 +7,7 @@ import React, {
   useMemo,
 } from "react";
 import isEqual from "lodash.isequal";
-import { Button, Dialog, Flex, Text } from "@radix-ui/themes";
+import { Button, Dialog, Flex, Select, Text } from "@radix-ui/themes";
 
 import {
   useGetModelConfiguration,
@@ -22,14 +22,18 @@ import type {
   EmbeddingModel,
   Model,
   ModelType,
-} from "../../../../../services/refact";
-import {
-  isCodeChatModel,
-  isEmbeddingModel,
+  SupportsReasoningStyle,
 } from "../../../../../services/refact";
 
 import { extractHumanReadableReasoningType } from "../utils";
 import { useEffectOnce } from "../../../../../hooks";
+
+const SUPPORTED_REASONING_STYLES: SupportsReasoningStyle[] = [
+  "openai",
+  "deepseek",
+  "anthropic",
+  null,
+];
 
 export type ModelCardPopupProps = {
   isOpen: boolean;
@@ -180,7 +184,7 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
             />
           )}
 
-          {isCodeChatModel(editedModelData) && (
+          {editedModelData?.type === "chat" && (
             <ChatModelFields
               editedModelData={editedModelData}
               setEditedModelData={setEditedModelData}
@@ -188,7 +192,7 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
             />
           )}
 
-          {isEmbeddingModel(editedModelData) && (
+          {editedModelData?.type === "embedding" && (
             <EmbeddingModelFields
               editedModelData={editedModelData}
               setEditedModelDataByField={updateFieldByKey}
@@ -284,7 +288,7 @@ const CommonFields: FC<CommonFieldsProps> = ({
 // Chat model specific fields
 type ChatModelFieldsProps = {
   editedModelData?: CodeChatModel;
-  setEditedModelData: (data: CodeChatModel) => void;
+  setEditedModelData: (data: Model) => void;
   toggleCapability: (key: string) => void;
 };
 
@@ -306,8 +310,22 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
 
     setEditedModelData({
       ...editedModelData,
+      type: "chat",
       default_temperature:
         e.target.value === "" ? null : Math.min(parseFloat(e.target.value), 1),
+    });
+  };
+
+  const handleReasoningStyleChange = (value: string) => {
+    if (!editedModelData) return;
+
+    setEditedModelData({
+      ...editedModelData,
+      type: "chat",
+      supports_boost_reasoning:
+        value === "null" ? false : editedModelData.supports_boost_reasoning,
+      supports_reasoning:
+        value === "null" ? null : (value as SupportsReasoningStyle),
     });
   };
 
@@ -325,6 +343,27 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
       />
 
       <Flex direction="column" gap="2">
+        <Flex direction="column">
+          <Text as="div" size="2" mb="1" weight="bold">
+            Reasoning Style
+          </Text>
+          <Select.Root
+            value={editedModelData.supports_reasoning ?? "null"}
+            onValueChange={handleReasoningStyleChange}
+          >
+            <Select.Trigger placeholder="Select Reasoning Style" />
+            <Select.Content position="popper">
+              {SUPPORTED_REASONING_STYLES.map((style) => {
+                return (
+                  <Select.Item key={style} value={style ?? "null"}>
+                    {style ? extractHumanReadableReasoningType(style) : "No"}{" "}
+                    Reasoning
+                  </Select.Item>
+                );
+              })}
+            </Select.Content>
+          </Select.Root>
+        </Flex>
         <Text as="div" size="2" weight="bold">
           Capabilities
         </Text>
@@ -349,15 +388,6 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
             enabled={editedModelData.supports_agent}
             onClick={() => toggleCapability("supports_agent")}
           />
-          <CapabilityBadge
-            name="Reasoning"
-            enabled={!!editedModelData.supports_reasoning}
-            displayValue={extractHumanReadableReasoningType(
-              editedModelData.supports_reasoning,
-            )}
-            interactive={false}
-          />
-
           {editedModelData.supports_reasoning && (
             <CapabilityBadge
               name="Boost Reasoning"

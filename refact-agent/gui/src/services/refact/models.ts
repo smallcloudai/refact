@@ -287,7 +287,16 @@ export function isModelsResponse(data: unknown): data is ModelsResponse {
   return true;
 }
 
-export type Model = CodeChatModel | CodeCompletionModel | EmbeddingModel;
+export type Model =
+  | (CodeChatModel & {
+      type: "chat";
+    })
+  | (CodeCompletionModel & {
+      type: "completion";
+    })
+  | (EmbeddingModel & {
+      type: "embedding";
+    });
 
 export function isCodeChatModel(data: unknown): data is CodeChatModel {
   if (!data || typeof data !== "object") return false;
