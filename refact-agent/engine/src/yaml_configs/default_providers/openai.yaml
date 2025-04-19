@@ -1,5 +1,6 @@
 chat_endpoint:       "https://api.openai.com/v1/chat/completions"
 embedding_endpoint:  "https://api.openai.com/v1/embeddings"
+supports_completion: false
 
 api_key: "sk-..."
 
