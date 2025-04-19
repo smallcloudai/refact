@@ -44,6 +44,7 @@ export type ModelCardPopupProps = {
   modelType: ModelType;
   providerName: string;
   newModelCreation?: boolean;
+  isRemovable?: boolean;
 };
 
 export const ModelCardPopup: FC<ModelCardPopupProps> = ({
@@ -55,6 +56,7 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   modelType,
   providerName,
   newModelCreation = false,
+  isRemovable = false,
 }) => {
   const {
     data: configuredModelData,
@@ -181,6 +183,7 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
               editedModelData={editedModelData}
               setEditedModelDataByField={updateFieldByKey}
               newModelCreation={newModelCreation}
+              isRemovable={isRemovable}
             />
           )}
 
@@ -236,12 +239,14 @@ type CommonFieldsProps = {
   editedModelData: Model;
   setEditedModelDataByField: (field: string, value: string | number) => void;
   newModelCreation?: boolean;
+  isRemovable?: boolean;
 };
 
 const CommonFields: FC<CommonFieldsProps> = ({
   editedModelData,
   setEditedModelDataByField,
   newModelCreation = false,
+  isRemovable = false,
 }) => {
   const getValueByType = (value: string, valueType: string) => {
     if (valueType === "string") return value;
@@ -265,7 +270,7 @@ const CommonFields: FC<CommonFieldsProps> = ({
         value={editedModelData.name}
         onChange={(e) => handleFieldValueChange(e, "name")}
         placeholder="Model name"
-        isDisabled={!newModelCreation}
+        isDisabled={!newModelCreation && !isRemovable}
       />
       <FormField
         label="Context Window (n_ctx)"

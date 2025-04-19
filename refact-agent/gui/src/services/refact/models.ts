@@ -201,6 +201,7 @@ export type SimplifiedModel = {
   name: string;
   enabled: boolean;
   removable: boolean;
+  user_configured: boolean;
 };
 
 export type ModelsResponse = {

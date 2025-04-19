@@ -33,7 +33,7 @@ export const ModelCard: FC<ModelCardProps> = ({
   providerName,
   isReadonlyProvider,
 }) => {
-  const { enabled, name, removable } = model;
+  const { enabled, name, removable, user_configured } = model;
   const {
     isOpen: dialogOpen,
     setIsOpen: setDialogOpen,
@@ -62,6 +62,7 @@ export const ModelCard: FC<ModelCardProps> = ({
           modelType={modelType}
           providerName={providerName}
           onSave={handleSaveModel}
+          isRemovable={removable}
         />
       )}
 
@@ -107,7 +108,7 @@ export const ModelCard: FC<ModelCardProps> = ({
               <DropdownMenu.Item
                 onClick={() => void handleResetModel(model)}
                 color="red"
-                disabled={isSavingModel}
+                disabled={isSavingModel || !user_configured}
                 title={"Reset model from the list of models"}
               >
                 Reset model

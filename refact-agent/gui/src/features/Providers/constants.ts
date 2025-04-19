@@ -9,4 +9,6 @@ export const BEAUTIFUL_PROVIDER_NAMES: Record<string, string> = {
   google_gemini: "Google Gemini",
   ollama: "Ollama",
   lmstudio: "LM Studio",
+  xai: "xAI",
+  custom: "Custom Provider",
 };
