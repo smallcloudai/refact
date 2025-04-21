@@ -37,9 +37,7 @@ class SettingsCLI(BaseModel):
 
 
 default_config = """
-# The caps file is bring-your-own-key.yaml by default, that in turn works with OPENAI_API_KEY inside by default.
-# But you can change it to:
-#address_url: Refact
+address_url: Refact
 #api_key: <take-from-website>
 #address_url: http://your-self-hosting-server/
 #api_key: your-secret-key

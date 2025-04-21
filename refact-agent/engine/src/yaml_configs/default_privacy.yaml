@@ -13,7 +13,7 @@ privacy_rules:
     - "*/secret_project2/*.txt"
     - "*.pem"
 
-  only_send_to_servers_I_control:       # You can set up which ones you control in bring-your-own-key.yaml, otherwise you control none
+  only_send_to_servers_I_control:       # You can set up which providers you control in ~/.config/refact/providers.d/*.yaml, otherwise you control none
     - "secret_passwords.txt"
 
 

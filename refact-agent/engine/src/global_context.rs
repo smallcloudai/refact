@@ -35,7 +35,7 @@ pub struct CommandLine {
     pub logs_stderr: bool,
     #[structopt(long, default_value="", help="Send logs to a file.")]
     pub logs_to_file: String,
-    #[structopt(long, short="u", default_value="", help="URL to start working. The first step is to fetch capabilities from $URL/refact-caps. You can supply your own caps in a local file, too, for the bring-your-own-key use case.")]
+    #[structopt(long, short="u", default_value="", help="URL to use: \"Refact\" for Cloud, or your Self-Hosted Server URL. To bring your own keys, use \"Refact\" and set up providers.")]
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
@@ -83,7 +83,7 @@ pub struct CommandLine {
     #[structopt(long, short="w", default_value="", help="Workspace folder to find all the files. An LSP or HTTP request can override this later.")]
     pub workspace_folder: String,
 
-    #[structopt(long, help="create manually bring-your-own-key.yaml, customization.yaml and privacy.yaml and exit.")]
+    #[structopt(long, help="create yaml configs, like customization.yaml, privacy.yaml and exit.")]
     pub only_create_yaml_configs: bool,
     #[structopt(long, help="Print combined customization settings from both system defaults and customization.yaml.")]
     pub print_customization: bool,

@@ -207,8 +207,9 @@ pub async fn load_customization(
     let caps = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => caps,
         Err(e) => {
+            let address_url = gcx.read().await.cmdline.address_url.clone();
             error_log.push(YamlError {
-                path: "bring-your-own-key.yaml".to_string(),
+                path: address_url,
                 error_line: 0,
                 error_msg: format!("error loading caps: {e}"),
             });
