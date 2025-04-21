@@ -219,7 +219,7 @@ async fn find_relevant_files_with_search(
     crate::tools::tool_relevant_files::update_usage_from_message(&mut usage, &last_message);
     assert!(last_message.role == "assistant");
 
-    let assistant_output1 = serde_json::from_str::<IndexMap<String, serde_json::Value>>(last_message.content.content_text_only().as_str()).map_err(|e| {
+    let assistant_output1 = crate::json_utils::extract_json_object::<IndexMap<String, serde_json::Value>>(last_message.content.content_text_only().as_str()).map_err(|e| {
         tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content.content_text_only(), e);
         format!("Unable to parse JSON: {:?}", e)
     })?;
@@ -229,7 +229,7 @@ async fn find_relevant_files_with_search(
         return Ok((results, usage, serde_json::to_string_pretty(&assistant_output1).unwrap(), cd_instruction));
     }
 
-    let assistant_output2 = serde_json::from_str::<IndexMap<String, IndexMap<String, String>>>(last_message.content.content_text_only().as_str()).map_err(|e| {
+    let assistant_output2 = crate::json_utils::extract_json_object::<IndexMap<String, IndexMap<String, String>>>(last_message.content.content_text_only().as_str()).map_err(|e| {
         tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content.content_text_only(), e);
         format!("Unable to parse JSON: {:?}", e)
     })?;

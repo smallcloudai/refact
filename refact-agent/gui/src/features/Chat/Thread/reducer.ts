@@ -39,13 +39,13 @@ import {
   setIsNewChatSuggestionRejected,
   upsertToolCall,
   setIncreaseMaxTokens,
-  setThreadPaused,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
   commandsApi,
   isAssistantMessage,
+  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -79,7 +79,6 @@ const createChatThread = (
     boost_reasoning: false,
     automatic_patch: false,
     increase_max_tokens: false,
-    paused: false,
   };
   return chat;
 };
@@ -164,7 +163,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       maybeMode: state.thread.mode,
     });
     next.cache = { ...state.cache };
-    if (state.streaming) {
+    if (state.streaming || state.waiting_for_response) {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
     next.thread.model = state.thread.model;
@@ -196,9 +195,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
     const messages = formatChatResponse(state.thread.messages, action.payload);
 
-    state.streaming = true;
-    state.waiting_for_response = false;
     state.thread.messages = messages;
+    if (state.waiting_for_response && isChatResponseChoice(action.payload)) {
+      state.streaming = true;
+      state.waiting_for_response = false;
+    }
     // // maybe update thread usage here.
     // if (isChatResponseChoice(action.payload) && action.payload.usage) {
     //   state.thread.usage = action.payload.usage;
@@ -209,7 +210,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       action.payload.compression_strength !== "absent"
     ) {
       state.thread.new_chat_suggested = {
-        ...state.thread.new_chat_suggested,
+        wasRejectedByUser: false,
         wasSuggested: true,
       };
     }
@@ -243,7 +244,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIsNewChatSuggested, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.paused = true;
     state.thread.new_chat_suggested = {
       wasSuggested: action.payload.value,
     };
@@ -251,7 +251,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIsNewChatSuggestionRejected, (state, action) => {
     if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.paused = false;
+    state.prevent_send = false;
     state.thread.new_chat_suggested = {
       ...state.thread.new_chat_suggested,
       wasRejectedByUser: action.payload.value,
@@ -276,10 +276,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id !== action.payload.id) return state;
     state.send_immediately = false;
     state.waiting_for_response = true;
-    state.streaming = true;
     state.thread.read = false;
     state.prevent_send = false;
-    state.thread.paused = false;
   });
 
   builder.addCase(removeChatFromCache, (state, action) => {
@@ -337,7 +335,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       lastUserMessage.compression_strength !== "absent"
     ) {
       state.thread.new_chat_suggested = {
-        ...state.thread.new_chat_suggested,
+        wasRejectedByUser: false,
         wasSuggested: true,
       };
     }
@@ -425,10 +423,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIncreaseMaxTokens, (state, action) => {
     state.thread.increase_max_tokens = action.payload;
-  });
-
-  builder.addCase(setThreadPaused, (state, action) => {
-    state.thread.paused = action.payload;
   });
 
   builder.addMatcher(

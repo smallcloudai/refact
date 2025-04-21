@@ -3,7 +3,6 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectMessages,
-  // selectLastSentCompression,
 } from "../../features/Chat";
 import { useAppSelector, useLastSentCompressionStop } from "../../hooks";
 import {
@@ -33,19 +32,17 @@ export function useUsageCounter() {
   }, [currentThreadUsage]);
 
   const isOverflown = useMemo(() => {
-    if (!compressionStop.stopped) return false;
     if (compressionStop.strength === "low") return true;
     if (compressionStop.strength === "medium") return true;
     if (compressionStop.strength === "high") return true;
     return false;
-  }, [compressionStop.stopped, compressionStop.strength]);
+  }, [compressionStop.strength]);
 
   const isWarning = useMemo(() => {
-    if (!compressionStop.stopped) return false;
     if (compressionStop.strength === "medium") return true;
     if (compressionStop.strength === "high") return true;
     return false;
-  }, [compressionStop.stopped, compressionStop.strength]);
+  }, [compressionStop.strength]);
 
   const shouldShow = useMemo(() => {
     return messages.length > 0 && !isStreaming && !isWaiting;

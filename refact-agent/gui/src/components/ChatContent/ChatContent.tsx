@@ -10,7 +10,6 @@ import {
 } from "../../services/refact";
 import { UserInput } from "./UserInput";
 import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
-import { Spinner } from "../Spinner";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
 import { ContextFiles } from "./ContextFiles";
@@ -34,6 +33,7 @@ import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
+import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 
 export type ChatContentProps = {
   onRetry: (index: number, question: UserMessage["content"]) => void;
@@ -111,14 +111,24 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         p="2"
         gap="1"
       >
-        {messages.length === 0 && <PlaceHolderText />}
+        {messages.length === 0 && (
+          <Container>
+            <PlaceHolderText />
+          </Container>
+        )}
         {renderMessages(messages, onRetryWrapper, isWaiting)}
-        <UncommittedChangesWarning />
+        <Container>
+          <UncommittedChangesWarning />
+        </Container>
         {shouldShow && <UsageCounter />}
-        <Container py="4">
-          <Spinner
-            spinning={(isStreaming || isWaiting) && !isWaitingForConfirmation}
-          />
+        <Container pt="4" pb="8">
+          {!isWaitingForConfirmation && (
+            <LogoAnimation
+              size="8"
+              isStreaming={isStreaming}
+              isWaiting={isWaiting}
+            />
+          )}
         </Container>
       </Flex>
 
