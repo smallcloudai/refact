@@ -19,7 +19,7 @@ use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::resolve_chat_model;
+use crate::caps::{is_cloud_model, resolve_chat_model};
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -56,9 +56,17 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
         }
     }
 
+    let current_model = ccx.lock().await.current_model.clone();
     let model_rec_result = match params.subchat_model_type {
         ChatModelType::Light => resolve_chat_model(caps.clone(), &caps.defaults.chat_light_model),
-        ChatModelType::Default => resolve_chat_model(caps.clone(), &caps.defaults.chat_default_model),
+        ChatModelType::Default => {
+            let model_to_resolve = if !is_cloud_model(&current_model) && is_cloud_model(&caps.defaults.chat_default_model) {
+                &current_model
+            } else {
+                &caps.defaults.chat_default_model
+            };
+            resolve_chat_model(caps.clone(), model_to_resolve)
+        }
         ChatModelType::Thinking => resolve_chat_model(caps.clone(), &caps.defaults.chat_thinking_model),
     };
 
@@ -67,7 +75,6 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             params.subchat_model = model_rec.base.id.clone();
         },
         Err(e) => {
-            let current_model = ccx.lock().await.current_model.clone();
             tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.", params.subchat_model_type, e, current_model);
             params.subchat_model = current_model;
         }
