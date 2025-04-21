@@ -452,6 +452,30 @@ pub const KNOWN_MODELS: &str = r####"
                 }
             }
         },
+        "o3": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_agent": true,
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            }
+        },
+        "o4-mini": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": false,
+            "supports_agent": true,
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
+            "supports_scratchpads": {
+                "PASSTHROUGH": {
+                }
+            }
+        },
         "claude-instant-1.2": {
             "n_ctx": 8096,
             "supports_scratchpads": {
@@ -855,6 +879,8 @@ pub const KNOWN_MODELS: &str = r####"
         "o1":                     "Xenova/gpt-4o",
         "o1-mini":                "Xenova/gpt-4o",
         "o3-mini":                "Xenova/gpt-4o",
+        "o3":                     "Xenova/gpt-4o",
+        "o4-mini":                "Xenova/gpt-4o",
         "openai/gpt-4o":          "Xenova/gpt-4o",
         "chatgpt-4o":             "Xenova/gpt-4o",
 
