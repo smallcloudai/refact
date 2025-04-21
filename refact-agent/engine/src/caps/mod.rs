@@ -442,5 +442,5 @@ pub fn resolve_completion_model<'a>(
 }
 
 pub fn is_cloud_model(model_id: &str) -> bool {
-    model_id.starts_with("refact/") || model_id.starts_with("refact_self_hosted/")
+    model_id.starts_with("refact/")
 }

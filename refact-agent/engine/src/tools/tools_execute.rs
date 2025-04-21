@@ -67,7 +67,14 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             };
             resolve_chat_model(caps.clone(), model_to_resolve)
         }
-        ChatModelType::Thinking => resolve_chat_model(caps.clone(), &caps.defaults.chat_thinking_model),
+        ChatModelType::Thinking => {
+            let model_to_resolve = if !is_cloud_model(&current_model) && is_cloud_model(&caps.defaults.chat_thinking_model) {
+                &current_model
+            } else {
+                &caps.defaults.chat_thinking_model
+            };
+            resolve_chat_model(caps.clone(), model_to_resolve)
+        }
     };
 
     match model_rec_result {
