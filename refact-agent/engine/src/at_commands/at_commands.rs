@@ -104,8 +104,6 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         ("@search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_search::AtSearch::new()) as Box<dyn AtCommand + Send>))),
         #[cfg(feature="vecdb")]
         ("@knowledge-load".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Box<dyn AtCommand + Send>))),
-        #[cfg(feature="vecdb")]
-        ("@knowledge-load-last".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_knowledge::AtLoadLastKnowledge::new()) as Box<dyn AtCommand + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
