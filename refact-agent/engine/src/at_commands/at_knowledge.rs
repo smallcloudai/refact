@@ -7,7 +7,6 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextEnum, ContextFile};
 use crate::vecdb::vdb_highlev::{memories_search, memories_select_all};
-use crate::vecdb::vdb_structs::MemoRecord;
 
 /// @knowledge-load command - loads knowledge entries by search key or memory ID
 pub struct AtLoadKnowledge {
@@ -92,83 +91,6 @@ impl AtCommand for AtLoadKnowledge {
 
         let count = results.len();
         Ok((results, format!("Loaded {} knowledge entries", count)))
-    }
-
-    fn depends_on(&self) -> Vec<String> {
-        vec!["vecdb".to_string()]
-    }
-}
-
-/// @knowledge-load-last command - loads the most recent knowledge entries
-pub struct AtLoadLastKnowledge {
-    params: Vec<Arc<AMutex<dyn AtParam>>>,
-}
-
-impl AtLoadLastKnowledge {
-    pub fn new() -> Self {
-        AtLoadLastKnowledge {
-            params: vec![],
-        }
-    }
-}
-
-#[async_trait]
-impl AtCommand for AtLoadLastKnowledge {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
-        &self.params
-    }
-
-    async fn at_execute(
-        &self,
-        ccx: Arc<AMutex<AtCommandsContext>>,
-        _cmd: &mut AtCommandMember,
-        args: &mut Vec<AtCommandMember>,
-    ) -> Result<(Vec<ContextEnum>, String), String> {
-        let count = if !args.is_empty() {
-            args[0].text.parse::<usize>().unwrap_or(5)
-        } else {
-            5 // Default to 5 entries
-        };
-
-        let gcx = {
-            let ccx_locked = ccx.lock().await;
-            ccx_locked.global_context.clone()
-        };
-
-        let vec_db = gcx.read().await.vec_db.clone();
-        let all_memories = memories_select_all(vec_db.clone()).await?;
-        
-        // Sort by memory ID (assuming newer entries have higher IDs)
-        // This is a simplification - in a real system you might want to sort by timestamp
-        let mut sorted_memories: Vec<MemoRecord> = all_memories.clone();
-        sorted_memories.sort_by(|a, b| b.memid.cmp(&a.memid));
-        
-        // Take only the requested number of entries
-        let recent_memories = sorted_memories.into_iter().take(count).collect::<Vec<_>>();
-        
-        if recent_memories.is_empty() {
-            return Err("No knowledge entries found".to_string());
-        }
-
-        let mut results = Vec::new();
-        for memory in recent_memories {
-            let mut content = String::new();
-            content.push_str(&format!("🗃️{}\n", memory.memid));
-            content.push_str(&memory.m_payload);
-            
-            results.push(ContextEnum::ContextFile(ContextFile {
-                file_name: format!("knowledge/{}.md", memory.memid),
-                file_content: content,
-                line1: 1,
-                line2: 1,
-                symbols: Vec::new(),
-                gradient_type: -1,
-                usefulness: 0.0
-            }));
-        }
-
-        let count = results.len();
-        Ok((results, format!("Loaded {} most recent knowledge entries", count)))
     }
 
     fn depends_on(&self) -> Vec<String> {
