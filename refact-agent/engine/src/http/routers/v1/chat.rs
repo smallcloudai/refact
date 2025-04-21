@@ -249,6 +249,7 @@ async fn _chat(
         chat_post.meta.chat_id.clone(),
         should_execute_remotely,
     ).await;
+    ccx.current_model = model_rec.base.id.clone();
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));

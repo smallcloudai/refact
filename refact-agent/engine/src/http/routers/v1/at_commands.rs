@@ -180,7 +180,7 @@ pub async fn handle_v1_command_preview(
         }
     };
 
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+    let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         model_rec.base.n_ctx,
         crate::http::routers::v1::chat::CHAT_TOP_N,
@@ -188,7 +188,9 @@ pub async fn handle_v1_command_preview(
         vec![],
         "".to_string(),
         false,
-    ).await));
+    ).await;
+    ccx.current_model = model_rec.base.id.clone();
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(ccx));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(
         ccx.clone(),
@@ -293,6 +295,7 @@ pub async fn handle_v1_at_command_execute(
         "".to_string(),
         false,
     ).await;
+    ccx.current_model = model_rec.base.id.clone();
     ccx.subchat_tool_parameters = post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));

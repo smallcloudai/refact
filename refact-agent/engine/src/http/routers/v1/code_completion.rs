@@ -66,7 +66,7 @@ pub async fn handle_v1_code_completion(
         tele_storage.clone(),
         ast_service_opt
     ).await.map_err(|e| ScratchError::new(StatusCode::BAD_REQUEST, e))?;
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+    let mut ccx = AtCommandsContext::new(
         gcx.clone(),
         model_rec.base.n_ctx,
         CODE_COMPLETION_TOP_N,
@@ -74,7 +74,9 @@ pub async fn handle_v1_code_completion(
         vec![],
         "".to_string(),
         false,
-    ).await));
+    ).await;
+    ccx.current_model = model_rec.base.id.clone();
+    let ccx = Arc::new(AMutex::new(ccx));
     if !code_completion_post.stream {
         crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), &model_rec.base, &mut code_completion_post.parameters, false, None).await
     } else {
@@ -127,7 +129,7 @@ pub async fn handle_v1_code_completion_prompt(
         ScratchError::new(StatusCode::BAD_REQUEST, e)
     )?;
 
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+    let mut ccx = AtCommandsContext::new(
         gcx.clone(),
         model_rec.base.n_ctx,
         CODE_COMPLETION_TOP_N,
@@ -135,7 +137,9 @@ pub async fn handle_v1_code_completion_prompt(
         vec![],
         "".to_string(),
         false,
-    ).await));
+    ).await;
+    ccx.current_model = model_rec.base.id.clone();
+    let ccx = Arc::new(AMutex::new(ccx));
     let prompt = scratchpad.prompt(ccx.clone(), &mut post.parameters).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
     )?;

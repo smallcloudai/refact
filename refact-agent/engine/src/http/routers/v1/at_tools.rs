@@ -233,6 +233,7 @@ pub async fn handle_v1_tools_execute(
         tools_execute_post.chat_id.clone(),
         false,
     ).await;
+    ccx.current_model = model_rec.base.id.clone();
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
