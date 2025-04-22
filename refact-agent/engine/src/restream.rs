@@ -426,7 +426,7 @@ pub async fn scratchpad_interaction_stream(
                                 problem_str.clone(),
                             ));
                         }
-                        yield Result::<_, String>::Ok(serde_json::to_string(&json!({"detail": problem_str})).unwrap());
+                        yield Result::<_, String>::Ok(format!("data: {}\n\n", serde_json::to_string(&json!({"detail": problem_str})).unwrap()));
                         event_source.close();
                         return;
                     },
