@@ -372,7 +372,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
                 onPaste={handlePastingFile}
-                rows={2}
               />
             )}
           />

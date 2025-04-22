@@ -12,7 +12,7 @@ import { createSyntheticEvent } from "../../utils/createSyntheticEvent";
 import styles from "./TextArea.module.css";
 
 const INTERACTIVE_BUTTONS_CONTAINER_HEIGHT = 30;
-const MINIMAL_TEXTAREA_HEIGHT = 95;
+const MINIMAL_TEXTAREA_HEIGHT = 115;
 const VIEWPORT_HEIGHT_THRESHOLD = 0.9;
 const PADDING_TOP_EXPANDED = 8;
 
