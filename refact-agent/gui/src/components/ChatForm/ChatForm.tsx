@@ -372,32 +372,22 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 autoFocus={autoFocus}
                 style={{ boxShadow: "none", outline: "none" }}
                 onPaste={handlePastingFile}
+                rows={2}
               />
             )}
           />
-          <Grid
+          <Flex
             className={styles.textareaInteractive}
-            // px="1"
-            // py="6"
-            // align="end"
             justify="between"
             // wrap="wrap"
-            columns="2"
-            rows="1"
           >
-            <Flex gap="2" wrap="wrap" gridColumn="1">
-              <CapsSelect />
+            <Flex gap="2" wrap="wrap">
               <ThinkingButton />
+              <CapsSelect />
             </Flex>
 
-            <Flex align="end" gridColumn="2" justify="end">
-              <Flex
-                gap="2"
-                align="center"
-                // className={styles.buttonGroup}
-                gridColumn="2"
-                // ml="auto"
-              >
+            <Flex align="end" justify="end" ml="auto">
+              <Flex gap="2" align="center">
                 <TokensPreview
                   currentMessageQuery={attachedFiles.addFilesToInput(value)}
                 />
@@ -455,7 +445,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 />
               </Flex>
             </Flex>
-          </Grid>
+          </Flex>
         </Form>
       </Flex>
       <FileList attachedFiles={attachedFiles} />
