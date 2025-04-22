@@ -45,6 +45,7 @@ import {
   ChatMessages,
   commandsApi,
   isAssistantMessage,
+  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -162,7 +163,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       maybeMode: state.thread.mode,
     });
     next.cache = { ...state.cache };
-    if (state.streaming) {
+    if (state.streaming || state.waiting_for_response) {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
     next.thread.model = state.thread.model;
@@ -194,9 +195,11 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
     const messages = formatChatResponse(state.thread.messages, action.payload);
 
-    state.streaming = true;
-    state.waiting_for_response = false;
     state.thread.messages = messages;
+    if (state.waiting_for_response && isChatResponseChoice(action.payload)) {
+      state.streaming = true;
+      state.waiting_for_response = false;
+    }
     // // maybe update thread usage here.
     // if (isChatResponseChoice(action.payload) && action.payload.usage) {
     //   state.thread.usage = action.payload.usage;
@@ -273,7 +276,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     if (state.thread.id !== action.payload.id) return state;
     state.send_immediately = false;
     state.waiting_for_response = true;
-    state.streaming = true;
     state.thread.read = false;
     state.prevent_send = false;
   });

@@ -14,6 +14,10 @@ use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
 
+
+// TODO: remove this dirty hack when we add light_chat_model in caps
+const LIGHT_MODEL_NAME: &str = "gpt-4o-mini";
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
     messages: Vec<ChatMessage>,

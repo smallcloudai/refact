@@ -269,18 +269,16 @@ pub async fn generate_commit_message_by_diff(
         Ok(caps) => Ok(caps.defaults.chat_default_model.clone()),
         Err(_) => Err("No caps available".to_string()),
     }?;
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(
-            gcx.clone(),
-            N_CTX,
-            1,
-            false,
-            messages.clone(),
-            "".to_string(),
-            false,
-        )
-            .await,
-    ));
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(),
+        N_CTX,
+        1,
+        false,
+        messages.clone(),
+        "".to_string(),
+        false,
+        model_name.clone(),
+    ).await));
     let new_messages = subchat_single(
         ccx.clone(),
         &model_id,

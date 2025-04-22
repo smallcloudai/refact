@@ -34,9 +34,16 @@ pub async fn handle_v1_subchat(
 
     let top_n = 7;
     let fake_n_ctx = 4096;
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, messages.clone(), "".to_string(), false).await
-    ));
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        global_context.clone(),
+        fake_n_ctx,
+        top_n,
+        false,
+        messages.clone(),
+        "".to_string(),
+        false,
+        post.model_name.clone(),
+    ).await));
 
     let model = resolve_chat_model(caps, &post.model_name)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
@@ -94,9 +101,16 @@ pub async fn handle_v1_subchat_single(
 
     let top_n = 7;
     let fake_n_ctx = 4096;
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(global_context.clone(), fake_n_ctx, top_n, false, messages.clone(), "".to_string(), false).await)
-    );
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        global_context.clone(),
+        fake_n_ctx,
+        top_n,
+        false,
+        messages.clone(),
+        "".to_string(),
+        false,
+        post.model_name.clone(),
+    ).await));
 
     let model = resolve_chat_model(caps, &post.model_name)
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
