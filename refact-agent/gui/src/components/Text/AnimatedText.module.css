@@ -1,0 +1,18 @@
+.animate {
+  animation: fadeEffect 2s infinite ease-in;
+}
+
+@keyframes fadeEffect {
+  0% {
+    opacity: 0.5;
+    filter: brightness(0.5);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+  100% {
+    opacity: 0.8;
+    filter: brightness(0.5);
+  }
+}

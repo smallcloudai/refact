@@ -39,6 +39,7 @@ import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 import { FadedButton } from "../Buttons";
+import { AnimatedText } from "../Text";
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
@@ -132,6 +133,17 @@ export const SingleModelToolContent: React.FC<{
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
 
+  const toolCallsId = useMemo(() => {
+    return toolCalls
+      .map((toolCall) => toolCall.id)
+      .filter((id) => id !== undefined);
+  }, [toolCalls]);
+
+  const results = useAppSelector(selectManyToolResultsByIds(toolCallsId));
+  const allResolved = useMemo(() => {
+    return results.length === toolCallsId.length;
+  }, [results.length, toolCallsId.length]);
+
   const handleClose = useCallback(() => {
     handleHide();
     setOpen(false);
@@ -187,6 +199,7 @@ export const SingleModelToolContent: React.FC<{
             subchat={subchat}
             open={open}
             onClick={() => setOpen((prev) => !prev)}
+            waiting={!allResolved}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -344,6 +357,13 @@ const MultiModalToolContent: React.FC<{
     };
   });
 
+  const hasResults = useMemo(() => {
+    const resultIds = toolResults.map((d) => d.tool_call_id);
+    return toolCalls.every(
+      (toolCall) => toolCall.id && resultIds.includes(toolCall.id),
+    );
+  }, [toolCalls, toolResults]);
+
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -353,6 +373,7 @@ const MultiModalToolContent: React.FC<{
             open={open}
             onClick={() => setOpen((prev) => !prev)}
             ref={ref}
+            waiting={!hasResults}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -435,6 +456,7 @@ type ToolUsageSummaryProps = {
   subchat?: string;
   open: boolean;
   onClick?: () => void;
+  waiting: boolean;
 };
 
 const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
@@ -446,41 +468,50 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
       subchat,
       open,
       onClick,
+      waiting,
     },
     ref,
   ) => {
     return (
-      <Flex gap="2" align="end" onClick={onClick} ref={ref}>
+      <Flex gap="2" align="end" onClick={onClick} ref={ref} my="2">
         <Flex
           gap="1"
           align="start"
           direction="column"
           style={{ cursor: "pointer" }}
         >
-          <Text weight="light" size="1">
-            🔨{" "}
-            {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
-              <span key={functionName}>
-                <ToolUsageDisplay
-                  functionName={functionName}
-                  amountOfCalls={amountOfCalls}
-                />
-                {index === toolUsageAmount.length - 1 ? "" : ", "}
-              </span>
-            ))}
-          </Text>
+          <AnimatedText weight="light" size="1" animate={waiting}>
+            <Flex gap="2" align="center" justify="center">
+              {waiting ? <Spinner /> : "🔨"} {/* 🔨{" "} */}
+              {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
+                <span key={functionName}>
+                  <ToolUsageDisplay
+                    functionName={functionName}
+                    amountOfCalls={amountOfCalls}
+                  />
+                  {index === toolUsageAmount.length - 1 ? "" : ", "}
+                </span>
+              ))}
+            </Flex>
+          </AnimatedText>
           {hiddenFiles && hiddenFiles > 0 && (
-            <Text weight="light" size="1" ml="4">
+            <AnimatedText weight="light" size="1" ml="4" animate={waiting}>
               {`🔎 <${hiddenFiles} files hidden>`}
-            </Text>
+            </AnimatedText>
           )}
           {shownAttachedFiles?.map((file, index) => {
             if (!file) return null;
 
             return (
-              <Text weight="light" size="1" key={index} ml="4">
+              <AnimatedText
+                animate={waiting}
+                weight="light"
+                size="1"
+                key={index}
+                ml="4"
+              >
                 🔎 {file}
-              </Text>
+              </AnimatedText>
             );
           })}
           {subchat && (
