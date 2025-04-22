@@ -37,10 +37,14 @@ export const ProvidersView: React.FC<ProvidersViewProps> = ({
   const information = useAppSelector(getInformationMessage);
 
   const [currentProvider, setCurrentProvider] = useState<SimplifiedProvider<
-    "name" | "enabled" | "readonly"
+    "name" | "enabled" | "readonly" | "supports_completion"
   > | null>(null);
   const handleSetCurrentProvider = useCallback(
-    (provider: SimplifiedProvider<"name" | "enabled" | "readonly"> | null) => {
+    (
+      provider: SimplifiedProvider<
+        "name" | "enabled" | "readonly" | "supports_completion"
+      > | null,
+    ) => {
       setCurrentProvider(provider);
     },
     [],

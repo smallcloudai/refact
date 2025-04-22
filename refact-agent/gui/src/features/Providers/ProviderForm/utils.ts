@@ -11,11 +11,21 @@ const EXTRA_FIELDS_KEYS = [
   "chat_endpoint",
   "tokenizer_api_key",
 ];
+const HIDDEN_FIELDS_KEYS = [
+  "name",
+  "readonly",
+  "enabled",
+  "supports_completion",
+];
 
 export function aggregateProviderFields(providerData: Provider) {
   return Object.entries(providerData).reduce<AggregatedProviderFields>(
     (acc, [key, value]) => {
       const stringValue = value;
+
+      if (HIDDEN_FIELDS_KEYS.some((hiddenField) => hiddenField === key)) {
+        return acc;
+      }
 
       if (EXTRA_FIELDS_KEYS.some((extraField) => extraField === key)) {
         acc.extraFields[key] = stringValue;

@@ -20,11 +20,9 @@ export const FormFields: FC<FormFieldsProps> = ({
   onChange,
 }) => {
   return Object.entries(fields).map(([key, value], idx) => {
-    if (key === "name" || key === "readonly" || key === "enabled") return null;
-
-    if (key === "endpoint_style") {
+    if (key === "endpoint_style" && providerData.name === "custom") {
       const availableOptions: Provider["endpoint_style"][] = ["openai", "hf"];
-
+      const displayValues = ["OpenAI", "HuggingFace"];
       return (
         <Flex key={`${key}_${idx}`} direction="column">
           {toPascalCase(key)}
@@ -37,9 +35,9 @@ export const FormFields: FC<FormFieldsProps> = ({
           >
             <Select.Trigger />
             <Select.Content position="popper">
-              {availableOptions.map((option) => (
+              {availableOptions.map((option, idx) => (
                 <Select.Item key={option} value={option}>
-                  {option}
+                  {displayValues[idx]}
                 </Select.Item>
               ))}
             </Select.Content>
@@ -47,6 +45,16 @@ export const FormFields: FC<FormFieldsProps> = ({
         </Flex>
       );
     }
+
+    if (key === "endpoint_style") return null;
+
+    if (
+      !providerData.supports_completion &&
+      (key === "completion_default_model" || key === "completion_endpoint")
+    ) {
+      return null;
+    }
+
     return (
       <Flex key={`${key}_${idx}`} direction="column" gap="1">
         <label htmlFor={key}>{toPascalCase(key)}</label>

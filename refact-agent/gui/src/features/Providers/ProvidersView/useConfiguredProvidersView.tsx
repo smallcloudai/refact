@@ -28,6 +28,29 @@ export function useGetConfiguredProvidersView({
     SimplifiedProvider<"name"> | undefined
   >(notConfiguredProviderTemplates[0] || undefined);
 
+  const sortedConfiguredProviders = useMemo(() => {
+    return [...configuredProviders].sort((a, b) => {
+      const getPriority = (provider: { name: string }) => {
+        if (
+          provider.name === "refact" ||
+          provider.name === "refact_self_hosted"
+        )
+          return 0;
+        if (provider.name === "custom") return 2;
+        return 1;
+      };
+
+      const priorityA = getPriority(a);
+      const priorityB = getPriority(b);
+
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [configuredProviders]);
+
   const handlePotentialCurrentProvider = useCallback((value: string) => {
     setPotentialCurrentProvider({
       name: value,
@@ -41,6 +64,7 @@ export function useGetConfiguredProvidersView({
       name: potentialCurrentProvider.name,
       enabled: true,
       readonly: false,
+      supports_completion: false,
     });
   }, [handleSetCurrentProvider, potentialCurrentProvider]);
 
@@ -53,6 +77,7 @@ export function useGetConfiguredProvidersView({
   return {
     handlePotentialCurrentProvider,
     handleAddNewProvider,
+    sortedConfiguredProviders,
     notConfiguredProviderTemplates,
     potentialCurrentProvider,
   };

@@ -4,10 +4,7 @@ import { Card, Flex, Heading } from "@radix-ui/themes";
 import { OnOffSwitch } from "../../../components/OnOffSwitch/OnOffSwitch";
 import { iconsMap } from "../icons/iconsMap";
 
-import type {
-  ConfiguredProvidersResponse,
-  Provider,
-} from "../../../services/refact";
+import type { ConfiguredProvidersResponse } from "../../../services/refact";
 
 import { getProviderName } from "../getProviderName";
 import { useProviderCard } from "./useProviderCard";
@@ -16,25 +13,15 @@ import styles from "./ProviderCard.module.css";
 import { useUpdateProvider } from "../useUpdateProvider";
 import classNames from "classnames";
 
-export type ProviderCardProps =
-  | {
-      provider: Provider;
-      isSimplifiedProvider: false;
-      setCurrentProvider: (
-        provider: ConfiguredProvidersResponse["providers"][number],
-      ) => void;
-    }
-  | {
-      provider: ConfiguredProvidersResponse["providers"][number];
-      isSimplifiedProvider: true;
-      setCurrentProvider: (
-        provider: ConfiguredProvidersResponse["providers"][number],
-      ) => void;
-    };
+export type ProviderCardProps = {
+  provider: ConfiguredProvidersResponse["providers"][number];
+  setCurrentProvider: (
+    provider: ConfiguredProvidersResponse["providers"][number],
+  ) => void;
+};
 
 export const ProviderCard: React.FC<ProviderCardProps> = ({
   provider,
-  isSimplifiedProvider,
   setCurrentProvider,
 }) => {
   const { isUpdatingEnabledState } = useUpdateProvider({
@@ -46,7 +33,6 @@ export const ProviderCard: React.FC<ProviderCardProps> = ({
     setCurrentProvider,
   });
 
-  if (!isSimplifiedProvider) return null;
   return (
     <Card
       size="2"

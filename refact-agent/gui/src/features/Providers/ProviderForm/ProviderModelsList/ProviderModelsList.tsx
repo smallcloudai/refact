@@ -65,26 +65,33 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
       {!provider.readonly && (
         <AddModelButton modelType="chat" providerName={provider.name} />
       )}
-      <Heading as="h6" size="2" my="2">
-        Completion Models
-      </Heading>
-      {completion_models.length > 0 ? (
-        completion_models.map((m) => {
-          return (
-            <ModelCard
-              key={m.name}
-              model={m}
-              providerName={provider.name}
+      {provider.supports_completion && (
+        <>
+          <Heading as="h6" size="2" my="2">
+            Completion Models
+          </Heading>
+          {completion_models.length > 0 ? (
+            completion_models.map((m) => {
+              return (
+                <ModelCard
+                  key={m.name}
+                  model={m}
+                  providerName={provider.name}
+                  modelType="completion"
+                  isReadonlyProvider={provider.readonly}
+                />
+              );
+            })
+          ) : (
+            <NoModelsText />
+          )}
+          {!provider.readonly && (
+            <AddModelButton
               modelType="completion"
-              isReadonlyProvider={provider.readonly}
+              providerName={provider.name}
             />
-          );
-        })
-      ) : (
-        <NoModelsText />
-      )}
-      {!provider.readonly && (
-        <AddModelButton modelType="completion" providerName={provider.name} />
+          )}
+        </>
       )}
       {/* TODO: do we want to expose embedding model configuration updates? */}
       {/* <Heading as="h6" size="2">

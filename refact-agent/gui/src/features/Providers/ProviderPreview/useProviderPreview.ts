@@ -15,7 +15,9 @@ import type { Provider, SimplifiedProvider } from "../../../services/refact";
 
 export function useProviderPreview(
   handleSetCurrentProvider: (
-    provider: SimplifiedProvider<"name" | "enabled" | "readonly"> | null,
+    provider: SimplifiedProvider<
+      "name" | "enabled" | "readonly" | "supports_completion"
+    > | null,
   ) => void,
 ) {
   const dispatch = useAppDispatch();

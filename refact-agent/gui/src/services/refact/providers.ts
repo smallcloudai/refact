@@ -216,6 +216,7 @@ export type Provider = {
 
   enabled: boolean;
   readonly: boolean;
+  supports_completion?: boolean;
 };
 
 export type SimplifiedProvider<
@@ -231,7 +232,9 @@ export type ErrorLogInstance = {
 };
 
 export type ConfiguredProvidersResponse = {
-  providers: SimplifiedProvider<"name" | "enabled" | "readonly">[];
+  providers: SimplifiedProvider<
+    "name" | "enabled" | "readonly" | "supports_completion"
+  >[];
   error_log: ErrorLogInstance[];
 };
 

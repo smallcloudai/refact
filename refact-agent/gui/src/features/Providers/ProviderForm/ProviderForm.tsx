@@ -15,7 +15,9 @@ import styles from "./ProviderForm.module.css";
 import { ProviderModelsList } from "./ProviderModelsList/ProviderModelsList";
 
 export type ProviderFormProps = {
-  currentProvider: SimplifiedProvider<"name" | "enabled" | "readonly">;
+  currentProvider: SimplifiedProvider<
+    "name" | "enabled" | "readonly" | "supports_completion"
+  >;
   isProviderConfigured: boolean;
   isSaving: boolean;
   handleDiscardChanges: () => void;

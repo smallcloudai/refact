@@ -10,10 +10,16 @@ import type { SimplifiedProvider } from "../../../services/refact";
 import { DeletePopover } from "../../../components/DeletePopover";
 
 export type ProviderPreviewProps = {
-  configuredProviders: SimplifiedProvider<"name" | "enabled" | "readonly">[];
-  currentProvider: SimplifiedProvider<"name" | "enabled" | "readonly">;
+  configuredProviders: SimplifiedProvider<
+    "name" | "enabled" | "readonly" | "supports_completion"
+  >[];
+  currentProvider: SimplifiedProvider<
+    "name" | "enabled" | "readonly" | "supports_completion"
+  >;
   handleSetCurrentProvider: (
-    provider: SimplifiedProvider<"name" | "enabled" | "readonly"> | null,
+    provider: SimplifiedProvider<
+      "name" | "enabled" | "readonly" | "supports_completion"
+    > | null,
   ) => void;
 };
 

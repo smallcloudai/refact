@@ -361,8 +361,7 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
               {SUPPORTED_REASONING_STYLES.map((style) => {
                 return (
                   <Select.Item key={style} value={style ?? "null"}>
-                    {style ? extractHumanReadableReasoningType(style) : "No"}{" "}
-                    Reasoning
+                    {style ? extractHumanReadableReasoningType(style) : "None"}{" "}
                   </Select.Item>
                 );
               })}

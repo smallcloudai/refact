@@ -21,6 +21,7 @@ export const ConfiguredProvidersView: React.FC<
     handleAddNewProvider,
     handlePotentialCurrentProvider,
     notConfiguredProviderTemplates,
+    sortedConfiguredProviders,
     potentialCurrentProvider,
   } = useGetConfiguredProvidersView({
     configuredProviders,
@@ -39,11 +40,10 @@ export const ConfiguredProvidersView: React.FC<
             providers
           </Text>
         </Flex>
-        {configuredProviders.map((provider, idx) => (
+        {sortedConfiguredProviders.map((provider, idx) => (
           <ProviderCard
             key={`${provider.name}_${idx}`}
             provider={provider}
-            isSimplifiedProvider
             setCurrentProvider={handleSetCurrentProvider}
           />
         ))}
