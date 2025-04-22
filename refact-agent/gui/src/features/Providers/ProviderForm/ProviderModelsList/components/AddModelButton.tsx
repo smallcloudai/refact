@@ -7,18 +7,25 @@ import { Button } from "@radix-ui/themes";
 export type AddModelButtonProps = {
   modelType: ModelType;
   providerName: string;
+  currentModelNames: string[];
 };
 
 export const AddModelButton: FC<AddModelButtonProps> = ({
   modelType,
   providerName,
+  currentModelNames,
 }) => {
-  const { isOpen, setIsOpen, isSavingModel, handleSaveModel } =
-    useModelDialogState({
-      modelType,
-      providerName,
-      initialState: false,
-    });
+  const {
+    isOpen,
+    setIsOpen,
+    isSavingModel,
+    handleSaveModel,
+    handleUpdateModel,
+  } = useModelDialogState({
+    modelType,
+    providerName,
+    initialState: false,
+  });
 
   return (
     <>
@@ -30,6 +37,8 @@ export const AddModelButton: FC<AddModelButtonProps> = ({
         modelName=""
         modelType={modelType}
         onSave={handleSaveModel}
+        onUpdate={handleUpdateModel}
+        currentModelNames={currentModelNames}
         newModelCreation
       />
       <Button

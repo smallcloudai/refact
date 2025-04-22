@@ -22,6 +22,7 @@ import type {
   EmbeddingModel,
   Model,
   ModelType,
+  SimplifiedModel,
   SupportsReasoningStyle,
 } from "../../../../../services/refact";
 
@@ -36,13 +37,22 @@ const SUPPORTED_REASONING_STYLES: SupportsReasoningStyle[] = [
 ];
 
 export type ModelCardPopupProps = {
+  minifiedModel?: SimplifiedModel;
   isOpen: boolean;
   isSaving: boolean;
   setIsOpen: (state: boolean) => void;
   onSave: (model: Model) => Promise<boolean>;
+  onUpdate: ({
+    model,
+    oldModel,
+  }: {
+    model: Model;
+    oldModel: SimplifiedModel;
+  }) => Promise<boolean>;
   modelName: string;
   modelType: ModelType;
   providerName: string;
+  currentModelNames: string[];
   newModelCreation?: boolean;
   isRemovable?: boolean;
 };
@@ -52,9 +62,12 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   isSaving,
   setIsOpen,
   onSave,
+  onUpdate,
   modelName,
   modelType,
   providerName,
+  minifiedModel,
+  currentModelNames,
   newModelCreation = false,
   isRemovable = false,
 }) => {
@@ -86,8 +99,11 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   }, [defaultModelData, editedModelData]);
 
   const isSavingDisabled = useMemo(() => {
-    return !editedModelData?.name;
-  }, [editedModelData]);
+    return (
+      !editedModelData?.name ||
+      currentModelNames.some((name) => name === editedModelData.name)
+    );
+  }, [editedModelData, currentModelNames]);
 
   useEffect(() => {
     if (isOpen) {
@@ -127,10 +143,20 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   const handleSave = useCallback(async () => {
     if (!isOpen || !editedModelData) return;
 
-    const isSuccess = await onSave(editedModelData);
+    let isSuccess: boolean;
+
+    if (minifiedModel && minifiedModel.name !== editedModelData.name) {
+      isSuccess = await onUpdate({
+        model: editedModelData,
+        oldModel: minifiedModel,
+      });
+    } else {
+      isSuccess = await onSave(editedModelData);
+    }
     if (!isSuccess) return;
+
     setTimeout(() => setIsOpen(false), 0);
-  }, [isOpen, editedModelData, setIsOpen, onSave]);
+  }, [isOpen, editedModelData, minifiedModel, setIsOpen, onSave, onUpdate]);
 
   const handleCancel = useCallback(() => {
     setTimeout(() => setIsOpen(false), 0);
