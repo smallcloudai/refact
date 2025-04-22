@@ -19,7 +19,7 @@ use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::{is_cloud_model, resolve_chat_model};
+use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -57,35 +57,27 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     }
 
     let current_model = ccx.lock().await.current_model.clone();
-    let model_rec_result = match params.subchat_model_type {
-        ChatModelType::Light => resolve_chat_model(caps.clone(), &caps.defaults.chat_light_model),
-        ChatModelType::Default => {
-            let model_to_resolve = if !is_cloud_model(&current_model) && is_cloud_model(&caps.defaults.chat_default_model) {
-                &current_model
-            } else {
-                &caps.defaults.chat_default_model
-            };
-            resolve_chat_model(caps.clone(), model_to_resolve)
-        }
-        ChatModelType::Thinking => {
-            let model_to_resolve = if !is_cloud_model(&current_model) && is_cloud_model(&caps.defaults.chat_thinking_model) {
-                &current_model
-            } else {
-                &caps.defaults.chat_thinking_model
-            };
-            resolve_chat_model(caps.clone(), model_to_resolve)
-        }
+    let model_to_resolve = match params.subchat_model_type {
+        ChatModelType::Light => &caps.defaults.chat_light_model,
+        ChatModelType::Default => &caps.defaults.chat_default_model,
+        ChatModelType::Thinking => &caps.defaults.chat_thinking_model,
     };
 
-    match model_rec_result {
+    params.subchat_model = match resolve_model(&caps.chat_models, model_to_resolve) {
         Ok(model_rec) => {
-            params.subchat_model = model_rec.base.id.clone();
+            if !is_cloud_model(&current_model) && is_cloud_model(&model_rec.base.id)
+                && params.subchat_model_type != ChatModelType::Light {
+                current_model.to_string()
+            } else {
+                model_rec.base.id.clone()
+            }
         },
         Err(e) => {
-            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.", params.subchat_model_type, e, current_model);
-            params.subchat_model = current_model;
+            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.", 
+                params.subchat_model_type, e, current_model);
+            current_model
         }
-    }
+    };
 
     tracing::info!("using model for subchat: {}", params.subchat_model);
     Ok(params)

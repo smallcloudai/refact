@@ -190,7 +190,7 @@ pub enum ModelType {
     Embedding,    
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ChatModelType {
     Light,
