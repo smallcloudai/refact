@@ -376,22 +376,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex
-            className={styles.textareaInteractive}
-            justify="between"
-            // wrap="wrap"
-          >
-            <Flex gap="2" wrap="wrap">
+          <Flex className={styles.textareaInteractive} gap="2" wrap="wrap">
+            <CapsSelect />
+
+            <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               <ThinkingButton />
-              <CapsSelect />
-            </Flex>
-
-            <Flex align="end" justify="end" ml="auto">
-              <Flex gap="2" align="center">
-                <TokensPreview
-                  currentMessageQuery={attachedFiles.addFilesToInput(value)}
-                />
-
+              <TokensPreview
+                currentMessageQuery={attachedFiles.addFilesToInput(value)}
+              />
+              <Flex gap="2" align="center" justify="center">
                 <IconButton
                   size="1"
                   variant="ghost"
