@@ -140,6 +140,10 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     if let Some(meta) = meta {
         data["meta"] = json!(meta);
     }
+    
+    if model_rec.endpoint.is_empty() {
+        return Err(format!("No endpoint configured for {}", model_rec.id));
+    }
     let builder = client.post(&model_rec.endpoint)
         .headers(headers)
         .body(data.to_string());
