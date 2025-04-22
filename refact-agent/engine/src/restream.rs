@@ -435,9 +435,9 @@ pub async fn scratchpad_interaction_stream(
                         e_str.to_string(),
                     ));
                     tracing::error!(e_str);
-                    let value_str = serde_json::to_string(&json!({"detail": e_str})).unwrap();
+                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": e_str})).unwrap());
                     yield Result::<_, String>::Ok(value_str);
-                    break;
+                    return;
                 }
             };
             let mut was_correct_output_even_if_error = false;
