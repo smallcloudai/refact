@@ -134,9 +134,12 @@ export const SingleModelToolContent: React.FC<{
   const handleHide = useHideScroll(ref);
 
   const toolCallsId = useMemo(() => {
-    return toolCalls
-      .map((toolCall) => toolCall.id)
-      .filter((id) => id !== undefined);
+    const ids = toolCalls.reduce<string[]>((acc, toolCall) => {
+      if (typeof toolCall.id === "string") return [...acc, toolCall.id];
+      return acc;
+    }, []);
+
+    return ids;
   }, [toolCalls]);
 
   const results = useAppSelector(selectManyToolResultsByIds(toolCallsId));
@@ -503,13 +506,7 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
               if (!file) return null;
 
               return (
-                <Text
-                  animate={waiting}
-                  weight="light"
-                  size="1"
-                  key={index}
-                  ml="4"
-                >
+                <Text weight="light" size="1" key={index} ml="4">
                   🔎 {file}
                 </Text>
               );
