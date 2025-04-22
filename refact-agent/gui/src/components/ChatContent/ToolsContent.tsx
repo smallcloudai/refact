@@ -473,14 +473,14 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
     ref,
   ) => {
     return (
-      <Flex gap="2" align="end" onClick={onClick} ref={ref} my="2">
-        <Flex
-          gap="1"
-          align="start"
-          direction="column"
-          style={{ cursor: "pointer" }}
-        >
-          <AnimatedText weight="light" size="1" animate={waiting}>
+      <AnimatedText as="div" weight="light" size="1" animating={waiting}>
+        <Flex gap="2" align="end" onClick={onClick} ref={ref} my="2">
+          <Flex
+            gap="1"
+            align="start"
+            direction="column"
+            style={{ cursor: "pointer" }}
+          >
             <Flex gap="2" align="center" justify="center">
               {waiting ? <Spinner /> : "🔨"} {/* 🔨{" "} */}
               {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
@@ -493,38 +493,39 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
                 </span>
               ))}
             </Flex>
-          </AnimatedText>
-          {hiddenFiles && hiddenFiles > 0 && (
-            <AnimatedText weight="light" size="1" ml="4" animate={waiting}>
-              {`🔎 <${hiddenFiles} files hidden>`}
-            </AnimatedText>
-          )}
-          {shownAttachedFiles?.map((file, index) => {
-            if (!file) return null;
 
-            return (
-              <AnimatedText
-                animate={waiting}
-                weight="light"
-                size="1"
-                key={index}
-                ml="4"
-              >
-                🔎 {file}
-              </AnimatedText>
-            );
-          })}
-          {subchat && (
-            <Flex ml="4">
-              <Spinner />
-              <Text weight="light" size="1" ml="4px">
-                {subchat}
+            {hiddenFiles && hiddenFiles > 0 && (
+              <Text weight="light" size="1" ml="4">
+                {`🔎 <${hiddenFiles} files hidden>`}
               </Text>
-            </Flex>
-          )}
+            )}
+            {shownAttachedFiles?.map((file, index) => {
+              if (!file) return null;
+
+              return (
+                <Text
+                  animate={waiting}
+                  weight="light"
+                  size="1"
+                  key={index}
+                  ml="4"
+                >
+                  🔎 {file}
+                </Text>
+              );
+            })}
+            {subchat && (
+              <Flex ml="4">
+                <Spinner />
+                <Text weight="light" size="1" ml="4px">
+                  {subchat}
+                </Text>
+              </Flex>
+            )}
+          </Flex>
+          <Chevron open={open} />
         </Flex>
-        <Chevron open={open} />
-      </Flex>
+      </AnimatedText>
     );
   },
 );

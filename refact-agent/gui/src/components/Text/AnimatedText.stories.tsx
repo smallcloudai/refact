@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { Theme, Card, ThemeProps, ThemePanel } from "@radix-ui/themes";
+import { Theme, Card, ThemePanel } from "@radix-ui/themes";
 import { AnimatedText } from "./AnimatedText";
 
 const meta: Meta<typeof AnimatedText> = {
@@ -23,7 +23,7 @@ type Story = StoryObj<typeof AnimatedText>;
 
 export const Primary: Story = {
   args: {
-    animate: true,
+    animating: true,
 
     children: "Hello World",
   },

@@ -1,5 +1,5 @@
 .animate {
-  animation: fadeEffect 2s infinite ease-in;
+  animation: fadeEffect 3s infinite ease-in;
 }
 
 @keyframes fadeEffect {
