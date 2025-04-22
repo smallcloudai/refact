@@ -1,0 +1,3 @@
+model_defaults:
+  chat:
+    tokenizer: fake

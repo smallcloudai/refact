@@ -195,7 +195,7 @@ pub struct ModelDefaults {
 
 const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("anthropic", include_str!("../yaml_configs/default_providers/anthropic.yaml")),
-    ("custom", ""),
+    ("custom", include_str!("../yaml_configs/default_providers/custom.yaml")),
     ("deepseek", include_str!("../yaml_configs/default_providers/deepseek.yaml")),
     ("google_gemini", include_str!("../yaml_configs/default_providers/google_gemini.yaml")),
     ("groq", include_str!("../yaml_configs/default_providers/groq.yaml")),
