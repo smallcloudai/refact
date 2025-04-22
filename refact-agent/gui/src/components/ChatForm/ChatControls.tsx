@@ -174,8 +174,8 @@ export const CapsSelect: React.FC = () => {
       gap="2"
       align="center"
       wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
+      // flexGrow="1"
+      // flexShrink="0"
       // width="100%"
       ref={(x) => refs.setUseModel(x)}
     >

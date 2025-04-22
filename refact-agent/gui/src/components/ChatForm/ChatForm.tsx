@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton, Grid, Box } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
@@ -375,80 +375,87 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex
+          <Grid
             className={styles.textareaInteractive}
-            align="end"
+            // px="1"
+            // py="6"
+            // align="end"
             justify="between"
-            wrap="wrap"
+            // wrap="wrap"
+            columns="2"
+            rows="1"
           >
-            <Flex gap="2" wrap="wrap">
+            <Flex gap="2" wrap="wrap" gridColumn="1">
               <CapsSelect />
               <ThinkingButton />
             </Flex>
 
-            <Flex
-              gap="2"
-              align="center"
-              className={styles.buttonGroup}
-              ml="auto"
-            >
-              <TokensPreview
-                currentMessageQuery={attachedFiles.addFilesToInput(value)}
-              />
-
-              <IconButton
-                size="1"
-                variant="ghost"
-                color={
-                  lastSentCompression === "high"
-                    ? "red"
-                    : lastSentCompression === "medium"
-                      ? "yellow"
-                      : undefined
-                }
-                title="Compress chat and continue"
-                type="button"
-                onClick={() => void compressChat()}
-                disabled={
-                  messages.length === 0 ||
-                  isStreaming ||
-                  isWaiting ||
-                  unCalledTools
-                }
-                loading={compressChatRequest.isLoading || isCompressing}
+            <Flex align="end" gridColumn="2" justify="end">
+              <Flex
+                gap="2"
+                align="center"
+                // className={styles.buttonGroup}
+                gridColumn="2"
+                // ml="auto"
               >
-                <ArchiveIcon />
-              </IconButton>
-              {toolUse === "agent" && (
-                <AgentIntegrationsButton
-                  title="Set up Agent Integrations"
+                <TokensPreview
+                  currentMessageQuery={attachedFiles.addFilesToInput(value)}
+                />
+
+                <IconButton
                   size="1"
+                  variant="ghost"
+                  color={
+                    lastSentCompression === "high"
+                      ? "red"
+                      : lastSentCompression === "medium"
+                        ? "yellow"
+                        : undefined
+                  }
+                  title="Compress chat and continue"
                   type="button"
-                  onClick={handleAgentIntegrationsClick}
-                  ref={(x) => refs.setSetupIntegrations(x)}
-                />
-              )}
-              {onClose && (
-                <BackToSideBarButton
-                  disabled={isStreaming}
-                  title="Return to sidebar"
-                  size="1"
-                  onClick={onClose}
-                />
-              )}
-              {config.features?.images !== false &&
-                isMultimodalitySupportedForCurrentModel && (
-                  <AttachImagesButton />
+                  onClick={() => void compressChat()}
+                  disabled={
+                    messages.length === 0 ||
+                    isStreaming ||
+                    isWaiting ||
+                    unCalledTools
+                  }
+                  loading={compressChatRequest.isLoading || isCompressing}
+                >
+                  <ArchiveIcon />
+                </IconButton>
+                {toolUse === "agent" && (
+                  <AgentIntegrationsButton
+                    title="Set up Agent Integrations"
+                    size="1"
+                    type="button"
+                    onClick={handleAgentIntegrationsClick}
+                    ref={(x) => refs.setSetupIntegrations(x)}
+                  />
                 )}
-              {/* TODO: Reserved space for microphone button coming later on */}
-              <PaperPlaneButton
-                disabled={disableSend}
-                title="Send message"
-                size="1"
-                type="submit"
-              />
+                {onClose && (
+                  <BackToSideBarButton
+                    disabled={isStreaming}
+                    title="Return to sidebar"
+                    size="1"
+                    onClick={onClose}
+                  />
+                )}
+                {config.features?.images !== false &&
+                  isMultimodalitySupportedForCurrentModel && (
+                    <AttachImagesButton />
+                  )}
+                {/* TODO: Reserved space for microphone button coming later on */}
+                <PaperPlaneButton
+                  disabled={disableSend}
+                  title="Send message"
+                  size="1"
+                  type="submit"
+                />
+              </Flex>
             </Flex>
-          </Flex>
+          </Grid>
         </Form>
       </Flex>
       <FileList attachedFiles={attachedFiles} />

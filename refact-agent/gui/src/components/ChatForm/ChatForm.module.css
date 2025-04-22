@@ -6,8 +6,8 @@
   right: 6px;
   bottom: 4px;
   padding: 1px 6px;
-  justify-content: flex-end;
-  width: calc(100% - 6px - 2px);
+  /* justify-content: flex-end; */
+  /* width: calc(100% - 6px - 2px); */
 }
 .buttonGroup {
   align-self: flex-end;
