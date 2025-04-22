@@ -38,6 +38,11 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
 
   const { chat_models, completion_models } = modelsData;
 
+  const currentModelNames = [
+    chat_models.map((m) => m.name),
+    completion_models.map((m) => m.name),
+  ].flat();
+
   return (
     <Flex direction="column" gap="2">
       <Heading as="h3" size="3">
@@ -56,6 +61,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
               providerName={provider.name}
               modelType="chat"
               isReadonlyProvider={provider.readonly}
+              currentModelNames={currentModelNames}
             />
           );
         })
@@ -63,7 +69,11 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
         <NoModelsText />
       )}
       {!provider.readonly && (
-        <AddModelButton modelType="chat" providerName={provider.name} />
+        <AddModelButton
+          modelType="chat"
+          providerName={provider.name}
+          currentModelNames={currentModelNames}
+        />
       )}
       {provider.supports_completion && (
         <>
@@ -79,6 +89,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
                   providerName={provider.name}
                   modelType="completion"
                   isReadonlyProvider={provider.readonly}
+                  currentModelNames={currentModelNames}
                 />
               );
             })
@@ -89,6 +100,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
             <AddModelButton
               modelType="completion"
               providerName={provider.name}
+              currentModelNames={currentModelNames}
             />
           )}
         </>

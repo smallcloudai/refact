@@ -115,10 +115,15 @@ export const useModelDialogState = ({
   );
 
   const handleRemoveModel = useCallback(
-    async (
-      model: SimplifiedModel,
-      operationType: "remove" | "reset" = "remove",
-    ) => {
+    async ({
+      model,
+      operationType = "remove",
+      isSilent = false,
+    }: {
+      model: SimplifiedModel;
+      operationType?: "remove" | "reset";
+      isSilent?: boolean;
+    }) => {
       const response = await deleteModel({
         model: model.name,
         provider: providerName,
@@ -137,16 +142,17 @@ export const useModelDialogState = ({
         return false;
       }
 
-      const actions = [
-        setInformation(
-          `Model ${model.name} was ${
-            operationType === "remove" ? "removed" : "reset"
-          } successfully!`,
-        ),
-        modelsApi.util.invalidateTags(["MODELS", "MODEL"]),
-      ];
+      if (!isSilent) {
+        dispatch(
+          setInformation(
+            `Model ${model.name} was ${
+              operationType === "remove" ? "removed" : "reset"
+            } successfully!`,
+          ),
+        );
+      }
 
-      actions.forEach((action) => dispatch(action));
+      dispatch(modelsApi.util.invalidateTags(["MODELS"]));
       setIsRemovingModel(false);
       return true;
     },
@@ -155,9 +161,12 @@ export const useModelDialogState = ({
 
   const handleResetModel = useCallback(
     async (model: SimplifiedModel) => {
-      const isSuccess = await handleRemoveModel(model, "reset");
+      const isSuccess = await handleRemoveModel({
+        model,
+        operationType: "reset",
+      });
       if (isSuccess) {
-        dispatch(modelsApi.util.invalidateTags(["MODELS", "MODEL"]));
+        dispatch(modelsApi.util.invalidateTags(["MODELS"]));
       }
     },
     [dispatch, handleRemoveModel],
@@ -183,7 +192,7 @@ export const useModelDialogState = ({
       }
       const actions = [
         setInformation(`Model ${modelData.name} was updated successfully!`),
-        modelsApi.util.invalidateTags(["MODELS", "MODEL"]),
+        modelsApi.util.invalidateTags(["MODELS"]),
       ];
 
       actions.forEach((action) => dispatch(action));
@@ -191,6 +200,25 @@ export const useModelDialogState = ({
       return true;
     },
     [dispatch, setIsSavingModel, providerName, modelType, updateModel],
+  );
+
+  const handleUpdateModel = useCallback(
+    async ({
+      model,
+      oldModel,
+    }: {
+      model: Model;
+      oldModel: SimplifiedModel;
+    }) => {
+      const removeResult = await handleRemoveModel({
+        model: oldModel,
+        isSilent: true,
+      });
+      if (!removeResult) return false;
+      const updateResult = await handleSaveModel(model);
+      return updateResult;
+    },
+    [handleSaveModel, handleRemoveModel],
   );
 
   return {
@@ -207,6 +235,7 @@ export const useModelDialogState = ({
     handleSaveModel,
     handleRemoveModel,
     handleResetModel,
+    handleUpdateModel,
     handleToggleModelEnabledState,
   };
 };

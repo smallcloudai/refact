@@ -22,6 +22,7 @@ export type ModelCardProps = {
   providerName: string;
   modelType: ModelType;
   isReadonlyProvider: boolean;
+  currentModelNames: string[];
 };
 
 /**
@@ -32,6 +33,7 @@ export const ModelCard: FC<ModelCardProps> = ({
   modelType,
   providerName,
   isReadonlyProvider,
+  currentModelNames,
 }) => {
   const { enabled, name, removable, user_configured } = model;
   const {
@@ -45,6 +47,7 @@ export const ModelCard: FC<ModelCardProps> = ({
     handleRemoveModel,
     handleResetModel,
     handleSaveModel,
+    handleUpdateModel,
   } = useModelDialogState({
     initialState: false,
     modelType,
@@ -55,6 +58,7 @@ export const ModelCard: FC<ModelCardProps> = ({
     <Card className={classNames({ [styles.disabledCard]: isSavingModel })}>
       {dialogOpen && (
         <ModelCardPopup
+          minifiedModel={model}
           isOpen={dialogOpen}
           isSaving={isSavingModel}
           setIsOpen={setDialogOpen}
@@ -62,7 +66,9 @@ export const ModelCard: FC<ModelCardProps> = ({
           modelType={modelType}
           providerName={providerName}
           onSave={handleSaveModel}
+          onUpdate={handleUpdateModel}
           isRemovable={removable}
+          currentModelNames={currentModelNames}
         />
       )}
 
@@ -97,7 +103,7 @@ export const ModelCard: FC<ModelCardProps> = ({
             </DropdownMenu.Item>
             {removable ? (
               <DropdownMenu.Item
-                onClick={() => void handleRemoveModel(model)}
+                onClick={() => void handleRemoveModel({ model })}
                 color="red"
                 disabled={isSavingModel}
                 title={"Remove model from the list of models"}
