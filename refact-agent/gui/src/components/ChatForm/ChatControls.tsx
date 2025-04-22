@@ -160,7 +160,7 @@ export const AgentRollbackSwitch: React.FC = () => {
   );
 };
 
-const CapsSelect: React.FC = () => {
+export const CapsSelect: React.FC = () => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
 
@@ -176,10 +176,9 @@ const CapsSelect: React.FC = () => {
       wrap="wrap"
       flexGrow="1"
       flexShrink="0"
-      width="100%"
+      // width="100%"
       ref={(x) => refs.setUseModel(x)}
     >
-      <Text size="2">Use model:</Text>
       <Skeleton loading={caps.loading}>
         <Box>
           {allDisabled ? (
@@ -366,7 +365,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
             toolUse={toolUse}
             setToolUse={onSetToolUse}
           />
-          <CapsSelect />
+          {/* <CapsSelect /> */}
           <PromptSelect />
         </Flex>
       )}

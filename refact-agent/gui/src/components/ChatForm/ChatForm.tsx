@@ -23,7 +23,7 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
 import { FilesPreview } from "./FilesPreview";
-import { ChatControls } from "./ChatControls";
+import { CapsSelect, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -377,11 +377,21 @@ export const ChatForm: React.FC<ChatFormProps> = ({
           />
           <Flex
             className={styles.textareaInteractive}
-            align="center"
+            align="end"
             justify="between"
+            wrap="wrap"
           >
-            <ThinkingButton />
-            <Flex gap="2" align="center" className={styles.buttonGroup}>
+            <Flex gap="2" wrap="wrap">
+              <CapsSelect />
+              <ThinkingButton />
+            </Flex>
+
+            <Flex
+              gap="2"
+              align="center"
+              className={styles.buttonGroup}
+              ml="auto"
+            >
               <TokensPreview
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}
               />
