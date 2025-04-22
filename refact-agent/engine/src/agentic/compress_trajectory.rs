@@ -119,7 +119,7 @@ pub async fn compress_trajectory(
         messages_compress.clone(),
         "".to_string(),
         false,
-        model_name.clone(),
+        model_id.clone(),
     ).await));
     let tools = gather_used_tools(&messages);
     let new_messages = subchat_single(

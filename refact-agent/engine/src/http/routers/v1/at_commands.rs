@@ -294,9 +294,8 @@ pub async fn handle_v1_at_command_execute(
         vec![],
         "".to_string(),
         false,
-        post.model_name.clone(),
+        model_rec.base.id.clone(),
     ).await;
-    ccx.current_model = model_rec.base.id.clone();
     ccx.subchat_tool_parameters = post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
