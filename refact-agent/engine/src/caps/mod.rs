@@ -385,28 +385,23 @@ pub fn relative_to_full_url(
 
 pub fn resolve_model<'a, T>(
     models: &'a IndexMap<String, Arc<T>>,
-    requested_model_id: &str,
-    default_model_id: &str,
+    model_id: &str,
 ) -> Result<Arc<T>, String> {
-    let model_id = if !requested_model_id.is_empty() {
-        requested_model_id
-    } else {
-        default_model_id
-    };
     models.get(model_id).or_else(
         || models.get(&strip_model_from_finetune(model_id))
     ).cloned().ok_or(format!("Model '{}' not found. Server has the following models: {:?}", model_id, models.keys()))
 }
 
 pub fn resolve_chat_model<'a>(
-    caps:  Arc<CodeAssistantCaps>,
+    caps: Arc<CodeAssistantCaps>,
     requested_model_id: &str,
 ) -> Result<Arc<ChatModelRecord>, String> {
-    resolve_model(
-        &caps.chat_models, 
-        requested_model_id, 
+    let model_id = if !requested_model_id.is_empty() {
+        requested_model_id
+    } else {
         &caps.defaults.chat_default_model
-    )
+    };
+    resolve_model(&caps.chat_models, model_id)
 }
 
 pub fn resolve_completion_model<'a>(
@@ -414,30 +409,24 @@ pub fn resolve_completion_model<'a>(
     requested_model_id: &str,
     try_refact_fallbacks: bool,
 ) -> Result<Arc<CompletionModelRecord>, String> {
-    match resolve_model(
-        &caps.completion_models, 
-        requested_model_id, 
+    let model_id = if !requested_model_id.is_empty() {
+        requested_model_id
+    } else {
         &caps.defaults.completion_default_model
-    ) {
+    };
+    
+    match resolve_model(&caps.completion_models, model_id) {
         Ok(model) => Ok(model),
         Err(first_err) if try_refact_fallbacks => {
-            if let Ok(model) = resolve_model(
-                &caps.completion_models, 
-                &format!("refact/{requested_model_id}"), 
-                &caps.defaults.completion_default_model
-            ) {
+            if let Ok(model) = resolve_model(&caps.completion_models, &format!("refact/{model_id}")) {
                 return Ok(model);
             }
-            if let Ok(model) = resolve_model(
-                &caps.completion_models, 
-                &format!("refact_self_hosted/{requested_model_id}"), 
-                &caps.defaults.completion_default_model
-            ) {
+            if let Ok(model) = resolve_model(&caps.completion_models, &format!("refact_self_hosted/{model_id}")) {
                 return Ok(model);
             }
             Err(first_err)
         }
-        Err(first_err) => Err(first_err),
+        Err(err) => Err(err),
     }
 }
 
