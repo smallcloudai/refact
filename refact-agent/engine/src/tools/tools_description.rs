@@ -215,7 +215,7 @@ tools:
         description: "An absolute path to get files tree for. Do not pass it if you need a full project tree."
       - name: "use_ast"
         type: "boolean"
-        description: "If true, for each file an array of AST symbols will appear as well as its filename"
+        description: "If true, for each file an array of AST symbols will appear as well as its filename. True by default."
     parameters_required: []
 
   - name: "web"

@@ -85,7 +85,8 @@ pub fn max_tokens_for_rag_chat_by_tools(
                     4096
                 }
             },
-            "cat" | "locate" => 8192,
+            "tree" => 16384,
+            "cat" | "locate" => 16384,
             _ => 4096,  // Default limit for other tools
         };
         
