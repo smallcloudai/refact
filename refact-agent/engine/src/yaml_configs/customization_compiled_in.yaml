@@ -225,9 +225,9 @@ subchat_tool_parameters:
     subchat_max_new_tokens: 32000
   deep_analysis:
     subchat_model: "o4-mini"
-    subchat_tokens_for_rag: 70000
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 32000
+    subchat_tokens_for_rag: 120000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 40000
     subchat_reasoning_effort: "high"
   create_memory_bank:
     subchat_model: "o4-mini"

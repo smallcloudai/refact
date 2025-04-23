@@ -118,6 +118,8 @@ impl Tool for ToolDeepAnalysis {
         };
 
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_analysis").await?;
+        // Divide max_new_tokens by 3 for the three iterations
+        let iter_max_new_tokens = subchat_params.subchat_max_new_tokens / 3;
 
         let external_messages = {
             let ccx_lock = ccx.lock().await;
@@ -141,30 +143,86 @@ impl Tool for ToolDeepAnalysis {
             t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
         };
+        let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
 
-        let model_says: Vec<ChatMessage> = subchat_single(
+        // FIRST ITERATION: Get the initial solution
+        tracing::info!("FIRST ITERATION: Get the initial solution");
+        let sol_choices = subchat_single(
             ccx_subchat.clone(),
             subchat_params.subchat_model.as_str(),
-            vec![ChatMessage::new("user".to_string(), prompt)],
+            history.clone(),
             Some(vec![]),
             None,
             false,
             subchat_params.subchat_temperature,
-            Some(subchat_params.subchat_max_new_tokens),
+            Some(iter_max_new_tokens),
             1,
-            subchat_params.subchat_reasoning_effort,
+            subchat_params.subchat_reasoning_effort.clone(),
             false,
             Some(&mut usage_collector),
             Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-deep-analysis")),
-        ).await?[0].clone();
+            Some(format!("{log_prefix}-deep-analysis-get-initial-solution")),
+        ).await?;
 
-        let final_message = model_says.last()
-            .ok_or("No messages from model")?
-            .content
-            .content_text_only();
-        tracing::info!("deep analysis response:\n{}", final_message);
+        let sol_session = sol_choices.into_iter().next().unwrap();
+        let first_reply = sol_session.last().unwrap().clone();
+        history = sol_session.clone();
 
+        // SECOND ITERATION: Ask for a critique
+        tracing::info!("SECOND ITERATION: Ask for a critique");
+        let critique_prompt = "Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis. Remember, that the final solution must be minimal, robust, effective.";
+        history.push(ChatMessage::new("user".to_string(), critique_prompt.to_string()));
+        let crit_choices = subchat_single(
+            ccx_subchat.clone(),
+            subchat_params.subchat_model.as_str(),
+            history.clone(),
+            Some(vec![]),
+            None,
+            false,
+            subchat_params.subchat_temperature,
+            Some(iter_max_new_tokens),
+            1,
+            subchat_params.subchat_reasoning_effort.clone(),
+            false,
+            Some(&mut usage_collector),
+            Some(tool_call_id.clone()),
+            Some(format!("{log_prefix}-deep-analysis-critique")),
+        ).await?;
+
+        let crit_session = crit_choices.into_iter().next().unwrap();
+        let critique_reply = crit_session.last().unwrap().clone();
+        history = crit_session.clone();
+
+        // THIRD ITERATION: Ask for an improved solution
+        tracing::info!("THIRD ITERATION: Ask for an improved solution");
+        let improve_prompt = "Please improve the original solution based on the critique. Provide a comprehensive, refined solution that addresses the weaknesses identified in the critique while maintaining the strengths of the original solution.";
+        history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
+        let imp_choices = subchat_single(
+            ccx_subchat,
+            subchat_params.subchat_model.as_str(),
+            history.clone(),
+            Some(vec![]),
+            None,
+            false,
+            subchat_params.subchat_temperature,
+            Some(iter_max_new_tokens),
+            1,
+            subchat_params.subchat_reasoning_effort.clone(),
+            false,
+            Some(&mut usage_collector),
+            Some(tool_call_id.clone()),
+            Some(format!("{log_prefix}-deep-analysis-solution-refinement")),
+        ).await?;
+
+        let imp_session = imp_choices.into_iter().next().unwrap();
+        let improved_reply = imp_session.last().unwrap().clone();
+        let final_message = format!(
+            "# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}",
+            first_reply.content.content_text_only(),
+            critique_reply.content.content_text_only(),
+            improved_reply.content.content_text_only()
+        );
+        tracing::info!("deep analysis response (combined):\n{}", final_message);
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
@@ -182,4 +240,3 @@ impl Tool for ToolDeepAnalysis {
         vec![]
     }
 }
-
