@@ -57,11 +57,15 @@ export const ideToolCall = createAction<{
   edit: ToolEditResult;
 }>("ide/toolEdit");
 
-export const ideToolCallResponse = createAction<{
+export type ToolCallResponsePayload = {
   toolCallId: string;
   chatId: string;
   accepted: boolean | "indeterminate";
-}>("ide/toolEditResponse");
+};
+
+export const ideToolCallResponse = createAction<ToolCallResponsePayload>(
+  "ide/toolEditResponse",
+);
 
 export const ideForceReloadProjectTreeFiles = createAction(
   "ide/forceReloadProjectTreeFiles",
