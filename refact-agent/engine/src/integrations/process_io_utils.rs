@@ -99,6 +99,25 @@ pub async fn read_file_with_cursor(
     Ok((buffer, bytes_read))
 }
 
+pub async fn read_file_with_cursor(
+    file_path: &Path,
+    cursor: Arc<AMutex<u64>>,
+) -> Result<(String, usize), String> {
+    let file = tokio::fs::OpenOptions::new().read(true).open(file_path).await
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+    let mut cursor_locked = cursor.lock().await;
+    let mut file = tokio::io::BufReader::new(file);
+    file.seek(tokio::io::SeekFrom::Start(*cursor_locked)).await
+        .map_err(|e| format!("Failed to seek: {}", e))?;
+    let mut buffer = String::new();
+    let bytes_read = file.read_to_string(&mut buffer).await
+        .map_err(|e| format!("Failed to read to buffer: {}", e))?;
+    if bytes_read > 0 {
+        *cursor_locked += bytes_read as u64;
+    }
+    Ok((buffer, bytes_read))
+}
+
 pub async fn is_someone_listening_on_that_tcp_port(port: u16, timeout: tokio::time::Duration) -> bool {
     match tokio::time::timeout(timeout, TcpStream::connect(&format!("127.0.0.1:{}", port))).await {
         Ok(Ok(_)) => true,    // Connection successful

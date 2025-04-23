@@ -217,16 +217,8 @@ pub async fn handle_v1_integrations_mcp_logs(
         )
     };
 
-    if let Some(stderr_path) = &stderr_file_path {
-        if let Err(e) = crate::integrations::mcp::session_mcp::update_logs_from_stderr(
-            stderr_path, 
-            stderr_cursor, 
-            logs_arc.clone()
-        ).await {
-            tracing::warn!("Failed to read stderr file: {}", e);
-        }
-    }
-    
+    let logs = logs_arc.lock().await.clone();
+
     return Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
