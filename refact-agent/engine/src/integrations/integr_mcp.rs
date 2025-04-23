@@ -7,9 +7,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use mcp_client_rs::client::Client as MCPClient;
+use rmcp::{RoleClient, ServiceExt, service::RunningService};
 use tokio::task::{AbortHandle, JoinHandle};
-use mcp_client_rs::client::ClientBuilder;
+use rmcp::model::{CallToolRequestParam, Tool as McpTool};
 
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -30,8 +30,8 @@ pub struct SettingsMCP {
 pub struct ToolMCP {
     pub common: IntegrationCommon,
     pub config_path: String,
-    pub mcp_client: Arc<AMutex<MCPClient>>,
-    pub mcp_tool: mcp_client_rs::Tool,
+    pub mcp_client: Arc<AMutex<Option<RunningService<RoleClient, ()>>>>,
+    pub mcp_tool: McpTool,
 }
 
 #[derive(Default)]
@@ -46,8 +46,8 @@ pub struct SessionMCP {
     pub debug_name: String,
     pub config_path: String,        // to check if expired or not
     pub launched_cfg: SettingsMCP,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
-    pub mcp_client: Option<Arc<AMutex<MCPClient>>>,
-    pub mcp_tools: Vec<mcp_client_rs::Tool>,
+    pub mcp_client: Option<Arc<AMutex<Option<RunningService<RoleClient, ()>>>>>,
+    pub mcp_tools: Vec<McpTool>,
     pub startup_task_handles: Option<(Arc<AMutex<Option<JoinHandle<()>>>>, AbortHandle)>,
     pub logs: Arc<AMutex<Vec<String>>>,          // Store log messages
 }
@@ -103,25 +103,30 @@ async fn _add_log_entry(session_logs: Arc<AMutex<Vec<String>>>, entry: String) {
 
 async fn _session_kill_process(
     debug_name: &str, 
-    mcp_client: Arc<AMutex<MCPClient>>, 
+    mcp_client: Arc<AMutex<Option<RunningService<RoleClient, ()>>>>, 
     session_logs: Arc<AMutex<Vec<String>>>,
 ) {
     tracing::info!("Stopping MCP Server for {}", debug_name);
     _add_log_entry(session_logs.clone(), "Stopping MCP Server".to_string()).await;
     
-    let client_result = {
+    let client_to_cancel = {
         let mut mcp_client_locked = mcp_client.lock().await;
-        mcp_client_locked.shutdown().await
+        mcp_client_locked.take()
     };
     
-    if let Err(e) = client_result {
-        let error_msg = format!("Failed to stop MCP: {:?}", e);
-        tracing::error!("{} for {}", error_msg, debug_name);
-        _add_log_entry(session_logs, error_msg).await;
-    } else {
-        let success_msg = "MCP server stopped".to_string();
-        tracing::info!("{} for {}", success_msg, debug_name);
-        _add_log_entry(session_logs, success_msg).await;
+    if let Some(client) = client_to_cancel {
+        match client.cancel().await {
+            Ok(reason) => {
+                let success_msg = format!("MCP server stopped: {:?}", reason);
+                tracing::info!("{} for {}", success_msg, debug_name);
+                _add_log_entry(session_logs, success_msg).await;
+            },
+            Err(e) => {
+                let error_msg = format!("Failed to stop MCP: {:?}", e);
+                tracing::error!("{} for {}", error_msg, debug_name);
+                _add_log_entry(session_logs, error_msg).await;
+            }
+        }
     }
 }
 
@@ -205,16 +210,14 @@ async fn _session_apply_settings(
                 }
             };
 
-            let mut client_builder = ClientBuilder::new(&parsed_args[0]);
-            for arg in parsed_args.iter().skip(1) {
-                client_builder = client_builder.arg(arg);
-            }
+            let mut command = tokio::process::Command::new(&parsed_args[0]);
+            command.args(&parsed_args[1..]);
             for (key, value) in &new_cfg_clone.mcp_env {
-                client_builder = client_builder.env(key, value);
+                command.env(key, value);
             }
 
-            let (mut client, imp, caps) = match client_builder.spawn().await {
-                Ok(r) => r,
+            let transport = match rmcp::transport::TokioChildProcess::new(&mut command) {
+                Ok(t) => t,
                 Err(e) => {
                     let err_msg = format!("Failed to init process: {}", e);
                     tracing::error!("{err_msg} for {debug_name}");
@@ -222,33 +225,21 @@ async fn _session_apply_settings(
                     return;
                 }
             };
-            if let Err(e) = client.initialize(imp, caps).await {
-                let err_msg = format!("Failed to init server: {}", e);
-                tracing::error!("{err_msg} for {debug_name}");
-                _add_log_entry(logs.clone(), err_msg).await;
-                if let Ok(error_log) = client.get_stderr(None).await {
-                    _add_log_entry(logs.clone(), error_log).await;
-                }
-                return;
-            };
 
-            // let set_result = client.request(
-            //     "logging/setLevel",
-            //     Some(serde_json::json!({ "level": "debug" })),
-            // ).await;
-            // match set_result {
-            //     Ok(_) => {
-            //         tracing::info!("MCP START SESSION (2) set log level success");
-            //     }
-            //     Err(e) => {
-            //         tracing::info!("MCP START SESSION (2) failed to set log level: {:?}", e);
-            //     }
-            // }
+            let client = match ().serve(transport).await {
+                Ok(c) => c,
+                Err(e) => {
+                    let err_msg = format!("Failed to init server: {}", e);
+                    tracing::error!("{err_msg} for {debug_name}");
+                    _add_log_entry(logs.clone(), err_msg).await;
+                    return;
+                }
+            };
 
             tracing::info!("MCP START SESSION (2) {:?}", debug_name);
             _add_log_entry(logs.clone(), "Listing tools".to_string()).await;
             
-            let tools_result = match client.list_tools().await {
+            let tools_result = match client.list_tools(None).await {
                 Ok(result) => {
                     let success_msg = format!("Successfully listed {} tools", result.tools.len());
                     tracing::info!("{} for {}", success_msg, debug_name);
@@ -258,14 +249,11 @@ async fn _session_apply_settings(
                     let err_msg = format!("Failed to list tools: {:?}", tools_error);
                     tracing::error!("{} for {}", err_msg, debug_name);
                     _add_log_entry(logs.clone(), err_msg).await;
-                    if let Ok(error_log) = client.get_stderr(None).await {
-                        _add_log_entry(logs.clone(), error_log).await;
-                    }
                     return;
                 }
             };
-
-            let new_mcp_client = Arc::new(AMutex::new(client));
+  
+            let new_mcp_client = Arc::new(AMutex::new(Some(client)));
             
             let tools_len = {
                 tracing::info!("MCP START SESSION (3) {:?}", debug_name);
@@ -416,38 +404,48 @@ impl Tool for ToolMCP {
         _add_log_entry(session_logs.clone(), format!("Executing tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args)).await;
 
         let result_probably = {
-            let mut mcp_client_locked = self.mcp_client.lock().await;
-            mcp_client_locked.call_tool(self.mcp_tool.name.as_str(), json_args).await
+            let mcp_client_locked = self.mcp_client.lock().await;
+            if let Some(client) = &*mcp_client_locked {
+                client.call_tool(CallToolRequestParam {
+                    name: self.mcp_tool.name.clone(),
+                    arguments: match json_args {
+                        serde_json::Value::Object(map) => Some(map),
+                        _ => None,
+                    },
+                }).await
+            } else {
+                return Err("MCP client is not available".to_string());
+            }
         };
         
         let tool_output = match result_probably {
             Ok(result) => {
-                if result.is_error {
+                if result.is_error.unwrap_or(false) {
                     let error_msg = format!("Tool execution error: {:?}", result.content);
                     _add_log_entry(session_logs.clone(), error_msg.clone()).await;
                     return Err(error_msg);
                 }
                 
-                if let Some(mcp_client_rs::MessageContent::Text { text }) = result.content.get(0) {
-                    let success_msg = format!("Tool '{}' executed successfully", self.mcp_tool.name);
-                    _add_log_entry(session_logs.clone(), success_msg).await;
-                    text.clone()
+                if let Some(content) = result.content.get(0) {
+                    if let rmcp::model::RawContent::Text(text_content) = &content.raw {
+                        let text = text_content.text.clone();
+                        let success_msg = format!("Tool '{}' executed successfully", self.mcp_tool.name);
+                        _add_log_entry(session_logs.clone(), success_msg).await;
+                        text
+                    } else {
+                        let error_msg = format!("Unexpected tool output format: {:?}", result.content);
+                        tracing::error!("{}", error_msg);
+                        _add_log_entry(session_logs.clone(), error_msg.clone()).await;
+                        return Err("Unexpected tool output format".to_string());
+                    }
                 } else {
-                    let error_msg = format!("Unexpected tool output format: {:?}", result.content);
-                    tracing::error!("{}", error_msg);
-                    _add_log_entry(session_logs.clone(), error_msg.clone()).await;
-                    return Err("Unexpected tool output format".to_string());
+                    String::new()
                 }
             }
             Err(e) => {
                 let error_msg = format!("Failed to call tool: {:?}", e);
                 tracing::error!("{}", error_msg);
                 _add_log_entry(session_logs.clone(), error_msg).await;
-                    
-                let error_log = self.mcp_client.lock().await.get_stderr(None).await;
-                if let Ok(error_log) = error_log {
-                    _add_log_entry(session_logs.clone(), error_log).await;
-                }
                 return Err(e.to_string());
             }
         };
@@ -489,25 +487,23 @@ impl Tool for ToolMCP {
         let mut parameters = vec![];
         let mut parameters_required = vec![];
 
-        if let serde_json::Value::Object(schema) = &self.mcp_tool.input_schema {
-            if let Some(serde_json::Value::Object(properties)) = schema.get("properties") {
-                for (name, prop) in properties {
-                    if let serde_json::Value::Object(prop_obj) = prop {
-                        let param_type = prop_obj.get("type").and_then(|v| v.as_str()).unwrap_or("string").to_string();
-                        let description = prop_obj.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
-                        parameters.push(ToolParam {
-                            name: name.clone(),
-                            param_type,
-                            description,
-                        });
-                    }
+        if let Some(serde_json::Value::Object(properties)) = self.mcp_tool.input_schema.get("properties") {
+            for (name, prop) in properties {
+                if let serde_json::Value::Object(prop_obj) = prop {
+                    let param_type = prop_obj.get("type").and_then(|v| v.as_str()).unwrap_or("string").to_string();
+                    let description = prop_obj.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                    parameters.push(ToolParam {
+                        name: name.clone(),
+                        param_type,
+                        description,
+                    });
                 }
             }
-            if let Some(serde_json::Value::Array(required)) = schema.get("required") {
-                for req in required {
-                    if let Some(req_str) = req.as_str() {
-                        parameters_required.push(req_str.to_string());
-                    }
+        }
+        if let Some(serde_json::Value::Array(required)) = self.mcp_tool.input_schema.get("required") {
+            for req in required {
+                if let Some(req_str) = req.as_str() {
+                    parameters_required.push(req_str.to_string());
                 }
             }
         }
@@ -516,7 +512,7 @@ impl Tool for ToolMCP {
             name: self.tool_name(),
             agentic: true,
             experimental: false,
-            description: self.mcp_tool.description.clone(),
+            description: self.mcp_tool.description.to_string(),
             parameters,
             parameters_required,
         }
@@ -541,7 +537,7 @@ impl Tool for ToolMCP {
     ) -> Result<String, String> {
         let command = self.mcp_tool.name.clone();
         tracing::info!("MCP command_to_match_against_confirm_deny() returns {:?}", command);
-        Ok(command)
+        Ok(command.to_string())
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
