@@ -80,6 +80,7 @@ pub fn read_integrations_d(
     lst: &[&str],
     error_log: &mut Vec<YamlError>,
     include_paths_matching: &[String],
+    include_non_existent_records: bool,  // NOTE: true for UI only
 ) -> Vec<IntegrationRecord> {
     let mut result = Vec::new();
 
@@ -135,6 +136,9 @@ pub fn read_integrations_d(
         for integr_name in lst.iter() {
             let path_str = join_config_path(&config_dir, integr_name);
             let path = PathBuf::from(path_str.clone());
+            if !include_non_existent_records && !path.exists() {
+                continue;
+            }
             let (_integr_name, project_path) = match split_path_into_project_and_integration(&path) {
                 Ok(x) => x,
                 Err(e) => {
@@ -451,6 +455,7 @@ pub fn split_path_into_project_and_integration(cfg_path: &PathBuf) -> Result<(St
 
 pub async fn integrations_all(
     gcx: Arc<ARwLock<GlobalContext>>,
+    include_non_existent_records: bool,
 ) -> IntegrationResult {
     let (config_dirs, global_config_dir) = get_config_dirs(gcx.clone(), &None).await;
     let (allow_experimental, integrations_yaml_path) = {
@@ -460,7 +465,7 @@ pub async fn integrations_all(
     let lst: Vec<&str> = crate::integrations::integrations_list(allow_experimental);
     let mut error_log: Vec<YamlError> = Vec::new();
     let vars_for_replacements = get_vars_for_replacements(gcx.clone(), &mut error_log).await;
-    let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log, &["**/*".to_string()]);
+    let integrations = read_integrations_d(&config_dirs, &global_config_dir, &integrations_yaml_path, &vars_for_replacements, &lst, &mut error_log, &["**/*".to_string()], include_non_existent_records);
     IntegrationResult { integrations, error_log }
 }
 

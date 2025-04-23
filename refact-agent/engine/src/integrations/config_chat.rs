@@ -20,7 +20,7 @@ pub async fn mix_config_messages(
     tracing::info!("post.integr_config_path {:?}", chat_meta.current_config_file);
 
     let mut context_file_vec = Vec::new();
-    let all_integrations = crate::integrations::setting_up_integrations::integrations_all(gcx.clone()).await;
+    let all_integrations = crate::integrations::setting_up_integrations::integrations_all(gcx.clone(), false).await;
     for ig in all_integrations.integrations {
         if !ig.integr_config_exists {
             continue;
