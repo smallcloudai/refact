@@ -1,8 +1,10 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Weak;
 use std::future::Future;
+use std::process::Stdio;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
@@ -10,13 +12,16 @@ use tokio::sync::RwLock as ARwLock;
 use rmcp::{RoleClient, ServiceExt, service::RunningService};
 use tokio::task::{AbortHandle, JoinHandle};
 use rmcp::model::{CallToolRequestParam, Tool as McpTool};
+use tempfile::NamedTempFile;
 
+use crate::custom_error::MapErrToString;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::sessions::IntegrationSession;
+use crate::integrations::process_io_utils::read_file_with_cursor;
 
 
 #[derive(Deserialize, Serialize, Clone, Default, PartialEq, Debug)]
@@ -50,6 +55,8 @@ pub struct SessionMCP {
     pub mcp_tools: Vec<McpTool>,
     pub startup_task_handles: Option<(Arc<AMutex<Option<JoinHandle<()>>>>, AbortHandle)>,
     pub logs: Arc<AMutex<Vec<String>>>,          // Store log messages
+    pub stderr_file_path: Option<PathBuf>,       // Path to the temporary file for stderr
+    pub stderr_cursor: Arc<AMutex<u64>>,         // Position in the file where we last read from
 }
 
 impl IntegrationSession for SessionMCP {
@@ -63,7 +70,7 @@ impl IntegrationSession for SessionMCP {
 
     fn try_stop(&mut self, self_arc: Arc<AMutex<Box<dyn IntegrationSession>>>) -> Box<dyn Future<Output = String> + Send> {
         Box::new(async move {
-            let (debug_name, client, logs, startup_task_handles) = {
+            let (debug_name, client, logs, startup_task_handles, stderr_file) = {
                 let mut session_locked = self_arc.lock().await;
                 let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
                 (
@@ -71,6 +78,7 @@ impl IntegrationSession for SessionMCP {
                     session_downcasted.mcp_client.clone(), 
                     session_downcasted.logs.clone(),
                     session_downcasted.startup_task_handles.clone(),
+                    session_downcasted.stderr_file_path.clone(),
                 )
             };
 
@@ -81,6 +89,11 @@ impl IntegrationSession for SessionMCP {
 
             if let Some(client) = client {   
                 _session_kill_process(&debug_name, client, logs).await;
+            }
+            if let Some(stderr_file) = &stderr_file {
+                if let Err(e) = tokio::fs::remove_file(stderr_file).await {
+                    tracing::error!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e);
+                }
             }
 
             "".to_string()
@@ -99,6 +112,19 @@ async fn _add_log_entry(session_logs: Arc<AMutex<Vec<String>>>, entry: String) {
         let excess = session_logs_locked.len() - 100;
         session_logs_locked.drain(0..excess);
     }
+}
+
+pub async fn update_logs_from_stderr(
+    stderr_file_path: &PathBuf, 
+    stderr_cursor: Arc<AMutex<u64>>, 
+    session_logs: Arc<AMutex<Vec<String>>>
+) -> Result<(), String> {
+    let (buffer, bytes_read) = read_file_with_cursor(stderr_file_path, stderr_cursor.clone()).await
+        .map_err_with_prefix("Failed to read file:")?;
+    if bytes_read > 0 && !buffer.trim().is_empty() {
+        _add_log_entry(session_logs, buffer.trim().to_string()).await;
+    }
+    Ok(())
 }
 
 async fn _session_kill_process(
@@ -149,6 +175,8 @@ async fn _session_apply_settings(
                 mcp_tools: Vec::new(),
                 startup_task_handles: None,
                 logs: Arc::new(AMutex::new(Vec::new())),
+                stderr_file_path: None,
+                stderr_cursor: Arc::new(AMutex::new(0)),
             })));
             tracing::info!("MCP START SESSION {:?}", session_key);
             gcx_write.integration_sessions.insert(session_key.clone(), new_session.clone());
@@ -175,14 +203,16 @@ async fn _session_apply_settings(
         }
     
         let startup_task_join_handle = tokio::spawn(async move {
-            let (mcp_client, logs, debug_name) = {
+            let (mcp_client, logs, debug_name, stderr_file) = {
                 let mut session_locked = session_arc_clone.lock().await;
-                let mcp_sesion = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-                mcp_sesion.launched_cfg = new_cfg_clone.clone();
+                let mcp_session = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+                mcp_session.stderr_cursor = Arc::new(AMutex::new(0));
+                mcp_session.launched_cfg = new_cfg_clone.clone();
                 (
-                    std::mem::take(&mut mcp_sesion.mcp_client),
-                    mcp_sesion.logs.clone(),
-                    mcp_sesion.debug_name.clone(),
+                    std::mem::take(&mut mcp_session.mcp_client),
+                    mcp_session.logs.clone(),
+                    mcp_session.debug_name.clone(),
+                    std::mem::take(&mut mcp_session.stderr_file_path),
                 )
             };
             
@@ -190,6 +220,11 @@ async fn _session_apply_settings(
 
             if let Some(mcp_client) = mcp_client {
                 _session_kill_process(&debug_name, mcp_client, logs.clone()).await;
+            }
+            if let Some(stderr_file) = &stderr_file {
+                if let Err(e) = tokio::fs::remove_file(stderr_file).await {
+                    tracing::error!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e);
+                }
             }
 
             let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
@@ -214,6 +249,21 @@ async fn _session_apply_settings(
             command.args(&parsed_args[1..]);
             for (key, value) in &new_cfg_clone.mcp_env {
                 command.env(key, value);
+            }
+
+            match NamedTempFile::new().map(|f| f.keep()) {
+                Ok(Ok((file, path))) => {
+                    {
+                        let mut session_locked = session_arc_clone.lock().await;
+                        let mcp_session = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+                    
+                        mcp_session.stderr_file_path = Some(path.clone());
+                        mcp_session.stderr_cursor = Arc::new(AMutex::new(0));
+                    }
+                    command.stderr(Stdio::from(file));
+                },
+                Ok(Err(e)) => tracing::error!("Failed to persist stderr file for {debug_name}: {e}"),
+                Err(e)  => tracing::error!("Failed to create stderr file for {debug_name}: {e}"),
             }
 
             let transport = match rmcp::transport::TokioChildProcess::new(&mut command) {

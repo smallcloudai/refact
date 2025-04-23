@@ -206,20 +206,32 @@ pub async fn handle_v1_integrations_mcp_logs(
     let session = gcx.read().await.integration_sessions.get(&session_key).cloned()
         .ok_or(ScratchError::new(StatusCode::NOT_FOUND, format!("session {} not found", session_key)))?;
 
-    let logs_arc = {
+    let (logs_arc, stderr_file_path, stderr_cursor) = {
         let mut session_locked = session.lock().await;
         let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>()
             .ok_or(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "Session is not a MCP session".to_string()))?;
-        session_downcasted.logs.clone()
+        (
+            session_downcasted.logs.clone(),
+            session_downcasted.stderr_file_path.clone(),
+            session_downcasted.stderr_cursor.clone(),
+        )
     };
 
-    let logs = logs_arc.lock().await.clone();
+    if let Some(stderr_path) = &stderr_file_path {
+        if let Err(e) = crate::integrations::integr_mcp::update_logs_from_stderr(
+            stderr_path, 
+            stderr_cursor, 
+            logs_arc.clone()
+        ).await {
+            tracing::warn!("Failed to read stderr file: {}", e);
+        }
+    }
     
     return Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::json!({
-            "logs": logs,
+            "logs": logs_arc.lock().await.clone(),
         }).to_string()))
         .unwrap())
 }
