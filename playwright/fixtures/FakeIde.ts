@@ -16,7 +16,9 @@ import {
   type FimDebugData,
   type ToolCallResponsePayload,
   type FileInfo,
+  type InitialState,
 } from "../../refact-agent/gui/src/events";
+import { RootState } from "../../refact-agent/gui/src/app/store";
 
 declare global {
   interface Window {
@@ -41,15 +43,29 @@ export class FakeIde {
 
   private constructor(public readonly page: Page) {}
 
-  public static async setUp(
+  public static async initialize(
     page: Page,
-    host: "vscode" | "jetbrains" | "ide" = "vscode"
+    host: "vscode" | "jetbrains" | "ide" = "vscode",
+    appearance: RootState["config"]["themeProps"]["appearance"] = "dark",
+    lspPort = 8001
   ) {
     // TODO: initial state
     const fakeIde = new FakeIde(page);
+    await page.addInitScript(() => {
+      window.__INITIAL_STATE__ = {
+        config: {
+          host,
+          lspPort,
+          themeProps: {
+            appearance,
+          },
+        },
+      };
+    });
     // TODO: mock event bus https://playwright.dev/docs/mock-browser-apis
-
     await fakeIde.mockMessageBus(host);
+
+    return fakeIde;
   }
 
   private logMessage(...args: Parameters<typeof window.logMessage>) {

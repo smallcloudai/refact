@@ -4,11 +4,13 @@ import path from "path";
 import { LoginPage } from "./LoginPage";
 import { TourPage } from "./TourPage";
 import { Navigation } from "./navigation";
+import { FakeIde } from "./FakeIde";
 
 export * from "@playwright/test";
 export const test = baseTest.extend<
   {
     navigation: Navigation;
+    fakeIde: FakeIde;
   },
   { workerStorageState: string }
 >({
@@ -51,5 +53,10 @@ export const test = baseTest.extend<
   navigation: async ({ page }, use) => {
     const navigation = new Navigation(page);
     await use(navigation);
+  },
+
+  fakeIde: async ({ page }, use) => {
+    const fakeIde = await FakeIde.initialize(page);
+    await use(fakeIde);
   },
 });
