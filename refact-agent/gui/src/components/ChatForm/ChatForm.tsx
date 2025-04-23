@@ -375,7 +375,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex className={styles.textareaInteractive} gap="2" wrap="wrap">
+          <Flex gap="1" wrap="wrap" py="1" px="2">
             <CapsSelect />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
