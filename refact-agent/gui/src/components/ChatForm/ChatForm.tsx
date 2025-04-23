@@ -375,7 +375,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex gap="2" wrap="wrap" pb="1" px="2">
+          <Flex gap="1" wrap="wrap" py="1" px="2">
             <CapsSelect />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
