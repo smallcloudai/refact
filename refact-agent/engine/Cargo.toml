@@ -53,6 +53,7 @@ regex = "1.9.5"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls-webpki-roots", "charset", "http2"] }
 reqwest-eventsource = "0.6.0"
 resvg = "0.44.0"
+rmcp = { "version" = "0.1.5", features = ["client", "transport-child-process", "transport-sse"] }
 ropey = "1.6"
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 rust-embed = "8.5.0"
@@ -96,9 +97,3 @@ uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2.3"
 which = "7.0.1"
 zerocopy = "0.8.14"
-
-# There you can use a local copy:
-mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
-#mcp_client_rs = { path = "../../../mcp_client_rust" }
-
-
