@@ -5,7 +5,7 @@ import path from "path";
  * https://github.com/motdotla/dotenv
  */
 import dotenv from "dotenv";
-dotenv.config({ path: path.resolve(__dirname, ".env") });
+dotenv.config({ path: ".env" });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -32,6 +32,7 @@ export default defineConfig({
     trace: "on",
 
     video: "on",
+    viewport: { width: 369, height: 1023 },
   },
 
   /* Configure projects for major browsers */
@@ -72,7 +73,7 @@ export default defineConfig({
   webServer: [
     {
       cwd: "../refact-agent/gui",
-      command: "npm run dev -- --open=false", // TODO: run in production mode https://github.com/vitejs/vite/issues/7009
+      command: "npm run dev", // TODO: run in production mode https://github.com/vitejs/vite/issues/7009
       port: 5173,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

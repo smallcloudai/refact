@@ -17,12 +17,12 @@ import {
   type ToolCallResponsePayload,
   type FileInfo,
   type InitialState,
-} from "../../refact-agent/gui/src/events";
-import { RootState } from "../../refact-agent/gui/src/app/store";
+} from "refact-chat-js/dist/events";
 
 declare global {
   interface Window {
     logMessage: typeof window.postMessage;
+    __INITIAL_STATE__?: Partial<InitialState>;
   }
 }
 
@@ -46,23 +46,14 @@ export class FakeIde {
   public static async initialize(
     page: Page,
     host: "vscode" | "jetbrains" | "ide" = "vscode",
-    appearance: RootState["config"]["themeProps"]["appearance"] = "dark",
+    appearance: InitialState["config"]["themeProps"]["appearance"] = "dark",
     lspPort = 8001
   ) {
     // TODO: initial state
     const fakeIde = new FakeIde(page);
-    await page.addInitScript(() => {
-      window.__INITIAL_STATE__ = {
-        config: {
-          host,
-          lspPort,
-          themeProps: {
-            appearance,
-          },
-        },
-      };
-    });
-    // TODO: mock event bus https://playwright.dev/docs/mock-browser-apis
+    await fakeIde.updateConfig({ host, lspPort, themeProps: { appearance } });
+    // // TODO: mock event bus https://playwright.dev/docs/mock-browser-apis
+    // console error, postMEssage is not a function :/
     await fakeIde.mockMessageBus(host);
 
     return fakeIde;
@@ -96,8 +87,11 @@ export class FakeIde {
     });
   }
 
-  async dispatch(message: EventsToIde) {
-    return this.page.locator("window").dispatchEvent("message", message);
+  async dispatch(event: EventsToIde) {
+    // return this.page.locator("window").dispatchEvent("message", message);
+    return this.page.evaluate((message) => {
+      window.postMessage(message, "*");
+    }, event);
   }
 
   async clearMessages() {

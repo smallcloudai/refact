@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "postinstall": "playwright install --with-deps chromium",
     "test": "npx playwright test",
