@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { useCallback, type FC } from "react";
 import { Flex, Heading, Separator, Text } from "@radix-ui/themes";
 
 import type { ProviderFormProps } from "../ProviderForm";
@@ -8,6 +8,7 @@ import { ModelCard } from "./ModelCard";
 import { AddModelButton } from "./components";
 
 import { useGetModelsByProviderNameQuery } from "../../../../hooks/useModelsQuery";
+import { ModelsResponse } from "../../../../services/refact";
 
 export type ProviderModelsListProps = {
   provider: ProviderFormProps["currentProvider"];
@@ -32,16 +33,26 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
     providerName: provider.name,
   });
 
+  const getModelNames = useCallback((modelsData: ModelsResponse) => {
+    const currentChatModelNames = modelsData.chat_models.map((m) => m.name);
+    const currentCompletionModelNames = modelsData.completion_models.map(
+      (m) => m.name,
+    );
+
+    return {
+      currentChatModelNames,
+      currentCompletionModelNames,
+    };
+  }, []);
+
   if (isLoading) return <Spinner spinning />;
 
   if (!isSuccess) return <div>Something went wrong :/</div>;
 
   const { chat_models, completion_models } = modelsData;
 
-  const currentModelNames = [
-    chat_models.map((m) => m.name),
-    completion_models.map((m) => m.name),
-  ].flat();
+  const { currentChatModelNames, currentCompletionModelNames } =
+    getModelNames(modelsData);
 
   return (
     <Flex direction="column" gap="2">
@@ -61,7 +72,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
               providerName={provider.name}
               modelType="chat"
               isReadonlyProvider={provider.readonly}
-              currentModelNames={currentModelNames}
+              currentModelNames={currentChatModelNames}
             />
           );
         })
@@ -72,7 +83,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
         <AddModelButton
           modelType="chat"
           providerName={provider.name}
-          currentModelNames={currentModelNames}
+          currentModelNames={currentChatModelNames}
         />
       )}
       {provider.supports_completion && (
@@ -89,7 +100,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
                   providerName={provider.name}
                   modelType="completion"
                   isReadonlyProvider={provider.readonly}
-                  currentModelNames={currentModelNames}
+                  currentModelNames={currentCompletionModelNames}
                 />
               );
             })
@@ -100,7 +111,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
             <AddModelButton
               modelType="completion"
               providerName={provider.name}
-              currentModelNames={currentModelNames}
+              currentModelNames={currentCompletionModelNames}
             />
           )}
         </>
