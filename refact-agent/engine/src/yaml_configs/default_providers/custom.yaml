@@ -1,3 +1,5 @@
+supports_completion: true
+
 model_defaults:
   chat:
     tokenizer: fake
