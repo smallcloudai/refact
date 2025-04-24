@@ -91,6 +91,16 @@ docker volume rm VVV
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for installation without a docker container.
 
+### Running Refact Proxy Docker Container
+
+A light version of the server that doesn't require an Nvidia GPU. This is the ideal choice if you're:
+* Self-hosting models using Ollama, vLLM, etc.
+* Using third-party model providers like OpenAI, Anthropic, etc.
+
+```commandline
+docker run -d --rm --shm-size=256m -p 8008:8008 -v refact-proxy-perm-storage:/perm_storage smallcloud/refact_proxy:latest
+```
+
 ### Setting Up Plugins
 
 Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
