@@ -167,8 +167,8 @@ pub fn make_v1_router() -> Router {
         ;
 
     builder
-        .layer(CorsLayer::very_permissive())
         .layer(axum::middleware::from_fn(telemetry_middleware))
+        .layer(CorsLayer::very_permissive())
 }
 
 pub fn make_db_v1_router() -> Router {
@@ -181,6 +181,6 @@ pub fn make_db_v1_router() -> Router {
         .route("/chore-update", post(handle_db_v1_chore_update))
         .route("/chore-event-update", post(handle_db_v1_chore_event_update));
     builder
-        .layer(CorsLayer::very_permissive())
         .layer(axum::middleware::from_fn(telemetry_middleware))
+        .layer(CorsLayer::very_permissive())
 }
