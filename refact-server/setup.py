@@ -43,6 +43,11 @@ all_refact_packages = {
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
               "webgui/static/assets/fonts/*"]),
+    "refact_proxy": PyPackage(
+        requires=["scyllapy==1.3.0", "pandas", "fastapi", "uvicorn", "pydantic", "aiohttp", "uvloop"],
+        requires_packages=["refact_webgui", "refact_utils", "refact_known_models"],
+        data=["webgui/static/*"],
+    ),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
                   "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
@@ -95,7 +100,7 @@ else:
 
 setup(
     name="refact-self-hosting",
-    version="1.10.0",
+    version="1.10.1",
     py_modules=list(setup_packages.keys()),
     package_data={
         name: py_package.data

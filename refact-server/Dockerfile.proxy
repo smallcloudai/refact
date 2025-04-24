@@ -1,0 +1,52 @@
+FROM ubuntu:22.04
+
+RUN apt-get update
+RUN DEBIAN_FRONTEND="noninteractive" TZ=Etc/UTC apt-get install -y  \
+    git \
+    python3  \
+    python3-pip  \
+    python3-packaging  \
+    build-essential \
+    cmake \
+    pkg-config \
+    libicu-dev \
+    zlib1g-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y python3-packaging
+
+# cassandra
+RUN apt-get install -y \
+    default-jdk \
+    wget \
+    curl \
+    sudo
+RUN echo "deb https://debian.cassandra.apache.org 41x main" | tee -a /etc/apt/sources.list.d/cassandra.sources.list
+RUN curl https://downloads.apache.org/cassandra/KEYS | apt-key add -
+RUN apt-get update
+RUN apt-get install cassandra -y
+
+# to ping hf
+RUN apt-get install -y iputils-ping
+
+COPY . /tmp/app
+RUN echo "refact ${GIT_COMMIT_HASH}" >> /refact-build-info.txt
+RUN SETUP_PACKAGE=refact_proxy pip install /tmp/app -v --no-build-isolation && rm -rf /tmp/app
+
+ENV REFACT_PERM_DIR "/perm_storage"
+ENV REFACT_TMP_DIR "/tmp"
+ENV RDMAV_FORK_SAFE 0
+ENV RDMAV_HUGEPAGES_SAFE 0
+
+EXPOSE 8008
+
+COPY database-start.sh /
+RUN chmod +x database-start.sh
+COPY docker-entrypoint-proxy.sh /
+RUN chmod +x docker-entrypoint-proxy.sh
+
+CMD ./docker-entrypoint-proxy.sh
