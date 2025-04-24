@@ -298,10 +298,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setIsSendImmediately,
   ]);
 
-  if (globalError) {
+  if (globalError ?? chatError) {
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
-        {globalError}
+        {globalError ?? chatError}
       </ErrorCallout>
     );
   }

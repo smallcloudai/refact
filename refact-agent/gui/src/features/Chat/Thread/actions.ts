@@ -351,9 +351,10 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       mode: realMode,
       boost_reasoning: boostReasoning,
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) {
-          return Promise.reject(new Error(response.statusText));
+          const responseData = (await response.json()) as unknown;
+          return Promise.reject(responseData);
         }
         const reader = response.body?.getReader();
         if (!reader) return;
@@ -370,12 +371,11 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         };
         return consumeStream(reader, thunkAPI.signal, onAbort, onChunk);
       })
-      .catch((err: Error) => {
+      .catch((err: unknown) => {
         // console.log("Catch called");
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
-        thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
-        return thunkAPI.rejectWithValue(err.message);
+        return thunkAPI.rejectWithValue(err);
       })
       .finally(() => {
         thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));

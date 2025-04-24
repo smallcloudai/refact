@@ -14,6 +14,7 @@ import {
   upsertToolCall,
   sendCurrentChatToLspAfterToolCallUpdate,
   chatResponse,
+  chatError,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -427,7 +428,9 @@ startListening({
       const errorMessage = isDetailMessage(action.payload)
         ? action.payload.detail
         : null;
+
       if (errorMessage) {
+        listenerApi.dispatch(chatError({ id: chatId, message: errorMessage }));
         const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
           scope,
           success: false,
