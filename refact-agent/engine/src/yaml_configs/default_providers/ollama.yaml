@@ -8,3 +8,6 @@ model_defaults:
   chat:
     n_ctx: 2048
     tokenizer: fake
+  completion:
+    n_ctx: 2048
+    tokenizer: fake

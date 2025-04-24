@@ -7,3 +7,5 @@ api_key: any-will-work
 model_defaults:
   chat:
     tokenizer: fake
+  completion:
+    tokenizer: fake
