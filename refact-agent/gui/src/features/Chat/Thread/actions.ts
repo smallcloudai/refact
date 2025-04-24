@@ -373,9 +373,13 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       })
       .catch((err: unknown) => {
         // console.log("Catch called");
+        const isError = err instanceof Error;
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
-        return thunkAPI.rejectWithValue(err);
+        if (isError) {
+          thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
+        }
+        return thunkAPI.rejectWithValue(isError ? err.message : err);
       })
       .finally(() => {
         thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));

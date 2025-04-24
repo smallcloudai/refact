@@ -200,32 +200,6 @@ export const LoginPage: React.FC = () => {
             </Flex>
           </Accordion.Content>
         </Accordion.Item>
-        <Accordion.Item value="byok">
-          <Accordion.Trigger>Bring your own key</Accordion.Trigger>
-          <Accordion.Content>
-            <Box>
-              <Text size="2">
-                <ul>
-                  <li>Connect to any OpenAI or Huggingface style server.</li>
-                  <li>
-                    Separate endpoints and keys for chat, completion, and
-                    embedding.
-                  </li>
-                </ul>
-              </Text>
-            </Box>
-            <Separator size="4" my="4" />
-            <Flex gap="3" justify="end" mb="2">
-              <Button
-                onClick={() => {
-                  setupHost({ type: "bring-your-own-key" });
-                }}
-              >
-                Open in IDE
-              </Button>
-            </Flex>
-          </Accordion.Content>
-        </Accordion.Item>
       </Accordion.Root>
     </Container>
   );
