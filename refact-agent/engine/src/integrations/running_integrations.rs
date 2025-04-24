@@ -56,6 +56,7 @@ pub async fn load_integrations(
         &lst,
         &mut error_log,
         include_paths_matching,
+        false,
     );
 
     let mut integrations_map = IndexMap::new();

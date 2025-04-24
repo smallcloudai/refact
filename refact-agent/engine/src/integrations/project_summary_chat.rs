@@ -32,7 +32,7 @@ pub async fn mix_project_summary_messages(
     }
 
     if sp_text.contains("%AVAILABLE_INTEGRATIONS%") {
-        let integrations_all = integrations_all(gcx.clone()).await.integrations;
+        let integrations_all = integrations_all(gcx.clone(), false).await.integrations;
         let integrations = integrations_all.iter().filter(|x|x.integr_config_exists && x.project_path.is_empty()).collect::<Vec<_>>();
         sp_text = sp_text.replace("%AVAILABLE_INTEGRATIONS%", &integrations.iter().map(|x|x.integr_name.clone()).collect::<Vec<_>>().join(", "));
     }

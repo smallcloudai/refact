@@ -115,7 +115,7 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
 }) => {
   return (
     <Flex align="center" gap="6px">
-      <Text size="1" color="gray">
+      <Text size="1" color="gray" wrap="nowrap">
         {formatNumberToFixed(messageTokens)}{" "}
         {messageTokens === 1 ? "token" : "tokens"}
       </Text>
