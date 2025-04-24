@@ -9,8 +9,10 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use rmcp::{RoleClient, ServiceExt, service::RunningService};
+use tokio::time::timeout;
+use tokio::time::Duration;
 use tokio::task::{AbortHandle, JoinHandle};
+use rmcp::{RoleClient, ServiceExt, service::RunningService};
 use rmcp::model::{CallToolRequestParam, Tool as McpTool};
 use tempfile::NamedTempFile;
 
@@ -23,6 +25,9 @@ use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, 
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::process_io_utils::read_file_with_cursor;
 
+const MCP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+const MCP_SERVER_INIT_TIMEOUT: Duration = Duration::from_secs(60);
+const MCP_SERVER_STOP_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Deserialize, Serialize, Clone, Default, PartialEq, Debug)]
 pub struct SettingsMCP {
@@ -141,14 +146,19 @@ async fn _session_kill_process(
     };
     
     if let Some(client) = client_to_cancel {
-        match client.cancel().await {
-            Ok(reason) => {
+        match timeout(MCP_SERVER_STOP_TIMEOUT, client.cancel()).await {
+            Ok(Ok(reason)) => {
                 let success_msg = format!("MCP server stopped: {:?}", reason);
                 tracing::info!("{} for {}", success_msg, debug_name);
                 _add_log_entry(session_logs, success_msg).await;
             },
-            Err(e) => {
+            Ok(Err(e)) => {
                 let error_msg = format!("Failed to stop MCP: {:?}", e);
+                tracing::error!("{} for {}", error_msg, debug_name);
+                _add_log_entry(session_logs, error_msg).await;
+            },
+            Err(_) => {
+                let error_msg = format!("MCP server stop operation timed out after {} seconds", MCP_SERVER_STOP_TIMEOUT.as_secs());
                 tracing::error!("{} for {}", error_msg, debug_name);
                 _add_log_entry(session_logs, error_msg).await;
             }
@@ -276,10 +286,16 @@ async fn _session_apply_settings(
                 }
             };
 
-            let client = match ().serve(transport).await {
-                Ok(c) => c,
-                Err(e) => {
+            let client = match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
+                Ok(Ok(c)) => c,
+                Ok(Err(e)) => {
                     let err_msg = format!("Failed to init server: {}", e);
+                    tracing::error!("{err_msg} for {debug_name}");
+                    _add_log_entry(logs.clone(), err_msg).await;
+                    return;
+                },
+                Err(_) => {
+                    let err_msg = format!("Server initialization timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs());
                     tracing::error!("{err_msg} for {debug_name}");
                     _add_log_entry(logs.clone(), err_msg).await;
                     return;
@@ -289,14 +305,20 @@ async fn _session_apply_settings(
             tracing::info!("MCP START SESSION (2) {:?}", debug_name);
             _add_log_entry(logs.clone(), "Listing tools".to_string()).await;
             
-            let tools_result = match client.list_tools(None).await {
-                Ok(result) => {
+            let tools_result = match timeout(MCP_REQUEST_TIMEOUT, client.list_tools(None)).await {
+                Ok(Ok(result)) => {
                     let success_msg = format!("Successfully listed {} tools", result.tools.len());
                     tracing::info!("{} for {}", success_msg, debug_name);
                     result
                 },
-                Err(tools_error) => {
+                Ok(Err(tools_error)) => {
                     let err_msg = format!("Failed to list tools: {:?}", tools_error);
+                    tracing::error!("{} for {}", err_msg, debug_name);
+                    _add_log_entry(logs.clone(), err_msg).await;
+                    return;
+                },
+                Err(_) => {
+                    let err_msg = format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs());
                     tracing::error!("{} for {}", err_msg, debug_name);
                     _add_log_entry(logs.clone(), err_msg).await;
                     return;
@@ -456,13 +478,20 @@ impl Tool for ToolMCP {
         let result_probably = {
             let mcp_client_locked = self.mcp_client.lock().await;
             if let Some(client) = &*mcp_client_locked {
-                client.call_tool(CallToolRequestParam {
-                    name: self.mcp_tool.name.clone(),
-                    arguments: match json_args {
-                        serde_json::Value::Object(map) => Some(map),
-                        _ => None,
-                    },
-                }).await
+                match timeout(MCP_REQUEST_TIMEOUT,
+                    client.call_tool(CallToolRequestParam {
+                        name: self.mcp_tool.name.clone(),
+                        arguments: match json_args {
+                            serde_json::Value::Object(map) => Some(map),
+                            _ => None,
+                        },
+                    })
+                ).await {
+                    Ok(result) => result,
+                    Err(_) => Err(rmcp::service::ServiceError::Timeout { 
+                        timeout: MCP_REQUEST_TIMEOUT 
+                    }),
+                }
             } else {
                 return Err("MCP client is not available".to_string());
             }
