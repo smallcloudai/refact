@@ -545,7 +545,9 @@
             "similar_models": [
                 "claude-3-7-sonnet-20250219",
                 "claude-3-7-sonnet-latest",
+                "anthropic/claude-3.7-sonnet",
                 "anthropic/claude-3-7-sonnet",
+                "anthropic/claude-3.7-sonnet-latest",
                 "anthropic/claude-3-7-sonnet-latest"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
