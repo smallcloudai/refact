@@ -132,17 +132,6 @@ export const pathApi = createApi({
         );
       },
     }),
-    bringYourOwnKeyPath: builder.query<string, undefined>({
-      queryFn: async (_arg, api, extraOptions, baseQuery) => {
-        return await fetchPath(
-          api,
-          baseQuery,
-          extraOptions,
-          CONFIG_PATH_URL,
-          "/bring-your-own-key.yaml",
-        );
-      },
-    }),
     integrationsPath: builder.query<string, undefined>({
       queryFn: async (_arg, api, extraOptions, baseQuery) => {
         return await fetchPath(

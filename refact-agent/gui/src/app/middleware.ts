@@ -410,8 +410,6 @@ startListening({
     pathApi.endpoints.customizationPath.matchRejected,
     pathApi.endpoints.privacyPath.matchFulfilled,
     pathApi.endpoints.privacyPath.matchRejected,
-    pathApi.endpoints.bringYourOwnKeyPath.matchFulfilled,
-    pathApi.endpoints.bringYourOwnKeyPath.matchRejected,
     pathApi.endpoints.integrationsPath.matchFulfilled,
     pathApi.endpoints.integrationsPath.matchRejected,
   ),
@@ -483,7 +481,6 @@ startListening({
     if (
       pathApi.endpoints.customizationPath.matchFulfilled(action) ||
       pathApi.endpoints.privacyPath.matchFulfilled(action) ||
-      pathApi.endpoints.bringYourOwnKeyPath.matchFulfilled(action) ||
       pathApi.endpoints.integrationsPath.matchFulfilled(action)
     ) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
@@ -498,7 +495,6 @@ startListening({
     if (
       (pathApi.endpoints.customizationPath.matchRejected(action) ||
         pathApi.endpoints.privacyPath.matchRejected(action) ||
-        pathApi.endpoints.bringYourOwnKeyPath.matchRejected(action) ||
         pathApi.endpoints.integrationsPath.matchRejected(action)) &&
       !action.meta.condition
     ) {

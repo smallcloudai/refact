@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { useCallback, type FC } from "react";
 import classNames from "classnames";
 import {
   Badge,
@@ -16,6 +16,7 @@ import { useModelDialogState } from "./hooks/useModelDialogState";
 import type { ModelType, SimplifiedModel } from "../../../../services/refact";
 
 import styles from "./ModelCard.module.css";
+import { useEventsBusForIDE } from "../../../../hooks";
 
 export type ModelCardProps = {
   model: SimplifiedModel;
@@ -53,6 +54,13 @@ export const ModelCard: FC<ModelCardProps> = ({
     modelType,
     providerName,
   });
+
+  const { setCodeCompletionModel } = useEventsBusForIDE();
+
+  const handleSetCompletionModelForIDE = useCallback(() => {
+    const formattedModelName = `${providerName}/${model.name}`;
+    setCodeCompletionModel(formattedModelName);
+  }, [model, providerName, setCodeCompletionModel]);
 
   return (
     <Card className={classNames({ [styles.disabledCard]: isSavingModel })}>
@@ -101,6 +109,11 @@ export const ModelCard: FC<ModelCardProps> = ({
             >
               {enabled ? "Disable model" : "Enable model"}
             </DropdownMenu.Item>
+            {modelType === "completion" && (
+              <DropdownMenu.Item onClick={handleSetCompletionModelForIDE}>
+                Use as completion model in IDE
+              </DropdownMenu.Item>
+            )}
             {removable ? (
               <DropdownMenu.Item
                 onClick={() => void handleRemoveModel({ model })}

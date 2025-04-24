@@ -7,9 +7,10 @@ import React, {
   useMemo,
 } from "react";
 import isEqual from "lodash.isequal";
-import { Button, Dialog, Flex, Select, Text } from "@radix-ui/themes";
+import { Button, Dialog, Flex, Text } from "@radix-ui/themes";
 
 import {
+  useGetCompletionModelFamiliesQuery,
   useGetModelConfiguration,
   useGetModelDefaults,
 } from "../../../../../hooks/useModelsQuery";
@@ -19,6 +20,7 @@ import { CapabilityBadge } from "./CapabilityBadge";
 
 import type {
   CodeChatModel,
+  CodeCompletionModel,
   EmbeddingModel,
   Model,
   ModelType,
@@ -28,6 +30,8 @@ import type {
 
 import { extractHumanReadableReasoningType } from "../utils";
 import { useEffectOnce } from "../../../../../hooks";
+import { FormSelect } from "./FormSelect";
+import { Spinner } from "../../../../../components/Spinner";
 
 const SUPPORTED_REASONING_STYLES: SupportsReasoningStyle[] = [
   "openai",
@@ -99,11 +103,30 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   }, [defaultModelData, editedModelData]);
 
   const isSavingDisabled = useMemo(() => {
-    return (
-      !editedModelData?.name ||
-      currentModelNames.some((name) => name === editedModelData.name)
+    if (!editedModelData?.name) {
+      return true;
+    }
+    const isNameTaken = currentModelNames.some(
+      (existingName) =>
+        existingName === editedModelData.name && existingName !== modelName,
     );
-  }, [editedModelData, currentModelNames]);
+    // TODO: maybe we should move it out somewhere :P
+    const REQUIRED_FIELD_KEYS = ["tokenizer", "n_ctx"];
+
+    const someFieldsNotFilled = Object.entries(editedModelData).some(
+      ([key, value]) => {
+        if (REQUIRED_FIELD_KEYS.includes(key)) {
+          if (!value) return true;
+        }
+
+        return false;
+      },
+    );
+
+    if (isNameTaken) return true;
+
+    return isEqual(configuredModelData, editedModelData) || someFieldsNotFilled;
+  }, [configuredModelData, editedModelData, currentModelNames, modelName]);
 
   useEffect(() => {
     if (isOpen) {
@@ -169,6 +192,32 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
     [setIsOpen],
   );
 
+  const getValueByType = (value: string, valueType: string) => {
+    if (valueType === "string") return value;
+    if (valueType === "number") return parseFloat(value);
+    return value;
+  };
+
+  const updateFieldByKey = useCallback(
+    (key: string, value: string | number) => {
+      if (!editedModelData) return;
+      setEditedModelData({
+        ...editedModelData,
+        [key]: value,
+      });
+    },
+    [editedModelData],
+  );
+
+  const handleFieldValueChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>, field: string) => {
+      const valueType = typeof editedModelData?.[field as keyof Model];
+      const value = getValueByType(e.target.value, valueType);
+      updateFieldByKey(field, value);
+    },
+    [editedModelData, updateFieldByKey],
+  );
+
   // Toggle capability value
   const toggleCapability = (key: string) => {
     if (!editedModelData) return;
@@ -176,14 +225,6 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
     setEditedModelData({
       ...editedModelData,
       [key]: !editedModelData[key as keyof typeof editedModelData],
-    });
-  };
-
-  const updateFieldByKey = (key: string, value: string | number) => {
-    if (!editedModelData) return;
-    setEditedModelData({
-      ...editedModelData,
-      [key]: value,
     });
   };
 
@@ -204,18 +245,25 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
         </Dialog.Description>
 
         <Flex direction="column" gap="3">
-          {editedModelData && (
-            <CommonFields
+          <FormField
+            label="Name"
+            value={editedModelData?.name}
+            onChange={(e) => handleFieldValueChange(e, "name")}
+            placeholder="Model name"
+            isDisabled={!newModelCreation && !isRemovable}
+          />
+          {editedModelData?.type === "completion" && (
+            <CompletionModelFields
               editedModelData={editedModelData}
-              setEditedModelDataByField={updateFieldByKey}
-              newModelCreation={newModelCreation}
-              isRemovable={isRemovable}
+              handleFieldValueChange={handleFieldValueChange}
+              updateFieldByKey={updateFieldByKey}
             />
           )}
 
           {editedModelData?.type === "chat" && (
             <ChatModelFields
               editedModelData={editedModelData}
+              handleFieldValueChange={handleFieldValueChange}
               setEditedModelData={setEditedModelData}
               toggleCapability={toggleCapability}
             />
@@ -224,7 +272,7 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
           {editedModelData?.type === "embedding" && (
             <EmbeddingModelFields
               editedModelData={editedModelData}
-              setEditedModelDataByField={updateFieldByKey}
+              handleFieldValueChange={handleFieldValueChange}
             />
           )}
         </Flex>
@@ -260,44 +308,30 @@ export const ModelCardPopup: FC<ModelCardPopupProps> = ({
   );
 };
 
-// Common fields for all model types
-type CommonFieldsProps = {
-  editedModelData: Model;
-  setEditedModelDataByField: (field: string, value: string | number) => void;
-  newModelCreation?: boolean;
-  isRemovable?: boolean;
+type CompletionModelFieldsProps = {
+  editedModelData: CodeCompletionModel;
+  handleFieldValueChange: (
+    e: ChangeEvent<HTMLInputElement>,
+    field: string,
+  ) => void;
+  updateFieldByKey: (key: string, value: string | number) => void;
 };
 
-const CommonFields: FC<CommonFieldsProps> = ({
+const CompletionModelFields: FC<CompletionModelFieldsProps> = ({
   editedModelData,
-  setEditedModelDataByField,
-  newModelCreation = false,
-  isRemovable = false,
+  handleFieldValueChange,
+  updateFieldByKey,
 }) => {
-  const getValueByType = (value: string, valueType: string) => {
-    if (valueType === "string") return value;
-    if (valueType === "number") return parseFloat(value);
-    return value;
-  };
+  const {
+    data: modelFamiliesData,
+    isSuccess,
+    isLoading,
+  } = useGetCompletionModelFamiliesQuery();
+  if (isLoading || !isSuccess) return <Spinner spinning />;
 
-  const handleFieldValueChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>, field: string) => {
-      const valueType = typeof editedModelData[field as keyof Model];
-      const value = getValueByType(e.target.value, valueType);
-      setEditedModelDataByField(field, value);
-    },
-    [editedModelData, setEditedModelDataByField],
-  );
-
+  const aggregatedModelFamilies = [...modelFamiliesData.model_families, null];
   return (
-    <React.Fragment key={editedModelData.id}>
-      <FormField
-        label="Name"
-        value={editedModelData.name}
-        onChange={(e) => handleFieldValueChange(e, "name")}
-        placeholder="Model name"
-        isDisabled={!newModelCreation && !isRemovable}
-      />
+    <>
       <FormField
         label="Context Window (n_ctx)"
         value={editedModelData.n_ctx.toString()}
@@ -305,14 +339,14 @@ const CommonFields: FC<CommonFieldsProps> = ({
         placeholder="Context window size"
         type="number"
       />
-      <FormField
-        label="Tokenizer"
-        description="'hf://' stands for 'https://huggingface.co/'"
-        value={editedModelData.tokenizer}
-        onChange={(e) => handleFieldValueChange(e, "tokenizer")}
-        placeholder="Tokenizer name"
+      <FormSelect
+        label="Model Family"
+        placeholder="Desired model family"
+        value={editedModelData.model_family ?? "null"}
+        onValueChange={(value) => updateFieldByKey("model_family", value)}
+        options={aggregatedModelFamilies}
       />
-    </React.Fragment>
+    </>
   );
 };
 
@@ -321,12 +355,17 @@ type ChatModelFieldsProps = {
   editedModelData?: CodeChatModel;
   setEditedModelData: (data: Model) => void;
   toggleCapability: (key: string) => void;
+  handleFieldValueChange: (
+    e: ChangeEvent<HTMLInputElement>,
+    field: string,
+  ) => void;
 };
 
 const ChatModelFields: FC<ChatModelFieldsProps> = ({
   editedModelData,
   setEditedModelData,
   toggleCapability,
+  handleFieldValueChange,
 }) => {
   const handleTemperatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editedModelData) return;
@@ -365,6 +404,20 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
   return (
     <>
       <FormField
+        label="Context Window (n_ctx)"
+        value={editedModelData.n_ctx.toString()}
+        onChange={(e) => handleFieldValueChange(e, "n_ctx")}
+        placeholder="Context window size"
+        type="number"
+      />
+      <FormField
+        label="Tokenizer"
+        description="'hf://' stands for 'https://huggingface.co/'"
+        value={editedModelData.tokenizer}
+        onChange={(e) => handleFieldValueChange(e, "tokenizer")}
+        placeholder="Tokenizer name"
+      />
+      <FormField
         label="Default Temperature"
         value={editedModelData.default_temperature?.toString() ?? ""}
         placeholder="Default temperature"
@@ -374,26 +427,13 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
       />
 
       <Flex direction="column" gap="2">
-        <Flex direction="column">
-          <Text as="div" size="2" mb="1" weight="bold">
-            Reasoning Style
-          </Text>
-          <Select.Root
-            value={editedModelData.supports_reasoning ?? "null"}
-            onValueChange={handleReasoningStyleChange}
-          >
-            <Select.Trigger placeholder="Select Reasoning Style" />
-            <Select.Content position="popper">
-              {SUPPORTED_REASONING_STYLES.map((style) => {
-                return (
-                  <Select.Item key={style} value={style ?? "null"}>
-                    {style ? extractHumanReadableReasoningType(style) : "None"}{" "}
-                  </Select.Item>
-                );
-              })}
-            </Select.Content>
-          </Select.Root>
-        </Flex>
+        <FormSelect
+          label="Reasoning Style"
+          value={editedModelData.supports_reasoning ?? "null"}
+          onValueChange={handleReasoningStyleChange}
+          options={SUPPORTED_REASONING_STYLES}
+          optionTransformer={extractHumanReadableReasoningType}
+        />
         <Text as="div" size="2" weight="bold">
           Capabilities
         </Text>
@@ -434,20 +474,16 @@ const ChatModelFields: FC<ChatModelFieldsProps> = ({
 // Embedding model specific fields
 type EmbeddingModelFieldsProps = {
   editedModelData: EmbeddingModel;
-  setEditedModelDataByField: (field: string, value: string) => void;
+  handleFieldValueChange: (
+    e: ChangeEvent<HTMLInputElement>,
+    field: string,
+  ) => void;
 };
 
 const EmbeddingModelFields: FC<EmbeddingModelFieldsProps> = ({
   editedModelData,
-  setEditedModelDataByField,
+  handleFieldValueChange,
 }) => {
-  const handleFieldValueChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    field: string,
-  ) => {
-    setEditedModelDataByField(field, e.target.value);
-  };
-
   return (
     <>
       <FormField

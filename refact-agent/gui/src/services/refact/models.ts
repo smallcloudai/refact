@@ -1,5 +1,10 @@
 import { RootState } from "../../app/store";
-import { MODEL_DEFAULTS_URL, MODEL_URL, MODELS_URL } from "./consts";
+import {
+  COMPLETION_MODEL_FAMILIES_URL,
+  MODEL_DEFAULTS_URL,
+  MODEL_URL,
+  MODELS_URL,
+} from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { hasProperty } from "../../utils";
 import { isDetailMessage } from "./commands";
@@ -115,6 +120,39 @@ export const modelsApi = createApi({
               error: "Invalid response from /v1/model-defaults",
               status: "CUSTOM_ERROR",
               data: result.data,
+            },
+          };
+        }
+
+        return { data: result.data };
+      },
+    }),
+    getCompletionModelFamilies: builder.query<
+      CompletionModelFamiliesResponse,
+      undefined
+    >({
+      queryFn: async (_args, api, extraOptions, baseQuery) => {
+        const state = api.getState() as RootState;
+        const port = state.config.lspPort as unknown as number;
+        const url = `http://127.0.0.1:${port}${COMPLETION_MODEL_FAMILIES_URL}`;
+
+        const result = await baseQuery({
+          ...extraOptions,
+          method: "GET",
+          url,
+        });
+
+        if (result.error) {
+          return { error: result.error };
+        }
+
+        if (!isCompletionModelFamiliesResponse(result.data)) {
+          return {
+            meta: result.meta,
+            error: {
+              error: "Invalid response from /v1/completion-model-families",
+              data: result.data,
+              status: "CUSTOM_ERROR",
             },
           };
         }
@@ -251,13 +289,15 @@ export type CodeChatModel = {
   default_temperature: number | null;
 
   enabled: boolean;
+
+  type: "chat";
 };
 
 export type CodeCompletionModel = {
   n_ctx: number;
   name: string;
-  id: string;
-  tokenizer: string;
+  model_family: string | null;
+  type: "completion";
   enabled: boolean;
 };
 
@@ -272,6 +312,8 @@ export type EmbeddingModel = {
   embedding_batch: number;
 
   enabled: boolean;
+
+  type: "embedding";
 };
 
 export function isModelsResponse(data: unknown): data is ModelsResponse {
@@ -288,16 +330,7 @@ export function isModelsResponse(data: unknown): data is ModelsResponse {
   return true;
 }
 
-export type Model =
-  | (CodeChatModel & {
-      type: "chat";
-    })
-  | (CodeCompletionModel & {
-      type: "completion";
-    })
-  | (EmbeddingModel & {
-      type: "embedding";
-    });
+export type Model = CodeChatModel | CodeCompletionModel | EmbeddingModel;
 
 export function isCodeChatModel(data: unknown): data is CodeChatModel {
   if (!data || typeof data !== "object") return false;
@@ -346,7 +379,11 @@ export function isCodeCompletionModel(
 
   if (!("n_ctx" in data) || typeof data.n_ctx !== "number") return false;
   if (!("name" in data) || typeof data.name !== "string") return false;
-  if (!("tokenizer" in data) || typeof data.tokenizer !== "string")
+  if (
+    "model_family" in data &&
+    typeof data.model_family !== "string" &&
+    data.model_family !== null
+  )
     return false;
   if (!("enabled" in data) || typeof data.enabled !== "boolean") return false;
 
@@ -382,4 +419,13 @@ export function isModel(data: unknown): data is Model {
     isCodeCompletionModel(data) ||
     isEmbeddingModel(data)
   );
+}
+
+export type CompletionModelFamiliesResponse = { model_families: string[] };
+
+export function isCompletionModelFamiliesResponse(
+  data: unknown,
+): data is CompletionModelFamiliesResponse {
+  if (!data || typeof data !== "object") return false;
+  return "model_families" in data && Array.isArray(data.model_families);
 }

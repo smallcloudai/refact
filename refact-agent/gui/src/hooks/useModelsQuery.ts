@@ -18,6 +18,10 @@ export function useGetModelDefaults(args: GetModelDefaultsArgs) {
   return modelsApi.useGetModelDefaultsQuery(args, { skip: !args.providerName });
 }
 
+export function useGetCompletionModelFamiliesQuery() {
+  return modelsApi.useGetCompletionModelFamiliesQuery(undefined);
+}
+
 export function useGetLazyModelConfiguration() {
   const [mutationTrigger] = modelsApi.useLazyGetModelQuery();
   return mutationTrigger;
