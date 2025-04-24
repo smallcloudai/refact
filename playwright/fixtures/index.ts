@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { LoginPage } from "./LoginPage";
 import { TourPage } from "./TourPage";
-import { Navigation } from "./navigation";
+import { Navigation } from "./Navigation";
 import { FakeIde } from "./FakeIde";
 
 export * from "@playwright/test";
@@ -11,6 +11,7 @@ export const test = baseTest.extend<
   {
     navigation: Navigation;
     fakeIde: FakeIde;
+    auth: LoginPage;
   },
   { workerStorageState: string }
 >({
@@ -56,7 +57,14 @@ export const test = baseTest.extend<
   },
 
   fakeIde: async ({ page }, use) => {
+    console.log("fakeIde");
     const fakeIde = await FakeIde.initialize(page);
+    console.log({ fakeIde });
     await use(fakeIde);
+  },
+
+  auth: async ({ page }, use) => {
+    const auth = new LoginPage(page);
+    await use(auth);
   },
 });

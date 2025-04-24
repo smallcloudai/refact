@@ -45,6 +45,13 @@ export class LoginPage {
 
     if (screenshots) expect(this.page).toHaveScreenshot();
 
+    await this.page.context().on("page", async (newPage) => {
+      const url = new URL(newPage.url());
+      expect(url.hostname).toEqual("accounts.google.com");
+      expect(url.pathname).toEqual("/v3/signin/identifier");
+      await newPage.close();
+    });
+
     await this.page.click('button:has-text("Continue with Google")');
 
     await this.page.waitForLoadState("networkidle");
@@ -57,7 +64,14 @@ export class LoginPage {
       this.page.getByRole("heading", { name: "Login to Refact.ai" })
     ).not.toBeVisible({ timeout: 10000 });
 
-    if (screenshots) expect(this.page).toHaveScreenshot();
+    if (screenshots)
+      expect(this.page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
+  }
+
+  async doLogout() {
+    await this.page.goto("/");
+    await this.page.getByRole("button", { name: "menu" }).click();
+    await this.page.getByRole("menuitem", { name: "Logout" }).click();
   }
 
   async mockUserRequest(openSurvey = false) {

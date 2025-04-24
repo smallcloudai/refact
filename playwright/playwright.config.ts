@@ -25,23 +25,31 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:3000",
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     // trace: "on-first-retry",
     trace: "on",
 
     video: "on",
-    viewport: { width: 369, height: 1023 },
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "web",
+      use: {
+        ...devices["Desktop Chrome"],
+      },
     },
 
+    {
+      name: "vscode",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 369, height: 1023 },
+      },
+    },
     /* Test against mobile viewports. */
     // {
     //   name: 'Mobile Chrome',
@@ -72,9 +80,9 @@ export default defineConfig({
 
   webServer: [
     {
-      cwd: "../refact-agent/gui",
-      command: "npm run dev", // TODO: run in production mode https://github.com/vitejs/vite/issues/7009
-      port: 5173,
+      cwd: ".",
+      command: "node server.js",
+      port: 3000,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       stderr: "pipe",

@@ -22,7 +22,16 @@ import {
 declare global {
   interface Window {
     logMessage: typeof window.postMessage;
-    __INITIAL_STATE__?: Partial<InitialState>;
+    __INITIAL_STATE__?: Partial<Omit<InitialState, "config">> & {
+      config: Partial<InitialState["config"]>;
+    };
+    postIntellijMessage?: (message: Record<string, unknown>) => void;
+    acquireVsCodeApi?(): {
+      postMessage: (message: Record<string, unknown>) => void;
+    };
+    RefactChat: {
+      render: (root: Element, config: Partial<Config>) => void;
+    };
   }
 }
 
@@ -41,21 +50,35 @@ type EventsToIde =
 export class FakeIde {
   messages: Parameters<typeof window.logMessage>[] = [];
 
-  private constructor(public readonly page: Page) {}
+  constructor(public readonly page: Page) {}
 
   public static async initialize(
     page: Page,
-    host: "vscode" | "jetbrains" | "ide" = "vscode",
-    appearance: InitialState["config"]["themeProps"]["appearance"] = "dark",
-    lspPort = 8001
+    host: "vscode" | "jetbrains" | "ide" = "vscode"
   ) {
     // TODO: initial state
+    page.addInitScript((ide) => {
+      window.__INITIAL_STATE__ = {
+        config: {
+          host: ide,
+          themeProps: { accentColor: "gray" },
+        },
+      };
+      window.onload = () => {
+        const root = document.querySelector("#refact-chat");
+        console.log(window.RefactChat);
+        window.RefactChat.render(root, window.__INITIAL_STATE__.config);
+      };
+    }, host);
+
     const fakeIde = new FakeIde(page);
-    await fakeIde.updateConfig({ host, lspPort, themeProps: { appearance } });
+    // fakeIde.updateConfig({ host, themeProps: { appearance: "dark" } });
+    // await fakeIde.updateConfig({ host, lspPort, themeProps: { appearance } });
     // // TODO: mock event bus https://playwright.dev/docs/mock-browser-apis
     // console error, postMEssage is not a function :/
     await fakeIde.mockMessageBus(host);
 
+    // page.goto("/");
     return fakeIde;
   }
 
@@ -66,17 +89,22 @@ export class FakeIde {
   private async mockMessageBus(
     host: "vscode" | "jetbrains" | "ide" = "vscode"
   ) {
+    await this.page.exposeFunction("logMessage", this.logMessage);
+
     if (host === "vscode") {
-      return this.page.exposeFunction("acquireVsCodeApi", () => ({
-        postMessage: this.logMessage,
-      }));
+      return await this.page.addInitScript(() => {
+        window.acquireVsCodeApi = () => ({
+          postMessage: window.logMessage,
+        });
+      });
     }
 
     if (host === "jetbrains") {
-      return this.page.exposeFunction("postIntellijMessage", this.logMessage);
+      return await this.page.addInitScript(() => {
+        window.postIntellijMessage = window.logMessage;
+      });
     }
 
-    await this.page.exposeFunction("logMessage", this.logMessage);
     return await this.page.addInitScript(() => {
       const originalPostMessage = window.postMessage;
 
@@ -90,7 +118,7 @@ export class FakeIde {
   async dispatch(event: EventsToIde) {
     // return this.page.locator("window").dispatchEvent("message", message);
     return this.page.evaluate((message) => {
-      window.postMessage(message, "*");
+      window.postMessage(message, this.page.url());
     }, event);
   }
 
@@ -123,7 +151,7 @@ export class FakeIde {
     return this;
   }
 
-  async updateConfig(config: Config) {
+  async updateConfig(config: Partial<Config>) {
     const action = updateConfig(config);
     await this.dispatch(action);
     return this;
