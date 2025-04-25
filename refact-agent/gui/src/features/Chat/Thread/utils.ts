@@ -694,8 +694,7 @@ export function consumeStream(
       const str = decoder.decode(value);
       const maybeError = checkForDetailMessage(str);
       if (maybeError) {
-        const error = new Error(maybeError.detail);
-        throw error;
+        return Promise.reject(maybeError);
       }
     }
 
@@ -749,7 +748,7 @@ export function consumeStream(
         const error = new Error(errorMessage);
         // eslint-disable-next-line no-console
         console.error(error);
-        throw error;
+        return Promise.reject(maybeErrorData);
       }
 
       const fallback = {};

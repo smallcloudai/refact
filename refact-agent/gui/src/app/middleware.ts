@@ -22,7 +22,11 @@ import { dockerApi } from "../services/refact/docker";
 import { capsApi, isCapsErrorResponse } from "../services/refact/caps";
 import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
-import { commandsApi, isDetailMessage } from "../services/refact/commands";
+import {
+  commandsApi,
+  isDetailMessage,
+  isDetailMessageWithErrorType,
+} from "../services/refact/commands";
 import { pathApi } from "../services/refact/path";
 import { pingApi } from "../services/refact/ping";
 import {
@@ -423,12 +427,13 @@ startListening({
           : state.chat.thread;
       const scope = `sendChat_${thread.model}_${mode}`;
 
-      const errorMessage = isDetailMessage(action.payload)
-        ? action.payload.detail
-        : null;
-
-      if (errorMessage) {
-        listenerApi.dispatch(chatError({ id: chatId, message: errorMessage }));
+      if (isDetailMessageWithErrorType(action.payload)) {
+        const errorMessage = action.payload.detail;
+        listenerApi.dispatch(
+          action.payload.errorType === "GLOBAL"
+            ? setError(errorMessage)
+            : chatError({ id: chatId, message: errorMessage }),
+        );
         const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
           scope,
           success: false,

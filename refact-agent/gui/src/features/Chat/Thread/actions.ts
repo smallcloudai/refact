@@ -35,7 +35,11 @@ import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
-import { capsApi } from "../../../services/refact";
+import {
+  capsApi,
+  DetailMessageWithErrorType,
+  isDetailMessage,
+} from "../../../services/refact";
 
 export const newChatAction = createAction<Partial<ChatThread> | undefined>(
   "chatThread/new",
@@ -376,10 +380,17 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         const isError = err instanceof Error;
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
-        if (isError) {
-          thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
-        }
-        return thunkAPI.rejectWithValue(isError ? err.message : err);
+
+        const errorObject: DetailMessageWithErrorType = {
+          detail: isError
+            ? err.message
+            : isDetailMessage(err)
+              ? err.detail
+              : (err as string),
+          errorType: isError ? "CHAT" : "GLOBAL",
+        };
+
+        return thunkAPI.rejectWithValue(errorObject);
       })
       .finally(() => {
         thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));
