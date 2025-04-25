@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type FC } from "react";
+import { Fragment, useCallback, useMemo, type FC } from "react";
 import classNames from "classnames";
 import {
   Badge,
@@ -24,6 +24,7 @@ export type ModelCardProps = {
   modelType: ModelType;
   isReadonlyProvider: boolean;
   currentModelNames: string[];
+  itemKey?: string;
 };
 
 /**
@@ -35,6 +36,7 @@ export const ModelCard: FC<ModelCardProps> = ({
   providerName,
   isReadonlyProvider,
   currentModelNames,
+  itemKey,
 }) => {
   const { enabled, name, removable, user_configured } = model;
   const {
@@ -111,7 +113,10 @@ export const ModelCard: FC<ModelCardProps> = ({
   }, [dropdownOptions]);
 
   return (
-    <Card className={classNames({ [styles.disabledCard]: isSavingModel })}>
+    <Card
+      className={classNames({ [styles.disabledCard]: isSavingModel })}
+      key={itemKey}
+    >
       {dialogOpen && (
         <ModelCardPopup
           minifiedModel={model}
@@ -147,17 +152,13 @@ export const ModelCard: FC<ModelCardProps> = ({
             </DropdownMenu.Trigger>
             <DropdownMenu.Content side="bottom" align="end" size="1">
               {dropdownOptions.map(({ label, visible, onClick }) => (
-                <>
+                <Fragment key={label}>
                   {visible && (
-                    <DropdownMenu.Item
-                      key={label}
-                      onClick={onClick}
-                      title={label}
-                    >
+                    <DropdownMenu.Item onClick={onClick} title={label}>
                       {label}
                     </DropdownMenu.Item>
                   )}
-                </>
+                </Fragment>
               ))}
             </DropdownMenu.Content>
           </DropdownMenu.Root>
