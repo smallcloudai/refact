@@ -12,7 +12,7 @@ use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
 use crate::caps::providers::{add_models_to_caps, read_providers_d, resolve_provider_api_key,
     post_process_provider, CapsProvider};
-use crate::caps::self_hosted::{SelfHostedCaps, load_self_hosted_caps};
+use crate::caps::self_hosted::SelfHostedCaps;
 
 pub const CAPS_FILENAME: &str = "refact-caps";
 pub const CAPS_FILENAME_FALLBACK: &str = "coding_assistant_caps.json";
@@ -327,7 +327,7 @@ pub async fn load_caps(
     let (caps_value, caps_url) = load_caps_value_from_url(cmdline, gcx).await?;
 
     let (mut caps, server_providers) = match serde_json::from_value::<SelfHostedCaps>(caps_value.clone()) {
-        Ok(self_hosted_caps) => (load_self_hosted_caps(self_hosted_caps, &caps_url, &cmdline_api_key)?, Vec::new()),
+        Ok(self_hosted_caps) => (self_hosted_caps.into_caps(&caps_url, &cmdline_api_key)?, Vec::new()),
         Err(_) => {
             let caps = serde_json::from_value::<CodeAssistantCaps>(caps_value.clone())
                 .map_err_with_prefix("Failed to parse caps:")?;

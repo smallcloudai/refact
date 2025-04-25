@@ -13,6 +13,7 @@ use crate::caps::{
 };
 use crate::custom_error::{MapErrToString, YamlError};
 use crate::global_context::{CommandLine, GlobalContext};
+use crate::caps::self_hosted::SelfHostedCaps;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CapsProvider {
@@ -642,15 +643,21 @@ pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Resul
     let cmdline_api_key = command_line.api_key.clone();
     let (caps_value, caps_url) = load_caps_value_from_url(command_line, gcx.clone()).await?;
 
-    let mut provider = serde_json::from_value::<CapsProvider>(caps_value).map_err_to_string()?;
+    if let Ok(self_hosted_caps) = serde_json::from_value::<SelfHostedCaps>(caps_value.clone()) {
+        let mut provider = self_hosted_caps.into_provider(&caps_url, &cmdline_api_key)?;
+        post_process_provider(&mut provider, true);
+        provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
+        provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
+        Ok(provider)
+    } else {
+        let mut provider = serde_json::from_value::<CapsProvider>(caps_value).map_err_to_string()?;
 
-    resolve_relative_urls(&mut provider, &caps_url)?;
-
-    post_process_provider(&mut provider, true);
-    provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
-    provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
-
-    Ok(provider)
+        resolve_relative_urls(&mut provider, &caps_url)?;
+        post_process_provider(&mut provider, true);
+        provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
+        provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
+        Ok(provider)
+    }
 }
 
 #[cfg(test)]
