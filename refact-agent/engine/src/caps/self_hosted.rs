@@ -262,7 +262,7 @@ impl SelfHostedCaps {
                 completion_default_model: format!("{}/{}", self.cloud_name, self.completion.default_model),
                 chat_default_model: format!("{}/{}", self.cloud_name, self.chat.default_model),
                 chat_thinking_model: String::new(),
-                chat_light_model: String::new(),
+                chat_light_model: format!("{}/{}", self.cloud_name, self.chat.default_model),
             },
             customization: self.customization.clone(),
             caps_version: self.caps_version,
