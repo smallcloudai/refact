@@ -112,8 +112,8 @@ pub struct CompletionModelRecord {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionModelFamily {
-    #[serde(rename = "qwen2.5-coder")]
-    Qwen2_5Coder,
+    #[serde(rename = "qwen2.5-coder-base")]
+    Qwen2_5CoderBase,
     #[serde(rename = "starcoder")]
     Starcoder,
     #[serde(rename = "deepseek-coder")]
@@ -128,7 +128,7 @@ impl CompletionModelFamily {
 
     pub fn all_variants() -> Vec<CompletionModelFamily> {
         vec![
-            CompletionModelFamily::Qwen2_5Coder,
+            CompletionModelFamily::Qwen2_5CoderBase,
             CompletionModelFamily::Starcoder,
             CompletionModelFamily::DeepseekCoder,
         ]
