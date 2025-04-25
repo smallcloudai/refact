@@ -67,7 +67,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
         chat_models.map((m) => {
           return (
             <ModelCard
-              key={m.name}
+              key={`${m.name}_chat`}
               model={m}
               providerName={provider.name}
               modelType="chat"
@@ -95,7 +95,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
             completion_models.map((m) => {
               return (
                 <ModelCard
-                  key={m.name}
+                  itemKey={`${m.name}_completion`}
                   model={m}
                   providerName={provider.name}
                   modelType="completion"
