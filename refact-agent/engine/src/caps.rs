@@ -170,6 +170,9 @@ pub struct CodeAssistantCaps {
 
     #[serde(default = "default_support_metadata")]
     pub support_metadata: bool,
+    
+    #[serde(default)]  // Need for metadata from cloud, e.g. pricing for models; used only in chat-js
+    pub metadata: serde_json::Value
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
