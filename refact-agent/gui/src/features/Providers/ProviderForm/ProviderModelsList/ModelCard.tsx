@@ -24,7 +24,6 @@ export type ModelCardProps = {
   modelType: ModelType;
   isReadonlyProvider: boolean;
   currentModelNames: string[];
-  itemKey?: string;
 };
 
 /**
@@ -36,7 +35,6 @@ export const ModelCard: FC<ModelCardProps> = ({
   providerName,
   isReadonlyProvider,
   currentModelNames,
-  itemKey,
 }) => {
   const { enabled, name, removable, user_configured } = model;
   const {
@@ -113,10 +111,7 @@ export const ModelCard: FC<ModelCardProps> = ({
   }, [dropdownOptions]);
 
   return (
-    <Card
-      className={classNames({ [styles.disabledCard]: isSavingModel })}
-      key={itemKey}
-    >
+    <Card className={classNames({ [styles.disabledCard]: isSavingModel })}>
       {dialogOpen && (
         <ModelCardPopup
           minifiedModel={model}

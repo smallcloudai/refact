@@ -95,7 +95,7 @@ export const ProviderModelsList: FC<ProviderModelsListProps> = ({
             completion_models.map((m) => {
               return (
                 <ModelCard
-                  itemKey={`${m.name}_completion`}
+                  key={`${m.name}_completion`}
                   model={m}
                   providerName={provider.name}
                   modelType="completion"
