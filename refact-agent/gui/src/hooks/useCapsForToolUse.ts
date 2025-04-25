@@ -30,7 +30,7 @@ export function useCapsForToolUse() {
   const toolUse = useAppSelector(selectThreadToolUse);
   const dispatch = useAppDispatch();
 
-  const defaultCap = caps.data?.code_chat_default_model ?? "";
+  const defaultCap = caps.data?.chat_default_model ?? "";
 
   const selectedModel = useAppSelector(getSelectedChatModel);
 
@@ -38,40 +38,40 @@ export function useCapsForToolUse() {
 
   const setCapModel = useCallback(
     (value: string) => {
-      const model = caps.data?.code_chat_default_model === value ? "" : value;
+      const model = caps.data?.chat_default_model === value ? "" : value;
       const action = setChatModel(model);
       dispatch(action);
       const tokens =
-        caps.data?.code_chat_models[value]?.n_ctx ?? DEFAULT_MAX_NEW_TOKENS;
+        caps.data?.chat_models[value]?.n_ctx ?? DEFAULT_MAX_NEW_TOKENS;
       dispatch(setMaxNewTokens(tokens));
     },
-    [caps.data?.code_chat_default_model, caps.data?.code_chat_models, dispatch],
+    [caps.data?.chat_default_model, caps.data?.chat_models, dispatch],
   );
 
   const isMultimodalitySupportedForCurrentModel = useMemo(() => {
-    const models = caps.data?.code_chat_models;
+    const models = caps.data?.chat_models;
     const item = models?.[currentModel];
     if (!item) return false;
     if (!item.supports_multimodality) return false;
     return true;
-  }, [caps.data?.code_chat_models, currentModel]);
+  }, [caps.data?.chat_models, currentModel]);
 
   const modelsSupportingTools = useMemo(() => {
-    const models = caps.data?.code_chat_models ?? {};
+    const models = caps.data?.chat_models ?? {};
     return Object.entries(models)
       .filter(([_, value]) => value.supports_tools)
       .map(([key]) => key);
-  }, [caps.data?.code_chat_models]);
+  }, [caps.data?.chat_models]);
 
   const modelsSupportingAgent = useMemo(() => {
-    const models = caps.data?.code_chat_models ?? {};
+    const models = caps.data?.chat_models ?? {};
     return Object.entries(models)
       .filter(([_, value]) => value.supports_agent)
       .map(([key]) => key);
-  }, [caps.data?.code_chat_models]);
+  }, [caps.data?.chat_models]);
 
   const usableModels = useMemo(() => {
-    const models = caps.data?.code_chat_models ?? {};
+    const models = caps.data?.chat_models ?? {};
     const items = Object.entries(models).reduce<string[]>(
       (acc, [key, value]) => {
         if (toolUse === "explore" && value.supports_tools) {
@@ -84,7 +84,7 @@ export function useCapsForToolUse() {
       [],
     );
     return items;
-  }, [caps.data?.code_chat_models, toolUse]);
+  }, [caps.data?.chat_models, toolUse]);
 
   const usableModelsForPlan = useMemo(() => {
     // TODO: keep filtering logic for the future BYOK + Cloud (to show different providers)

@@ -6,7 +6,6 @@ import {
 } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
-  useConfig,
   useEventsBusForIDE,
   useGetUser,
   useLogout,
@@ -27,6 +26,7 @@ import {
   HamburgerMenuIcon,
   DiscordLogoIcon,
   QuestionMarkCircledIcon,
+  GearIcon,
 } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
 import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
@@ -41,6 +41,7 @@ export type DropdownNavigationOptions =
   | "restart tour"
   | "login page"
   | "integrations"
+  | "providers"
   | KnowledgeListPage["name"]
   | "";
 
@@ -79,7 +80,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const dispatch = useAppDispatch();
   const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
   const logout = useLogout();
-  const { addressURL } = useConfig();
   const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
   const { startPollingForUser } = useAgentUsage();
 
@@ -87,8 +87,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openBringYourOwnKeyFile, openCustomizationFile, openPrivacyFile } =
-    useEventsBusForIDE();
+  const { openCustomizationFile, openPrivacyFile } = useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
@@ -188,6 +187,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <PuzzleIcon /> Set up Agent Integrations
         </DropdownMenu.Item>
 
+        <DropdownMenu.Item onSelect={() => handleNavigation("providers")}>
+          <GearIcon /> Configure Providers
+        </DropdownMenu.Item>
+
         {knowledgeEnabled && (
           <DropdownMenu.Item
             onSelect={() => handleNavigation("knowledge list")}
@@ -219,16 +222,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
         >
           Edit privacy.yaml
         </DropdownMenu.Item>
-
-        {addressURL?.endsWith(".yaml") && (
-          <DropdownMenu.Item
-            onSelect={() => {
-              void openBringYourOwnKeyFile();
-            }}
-          >
-            Edit Bring Your Own Key
-          </DropdownMenu.Item>
-        )}
 
         <DropdownMenu.Separator />
 

@@ -1,0 +1,15 @@
+chat_endpoint: https://api.deepseek.com/v1/chat/completions
+supports_completion: false
+
+api_key: sk-...
+
+running_models:
+  - deepseek-chat
+  - deepseek-reasoner
+
+model_default_settings_ui:
+  chat:
+    n_ctx: 64000
+    supports_tools: true
+    supports_agent: true
+    tokenizer: hf://deepseek-ai/DeepSeek-...

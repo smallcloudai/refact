@@ -1,14 +1,13 @@
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 
 use tokenizers::Tokenizer;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::ast::chunk_utils::get_chunks;
-use crate::ast::count_tokens;
 use crate::ast::file_splitter::LINES_OVERLAP;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
+use crate::tokens::count_text_tokens_with_fallback;
 use crate::vecdb::vdb_structs::SplitResult;
 
 pub struct FileSplitter {
@@ -24,7 +23,7 @@ impl FileSplitter {
     }
 
     pub async fn vectorization_split(&self, doc: &Document,
-                                     tokenizer: Option<Arc<StdRwLock<Tokenizer>>>,
+                                     tokenizer: Option<Arc<Tokenizer>>,
                                      tokens_limit: usize,
                                      global_context: Arc<ARwLock<GlobalContext>>
     ) -> Result<Vec<SplitResult>, String> {
@@ -41,7 +40,7 @@ impl FileSplitter {
         let mut top_row: i32 = -1;
         let lines = text.split('\n').collect::<Vec<_>>();
         for (line_idx, line) in lines.iter().enumerate() {
-            let text_orig_tok_n = count_tokens(tokenizer.clone(), line);
+            let text_orig_tok_n = count_text_tokens_with_fallback(tokenizer.clone(), line);
             if top_row == -1 && text_orig_tok_n != 0 { // top lines are empty
                 top_row = line_idx as i32;
             }

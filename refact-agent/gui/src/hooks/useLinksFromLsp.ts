@@ -45,8 +45,7 @@ export function useGetLinksFromLsp() {
   // TODO: add the model
   const caps = useGetCapsQuery();
 
-  const model =
-    useAppSelector(selectModel) || caps.data?.code_chat_default_model;
+  const model = useAppSelector(selectModel) || caps.data?.chat_default_model;
 
   const unCalledTools = React.useMemo(() => {
     if (messages.length === 0) return false;

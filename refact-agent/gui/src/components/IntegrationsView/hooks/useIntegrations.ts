@@ -620,8 +620,8 @@ export const useIntegrations = ({
   );
 
   const handleDeleteIntegration = useCallback(
-    async (configurationPath: string, integrationName: string) => {
-      // if (!currentIntegration) return;
+    async (configurationPath: string) => {
+      if (!currentIntegration) return;
       setIsDeletingIntegration(true);
       const response = await deleteIntegrationTrigger(configurationPath);
       debugIntegrations("[DEBUG]: response: ", response);
@@ -632,7 +632,7 @@ export const useIntegrations = ({
       dispatch(
         setInformation(
           `${toPascalCase(
-            integrationName,
+            currentIntegration.integr_name,
           )} integration's configuration was deleted successfully!`,
         ),
       );
@@ -642,7 +642,7 @@ export const useIntegrations = ({
         clearTimeout(timeoutId);
       }, 1200);
     },
-    [dispatch, deleteIntegrationTrigger, handleFormReturn],
+    [currentIntegration, dispatch, deleteIntegrationTrigger, handleFormReturn],
   );
 
   const handleIntegrationFormChange = useCallback(

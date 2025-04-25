@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use glob::Pattern;
 use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
@@ -9,7 +9,9 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile, SubchatParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ContextEnum, ContextFile, SubchatParameters};
+use crate::custom_error::MapErrToString;
+use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::http::http_post_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
@@ -17,7 +19,7 @@ use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::get_model_record;
+use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
 use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
@@ -35,12 +37,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             let mut error_log = Vec::new();
             let tconfig = load_customization(gcx.clone(), true, &mut error_log).await;
             for e in error_log.iter() {
-                tracing::error!(
-                    "{}:{} {:?}",
-                    crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-                    e.error_line,
-                    e.error_msg,
-                );
+                tracing::error!("{e}");
             }
             tconfig.subchat_tool_parameters.get(tool_name).cloned()
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
@@ -48,20 +45,47 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     };
 
     // check if the models exist otherwise use the external chat model
-    match get_model_record(gcx, &params.subchat_model).await {
-        Ok(_) => {}
-        Err(err) => {
-            let current_model = ccx.lock().await.current_model.clone();
-            warn!("subchat_model {} is not available: {}. Using {} model as a fallback", params.subchat_model, err, current_model);
-            params.subchat_model = current_model;
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
+
+    if !params.subchat_model.is_empty() {
+        match resolve_chat_model(caps.clone(), &params.subchat_model) {
+            Ok(_) => return Ok(params),
+            Err(e) => {
+                tracing::warn!("Specified subchat_model {} is not available: {}", params.subchat_model, e);
+            }
         }
     }
+
+    let current_model = ccx.lock().await.current_model.clone();
+    let model_to_resolve = match params.subchat_model_type {
+        ChatModelType::Light => &caps.defaults.chat_light_model,
+        ChatModelType::Default => &caps.defaults.chat_default_model,
+        ChatModelType::Thinking => &caps.defaults.chat_thinking_model,
+    };
+
+    params.subchat_model = match resolve_model(&caps.chat_models, model_to_resolve) {
+        Ok(model_rec) => {
+            if !is_cloud_model(&current_model) && is_cloud_model(&model_rec.base.id)
+                && params.subchat_model_type != ChatModelType::Light {
+                current_model.to_string()
+            } else {
+                model_rec.base.id.clone()
+            }
+        },
+        Err(e) => {
+            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.", 
+                params.subchat_model_type, e, current_model);
+            current_model
+        }
+    };
+
+    tracing::info!("using model for subchat: {}", params.subchat_model);
     Ok(params)
 }
 
 pub async fn run_tools_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_name: &str,
+    model_id: &str,
     maxgen: usize,
     original_messages: &[ChatMessage],
     stream_back_to_user: &mut HasRagResults,
@@ -87,7 +111,7 @@ pub async fn run_tools_remotely(
         maxgen,
         subchat_tool_parameters,
         postprocess_parameters,
-        model_name: model_name.to_string(),
+        model_name: model_id.to_string(),
         chat_id,
         style: style.clone(),
     };
@@ -109,7 +133,7 @@ pub async fn run_tools_remotely(
 pub async fn run_tools_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tools: &mut IndexMap<String, Box<dyn Tool + Send>>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -131,7 +155,7 @@ pub async fn run_tools_locally(
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tools: &mut IndexMap<String, Box<dyn Tool+Send>>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     style: &Option<String>,
@@ -276,7 +300,7 @@ async fn pp_run_tools(
     generated_other: Vec<ChatMessage>,
     context_files_for_pp: &mut Vec<ContextFile>,
     tokens_for_rag: usize,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
     let mut generated_tool = generated_tool.to_vec();
