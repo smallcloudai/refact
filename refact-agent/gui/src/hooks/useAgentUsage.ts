@@ -22,6 +22,7 @@ export function useAgentUsage() {
   const isWaiting = useAppSelector(selectIsWaiting);
   const currentModel = useAppSelector(selectModel);
 
+  // TODO: remove, because we use coins now
   const usageLimitExhaustedMessage = useMemo(() => {
     const userPlan = user.data?.inference;
     return userPlan === "FREE"

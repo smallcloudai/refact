@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton, Strong, Quote } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
@@ -27,7 +27,11 @@ import { CapsSelect, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
-import { clearError, getErrorMessage } from "../../features/Errors/errorsSlice";
+import {
+  clearError,
+  getErrorMessage,
+  getErrorType,
+} from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useAttachedFiles, useCheckboxes } from "./useCheckBoxes";
 import { useInputValue } from "./useInputValue";
@@ -35,7 +39,7 @@ import {
   clearInformation,
   getInformationMessage,
 } from "../../features/Errors/informationSlice";
-import { InformationCallout } from "../Callout/Callout";
+import { BallanceCallOut, InformationCallout } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachImagesButton, FileList } from "../Dropzone";
@@ -79,6 +83,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
   const globalError = useAppSelector(getErrorMessage);
+  const globalErrorType = useAppSelector(getErrorType);
   const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
@@ -297,6 +302,10 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     handleSubmit,
     setIsSendImmediately,
   ]);
+
+  if (globalErrorType === "ballance") {
+    return <BallanceCallOut onClick={() => dispatch(clearError())} />;
+  }
 
   if (globalError) {
     return (

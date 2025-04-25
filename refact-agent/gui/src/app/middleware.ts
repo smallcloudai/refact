@@ -49,6 +49,7 @@ import { isToolResponse } from "../events";
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
 
+// TODO: can remove when using coins.
 const USAGE_LIMITS_ERROR_MESSAGES = [
   '429 Too Many Requests: "Free plan daily limit reached',
   '429 Too Many Requests: "Pro plan daily limit reached',
@@ -510,6 +511,7 @@ startListening({
   actionCreator: setError,
   effect: (state, listenerApi) => {
     const rootState = listenerApi.getState();
+    // TODO: can remove ?
     if (
       state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[0]) ||
       state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[1])
