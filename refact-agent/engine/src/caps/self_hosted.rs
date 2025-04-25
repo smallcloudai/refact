@@ -161,7 +161,6 @@ pub fn load_self_hosted_caps(
             n_ctx: model_rec.n_ctx,
             ..Default::default()
         };
-        configure_base_model(&mut base, &model_name, &self_hosted_caps.chat.endpoint)?;
 
         let (scratchpad, scratchpad_patch) = if !model_rec.supports_scratchpads.is_empty() {
             let scratchpad_name = model_rec.supports_scratchpads.keys().next().unwrap_or(&default_chat_scratchpad()).clone();
@@ -171,6 +170,14 @@ pub fn load_self_hosted_caps(
             (default_chat_scratchpad(), serde_json::Value::Null)
         };
 
+        // Non passthrough models, don't support endpoints of `/v1/chat/completions` in openai style, only `/v1/completions`
+        let endpoint_to_use = if scratchpad == "PASSTHROUGH" {
+            &self_hosted_caps.chat.endpoint
+        } else {
+            &self_hosted_caps.completion.endpoint
+        };
+
+        configure_base_model(&mut base, &model_name, endpoint_to_use)?;
         let chat_model = ChatModelRecord {
             base,
             scratchpad,
