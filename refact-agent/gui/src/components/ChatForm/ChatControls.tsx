@@ -9,7 +9,6 @@ import {
   Switch,
   Badge,
   Button,
-  DataList,
 } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";

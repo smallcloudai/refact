@@ -24,11 +24,13 @@ function isUser(json: unknown): json is User {
     typeof json.inference_url === "string" &&
     "inference" in json &&
     typeof json.inference === "string" &&
-    "refact_agent_max_request_num" in json &&
+    "refact_agent_max_request_num" in json && // TODO: can remove this
     typeof json.refact_agent_max_request_num === "number" &&
-    "refact_agent_request_available" in json &&
+    "refact_agent_request_available" in json && // TODO: can remove this
     (json.refact_agent_request_available === null ||
-      typeof json.refact_agent_max_request_num === "number")
+      typeof json.refact_agent_max_request_num === "number") &&
+    "metering_balance" in json &&
+    typeof json.metering_balance === "number"
   );
 }
 
