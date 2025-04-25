@@ -32,6 +32,8 @@ declare global {
     RefactChat: {
       render: (root: Element, config: Partial<Config>) => void;
     };
+
+    originalPostMessage?: typeof window.postMessage;
   }
 }
 
@@ -72,10 +74,7 @@ export class FakeIde {
     }, host);
 
     const fakeIde = new FakeIde(page);
-    // fakeIde.updateConfig({ host, themeProps: { appearance: "dark" } });
-    // await fakeIde.updateConfig({ host, lspPort, themeProps: { appearance } });
-    // // TODO: mock event bus https://playwright.dev/docs/mock-browser-apis
-    // console error, postMEssage is not a function :/
+
     await fakeIde.mockMessageBus(host);
 
     // page.goto("/");
@@ -106,20 +105,24 @@ export class FakeIde {
     }
 
     return await this.page.addInitScript(() => {
-      const originalPostMessage = window.postMessage;
+      window.originalPostMessage = window.postMessage;
 
       window.postMessage = (...args: Parameters<typeof window.postMessage>) => {
         window.logMessage(...args);
-        originalPostMessage(...args);
+        window.originalPostMessage(...args);
       };
     });
   }
 
   async dispatch(event: EventsToIde) {
     // return this.page.locator("window").dispatchEvent("message", message);
-    return this.page.evaluate((message) => {
-      window.postMessage(message, this.page.url());
-    }, event);
+    return this.page.evaluate(
+      (message) => {
+        // window.postMessage(message, "*");
+        window.originalPostMessage(message);
+      },
+      [event, this.page.url()]
+    );
   }
 
   async clearMessages() {
