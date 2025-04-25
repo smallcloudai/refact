@@ -49,6 +49,7 @@ impl AtCommandsContext {
         messages: Vec<ChatMessage>,
         chat_id: String,
         should_execute_remotely: bool,
+        current_model: String,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {
@@ -61,7 +62,7 @@ impl AtCommandsContext {
             pp_skeleton: true,
             correction_only_up_to_step: 0,
             chat_id,
-            current_model: "".to_string(),
+            current_model,
             should_execute_remotely,
 
             at_commands: at_commands_dict(global_context.clone()).await,

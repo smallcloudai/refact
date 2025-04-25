@@ -19,7 +19,7 @@ pub async fn handle_v1_integrations(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     _: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
-    let integrations = crate::integrations::setting_up_integrations::integrations_all(gcx.clone()).await;
+    let integrations = crate::integrations::setting_up_integrations::integrations_all(gcx.clone(), true).await;
     let payload = serde_json::to_string_pretty(&integrations).map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to serialize payload: {}", e))
     })?;
@@ -34,7 +34,7 @@ pub async fn handle_v1_integrations_filtered(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     Path(integr_name): Path<String>,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
-    let integrations_result: crate::integrations::setting_up_integrations::IntegrationResult = crate::integrations::setting_up_integrations::integrations_all(gcx.clone()).await;
+    let integrations_result: crate::integrations::setting_up_integrations::IntegrationResult = crate::integrations::setting_up_integrations::integrations_all(gcx.clone(), true).await;
     let mut filtered_integrations = Vec::new();
 
     for integration in &integrations_result.integrations {

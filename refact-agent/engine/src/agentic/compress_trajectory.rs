@@ -112,17 +112,16 @@ pub async fn compress_trajectory(
             ..Default::default()
         },
     );
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(
-        AtCommandsContext::new(
-            gcx.clone(),
-            n_ctx,
-            1,
-            false,
-            messages_compress.clone(),
-            "".to_string(),
-            false,
-        ).await,
-    ));
+    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(),
+        n_ctx,
+        1,
+        false,
+        messages_compress.clone(),
+        "".to_string(),
+        false,
+        model_name.clone(),
+    ).await));
     let tools = gather_used_tools(&messages);
     let new_messages = subchat_single(
         ccx.clone(),

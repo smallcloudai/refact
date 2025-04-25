@@ -97,6 +97,7 @@ pub async fn handle_v1_command_completion(
         vec![],
         "".to_string(),
         false,
+        "".to_string(),
     ).await));
 
     let at_commands = {
@@ -199,6 +200,7 @@ pub async fn handle_v1_command_preview(
         vec![],
         "".to_string(),
         false,
+        model_name.clone(),
     ).await));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(
@@ -300,6 +302,7 @@ pub async fn handle_v1_at_command_execute(
         vec![],
         "".to_string(),
         false,
+        post.model_name.clone(),
     ).await;
     ccx.subchat_tool_parameters = post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = post.postprocess_parameters.clone();

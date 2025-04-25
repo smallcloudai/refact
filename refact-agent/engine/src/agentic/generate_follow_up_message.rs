@@ -74,7 +74,7 @@ fn _make_conversation(
 pub async fn generate_follow_up_message(
     messages: Vec<ChatMessage>,
     gcx: Arc<ARwLock<GlobalContext>>,
-    light_model_name: Option<String>,
+    light_model_name: String,
     current_model_name: &String,
     chat_id: &str,
 ) -> Result<FollowUpResponse, String> {
@@ -86,11 +86,11 @@ pub async fn generate_follow_up_message(
         messages.clone(),
         chat_id.to_string(),
         false,
+        current_model_name.clone(),
     ).await));
-    let model_name = light_model_name.unwrap_or(current_model_name.to_string());
     let updated_messages: Vec<Vec<ChatMessage>> = subchat_single(
         ccx.clone(),
-        &model_name,
+        &light_model_name,
         _make_conversation(&messages),
         Some(vec![]),
         None,

@@ -39,6 +39,7 @@ import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
 import resultStyle from "react-syntax-highlighter/dist/esm/styles/hljs/arta";
 import { FadedButton } from "../Buttons";
+import { AnimatedText } from "../Text";
 type ResultProps = {
   children: string;
   isInsideScrollArea?: boolean;
@@ -132,6 +133,20 @@ export const SingleModelToolContent: React.FC<{
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
 
+  const toolCallsId = useMemo(() => {
+    const ids = toolCalls.reduce<string[]>((acc, toolCall) => {
+      if (typeof toolCall.id === "string") return [...acc, toolCall.id];
+      return acc;
+    }, []);
+
+    return ids;
+  }, [toolCalls]);
+
+  const results = useAppSelector(selectManyToolResultsByIds(toolCallsId));
+  const allResolved = useMemo(() => {
+    return results.length === toolCallsId.length;
+  }, [results.length, toolCallsId.length]);
+
   const handleClose = useCallback(() => {
     handleHide();
     setOpen(false);
@@ -187,6 +202,7 @@ export const SingleModelToolContent: React.FC<{
             subchat={subchat}
             open={open}
             onClick={() => setOpen((prev) => !prev)}
+            waiting={!allResolved}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -344,6 +360,13 @@ const MultiModalToolContent: React.FC<{
     };
   });
 
+  const hasResults = useMemo(() => {
+    const resultIds = toolResults.map((d) => d.tool_call_id);
+    return toolCalls.every(
+      (toolCall) => toolCall.id && resultIds.includes(toolCall.id),
+    );
+  }, [toolCalls, toolResults]);
+
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -353,6 +376,7 @@ const MultiModalToolContent: React.FC<{
             open={open}
             onClick={() => setOpen((prev) => !prev)}
             ref={ref}
+            waiting={!hasResults}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -435,6 +459,7 @@ type ToolUsageSummaryProps = {
   subchat?: string;
   open: boolean;
   onClick?: () => void;
+  waiting: boolean;
 };
 
 const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
@@ -446,54 +471,58 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
       subchat,
       open,
       onClick,
+      waiting,
     },
     ref,
   ) => {
     return (
-      <Flex gap="2" align="end" onClick={onClick} ref={ref}>
-        <Flex
-          gap="1"
-          align="start"
-          direction="column"
-          style={{ cursor: "pointer" }}
-        >
-          <Text weight="light" size="1">
-            🔨{" "}
-            {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
-              <span key={functionName}>
-                <ToolUsageDisplay
-                  functionName={functionName}
-                  amountOfCalls={amountOfCalls}
-                />
-                {index === toolUsageAmount.length - 1 ? "" : ", "}
-              </span>
-            ))}
-          </Text>
-          {hiddenFiles && hiddenFiles > 0 && (
-            <Text weight="light" size="1" ml="4">
-              {`🔎 <${hiddenFiles} files hidden>`}
-            </Text>
-          )}
-          {shownAttachedFiles?.map((file, index) => {
-            if (!file) return null;
-
-            return (
-              <Text weight="light" size="1" key={index} ml="4">
-                🔎 {file}
-              </Text>
-            );
-          })}
-          {subchat && (
-            <Flex ml="4">
-              <Spinner />
-              <Text weight="light" size="1" ml="4px">
-                {subchat}
-              </Text>
+      <AnimatedText as="div" weight="light" size="1" animating={waiting}>
+        <Flex gap="2" align="end" onClick={onClick} ref={ref} my="2">
+          <Flex
+            gap="1"
+            align="start"
+            direction="column"
+            style={{ cursor: "pointer" }}
+          >
+            <Flex gap="2" align="center" justify="center">
+              {waiting ? <Spinner /> : "🔨"} {/* 🔨{" "} */}
+              {toolUsageAmount.map(({ functionName, amountOfCalls }, index) => (
+                <span key={functionName}>
+                  <ToolUsageDisplay
+                    functionName={functionName}
+                    amountOfCalls={amountOfCalls}
+                  />
+                  {index === toolUsageAmount.length - 1 ? "" : ", "}
+                </span>
+              ))}
             </Flex>
-          )}
+
+            {hiddenFiles && hiddenFiles > 0 && (
+              <Text weight="light" size="1" ml="4">
+                {`🔎 <${hiddenFiles} files hidden>`}
+              </Text>
+            )}
+            {shownAttachedFiles?.map((file, index) => {
+              if (!file) return null;
+
+              return (
+                <Text weight="light" size="1" key={index} ml="4">
+                  🔎 {file}
+                </Text>
+              );
+            })}
+            {subchat && (
+              <Flex ml="4">
+                <Spinner />
+                <Text weight="light" size="1" ml="4px">
+                  {subchat}
+                </Text>
+              </Flex>
+            )}
+          </Flex>
+          <Chevron open={open} />
         </Flex>
-        <Chevron open={open} />
-      </Flex>
+      </AnimatedText>
     );
   },
 );

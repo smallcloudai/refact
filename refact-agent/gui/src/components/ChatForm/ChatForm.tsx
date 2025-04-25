@@ -23,7 +23,7 @@ import {
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
 import { FilesPreview } from "./FilesPreview";
-import { ChatControls } from "./ChatControls";
+import { CapsSelect, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -375,68 +375,67 @@ export const ChatForm: React.FC<ChatFormProps> = ({
               />
             )}
           />
-          <Flex
-            className={styles.textareaInteractive}
-            align="center"
-            justify="between"
-          >
-            <ThinkingButton />
-            <Flex gap="2" align="center" className={styles.buttonGroup}>
+          <Flex gap="1" wrap="wrap" py="1" px="2">
+            <CapsSelect />
+
+            <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
+              <ThinkingButton />
               <TokensPreview
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}
               />
-
-              <IconButton
-                size="1"
-                variant="ghost"
-                color={
-                  lastSentCompression === "high"
-                    ? "red"
-                    : lastSentCompression === "medium"
-                      ? "yellow"
-                      : undefined
-                }
-                title="Compress chat and continue"
-                type="button"
-                onClick={() => void compressChat()}
-                disabled={
-                  messages.length === 0 ||
-                  isStreaming ||
-                  isWaiting ||
-                  unCalledTools
-                }
-                loading={compressChatRequest.isLoading || isCompressing}
-              >
-                <ArchiveIcon />
-              </IconButton>
-              {toolUse === "agent" && (
-                <AgentIntegrationsButton
-                  title="Set up Agent Integrations"
+              <Flex gap="2" align="center" justify="center">
+                <IconButton
                   size="1"
+                  variant="ghost"
+                  color={
+                    lastSentCompression === "high"
+                      ? "red"
+                      : lastSentCompression === "medium"
+                        ? "yellow"
+                        : undefined
+                  }
+                  title="Compress chat and continue"
                   type="button"
-                  onClick={handleAgentIntegrationsClick}
-                  ref={(x) => refs.setSetupIntegrations(x)}
-                />
-              )}
-              {onClose && (
-                <BackToSideBarButton
-                  disabled={isStreaming}
-                  title="Return to sidebar"
-                  size="1"
-                  onClick={onClose}
-                />
-              )}
-              {config.features?.images !== false &&
-                isMultimodalitySupportedForCurrentModel && (
-                  <AttachImagesButton />
+                  onClick={() => void compressChat()}
+                  disabled={
+                    messages.length === 0 ||
+                    isStreaming ||
+                    isWaiting ||
+                    unCalledTools
+                  }
+                  loading={compressChatRequest.isLoading || isCompressing}
+                >
+                  <ArchiveIcon />
+                </IconButton>
+                {toolUse === "agent" && (
+                  <AgentIntegrationsButton
+                    title="Set up Agent Integrations"
+                    size="1"
+                    type="button"
+                    onClick={handleAgentIntegrationsClick}
+                    ref={(x) => refs.setSetupIntegrations(x)}
+                  />
                 )}
-              {/* TODO: Reserved space for microphone button coming later on */}
-              <PaperPlaneButton
-                disabled={disableSend}
-                title="Send message"
-                size="1"
-                type="submit"
-              />
+                {onClose && (
+                  <BackToSideBarButton
+                    disabled={isStreaming}
+                    title="Return to sidebar"
+                    size="1"
+                    onClick={onClose}
+                  />
+                )}
+                {config.features?.images !== false &&
+                  isMultimodalitySupportedForCurrentModel && (
+                    <AttachImagesButton />
+                  )}
+                {/* TODO: Reserved space for microphone button coming later on */}
+                <PaperPlaneButton
+                  disabled={disableSend}
+                  title="Send message"
+                  size="1"
+                  type="submit"
+                />
+              </Flex>
             </Flex>
           </Flex>
         </Form>

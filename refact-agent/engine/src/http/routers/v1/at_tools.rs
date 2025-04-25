@@ -133,7 +133,14 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
     }
 
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
-        gcx.clone(), 1000, 1, false, post.messages.clone(), "".to_string(), false
+        gcx.clone(),
+        1000,
+        1,
+        false,
+        post.messages.clone(),
+        "".to_string(),
+        false,
+        "".to_string(),
     ).await)); // used only for should_confirm
 
     let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
@@ -230,6 +237,7 @@ pub async fn handle_v1_tools_execute(
         tools_execute_post.messages.clone(),
         tools_execute_post.chat_id.clone(),
         false,
+        tools_execute_post.model_name.clone(),
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();

@@ -202,3 +202,45 @@ export const MarkdownIssue: Story = {
     },
   },
 };
+
+export const ToolWaiting: Story = {
+  args: {
+    thread: {
+      ...MARKDOWN_ISSUE,
+      messages: [
+        { role: "user", content: "call a tool and wait" },
+        {
+          role: "assistant",
+          content: "",
+          tool_calls: [
+            {
+              id: "toolu_01JbWarAwzjMyV6azDkd5skX",
+              function: {
+                arguments: '{"use_ast": true}',
+                name: "tree",
+              },
+              type: "function",
+              index: 0,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  parameters: {
+    msw: {
+      handlers: [
+        goodCaps,
+        goodPing,
+        goodPrompts,
+        goodUser,
+        // noChatLinks,
+        noTools,
+        makeKnowledgeFromChat,
+        ToolConfirmation,
+        noCompletions,
+        noCommandPreview,
+      ],
+    },
+  },
+};
