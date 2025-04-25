@@ -9,6 +9,7 @@ import {
   Switch,
   Badge,
   Button,
+  DataList,
 } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -164,6 +165,28 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
 
+  const optionsWithToolTips = useMemo(
+    () =>
+      caps.usableModelsForPlan.map((option) => {
+        if (!caps.data) return option;
+        if (!(option.value in caps.data.metadata.pricing)) return option;
+        const pricingForModel = caps.data.metadata.pricing[option.value];
+        const title = Object.entries(pricingForModel).reduce<string>(
+          (acc, [key, value]) => {
+            const str = `${key}: ${value / 1000}`;
+            if (acc.length === 0) return `Coins per token\n${str}`;
+            return acc + "\n" + str;
+          },
+          "",
+        );
+        return {
+          ...option,
+          title,
+        };
+      }),
+    [caps.data, caps.usableModelsForPlan],
+  );
+
   const allDisabled = caps.usableModelsForPlan.every((option) => {
     if (typeof option === "string") return false;
     return option.disabled;
@@ -188,7 +211,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
           ) : (
             <Select
               title="chat model"
-              options={caps.usableModelsForPlan}
+              options={optionsWithToolTips}
               value={caps.currentModel}
               onChange={caps.setCapModel}
               disabled={disabled}

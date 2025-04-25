@@ -76,6 +76,32 @@ export type CodeCompletionModel = {
   supports_clicks?: boolean;
 };
 
+type CapCost = {
+  prompt: number;
+  generated: number;
+};
+
+function isCapCost(json: unknown): json is CapCost {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("prompt" in json)) return false;
+  if (typeof json.prompt !== "number") return false;
+  if (!("generated" in json)) return false;
+  if (typeof json.generated !== "number") return false;
+  return true;
+}
+type CapsMetadata = {
+  pricing: Record<string, CapCost>;
+};
+
+function isCapsMetadata(json: unknown): json is CapsMetadata {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("pricing" in json)) return false;
+  if (!json.pricing) return false;
+  return Object.values(json.pricing).every(isCapCost);
+}
+
 export type CapsResponse = {
   caps_version: number;
   cloud_name: string;
@@ -93,6 +119,7 @@ export type CapsResponse = {
   tokenizer_path_template: string;
   tokenizer_rewrite_path: Record<string, unknown>;
   support_metadata: boolean;
+  metadata: CapsMetadata;
 };
 
 export function isCapsResponse(json: unknown): json is CapsResponse {
@@ -101,6 +128,8 @@ export function isCapsResponse(json: unknown): json is CapsResponse {
   if (!("code_chat_default_model" in json)) return false;
   if (typeof json.code_chat_default_model !== "string") return false;
   if (!("code_chat_models" in json)) return false;
+  if (!("metadata" in json)) return false;
+  if (!isCapsMetadata(json.metadata)) return false;
   return true;
 }
 
