@@ -24,7 +24,6 @@ function sizeToCssVariable(size: AnimationSize) {
 const EYE_ANIMATION_FRAMES: [number, number] = [0, 70];
 const CHAR_ANIMATION_FRAMES: [number, number] = [79, 213];
 const SPIN_ANIMATION_FRAMES: [number, number] = [214, 254];
-const HAPPY_EYES: [number, number] = [242, 250];
 
 export const LogoAnimation: React.FC<LogoAnimationProps> = ({
   size = defaultSize,
@@ -49,10 +48,10 @@ export const LogoAnimation: React.FC<LogoAnimationProps> = ({
       playSegments([EYE_ANIMATION_FRAMES, SPIN_ANIMATION_FRAMES], true);
     } else if (isStreaming) {
       playSegments(CHAR_ANIMATION_FRAMES, true);
-    } else {
-      playSegments(HAPPY_EYES, true);
     }
   }, [isStreaming, isWaiting, playSegments]);
+
+  if (!isStreaming && !isWaiting) return false;
 
   return View;
 };

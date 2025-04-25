@@ -160,7 +160,7 @@ export const AgentRollbackSwitch: React.FC = () => {
   );
 };
 
-export const CapsSelect: React.FC = () => {
+export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
 
@@ -191,6 +191,7 @@ export const CapsSelect: React.FC = () => {
               options={caps.usableModelsForPlan}
               value={caps.currentModel}
               onChange={caps.setCapModel}
+              disabled={disabled}
             />
           )}
         </Box>
