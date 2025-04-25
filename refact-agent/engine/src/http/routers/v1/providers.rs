@@ -24,10 +24,10 @@ pub struct ProviderDTO {
     api_key: String,
     #[serde(default)]
     tokenizer_api_key: String,
-    
+
     #[serde(flatten)]
     defaults: DefaultModels,
-    
+
     enabled: bool,
     #[serde(default)]
     readonly: bool,
@@ -40,11 +40,11 @@ fn default_true() -> bool { true }
 impl ProviderDTO {
     pub fn from_caps_provider(provider: CapsProvider, readonly: bool) -> Self {
         let mut defaults = provider.defaults.clone();
-        
+
         if !provider.supports_completion {
             defaults.completion_default_model = String::new();
         }
-        
+
         ProviderDTO {
             name: provider.name,
             endpoint_style: provider.endpoint_style,
@@ -154,7 +154,7 @@ pub struct EmbeddingModelDTO {
     embedding_size: i32,
     rejection_threshold: f32,
     embedding_batch: usize,
-    
+
     #[serde(skip_deserializing, rename = "type", default = "model_type_embedding")]
     model_type: ModelType,
 }
@@ -186,7 +186,7 @@ pub async fn handle_v1_providers(
 
     let template_names = get_provider_templates().keys().collect::<Vec<_>>();
     let (providers, read_errors) = read_providers_d(Vec::new(), &config_dir).await;
-    
+
     let mut result = providers.into_iter()
         .filter(|p| template_names.contains(&&p.name))
         .map(|p| json!({
@@ -196,7 +196,7 @@ pub async fn handle_v1_providers(
             "supports_completion": p.supports_completion
         }))
         .collect::<Vec<_>>();
-    
+
     match crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
             if !caps.cloud_name.is_empty() {
@@ -226,7 +226,7 @@ pub async fn handle_v1_providers(
 
 pub async fn handle_v1_provider_templates() -> Response<Body> {
     let provider_templates = get_provider_templates();
-    
+
     let result = provider_templates.keys().map(|name| { json!({
         "name": name
     })}).collect::<Vec<_>>();
@@ -292,11 +292,11 @@ pub async fn handle_v1_post_provider(
     let mut file_value = read_yaml_file_as_value_if_exists(&provider_path).await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    update_yaml_field_if_needed(&mut file_value, "endpoint_style", 
+    update_yaml_field_if_needed(&mut file_value, "endpoint_style",
         provider_dto.endpoint_style, provider_template.endpoint_style);
-    update_yaml_field_if_needed(&mut file_value, "api_key", 
+    update_yaml_field_if_needed(&mut file_value, "api_key",
         provider_dto.api_key, provider_template.api_key);
-    update_yaml_field_if_needed(&mut file_value, "tokenizer_api_key", 
+    update_yaml_field_if_needed(&mut file_value, "tokenizer_api_key",
         provider_dto.tokenizer_api_key, provider_template.tokenizer_api_key);
     update_yaml_field_if_needed(&mut file_value, "chat_endpoint",
         provider_dto.chat_endpoint, provider_template.chat_endpoint);
@@ -365,29 +365,29 @@ pub async fn handle_v1_delete_provider(
     };
 
     if use_server_provider {
-        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, 
+        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY,
             "Cannot delete server provider".to_string()));
     }
 
     let config_dir = gcx.read().await.config_dir.clone();
 
     if !get_provider_templates().contains_key(&params.provider_name) {
-        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, 
+        return Err(ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY,
             format!("Provider template '{}' not found", params.provider_name)));
     }
-    
+
     let provider_path = config_dir.join("providers.d")
         .join(format!("{}.yaml", params.provider_name));
-    
+
     if !provider_path.exists() {
-        return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+        return Err(ScratchError::new(StatusCode::NOT_FOUND,
             format!("Provider '{}' does not exist", params.provider_name)));
     }
-    
+
     tokio::fs::remove_file(&provider_path).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, 
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR,
             format!("Failed to delete provider file: {}", e)))?;
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
@@ -427,7 +427,7 @@ pub async fn handle_v1_models(
         },
         "embedding_model": ModelLightResponse::new(provider.embedding_model),
     });
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
@@ -527,34 +527,34 @@ pub async fn handle_v1_post_model(
         if !file_value.get(models_key).is_some() {
             file_value[models_key] = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
         }
-        
+
         let model_entry = if file_value[models_key].get(model_name).is_some() {
             file_value[models_key][model_name].clone()
         } else {
             serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
         };
-        
+
         model_entry.as_mapping().unwrap_or(&serde_yaml::Mapping::new()).clone()
     }
-    
+
     match post.model_type {
         ModelType::Chat => {
             let chat_model = serde_json::from_value::<ChatModelDTO>(post.model)
                 .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing model: {}", e)))?;
             let models_key = "chat_models";
-            
+
             let mut model_value = get_or_create_model_mapping(&mut file_value, models_key, &chat_model.name);
-            
+
             model_value.insert("n_ctx".into(), chat_model.n_ctx.into());
             model_value.insert("tokenizer".into(), chat_model.tokenizer.into());
             model_value.insert("enabled".into(), chat_model.enabled.into());
-            
+
             model_value.insert("supports_tools".into(), chat_model.supports_tools.into());
             model_value.insert("supports_multimodality".into(), chat_model.supports_multimodality.into());
             model_value.insert("supports_clicks".into(), chat_model.supports_clicks.into());
             model_value.insert("supports_agent".into(), chat_model.supports_agent.into());
             model_value.insert("supports_boost_reasoning".into(), chat_model.supports_boost_reasoning.into());
-            
+
             model_value.insert("supports_reasoning".into(),
                 match chat_model.supports_reasoning {
                     Some(supports_reasoning) => supports_reasoning.into(),
@@ -567,14 +567,14 @@ pub async fn handle_v1_post_model(
                     None => serde_yaml::Value::Null,
                 }
             );
-            
+
             file_value[models_key][chat_model.name] = model_value.into();
         },
         ModelType::Completion => {
             let completion_model = serde_json::from_value::<CompletionModelDTO>(post.model)
                 .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing model: {}", e)))?;
             let models_key = "completion_models";
-            
+
             let mut model_value = get_or_create_model_mapping(&mut file_value, models_key, &completion_model.name);
 
             if let Some(model_family) = completion_model.model_family {
@@ -586,26 +586,26 @@ pub async fn handle_v1_post_model(
                 model_value.insert("scratchpad_patch".into(), serde_yaml::from_str(&family_model_rec.scratchpad_patch.to_string()).unwrap());
                 model_value.insert("tokenizer".into(), family_model_rec.base.tokenizer.clone().into());
             }
-            
+
             model_value.insert("n_ctx".into(), completion_model.n_ctx.into());
             model_value.insert("enabled".into(), completion_model.enabled.into());
-            
+
             file_value[models_key][completion_model.name] = model_value.into();
         },
         ModelType::Embedding => {
             let embedding_model = serde_json::from_value::<EmbeddingModelDTO>(post.model)
                 .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("Error parsing model: {}", e)))?;
             let mut model_value = serde_yaml::Mapping::new();
-            
+
             model_value.insert("n_ctx".into(), embedding_model.n_ctx.into());
             model_value.insert("name".into(), embedding_model.name.clone().into());
             model_value.insert("tokenizer".into(), embedding_model.tokenizer.into());
             model_value.insert("enabled".into(), embedding_model.enabled.into());
-            
+
             model_value.insert("embedding_size".into(), embedding_model.embedding_size.into());
             model_value.insert("rejection_threshold".into(), serde_yaml::Value::Number(serde_yaml::Number::from(embedding_model.rejection_threshold as f64)));
             model_value.insert("embedding_batch".into(), embedding_model.embedding_batch.into());
-            
+
             file_value["embedding_model"] = model_value.into();
         },
     }
@@ -640,12 +640,12 @@ pub async fn handle_v1_delete_model(
             let model_name = params.model.as_ref()
                 .ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
             let models_key = "chat_models";
-            
+
             if !file_value.get(models_key).is_some() || !file_value[models_key].get(model_name).is_some() {
-                return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+                return Err(ScratchError::new(StatusCode::NOT_FOUND,
                     format!("Chat model {} not found for provider {}", model_name, params.provider)));
             }
-            
+
             if let Some(mapping) = file_value[models_key].as_mapping_mut() {
                 mapping.remove(model_name);
             }
@@ -654,22 +654,22 @@ pub async fn handle_v1_delete_model(
             let model_name = params.model.as_ref()
                 .ok_or_else(|| ScratchError::new(StatusCode::BAD_REQUEST, "Missing `model` query parameter".to_string()))?;
             let models_key = "completion_models";
-            
+
             if !file_value.get(models_key).is_some() || !file_value[models_key].get(model_name).is_some() {
-                return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+                return Err(ScratchError::new(StatusCode::NOT_FOUND,
                     format!("Completion model {} not found for provider {}", model_name, params.provider)));
             }
-            
+
             if let Some(mapping) = file_value[models_key].as_mapping_mut() {
                 mapping.remove(model_name);
             }
         },
         ModelType::Embedding => {
             if !file_value.get("embedding_model").is_some() {
-                return Err(ScratchError::new(StatusCode::NOT_FOUND, 
+                return Err(ScratchError::new(StatusCode::NOT_FOUND,
                     format!("Embedding model not found for provider {}", params.provider)));
             }
-            
+
             file_value.as_mapping_mut().unwrap().remove("embedding_model");
         },
     }
@@ -689,7 +689,7 @@ pub async fn handle_v1_delete_model(
 pub async fn handle_v1_model_default(
     Query(params): Query<ModelDefaultQueryParams>,
 ) -> Result<Response<Body>, ScratchError> {
-    let model_defaults = get_provider_model_defaults().get(&params.provider).ok_or_else(|| 
+    let model_defaults = get_provider_model_default_settings_ui().get(&params.provider).ok_or_else(||
         ScratchError::new(StatusCode::NOT_FOUND, "Provider not found".to_string())
     )?;
 

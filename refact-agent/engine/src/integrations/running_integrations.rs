@@ -30,8 +30,8 @@ pub async fn load_integration_tools(
 }
 
 /// Loads and set up integrations from config files.
-/// 
-/// If `include_paths_matching` is `None`, all integrations are loaded, 
+///
+/// If `include_paths_matching` is `None`, all integrations are loaded,
 /// otherwise only those matching `include_paths_matching` glob patterns.
 pub async fn load_integrations(
     gcx: Arc<ARwLock<GlobalContext>>,

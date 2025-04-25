@@ -60,7 +60,7 @@ pub async fn handle_v1_subchat(
         None,
         None,
         None,
-        Some(false),  
+        Some(false),
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let new_messages = new_messages.into_iter()

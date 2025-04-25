@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf}; 
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 
 use indexmap::IndexMap;
@@ -7,7 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 use structopt::StructOpt;
 
 use crate::caps::{
-    BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels, 
+    BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels,
     EmbeddingModelRecord, HasBaseModelRecord, default_embedding_batch, default_rejection_threshold,
     load_caps_value_from_url, resolve_relative_urls, strip_model_from_finetune, normalize_string
 };
@@ -36,7 +36,7 @@ pub struct CapsProvider {
 
     #[serde(default)]
     pub api_key: String,
-    
+
     #[serde(default)]
     pub tokenizer_api_key: String,
 
@@ -88,7 +88,7 @@ impl CapsProvider {
             },
             Err(e) => return Err(e.to_string()),
         }
-        
+
         Ok(())
     }
 }
@@ -109,7 +109,7 @@ fn extend_collection<C: for<'de> serde::Deserialize<'de> + Extend<C::Item> + Int
     if let Some(value) = value.get(field) {
         let imported_collection = serde_yaml::from_value::<C>(value.clone())
             .map_err(|_| format!("Invalid format for {field}"))?;
-        
+
         target.extend(imported_collection);
     }
     Ok(())
@@ -123,11 +123,11 @@ fn extend_model_collection<T: for<'de> serde::Deserialize<'de> + HasBaseModelRec
     if let Some(value) = value.get(field) {
         let imported_collection = serde_yaml::from_value::<IndexMap<String, T>>(value.clone())
             .map_err(|_| format!("Invalid format for {field}"))?;
-        
+
         for (key, mut model) in imported_collection {
             model.base_mut().user_configured = true;
             if !target.contains_key(&key) && !prev_running_models.contains(&key) {
-                model.base_mut().removable = true; 
+                model.base_mut().removable = true;
             }
             target.insert(key, model);
         }
@@ -160,7 +160,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
             #[serde(default = "default_embedding_batch")]
             embedding_batch: usize,
         }
-        
+
         match Input::deserialize(deserializer)? {
             Input::String(name) => Ok(EmbeddingModelRecord {
                 base: BaseModelRecord { name, ..Default::default() },
@@ -171,7 +171,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
                     tracing::warn!("embedding_batch can't be higher than 256");
                     helper.embedding_batch = default_embedding_batch();
                 }
-                
+
                 Ok(EmbeddingModelRecord {
                     base: helper.base,
                     embedding_batch: helper.embedding_batch,
@@ -184,7 +184,7 @@ impl<'de> serde::Deserialize<'de> for EmbeddingModelRecord {
 }
 
 #[derive(Deserialize, Default, Debug)]
-pub struct ModelDefaults {
+pub struct ModelDefaultSettingsUI {
     #[serde(default)]
     pub chat: ChatModelRecord,
     #[serde(default)]
@@ -206,7 +206,7 @@ const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
     ("xai", include_str!("../yaml_configs/default_providers/xai.yaml")),
 ];
 static PARSED_PROVIDERS: OnceLock<IndexMap<String, CapsProvider>> = OnceLock::new();
-static PARSED_MODEL_DEFAULTS: OnceLock<IndexMap<String, ModelDefaults>> = OnceLock::new();
+static PARSED_MODEL_DEFAULTS: OnceLock<IndexMap<String, ModelDefaultSettingsUI>> = OnceLock::new();
 
 pub fn get_provider_templates() -> &'static IndexMap<String, CapsProvider> {
     PARSED_PROVIDERS.get_or_init(|| {
@@ -241,13 +241,13 @@ pub fn get_provider_model_default_settings_ui() -> &'static IndexMap<String, Mod
     })
 }
 
-/// Returns yaml files from providers.d directory, and list of errors from reading 
+/// Returns yaml files from providers.d directory, and list of errors from reading
 /// directory or listing files
 pub async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<String>) {
     let providers_dir = config_dir.join("providers.d");
     let mut yaml_paths = Vec::new();
     let mut errors = Vec::new();
-    
+
     let mut entries = match tokio::fs::read_dir(&providers_dir).await {
         Ok(entries) => entries,
         Err(e) => {
@@ -255,13 +255,13 @@ pub async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<St
             return (yaml_paths, errors);
         }
     };
-    
+
     while let Some(entry_result) = entries.next_entry().await.transpose() {
         match entry_result {
             Ok(entry) => {
                 let path = entry.path();
-                
-                if path.is_file() && 
+
+                if path.is_file() &&
                    path.extension().map_or(false, |ext| ext == "yaml" || ext == "yml") {
                     yaml_paths.push(path);
                 }
@@ -271,7 +271,7 @@ pub async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<St
             }
         }
     }
-    
+
     (yaml_paths, errors)
 }
 
@@ -287,7 +287,7 @@ pub fn post_process_provider(provider: &mut CapsProvider, include_disabled_model
 }
 
 pub async fn read_providers_d(
-    prev_providers: Vec<CapsProvider>, 
+    prev_providers: Vec<CapsProvider>,
     config_dir: &Path
 ) -> (Vec<CapsProvider>, Vec<YamlError>) {
     let providers_dir = config_dir.join("providers.d");
@@ -296,9 +296,9 @@ pub async fn read_providers_d(
 
     let (yaml_paths, read_errors) = get_provider_yaml_paths(config_dir).await;
     for error in read_errors {
-        error_log.push(YamlError { 
-            path: providers_dir.to_string_lossy().to_string(), 
-            error_line: 0, 
+        error_log.push(YamlError {
+            path: providers_dir.to_string_lossy().to_string(),
+            error_line: 0,
             error_msg: error.to_string(),
         });
     }
@@ -374,11 +374,11 @@ fn add_running_models(provider: &mut CapsProvider) {
 /// Returns the latest modification timestamp in seconds of any YAML file in the providers.d directory
 pub async fn get_latest_provider_mtime(config_dir: &Path) -> Option<u64> {
     let (yaml_paths, reading_errors) = get_provider_yaml_paths(config_dir).await;
-    
+
     for error in reading_errors {
         tracing::error!("{error}");
     }
-    
+
     let mut latest_mtime = None;
     for path in yaml_paths {
         match tokio::fs::metadata(&path).await {
@@ -408,7 +408,7 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
         base_model_rec.support_metadata = provider.support_metadata;
         base_model_rec.endpoint_style = provider.endpoint_style.clone();
     }
-    
+
     for mut provider in providers {
 
         let completion_models = std::mem::take(&mut provider.completion_models);
@@ -420,10 +420,10 @@ pub fn add_models_to_caps(caps: &mut CodeAssistantCaps, providers: Vec<CapsProvi
 
                 if provider.code_completion_n_ctx > 0 && provider.code_completion_n_ctx < model_rec.base.n_ctx {
                     // model is capable of more, but we may limit it from server or provider, e.x. for latency
-                    model_rec.base.n_ctx = provider.code_completion_n_ctx; 
+                    model_rec.base.n_ctx = provider.code_completion_n_ctx;
                 }
             }
-            
+
             caps.completion_models.insert(model_rec.base.id.clone(), Arc::new(model_rec));
         }
 
@@ -477,12 +477,12 @@ fn apply_models_dict_patch(provider: &mut CapsProvider) {
                 completion_rec.base.n_ctx = n_ctx as usize;
             }
         }
-        
+
         if let Some(chat_rec) = provider.chat_models.get_mut(model_name) {
             if let Some(n_ctx) = rec_patched.get("n_ctx").and_then(|v| v.as_u64()) {
                 chat_rec.base.n_ctx = n_ctx as usize;
             }
-            
+
             if let Some(supports_tools) = rec_patched.get("supports_tools").and_then(|v| v.as_bool()) {
                 chat_rec.supports_tools = supports_tools;
             }
@@ -529,7 +529,7 @@ fn populate_model_records(provider: &mut CapsProvider) {
     }
 
     for model in &provider.running_models {
-        if !provider.completion_models.contains_key(model) && 
+        if !provider.completion_models.contains_key(model) &&
             !provider.chat_models.contains_key(model) &&
             !(model == &provider.embedding_model.base.name) {
             tracing::warn!("Indicated as running, unknown model {:?} for provider {}, maybe update this rust binary", model, provider.name);
@@ -558,26 +558,26 @@ fn find_model_match<T: Clone + HasBaseModelRecord>(
         .or_else(|| provider_models.get(&model_stripped)) {
         return Some(model.clone());
     }
-    
+
     for model in provider_models.values() {
         if model.base().similar_models.contains(model_name) ||
             model.base().similar_models.contains(&model_stripped) {
             return Some(model.clone());
         }
     }
-    
+
     if let Some(model) = known_models.get(model_name)
         .or_else(|| known_models.get(&model_stripped)) {
         return Some(model.clone());
     }
-    
+
     for model in known_models.values() {
         if model.base().similar_models.contains(&model_name.to_string()) ||
             model.base().similar_models.contains(&model_stripped) {
             return Some(model.clone());
         }
     }
-    
+
     None
 }
 
@@ -589,7 +589,7 @@ pub fn resolve_api_key(provider: &CapsProvider, key: &str, fallback: &str, key_n
                 Ok(env_val) => env_val,
                 Err(e) => {
                     tracing::error!(
-                        "tried to read {} from env var {} for provider {}, but failed: {}", 
+                        "tried to read {} from env var {} for provider {}, but failed: {}",
                         key_name, k, provider.name, e
                     );
                     fallback.to_string()
@@ -633,7 +633,7 @@ pub async fn get_provider_from_template_and_config_file(
     if post_process {
         post_process_provider(&mut provider, true);
     }
-    
+
     Ok(provider)
 }
 
@@ -641,11 +641,11 @@ pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Resul
     let command_line = CommandLine::from_args();
     let cmdline_api_key = command_line.api_key.clone();
     let (caps_value, caps_url) = load_caps_value_from_url(command_line, gcx.clone()).await?;
-    
+
     let mut provider = serde_json::from_value::<CapsProvider>(caps_value).map_err_to_string()?;
-    
+
     resolve_relative_urls(&mut provider, &caps_url)?;
-    
+
     post_process_provider(&mut provider, true);
     provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);

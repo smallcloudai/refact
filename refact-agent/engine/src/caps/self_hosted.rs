@@ -14,28 +14,28 @@ use crate::caps::{
 #[derive(Debug, Deserialize, Clone, Default)]
 pub struct SelfHostedCapsModelRecord {
     pub n_ctx: usize,
-    
+
     #[serde(default)]
     pub supports_scratchpads: HashMap<String, serde_json::Value>,
-    
+
     #[serde(default)]
     pub supports_tools: bool,
-    
+
     #[serde(default)]
     pub supports_multimodality: bool,
-    
+
     #[serde(default)]
     pub supports_clicks: bool,
-    
+
     #[serde(default)]
     pub supports_agent: bool,
-    
+
     #[serde(default)]
     pub supports_reasoning: Option<String>,
-    
+
     #[serde(default)]
     pub supports_boost_reasoning: bool,
-    
+
     #[serde(default)]
     pub default_temperature: Option<f32>,
 }
@@ -100,13 +100,13 @@ pub fn load_self_hosted_caps(
 
         telemetry_basic_dest: relative_to_full_url(caps_url, &self_hosted_caps.telemetry_endpoints.telemetry_basic_endpoint)?,
         telemetry_basic_retrieve_my_own: relative_to_full_url(caps_url, &self_hosted_caps.telemetry_endpoints.telemetry_basic_retrieve_my_own_endpoint)?,
-        
+
         completion_models: IndexMap::new(),
         chat_models: IndexMap::new(),
         embedding_model: EmbeddingModelRecord::default(),
 
-        defaults: DefaultModels { 
-            completion_default_model: format!("{}/{}", self_hosted_caps.cloud_name, self_hosted_caps.completion.default_model), 
+        defaults: DefaultModels {
+            completion_default_model: format!("{}/{}", self_hosted_caps.cloud_name, self_hosted_caps.completion.default_model),
             chat_default_model: format!("{}/{}", self_hosted_caps.cloud_name, self_hosted_caps.chat.default_model),
             chat_thinking_model: String::new(),
             chat_light_model: String::new(),
@@ -137,7 +137,7 @@ pub fn load_self_hosted_caps(
             ..Default::default()
         };
         configure_base_model(&mut base, &model_name, &self_hosted_caps.completion.endpoint)?;
-        
+
         let (scratchpad, scratchpad_patch) = if !model_rec.supports_scratchpads.is_empty() {
             let scratchpad_name = model_rec.supports_scratchpads.keys().next().unwrap_or(&default_completion_scratchpad()).clone();
             let scratchpad_patch = model_rec.supports_scratchpads.values().next().unwrap_or(&serde_json::Value::Null).clone();
@@ -145,14 +145,14 @@ pub fn load_self_hosted_caps(
         } else {
             (default_completion_scratchpad(), default_completion_scratchpad_patch())
         };
-        
+
         let completion_model = CompletionModelRecord {
             base,
             scratchpad,
             scratchpad_patch,
             model_family: None,
         };
-        
+
         caps.completion_models.insert(completion_model.base.id.clone(), Arc::new(completion_model));
     }
 
@@ -162,7 +162,7 @@ pub fn load_self_hosted_caps(
             ..Default::default()
         };
         configure_base_model(&mut base, &model_name, &self_hosted_caps.chat.endpoint)?;
-        
+
         let (scratchpad, scratchpad_patch) = if !model_rec.supports_scratchpads.is_empty() {
             let scratchpad_name = model_rec.supports_scratchpads.keys().next().unwrap_or(&default_chat_scratchpad()).clone();
             let scratchpad_patch = model_rec.supports_scratchpads.values().next().unwrap_or(&serde_json::Value::Null).clone();
@@ -170,7 +170,7 @@ pub fn load_self_hosted_caps(
         } else {
             (default_chat_scratchpad(), serde_json::Value::Null)
         };
-        
+
         let chat_model = ChatModelRecord {
             base,
             scratchpad,
@@ -183,12 +183,12 @@ pub fn load_self_hosted_caps(
             supports_boost_reasoning: model_rec.supports_boost_reasoning,
             default_temperature: model_rec.default_temperature,
         };
-        
+
         caps.chat_models.insert(chat_model.base.id.clone(), Arc::new(chat_model));
     }
 
     if let Some(server_embedding_model) = self_hosted_caps.embedding.models
-        .get(&self_hosted_caps.embedding.default_model).cloned() 
+        .get(&self_hosted_caps.embedding.default_model).cloned()
     {
         let mut embedding_model = EmbeddingModelRecord {
             base: BaseModelRecord { n_ctx: server_embedding_model.n_ctx, ..Default::default() },

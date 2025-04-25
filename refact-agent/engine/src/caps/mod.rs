@@ -10,7 +10,7 @@ use tracing::{info, warn};
 use crate::custom_error::MapErrToString;
 use crate::global_context::CommandLine;
 use crate::global_context::GlobalContext;
-use crate::caps::providers::{add_models_to_caps, read_providers_d, resolve_provider_api_key, 
+use crate::caps::providers::{add_models_to_caps, read_providers_d, resolve_provider_api_key,
     post_process_provider, CapsProvider};
 use crate::caps::self_hosted::{SelfHostedCaps, load_self_hosted_caps};
 
@@ -27,11 +27,11 @@ pub struct BaseModelRecord {
 
     /// Actual model name, e.g. "gpt-4o"
     #[serde(default)]
-    pub name: String, 
+    pub name: String,
     /// provider/model_name, e.g. "openai/gpt-4o"
     #[serde(skip_deserializing)]
-    pub id: String, 
-    
+    pub id: String,
+
     #[serde(default, skip_serializing)]
     pub endpoint: String,
     #[serde(default, skip_serializing)]
@@ -125,7 +125,7 @@ impl CompletionModelFamily {
         serde_json::to_value(self).ok()
             .and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default()
     }
-    
+
     pub fn all_variants() -> Vec<CompletionModelFamily> {
         vec![
             CompletionModelFamily::Qwen2_5Coder,
@@ -191,27 +191,27 @@ pub struct CodeAssistantCaps {
 
     #[serde(flatten, skip_deserializing)]
     pub defaults: DefaultModels,
-    
+
     #[serde(default)]
     pub caps_version: i64,  // need to reload if it increases on server, that happens when server configuration changes
 
     #[serde(default)]
     pub customization: String,  // on self-hosting server, allows to customize yaml_configs & friends for all engineers
-    
+
     #[serde(default = "default_hf_tokenizer_template")]
     pub hf_tokenizer_template: String,  // template for HuggingFace tokenizer URLs
 }
 
-fn default_telemetry_retrieve_my_own() -> String { 
-    "https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string() 
+fn default_telemetry_retrieve_my_own() -> String {
+    "https://www.smallcloud.ai/v1/telemetry-retrieve-my-own-stats".to_string()
 }
 
 pub fn default_hf_tokenizer_template() -> String {
     "https://huggingface.co/$HF_MODEL/resolve/main/tokenizer.json".to_string()
 }
 
-fn default_telemetry_basic_dest() -> String { 
-    "https://www.smallcloud.ai/v1/telemetry-basic".to_string() 
+fn default_telemetry_basic_dest() -> String {
+    "https://www.smallcloud.ai/v1/telemetry-basic".to_string()
 }
 
 pub fn normalize_string<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
@@ -269,16 +269,16 @@ pub async fn load_caps_value_from_url(
     } else {
         let base_url = Url::parse(&cmdline.address_url)
             .map_err(|_| "failed to parse address url".to_string())?;
-            
+
         vec![
             base_url.join(&CAPS_FILENAME).map_err(|_| "failed to join caps URL".to_string())?.to_string(),
             base_url.join(&CAPS_FILENAME_FALLBACK).map_err(|_| "failed to join fallback caps URL".to_string())?.to_string(),
         ]
     };
-    
+
     let http_client = gcx.read().await.http_client.clone();
     let mut headers = reqwest::header::HeaderMap::new();
-    
+
     if !cmdline.api_key.is_empty() {
         headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(&format!("Bearer {}", cmdline.api_key)).unwrap());
         headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build_info::PKG_VERSION)).unwrap());
@@ -294,9 +294,9 @@ pub async fn load_caps_value_from_url(
             .send()
             .await
             .map_err(|e| e.to_string())?;
-        
+
         last_status = response.status().as_u16();
-        
+
         if let Ok(json_value) = response.json::<serde_json::Value>().await {
             if last_status == 200 {
                 return Ok((json_value, url.clone()));
@@ -305,13 +305,13 @@ pub async fn load_caps_value_from_url(
             warn!("status={}; server responded with:\n{}", last_status, json_value);
         }
     }
-    
+
     if let Some(json_value) = last_response_json {
         if let Some(detail) = json_value.get("detail").and_then(|d| d.as_str()) {
             return Err(detail.to_string());
         }
     }
-    
+
     Err(format!("cannot fetch caps, status={}", last_status))
 }
 
@@ -323,7 +323,7 @@ pub async fn load_caps(
         let gcx_locked = gcx.read().await;
         (gcx_locked.config_dir.clone(), gcx_locked.cmdline.api_key.clone())
     };
-    
+
     let (caps_value, caps_url) = load_caps_value_from_url(cmdline, gcx).await?;
 
     let (mut caps, server_providers) = match serde_json::from_value::<SelfHostedCaps>(caps_value.clone()) {
@@ -337,10 +337,10 @@ pub async fn load_caps(
             (caps, vec![server_provider])
         }
     };
-    
+
     caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
-    
+
     let (mut providers, error_log) = read_providers_d(server_providers, &config_dir).await;
     providers.retain(|p| p.enabled);
     for e in error_log {
@@ -351,7 +351,7 @@ pub async fn load_caps(
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     }
     add_models_to_caps(&mut caps, providers);
-    
+
     Ok(Arc::new(caps))
 }
 
@@ -414,7 +414,7 @@ pub fn resolve_completion_model<'a>(
     } else {
         &caps.defaults.completion_default_model
     };
-    
+
     match resolve_model(&caps.completion_models, model_id) {
         Ok(model) => Ok(model),
         Err(first_err) if try_refact_fallbacks => {
