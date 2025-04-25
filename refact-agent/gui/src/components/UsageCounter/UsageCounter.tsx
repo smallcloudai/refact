@@ -125,8 +125,8 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
-  outputValue: number;
-}> = ({ inputTokens, outputValue }) => {
+  outputTokens: number;
+}> = ({ inputTokens, outputTokens }) => {
   return (
     <>
       {inputTokens !== 0 && (
@@ -135,10 +135,10 @@ const DefaultHoverTriggerContent: React.FC<{
           <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
         </Flex>
       )}
-      {outputValue !== 0 && (
+      {outputTokens !== 0 && (
         <Flex align="center">
           <ArrowDownIcon width="12" height="12" />
-          <Text size="1">{outputValue}</Text>
+          <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
         </Flex>
       )}
     </>
@@ -172,7 +172,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     usage: currentThreadUsage,
     keys: ["completion_tokens"],
   });
-  const outputValue = Number(formatNumberToFixed(outputTokens));
 
   const shouldUsageBeHidden = useMemo(() => {
     return !isInline && inputTokens === 0 && outputTokens === 0;
@@ -211,7 +210,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           ) : (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
-              outputValue={outputValue}
+              outputTokens={outputTokens}
             />
           )}
         </Card>
