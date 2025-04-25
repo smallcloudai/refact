@@ -223,21 +223,19 @@ pub fn get_provider_templates() -> &'static IndexMap<String, CapsProvider> {
     })
 }
 
-pub fn get_provider_model_defaults() -> &'static IndexMap<String, ModelDefaults> {
+pub fn get_provider_model_default_settings_ui() -> &'static IndexMap<String, ModelDefaultSettingsUI> {
     PARSED_MODEL_DEFAULTS.get_or_init(|| {
         let mut map = IndexMap::new();
         for (name, yaml) in PROVIDER_TEMPLATES {
             let yaml_value = serde_yaml::from_str::<serde_yaml::Value>(yaml)
                 .unwrap_or_else(|_| panic!("Failed to parse YAML for provider {}", name));
-            
-            let model_defaults = if let Some(defaults) = yaml_value.get("model_defaults") {
-                serde_yaml::from_value(defaults.clone())
-                    .unwrap_or_else(|e| panic!("Failed to parse model_defaults for provider {}: {}", name, e))
-            } else {
-                ModelDefaults::default()
-            };
-            
-            map.insert(name.to_string(), model_defaults);
+
+            let model_default_settings_ui_value = yaml_value.get("model_default_settings_ui").cloned()
+                .expect(&format!("Missing `model_model_default_settings_ui` for provider template {name}"));
+            let model_default_settings_ui = serde_yaml::from_value(model_default_settings_ui_value)
+                .unwrap_or_else(|e| panic!("Failed to parse model_defaults for provider {}: {}", name, e));
+
+            map.insert(name.to_string(), model_default_settings_ui);
         }
         map
     })

@@ -18,7 +18,7 @@ running_models:
   - claude-3-5-sonnet-latest
   - claude-3-5-haiku-latest
 
-model_defaults:
+model_default_settings_ui:
   chat:
     n_ctx: 200000
     supports_tools: true

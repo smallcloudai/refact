@@ -9,6 +9,6 @@ running_models:
   - openai/o3-mini
   - openai/gpt-4.1
 
-model_defaults:
+model_default_settings_ui:
   chat:
     tokenizer: fake

@@ -7,7 +7,7 @@ running_models:
   - grok-3-beta
   - grok-3-mini-beta
 
-model_defaults:
+model_default_settings_ui:
   chat:
     n_ctx: 131072
     supports_tools: true

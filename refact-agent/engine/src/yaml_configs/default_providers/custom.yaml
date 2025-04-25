@@ -1,6 +1,6 @@
 supports_completion: true
 
-model_defaults:
+model_default_settings_ui:
   chat:
     tokenizer: fake
   completion:

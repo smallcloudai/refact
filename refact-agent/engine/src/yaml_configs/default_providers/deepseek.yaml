@@ -7,7 +7,7 @@ running_models:
   - deepseek-chat
   - deepseek-reasoner
 
-model_defaults:
+model_default_settings_ui:
   chat:
     n_ctx: 64000
     supports_tools: true

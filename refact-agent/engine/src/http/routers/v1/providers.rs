@@ -12,7 +12,7 @@ use crate::call_validation::ModelType;
 use crate::caps::{ChatModelRecord, CompletionModelFamily, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::{MapErrToString, ScratchError};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
-use crate::caps::providers::{get_known_models, get_provider_from_server, get_provider_from_template_and_config_file, get_provider_model_defaults, get_provider_templates, read_providers_d, CapsProvider};
+use crate::caps::providers::{get_known_models, get_provider_from_server, get_provider_from_template_and_config_file, get_provider_model_default_settings_ui, get_provider_templates, read_providers_d, CapsProvider};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ProviderDTO {

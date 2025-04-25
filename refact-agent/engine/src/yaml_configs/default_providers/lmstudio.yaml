@@ -4,7 +4,7 @@ supports_completion: true
 
 api_key: any-will-work
 
-model_defaults:
+model_default_settings_ui:
   chat:
     tokenizer: fake
   completion:

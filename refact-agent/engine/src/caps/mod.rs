@@ -175,7 +175,7 @@ impl EmbeddingModelRecord {
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     #[serde(deserialize_with = "normalize_string")]
-    pub cloud_name: String,
+    pub cloud_name: String, // "refact" or "refact_self_hosted"
 
     #[serde(default = "default_telemetry_basic_dest")]
     pub telemetry_basic_dest: String,
@@ -183,7 +183,7 @@ pub struct CodeAssistantCaps {
     pub telemetry_basic_retrieve_my_own: String,
 
     #[serde(skip_deserializing)]
-    pub completion_models: IndexMap<String, Arc<CompletionModelRecord>>,
+    pub completion_models: IndexMap<String, Arc<CompletionModelRecord>>, // keys are "provider/model"
     #[serde(skip_deserializing)]
     pub chat_models: IndexMap<String, Arc<ChatModelRecord>>,
     #[serde(skip_deserializing)]
