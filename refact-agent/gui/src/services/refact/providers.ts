@@ -212,7 +212,6 @@ export type Provider = {
   chat_default_model: string;
   chat_thinking_model: string;
   chat_light_model: string;
-  completion_default_model: string;
 
   enabled: boolean;
   readonly: boolean;
@@ -257,7 +256,6 @@ export function isProvider(data: unknown): data is Provider {
     !hasProperty(data, "chat_default_model") ||
     !hasProperty(data, "chat_thinking_model") ||
     !hasProperty(data, "chat_light_model") ||
-    !hasProperty(data, "completion_default_model") ||
     !hasProperty(data, "enabled")
   )
     return false;
@@ -272,7 +270,6 @@ export function isProvider(data: unknown): data is Provider {
   if (typeof data.chat_default_model !== "string") return false;
   if (typeof data.chat_thinking_model !== "string") return false;
   if (typeof data.chat_light_model !== "string") return false;
-  if (typeof data.completion_default_model !== "string") return false;
   if (typeof data.enabled !== "boolean") return false;
 
   return true;
