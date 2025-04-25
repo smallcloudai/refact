@@ -1,4 +1,4 @@
-import { useCallback, type FC } from "react";
+import { useCallback, useMemo, type FC } from "react";
 import classNames from "classnames";
 import {
   Badge,
@@ -62,6 +62,54 @@ export const ModelCard: FC<ModelCardProps> = ({
     setCodeCompletionModel(formattedModelName);
   }, [model, providerName, setCodeCompletionModel]);
 
+  const dropdownOptions = useMemo(() => {
+    const shouldOptionsBeDisabled = isReadonlyProvider || isSavingModel;
+    return [
+      {
+        label: "Edit model's settings",
+        onClick: openDialogSafely,
+        visible: !shouldOptionsBeDisabled,
+      },
+      {
+        label: enabled ? "Disable model" : "Enable model",
+        onClick: () => void handleToggleModelEnabledState(model),
+        visible: !shouldOptionsBeDisabled,
+      },
+      {
+        label: "Reset model",
+        onClick: () => void handleResetModel(model),
+        visible: !removable && user_configured,
+      },
+      {
+        label: "Remove model",
+        onClick: () => void handleRemoveModel({ model }),
+        visible: removable,
+      },
+      {
+        label: "Use as completion model in IDE",
+        onClick: handleSetCompletionModelForIDE,
+        visible: modelType === "completion",
+      },
+    ];
+  }, [
+    isReadonlyProvider,
+    isSavingModel,
+    enabled,
+    removable,
+    user_configured,
+    model,
+    modelType,
+    openDialogSafely,
+    handleToggleModelEnabledState,
+    handleResetModel,
+    handleRemoveModel,
+    handleSetCompletionModelForIDE,
+  ]);
+
+  const dropdownOptionsCount = useMemo(() => {
+    return dropdownOptions.filter((option) => option.visible).length;
+  }, [dropdownOptions]);
+
   return (
     <Card className={classNames({ [styles.disabledCard]: isSavingModel })}>
       {dialogOpen && (
@@ -90,51 +138,30 @@ export const ModelCard: FC<ModelCardProps> = ({
           </Badge>
         </Flex>
 
-        <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
-          <DropdownMenu.Trigger>
-            <IconButton size="1" variant="outline" color="gray">
-              <DotsVerticalIcon />
-            </IconButton>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content side="bottom" align="end" size="1">
-            <DropdownMenu.Item
-              onClick={openDialogSafely}
-              disabled={isReadonlyProvider || isSavingModel}
-            >
-              Edit model&apos;s settings
-            </DropdownMenu.Item>
-            <DropdownMenu.Item
-              onClick={() => void handleToggleModelEnabledState(model)}
-              disabled={isReadonlyProvider || isSavingModel}
-            >
-              {enabled ? "Disable model" : "Enable model"}
-            </DropdownMenu.Item>
-            {modelType === "completion" && (
-              <DropdownMenu.Item onClick={handleSetCompletionModelForIDE}>
-                Use as completion model in IDE
-              </DropdownMenu.Item>
-            )}
-            {removable ? (
-              <DropdownMenu.Item
-                onClick={() => void handleRemoveModel({ model })}
-                color="red"
-                disabled={isSavingModel}
-                title={"Remove model from the list of models"}
-              >
-                Remove model
-              </DropdownMenu.Item>
-            ) : (
-              <DropdownMenu.Item
-                onClick={() => void handleResetModel(model)}
-                color="red"
-                disabled={isSavingModel || !user_configured}
-                title={"Reset model from the list of models"}
-              >
-                Reset model
-              </DropdownMenu.Item>
-            )}
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>
+        {dropdownOptionsCount > 0 && (
+          <DropdownMenu.Root open={dropdownOpen} onOpenChange={setDropdownOpen}>
+            <DropdownMenu.Trigger>
+              <IconButton size="1" variant="outline" color="gray">
+                <DotsVerticalIcon />
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content side="bottom" align="end" size="1">
+              {dropdownOptions.map(({ label, visible, onClick }) => (
+                <>
+                  {visible && (
+                    <DropdownMenu.Item
+                      key={label}
+                      onClick={onClick}
+                      title={label}
+                    >
+                      {label}
+                    </DropdownMenu.Item>
+                  )}
+                </>
+              ))}
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+        )}
       </Flex>
     </Card>
   );
