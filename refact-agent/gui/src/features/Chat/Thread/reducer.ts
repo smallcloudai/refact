@@ -233,6 +233,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(doneStreaming, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.streaming = false;
+    state.waiting_for_response = false;
     state.thread.read = true;
     state.prevent_send = false;
   });
