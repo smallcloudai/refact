@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, type FC } from "react";
+import { useCallback, useMemo, type FC } from "react";
 import classNames from "classnames";
 import {
   Badge,
@@ -146,15 +146,18 @@ export const ModelCard: FC<ModelCardProps> = ({
               </IconButton>
             </DropdownMenu.Trigger>
             <DropdownMenu.Content side="bottom" align="end" size="1">
-              {dropdownOptions.map(({ label, visible, onClick }) => (
-                <Fragment key={label}>
-                  {visible && (
-                    <DropdownMenu.Item onClick={onClick} title={label}>
-                      {label}
-                    </DropdownMenu.Item>
-                  )}
-                </Fragment>
-              ))}
+              {dropdownOptions.map(({ label, visible, onClick }) => {
+                if (!visible) return null;
+                return (
+                  <DropdownMenu.Item
+                    key={label}
+                    onClick={onClick}
+                    title={label}
+                  >
+                    {label}
+                  </DropdownMenu.Item>
+                );
+              })}
             </DropdownMenu.Content>
           </DropdownMenu.Root>
         )}
