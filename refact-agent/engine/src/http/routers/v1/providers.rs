@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::ModelType;
-use crate::caps::{ChatModelRecord, CompletionModelFamily, CompletionModelRecord, DefaultModels, EmbeddingModelRecord, HasBaseModelRecord};
+use crate::caps::{ChatModelRecord, CompletionModelFamily, CompletionModelRecord, EmbeddingModelRecord, HasBaseModelRecord};
 use crate::custom_error::{MapErrToString, ScratchError};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::caps::providers::{get_known_models, get_provider_from_server, get_provider_from_template_and_config_file, get_provider_model_default_settings_ui, get_provider_templates, read_providers_d, CapsProvider};
@@ -25,8 +25,9 @@ pub struct ProviderDTO {
     #[serde(default)]
     tokenizer_api_key: String,
 
-    #[serde(flatten)]
-    defaults: DefaultModels,
+    chat_default_model: String,
+    chat_thinking_model: String,
+    chat_light_model: String,
 
     enabled: bool,
     #[serde(default)]
@@ -39,12 +40,6 @@ fn default_true() -> bool { true }
 
 impl ProviderDTO {
     pub fn from_caps_provider(provider: CapsProvider, readonly: bool) -> Self {
-        let mut defaults = provider.defaults.clone();
-
-        if !provider.supports_completion {
-            defaults.completion_default_model = String::new();
-        }
-
         ProviderDTO {
             name: provider.name,
             endpoint_style: provider.endpoint_style,
@@ -53,7 +48,9 @@ impl ProviderDTO {
             embedding_endpoint: provider.embedding_endpoint,
             api_key: provider.api_key,
             tokenizer_api_key: provider.tokenizer_api_key,
-            defaults: defaults,
+            chat_default_model: provider.defaults.chat_default_model,
+            chat_light_model: provider.defaults.chat_light_model,
+            chat_thinking_model: provider.defaults.chat_thinking_model,
             enabled: provider.enabled,
             readonly: readonly,
             supports_completion: provider.supports_completion,
@@ -305,13 +302,11 @@ pub async fn handle_v1_post_provider(
     update_yaml_field_if_needed(&mut file_value, "embedding_endpoint",
         provider_dto.embedding_endpoint, provider_template.embedding_endpoint);
     update_yaml_field_if_needed(&mut file_value, "chat_default_model",
-        provider_dto.defaults.chat_default_model, provider_template.defaults.chat_default_model);
+        provider_dto.chat_default_model, provider_template.defaults.chat_default_model);
     update_yaml_field_if_needed(&mut file_value, "chat_light_model",
-        provider_dto.defaults.chat_light_model, provider_template.defaults.chat_light_model);
+        provider_dto.chat_light_model, provider_template.defaults.chat_light_model);
     update_yaml_field_if_needed(&mut file_value, "chat_thinking_model",
-        provider_dto.defaults.chat_thinking_model, provider_template.defaults.chat_thinking_model);
-    update_yaml_field_if_needed(&mut file_value, "completion_default_model",
-        provider_dto.defaults.completion_default_model, provider_template.defaults.completion_default_model);
+        provider_dto.chat_thinking_model, provider_template.defaults.chat_thinking_model);
     file_value["enabled"] = serde_yaml::Value::Bool(provider_dto.enabled);
 
     let file_content = serde_yaml::to_string(&file_value)
