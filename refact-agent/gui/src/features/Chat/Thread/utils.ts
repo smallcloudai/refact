@@ -231,6 +231,7 @@ export function formatChatResponse(
   }
 
   const currentUsage = response.usage;
+  const { pp1000t_cache_creation, pp1000t_cache_read } = response;
 
   if (currentUsage && response.choices.length === 0) {
     const lastAssistantIndex = lastIndexOf(messages, isAssistantMessage);
@@ -263,6 +264,8 @@ export function formatChatResponse(
         thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
         usage: currentUsage,
+        pp1000t_cache_creation,
+        pp1000t_cache_read,
       };
       return acc.concat([msg]);
     }
@@ -294,6 +297,10 @@ export function formatChatResponse(
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
+          pp1000t_cache_creation:
+            lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
+          pp1000t_cache_read:
+            lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
         },
       ]);
     }
@@ -328,6 +335,10 @@ export function formatChatResponse(
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
+          pp1000t_cache_creation:
+            lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
+          pp1000t_cache_read:
+            lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
         },
       ]);
     }
@@ -350,6 +361,10 @@ export function formatChatResponse(
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
+          pp1000t_cache_creation:
+            lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
+          pp1000t_cache_read:
+            lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
         },
       ]);
     } else if (
@@ -364,6 +379,8 @@ export function formatChatResponse(
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: currentUsage,
+          pp1000t_cache_creation: pp1000t_cache_creation,
+          pp1000t_cache_read: pp1000t_cache_read,
         },
       ]);
     } else if (cur.delta.role === "assistant") {
@@ -385,6 +402,8 @@ export function formatChatResponse(
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: currentUsage,
+            pp1000t_cache_creation: pp1000t_cache_creation,
+            pp1000t_cache_read: pp1000t_cache_read,
           },
         ]);
       }
@@ -405,6 +424,10 @@ export function formatChatResponse(
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: lastMessage.usage ?? currentUsage,
+            pp1000t_cache_creation:
+              lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
+            pp1000t_cache_read:
+              lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
           },
         ]);
       }

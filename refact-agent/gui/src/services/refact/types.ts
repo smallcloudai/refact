@@ -162,6 +162,8 @@ export interface AssistantMessage extends BaseMessage {
   thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   usage?: Usage;
+  pp1000t_cache_creation?: number;
+  pp1000t_cache_read?: number;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -602,6 +604,8 @@ type ChatResponseChoice = {
   usage?: Usage;
   refact_agent_request_available?: null | number;
   refact_agent_max_request_num?: number;
+  pp1000t_cache_creation?: number;
+  pp1000t_cache_read?: number;
 };
 
 export function isChatResponseChoice(
