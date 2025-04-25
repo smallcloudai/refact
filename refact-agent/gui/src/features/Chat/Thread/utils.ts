@@ -243,15 +243,14 @@ export function formatChatResponse(
     const maybeLastAssistantMessageUsage = lastAssistantMessage.usage;
     let usageToStore = currentUsage;
 
-    if (maybeLastAssistantMessageUsage) {
-      const allMatch = Object.entries(currentUsage).every(
+    if (
+      maybeLastAssistantMessageUsage &&
+      Object.entries(currentUsage).every(
         ([key, value]) =>
           maybeLastAssistantMessageUsage[key as keyof Usage] === value,
-      );
-
-      if (allMatch) {
-        usageToStore = { ...maybeLastAssistantMessageUsage, ...currentUsage };
-      }
+      )
+    ) {
+      usageToStore = { ...maybeLastAssistantMessageUsage, ...currentUsage };
     }
 
     return messages.map((message, index) =>
