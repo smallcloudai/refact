@@ -176,13 +176,13 @@ impl EmbeddingModelDTO {
 pub async fn handle_v1_providers(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
 ) -> Response<Body> {
-    let config_dir = {
+    let (config_dir, experimental) = {
         let gcx_locked = gcx.read().await;
-        gcx_locked.config_dir.clone()
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.experimental)
     };
 
     let template_names = get_provider_templates().keys().collect::<Vec<_>>();
-    let (providers, read_errors) = read_providers_d(Vec::new(), &config_dir).await;
+    let (providers, read_errors) = read_providers_d(Vec::new(), &config_dir, experimental).await;
 
     let mut result = providers.into_iter()
         .filter(|p| template_names.contains(&&p.name))
@@ -260,8 +260,11 @@ pub async fn handle_v1_get_provider(
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
         ProviderDTO::from_caps_provider(provider, true)
     } else {
-        let config_dir = gcx.read().await.config_dir.clone();
-        let provider = get_provider_from_template_and_config_file(&config_dir, &params.provider_name, false, true).await
+        let (config_dir, experimental) = {
+            let gcx_locked = gcx.read().await;
+            (gcx_locked.config_dir.clone(), gcx_locked.cmdline.experimental)
+        };
+        let provider = get_provider_from_template_and_config_file(&config_dir, &params.provider_name, false, true, experimental).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
         ProviderDTO::from_caps_provider(provider, false)
     };
@@ -402,12 +405,13 @@ pub async fn handle_v1_models(
         }
     };
 
+    let experimental = gcx.read().await.cmdline.experimental;
     let provider = if use_server_provider {
         get_provider_from_server(gcx.clone()).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     } else {
         let config_dir = gcx.read().await.config_dir.clone();
-        get_provider_from_template_and_config_file(&config_dir, &params.provider_name, false, true).await
+        get_provider_from_template_and_config_file(&config_dir, &params.provider_name, false, true, experimental).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     };
 
@@ -457,12 +461,13 @@ pub async fn handle_v1_get_model(
         }
     };
 
+    let experimental = gcx.read().await.cmdline.experimental;
     let provider = if use_server_provider {
         get_provider_from_server(gcx.clone()).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     } else {
         let config_dir = gcx.read().await.config_dir.clone();
-        get_provider_from_template_and_config_file(&config_dir, &params.provider, false, true).await
+        get_provider_from_template_and_config_file(&config_dir, &params.provider, false, true, experimental).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?
     };
 

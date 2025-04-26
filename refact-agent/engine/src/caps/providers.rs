@@ -276,9 +276,13 @@ pub async fn get_provider_yaml_paths(config_dir: &Path) -> (Vec<PathBuf>, Vec<St
     (yaml_paths, errors)
 }
 
-pub fn post_process_provider(provider: &mut CapsProvider, include_disabled_models: bool) {
+pub fn post_process_provider(
+    provider: &mut CapsProvider,
+    include_disabled_models: bool,
+    experimental: bool,
+) {
     add_running_models(provider);
-    populate_model_records(provider);
+    populate_model_records(provider, experimental);
     apply_models_dict_patch(provider);
     add_name_and_id_to_model_records(provider);
     if !include_disabled_models {
@@ -289,7 +293,8 @@ pub fn post_process_provider(provider: &mut CapsProvider, include_disabled_model
 
 pub async fn read_providers_d(
     prev_providers: Vec<CapsProvider>,
-    config_dir: &Path
+    config_dir: &Path,
+    experimental: bool,
 ) -> (Vec<CapsProvider>, Vec<YamlError>) {
     let providers_dir = config_dir.join("providers.d");
     let mut providers = prev_providers;
@@ -313,7 +318,7 @@ pub async fn read_providers_d(
         };
 
         if provider_templates.contains_key(&provider_name) {
-            match get_provider_from_template_and_config_file(config_dir, &provider_name, false, false).await {
+            match get_provider_from_template_and_config_file(config_dir, &provider_name, false, false, experimental).await {
                 Ok(provider) => {
                     providers.push(provider);
                 },
@@ -512,18 +517,18 @@ pub fn get_known_models() -> &'static KnownModels {
     })
 }
 
-fn populate_model_records(provider: &mut CapsProvider) {
+fn populate_model_records(provider: &mut CapsProvider, experimental: bool) {
     let known_models = get_known_models();
 
     for model_name in &provider.running_models {
         if !provider.completion_models.contains_key(model_name) {
-            if let Some(model_rec) = find_model_match(model_name, &provider.completion_models, &known_models.completion_models) {
+            if let Some(model_rec) = find_model_match(model_name, &provider.completion_models, &known_models.completion_models, experimental) {
                 provider.completion_models.insert(model_name.clone(), model_rec);
             }
         }
 
         if !provider.chat_models.contains_key(model_name) {
-            if let Some(model_rec) = find_model_match(model_name, &provider.chat_models, &known_models.chat_models) {
+            if let Some(model_rec) = find_model_match(model_name, &provider.chat_models, &known_models.chat_models, experimental) {
                 provider.chat_models.insert(model_name.clone(), model_rec);
             }
         }
@@ -539,7 +544,7 @@ fn populate_model_records(provider: &mut CapsProvider) {
 
     if !provider.embedding_model.is_configured() && !provider.embedding_model.base.name.is_empty() {
         let model_name = provider.embedding_model.base.name.clone();
-        if let Some(model_rec) = find_model_match(&model_name, &IndexMap::new(), &known_models.embedding_models) {
+        if let Some(model_rec) = find_model_match(&model_name, &IndexMap::new(), &known_models.embedding_models, experimental) {
             provider.embedding_model = model_rec;
             provider.embedding_model.base.name = model_name;
         } else {
@@ -551,31 +556,40 @@ fn populate_model_records(provider: &mut CapsProvider) {
 fn find_model_match<T: Clone + HasBaseModelRecord>(
     model_name: &String,
     provider_models: &IndexMap<String, T>,
-    known_models: &IndexMap<String, T>
+    known_models: &IndexMap<String, T>,
+    experimental: bool,
 ) -> Option<T> {
     let model_stripped = strip_model_from_finetune(model_name);
 
     if let Some(model) = provider_models.get(model_name)
         .or_else(|| provider_models.get(&model_stripped)) {
-        return Some(model.clone());
+        if !model.base().experimental || experimental {
+            return Some(model.clone());
+        }
     }
 
     for model in provider_models.values() {
         if model.base().similar_models.contains(model_name) ||
             model.base().similar_models.contains(&model_stripped) {
-            return Some(model.clone());
+            if !model.base().experimental || experimental {
+                return Some(model.clone());
+            }
         }
     }
 
     if let Some(model) = known_models.get(model_name)
         .or_else(|| known_models.get(&model_stripped)) {
-        return Some(model.clone());
+        if !model.base().experimental || experimental {
+            return Some(model.clone());
+        }
     }
 
     for model in known_models.values() {
         if model.base().similar_models.contains(&model_name.to_string()) ||
             model.base().similar_models.contains(&model_stripped) {
-            return Some(model.clone());
+            if !model.base().experimental || experimental {
+                return Some(model.clone());
+            }
         }
     }
 
@@ -610,7 +624,7 @@ pub fn resolve_tokenizer_api_key(provider: &CapsProvider) -> String {
 }
 
 pub async fn get_provider_from_template_and_config_file(
-    config_dir: &Path, name: &str, config_file_must_exist: bool, post_process: bool
+    config_dir: &Path, name: &str, config_file_must_exist: bool, post_process: bool, experimental: bool
 ) -> Result<CapsProvider, String> {
     let mut provider = get_provider_templates().get(name).cloned()
         .ok_or("Provider template not found")?;
@@ -632,7 +646,7 @@ pub async fn get_provider_from_template_and_config_file(
     provider.apply_override(config_file_value)?;
 
     if post_process {
-        post_process_provider(&mut provider, true);
+        post_process_provider(&mut provider, true, experimental);
     }
 
     Ok(provider)
@@ -641,11 +655,12 @@ pub async fn get_provider_from_template_and_config_file(
 pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Result<CapsProvider, String> {
     let command_line = CommandLine::from_args();
     let cmdline_api_key = command_line.api_key.clone();
+    let cmdline_experimental = command_line.experimental;
     let (caps_value, caps_url) = load_caps_value_from_url(command_line, gcx.clone()).await?;
 
     if let Ok(self_hosted_caps) = serde_json::from_value::<SelfHostedCaps>(caps_value.clone()) {
         let mut provider = self_hosted_caps.into_provider(&caps_url, &cmdline_api_key)?;
-        post_process_provider(&mut provider, true);
+        post_process_provider(&mut provider, true, cmdline_experimental);
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
         provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
         Ok(provider)
@@ -653,7 +668,7 @@ pub async fn get_provider_from_server(gcx: Arc<ARwLock<GlobalContext>>) -> Resul
         let mut provider = serde_json::from_value::<CapsProvider>(caps_value).map_err_to_string()?;
 
         resolve_relative_urls(&mut provider, &caps_url)?;
-        post_process_provider(&mut provider, true);
+        post_process_provider(&mut provider, true, cmdline_experimental);
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
         provider.tokenizer_api_key = resolve_tokenizer_api_key(&provider);
         Ok(provider)
