@@ -1,41 +1,44 @@
 use std::collections::{HashMap, HashSet};
-use std::collections::VecDeque;
 use std::path::{PathBuf};
 
 struct TrieNode {
-    children: HashMap<String, TrieNode>,
-    indices: Vec<usize>,
+    children: HashMap<usize, TrieNode>,
+    count: usize,
 }
 
 impl TrieNode {
     fn new() -> Self {
         TrieNode {
             children: HashMap::new(),
-            indices: Vec::new(),
+            count: 0,
         }
     }
 }
 
 pub struct PathTrie {
-    // TODO: do we need to store paths here?
-    pub paths: Vec<PathBuf>,
-    pub unique_paths: HashSet<String>,
     root: TrieNode,
+    component_to_index: HashMap<String, usize>,
+    index_to_component: HashMap<usize, String>,
+    // TODO: do we need to store unique paths really?
+    pub unique_paths: HashSet<String>,
 }
 
 impl PathTrie {
     pub fn new() -> Self {
         PathTrie {
-            paths: vec![],
-            unique_paths: HashSet::new(),
             root: TrieNode::new(),
+            component_to_index: HashMap::new(),
+            index_to_component: HashMap::new(),
+            unique_paths: HashSet::new(),
         }
     }
 
     pub fn build(paths: &Vec<PathBuf>) -> Self {
         let mut root = TrieNode::new();
+        let mut component_to_index = HashMap::new();
+        let mut index_to_component = HashMap::new();
 
-        for (index, path) in paths.iter().enumerate() {
+        for path in paths.iter() {
             let components: Vec<String> = path
                 .components()
                 .map(|comp| comp.as_os_str().to_string_lossy().to_string())
@@ -44,57 +47,95 @@ impl PathTrie {
             let mut node = &mut root;
             for i in (0..components.len()).rev() {
                 let component = &components[i];
-                node = node.children.entry(component.clone()).or_insert_with(TrieNode::new);
-                node.indices.push(index);
+                let index = if let Some(index) = component_to_index.get(component) {
+                    *index
+                } else {
+                    let index = component_to_index.len();
+                    component_to_index.insert(component.clone(), index);
+                    index_to_component.insert(index, component.clone());
+                    index
+                };
+                node = node.children.entry(index).or_insert_with(TrieNode::new);
+                node.count += 1;
             }
         }
 
-        let mut index_to_components = HashMap::new();
-        let mut nodes_to_process = VecDeque::new();
-
-        let root_component = String::new();
-        nodes_to_process.push_back((&root_component, &root));
-        while let Some((component, node)) = nodes_to_process.pop_front() {
-            for index in &node.indices {
-                let components = index_to_components.entry(index).or_insert_with(Vec::new);
-                components.push(component);
-            }
-            if node.indices.len() == 1 {
-                continue;
-            }
-            for child in node.children.iter() {
-                nodes_to_process.push_back(child);
+        let mut unique_paths = HashSet::new();
+        let mut stack = Vec::new();
+        stack.push((&root, vec![]));
+        while let Some((node, components)) = stack.pop() {
+            if node.count == 1 {
+                let mut matched_path = PathBuf::new();
+                for component in components.iter().rev() {
+                    matched_path.push(component);
+                }
+                unique_paths.insert(matched_path.to_string_lossy().to_string());
+            } else {
+                for (index, child) in &node.children {
+                    let mut child_components = components.clone();
+                    let component = index_to_component.get(index).unwrap();
+                    child_components.push(component);
+                    stack.push((child, child_components));
+                }
             }
         }
 
-        let unique_paths: HashSet<String> = index_to_components.iter()
-            .map(|(_index, components)|
-                components.iter().rev().fold(
-                    PathBuf::new(), |mut path, c| {
-                        path.push(c); path
-                    })
-            )
-            .map(|p| p.to_string_lossy().to_string())
-            .collect();
-
-        PathTrie { paths: paths.clone(), unique_paths, root }
+        PathTrie { root, component_to_index, index_to_component, unique_paths }
     }
 
-    pub fn find_matches(&self, path: &PathBuf) -> Vec<PathBuf> {
+    fn _search_node(&self, path: &PathBuf) -> &TrieNode {
         let components: Vec<String> = path
             .components()
             .map(|comp| comp.as_os_str().to_string_lossy().to_string())
             .collect();
         let mut current = &self.root;
         for component in components.iter().rev() {
-            match current.children.get(component) {
-                Some(node) => current = node,
-                None => return Vec::new(),
+            if let Some(index) = self.component_to_index.get(component) {
+                if let Some(node) = current.children.get(index) {
+                    current = node;
+                } else {
+                    return current
+                }
+            } else {
+                return current
             }
         }
-        current.indices.iter()
-            .map(|&index| self.paths[index].clone())
-            .collect()
+        current
+    }
+
+    fn count_matches(&self, path: &PathBuf) -> usize {
+        let node = self._search_node(path);
+        node.count
+    }
+
+    pub fn find_matches(&self, path: &PathBuf) -> Vec<PathBuf> {
+        let root_node = self._search_node(path);
+        let mut result = vec![];
+
+        if root_node.count == 0 {
+            return result
+        }
+
+        let mut stack = Vec::new();
+        stack.push((root_node, vec![]));
+        while let Some((node, components)) = stack.pop() {
+            if node.children.is_empty() {
+                let mut matched_path = PathBuf::new();
+                for component in components.iter().rev() {
+                    matched_path.push(component);
+                }
+                matched_path.push(path);
+                result.push(matched_path);
+            } else {
+                for (index, child) in &node.children {
+                    let mut child_components = components.clone();
+                    let component = self.index_to_component.get(index).unwrap();
+                    child_components.push(component);
+                    stack.push((child, child_components));
+                }
+            }
+        }
+        result
     }
 
     pub fn shortest_path(&self, path: &PathBuf) -> Option<PathBuf> {

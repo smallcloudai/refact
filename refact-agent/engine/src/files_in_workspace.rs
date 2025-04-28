@@ -159,7 +159,6 @@ impl CacheCorrection {
             }
             unique_directories.iter().map(|p| PathBuf::from(p)).collect()
         };
-        // fs::write("/home/mitya/dirs.txt", directories.iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>().join("\n")).expect("");
         let directories = PathTrie::build(&directories);
         CacheCorrection {
             filenames,
