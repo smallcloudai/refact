@@ -787,6 +787,18 @@ fn py_body<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) -> Strin
         },
         "class_definition" => py_class(cx, node, path),  // calls py_body recursively
         "function_definition" => py_function(cx, node, path),  // calls py_body recursively
+        "decorated_definition" => {
+            if let Some(definition) = node.child_by_field_name("definition") {
+                match definition.kind() {
+                    "class_definition" => py_class(cx, &definition, path),
+                    "function_definition" => py_function(cx, &definition, path),
+                    _ => {
+                        let msg = cx.ap.error_report(&definition, format!("decorated_definition with unknown definition type"));
+                        debug!(cx, "{}", msg);
+                    }
+                }
+            }
+        },
         "assignment" => py_assignment(cx, node, path, false),
         "for_statement" => {
             py_assignment(cx, node, path, true);
@@ -910,5 +922,12 @@ mod tests {
         let code = include_str!("alt_testsuite/py_goat_main.py");
         let annotated = py_parse4test(code);
         std::fs::write("src/ast/alt_testsuite/py_goat_main_annotated.py", annotated).expect("Unable to write file");
+    }
+    
+    #[test]
+    fn test_parse_py_decorated() {
+        let code = include_str!("alt_testsuite/py_decorated.py");
+        let annotated = py_parse4test(code);
+        std::fs::write("src/ast/alt_testsuite/py_decorated_annotated.py", annotated).expect("Unable to write file");
     }
 }
