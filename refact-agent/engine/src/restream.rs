@@ -279,8 +279,6 @@ pub async fn scratchpad_interaction_not_stream(
         meta
     ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
-
-    try_insert_usage(&mut scratchpad_response_json);
     scratchpad_response_json["compression_strength"] = crate::forward_to_openai_endpoint::try_get_compression_from_prompt(&prompt);
 
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
@@ -463,7 +461,6 @@ pub async fn scratchpad_interaction_stream(
                                 if finish_reason != FinishReason::None { // last event has service info(usage and other), there is no finish_reason
                                     last_finish_reason = finish_reason;
                                 }
-                                try_insert_usage(&mut value);
                                 value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                                 // let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);
@@ -537,48 +534,6 @@ pub async fn scratchpad_interaction_stream(
         .header("Content-Type", "application/json")
         .body(Body::wrap_stream(evstream))
         .unwrap())
-}
-
-pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
-    let map = match msg_value.as_object() {
-        Some(map) => map,
-        None => {
-            return false;
-        }
-    };
-    let get_field_as_usize = |field: &str| -> Option<usize> {
-        map.get(field).and_then(|v| v.as_u64()).map(|v| v as usize)
-    };
-
-    if let Some(usage) = map.get("usage") {
-        if !usage.is_null() {
-            tracing::info!("model says usage: {:?}", usage);
-        }
-    }
-
-    let metering_prompt_tokens_n = match get_field_as_usize("metering_prompt_tokens_n") {
-        Some(value) => value,
-        None => return false,
-    };
-    let metering_generated_tokens_n = match get_field_as_usize("metering_generated_tokens_n") {
-        Some(value) => value,
-        None => return false,
-    };
-
-    if let Some(map) = msg_value.as_object_mut() {
-        ["pp1000t_prompt", "pp1000t_generated", "metering_prompt_tokens_n", "metering_generated_tokens_n"]
-            .iter()
-            .for_each(|&field| { map.remove(field); });
-
-        let usage = json!({
-            "prompt_tokens": metering_prompt_tokens_n,
-            "completion_tokens": metering_generated_tokens_n,
-            "total_tokens": metering_prompt_tokens_n + metering_generated_tokens_n
-        });
-        map.insert("usage".to_string(), usage);
-        return true;
-    }
-    return false;
 }
 
 fn _push_streaming_json_into_scratchpad(
