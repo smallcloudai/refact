@@ -98,13 +98,14 @@ async fn complete_path_with_project_dir(
     None
 }
 
-pub async fn correct_to_nearest_filename(
+async fn _correct_to_nearest(
     gcx: Arc<ARwLock<GlobalContext>>,
     correction_candidate: &String,
+    is_dir: bool,
     fuzzy: bool,
     top_n: usize,
 ) -> Vec<String> {
-    if let Some(fixed) = complete_path_with_project_dir(gcx.clone(), correction_candidate, false).await {
+    if let Some(fixed) = complete_path_with_project_dir(gcx.clone(), correction_candidate, is_dir).await {
         return vec![fixed.to_string_lossy().to_string()];
     }
 
@@ -113,19 +114,33 @@ pub async fn correct_to_nearest_filename(
     // (another thread never writes to the map itself, it can only replace the arc with a different map)
 
     // NOTE: do we need top_n here?
-    let matches = cache_correction_arc.filenames.find_matches(&PathBuf::from(correction_candidate));
+    let correction_cache = if is_dir {
+        &cache_correction_arc.directories
+    } else {
+        &cache_correction_arc.filenames
+    };
+    let matches = correction_cache.find_matches(&PathBuf::from(correction_candidate));
     if matches.is_empty() {
-        info!("not found {:?} in cache_correction (filenames)", correction_candidate);
+        info!("not found {:?} in cache_correction, is_dir={}", correction_candidate, is_dir);
     } else {
         return matches.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>();
     }
 
     if fuzzy {
-        info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_correction_arc.filenames.unique_paths.len());
-        return fuzzy_search(correction_candidate, cache_correction_arc.filenames.unique_paths.iter().cloned(), top_n, &['/', '\\']);
+        info!("fuzzy search {:?} is_dir={}, cache_fuzzy_arc.len={}", correction_candidate, is_dir, correction_cache.unique_paths.len());
+        return fuzzy_search(correction_candidate, correction_cache.unique_paths.iter().cloned(), top_n, &['/', '\\']);
     }
 
     vec![]
+}
+
+pub async fn correct_to_nearest_filename(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    correction_candidate: &String,
+    fuzzy: bool,
+    top_n: usize,
+) -> Vec<String> {
+    _correct_to_nearest(gcx, correction_candidate, false, fuzzy, top_n).await
 }
 
 pub async fn correct_to_nearest_dir_path(
@@ -134,28 +149,7 @@ pub async fn correct_to_nearest_dir_path(
     fuzzy: bool,
     top_n: usize,
 ) -> Vec<String> {
-    if let Some(fixed) = complete_path_with_project_dir(gcx.clone(), correction_candidate, true).await {
-        return vec![fixed.to_string_lossy().to_string()];
-    }
-
-    let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
-    // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
-    // (another thread never writes to the map itself, it can only replace the arc with a different map)
-
-    // NOTE: do we need top_n here?
-    let matches = cache_correction_arc.directories.find_matches(&PathBuf::from(correction_candidate));
-    if matches.is_empty() {
-        info!("not found {:?} in cache_correction (directories)", correction_candidate);
-    } else {
-        return matches.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>();
-    }
-
-    if fuzzy {
-        info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_correction_arc.directories.unique_paths.len());
-        return fuzzy_search(correction_candidate, cache_correction_arc.directories.unique_paths.iter().cloned(), top_n, &['/', '\\']);
-    }
-
-    vec![]
+    _correct_to_nearest(gcx, correction_candidate, true, fuzzy, top_n).await
 }
 
 pub async fn get_project_dirs(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<PathBuf> {
