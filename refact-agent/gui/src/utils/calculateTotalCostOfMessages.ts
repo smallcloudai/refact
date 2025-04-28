@@ -1,4 +1,3 @@
-import { CapCost } from "../services/refact/caps";
 import { Usage } from "../services/refact/chat";
 import {
   AssistantMessage,
@@ -8,10 +7,7 @@ import {
 } from "../services/refact/types";
 
 // TODO: cap cost should be in the messages:/
-export function calculateTotalCostOfMessages(
-  messages: ChatMessages,
-  capCost: CapCost,
-) {
+export function calculateTotalCostOfMessages(messages: ChatMessages) {
   const assistantMessages = messages.filter(hasUsageAndPrice);
   if (assistantMessages.length === 0) return null;
 
@@ -23,21 +19,25 @@ export function calculateTotalCostOfMessages(
   }>(
     (acc, message) => {
       const creation = calculateCost(
-        message.usage.cache_creation_input_tokens ?? 0,
+        message.metering_cache_creation_tokens_n ?? 0,
         message.pp1000t_cache_creation,
       );
 
       const read = calculateCost(
-        message.usage.cache_read_input_tokens ?? 0,
+        message.metering_cache_read_tokens_n ?? 0,
         message.pp1000t_cache_read,
       );
 
       // TODO: units don't match up
-      const prompt =
-        (message.usage.prompt_tokens * capCost.generated) / 1000000;
+      const prompt = calculateCost(
+        message.metering_prompt_tokens_n ?? 0,
+        message.pp1000t_prompt ?? 0,
+      );
 
-      const generated =
-        (message.usage.completion_tokens * capCost.generated) / 1000000;
+      const generated = calculateCost(
+        message.metering_generated_tokens_n ?? 0,
+        message.pp1000t_generated ?? 0,
+      );
 
       return {
         cache_creation: acc.cache_creation + creation,

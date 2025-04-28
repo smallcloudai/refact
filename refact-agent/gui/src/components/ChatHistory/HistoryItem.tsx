@@ -1,23 +1,14 @@
 import React, { useMemo } from "react";
 import { Card, Flex, Text, Box, Spinner } from "@radix-ui/themes";
-// import type { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../Buttons/Buttons";
 import { IconButton } from "@radix-ui/themes";
 import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
-import { CapsResponse, isUserMessage } from "../../services/refact";
-import { useAppSelector, useGetCapsQuery } from "../../hooks";
+import { isUserMessage } from "../../services/refact";
+import { useAppSelector } from "../../hooks";
 import { calculateTotalCostOfMessages } from "../../utils/calculateTotalCostOfMessages";
 import { Coin } from "../../images";
-
-function capsCostForModel(model: string, capsResponse?: CapsResponse) {
-  if (!capsResponse) return null;
-  // TODO: default model isn't saved :/
-  const modelOrDefault = model || capsResponse.code_chat_default_model;
-  if (!(modelOrDefault in capsResponse.metadata.pricing)) return null;
-  return capsResponse.metadata.pricing[modelOrDefault];
-}
 
 export const HistoryItem: React.FC<{
   historyItem: ChatHistoryItem;
@@ -29,12 +20,9 @@ export const HistoryItem: React.FC<{
   const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   const cache = useAppSelector((app) => app.chat.cache);
-  const caps = useGetCapsQuery();
 
   const totalCost = useMemo(() => {
-    const cost = capsCostForModel(historyItem.model, caps.data);
-    if (!cost) return null;
-    const totals = calculateTotalCostOfMessages(historyItem.messages, cost);
+    const totals = calculateTotalCostOfMessages(historyItem.messages);
 
     if (totals === null) return null;
 
@@ -44,7 +32,7 @@ export const HistoryItem: React.FC<{
       totals.generated +
       totals.prompt
     );
-  }, [caps.data, historyItem.messages, historyItem.model]);
+  }, [historyItem.messages]);
 
   const isStreaming = historyItem.id in cache;
   return (

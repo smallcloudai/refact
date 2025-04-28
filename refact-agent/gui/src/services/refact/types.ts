@@ -154,7 +154,7 @@ export type ProcessedUserMessageContentWithImages = {
   m_type: string;
   m_content: string;
 };
-export interface AssistantMessage extends BaseMessage {
+export interface AssistantMessage extends BaseMessage, CostInfo {
   role: "assistant";
   content: string | null;
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
@@ -162,8 +162,6 @@ export interface AssistantMessage extends BaseMessage {
   thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   usage?: Usage;
-  pp1000t_cache_creation?: number;
-  pp1000t_cache_read?: number;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -596,6 +594,18 @@ export function isCDInstructionResponse(
   return json.role === "cd_instruction";
 }
 
+type CostInfo = {
+  pp1000t_prompt?: number;
+  pp1000t_generated?: number;
+  pp1000t_cache_creation?: number;
+  pp1000t_cache_read?: number;
+  metering_prompt_tokens_n?: number;
+  metering_generated_tokens_n?: number;
+  metering_cache_creation_tokens_n?: number;
+  metering_cache_read_tokens_n?: number;
+  metering_balance?: number;
+};
+
 type ChatResponseChoice = {
   choices: ChatChoice[];
   created: number;
@@ -604,9 +614,7 @@ type ChatResponseChoice = {
   usage?: Usage;
   refact_agent_request_available?: null | number;
   refact_agent_max_request_num?: number;
-  pp1000t_cache_creation?: number;
-  pp1000t_cache_read?: number;
-};
+} & CostInfo;
 
 export function isChatResponseChoice(
   res: ChatResponse,
