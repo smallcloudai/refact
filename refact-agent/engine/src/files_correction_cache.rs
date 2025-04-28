@@ -19,8 +19,10 @@ pub struct PathTrie {
     root: TrieNode,
     component_to_index: HashMap<String, usize>,
     index_to_component: HashMap<usize, String>,
-    // TODO: do we need to store unique paths really?
-    pub unique_paths: HashSet<String>,
+    // NOTE: this is a hack for fuzzy_search only.
+    // The algorithm iterates over all unique_paths.
+    // I'm sure we can find better way to implement it.
+    unique_paths: HashSet<Vec<usize>>,
 }
 
 impl PathTrie {
@@ -65,16 +67,16 @@ impl PathTrie {
         stack.push((&root, vec![]));
         while let Some((node, components)) = stack.pop() {
             if node.count == 1 {
-                let mut matched_path = PathBuf::new();
-                for component in components.iter().rev() {
-                    matched_path.push(component);
-                }
-                unique_paths.insert(matched_path.to_string_lossy().to_string());
+                let unique_path = components
+                    .iter()
+                    .rev()
+                    .map(|&&index| index)
+                    .collect();
+                unique_paths.insert(unique_path);
             } else {
                 for (index, child) in &node.children {
                     let mut child_components = components.clone();
-                    let component = index_to_component.get(index).unwrap();
-                    child_components.push(component);
+                    child_components.push(index);
                     stack.push((child, child_components));
                 }
             }
@@ -121,7 +123,8 @@ impl PathTrie {
         while let Some((node, components)) = stack.pop() {
             if node.children.is_empty() {
                 let mut matched_path = PathBuf::new();
-                for component in components.iter().rev() {
+                for index in components.iter().rev() {
+                    let component = self.index_to_component.get(index).unwrap();
                     matched_path.push(component);
                 }
                 matched_path.push(path);
@@ -129,8 +132,7 @@ impl PathTrie {
             } else {
                 for (index, child) in &node.children {
                     let mut child_components = components.clone();
-                    let component = self.index_to_component.get(index).unwrap();
-                    child_components.push(component);
+                    child_components.push(*index);
                     stack.push((child, child_components));
                 }
             }
@@ -156,5 +158,20 @@ impl PathTrie {
         }
 
         None
+    }
+
+    pub fn len(&self) -> usize {
+        self.unique_paths.len()
+    }
+
+    pub fn shortest_paths_iter(&self) -> impl Iterator<Item = String> + use<'_> {
+        self.unique_paths.iter().map(|components| {
+            let mut path = PathBuf::new();
+            for index in components.iter().rev() {
+                let component = self.index_to_component.get(index).unwrap();
+                path.push(component);
+            }
+            path.to_string_lossy().to_string()
+        })
     }
 }
