@@ -76,7 +76,7 @@ export type CodeCompletionModel = {
   supports_clicks?: boolean;
 };
 
-type CapCost = {
+export type CapCost = {
   prompt: number;
   generated: number;
 };
