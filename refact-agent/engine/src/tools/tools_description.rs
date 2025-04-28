@@ -137,7 +137,9 @@ pub async fn tools_merged_and_filtered(
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
-        ("deep_analysis".to_string(), Box::new(crate::tools::tool_deep_analysis::ToolDeepAnalysis{}) as Box<dyn Tool + Send>),
+        ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
+        ("root_cause_analysis".to_string(), Box::new(crate::tools::tool_root_cause_analysis::ToolRootCauseAnalysis{}) as Box<dyn Tool + Send>),
+        ("critique".to_string(), Box::new(crate::tools::tool_critique::ToolCritique{}) as Box<dyn Tool + Send>),
         ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
@@ -342,15 +344,31 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "deep_analysis"
+  - name: "strategic_planning"
     agentic: true
-    description: "Deeply analyze a complex problem to make a good solution or a plan to follow."
+    description: "Strategically plan a solution for a complex problem or create a comprehensive approach."
     parameters:
       - name: "problem_statement"
         type: "string"
         description: "What's the topic and what kind of result do you want?"
     parameters_required:
       - "problem_statement"
+
+  - name: "root_cause_analysis"
+    agentic: true
+    description: "Analyze a problem to identify all possible causes, underlying factors, and their relationships based on the conversation context."
+    parameters: []
+    parameters_required: []
+
+  - name: "critique"
+    agentic: true
+    description: "Provide a thorough critique of code or a solution focusing on validity, robustness, minimality, and edge cases."
+    parameters:
+      - name: "critique_target"
+        type: "string"
+        description: "The code, solution, or approach that should be critiqued."
+    parameters_required:
+      - "critique_target"
 
   - name: "github"
     agentic: true

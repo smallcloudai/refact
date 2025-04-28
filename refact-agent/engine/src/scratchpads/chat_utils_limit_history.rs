@@ -348,7 +348,7 @@ fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(
             if !compressed_files.is_empty() {
                 let compressed_files_str = compressed_files.join(", ");
                 if remaining_files.is_empty() {
-                    let summary = format!("💿 Duplicate context file compressed: '{}' files were shown earlier in the conversation history", compressed_files_str);
+                    let summary = format!("💿 Duplicate files compressed: '{}' files were shown earlier in the conversation history. Do not ask for these files again.", compressed_files_str);
                     messages[file.msg_idx].content = ChatContent::SimpleText(summary);
                     messages[file.msg_idx].role = "cd_instruction".to_string();
                     tracing::info!("Stage 0: Fully compressed ContextFile at index {}: all {} files removed", 

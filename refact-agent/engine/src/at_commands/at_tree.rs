@@ -117,7 +117,7 @@ fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
     let symbols_list = defs
         .iter()
         .filter(|x| match x.symbol_type {
-            SymbolType::StructDeclaration | SymbolType::TypeAlias | SymbolType::VariableDefinition | SymbolType::FunctionDeclaration => true,
+            SymbolType::StructDeclaration | SymbolType::TypeAlias | SymbolType::FunctionDeclaration => true,
             _ => false
         })
         .map(|x| x.name())

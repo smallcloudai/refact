@@ -80,13 +80,13 @@ pub fn max_tokens_for_rag_chat_by_tools(
                 if context_files_len < crate::http::routers::v1::chat::CHAT_TOP_N {
                     // Scale down proportionally to how much we exceed the context limit
                     let scaling_factor = crate::http::routers::v1::chat::CHAT_TOP_N as f64 / context_files_len as f64;
-                    (4096.0 * scaling_factor) as usize
+                    (8192.0 * scaling_factor) as usize
                 } else {
-                    4096
+                    8192
                 }
             },
             "tree" => 16384,
-            "cat" | "locate" => 16384,
+            "cat" | "locate" => 16384 * 2,
             _ => 4096,  // Default limit for other tools
         };
         

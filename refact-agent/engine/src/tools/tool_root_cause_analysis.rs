@@ -15,16 +15,14 @@ use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::scratchpads::scratchpad_utils::count_tokens;
 
-pub struct ToolDeepAnalysis;
-
+pub struct ToolRootCauseAnalysis;
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
-
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
     subchat_params: &SubchatParameters,
-    problem_statement: &String, 
+    context_prompt: &String,
     previous_messages: &Vec<ChatMessage>
 ) -> Result<String, String> {
     let gcx = ccx.lock().await.global_context.clone();
@@ -33,9 +31,9 @@ async fn _make_prompt(
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
-    let final_message = format!("***Problem:***\n{problem_statement}\n\n***Problem context:***\n");
+    let final_message = format!("{context_prompt}\n\n***Context:***\n");
     tokens_budget -= count_tokens(&tokenizer.read().unwrap(), &final_message) as i64;
-    let mut context = "".to_string(); 
+    let mut context = "".to_string();
     let mut context_files: Vec<ContextFile> = vec![];
     for message in previous_messages.iter().rev() {
         let message_row = match message.role.as_str() {
@@ -99,35 +97,37 @@ async fn _make_prompt(
 
 
 #[async_trait]
-impl Tool for ToolDeepAnalysis {
+impl Tool for ToolRootCauseAnalysis {
     fn as_any(&self) -> &dyn std::any::Any { self }
     
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        args: &HashMap<String, Value>
+        _args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut usage_collector = ChatUsage { ..Default::default() };
         let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
-        let problem_statement = match args.get("problem_statement") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
-            None => return Err("Missing argument `problem_statement`".to_string())
-        };
-
-        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "deep_analysis").await?;
-        // Divide max_new_tokens by 3 for the three iterations
-        let iter_max_new_tokens = subchat_params.subchat_max_new_tokens / 3;
+        let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "root_cause_analysis").await?;
 
         let external_messages = {
             let ccx_lock = ccx.lock().await;
             ccx_lock.messages.clone()
         };
-        let prompt = _make_prompt(ccx.clone(), &subchat_params, &problem_statement, &external_messages).await?;
-        tracing::info!("deep analysis prompt:\n{}", prompt);
+        let context_prompt = r#"Based on the conversation and context below, please perform a thorough root cause analysis of the problem. Identify all possible causes, including:
+1. Direct causes - immediate factors that could lead to this issue.
+2. Underlying causes - deeper systemic issues that might be contributing.
+3. Environmental factors - external conditions that might influence the problem.
+4. Edge cases - unusual scenarios that could trigger this issue.
+For each potential cause, explain:
+- Why it might be causing the problem
+- How it could manifest in the observed symptoms
+- What evidence supports or refutes this cause
+5. What other files / functions / classes are useful for further investigation and should be opened.
 
+Finally, rank the causes from most to least likely, and explain your reasoning."#;
+        let prompt = _make_prompt(ccx.clone(), &subchat_params, &context_prompt.to_string(), &external_messages).await?;
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
             let mut t = AtCommandsContext::new(
@@ -144,11 +144,10 @@ impl Tool for ToolDeepAnalysis {
             t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
         };
-        let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
-
-        // FIRST ITERATION: Get the initial solution
-        tracing::info!("FIRST ITERATION: Get the initial solution");
-        let sol_choices = subchat_single(
+        
+        let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt.to_string())];
+        tracing::info!("Executing root cause analysis");
+        let rca_choices = subchat_single(
             ccx_subchat.clone(),
             subchat_params.subchat_model.as_str(),
             history.clone(),
@@ -156,74 +155,21 @@ impl Tool for ToolDeepAnalysis {
             None,
             false,
             subchat_params.subchat_temperature,
-            Some(iter_max_new_tokens),
+            Some(subchat_params.subchat_max_new_tokens),
             1,
             subchat_params.subchat_reasoning_effort.clone(),
             false,
             Some(&mut usage_collector),
             Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-deep-analysis-get-initial-solution")),
+            Some(format!("{log_prefix}-root-cause-analysis")),
         ).await?;
 
-        let sol_session = sol_choices.into_iter().next().unwrap();
-        let first_reply = sol_session.last().unwrap().clone();
-        history = sol_session.clone();
-
-        // SECOND ITERATION: Ask for a critique
-        tracing::info!("SECOND ITERATION: Ask for a critique");
-        let critique_prompt = "Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis. Remember, that the final solution must be minimal, robust, effective.";
-        history.push(ChatMessage::new("user".to_string(), critique_prompt.to_string()));
-        let crit_choices = subchat_single(
-            ccx_subchat.clone(),
-            subchat_params.subchat_model.as_str(),
-            history.clone(),
-            Some(vec![]),
-            None,
-            false,
-            subchat_params.subchat_temperature,
-            Some(iter_max_new_tokens),
-            1,
-            subchat_params.subchat_reasoning_effort.clone(),
-            false,
-            Some(&mut usage_collector),
-            Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-deep-analysis-critique")),
-        ).await?;
-
-        let crit_session = crit_choices.into_iter().next().unwrap();
-        let critique_reply = crit_session.last().unwrap().clone();
-        history = crit_session.clone();
-
-        // THIRD ITERATION: Ask for an improved solution
-        tracing::info!("THIRD ITERATION: Ask for an improved solution");
-        let improve_prompt = "Please improve the original solution based on the critique. Provide a comprehensive, refined solution that addresses the weaknesses identified in the critique while maintaining the strengths of the original solution.";
-        history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
-        let imp_choices = subchat_single(
-            ccx_subchat,
-            subchat_params.subchat_model.as_str(),
-            history.clone(),
-            Some(vec![]),
-            None,
-            false,
-            subchat_params.subchat_temperature,
-            Some(iter_max_new_tokens),
-            1,
-            subchat_params.subchat_reasoning_effort.clone(),
-            false,
-            Some(&mut usage_collector),
-            Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-deep-analysis-solution-refinement")),
-        ).await?;
-
-        let imp_session = imp_choices.into_iter().next().unwrap();
-        let improved_reply = imp_session.last().unwrap().clone();
-        let final_message = format!(
-            "# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}",
-            first_reply.content.content_text_only(),
-            critique_reply.content.content_text_only(),
-            improved_reply.content.content_text_only()
-        );
-        tracing::info!("deep analysis response (combined):\n{}", final_message);
+        let rca_session = rca_choices.into_iter().next().unwrap();
+        let rca_reply = rca_session.last().unwrap().clone();
+        
+        let final_message = rca_reply.content.content_text_only();
+        tracing::info!("root cause analysis response:\n{}", final_message);
+        
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),

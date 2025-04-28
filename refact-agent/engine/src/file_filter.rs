@@ -3,7 +3,7 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-const LARGE_FILE_SIZE_THRESHOLD: u64 = 180*1024; // 180k files (180k is ~0.2% of all files on our dataset)
+const LARGE_FILE_SIZE_THRESHOLD: u64 = 1800*1024; // 180k files (180k is ~0.2% of all files on our dataset)
 const SMALL_FILE_SIZE_THRESHOLD: u64 = 5;        // 5 Bytes
 
 pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
