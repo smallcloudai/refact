@@ -61,15 +61,6 @@ const handlers = [
   telemetryNetwork,
 ];
 
-const goodAgentUsage = {
-  _persist: {
-    rehydrated: true,
-    version: 1,
-  },
-  agent_max_usage_amount: 20,
-  agent_usage: 20,
-};
-
 // const handlers = [
 //   http.get("http://127.0.0.1:8001/v1/caps", () => {
 //     return HttpResponse.json(STUB_CAPS_RESPONSE);
@@ -234,7 +225,6 @@ describe("Chat", () => {
       {
         preloadedState: {
           pages: [{ name: "chat" }],
-          agentUsage: goodAgentUsage,
         },
       },
     );
@@ -422,11 +412,7 @@ describe("Chat", () => {
         // { once: true }, TODO: title
       ),
     );
-    const { user, ...app } = render(<App />, {
-      preloadedState: {
-        agentUsage: goodAgentUsage,
-      },
-    });
+    const { user, ...app } = render(<App />);
 
     const textarea = app.getByTestId("chat-form-textarea");
 

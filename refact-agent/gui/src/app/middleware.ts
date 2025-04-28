@@ -38,7 +38,6 @@ import {
   resetConfirmationInteractedState,
   updateConfirmationAfterIdeToolUse,
 } from "../features/ToolConfirmation/confirmationSlice";
-import { setInitialAgentUsage } from "../features/AgentUsage/agentUsageSlice";
 import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
@@ -48,12 +47,6 @@ import { isToolResponse } from "../events";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
-
-// TODO: can remove when using coins.
-const USAGE_LIMITS_ERROR_MESSAGES = [
-  '429 Too Many Requests: "Free plan daily limit reached',
-  '429 Too Many Requests: "Pro plan daily limit reached',
-];
 
 export const listenerMiddleware = createListenerMiddleware();
 const startListening = listenerMiddleware.startListening.withTypes<
@@ -501,28 +494,6 @@ startListening({
         sendCurrentChatToLspAfterToolCallUpdate({
           chatId: action.payload.chatId,
           toolCallId: action.payload.toolCallId,
-        }),
-      );
-    }
-  },
-});
-
-startListening({
-  actionCreator: setError,
-  effect: (state, listenerApi) => {
-    const rootState = listenerApi.getState();
-    // TODO: can remove ?
-    if (
-      state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[0]) ||
-      state.payload.startsWith(USAGE_LIMITS_ERROR_MESSAGES[1])
-    ) {
-      const currentMaxUsageAmount = rootState.agentUsage.agent_max_usage_amount;
-
-      listenerApi.dispatch(clearError());
-      listenerApi.dispatch(
-        setInitialAgentUsage({
-          agent_max_usage_amount: currentMaxUsageAmount,
-          agent_usage: 0,
         }),
       );
     }
