@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::VecDeque;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 struct TrieNode {
     children: HashMap<String, TrieNode>,
@@ -80,8 +80,8 @@ impl PathTrie {
         PathTrie { paths: paths.clone(), unique_paths, root }
     }
 
-    pub fn find_matches(&self, query: &Path) -> Vec<PathBuf> {
-        let components: Vec<String> = query
+    pub fn find_matches(&self, path: &PathBuf) -> Vec<PathBuf> {
+        let components: Vec<String> = path
             .components()
             .map(|comp| comp.as_os_str().to_string_lossy().to_string())
             .collect();
@@ -95,5 +95,25 @@ impl PathTrie {
         current.indices.iter()
             .map(|&index| self.paths[index].clone())
             .collect()
+    }
+
+    pub fn shortest_path(&self, path: &PathBuf) -> Option<PathBuf> {
+        let components: Vec<String> = path
+            .components()
+            .map(|comp| comp.as_os_str().to_string_lossy().to_string())
+            .collect();
+
+        for i in (0..components.len()).rev() {
+            let mut partial_path = PathBuf::new();
+            for j in i..components.len() {
+                partial_path.push(&components[j]);
+            }
+            let matches = self.find_matches(&partial_path);
+            if matches.len() == 1 {
+                return Some(partial_path);
+            }
+        }
+
+        None
     }
 }
