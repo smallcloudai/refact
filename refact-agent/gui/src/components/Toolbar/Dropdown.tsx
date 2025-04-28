@@ -12,7 +12,7 @@ import {
   useLogout,
   useAppSelector,
   useAppDispatch,
-  useAgentUsage,
+  useStartPollingForUser,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
@@ -84,7 +84,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const logout = useLogout();
   const { addressURL } = useConfig();
   const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
-  const { startPollingForUser } = useAgentUsage();
+  const { startPollingForUser } = useStartPollingForUser();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";

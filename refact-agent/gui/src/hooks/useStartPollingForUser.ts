@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect } from "react";
 import { useGetUser } from "./useGetUser";
 
-export function useAgentUsage() {
+export function useStartPollingForUser() {
   const user = useGetUser();
   const [pollingForUser, setPollingForUser] = useState<boolean>(false);
 
