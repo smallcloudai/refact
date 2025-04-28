@@ -42,6 +42,8 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     let mut cache_dirty_ref = cache_dirty_arc.lock().await;
     if *cache_dirty_ref > 0.0 && now > *cache_dirty_ref {
         info!("rebuilding files cache...");
+        // NOTE: we build cache on each add/delete file inside the workspace.
+        // There should be a way to build cache once and then update it.
         let start_time = Instant::now();
         let paths_from_anywhere = paths_from_anywhere(global_context.clone()).await;
         let workspace_folders = get_project_dirs(global_context.clone()).await;
@@ -127,8 +129,8 @@ async fn _correct_to_nearest(
     }
 
     if fuzzy {
-        info!("fuzzy search {:?} is_dir={}, cache_fuzzy_arc.len={}", correction_candidate, is_dir, correction_cache.unique_paths.len());
-        return fuzzy_search(correction_candidate, correction_cache.unique_paths.iter().cloned(), top_n, &['/', '\\']);
+        info!("fuzzy search {:?} is_dir={}, cache_fuzzy_arc.len={}", correction_candidate, is_dir, correction_cache.len());
+        return fuzzy_search(correction_candidate, correction_cache.shortest_paths_iter(), top_n, &['/', '\\']);
     }
 
     vec![]
