@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 use std::path::{PathBuf, Component, Path};
@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::global_context::GlobalContext;
 use crate::custom_error::MapErrToString;
-use crate::files_in_workspace::detect_vcs_for_a_file_path;
+use crate::files_in_workspace::{detect_vcs_for_a_file_path, CacheCorrection};
 use crate::fuzzy_search::fuzzy_search;
 
 
@@ -29,71 +29,12 @@ pub async fn paths_from_anywhere(global_context: Arc<ARwLock<GlobalContext>>) ->
     paths_from_anywhere.collect::<Vec<PathBuf>>()
 }
 
-fn make_cache(paths: &Vec<PathBuf>, workspace_folders: &Vec<PathBuf>) -> (
-    HashMap<String, HashSet<String>>, HashSet<String>, usize
-) {
-    let mut cache_correction = HashMap::<String, HashSet<String>>::new();
-    let mut cnt = 0;
-
-    for path in paths {
-        let path_str = path.to_str().unwrap_or_default().to_string();
-
-        cache_correction.entry(path_str.clone()).or_insert_with(HashSet::new).insert(path_str.clone());
-        // chop off directory names one by one
-        let mut index = 0;
-        while let Some(slashpos) = path_str[index .. ].find(|c| c == '/' || c == '\\') {
-            let absolute_slashpos = index + slashpos;
-            index = absolute_slashpos + 1;
-            let slashpos_to_end = &path_str[index .. ];
-            if !slashpos_to_end.is_empty() {
-                cache_correction.entry(slashpos_to_end.to_string()).or_insert_with(HashSet::new).insert(path_str.clone());
-            }
-        }
-    }
-
-    // Find the shortest unique suffix for each path, that is at least the path from workspace root
-    let cache_shortened: HashSet<String> = paths.iter().map(|path| {
-        let workspace_components_len = workspace_folders.iter()
-            .filter_map(|workspace_dir| {
-                if path.starts_with(workspace_dir) {
-                    Some(workspace_dir.components().count())
-                } else {
-                    None
-                }
-            })
-            .max()
-            .unwrap_or(0);
-
-        let path_is_dir = path.to_string_lossy().ends_with(std::path::MAIN_SEPARATOR);
-        let mut current_suffix = PathBuf::new();
-        let path_components_count = path.components().count();
-        for component in path.components().rev() {
-            if !current_suffix.as_os_str().is_empty() || path_is_dir {
-                current_suffix = PathBuf::from(component.as_os_str()).join(&current_suffix);
-            } else {
-                current_suffix = PathBuf::from(component.as_os_str());
-            }
-            let suffix = current_suffix.to_string_lossy().into_owned();
-            if cache_correction.get(suffix.as_str()).map_or(0, |v| v.len()) == 1 &&
-                current_suffix.components().count() + workspace_components_len >= path_components_count {
-                cnt += 1;
-                return suffix;
-            }
-        }
-        cnt += 1;
-        path.to_string_lossy().into_owned()
-    }).collect();
-
-    (cache_correction, cache_shortened, cnt)
-}
-
-pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> (Arc<HashMap<String, HashSet<String>>>, Arc<HashSet<String>>) {
-    let (cache_dirty_arc, mut cache_correction_arc, mut cache_shortened_arc) = {
+pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalContext>>) -> Arc<CacheCorrection> {
+    let (cache_dirty_arc, mut cache_correction_arc) = {
         let cx = global_context.read().await;
         (
             cx.documents_state.cache_dirty.clone(),
             cx.documents_state.cache_correction.clone(),
-            cx.documents_state.cache_shortened.clone(),
         )
     };
 
@@ -101,24 +42,21 @@ pub async fn files_cache_rebuild_as_needed(global_context: Arc<ARwLock<GlobalCon
     let mut cache_dirty_ref = cache_dirty_arc.lock().await;
     if *cache_dirty_ref > 0.0 && now > *cache_dirty_ref {
         info!("rebuilding files cache...");
-        // filter only get_project_dirs?
         let start_time = Instant::now();
         let paths_from_anywhere = paths_from_anywhere(global_context.clone()).await;
         let workspace_folders = get_project_dirs(global_context.clone()).await;
-        let (cache_correction, cache_shortened, cnt) = make_cache(&paths_from_anywhere, &workspace_folders);
+        let cache_correction = CacheCorrection::build(&paths_from_anywhere, &workspace_folders);
 
-        info!("rebuild completed in {:.3}s, {} URLs => cache_correction.len is now {}", start_time.elapsed().as_secs_f64(), cnt, cache_correction.len());
+        info!("rebuild completed in {:.3}s, over {}", start_time.elapsed().as_secs_f64(), paths_from_anywhere.len());
         cache_correction_arc = Arc::new(cache_correction);
-        cache_shortened_arc = Arc::new(cache_shortened);
         {
             let mut cx = global_context.write().await;
             cx.documents_state.cache_correction = cache_correction_arc.clone();
-            cx.documents_state.cache_shortened = cache_shortened_arc.clone();
         }
         *cache_dirty_ref = 0.0;
     }
 
-    return (cache_correction_arc, cache_shortened_arc);
+    cache_correction_arc
 }
 
 async fn complete_path_with_project_dir(
@@ -170,22 +108,24 @@ pub async fn correct_to_nearest_filename(
         return vec![fixed.to_string_lossy().to_string()];
     }
 
-    let (cache_correction_arc, cache_fuzzy_arc) = files_cache_rebuild_as_needed(gcx.clone()).await;
+    let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
     // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
     // (another thread never writes to the map itself, it can only replace the arc with a different map)
 
-    if let Some(fixed) = (*cache_correction_arc).get(&correction_candidate.clone()) {
-        return fixed.into_iter().cloned().collect::<Vec<String>>();
+    // NOTE: do we need top_n here?
+    let matches = cache_correction_arc.filenames.find_matches(&PathBuf::from(correction_candidate));
+    if matches.is_empty() {
+        info!("not found {:?} in cache_correction (filenames)", correction_candidate);
     } else {
-        info!("not found {:?} in cache_correction", correction_candidate);
+        return matches.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>();
     }
 
     if fuzzy {
-        info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_fuzzy_arc.len());
-        return fuzzy_search(correction_candidate, cache_fuzzy_arc.iter().cloned(), top_n, &['/', '\\']);
+        info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_correction_arc.filenames.unique_paths.len());
+        return fuzzy_search(correction_candidate, cache_correction_arc.filenames.unique_paths.iter().cloned(), top_n, &['/', '\\']);
     }
 
-    return vec![];
+    vec![]
 }
 
 pub async fn correct_to_nearest_dir_path(
@@ -198,42 +138,23 @@ pub async fn correct_to_nearest_dir_path(
         return vec![fixed.to_string_lossy().to_string()];
     }
 
-    fn get_parent(p: &String) -> Option<String> {
-        PathBuf::from(p).parent().map(PathBuf::from).map(|x|x.to_string_lossy().to_string())
-    }
+    let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
+    // it's dangerous to use cache_correction_arc without a mutex, but should be fine as long as it's read-only
+    // (another thread never writes to the map itself, it can only replace the arc with a different map)
 
-    let (cache_correction_arc, cache_fuzzy_set) = files_cache_rebuild_as_needed(gcx.clone()).await;
-    let mut paths_correction_map = HashMap::new();
-    for (k, v) in cache_correction_arc.iter() {
-        match get_parent(k) {
-            Some(k_parent) => {
-                let v_parents = v.iter().filter_map(|x| get_parent(x)).collect::<Vec<_>>();
-                if v_parents.is_empty() {
-                    continue;
-                }
-                paths_correction_map.entry(k_parent.clone()).or_insert_with(HashSet::new).extend(v_parents);
-            },
-            None => {}
-        }
-    }
-    if let Some(res) = paths_correction_map.get(correction_candidate).map(|x|x.iter().cloned().collect::<Vec<_>>()) {
-        return res;
+    // NOTE: do we need top_n here?
+    let matches = cache_correction_arc.directories.find_matches(&PathBuf::from(correction_candidate));
+    if matches.is_empty() {
+        info!("not found {:?} in cache_correction (directories)", correction_candidate);
+    } else {
+        return matches.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>();
     }
 
     if fuzzy {
-        let mut dirs = HashSet::<String>::new();
-
-        for p in cache_fuzzy_set.iter() {
-            let mut current_path = PathBuf::from(&p);
-            while let Some(parent) = current_path.parent() {
-                dirs.insert(parent.to_string_lossy().to_string());
-                current_path = parent.to_path_buf();
-            }
-        }
-
-        info!("fuzzy search {:?}, dirs.len={}", correction_candidate, dirs.len());
-        return fuzzy_search(correction_candidate, dirs.iter().cloned(), top_n, &['/', '\\']);
+        info!("fuzzy search {:?}, cache_fuzzy_arc.len={}", correction_candidate, cache_correction_arc.directories.unique_paths.len());
+        return fuzzy_search(correction_candidate, cache_correction_arc.directories.unique_paths.iter().cloned(), top_n, &['/', '\\']);
     }
+
     vec![]
 }
 
@@ -295,14 +216,15 @@ pub async fn get_active_workspace_folder(gcx: Arc<ARwLock<GlobalContext>>) -> Op
     }
 }
 
+// TODO: we should se trie here!
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {
-    let (_, indexed_paths) = files_cache_rebuild_as_needed(gcx.clone()).await;
+    let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
     let workspace_folders = get_project_dirs(gcx.clone()).await
         .iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>();
-    _shortify_paths_from_indexed(paths, indexed_paths, workspace_folders)
+    _shortify_paths_from_indexed(paths, &cache_correction_arc.filenames.unique_paths, workspace_folders)
 }
 
-fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<String>>, workspace_folders: Vec<String>) -> Vec<String>
+fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: &HashSet<String>, workspace_folders: Vec<String>) -> Vec<String>
 {
     paths.into_iter().map(|path| {
         // Get the length of the workspace part of the path
@@ -321,7 +243,7 @@ fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: Arc<HashSet<
         // least as long as the part of the path relative to the workspace root
         let mut path_to_cut = path.clone();
         while !path_to_cut.is_empty() {
-            if indexed_paths.get(&path_to_cut).is_some() &&
+            if indexed_paths.contains(&path_to_cut) &&
                 workspace_part_len + if std::path::MAIN_SEPARATOR == '/' { 1 } else { 2 } + path_to_cut.len() >= path.len() {
                 return path_to_cut.clone();
             }
