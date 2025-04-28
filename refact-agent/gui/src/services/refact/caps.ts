@@ -79,6 +79,8 @@ export type CodeCompletionModel = {
 export type CapCost = {
   prompt: number;
   generated: number;
+  cache_read?: number;
+  cache_creation?: number;
 };
 
 function isCapCost(json: unknown): json is CapCost {
