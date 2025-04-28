@@ -216,38 +216,14 @@ pub async fn get_active_workspace_folder(gcx: Arc<ARwLock<GlobalContext>>) -> Op
     }
 }
 
-// TODO: we should se trie here!
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {
     let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
-    let workspace_folders = get_project_dirs(gcx.clone()).await
-        .iter().map(|x| x.to_string_lossy().to_string()).collect::<Vec<_>>();
-    _shortify_paths_from_indexed(paths, &cache_correction_arc.filenames.unique_paths, workspace_folders)
-}
-
-fn _shortify_paths_from_indexed(paths: &Vec<String>, indexed_paths: &HashSet<String>, workspace_folders: Vec<String>) -> Vec<String>
-{
     paths.into_iter().map(|path| {
-        // Get the length of the workspace part of the path
-        let workspace_part_len = workspace_folders.iter()
-            .filter_map(|workspace_dir| {
-                if path.starts_with(workspace_dir) {
-                    Some(workspace_dir.len())
-                } else {
-                    None
-                }
-            })
-            .max()
-            .unwrap_or(0);
-
-        // Find the longest suffix of the path, that is in the indexed cache, make sure it is at
-        // least as long as the part of the path relative to the workspace root
-        let mut path_to_cut = path.clone();
-        while !path_to_cut.is_empty() {
-            if indexed_paths.contains(&path_to_cut) &&
-                workspace_part_len + if std::path::MAIN_SEPARATOR == '/' { 1 } else { 2 } + path_to_cut.len() >= path.len() {
-                return path_to_cut.clone();
-            }
-            path_to_cut.drain(..1);
+        if let Some(shortened) = cache_correction_arc.filenames.shortest_path(&PathBuf::from(path)) {
+            return shortened.to_string_lossy().to_string();
+        }
+        if let Some(shortened) = cache_correction_arc.directories.shortest_path(&PathBuf::from(path)) {
+            return shortened.to_string_lossy().to_string();
         }
         path.clone()
     }).collect()
