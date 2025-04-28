@@ -1,5 +1,5 @@
-import React from "react";
-import { Select as RadixSelect } from "@radix-ui/themes";
+import React, { ReactNode } from "react";
+import { HoverCard, Select as RadixSelect } from "@radix-ui/themes";
 import styles from "./select.module.css";
 import classnames from "classnames";
 
@@ -26,7 +26,9 @@ export const Content: React.FC<ContentProps & { className?: string }> = (
   />
 );
 
-export type ItemProps = React.ComponentProps<typeof RadixSelect.Item>;
+export type ItemProps = React.ComponentProps<typeof RadixSelect.Item> & {
+  tooltip?: ReactNode;
+};
 export const Item: React.FC<ItemProps & { className?: string }> = (props) => (
   <RadixSelect.Item
     {...props}
@@ -53,6 +55,20 @@ export const Select: React.FC<SelectProps> = ({
             return (
               <Item key={`select-item-${index}-${option}`} value={option}>
                 {option}
+              </Item>
+            );
+          }
+          if (option.tooltip) {
+            return (
+              <Item key={`select-item-${index}-${option.value}`} {...option}>
+                <HoverCard.Root>
+                  <HoverCard.Trigger>
+                    <div>
+                      {option.children ?? option.textValue ?? option.value}
+                    </div>
+                  </HoverCard.Trigger>
+                  <HoverCard.Content>{option.tooltip}</HoverCard.Content>
+                </HoverCard.Root>
               </Item>
             );
           }

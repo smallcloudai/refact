@@ -9,6 +9,7 @@ import {
   Switch,
   Badge,
   Button,
+  DataList,
 } from "@radix-ui/themes";
 import { Select } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
@@ -170,17 +171,25 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
         if (!caps.data) return option;
         if (!(option.value in caps.data.metadata.pricing)) return option;
         const pricingForModel = caps.data.metadata.pricing[option.value];
-        const title = Object.entries(pricingForModel).reduce<string>(
-          (acc, [key, value]) => {
-            const str = `${key}: ${value / 1000}`;
-            if (acc.length === 0) return `Coins per token\n${str}`;
-            return acc + "\n" + str;
-          },
-          "",
+        const tooltip = (
+          <Flex direction="column" gap="4">
+            <Text size="1">Cost per Million Tokens</Text>
+            <DataList.Root size="1">
+              {Object.entries(pricingForModel).map(([key, value]) => {
+                return (
+                  <DataList.Item key={key}>
+                    <DataList.Label>{key}</DataList.Label>
+                    <DataList.Value>{value}</DataList.Value>
+                  </DataList.Item>
+                );
+              })}
+            </DataList.Root>
+          </Flex>
         );
         return {
           ...option,
-          title,
+          tooltip,
+          // title,
         };
       }),
     [caps.data, caps.usableModelsForPlan],

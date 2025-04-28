@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text, IconButton, Strong, Quote } from "@radix-ui/themes";
+import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
