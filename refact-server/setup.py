@@ -36,7 +36,7 @@ all_refact_packages = {
         data=["git_command.exp"],
     ),
     "refact_webgui": PyPackage(
-        requires=["cryptography", "fastapi>=0.111.0", "giturlparse",
+        requires=["cryptography", "fastapi>=0.115.2", "giturlparse",
                   "starlette==0.37.2", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
                   "scyllapy==1.3.0", "pandas>=2.0.3"],
         requires_packages=["refact_known_models", "refact_utils"],
@@ -44,9 +44,9 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
               "webgui/static/assets/fonts/*"]),
     "self_hosting_machinery": PyPackage(
-        requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
+        requires=["python-multipart", "accelerate",
                   "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
-                  "bitsandbytes", "safetensors", "peft", "triton",
+                  "bitsandbytes>=0.45.5", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
                   "sentence-transformers>=3.4.1", "huggingface-hub>=0.29.2",
                   "aiohttp", "setproctitle", "google-auth>=2.37.0"],

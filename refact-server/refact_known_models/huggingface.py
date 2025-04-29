@@ -81,66 +81,6 @@ qwen_coder_supports_scratchpads = {
 }
 
 huggingface_mini_db = {
-    # starcoder2
-    "starcoder2/3b/base": {
-        "backend": "transformers",
-        "model_path": "bigcode/starcoder2-3b",
-        "model_class_kwargs": {},
-        "required_memory_mb": 8000,
-        "T": 4096,
-        "supports_scratchpads": {
-            "completion": starcoder_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion", "finetune"],
-    },
-    "starcoder2/7b/base": {
-        "backend": "transformers",
-        "model_path": "bigcode/starcoder2-7b",
-        "model_class_kwargs": {},
-        "required_memory_mb": 16000,
-        "T": 2048,
-        "supports_scratchpads": {
-            "completion": starcoder_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion", "finetune"],
-    },
-    "starcoder2/15b/base": {
-        "backend": "transformers",
-        "model_path": "bigcode/starcoder2-15b",
-        "model_class_kwargs": {},
-        "required_memory_mb": 20000,
-        "T": 4096,
-        "supports_scratchpads": {
-            "completion": starcoder_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion", "finetune"],
-    },
-    # deepseek-coder
-    "deepseek-coder/1.3b/base": {
-        "backend": "transformers",
-        "model_path": "deepseek-ai/deepseek-coder-1.3b-base",
-        "model_class_kwargs": {},
-        "T": 4096,
-        "supports_scratchpads": {
-            "completion": deepseek_coder_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion", "finetune"],
-    },
-    "deepseek-coder/5.7b/mqa-base": {
-        "backend": "transformers",
-        "model_path": "deepseek-ai/deepseek-coder-5.7bmqa-base",
-        "model_class_kwargs": {},
-        "T": 4096,
-        "supports_scratchpads": {
-            "completion": deepseek_coder_supports_scratchpads,
-        },
-        "deprecated": True,
-        "filter_caps": ["completion", "finetune"],
-    },
     # llama
     "llama3.1/8b/instruct": {
         "backend": "transformers",
