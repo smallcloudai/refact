@@ -72,9 +72,10 @@ type CapsMetadata = {
 function isCapsMetadata(json: unknown): json is CapsMetadata {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("pricing" in json)) return false;
-  if (!json.pricing) return false;
-  return Object.values(json.pricing).every(isCapCost);
+  if ("pricing" in json && json.pricing) {
+    return Object.values(json.pricing).every(isCapCost);
+  }
+  return true;
 }
 
 export type CapsResponse = {
