@@ -107,7 +107,6 @@ export type CapsResponse = {
 export function isCapsResponse(json: unknown): json is CapsResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("code_chat_models" in json)) return false;
   if (!("metadata" in json)) return false;
   if (!isCapsMetadata(json.metadata)) return false;
   if (!("chat_default_model" in json)) return false;
