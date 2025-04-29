@@ -13,6 +13,7 @@ export function TourBox({ children, style }: TourBubbleProps) {
 
   return (
     <Flex
+      data-testid="tour-box"
       direction="column"
       style={{
         position: "relative",

@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "refact-chat-js/*": ["../refact-agent/gui/*"] // This mapping is relative to "baseUrl".
+    }
+  },
+  "references": [{ "path": "../refact-agent/gui/tsconfig.node.json" }]
+}

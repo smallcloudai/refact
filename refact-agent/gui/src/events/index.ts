@@ -27,7 +27,11 @@ export {
 } from "../features/Chat/selectedSnippet";
 export type { FimDebugData } from "../services/refact/fim";
 export type { ChatHistoryItem } from "../features/History/historySlice";
-export { addInputValue, setInputValue } from "../components/ChatForm/actions";
+export {
+  addInputValue,
+  setInputValue,
+  type InputActionPayload,
+} from "../components/ChatForm/actions";
 export {
   setCurrentProjectInfo,
   type CurrentProjectInfo,
@@ -76,6 +80,7 @@ export {
   ideIsChatReady,
   ideToolCall,
   ideToolCallResponse,
+  type ToolCallResponsePayload,
 } from "../hooks/useEventBusForIDE";
 
 export { ideAttachFileToChat } from "../hooks/useEventBusForApp";

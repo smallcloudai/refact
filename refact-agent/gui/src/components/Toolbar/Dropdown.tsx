@@ -106,7 +106,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger>
+      <DropdownMenu.Trigger title="menu">
         <IconButton variant="outline" ref={(x) => refs.setMore(x)}>
           <HamburgerMenuIcon />
         </IconButton>

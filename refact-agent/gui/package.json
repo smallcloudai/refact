@@ -31,6 +31,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "build:node": "vite build -c vite.node.config.ts ",
     "build": "tsc && vite build && vite build -c vite.node.config.ts",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

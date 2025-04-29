@@ -1,0 +1,28 @@
+{
+  "name": "playwright",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "postinstall": "playwright install --with-deps chromium",
+    "test": "npx playwright test",
+    "test:update": "npx playwright test --update-snapshots",
+    "start": "npm run test -- --ui",
+    "lint": "eslint --max-warnings 0 --ext .js,.ts ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@eslint/js": "^9.23.0",
+    "@playwright/test": "^1.51.1",
+    "@types/node": "^22.13.14",
+    "dotenv": "^16.4.7",
+    "eslint": "^9.23.0",
+    "eslint-plugin-playwright": "^2.2.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.28.0"
+  }
+}

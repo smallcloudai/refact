@@ -223,6 +223,6 @@ export type AppStore = typeof store;
 
 declare global {
   interface Window {
-    __INITIAL_STATE__?: RootState;
+    __INITIAL_STATE__?: Partial<RootState>;
   }
 }

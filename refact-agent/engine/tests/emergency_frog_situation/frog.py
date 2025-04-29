@@ -33,8 +33,8 @@ class Frog:
     def swim(self, pond_width, pond_height):
         print("Swimming...")
         print("Splash! The frog is moving through the water")
-        self.x += self.vx * DT
-        self.y += self.vy * DT
+        self.x += self.vx * DT * 0.8  # Swimming is faster but still slightly slower than jumping
+        self.y += self.vy * DT * 0.8  # Swimming is faster but still slightly slower than jumping
         print("Ripple... ripple...")
         self.bounce_off_banks(pond_width, pond_height)
         self.x = np.clip(self.x, 0, pond_width)
