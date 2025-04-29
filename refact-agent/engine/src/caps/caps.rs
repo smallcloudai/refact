@@ -340,7 +340,7 @@ pub async fn load_caps(
     caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
 
-    let (mut providers, error_log) = read_providers_d(server_providers, &config_dir).await;
+    let (mut providers, error_log) = read_providers_d(server_providers, &config_dir, experimental).await;
     providers.retain(|p| p.enabled);
     for e in error_log {
         tracing::error!("{e}");
