@@ -7,7 +7,6 @@ use async_trait::async_trait;
 use tracing::{error, info};
 
 use crate::background_tasks::BackgroundTasksHolder;
-use crate::caps::get_custom_embedding_api_key;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::knowledge::{MemdbSubEvent, MemoriesDatabase};
@@ -15,15 +14,6 @@ use crate::trajectories::try_to_download_trajectories;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_dirty_memory, vectorizer_enqueue_files, FileVectorizerService};
-
-
-fn model_to_rejection_threshold(embedding_model: &str) -> f32 {
-    match embedding_model {
-        "text-embedding-3-small" => 0.63,
-        "thenlper_gte" => 0.25,
-        _ => 0.63,
-    }
-}
 
 
 pub struct VecDb {
@@ -49,24 +39,10 @@ async fn do_i_need_to_reload_vecdb(
 
     let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
     let mut consts = {
-        let caps_locked = caps.read().unwrap();
-        let mut b = caps_locked.embedding_batch;
-        if b == 0 {
-            b = 64;
-        }
-        if b > 256 {
-            tracing::warn!("embedding_batch can't be higher than 256");
-            b = 64;
-        }
         VecdbConstants {
-            embedding_model: caps_locked.embedding_model.clone(),
-            embedding_size: caps_locked.embedding_size,
-            embedding_batch: b,
-            vectorizer_n_ctx: caps_locked.embedding_n_ctx,
+            embedding_model: caps.embedding_model.clone(),
             tokenizer: None,
-            endpoint_embeddings_template: caps_locked.endpoint_embeddings_template.clone(),
-            endpoint_embeddings_style: caps_locked.endpoint_embeddings_style.clone(),
-            splitter_window_size: caps_locked.embedding_n_ctx / 2,
+            splitter_window_size: caps.embedding_model.base.n_ctx / 2,
             vecdb_max_files: vecdb_max_files,
         }
     };
@@ -77,30 +53,29 @@ async fn do_i_need_to_reload_vecdb(
         Some(ref db) => {
             if
                 db.constants.embedding_model == consts.embedding_model &&
-                db.constants.endpoint_embeddings_template == consts.endpoint_embeddings_template &&
-                db.constants.endpoint_embeddings_style == consts.endpoint_embeddings_style &&
-                db.constants.splitter_window_size == consts.splitter_window_size &&
-                db.constants.embedding_batch == consts.embedding_batch &&
-                db.constants.embedding_size == consts.embedding_size
+                db.constants.splitter_window_size == consts.splitter_window_size
             {
                 return (false, None);
             }
         }
     }
 
-    if consts.embedding_model.is_empty() || consts.endpoint_embeddings_template.is_empty() {
-        error!("command line says to launch vecdb, but this will not happen: embedding_model.is_empty() || endpoint_embeddings_template.is_empty()");
+    if consts.embedding_model.base.name.is_empty() || consts.embedding_model.base.endpoint.is_empty() {
+        error!("command line says to launch vecdb, but this will not happen: embedding model name or endpoint are empty");
         return (true, None);
     }
 
-    let tokenizer_maybe = crate::cached_tokenizers::cached_tokenizer(
-        caps.clone(), gcx.clone(), consts.embedding_model.clone()).await;
-    if tokenizer_maybe.is_err() {
-        error!("vecdb launch failed, embedding model tokenizer didn't load: {}", tokenizer_maybe.unwrap_err());
-        return (false, None);
-    }
-    consts.tokenizer = Some(tokenizer_maybe.clone().unwrap());
-
+    let tokenizer_result = crate::tokens::cached_tokenizer(
+        gcx.clone(), &consts.embedding_model.base,
+    ).await;
+    
+    consts.tokenizer = match tokenizer_result {
+        Ok(tokenizer) => tokenizer,
+        Err(err) => {
+            error!("vecdb launch failed, embedding model tokenizer didn't load: {}", err);
+            return (false, None);
+        }
+    };
     return (true, Some(consts));
 }
 
@@ -166,17 +141,15 @@ impl VecDb {
         config_dir: &PathBuf,
         cmdline: CommandLine,
         constants: VecdbConstants,
-        api_key: &String
     ) -> Result<VecDb, String> {
         let emb_table_name = crate::vecdb::vdb_emb_aux::create_emb_table_name(&vec![cmdline.workspace_folder]);
-        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model, constants.embedding_size, &emb_table_name).await?;
+        let handler = VecDBSqlite::init(cache_dir, &constants.embedding_model.base.name, constants.embedding_model.embedding_size, &emb_table_name).await?;
         let vecdb_handler = Arc::new(AMutex::new(handler));
         let memdb = Arc::new(AMutex::new(MemoriesDatabase::init(config_dir, &constants, &emb_table_name, cmdline.reset_memory).await?));
 
         let vectorizer_service = Arc::new(AMutex::new(FileVectorizerService::new(
             vecdb_handler.clone(),
             constants.clone(),
-            api_key.clone(),
             memdb.clone(),
         ).await));
 
@@ -423,18 +396,10 @@ pub async fn memories_search(
         )
     };
 
-    let api_key = get_custom_embedding_api_key(gcx.clone()).await;
-    if let Err(err) = api_key {
-        return Err(err.message);
-    }
-
-    let embedding = fetch_embedding::get_embedding_with_retry(
+    let embedding = fetch_embedding::get_embedding_with_retries(
         vecdb_emb_client,
-        &constants.endpoint_embeddings_style,
         &constants.embedding_model,
-        &constants.endpoint_embeddings_template,
         vec![query.clone()],
-        &api_key.unwrap(),
         5,
     ).await?;
     if embedding.is_empty() {
@@ -452,10 +417,9 @@ pub async fn memories_search(
         score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    let rejection_threshold = model_to_rejection_threshold(constants.embedding_model.as_str());
     let mut filtered_results = Vec::new();
     for rec in results.iter() {
-        if rec.distance.abs() >= rejection_threshold {
+        if rec.distance.abs() >= constants.embedding_model.rejection_threshold {
             info!("distance {:.3} -> dropped memory {}", rec.distance, rec.memid);
         } else {
             info!("distance {:.3} -> kept memory {}", rec.distance, rec.memid);
@@ -512,17 +476,13 @@ impl VecdbSearch for VecDb {
         query: String,
         top_n: usize,
         vecdb_scope_filter_mb: Option<String>,
-        api_key: &String,
     ) -> Result<SearchResult, String> {
         // TODO: move out of struct, replace self with Arc
         let t0 = std::time::Instant::now();
-        let embedding_mb = fetch_embedding::get_embedding_with_retry(
+        let embedding_mb = fetch_embedding::get_embedding_with_retries(
             self.vecdb_emb_client.clone(),
-            &self.constants.endpoint_embeddings_style,
             &self.constants.embedding_model,
-            &self.constants.endpoint_embeddings_template,
             vec![query.clone()],
-            api_key,
             5,
         ).await;
         if embedding_mb.is_err() {
@@ -542,7 +502,7 @@ impl VecdbSearch for VecDb {
         info!("search itself {:.3}s", t1.elapsed().as_secs_f64());
         let mut dist0 = 0.0;
         let mut filtered_results = Vec::new();
-        let rejection_threshold = model_to_rejection_threshold(self.constants.embedding_model.as_str());
+        let rejection_threshold = self.constants.embedding_model.rejection_threshold;
         info!("rejection_threshold {:.3}", rejection_threshold);
         for rec in results.iter_mut() {
             if dist0 == 0.0 {

@@ -1,0 +1,19 @@
+.button {
+  transition: all 0.1s ease-in-out;
+}
+
+.extraButton {
+  width: 100%;
+  padding: 5px 0;
+}
+.disabledSwitch {
+  span {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.disabledField {
+  input {
+    cursor: not-allowed;
+  }
+}

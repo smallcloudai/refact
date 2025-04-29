@@ -21,7 +21,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_opt_num_to_str, deserialize_str_to_opt_num};
-use crate::integrations::setting_up_integrations::YamlError;
+use crate::custom_error::YamlError;
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]

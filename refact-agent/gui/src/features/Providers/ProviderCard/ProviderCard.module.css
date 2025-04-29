@@ -1,0 +1,10 @@
+.providerCard {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.providerCardDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

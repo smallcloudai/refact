@@ -135,12 +135,7 @@ pub async fn mix_config_messages(
     let custom = crate::yaml_configs::customization_loader::load_customization(gcx.clone(), true, &mut error_log).await;
     // XXX: let model know there are errors
     for e in error_log.iter() {
-        tracing::error!(
-            "{}:{} {:?}",
-            crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-            e.error_line,
-            e.error_msg,
-        );
+        tracing::error!("{e}");
     }
 
     let sp: &crate::yaml_configs::customization_loader::SystemPrompt = custom.system_prompts.get("configurator").unwrap();

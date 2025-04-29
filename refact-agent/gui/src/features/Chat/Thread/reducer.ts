@@ -233,6 +233,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(doneStreaming, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.streaming = false;
+    state.waiting_for_response = false;
     state.thread.read = true;
     state.prevent_send = false;
   });
@@ -428,13 +429,13 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addMatcher(
     capsApi.endpoints.getCaps.matchFulfilled,
     (state, action) => {
-      const defaultModel = action.payload.code_chat_default_model;
+      const defaultModel = action.payload.chat_default_model;
 
       const model = state.thread.model || defaultModel;
-      if (!(model in action.payload.code_chat_models)) return;
+      if (!(model in action.payload.chat_models)) return;
 
       const currentModelMaximumContextTokens =
-        action.payload.code_chat_models[model].n_ctx;
+        action.payload.chat_models[model].n_ctx;
 
       state.thread.currentMaximumContextTokens =
         currentModelMaximumContextTokens;

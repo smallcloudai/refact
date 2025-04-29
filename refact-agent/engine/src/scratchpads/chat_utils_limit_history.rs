@@ -40,15 +40,15 @@ pub enum CompressionStrength {
 /// 
 /// # Arguments
 /// 
-/// * `model_name` - The name of the model (e.g., "claude-3-7-sonnet")
+/// * `model_id` - Provider / Model name (e.g., "Refact/claude-3-7-sonnet")
 /// 
 /// # Returns
 /// 
 /// A tuple containing (EXTRA_TOKENS_PER_MESSAGE, EXTRA_BUDGET_OFFSET_PERC)
-pub fn get_model_token_params(model_name: &str) -> (i32, f32) {
-    match model_name {
+pub fn get_model_token_params(model_id: &str) -> (i32, f32) {
+    match model_id {
         // Claude 3 Sonnet models need higher token overhead
-        "claude-3-7-sonnet" | "claude-3-5-sonnet" => (150, 0.2),
+        m if m.contains("claude-3-7-sonnet") | m.contains("claude-3-5-sonnet") => (150, 0.2),
         
         // Default values for all other models
         _ => (3, 0.0),
@@ -60,11 +60,11 @@ fn recalculate_token_limits(
     tools_description_tokens: i32,
     n_ctx: usize,
     max_new_tokens: usize,
-    model_name: &str,
+    model_id: &str,
 ) -> (i32, i32) {
     let occupied_tokens = token_counts.iter().sum::<i32>() + tools_description_tokens;
     
-    let (_, extra_budget_offset_perc) = get_model_token_params(model_name);
+    let (_, extra_budget_offset_perc) = get_model_token_params(model_id);
     
     let extra_budget = (n_ctx as f32 * extra_budget_offset_perc) as usize;
     let tokens_limit = n_ctx.saturating_sub(max_new_tokens).saturating_sub(extra_budget) as i32;
@@ -77,7 +77,7 @@ fn compress_message_at_index(
     token_counts: &mut Vec<i32>,
     token_cache: &mut TokenCountCache,
     index: usize,
-    model_name: &str,
+    model_id: &str,
 ) -> Result<i32, String> {
     let role = &mutable_messages[index].role;
     let new_summary = if role == "context_file" {
@@ -115,7 +115,7 @@ fn compress_message_at_index(
     
     mutable_messages[index].content = ChatContent::SimpleText(new_summary);
     token_cache.invalidate(&mutable_messages[index]);
-    let (extra_tokens_per_message, _) = get_model_token_params(model_name);
+    let (extra_tokens_per_message, _) = get_model_token_params(model_id);
     // Recalculate token usage after compression using the cache
     token_counts[index] = token_cache.get_token_count(&mutable_messages[index], t.tokenizer.clone(), extra_tokens_per_message)?;
     Ok(token_counts[index])
@@ -132,14 +132,14 @@ fn process_compression_stage(
     start_idx: usize,
     end_idx: usize,
     stage_name: &str,
-    model_name: &str,
+    model_id: &str,
     message_filter: impl Fn(usize, &ChatMessage, i32) -> bool,
     sort_by_size: bool,
 ) -> Result<(i32, i32, bool), String> {
     tracing::info!("n_ctx={n_ctx}, max_new_tokens={max_new_tokens}");
     tracing::info!("STAGE: {}", stage_name);
     let (mut occupied_tokens, tokens_limit) = 
-        recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_name);
+        recalculate_token_limits(token_counts, tools_description_tokens, n_ctx, max_new_tokens, model_id);
     let mut budget_reached = false;
     let messages_len = mutable_messages.len();
     let end = std::cmp::min(end_idx, messages_len);
@@ -164,7 +164,7 @@ fn process_compression_stage(
     }
     
     for (i, original_tokens) in indices_to_process {
-        compress_message_at_index(t, mutable_messages, token_counts, token_cache, i, model_name)?;
+        compress_message_at_index(t, mutable_messages, token_counts, token_cache, i, model_id)?;
         let token_delta = token_counts[i] - original_tokens;
         occupied_tokens += token_delta;
         tracing::info!("Compressed message at index {}: token count {} -> {} (saved {})", 
@@ -488,7 +488,7 @@ pub fn fix_and_limit_messages_history(
     sampling_parameters_to_patch: &mut SamplingParameters,
     n_ctx: usize,
     tools_description: Option<String>,
-    model_name: &str,
+    model_id: &str,
 ) -> Result<(Vec<ChatMessage>, CompressionStrength), String> {
     let start_time = Instant::now();
     
@@ -516,7 +516,7 @@ pub fn fix_and_limit_messages_history(
         16000
     );
 
-    let (extra_tokens_per_message, _) = get_model_token_params(model_name);
+    let (extra_tokens_per_message, _) = get_model_token_params(model_id);
     let mut token_cache = TokenCountCache::new();
     let mut token_counts: Vec<i32> = Vec::with_capacity(mutable_messages.len());
     for msg in &mutable_messages {
@@ -532,7 +532,7 @@ pub fn fix_and_limit_messages_history(
     tracing::info!("Calculated undroppable_msg_n = {} (last user message)", undroppable_msg_n);
     let outlier_threshold = 1000;
     let (mut occupied_tokens, mut tokens_limit) = 
-        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
+        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_id);
     tracing::info!("Before compression: occupied_tokens={} vs tokens_limit={}", occupied_tokens, tokens_limit);
     
     // STAGE 1: Compress ContextFile messages before the last user message
@@ -550,7 +550,7 @@ pub fn fix_and_limit_messages_history(
             1, // Start from index 1 to preserve the initial message
             stage1_end,
             "Stage 1: Compressing ContextFile messages before the last user message",
-            model_name,
+            model_id,
             |i, msg, _| i != 0 && msg.role == "context_file" && !preserve_in_later_stages[i],
             true
         )?;
@@ -579,7 +579,7 @@ pub fn fix_and_limit_messages_history(
             1, // Start from index 1 to preserve the initial message
             stage2_end,
             "Stage 2: Compressing Tool Result messages before the last user message",
-            model_name,
+            model_id,
             |i, msg, _| i != 0 && msg.role == "tool",
             true
         )?;
@@ -608,7 +608,7 @@ pub fn fix_and_limit_messages_history(
             1, // Start from index 1 to preserve the initial message
             stage3_end,
             "Stage 3: Compressing outlier messages before the last user message",
-            model_name,
+            model_id,
             |i, msg, token_count| {
                 i != 0 && 
                 token_count > outlier_threshold && 
@@ -717,7 +717,7 @@ pub fn fix_and_limit_messages_history(
             undroppable_msg_n,
             msg_len,
             "Stage 5: Compressing ContextFile messages after the last user message (last resort)",
-            model_name,
+            model_id,
             |_, msg, _| msg.role == "context_file",
             true
         )?;
@@ -744,7 +744,7 @@ pub fn fix_and_limit_messages_history(
             undroppable_msg_n,
             msg_len,
             "Stage 6: Compressing Tool Result messages after the last user message (last resort)",
-            model_name,
+            model_id,
             |_, msg, _| msg.role == "tool",
             true
         )?;
@@ -772,7 +772,7 @@ pub fn fix_and_limit_messages_history(
             undroppable_msg_n,
             msg_len,
             "Stage 7: Compressing outlier messages in the last conversation block (last resort)",
-            model_name,
+            model_id,
             |i, msg, token_count| {
                 i >= undroppable_msg_n &&
                 token_count > outlier_threshold && 
@@ -791,7 +791,7 @@ pub fn fix_and_limit_messages_history(
 
     remove_invalid_tool_calls_and_tool_calls_results(&mut mutable_messages);
     let (occupied_tokens, tokens_limit) =
-        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_name);
+        recalculate_token_limits(&token_counts, tools_description_tokens, n_ctx, sampling_parameters_to_patch.max_new_tokens, model_id);
     tracing::info!("Final occupied_tokens={} <= tokens_limit={}", occupied_tokens, tokens_limit);
 
     // If we're still over the limit after all compression stages, return an error
@@ -1248,14 +1248,22 @@ mod tests {
 
     impl HasTokenizerAndEot {
         fn mock() -> Arc<Self> {
-            use std::sync::RwLock;
             use tokenizers::Tokenizer;
             use tokenizers::models::wordpiece::WordPiece;
-            let wordpiece = WordPiece::default();
+            use std::collections::HashMap;
+
+            let mut vocab = HashMap::new();
+            vocab.insert("[UNK]".to_string(), 0);
+
+            let wordpiece = WordPiece::builder()
+                .vocab(vocab)
+                .unk_token("[UNK]".to_string())
+                .build()
+                .unwrap();
             let mock_tokenizer = Tokenizer::new(wordpiece);
 
             Arc::new(Self {
-                tokenizer: Arc::new(RwLock::new(mock_tokenizer)),
+                tokenizer: Some(Arc::new(mock_tokenizer)),
                 eot: "".to_string(),
                 eos: "".to_string(),
                 context_format: "".to_string(),

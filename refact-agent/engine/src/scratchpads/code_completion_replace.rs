@@ -3,6 +3,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{
     ChatContent, ChatMessage, CodeCompletionPost, CursorPosition, SamplingParameters,
 };
+use crate::caps::resolve_completion_model;
 use crate::completion_cache;
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -201,14 +202,16 @@ async fn prepare_subblock(
     if let Some(symbol) = get_cursor_symbol_from_doc(ast_service.clone(), cpath, cursor_pos).await {
         let min_rows_to_include = 2;
         for idx in symbol.full_line1().saturating_sub(1)..symbol.full_line2() + 1 {
-            let line = file_text.line(idx).to_string();
-            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
-            if idx < cursor_pos.line as usize {
-                subblock.before_lines.push(line);
-            } else if idx > cursor_pos.line as usize {
-                subblock.after_lines_extra.push(line.clone());
-                if tokens_used <= max_tokens || subblock.after_lines.len() < min_rows_to_include {
-                    subblock.after_lines.push(line);
+            if idx < file_text.len_lines() {
+                let line = file_text.line(idx).to_string();
+                tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+                if idx < cursor_pos.line as usize {
+                    subblock.before_lines.push(line);
+                } else if idx > cursor_pos.line as usize {
+                    subblock.after_lines_extra.push(line.clone());
+                    if tokens_used <= max_tokens || subblock.after_lines.len() < min_rows_to_include {
+                        subblock.after_lines.push(line);
+                    }
                 }
             }
         }
@@ -556,7 +559,7 @@ pub struct CodeCompletionReplaceScratchpad {
 
 impl CodeCompletionReplaceScratchpad {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
@@ -646,17 +649,19 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             .get("rag_ratio")
             .and_then(|x| x.as_f64())
             .unwrap_or(0.5);
-        if !self.token_bos.is_empty() {
-            self.t.assert_one_token(&self.token_bos.as_str())?;
-        }
-        if !self.token_esc.is_empty() {
-            self.t.assert_one_token(&self.token_esc.as_str())?;
-        }
-        if !self.t.eot.is_empty() {
-            self.t.assert_one_token(&self.t.eot.as_str())?;
-        }
-        if !self.t.eos.is_empty() {
-            self.t.assert_one_token(&self.t.eos.as_str())?;
+        if self.t.tokenizer.is_some() {
+            if !self.token_bos.is_empty() {
+                self.t.assert_one_token(&self.token_bos.as_str())?;
+            }
+            if !self.token_esc.is_empty() {
+                self.t.assert_one_token(&self.token_esc.as_str())?;
+            }
+            if !self.t.eot.is_empty() {
+                self.t.assert_one_token(&self.t.eot.as_str())?;
+            }
+            if !self.t.eos.is_empty() {
+                self.t.assert_one_token(&self.t.eos.as_str())?;
+            }
         }
         Ok(())
     }
@@ -843,7 +848,7 @@ pub struct CodeCompletionReplacePassthroughScratchpad {
 
 impl CodeCompletionReplacePassthroughScratchpad {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
         tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
@@ -891,10 +896,11 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (n_ctx, _gcx) = {
+        let (n_ctx, gcx) = {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.n_ctx, ccx_locked.global_context.clone())
         };
+        let caps = gcx.read().await.caps.clone().ok_or_else(|| "No caps".to_string())?;
         let completion_t0 = Instant::now();
         let use_rag = self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
@@ -1005,8 +1011,9 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             ..Default::default()
         });
 
+        let model = resolve_completion_model(caps.clone(), &self.post.model, true)?;
         let json_messages = &serde_json::to_string(&json!({
-            "messages":  messages.iter().map(|x| { x.into_value(&None) }).collect::<Vec<_>>(),
+            "messages":  messages.iter().map(|x| { x.into_value(&None, &model.base.id) }).collect::<Vec<_>>(),
         }))
         .unwrap();
         let prompt = format!("PASSTHROUGH {json_messages}").to_string();
