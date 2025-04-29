@@ -472,7 +472,6 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
   caps_version: 0,
   code_chat_default_system_prompt: "default",
   support_metadata: true,
-  caps_version: 0,
   metadata: {
     pricing: {
       "gpt-3.5-turbo": {
