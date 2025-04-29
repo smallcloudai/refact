@@ -9,6 +9,7 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
+use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
@@ -159,6 +160,11 @@ pub async fn tools_merged_and_filtered(
     ).await;
     tools_all.extend(integrations);
 
+    let is_there_a_thinking_model = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
+        Err(_) => false,
+    };
+
     let mut filtered_tools = IndexMap::new();
     for (tool_name, tool) in tools_all {
         let dependencies = tool.tool_depends_on();
@@ -166,6 +172,9 @@ pub async fn tools_merged_and_filtered(
             continue;
         }
         if dependencies.contains(&"vecdb".to_string()) && !vecdb_on {
+            continue;
+        }
+        if dependencies.contains(&"thinking".to_string()) && !is_there_a_thinking_model {
             continue;
         }
         filtered_tools.insert(tool_name, tool);
@@ -532,8 +541,8 @@ fn default_param_type() -> String {
 /// TODO: Think a better way to know if we can send array type to the model
 /// 
 /// For now, anthropic models support it, gpt models don't, for other, we'll need to test
-pub fn model_supports_array_param_type(model_name: &str) -> bool {
-    model_name.starts_with("claude")
+pub fn model_supports_array_param_type(model_id: &str) -> bool {
+    model_id.contains("claude")
 }
 
 pub fn make_openai_tool_value(
@@ -584,7 +593,7 @@ impl ToolDesc {
         if !model_supports_array_param_type(model) {
             for param in &self.parameters {
                 if param.param_type == "array" {
-                    tracing::error!("Tool {} has array parameter, but model {} does not support it", self.name, model);
+                    tracing::warn!("Tool {} has array parameter, but model {} does not support it", self.name, model);
                     return false;
                 }
             }

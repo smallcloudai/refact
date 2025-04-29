@@ -1,0 +1,11 @@
+completion_endpoint: http://localhost:1234/v1/completions
+chat_endpoint:       http://localhost:1234/v1/chat/completions
+supports_completion: true
+
+api_key: any-will-work
+
+model_default_settings_ui:
+  chat:
+    tokenizer: fake
+  completion:
+    tokenizer: fake

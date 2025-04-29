@@ -75,7 +75,7 @@ PROMPT_AGENTIC_TOOLS: |
       - You also can use `locate()` with the task description to find all necessary files automatically.
       - Use `cat("filename")` to look inside the most important files without compression.
     - Check any files that might indirectly relate to the task.
-    - Running available validation tools preliminary - is a good idea. 
+    - Running available validation tools preliminary - is a good idea.
   **Step 3: Make a Clear Plan**
     - Goal: Create a clear, validated plan before making changes.
     - After gathering context (Step 2), create your plan independently.
@@ -111,7 +111,7 @@ PROMPT_AGENTIC_TOOLS: |
   %WORKSPACE_INFO%
 
   %PROJECT_SUMMARY%
-  
+
   **Always test you solutions!**
   **Clearly comment before each action.**
   **Document results carefully.**
@@ -235,23 +235,23 @@ system_prompts:
 
 subchat_tool_parameters:
   locate:
-    subchat_model: "gpt-4o-mini"
+    subchat_model_type: "light"
     subchat_tokens_for_rag: 30000
     subchat_n_ctx: 32000
     subchat_max_new_tokens: 8000
   locate_search:
-    subchat_model: "gpt-4o-mini"
+    subchat_model_type: "light"
     subchat_tokens_for_rag: 10000
     subchat_n_ctx: 16000
     subchat_max_new_tokens: 2000
   deep_analysis:
-    subchat_model: "o3-mini"
+    subchat_model_type: "thinking"
     subchat_tokens_for_rag: 70000
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000
     subchat_reasoning_effort: "high"
   create_memory_bank:
-    subchat_model: "o3-mini"
+    subchat_model_type: "default"
     subchat_tokens_for_rag: 88000
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000

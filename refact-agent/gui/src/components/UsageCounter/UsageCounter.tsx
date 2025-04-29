@@ -138,18 +138,22 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
-  outputValue: string;
-}> = ({ inputTokens, outputValue }) => {
+  outputTokens: number;
+}> = ({ inputTokens, outputTokens }) => {
   return (
     <>
-      <Flex align="center">
-        <ArrowUpIcon width="12" height="12" />
-        <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
-      </Flex>
-      <Flex align="center">
-        <ArrowDownIcon width="12" height="12" />
-        <Text size="1">{outputValue}</Text>
-      </Flex>
+      {inputTokens !== 0 && (
+        <Flex align="center">
+          <ArrowUpIcon width="12" height="12" />
+          <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+        </Flex>
+      )}
+      {outputTokens !== 0 && (
+        <Flex align="center">
+          <ArrowDownIcon width="12" height="12" />
+          <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
+        </Flex>
+      )}
     </>
   );
 };
@@ -181,7 +185,10 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     usage: currentThreadUsage,
     keys: ["completion_tokens"],
   });
-  const outputValue = formatNumberToFixed(outputTokens);
+
+  const shouldUsageBeHidden = useMemo(() => {
+    return !isInline && inputTokens === 0 && outputTokens === 0;
+  }, [outputTokens, inputTokens, isInline]);
 
   useEffectOnce(() => {
     const handleScroll = (event: WheelEvent) => {
@@ -199,6 +206,8 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     };
   });
 
+  if (shouldUsageBeHidden) return null;
+
   return (
     <HoverCard.Root open={open} onOpenChange={setOpen}>
       <HoverCard.Trigger>
@@ -214,7 +223,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           ) : (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
-              outputValue={outputValue}
+              outputTokens={outputTokens}
             />
           )}
         </Card>

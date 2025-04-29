@@ -76,6 +76,7 @@ export {
   ideIsChatReady,
   ideToolCall,
   ideToolCallResponse,
+  ideSetCodeCompletionModel,
 } from "../hooks/useEventBusForIDE";
 
 export { ideAttachFileToChat } from "../hooks/useEventBusForApp";

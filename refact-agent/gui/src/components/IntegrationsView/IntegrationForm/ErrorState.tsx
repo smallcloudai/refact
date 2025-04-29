@@ -1,14 +1,14 @@
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Badge, Button, Flex, Text } from "@radix-ui/themes";
 import { FC } from "react";
-import { IntegrationDeletePopover } from "../IntegrationDeletePopover";
 import { Integration } from "../../../services/refact";
 import { useAppSelector, useEventsBusForIDE } from "../../../hooks";
 import { selectConfig } from "../../../features/Config/configSlice";
+import { DeletePopover } from "../../DeletePopover";
 
 type ErrorStateProps = {
   integration: Integration;
-  onDelete: (path: string, name: string) => void;
+  onDelete: (path: string) => void;
   isApplying: boolean;
   isDeletingIntegration: boolean;
 };
@@ -51,12 +51,12 @@ export const ErrorState: FC<ErrorStateProps> = ({
             Open {integr_name}.yaml
           </Button>
         )}
-        <IntegrationDeletePopover
-          integrationName={integr_name}
-          integrationConfigPath={integr_config_path}
-          isApplying={isApplying}
-          isDeletingIntegration={isDeletingIntegration}
-          handleDeleteIntegration={onDelete}
+        <DeletePopover
+          itemName={integr_name}
+          deleteBy={integr_config_path}
+          isDisabled={isApplying}
+          isDeleting={isDeletingIntegration}
+          handleDelete={onDelete}
         />
       </Flex>
     </Flex>

@@ -54,9 +54,9 @@ Refact Agent is essentially its tools, ask: "what tools do you have?"
 async def welcome_message(settings: cli_settings.CmdlineArgs, tip: str):
     text = f"""
 ~/.cache/refact/cli.yaml                -- set up this program
-~/.cache/refact/bring-your-own-key.yaml -- set up models you want to use
-~/.cache/refact/integrations.d/*        -- set up github, jira, make, gdb, and other tools, including which actions require confirmation
-~/.cache/refact/privacy.yaml            -- which files should never leave your computer
+~/.config/refact/providers.d/*.yaml      -- set up model providers you want to use
+~/.config/refact/integrations.d/*        -- set up github, jira, make, gdb, and other tools, including which actions require confirmation
+~/.config/refact/privacy.yaml            -- which files should never leave your computer
 Project: {settings.project_path}
 To exit, type 'exit' or Ctrl+D. {tip}.
 """
@@ -345,8 +345,8 @@ async def actual_chat(
     app = Application(key_bindings=kb, layout=layout)
     app.editing_mode = cli_settings.cli_yaml.get_editing_mode()
 
-    if cli_settings.args.model not in caps.code_chat_models:
-        known_models = list(caps.code_chat_models.keys())
+    if cli_settings.args.model not in caps.chat_models:
+        known_models = list(caps.chat_models.keys())
         print(f"model {cli_settings.args.model} is unknown, pick one of {known_models}")
         return
 

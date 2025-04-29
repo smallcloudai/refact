@@ -1,0 +1,15 @@
+chat_endpoint: https://api.x.ai/v1/chat/completions
+supports_completion: false
+
+api_key: xai-...
+
+running_models:
+  - grok-3-beta
+  - grok-3-mini-beta
+
+model_default_settings_ui:
+  chat:
+    n_ctx: 131072
+    supports_tools: true
+    supports_agent: true
+    tokenizer: hf://Xenova/grok-1-tokenizer

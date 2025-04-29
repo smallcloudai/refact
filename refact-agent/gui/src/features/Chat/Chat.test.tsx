@@ -239,9 +239,7 @@ describe("Chat", () => {
 
     await user.type(textarea, "hello");
 
-    await waitFor(() =>
-      app.queryByText(STUB_CAPS_RESPONSE.code_chat_default_model),
-    );
+    await waitFor(() => app.queryByText(STUB_CAPS_RESPONSE.chat_default_model));
 
     await user.keyboard("{Enter}");
 
@@ -284,7 +282,7 @@ describe("Chat", () => {
     // });
     await waitFor(() =>
       expect(
-        app.queryByText(STUB_CAPS_RESPONSE.code_chat_default_model),
+        app.queryByText(STUB_CAPS_RESPONSE.chat_default_model),
       ).not.toBeNull(),
     );
 
