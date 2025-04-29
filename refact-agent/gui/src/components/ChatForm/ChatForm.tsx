@@ -376,7 +376,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="1" wrap="wrap" py="1" px="2">
-            <CapsSelect />
+            <CapsSelect
+              disabled={messages.length > 0 || isStreaming || isWaiting}
+            />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               <ThinkingButton />
