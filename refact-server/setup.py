@@ -45,7 +45,7 @@ all_refact_packages = {
               "webgui/static/assets/fonts/*"]),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "accelerate",
-                  "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
+                  "termcolor", "torch", "transformers>=4.51.0",
                   "bitsandbytes>=0.45.5", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
                   "sentence-transformers>=3.4.1", "huggingface-hub>=0.29.2",
