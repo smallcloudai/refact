@@ -8,7 +8,7 @@ use url::Url;
 use walkdir::WalkDir;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
-use crate::http::{http_post, http_post_with_retries};
+use crate::http::{http_get_json, http_post, http_post_with_retries};
 use crate::http::routers::v1::lsp_like_handlers::LspLikeInit;
 use crate::http::routers::v1::sync_files::SyncFilesExtractTarPost;
 use crate::integrations::sessions::get_session_hashmap_key;
@@ -257,8 +257,12 @@ async fn docker_container_create(
     } else {
         format!("--entrypoint={0}", isolation.docker_entrypoint)
     };
+    let host_vecdb_path = format!("{}/vecdb_model_thenlper_gte-base_esize_768.sqlite", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
+    let container_vecdb_path = "/root/.cache/refact/vecdb_model_thenlper_gte-base_esize_768.sqlite";
+    
     let run_command = format!(
-        "container create --name={container_name} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "container create --name={container_name} --shm-size=1g --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        --volume={host_vecdb_path}:{container_vecdb_path} \
         {ports_to_forward_as_arg_list} {network_if_set} {extra_params} {entrypoint} {docker_image_id} -c '{lsp_command}'",
     );
 
@@ -477,6 +481,9 @@ async fn docker_container_sync_workspace(
     http_post(&format!("http://localhost:{lsp_port_to_connect}/v1/lsp-initialize"), &initialize_post).await?;
     info!("LSP initialized for workspace.");
 
+    info!("LSP waiting for indexing to finish...");
+    docker_wait_indexing_done(lsp_port_to_connect).await?;
+    
     Ok(())
 }
 
@@ -537,4 +544,31 @@ async fn docker_container_kill(
     docker.command_execute(&format!("container remove {container_id}"), gcx.clone(), true, true).await?;
     info!("Removed docker container {container_id}.");
     Ok(())
+}
+
+async fn docker_wait_indexing_done(
+    lsp_port_to_connect: &str,
+) -> Result<(), String> {
+    let mut ast_finished = false;
+    let mut vecdb_finished = false;
+    loop {
+        let status: crate::http::routers::v1::status::RagStatus = http_get_json(&format!("http://localhost:{lsp_port_to_connect}/v1/rag-status")).await?;
+        info!("Waiting for LSP to finish indexing:\n{:?}", status);
+        if let Some(ast_status) = &status.ast {
+            if !ast_finished && ast_status.astate == "done" {
+                info!("Ast finished indexing.");
+                ast_finished = true;
+            }
+        }
+        if let Some(vecdb_status) = &status.vecdb {
+            if !vecdb_finished && vecdb_status.state == "done" {
+                info!("Vecdb finished indexing.");
+                vecdb_finished = true;
+            }
+        }
+        if ast_finished && vecdb_finished {
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }
