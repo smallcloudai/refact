@@ -6,7 +6,7 @@ const BALLANCE_LIMIT_MESSAGES = [
 export type ErrorSliceState = {
   message: string | null;
   isAuthError?: boolean;
-  type: "ballance" | null;
+  type: "balance" | null;
 };
 
 const initialState: ErrorSliceState = { message: null, type: null };
@@ -18,7 +18,7 @@ export const errorSlice = createSlice({
       if (state.message) return state;
       state.message = action.payload;
       if (state.message.includes(BALLANCE_LIMIT_MESSAGES[0])) {
-        state.type = "ballance";
+        state.type = "balance";
       }
     },
     setIsAuthError: (state, action: PayloadAction<boolean>) => {
