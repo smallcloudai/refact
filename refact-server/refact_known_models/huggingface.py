@@ -1,19 +1,3 @@
-starcoder_supports_scratchpads = {
-    "FIM-PSM": {
-        "context_format": "starcoder",
-        "rag_ratio": 0.5,
-    },
-}
-
-deepseek_coder_supports_scratchpads = {
-    "FIM-PSM": {
-        "fim_prefix": "<｜fim▁begin｜>",
-        "fim_suffix": "<｜fim▁hole｜>",
-        "fim_middle": "<｜fim▁end｜>",
-        "eot": "<|EOT|>",
-    },
-}
-
 llama_supports_scratchpads = {
     "REPLACE": {
         "token_bos": "<|begin_of_text|>",
