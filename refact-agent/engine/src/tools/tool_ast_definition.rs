@@ -23,13 +23,21 @@ impl Tool for ToolAstDefinition {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
-        let mut symbol = match args.get("symbol") {
+        let symbols_str = match args.get("symbols") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `symbol` is not a string: {:?}", v)),
-            None => return Err("argument `symbol` is missing".to_string()),
+            Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
+            None => return Err("argument `symbols` is missing".to_string()),
         };
 
-        symbol = symbol.replace('.', "::");
+        let symbols: Vec<String> = symbols_str
+            .split(',')
+            .map(|s| s.trim().replace('.', "::"))
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if symbols.is_empty() {
+            return Err("No valid symbols provided".to_string());
+        }
 
         let gcx = ccx.lock().await.global_context.clone();
         let ast_service_opt = gcx.read().await.ast_service.clone();
@@ -37,53 +45,63 @@ impl Tool for ToolAstDefinition {
             let ast_index = ast_service.lock().await.ast_index.clone();
 
             crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
-            let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
+            
+            let mut all_messages = Vec::new();
+            let mut all_context_files = Vec::new();
+            
+            for symbol in symbols {
+                let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
 
-            let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
-            let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), &file_paths).await;
+                let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
+                let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), &file_paths).await;
 
-            let (messages, tool_message) = if !defs.is_empty() {
-                const DEFS_LIMIT: usize = 20;
-                let mut tool_message = format!("Definitions found:\n").to_string();
-                let messages = defs.iter().zip(short_file_paths.iter()).take(DEFS_LIMIT).map(|(res, short_path)| {
-                    tool_message.push_str(&format!(
-                        "{} defined at {}:{}-{}\n",
-                        res.path_drop0(),
-                        short_path,
-                        res.full_line1(),
-                        res.full_line2()
-                    ));
-                    ContextEnum::ContextFile(ContextFile {
-                        file_name: res.cpath.clone(),
-                        file_content: "".to_string(),
-                        line1: res.full_line1(),
-                        line2: res.full_line2(),
-                        symbols: vec![res.path_drop0()],
-                        gradient_type: 4,
-                        usefulness: 100.0,
-                    })
-                }).collect::<Vec<ContextEnum>>();
-                if defs.len() > DEFS_LIMIT {
-                    tool_message.push_str(&format!("...and {} more\n", defs.len() - DEFS_LIMIT));
+                if !defs.is_empty() {
+                    const DEFS_LIMIT: usize = 20;
+                    let mut tool_message = format!("Definitions for `{}`:\n", symbol).to_string();
+                    let context_files: Vec<ContextEnum> = defs.iter().zip(short_file_paths.iter()).take(DEFS_LIMIT).map(|(res, short_path)| {
+                        tool_message.push_str(&format!(
+                            "{} defined at {}:{}-{}\n",
+                            res.path_drop0(),
+                            short_path,
+                            res.full_line1(),
+                            res.full_line2()
+                        ));
+                        ContextEnum::ContextFile(ContextFile {
+                            file_name: res.cpath.clone(),
+                            file_content: "".to_string(),
+                            line1: res.full_line1(),
+                            line2: res.full_line2(),
+                            symbols: vec![res.path_drop0()],
+                            gradient_type: 5,
+                            usefulness: 100.0,
+                        })
+                    }).collect();
+                    
+                    if defs.len() > DEFS_LIMIT {
+                        tool_message.push_str(&format!("...and {} more\n", defs.len() - DEFS_LIMIT));
+                    }
+                    
+                    all_messages.push(tool_message);
+                    all_context_files.extend(context_files);
+                } else {
+                    corrections = true;
+                    let tool_message = there_are_definitions_with_similar_names_though(ast_index.clone(), &symbol).await;
+                    all_messages.push(format!("For symbol `{}`:\n{}", symbol, tool_message));
                 }
-                (messages, tool_message)
-            } else {
-                corrections = true;
-                let tool_message = there_are_definitions_with_similar_names_though(ast_index, &symbol).await;
-                (vec![], tool_message)
-            };
+            }
 
-            let mut result_messages = messages;
-            result_messages.push(ContextEnum::ChatMessage(ChatMessage {
+            let combined_message = all_messages.join("\n");
+            all_context_files.push(ContextEnum::ChatMessage(ChatMessage {
                 role: "tool".to_string(),
-                content: ChatContent::SimpleText(tool_message),
+                content: ChatContent::SimpleText(combined_message),
                 tool_calls: None,
                 tool_call_id: tool_call_id.clone(),
                 ..Default::default()
             }));
-            Ok((corrections, result_messages))
+            
+            Ok((corrections, all_context_files))
         } else {
-            Err("attempt to use @definition with no ast turned on".to_string())
+            Err("attempt to use search_symbol_definition with no ast turned on".to_string())
         }
     }
 

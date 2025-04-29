@@ -231,58 +231,97 @@ impl Tool for ToolRegexSearch {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let pattern = match args.get("pattern") {
+        let pattern_str = match args.get("patterns") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `pattern` is not a string: {:?}", v)),
-            None => return Err("Missing argument `pattern` in the regex_search() call.".to_string())
+            Some(v) => return Err(format!("argument `patterns` is not a string: {:?}", v)),
+            None => return Err("Missing argument `patterns` in the search_pattern() call.".to_string())
         };
         
         let scope = match args.get("scope") {
             Some(Value::String(s)) => s.clone(),
             Some(v) => return Err(format!("argument `scope` is not a string: {:?}", v)),
-            None => return Err("Missing argument `scope` in the regex_search() call.".to_string())
+            None => return Err("Missing argument `scope` in the search_pattern() call.".to_string())
         };
         
+        let patterns: Vec<String> = pattern_str
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
 
+        if patterns.is_empty() {
+            return Err("No valid patterns provided".to_string());
+        }
 
         let ccx_lock = ccx.lock().await;
         let gcx = ccx_lock.global_context.clone();
         let subchat_tx = ccx_lock.subchat_tx.clone();
         drop(ccx_lock);
+        
         let _ = subchat_tx.lock().await.send(json!({
-            "progress": format!("Starting regex search for pattern '{}' in scope '{}'...", pattern, scope)
+            "progress": format!("Starting regex search for {} pattern(s) in scope '{}'...", patterns.len(), scope)
         }));
         
-        if let Err(e) = Regex::new(&pattern) {
-            return Err(format!("Invalid regex pattern: {}. Please check your syntax.", e));
+        // Validate all patterns first
+        for pattern in &patterns {
+            if let Err(e) = Regex::new(pattern) {
+                return Err(format!("Invalid regex pattern '{}': {}. Please check your syntax.", pattern, e));
+            }
         }
         
-        let search_results = search_files_with_regex(
-            gcx.clone(), 
-            &pattern, 
-            &scope, 
-            Some(subchat_tx.clone()),
-        ).await?;
+        let mut all_search_results = Vec::new();
+        let mut all_content = String::new();
         
-        if search_results.is_empty() {
-            return Err("Regex search produced no results. Try adjusting your pattern or scope.".to_string());
+        for (i, pattern) in patterns.iter().enumerate() {
+            if i > 0 {
+                all_content.push_str("\n\n");
+            }
+            
+            all_content.push_str(&format!("Results for pattern: '{}'\n", pattern));
+            
+            let _ = subchat_tx.lock().await.send(json!({
+                "progress": format!("Searching for pattern '{}' ({} of {})...", pattern, i+1, patterns.len())
+            }));
+            
+            let search_results = search_files_with_regex(
+                gcx.clone(), 
+                pattern, 
+                &scope, 
+                Some(subchat_tx.clone()),
+            ).await?;
+            
+            if search_results.is_empty() {
+                all_content.push_str("No results found for this pattern.\n");
+                continue;
+            }
+
+            let _ = subchat_tx.lock().await.send(json!({
+                "progress": format!("Search complete for pattern '{}'. Found {} matches.", pattern, search_results.len())
+            }));
+
+            let mut file_results: HashMap<String, Vec<&ContextFile>> = HashMap::new();
+            search_results.iter().for_each(|rec| {
+                file_results.entry(rec.file_name.clone()).or_insert(vec![]).push(rec)
+            });
+            
+            let pattern_content = smart_compress_results(&search_results, &file_results, gcx.clone(), pattern).await;
+            all_content.push_str(&pattern_content);
+            
+            all_search_results.extend(search_results);
+        }
+        
+        if all_search_results.is_empty() {
+            return Err("All pattern searches produced no results. Try adjusting your patterns or scope.".to_string());
         }
 
         let _ = subchat_tx.lock().await.send(json!({
-            "progress": format!("Search complete. Found {} matches.", search_results.len())
+            "progress": format!("All searches complete. Found {} total matches.", all_search_results.len())
         }));
 
-        let mut file_results: HashMap<String, Vec<&ContextFile>> = HashMap::new();
-        search_results.iter().for_each(|rec| {
-            file_results.entry(rec.file_name.clone()).or_insert(vec![]).push(rec)
-        });
-        
-        let content = smart_compress_results(&search_results, &file_results, gcx.clone(), &pattern).await;
-
-        let mut results = vec_context_file_to_context_tools(search_results);
+        let mut results = vec_context_file_to_context_tools(all_search_results);
         results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
-            content: ChatContent::SimpleText(content),
+            content: ChatContent::SimpleText(all_content),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()

@@ -127,8 +127,8 @@ pub async fn tools_merged_and_filtered(
     };
 
     let mut tools_all = IndexMap::from([
-        ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
-        ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
+        ("search_symbol_definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
+        ("search_symbol_usages".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
         ("create_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
         ("update_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
@@ -138,9 +138,8 @@ pub async fn tools_merged_and_filtered(
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
-        ("root_cause_analysis".to_string(), Box::new(crate::tools::tool_root_cause_analysis::ToolRootCauseAnalysis{}) as Box<dyn Tool + Send>),
         ("critique".to_string(), Box::new(crate::tools::tool_critique::ToolCritique{}) as Box<dyn Tool + Send>),
-        ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
+        ("search_pattern".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
@@ -150,7 +149,7 @@ pub async fn tools_merged_and_filtered(
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
-        ("search".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
+        ("search_semantic".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
     ]);
@@ -178,36 +177,36 @@ pub async fn tools_merged_and_filtered(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "search"
+  - name: "search_semantic"
     description: "Find semantically similar pieces of code or text using vector database (semantic search)"
     parameters:
-      - name: "query"
+      - name: "queries"
         type: "string"
-        description: "Single line, paragraph or code sample to search for semantically similar content."
+        description: "Comma-separated list of queries. Each query can be a single line, paragraph or code sample to search for semantically similar content."
       - name: "scope"
         type: "string"
         description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
     parameters_required:
-      - "query"
+      - "queries"
       - "scope"
 
-  - name: "definition"
+  - name: "search_symbol_definition"
     description: "Find definition of a symbol in the project using AST"
     parameters:
-      - name: "symbol"
+      - name: "symbols"
         type: "string"
-        description: "The exact name of a function, method, class, type alias. No spaces allowed."
+        description: "Comma-separated list of symbols to search for (functions, methods, classes, type aliases). No spaces allowed in symbol names."
     parameters_required:
-      - "symbol"
+      - "symbols"
 
-  - name: "references"
+  - name: "search_symbol_usages"
     description: "Find usages of a symbol within a project using AST"
     parameters:
-      - name: "symbol"
+      - name: "symbols"
         type: "string"
-        description: "The exact name of a function, method, class, type alias. No spaces allowed."
+        description: "Comma-separated list of symbols to search for (functions, methods, classes, type aliases). No spaces allowed in symbol names."
     parameters_required:
-      - "symbol"
+      - "symbols"
 
   - name: "tree"
     description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
@@ -230,14 +229,11 @@ tools:
       - "url"
 
   - name: "cat"
-    description: "Like cat in console, but better: it can read multiple files and images. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
+    description: "Like cat in console, but better: it can read multiple files and images. Prefer to open full files."
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4."
-      - name: "symbols"
-        type: "string"
-        description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
+        description: "Comma separated file names or directories: dir1/file1.ext,dir3/dir4."
     parameters_required:
       - "paths"
 
@@ -347,16 +343,6 @@ tools:
   - name: "strategic_planning"
     agentic: true
     description: "Strategically plan a solution for a complex problem or create a comprehensive approach."
-    parameters:
-      - name: "problem_statement"
-        type: "string"
-        description: "What's the topic and what kind of result do you want?"
-    parameters_required:
-      - "problem_statement"
-
-  - name: "root_cause_analysis"
-    agentic: true
-    description: "Analyze a problem to identify all possible causes, underlying factors, and their relationships based on the conversation context."
     parameters: []
     parameters_required: []
 
@@ -445,17 +431,17 @@ tools:
     parameters_required:
       - "search_key"
       
-  - name: "regex_search"
+  - name: "search_pattern"
     description: "Search for exact text patterns in files using regular expressions (pattern matching)"
     parameters:
-      - name: "pattern"
+      - name: "patterns"
         type: "string"
-        description: "Regular expression pattern to search for. Use (?i) at the start for case-insensitive search."
+        description: "Comma-separated list of regular expression patterns to search for. Use (?i) at the start for case-insensitive search."
       - name: "scope"
         type: "string"
         description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
     parameters_required:
-      - "pattern"
+      - "patterns"
       - "scope"
 
   - name: "create_knowledge"

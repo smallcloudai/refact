@@ -20,6 +20,19 @@ pub struct ToolStrategicPlanning;
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
 
+static ROOT_CAUSE_ANALYSIS_PROMPT: &str = r#"Based on the conversation and context below, please perform a thorough root cause analysis of the problem. Identify all possible causes, including:
+1. Direct causes - immediate factors that could lead to this issue.
+2. Underlying causes - deeper systemic issues that might be contributing.
+3. Environmental factors - external conditions that might influence the problem.
+4. Edge cases - unusual scenarios that could trigger this issue.
+For each potential cause, explain:
+- Why it might be causing the problem
+- How it could manifest in the observed symptoms
+- What evidence supports or refutes this cause
+
+Finally, rank the causes from most to least likely, and explain your reasoning.
+Do not create code, just write text."#;
+
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -33,7 +46,7 @@ async fn _make_prompt(
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e))).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
-    let final_message = format!("***Problem:***\n{problem_statement}\n\n***Problem context:***\n");
+    let final_message = problem_statement.to_string();
     tokens_budget -= count_tokens(&tokenizer.read().unwrap(), &final_message) as i64;
     let mut context = "".to_string(); 
     let mut context_files: Vec<ContextFile> = vec![];
@@ -97,6 +110,40 @@ async fn _make_prompt(
     }
 }
 
+/// Executes a subchat iteration and returns the last message from the response
+async fn _execute_subchat_iteration(
+    ccx_subchat: Arc<AMutex<AtCommandsContext>>,
+    subchat_params: &SubchatParameters,
+    history: Vec<ChatMessage>,
+    iter_max_new_tokens: usize,
+    usage_collector: &mut ChatUsage,
+    tool_call_id: &String,
+    log_suffix: &str,
+    log_prefix: &str,
+) -> Result<(Vec<ChatMessage>, ChatMessage), String> {
+    let choices = subchat_single(
+        ccx_subchat.clone(),
+        subchat_params.subchat_model.as_str(),
+        history,
+        Some(vec![]),
+        None,
+        false,
+        subchat_params.subchat_temperature,
+        Some(iter_max_new_tokens),
+        1,
+        subchat_params.subchat_reasoning_effort.clone(),
+        false,
+        Some(usage_collector),
+        Some(tool_call_id.clone()),
+        Some(format!("{log_prefix}-strategic-planning-{log_suffix}")),
+    ).await?;
+
+    let session = choices.into_iter().next().unwrap();
+    let reply = session.last().unwrap().clone();
+    
+    Ok((session, reply))
+}
+
 
 #[async_trait]
 impl Tool for ToolStrategicPlanning {
@@ -106,28 +153,15 @@ impl Tool for ToolStrategicPlanning {
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        args: &HashMap<String, Value>
+        _args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut usage_collector = ChatUsage { ..Default::default() };
         let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
-
-        let problem_statement = match args.get("problem_statement") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
-            None => return Err("Missing argument `problem_statement`".to_string())
-        };
-
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "strategic_planning").await?;
-        // Divide max_new_tokens by 3 for the three iterations
-        let iter_max_new_tokens = subchat_params.subchat_max_new_tokens / 3;
-
         let external_messages = {
             let ccx_lock = ccx.lock().await;
             ccx_lock.messages.clone()
         };
-        let prompt = _make_prompt(ccx.clone(), &subchat_params, &problem_statement, &external_messages).await?;
-        tracing::info!("strategic planning prompt:\n{}", prompt);
-
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
             let mut t = AtCommandsContext::new(
@@ -144,81 +178,82 @@ impl Tool for ToolStrategicPlanning {
             t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
         };
-        let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
-
-        // FIRST ITERATION: Get the initial solution
-        tracing::info!("FIRST ITERATION: Get the initial solution");
-        let sol_choices = subchat_single(
-            ccx_subchat.clone(),
-            subchat_params.subchat_model.as_str(),
-            history.clone(),
-            Some(vec![]),
-            None,
-            false,
-            subchat_params.subchat_temperature,
-            Some(iter_max_new_tokens),
-            1,
-            subchat_params.subchat_reasoning_effort.clone(),
-            false,
-            Some(&mut usage_collector),
-            Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-strategic-planning-get-initial-solution")),
+        
+        // ZERO ITERATION: Root Cause Analysis
+        tracing::info!("ZERO ITERATION: Root Cause Analysis");
+        let prompt = _make_prompt(
+            ccx.clone(),
+            &subchat_params,
+            &ROOT_CAUSE_ANALYSIS_PROMPT.to_string(),
+            &external_messages
         ).await?;
-
-        let sol_session = sol_choices.into_iter().next().unwrap();
-        let first_reply = sol_session.last().unwrap().clone();
+        let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
+        let (_, root_cause_reply) = _execute_subchat_iteration(
+            ccx_subchat.clone(),
+            &subchat_params,
+            history.clone(),
+            subchat_params.subchat_max_new_tokens,
+            &mut usage_collector,
+            tool_call_id,
+            "root-cause-analysis",
+            &log_prefix,
+        ).await?;
+        
+        // FIRST ITERATION: Get the initial solution
+        let prompt = _make_prompt(
+            ccx.clone(),
+            &subchat_params,
+            &format!("***Problem:***\n{}\n\n***Problem context:***\n", root_cause_reply.content.content_text_only()),
+            &external_messages
+        ).await?;
+        let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
+        tracing::info!("FIRST ITERATION: Get the initial solution");
+        let (sol_session, first_reply) = _execute_subchat_iteration(
+            ccx_subchat.clone(),
+            &subchat_params,
+            history.clone(),
+            subchat_params.subchat_max_new_tokens / 3,
+            &mut usage_collector,
+            tool_call_id,
+            "get-initial-solution",
+            &log_prefix,
+        ).await?;
         history = sol_session.clone();
 
         // SECOND ITERATION: Ask for a critique
-        tracing::info!("SECOND ITERATION: Ask for a critique");
-        let critique_prompt = "Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis. Remember, that the final solution must be minimal, robust, effective.";
+        tracing::info!("THIRD ITERATION: Ask for a critique");
+        let critique_prompt = "Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis. Remember, that the final solution must be minimal, robust, effective. We can create new tests but cannot modify existing.";
         history.push(ChatMessage::new("user".to_string(), critique_prompt.to_string()));
-        let crit_choices = subchat_single(
+        let (crit_session, critique_reply) = _execute_subchat_iteration(
             ccx_subchat.clone(),
-            subchat_params.subchat_model.as_str(),
+            &subchat_params,
             history.clone(),
-            Some(vec![]),
-            None,
-            false,
-            subchat_params.subchat_temperature,
-            Some(iter_max_new_tokens),
-            1,
-            subchat_params.subchat_reasoning_effort.clone(),
-            false,
-            Some(&mut usage_collector),
-            Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-strategic-planning-critique")),
+            subchat_params.subchat_max_new_tokens / 3,
+            &mut usage_collector,
+            tool_call_id,
+            "critique",
+            &log_prefix,
         ).await?;
-
-        let crit_session = crit_choices.into_iter().next().unwrap();
-        let critique_reply = crit_session.last().unwrap().clone();
         history = crit_session.clone();
 
         // THIRD ITERATION: Ask for an improved solution
-        tracing::info!("THIRD ITERATION: Ask for an improved solution");
-        let improve_prompt = "Please improve the original solution based on the critique. Provide a comprehensive, refined solution that addresses the weaknesses identified in the critique while maintaining the strengths of the original solution.";
+        tracing::info!("FOURTH ITERATION: Ask for an improved solution");
+        let improve_prompt = "Please improve the original solution based on the critique. Provide a refined solution that addresses the weaknesses identified in the critique.";
         history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
-        let imp_choices = subchat_single(
+        let (_imp_session, improved_reply) = _execute_subchat_iteration(
             ccx_subchat,
-            subchat_params.subchat_model.as_str(),
+            &subchat_params,
             history.clone(),
-            Some(vec![]),
-            None,
-            false,
-            subchat_params.subchat_temperature,
-            Some(iter_max_new_tokens),
-            1,
-            subchat_params.subchat_reasoning_effort.clone(),
-            false,
-            Some(&mut usage_collector),
-            Some(tool_call_id.clone()),
-            Some(format!("{log_prefix}-strategic-planning-solution-refinement")),
+            subchat_params.subchat_max_new_tokens / 3,
+            &mut usage_collector,
+            tool_call_id,
+            "solution-refinement",
+            &log_prefix,
         ).await?;
 
-        let imp_session = imp_choices.into_iter().next().unwrap();
-        let improved_reply = imp_session.last().unwrap().clone();
         let final_message = format!(
-            "# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}",
+            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}",
+            root_cause_reply.content.content_text_only(),
             first_reply.content.content_text_only(),
             critique_reply.content.content_text_only(),
             improved_reply.content.content_text_only()
