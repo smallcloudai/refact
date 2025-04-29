@@ -8,12 +8,14 @@ description: Supported Models in Refact.ai
 With Refact.ai, access state-of-the-art models in your VS Code or JetBrains plugin and select the optimal LLM for each task.
 
 ### AI Agent models
+- GPT 4.1 (default)
 - Claude 3.7 Sonnet
 - Claude 3.5 Sonnet
 - GPT-4o
 - o3-mini
 
 ### Chat models
+- GPT 4.1 (default)
 - Claude 3.7 Sonnet
 - Claude 3.5 Sonnet
 - GPT-4o
