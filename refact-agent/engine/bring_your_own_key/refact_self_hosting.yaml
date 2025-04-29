@@ -4,8 +4,16 @@ cloud_name: Refact local self-hosting server
 #chat_endpoint: "http://localhost:8008/v1/chat/completions"
 #chat_model: "qwen2.5/coder/1.5b/instruct"
 
+# Example of self-hosting via LM Studio
+chat_endpoint: "http://localhost:1234/v1/chat/completions"
+chat_model: o3-mini
+# Be sure to load any model you prefer in LM Studio first, it will not check the name of a model set there, 
+# but using "known" for Refact model name like "o3-mini" will allow use not only "Quick", but also "Explore" and "Agent" modes.
+# for gpt-4o deep_think tool does not work, for o3-mini works
+
 embedding_endpoint: "http://localhost:8008/v1/embeddings"
-embedding_model: "thenlper/gte-base"
+embedding_model: "thenlper/gte-base" # or "thenlper/gte-base/cpu"
+embedding_size: 768 # mandatory to be set
 
 completion_endpoint: "http://localhost:8008/v1/completions"
 completion_model: "Refact/1.6B"
