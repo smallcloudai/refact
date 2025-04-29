@@ -255,14 +255,12 @@ export const BallanceLowInformation: React.FC = () => {
       timeout={null}
       onClick={handleClose}
     >
-      <Text as="p">
-        💸 <Strong>Your balance is {balance}</Strong>
-      </Text>
-      <Text as="p">
-        Please top up your balance soon or contact support if you believe this
-        is a mistake.
-      </Text>
-      <Flex justify="end">
+      💸 <Strong>Your balance is {balance}</Strong>
+      <br />
+      Please top up your balance soon or contact support if you believe this is
+      a mistake.
+      <br />
+      <Flex as="span" justify="end">
         <Em>Thank you for using Refact!</Em>
       </Flex>
     </Callout>
