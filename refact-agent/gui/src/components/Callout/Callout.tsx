@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Flex,
   Callout as RadixCallout,
@@ -15,8 +15,10 @@ import {
 import { useTimeout } from "usehooks-ts";
 import styles from "./Callout.module.css";
 import classNames from "classnames";
-import { useAppSelector, useLogout } from "../../hooks";
+import { useAppDispatch, useAppSelector, useLogout } from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
+import { selectBalance } from "../../features/CoinBalance";
+import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
 
@@ -230,6 +232,35 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       <Text as="p">
         Please top up your balance or contact support if you believe this is a
         mistake.
+      </Text>
+      <Flex justify="end">
+        <Em>Thank you for using Refact!</Em>
+      </Flex>
+    </Callout>
+  );
+};
+
+export const BallanceLowInformation: React.FC = () => {
+  const balance = useAppSelector(selectBalance);
+  const dispatch = useAppDispatch();
+  const handleClose = useCallback(() => {
+    dispatch(dismissBalanceLowCallout());
+  }, [dispatch]);
+
+  return (
+    <Callout
+      type="info"
+      color="blue"
+      mt="2"
+      timeout={null}
+      onClick={handleClose}
+    >
+      <Text as="p">
+        💸 <Strong>Your balance is {balance}</Strong>
+      </Text>
+      <Text as="p">
+        Please top up your balance soon or contact support if you believe this
+        is a mistake.
       </Text>
       <Flex justify="end">
         <Em>Thank you for using Refact!</Em>

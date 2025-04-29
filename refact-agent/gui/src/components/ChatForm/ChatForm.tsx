@@ -38,8 +38,13 @@ import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
+  showBalanceLowCallout,
 } from "../../features/Errors/informationSlice";
-import { BallanceCallOut, InformationCallout } from "../Callout/Callout";
+import {
+  BallanceCallOut,
+  BallanceLowInformation,
+  InformationCallout,
+} from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachImagesButton, FileList } from "../Dropzone";
@@ -100,6 +105,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
+  const shouldSowBallanceLow = useAppSelector(showBalanceLowCallout);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -313,6 +319,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
         {globalError}
       </ErrorCallout>
     );
+  }
+  if (shouldSowBallanceLow) {
+    return <BallanceLowInformation />;
   }
 
   if (information) {
