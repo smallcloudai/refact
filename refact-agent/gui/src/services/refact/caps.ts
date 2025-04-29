@@ -66,7 +66,7 @@ function isCapCost(json: unknown): json is CapCost {
   return true;
 }
 type CapsMetadata = {
-  pricing: Record<string, CapCost>;
+  pricing?: Record<string, CapCost>;
 };
 
 function isCapsMetadata(json: unknown): json is CapsMetadata {

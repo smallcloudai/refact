@@ -169,6 +169,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
     () =>
       caps.usableModelsForPlan.map((option) => {
         if (!caps.data) return option;
+        if (!caps.data.metadata.pricing) return option;
         if (!(option.value in caps.data.metadata.pricing)) return option;
         const pricingForModel = caps.data.metadata.pricing[option.value];
         const tooltip = (
