@@ -309,7 +309,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setIsSendImmediately,
   ]);
 
-  if (globalErrorType === "ballance") {
+  if (globalErrorType === "balance") {
     return <BallanceCallOut onClick={() => dispatch(clearError())} />;
   }
 
