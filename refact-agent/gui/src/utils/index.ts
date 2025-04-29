@@ -10,4 +10,3 @@ export * from "./partition";
 export * from "./fencedBackticks";
 export * from "./isAbsolutePath";
 export * from "./isDetailMessage";
-export * from "./hasProperty";

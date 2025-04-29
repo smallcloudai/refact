@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock as StdRwLock};
 use tokio::sync::Mutex as AMutex;
+use tokio::sync::RwLock as ARwLock;
 use tokio::sync::mpsc;
 use async_stream::stream;
 use futures::StreamExt;
@@ -8,57 +9,124 @@ use reqwest_eventsource::Event;
 use reqwest_eventsource::Error as REError;
 use serde_json::{json, Value};
 use tracing::info;
-use uuid;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
-use crate::caps::BaseModelRecord;
 use crate::custom_error::ScratchError;
 use crate::nicer_logs;
 use crate::scratchpad_abstract::{FinishReason, ScratchpadAbstract};
 use crate::telemetry::telemetry_structs;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::caps::get_api_key;
 
+
+async fn _get_endpoint_and_stuff_from_model_name(
+    gcx: Arc<ARwLock<crate::global_context::GlobalContext>>,
+    caps: Arc<StdRwLock<crate::caps::CodeAssistantCaps>>,
+    model_name: String,
+) -> (String, String, String, String)
+{
+    let (
+        custom_apikey,
+        mut endpoint_style,
+        custom_endpoint_style,
+        mut endpoint_template,
+        custom_endpoint_template,
+        endpoint_chat_passthrough,
+    ) = {
+        let caps_locked = caps.read().unwrap();
+        if caps_locked.code_chat_models.contains_key(&model_name) {
+            (
+                caps_locked.chat_apikey.clone(),
+                caps_locked.endpoint_style.clone(),      // abstract
+                caps_locked.chat_endpoint_style.clone(), // chat-specific
+                caps_locked.endpoint_template.clone(),   // abstract
+                caps_locked.chat_endpoint.clone(),       // chat-specific
+                caps_locked.endpoint_chat_passthrough.clone(),
+            )
+        } else {
+            (
+                caps_locked.completion_apikey.clone(),
+                caps_locked.endpoint_style.clone(),             // abstract
+                caps_locked.completion_endpoint_style.clone(),  // completion-specific
+                caps_locked.endpoint_template.clone(),          // abstract
+                caps_locked.completion_endpoint.clone(),        // completion-specific
+                "".to_string(),
+            )
+        }
+    };
+    let api_key = get_api_key(gcx, custom_apikey).await;
+    if !custom_endpoint_style.is_empty() {
+        endpoint_style = custom_endpoint_style;
+    }
+    if !custom_endpoint_template.is_empty() {
+        endpoint_template = custom_endpoint_template;
+    }
+    (
+        api_key,
+        endpoint_template,
+        endpoint_style,
+        endpoint_chat_passthrough,
+    )
+}
 
 pub async fn scratchpad_interaction_not_stream_json(
     ccx: Arc<AMutex<AtCommandsContext>>,
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
     prompt: &str,
-    model_rec: &BaseModelRecord,
+    model_name: String,
     parameters: &SamplingParameters,  // includes n
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let gcx = ccx.lock().await.global_context.clone();
-    let (client, tele_storage, slowdown_arc) = {
+    let (client, caps, tele_storage, slowdown_arc) = {
         let gcx_locked = gcx.write().await;
+        let caps = gcx_locked.caps.clone()
+            .ok_or(ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, "No caps available".to_string()))?;
         (
             gcx_locked.http_client.clone(),
+            caps,
             gcx_locked.telemetry.clone(),
             gcx_locked.http_client_slowdown.clone()
         )
     };
+    let (
+        bearer,
+        endpoint_template,
+        endpoint_style,
+        endpoint_chat_passthrough,
+    ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
 
     let mut save_url: String = String::new();
     let _ = slowdown_arc.acquire().await;
+    let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
         Ok(Value::Object(serde_json::Map::new()))
-    } else if model_rec.endpoint_style == "hf" {
+    } else if endpoint_style == "hf" {
         crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
-            &model_rec,
-            prompt,
+            &mut save_url,
+            bearer.clone(),
+            &model_name,
+            &prompt,
             &client,
+            &endpoint_template,
             &parameters,
             meta
         ).await
     } else {
         crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
-            &model_rec,
-            prompt,
+            &mut save_url,
+            bearer.clone(),
+            &model_name,
+            &prompt,
             &client,
-            &parameters,
+            &endpoint_template,
+            &endpoint_chat_passthrough,
+            &parameters,  // includes n
+            metadata_supported,
             meta
         ).await
     }.map_err(|e| {
@@ -70,8 +138,6 @@ pub async fn scratchpad_interaction_not_stream_json(
             ));
         ScratchError::new_but_skip_telemetry(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
     })?;
-    generate_id_and_index_for_tool_calls_if_missing(&mut model_says);
-    
     tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
         save_url.clone(),
         scope.clone(),
@@ -187,7 +253,7 @@ pub async fn scratchpad_interaction_not_stream(
     ccx: Arc<AMutex<AtCommandsContext>>,
     scratchpad: &mut Box<dyn ScratchpadAbstract>,
     scope: String,
-    model_rec: &BaseModelRecord,
+    model_name: String,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
@@ -207,7 +273,7 @@ pub async fn scratchpad_interaction_not_stream(
         scratchpad,
         scope,
         prompt.as_str(),
-        &model_rec,
+        model_name,
         parameters,
         only_deterministic_messages,
         meta
@@ -230,26 +296,34 @@ pub async fn scratchpad_interaction_stream(
     ccx: Arc<AMutex<AtCommandsContext>>,
     mut scratchpad: Box<dyn ScratchpadAbstract>,
     scope: String,
-    mut model_rec: BaseModelRecord,
+    mut model_name: String,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
     meta: Option<ChatMeta>
 ) -> Result<Response<Body>, ScratchError> {
-    let t1: std::time::SystemTime = std::time::SystemTime::now();
+    let t1 = std::time::SystemTime::now();
     let evstream = stream! {
         let my_scratchpad: &mut Box<dyn ScratchpadAbstract> = &mut scratchpad;
         let mut my_parameters = parameters.clone();
         let my_ccx = ccx.clone();
 
         let gcx = ccx.lock().await.global_context.clone();
-        let (client, tele_storage, slowdown_arc) = {
+        let (client, caps, tele_storage, slowdown_arc) = {
             let gcx_locked = gcx.write().await;
+            let caps = gcx_locked.caps.clone().unwrap();
             (
                 gcx_locked.http_client.clone(),
+                caps,
                 gcx_locked.telemetry.clone(),
                 gcx_locked.http_client_slowdown.clone()
             )
         };
+        let (
+            bearer,
+            endpoint_template,
+            endpoint_style,
+            endpoint_chat_passthrough,
+        ) = _get_endpoint_and_stuff_from_model_name(gcx.clone(), caps.clone(), model_name.clone()).await;
 
         let t0 = std::time::Instant::now();
         let mut prompt = String::new();
@@ -302,6 +376,7 @@ pub async fn scratchpad_interaction_stream(
         }
         info!("scratchpad_interaction_stream prompt {:?}", t0.elapsed());
 
+        let mut save_url: String = String::new();
         let _ = slowdown_arc.acquire().await;
         loop {
             let value_maybe = my_scratchpad.response_spontaneous();
@@ -323,20 +398,29 @@ pub async fn scratchpad_interaction_stream(
                 break;
             }
             // info!("prompt: {:?}", prompt);
-            let event_source_maybe = if model_rec.endpoint_style == "hf" {
+            let metadata_supported = crate::global_context::is_metadata_supported(gcx.clone()).await;
+            let event_source_maybe = if endpoint_style == "hf" {
                 crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
-                    &model_rec,
-                    &prompt,
+                    &mut save_url,
+                    bearer.clone(),
+                    &model_name,
+                    prompt.as_str(),
                     &client,
+                    &endpoint_template,
                     &my_parameters,
                     meta
                 ).await
             } else {
                 crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
-                    &model_rec,
-                    &prompt,
+                    &mut save_url,
+                    bearer.clone(),
+                    &model_name,
+                    prompt.as_str(),
                     &client,
+                    &endpoint_template,
+                    &endpoint_chat_passthrough,
                     &my_parameters,
+                    metadata_supported,
                     meta
                 ).await
             };
@@ -345,15 +429,15 @@ pub async fn scratchpad_interaction_stream(
                 Err(e) => {
                     let e_str = format!("forward_to_endpoint: {:?}", e);
                     tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
-                        model_rec.endpoint.clone(),
+                        save_url.clone(),
                         scope.clone(),
                         false,
                         e_str.to_string(),
                     ));
                     tracing::error!(e_str);
-                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": e_str})).unwrap());
+                    let value_str = serde_json::to_string(&json!({"detail": e_str})).unwrap();
                     yield Result::<_, String>::Ok(value_str);
-                    return;
+                    break;
                 }
             };
             let mut was_correct_output_even_if_error = false;
@@ -367,13 +451,12 @@ pub async fn scratchpad_interaction_stream(
                         if message.data.starts_with("[DONE]") {
                             break;
                         }
-                        let mut json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
-                        generate_id_and_index_for_tool_calls_if_missing(&mut json);
+                        let json = serde_json::from_str::<serde_json::Value>(&message.data).unwrap();
                         crate::global_context::look_for_piggyback_fields(gcx.clone(), &json).await;
                         match _push_streaming_json_into_scratchpad(
                             my_scratchpad,
                             &json,
-                            &mut model_rec.name,
+                            &mut model_name,
                             &mut was_correct_output_even_if_error,
                         ) {
                             Ok((mut value, finish_reason)) => {
@@ -420,13 +503,13 @@ pub async fn scratchpad_interaction_stream(
                         tracing::error!("restream error: {}\n", problem_str);
                         {
                             tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
-                                model_rec.endpoint.clone(),
+                                save_url.clone(),
                                 scope.clone(),
                                 false,
                                 problem_str.clone(),
                             ));
                         }
-                        yield Result::<_, String>::Ok(format!("data: {}\n\n", serde_json::to_string(&json!({"detail": problem_str})).unwrap()));
+                        yield Result::<_, String>::Ok(serde_json::to_string(&json!({"detail": problem_str})).unwrap());
                         event_source.close();
                         return;
                     },
@@ -435,7 +518,7 @@ pub async fn scratchpad_interaction_stream(
 
             let mut value = my_scratchpad.streaming_finished(last_finish_reason)?;
             value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
-            value["model"] = json!(model_rec.name.clone());
+            value["model"] = json!(model_name.clone());
             let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
             info!("yield final: {:?}", value_str);
             yield Result::<_, String>::Ok(value_str);
@@ -444,7 +527,7 @@ pub async fn scratchpad_interaction_stream(
         info!("yield: [DONE]");
         yield Result::<_, String>::Ok("data: [DONE]\n\n".to_string());
         tele_storage.write().unwrap().tele_net.push(telemetry_structs::TelemetryNetwork::new(
-            model_rec.endpoint.clone(),
+            save_url.clone(),
             scope.clone(),
             true,
             "".to_string(),
@@ -498,44 +581,6 @@ pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
     return false;
 }
 
-/// Generates tool call ID and index for tool calls missing them, required by providers like Gemini
-fn generate_id_and_index_for_tool_calls_if_missing(value: &mut serde_json::Value) {
-    fn process_tool_call(tool_call: &mut serde_json::Value, idx: usize) {
-        if let Some(id) = tool_call.get_mut("id") {
-            if id.is_string() && id.as_str().unwrap_or("").is_empty() {
-                let uuid = uuid::Uuid::new_v4().to_string().replace("-", "");
-                *id = json!(format!("call_{uuid}"));
-                tracing::info!("Generated UUID for empty tool call ID: call_{}", uuid);
-            }
-        }
-        if tool_call.get("index").is_none() {
-            tool_call["index"] = json!(idx);
-        }
-    }
-
-    if let Some(tool_calls) = value.get_mut("tool_calls").and_then(|tc| tc.as_array_mut()) {
-        for (i, tool_call) in tool_calls.iter_mut().enumerate() {
-            process_tool_call(tool_call, i);
-        }
-    }
-    
-    if let Some(choices) = value.get_mut("choices").and_then(|c| c.as_array_mut()) {
-        for choice in choices {
-            for field in ["delta", "message"] {
-                if let Some(tool_calls) = choice.get_mut(field)
-                    .and_then(|v| v.get_mut("tool_calls"))
-                    .and_then(|tc| tc.as_array_mut()) 
-                {
-                    for (i, tool_call) in tool_calls.iter_mut().enumerate() {
-                        process_tool_call(tool_call, i);
-                    }
-                }
-            }
-        }
-    }
-}
-
-
 fn _push_streaming_json_into_scratchpad(
     scratch: &mut Box<dyn ScratchpadAbstract>,
     json: &serde_json::Value,
@@ -579,8 +624,6 @@ fn _push_streaming_json_into_scratchpad(
         }
         value["model"] = json!(model_name.clone());
         Ok((value, finish_reason))
-    } else if json.get("type").and_then(|t| t.as_str()) == Some("ping") {
-        Ok((serde_json::value::Value::Null, FinishReason::None))
     } else if let Some(err) = json.get("error") {
         Err(format!("{}", err))
     } else if let Some(msg) = json.get("human_readable_message") {

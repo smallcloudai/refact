@@ -4,7 +4,7 @@ import styles from "./IntegrationForm.module.css";
 import { FC } from "react";
 import { Integration } from "../../../services/refact";
 import { IntegrationAvailability } from "./IntegrationAvailability";
-import { DeletePopover } from "../../DeletePopover";
+import { IntegrationDeletePopover } from "../IntegrationDeletePopover";
 
 type FormAvailabilityAndDeleteProps = {
   integration: Integration;
@@ -12,7 +12,7 @@ type FormAvailabilityAndDeleteProps = {
   isApplying: boolean;
   isDeletingIntegration: boolean;
   handleAvailabilityChange: (fieldName: string, value: boolean) => void;
-  onDelete: (path: string) => void;
+  onDelete: (path: string, name: string) => void;
 };
 
 export const FormAvailabilityAndDelete: FC<FormAvailabilityAndDeleteProps> = ({
@@ -44,12 +44,12 @@ export const FormAvailabilityAndDelete: FC<FormAvailabilityAndDeleteProps> = ({
             />
           ))}
       </Flex>
-      <DeletePopover
-        itemName={integr_name}
-        deleteBy={integr_config_path}
-        isDisabled={isApplying}
-        isDeleting={isDeletingIntegration}
-        handleDelete={onDelete}
+      <IntegrationDeletePopover
+        integrationName={integr_name}
+        integrationConfigPath={integr_config_path}
+        isApplying={isApplying}
+        isDeletingIntegration={isDeletingIntegration}
+        handleDeleteIntegration={onDelete}
       />
     </Flex>
   );

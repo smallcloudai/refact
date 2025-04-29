@@ -1,1 +1,0 @@
-export { DeletePopover } from "./DeletePopover";

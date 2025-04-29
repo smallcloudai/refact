@@ -74,7 +74,8 @@ fn _make_conversation(
 pub async fn generate_follow_up_message(
     messages: Vec<ChatMessage>,
     gcx: Arc<ARwLock<GlobalContext>>,
-    model_id: &str,
+    light_model_name: String,
+    current_model_name: &String,
     chat_id: &str,
 ) -> Result<FollowUpResponse, String> {
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
@@ -85,11 +86,11 @@ pub async fn generate_follow_up_message(
         messages.clone(),
         chat_id.to_string(),
         false,
-        model_id.to_string(),
+        current_model_name.clone(),
     ).await));
     let updated_messages: Vec<Vec<ChatMessage>> = subchat_single(
         ccx.clone(),
-        model_id,
+        &light_model_name,
         _make_conversation(&messages),
         Some(vec![]),
         None,

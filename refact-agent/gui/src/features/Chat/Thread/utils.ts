@@ -34,7 +34,6 @@ import {
   isUserResponse,
   ThinkingBlock,
   isToolCallMessage,
-  Usage,
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
@@ -233,32 +232,13 @@ export function formatChatResponse(
 
   const currentUsage = response.usage;
 
-  if (currentUsage) {
+  if (currentUsage && response.choices.length === 0) {
     const lastAssistantIndex = lastIndexOf(messages, isAssistantMessage);
     if (lastAssistantIndex === -1) return messages;
 
-    const lastAssistantMessage = messages[lastAssistantIndex];
-    if (!isAssistantMessage(lastAssistantMessage)) return messages;
-
-    const maybeLastAssistantMessageUsage = lastAssistantMessage.usage;
-    let usageToStore = currentUsage;
-
-    if (
-      maybeLastAssistantMessageUsage &&
-      Object.entries(currentUsage).every(
-        ([key, value]) =>
-          maybeLastAssistantMessageUsage[key as keyof Usage] === value,
-      )
-    ) {
-      usageToStore = { ...maybeLastAssistantMessageUsage, ...currentUsage };
-    }
-
     return messages.map((message, index) =>
       index === lastAssistantIndex
-        ? {
-            ...message,
-            usage: usageToStore,
-          }
+        ? { ...message, usage: currentUsage }
         : message,
     );
   }
@@ -693,7 +673,8 @@ export function consumeStream(
       const str = decoder.decode(value);
       const maybeError = checkForDetailMessage(str);
       if (maybeError) {
-        return Promise.reject(maybeError);
+        const error = new Error(maybeError.detail);
+        throw error;
       }
     }
 
@@ -727,9 +708,7 @@ export function consumeStream(
 
       const maybeJsonString = delta.substring(6);
 
-      if (maybeJsonString === "[DONE]") {
-        return Promise.resolve();
-      }
+      if (maybeJsonString === "[DONE]") return Promise.resolve();
 
       if (maybeJsonString === "[ERROR]") {
         const errorMessage = "error from lsp";
@@ -747,7 +726,7 @@ export function consumeStream(
         const error = new Error(errorMessage);
         // eslint-disable-next-line no-console
         console.error(error);
-        return Promise.reject(maybeErrorData);
+        throw error;
       }
 
       const fallback = {};

@@ -7,7 +7,7 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, SubchatParameters};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
-use crate::custom_error::YamlError;
+use crate::integrations::setting_up_integrations::YamlError;
 
 
 #[derive(Debug, Serialize, Deserialize, Default)]
@@ -131,7 +131,7 @@ pub fn load_and_mix_with_users_config(
     let user_unstructured: serde_yaml::Value = serde_yaml::from_str(user_yaml)
         .map_err(|e| {
             error_log.push(YamlError {
-                path: "customization.yaml".to_string(),
+                integr_config_path: "customization.yaml".to_string(),
                 error_line: 0,
                 error_msg: e.to_string(),
             });
@@ -146,7 +146,7 @@ pub fn load_and_mix_with_users_config(
     let mut user_config: CustomizationYaml = serde_yaml::from_str(user_yaml)
         .map_err(|e| {
             error_log.push(YamlError {
-                path: "customization.yaml".to_string(),
+                integr_config_path: "customization.yaml".to_string(),
                 error_line: 0,
                 error_msg: e.to_string(),
             });
@@ -155,7 +155,7 @@ pub fn load_and_mix_with_users_config(
     let caps_config: CustomizationYaml = serde_yaml::from_str(caps_yaml)
         .map_err(|e| {
             error_log.push(YamlError {
-                path: "caps.yaml".to_string(),
+                integr_config_path: "caps.yaml".to_string(),
                 error_line: 0,
                 error_msg: e.to_string(),
             });
@@ -207,14 +207,18 @@ pub async fn load_customization(
     let caps = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => caps,
         Err(e) => {
-            let address_url = gcx.read().await.cmdline.address_url.clone();
             error_log.push(YamlError {
-                path: address_url,
+                integr_config_path: "bring-your-own-key.yaml".to_string(),
                 error_line: 0,
                 error_msg: format!("error loading caps: {e}"),
             });
             return CustomizationYaml::default();
         }
+    };
+
+    let caps_config_text = {
+        let caps_locked = caps.read().unwrap();
+        caps_locked.customization.clone()
     };
 
     let config_dir = gcx.read().await.config_dir.clone();
@@ -225,7 +229,7 @@ pub async fn load_customization(
 
     load_and_mix_with_users_config(
         &user_config_text,
-        &caps.customization,
+        &caps_config_text,
         skip_visibility_filtering,
         allow_experimental,
         error_log,
@@ -243,7 +247,12 @@ mod tests {
             "", "", true, true, &mut error_log,
         );
         for e in error_log.iter() {
-            eprintln!("{e}");
+            eprintln!(
+                "{}:{} {:?}",
+                crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
+                e.error_line,
+                e.error_msg,
+            );
         }
         assert!(error_log.is_empty(), "There were errors in the error_log");
         assert_eq!(config.system_prompts.get("default").is_some(), true);

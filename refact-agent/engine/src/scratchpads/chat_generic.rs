@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::RwLock;
 
 use async_trait::async_trait;
 use serde_json::Value;
@@ -39,7 +40,7 @@ pub struct GenericChatScratchpad {
 
 impl GenericChatScratchpad {
     pub fn new(
-        tokenizer: Option<Arc<Tokenizer>>,
+        tokenizer: Arc<RwLock<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
         prepend_system_prompt: bool,

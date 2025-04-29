@@ -66,45 +66,31 @@ const DefaultHoverCard: React.FC<{
   outputTokens: number;
 }> = ({ inputTokens, outputTokens }) => {
   const { currentThreadUsage } = useUsageCounter();
-  if (!currentThreadUsage) return null;
 
   return (
     <Flex direction="column" align="start" gap="2">
       <Text size="2" mb="2">
         Tokens spent per chat thread:
       </Text>
-      {inputTokens !== 0 && (
-        <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+      {currentThreadUsage?.cache_read_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache read input tokens"
+          value={currentThreadUsage.cache_read_input_tokens}
+        />
       )}
-      {currentThreadUsage.cache_read_input_tokens !== undefined &&
-        currentThreadUsage.cache_read_input_tokens !== 0 && (
-          <TokenDisplay
-            label="Cache read input tokens"
-            value={currentThreadUsage.cache_read_input_tokens}
-          />
-        )}
-      {currentThreadUsage.cache_creation_input_tokens !== undefined &&
-        currentThreadUsage.cache_creation_input_tokens !== 0 && (
-          <TokenDisplay
-            label="Cache creation input tokens"
-            value={currentThreadUsage.cache_creation_input_tokens}
-          />
-        )}
-      {outputTokens !== 0 && (
-        <TokenDisplay label="Completion tokens" value={outputTokens} />
+      {currentThreadUsage?.cache_creation_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache creation input tokens"
+          value={currentThreadUsage.cache_creation_input_tokens}
+        />
       )}
-      {currentThreadUsage.completion_tokens_details && (
-        <>
-          {currentThreadUsage.completion_tokens_details.reasoning_tokens !==
-            0 && (
-            <TokenDisplay
-              label="Reasoning tokens"
-              value={
-                currentThreadUsage.completion_tokens_details.reasoning_tokens
-              }
-            />
-          )}
-        </>
+      <TokenDisplay label="Completion tokens" value={outputTokens} />
+      {currentThreadUsage?.completion_tokens_details && (
+        <TokenDisplay
+          label="Reasoning tokens"
+          value={currentThreadUsage.completion_tokens_details.reasoning_tokens}
+        />
       )}
     </Flex>
   );
@@ -125,22 +111,18 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
-  outputTokens: number;
-}> = ({ inputTokens, outputTokens }) => {
+  outputValue: string;
+}> = ({ inputTokens, outputValue }) => {
   return (
     <>
-      {inputTokens !== 0 && (
-        <Flex align="center">
-          <ArrowUpIcon width="12" height="12" />
-          <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
-        </Flex>
-      )}
-      {outputTokens !== 0 && (
-        <Flex align="center">
-          <ArrowDownIcon width="12" height="12" />
-          <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
-        </Flex>
-      )}
+      <Flex align="center">
+        <ArrowUpIcon width="12" height="12" />
+        <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+      </Flex>
+      <Flex align="center">
+        <ArrowDownIcon width="12" height="12" />
+        <Text size="1">{outputValue}</Text>
+      </Flex>
     </>
   );
 };
@@ -172,10 +154,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     usage: currentThreadUsage,
     keys: ["completion_tokens"],
   });
-
-  const shouldUsageBeHidden = useMemo(() => {
-    return !isInline && inputTokens === 0 && outputTokens === 0;
-  }, [outputTokens, inputTokens, isInline]);
+  const outputValue = formatNumberToFixed(outputTokens);
 
   useEffectOnce(() => {
     const handleScroll = (event: WheelEvent) => {
@@ -193,8 +172,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     };
   });
 
-  if (shouldUsageBeHidden) return null;
-
   return (
     <HoverCard.Root open={open} onOpenChange={setOpen}>
       <HoverCard.Trigger>
@@ -210,7 +187,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           ) : (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
-              outputTokens={outputTokens}
+              outputValue={outputValue}
             />
           )}
         </Card>

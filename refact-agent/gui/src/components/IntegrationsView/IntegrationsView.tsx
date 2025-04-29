@@ -110,7 +110,9 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
       <Flex direction="column" align="start" justify="between" height="100%">
         <IntegrationForm
           handleSubmit={(event) => void handleSubmit(event)}
-          handleDeleteIntegration={(path) => void handleDeleteIntegration(path)}
+          handleDeleteIntegration={(path, name) =>
+            void handleDeleteIntegration(path, name)
+          }
           integrationPath={currentIntegration.integr_config_path}
           isApplying={isApplyingIntegrationForm}
           isDeletingIntegration={isDeletingIntegration}

@@ -28,7 +28,6 @@ import { Tab } from "../components/Toolbar/Toolbar";
 import { PageWrapper } from "../components/PageWrapper";
 import { ThreadHistory } from "./ThreadHistory";
 import { Integrations } from "./Integrations";
-import { Providers } from "./Providers";
 import { UserSurvey } from "./UserSurvey";
 import { integrationsApi } from "../services/refact";
 import { KnowledgeList } from "./Knowledge";
@@ -201,13 +200,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             host={config.host}
             onCloseIntegrations={goBackFromIntegrations}
             handlePaddingShift={handlePaddingShift}
-          />
-        )}
-        {page.name === "providers page" && (
-          <Providers
-            backFromProviders={goBack}
-            tabbed={config.tabbed}
-            host={config.host}
           />
         )}
         {page.name === "thread history page" && (
