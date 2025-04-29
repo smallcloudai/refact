@@ -34,4 +34,4 @@ RUN pip install ninja
 RUN pip install packaging==24.1 setuptools==70.0.0 setuptools-scm==8.1.0
 # new cuda caps require cuda version >=12.8: 10.0, 10.1, 12.0
 ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=60;61;70;75;80;86;89;90+PTX"
-RUN pip install -v --no-build-isolation vllm==v0.8.4
+RUN pip install -v --no-build-isolation vllm==v0.8.5
