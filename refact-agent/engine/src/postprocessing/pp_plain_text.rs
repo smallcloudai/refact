@@ -1,20 +1,21 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLockReadGuard};
+use std::sync::RwLock;
 use tokenizers::Tokenizer;
 
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
-use crate::tokens::count_text_tokens_with_fallback;
+use crate::scratchpads::scratchpad_utils::count_tokens;
 
 
 fn limit_text_content(
-    tokenizer: Option<Arc<Tokenizer>>,
+    tokenizer_guard: &RwLockReadGuard<Tokenizer>,
     text: &String,
     tok_used: &mut usize,
     tok_per_m: usize,
 ) -> String {
     let mut new_text_lines = vec![];
     for line in text.lines() {
-        let line_tokens = count_text_tokens_with_fallback(tokenizer.clone(), &line);
+        let line_tokens = count_tokens(tokenizer_guard, &line);
         if tok_used.clone() + line_tokens > tok_per_m {
             if new_text_lines.is_empty() {
                 new_text_lines.push("No content: tokens limit reached");
@@ -30,7 +31,7 @@ fn limit_text_content(
 
 pub async fn postprocess_plain_text(
     plain_text_messages: Vec<&ChatMessage>,
-    tokenizer: Option<Arc<Tokenizer>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
     tokens_limit: usize,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, usize) {
@@ -44,13 +45,14 @@ pub async fn postprocess_plain_text(
     let mut tok_per_m = tokens_limit / messages_sorted.len();
     let mut new_messages = vec![];
 
+    let tokenizer_guard = tokenizer.read().unwrap();
     for (idx, msg) in messages_sorted.iter().cloned().enumerate() {
         let mut tok_used = 0;
         let mut m_cloned = msg.clone();
         
         m_cloned.content = match &msg.content {
             ChatContent::SimpleText(text) => {
-                let new_content = limit_text_content(tokenizer.clone(), text, &mut tok_used, tok_per_m);
+                let new_content = limit_text_content(&tokenizer_guard, text, &mut tok_used, tok_per_m);
                 ChatContent::SimpleText(new_content)
             },
             ChatContent::Multimodal(elements) => {
@@ -59,7 +61,7 @@ pub async fn postprocess_plain_text(
                 for element in elements {
                     if element.is_text() {
                         let mut el_cloned = element.clone();
-                        el_cloned.m_content = limit_text_content(tokenizer.clone(), &el_cloned.m_content, &mut tok_used, tok_per_m);
+                        el_cloned.m_content = limit_text_content(&tokenizer_guard, &el_cloned.m_content, &mut tok_used, tok_per_m);
                         new_content.push(el_cloned)
                     } else if element.is_image() {
                         let tokens = element.count_tokens(None, style).unwrap() as usize;

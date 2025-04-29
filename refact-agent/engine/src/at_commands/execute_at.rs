@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use tokio::sync::Mutex as AMutex;
 use regex::Regex;
 use serde_json::{json, Value};
@@ -20,7 +20,7 @@ pub const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
 pub async fn run_at_commands_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tokenizer: Option<Arc<Tokenizer>>,
+    tokenizer: Arc<RwLock<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -164,7 +164,7 @@ pub async fn run_at_commands_locally(
 
 pub async fn run_at_commands_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_id: &str,
+    model_name: &str,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -186,7 +186,7 @@ pub async fn run_at_commands_remotely(
         maxgen,
         subchat_tool_parameters,
         postprocess_parameters,
-        model_name: model_id.to_string(),
+        model_name: model_name.to_string(),
         chat_id: chat_id.clone(),
     };
 

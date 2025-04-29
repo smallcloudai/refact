@@ -1,4 +1,3 @@
-import { FC } from "react";
 import {
   Button,
   Popover,
@@ -9,23 +8,24 @@ import {
   IconButton,
 } from "@radix-ui/themes";
 import classNames from "classnames";
-import styles from "./DeletePopover.module.css";
+import { FC } from "react";
+import styles from "./IntegrationForm/IntegrationForm.module.css";
 import { TrashIcon } from "@radix-ui/react-icons";
 
-export type DeletePopoverProps = {
-  isDisabled: boolean;
-  isDeleting: boolean;
-  itemName: string;
-  deleteBy: string;
-  handleDelete: (deleteBy: string) => void;
+type IntegrationDeletePopoverProps = {
+  isApplying: boolean;
+  isDeletingIntegration: boolean;
+  integrationName: string;
+  integrationConfigPath: string;
+  handleDeleteIntegration: (path: string, name: string) => void;
 };
 
-export const DeletePopover: FC<DeletePopoverProps> = ({
-  deleteBy,
-  itemName,
-  handleDelete,
-  isDeleting,
-  isDisabled,
+export const IntegrationDeletePopover: FC<IntegrationDeletePopoverProps> = ({
+  isApplying,
+  isDeletingIntegration,
+  integrationName,
+  integrationConfigPath,
+  handleDeleteIntegration,
 }) => {
   return (
     <Popover.Root>
@@ -35,12 +35,18 @@ export const DeletePopover: FC<DeletePopoverProps> = ({
           variant="outline"
           type="button"
           size="2"
-          title={"Delete configuration data"}
-          className={classNames({
-            [styles.disabledButton]: isDeleting || isDisabled,
-          })}
-          disabled={isDeleting || isDisabled}
+          title={"Delete configuration data of this integration"}
+          className={classNames(
+            {
+              [styles.disabledButton]: isDeletingIntegration || isApplying,
+            },
+            // styles.button,
+          )}
+          disabled={isDeletingIntegration || isApplying}
         >
+          {/* {isDeletingIntegration
+            ? "Deleting configuration..."
+            : "Delete configuration"} */}
           <TrashIcon width={20} height={20} />
         </IconButton>
       </Popover.Trigger>
@@ -53,7 +59,7 @@ export const DeletePopover: FC<DeletePopoverProps> = ({
                   Destructive action
                 </Heading>
                 <Text size="2">
-                  Do you really want to delete {itemName}
+                  Do you really want to delete {integrationName}
                   &apos;s configuration data?
                 </Text>
               </Flex>
@@ -64,7 +70,12 @@ export const DeletePopover: FC<DeletePopoverProps> = ({
                     size="2"
                     variant="solid"
                     color="red"
-                    onClick={() => handleDelete(deleteBy)}
+                    onClick={() =>
+                      handleDeleteIntegration(
+                        integrationConfigPath,
+                        integrationName,
+                      )
+                    }
                   >
                     Delete
                   </Button>

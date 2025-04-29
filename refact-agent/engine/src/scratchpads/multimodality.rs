@@ -1,10 +1,9 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall};
-use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
-use crate::tokens::count_text_tokens;
+use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, count_tokens as count_tokens_simple_text, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
 
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
@@ -77,9 +76,13 @@ impl MultimodalElement {
         })
     }
 
-    pub fn count_tokens(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
+    pub fn count_tokens(&self, tokenizer: Option<&RwLockReadGuard<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
         if self.is_text() {
-            Ok(count_text_tokens(tokenizer, &self.m_content)? as i32)
+            if let Some(tokenizer) = tokenizer {
+                Ok(count_tokens_simple_text(&tokenizer, &self.m_content) as i32)
+            } else {
+                return Err("count_tokens() received no tokenizer".to_string());
+            }
         } else if self.is_image() {
             let style = style.clone().unwrap_or("openai".to_string());
             match style.as_str() {
@@ -154,13 +157,6 @@ impl ChatContentRaw {
             }
         }
     }
-
-    pub fn is_empty(&self) -> bool {
-        match self {
-            ChatContentRaw::SimpleText(text) => text.is_empty(),
-            ChatContentRaw::Multimodal(elements) => elements.is_empty(),
-        }
-    }
 }
 
 impl ChatContent {
@@ -175,7 +171,7 @@ impl ChatContent {
         }
     }
 
-    pub fn size_estimate(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> usize {
+    pub fn size_estimate(&self, tokenizer: Arc<RwLock<Tokenizer>>, style: &Option<String>) -> usize {
         match self {
             ChatContent::SimpleText(text) => text.len(),
             ChatContent::Multimodal(_elements) => {
@@ -185,11 +181,12 @@ impl ChatContent {
         }
     }
 
-    pub fn count_tokens(&self, tokenizer: Option<Arc<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
+    pub fn count_tokens(&self, tokenizer: Arc<RwLock<Tokenizer>>, style: &Option<String>) -> Result<i32, String> {
+        let tokenizer_lock = tokenizer.read().unwrap();
         match self {
-            ChatContent::SimpleText(text) => Ok(count_text_tokens(tokenizer, text)? as i32),
+            ChatContent::SimpleText(text) => Ok(count_tokens_simple_text(&tokenizer_lock, text) as i32),
             ChatContent::Multimodal(elements) => elements.iter()
-                .map(|e|e.count_tokens(tokenizer.clone(), style))
+                .map(|e|e.count_tokens(Some(&tokenizer_lock), style))
                 .collect::<Result<Vec<_>, _>>()
                 .map(|counts| counts.iter().sum()),
         }
@@ -257,19 +254,14 @@ impl ChatMessage {
         }
     }
 
-    pub fn into_value(&self, style: &Option<String>, model_id: &str) -> Value {
+    pub fn into_value(&self, style: &Option<String>) -> Value {
         let mut dict = serde_json::Map::new();
         let chat_content_raw = self.content.into_raw(style);
+
         dict.insert("role".to_string(), Value::String(self.role.clone()));
-        if model_supports_empty_strings(model_id) || !chat_content_raw.is_empty() {
-            dict.insert("content".to_string(), json!(chat_content_raw));
-        }
-        if let Some(tool_calls) = self.tool_calls.clone() {
-            dict.insert("tool_calls".to_string(), json!(tool_calls));
-        }
-        if !self.tool_call_id.is_empty() {
-            dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
-        }
+        dict.insert("content".to_string(), json!(chat_content_raw));
+        dict.insert("tool_calls".to_string(), json!(self.tool_calls.clone()));
+        dict.insert("tool_call_id".to_string(), Value::String(self.tool_call_id.clone()));
         if let Some(thinking_blocks) = self.thinking_blocks.clone() {
             dict.insert("thinking_blocks".to_string(), json!(thinking_blocks));
         }
@@ -319,9 +311,4 @@ impl<'de> Deserialize<'de> for ChatMessage {
             ..Default::default()
         })
     }
-}
-
-/// If API supports sending fields with empty strings
-fn model_supports_empty_strings(model_id: &str) -> bool {
-    !model_id.starts_with("google_gemini/")
 }

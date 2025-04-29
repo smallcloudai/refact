@@ -38,10 +38,6 @@ export interface LoginPage {
   name: "login page";
 }
 
-export interface ProvidersPage {
-  name: "providers page";
-}
-
 export interface IntegrationsSetupPage {
   name: "integrations page";
   projectPath?: string;
@@ -65,7 +61,6 @@ export type Page =
   | DocumentationSettingsPage
   | ChatThreadHistoryPage
   | IntegrationsSetupPage
-  | ProvidersPage
   | KnowledgeListPage
   | LoginPage;
 

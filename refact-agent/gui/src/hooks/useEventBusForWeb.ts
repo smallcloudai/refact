@@ -36,7 +36,7 @@ export function useEventBusForWeb() {
         } else if (host.type === "self") {
           setAddressURL(host.endpointAddress);
           setApiKey("any-will-work-for-local-server");
-        } else {
+        } else if (host.type === "enterprise") {
           setAddressURL(host.endpointAddress);
           setApiKey(host.apiKey);
         }

@@ -14,7 +14,6 @@ import {
   upsertToolCall,
   sendCurrentChatToLspAfterToolCallUpdate,
   chatResponse,
-  chatError,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
@@ -22,11 +21,7 @@ import { dockerApi } from "../services/refact/docker";
 import { capsApi, isCapsErrorResponse } from "../services/refact/caps";
 import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
-import {
-  commandsApi,
-  isDetailMessage,
-  isDetailMessageWithErrorType,
-} from "../services/refact/commands";
+import { commandsApi, isDetailMessage } from "../services/refact/commands";
 import { pathApi } from "../services/refact/path";
 import { pingApi } from "../services/refact/ping";
 import {
@@ -49,7 +44,7 @@ import {
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 import { upsertToolCallIntoHistory } from "../features/History/historySlice";
-import { isToolResponse, modelsApi, providersApi } from "../services/refact";
+import { isToolResponse } from "../events";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -303,40 +298,6 @@ startListening({
     ) {
       listenerApi.dispatch(setError(action.payload));
     }
-
-    if (
-      (providersApi.endpoints.updateProvider.matchRejected(action) ||
-        providersApi.endpoints.getProvider.matchRejected(action) ||
-        providersApi.endpoints.getProviderTemplates.matchRejected(action) ||
-        providersApi.endpoints.getConfiguredProviders.matchRejected(action)) &&
-      !action.meta.condition
-    ) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isDetailMessage(action.payload?.data)
-          ? action.payload.data.detail
-          : `provider update error.`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
-    if (
-      modelsApi.endpoints.getModels.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isDetailMessage(action.payload?.data)
-          ? action.payload.data.detail
-          : `provider update error.`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
   },
 });
 
@@ -414,6 +375,8 @@ startListening({
     pathApi.endpoints.customizationPath.matchRejected,
     pathApi.endpoints.privacyPath.matchFulfilled,
     pathApi.endpoints.privacyPath.matchRejected,
+    pathApi.endpoints.bringYourOwnKeyPath.matchFulfilled,
+    pathApi.endpoints.bringYourOwnKeyPath.matchRejected,
     pathApi.endpoints.integrationsPath.matchFulfilled,
     pathApi.endpoints.integrationsPath.matchRejected,
   ),
@@ -427,13 +390,10 @@ startListening({
           : state.chat.thread;
       const scope = `sendChat_${thread.model}_${mode}`;
 
-      if (isDetailMessageWithErrorType(action.payload)) {
-        const errorMessage = action.payload.detail;
-        listenerApi.dispatch(
-          action.payload.errorType === "GLOBAL"
-            ? setError(errorMessage)
-            : chatError({ id: chatId, message: errorMessage }),
-        );
+      const errorMessage = isDetailMessage(action.payload)
+        ? action.payload.detail
+        : null;
+      if (errorMessage) {
         const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
           scope,
           success: false,
@@ -486,6 +446,7 @@ startListening({
     if (
       pathApi.endpoints.customizationPath.matchFulfilled(action) ||
       pathApi.endpoints.privacyPath.matchFulfilled(action) ||
+      pathApi.endpoints.bringYourOwnKeyPath.matchFulfilled(action) ||
       pathApi.endpoints.integrationsPath.matchFulfilled(action)
     ) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
@@ -500,6 +461,7 @@ startListening({
     if (
       (pathApi.endpoints.customizationPath.matchRejected(action) ||
         pathApi.endpoints.privacyPath.matchRejected(action) ||
+        pathApi.endpoints.bringYourOwnKeyPath.matchRejected(action) ||
         pathApi.endpoints.integrationsPath.matchRejected(action)) &&
       !action.meta.condition
     ) {
