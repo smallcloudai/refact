@@ -2,7 +2,6 @@ use std::io::Cursor;
 use image::ImageReader;
 use regex::Regex;
 use serde_json::Value;
-use tokenizers::Tokenizer;
 use crate::call_validation::{ChatToolCall, ContextFile};
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
 
@@ -31,16 +30,6 @@ impl HasRagResults {
         }
         self.was_sent = true;
         Ok(self.in_json.clone())
-    }
-}
-
-pub fn count_tokens(
-    tokenizer: &Tokenizer,
-    text: &str,
-) -> usize {
-    match tokenizer.encode_fast(text, false) {
-        Ok(tokens) => tokens.len(),
-        Err(_) => 0,
     }
 }
 

@@ -160,10 +160,24 @@ export function isCommandCompletionResponse(
 export type DetailMessage = {
   detail: string;
 };
+
+export type DetailMessageWithErrorType = DetailMessage & {
+  errorType: "CHAT" | "GLOBAL";
+};
 export function isDetailMessage(json: unknown): json is DetailMessage {
   if (!json) return false;
   if (typeof json !== "object") return false;
   if (!("detail" in json)) return false;
+  return true;
+}
+
+export function isDetailMessageWithErrorType(
+  json: unknown,
+): json is DetailMessageWithErrorType {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("detail" in json)) return false;
+  if (!("errorType" in json)) return false;
   return true;
 }
 

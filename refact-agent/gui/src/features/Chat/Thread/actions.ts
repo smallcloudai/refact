@@ -35,7 +35,11 @@ import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
-import { capsApi } from "../../../services/refact";
+import {
+  capsApi,
+  DetailMessageWithErrorType,
+  isDetailMessage,
+} from "../../../services/refact";
 
 export const newChatAction = createAction<Partial<ChatThread> | undefined>(
   "chatThread/new",
@@ -163,10 +167,6 @@ export const setIncreaseMaxTokens = createAction<boolean>(
   "chatThread/setIncreaseMaxTokens",
 );
 
-export const setThreadPaused = createAction<boolean>(
-  "chatThread/setThreadPaused",
-);
-
 // TODO: This is the circular dep when imported from hooks :/
 const createAppAsyncThunk = createAsyncThunk.withTypes<{
   state: RootState;
@@ -200,7 +200,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   const caps = await thunkAPI
     .dispatch(capsApi.endpoints.getCaps.initiate(undefined))
     .unwrap();
-  const model = caps.code_chat_default_model;
+  const model = caps.chat_default_model;
   const messagesForLsp = formatMessagesForLsp([
     ...messagesToSend,
     {
@@ -355,9 +355,10 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       mode: realMode,
       boost_reasoning: boostReasoning,
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) {
-          return Promise.reject(new Error(response.statusText));
+          const responseData = (await response.json()) as unknown;
+          return Promise.reject(responseData);
         }
         const reader = response.body?.getReader();
         if (!reader) return;
@@ -374,12 +375,22 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
         };
         return consumeStream(reader, thunkAPI.signal, onAbort, onChunk);
       })
-      .catch((err: Error) => {
+      .catch((err: unknown) => {
         // console.log("Catch called");
+        const isError = err instanceof Error;
         thunkAPI.dispatch(doneStreaming({ id: chatId }));
-        thunkAPI.dispatch(chatError({ id: chatId, message: err.message }));
         thunkAPI.dispatch(fixBrokenToolMessages({ id: chatId }));
-        return thunkAPI.rejectWithValue(err.message);
+
+        const errorObject: DetailMessageWithErrorType = {
+          detail: isError
+            ? err.message
+            : isDetailMessage(err)
+              ? err.detail
+              : (err as string),
+          errorType: isError ? "CHAT" : "GLOBAL",
+        };
+
+        return thunkAPI.rejectWithValue(errorObject);
       })
       .finally(() => {
         thunkAPI.dispatch(setMaxNewTokens(DEFAULT_MAX_NEW_TOKENS));

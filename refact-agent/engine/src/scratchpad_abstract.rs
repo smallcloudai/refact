@@ -1,6 +1,5 @@
 use serde_json;
 use std::sync::Arc;
-use std::sync::RwLock;
 use tokio::sync::Mutex as AMutex;
 use tokenizers::Tokenizer;
 use async_trait::async_trait;
@@ -8,6 +7,7 @@ use serde_json::Value;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::SamplingParameters;
+use crate::tokens::count_text_tokens;
 
 use tracing::warn;
 
@@ -120,7 +120,7 @@ pub trait ScratchpadAbstract: Send {
 // aggregate this struct to make scratchpad implementation easier
 #[derive(Debug, Clone)]
 pub struct HasTokenizerAndEot {
-    pub tokenizer: Arc<RwLock<Tokenizer>>,
+    pub tokenizer: Option<Arc<Tokenizer>>,
     pub eot: String,
     pub eos: String,
     pub context_format: String,
@@ -128,7 +128,7 @@ pub struct HasTokenizerAndEot {
 }
 
 impl HasTokenizerAndEot {
-    pub fn new(tokenizer: Arc<RwLock<Tokenizer>>) -> Self {
+    pub fn new(tokenizer: Option<Arc<Tokenizer>>) -> Self {
         HasTokenizerAndEot { tokenizer, eot: String::new(), eos: String::new(), context_format: String::new(), rag_ratio: 0.5}
     }
 
@@ -136,24 +136,23 @@ impl HasTokenizerAndEot {
         &self,
         text: &str,
     ) -> Result<i32, String> {
-        let tokenizer = self.tokenizer.write().unwrap();
-        let tokens = tokenizer.encode(text, false).map_err(|err| {
-            return format!("Encoding error: {}", err);
-        })?;
-        Ok(tokens.len() as i32)
+        count_text_tokens(self.tokenizer.clone(), text).map(|t| t as i32)
     }
 
     pub fn assert_one_token(
         &self,
         text: &str
     ) -> Result<(), String> {
-        let tokenizer = self.tokenizer.write().unwrap();
-        let tokens = tokenizer.encode(text, false).map_err(|err| {
-            format!("assert_one_token: {}", err)
-        })?;
-        if tokens.len() != 1 {
-            return Err(format!("assert_one_token: expected 1 token for \"{}\", got {}", text, tokens.len()));
+        if self.tokenizer.is_none() {
+            return Err("assert_one_token: no tokenizer".to_string());
         }
-        Ok(())
+
+        let token_count = count_text_tokens(self.tokenizer.clone(), text)?;
+
+        if token_count != 1 {
+            Err(format!("assert_one_token: expected 1 token for \"{text}\", got {token_count}"))
+        } else {
+            Ok(())
+        }
     }
 }

@@ -215,35 +215,28 @@ system_prompts:
 
 subchat_tool_parameters:
   locate:
-    subchat_model: "gpt-4o-mini"
+    subchat_model_type: "light"
     subchat_tokens_for_rag: 88000
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000
   locate_search:
-    subchat_model: "gpt-4o-mini"
+    subchat_model_type: "light"
     subchat_tokens_for_rag: 88000
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000
   strategic_planning:
-    subchat_model: "o4-mini"
-    subchat_tokens_for_rag: 120000
-    subchat_n_ctx: 200000
-    subchat_max_new_tokens: 40000
-    subchat_reasoning_effort: "high"
-  root_cause_analysis:
-    subchat_model: "o4-mini"
+    subchat_model: "thinking"
     subchat_tokens_for_rag: 120000
     subchat_n_ctx: 200000
     subchat_max_new_tokens: 40000
     subchat_reasoning_effort: "high"
   critique:
-    subchat_model: "o4-mini"
+    subchat_model: "thinking"
     subchat_tokens_for_rag: 120000
     subchat_n_ctx: 200000
     subchat_max_new_tokens: 40000
-    subchat_reasoning_effort: "high"
   create_memory_bank:
-    subchat_model: "o4-mini"
+    subchat_model_type: "default"
     subchat_tokens_for_rag: 88000
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000

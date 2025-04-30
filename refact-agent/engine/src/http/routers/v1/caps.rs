@@ -33,8 +33,7 @@ pub async fn handle_v1_caps(
             ));
         }
     };
-    let caps_locked = caps_arc.read().unwrap();
-    let body = serde_json::to_string_pretty(&*caps_locked).unwrap();
+    let body = serde_json::to_string_pretty(&*caps_arc).unwrap();
     let response = Response::builder()
         .header("Content-Type", "application/json")
         .body(Body::from(body))
