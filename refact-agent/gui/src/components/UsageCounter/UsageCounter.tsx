@@ -55,7 +55,7 @@ const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
       </Text>
       <Text size="1">
         <Flex align="center" gap="2">
-          {formatNumberToFixed(value)} <Coin width="12px" height="12px" />
+          {value.toFixed(2)} <Coin width="12px" height="12px" />
         </Flex>
       </Text>
     </Flex>
