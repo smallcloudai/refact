@@ -40,19 +40,23 @@ async fn parse_args(
                     s.trim()
                 ));
             };
-            let path = if let Some(parent) = raw_path.parent() {
-                let parent_str = parent.to_string_lossy().to_string();
-                let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &parent_str, false, 3).await;
-                let candidate_parent_dir = match return_one_candidate_or_a_good_error(gcx.clone(), &parent_str, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
-                    Ok(f) => f,
-                    Err(e) => return Err(e)
-                };
-                canonicalize_normalized_path(PathBuf::from(candidate_parent_dir).join(filename_str))
+            let path = if !raw_path.is_absolute() {
+                if let Some(parent) = raw_path.parent() {
+                    let parent_str = parent.to_string_lossy().to_string();
+                    let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &parent_str, false, 3).await;
+                    let candidate_parent_dir = match return_one_candidate_or_a_good_error(gcx.clone(), &parent_str, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
+                        Ok(f) => f,
+                        Err(e) => return Err(e)
+                    };
+                    canonicalize_normalized_path(PathBuf::from(candidate_parent_dir).join(filename_str))
+                } else {
+                    return Err(format!(
+                        "Error: The provided path '{}' is not absolute. Please provide a full path starting from the root directory.",
+                        s.trim()
+                    ));
+                }
             } else {
-                return Err(format!(
-                    "Error: The provided path '{}' is not absolute. Please provide a full path starting from the root directory.",
-                    s.trim()
-                ));
+                raw_path
             };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(
