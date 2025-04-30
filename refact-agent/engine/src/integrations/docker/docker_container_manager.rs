@@ -261,7 +261,7 @@ async fn docker_container_create(
     let container_vecdb_path = "/root/.cache/refact/vecdb_model_thenlper_gte-base_esize_768.sqlite";
     
     let run_command = format!(
-        "container create --name={container_name} --shm-size=1g --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "container create --name={container_name} --shm-size=8g --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         --volume={host_vecdb_path}:{container_vecdb_path} \
         {ports_to_forward_as_arg_list} {network_if_set} {extra_params} {entrypoint} {docker_image_id} -c '{lsp_command}'",
     );
