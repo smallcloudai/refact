@@ -76,6 +76,6 @@ function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
 function calculateCost(tokens: number, costPerThousand: number): number {
   const costPerToken = costPerThousand / 1000;
   const totalCost = tokens * costPerToken;
-  const mtok = totalCost / 1_000_000;
-  return mtok;
+  const ktok = totalCost / 1_000;
+  return ktok;
 }
