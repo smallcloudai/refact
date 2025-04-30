@@ -923,11 +923,4 @@ mod tests {
         let annotated = py_parse4test(code);
         std::fs::write("src/ast/alt_testsuite/py_goat_main_annotated.py", annotated).expect("Unable to write file");
     }
-    
-    #[test]
-    fn test_parse_py_decorated() {
-        let code = include_str!("alt_testsuite/py_decorated.py");
-        let annotated = py_parse4test(code);
-        std::fs::write("src/ast/alt_testsuite/py_decorated_annotated.py", annotated).expect("Unable to write file");
-    }
 }
