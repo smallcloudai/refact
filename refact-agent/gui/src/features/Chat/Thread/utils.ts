@@ -268,6 +268,14 @@ export function formatChatResponse(
         ? {
             ...message,
             usage: usageToStore,
+            pp1000t_cache_creation,
+            pp1000t_cache_read,
+            pp1000t_generated,
+            pp1000t_prompt,
+            metering_balance,
+            metering_cache_creation_tokens_n,
+            metering_cache_read_tokens_n,
+            metering_prompt_tokens_n,
           }
         : message,
     );

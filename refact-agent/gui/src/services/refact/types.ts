@@ -308,13 +308,18 @@ export function isCDInstructionMessage(
 
 interface BaseDelta {
   role?: ChatRole | null;
+  // TODO: what are these felids for
+  // provider_specific_fields?: null;
+  // refusal?: null;
+  // function_call?: null;
+  // audio?: null;
 }
 
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
-  tool_calls?: ToolCall[];
+  tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
 }
 
@@ -405,6 +410,8 @@ export type ChatChoice = {
   delta: Delta;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   index: number;
+  // TODO: what's this for?
+  // logprobs?: null;
 };
 
 export type ChatUserMessageResponse =
