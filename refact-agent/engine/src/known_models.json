@@ -433,6 +433,21 @@
             "similar_models": [
                 "openai/o3-mini"
             ]
+        },      
+        "o4-mini": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "openai/o4-mini",
+                "o3",
+                "openai/o3"
+            ]
         },
         "gpt-4.5-preview": {
             "n_ctx": 128000,
