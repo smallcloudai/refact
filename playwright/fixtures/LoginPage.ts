@@ -35,7 +35,7 @@ export class LoginPage {
     // Set up route interception before navigating;
     await this.mockUserRequest(openSurvey);
     // TODO: hard coded for now
-    await this.page.goto(url || "http://localhost:5173/");
+    await this.page.goto(url || "http://localhost:3000/");
 
     await expect(
       this.page.getByRole("heading", { name: "Login to Refact.ai" })
@@ -58,7 +58,7 @@ export class LoginPage {
 
     if (screenshots) expect(this.page).toHaveScreenshot();
 
-    await expect(this.page).toHaveURL("http://localhost:5173/");
+    await expect(this.page).toHaveURL("http://localhost:3000/");
     // wait for route to have been Called
     await expect(
       this.page.getByRole("heading", { name: "Login to Refact.ai" })

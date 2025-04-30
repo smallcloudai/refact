@@ -52,7 +52,10 @@ type EventsToIde =
 export class FakeIde {
   messages: Parameters<typeof window.logMessage>[] = [];
 
-  constructor(public readonly page: Page) {}
+  constructor(public readonly page: Page) {
+    this.clearMessages = this.clearMessages.bind(this);
+    this.logMessage = this.logMessage.bind(this);
+  }
 
   public static async initialize(
     page: Page,
@@ -63,7 +66,8 @@ export class FakeIde {
       window.__INITIAL_STATE__ = {
         config: {
           host: ide,
-          themeProps: { accentColor: "gray" },
+          lspPort: 8001, // TODO: make this a variable
+          themeProps: { accentColor: "gray", appearance: "dark" },
         },
       };
       window.onload = () => {
@@ -77,7 +81,7 @@ export class FakeIde {
 
     await fakeIde.mockMessageBus(host);
 
-    // page.goto("/");
+    // await page.goto("http://localhost:3000/");
     return fakeIde;
   }
 

@@ -1,29 +1,7 @@
 import { test, expect } from "../fixtures";
-import { LoginPage } from "../fixtures/LoginPage";
-import { TourPage } from "../fixtures/TourPage";
 
-test.use({
-  storageState: {
-    cookies: [],
-    origins: [
-      {
-        origin: "http://localhost:5173/",
-        localStorage: [
-          {
-            name: "persist:root",
-            value: JSON.stringify({
-              tour: JSON.stringify({ type: "finished", step: 1 }),
-            }),
-          },
-        ],
-      },
-    ],
-  },
-});
-
-test("User Survey", async ({ page, baseURL }) => {
-  const loginPage = new LoginPage(page);
-  await loginPage.doLogin(baseURL, true, false);
+test("User Survey", async ({ page, baseURL, fakeIde, auth }) => {
+  await auth.doLogin(baseURL, true, false);
   // await page.goto(baseURL ?? "/");
 
   await expect(page.getByRole("dialog")).toHaveScreenshot();

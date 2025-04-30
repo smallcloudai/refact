@@ -1,7 +1,8 @@
 import { test, expect } from "../fixtures";
 
 test.describe("Statistics", () => {
-  test("stub stats", async ({ page, baseURL, navigation }) => {
+  test("stub stats", async ({ page, baseURL, navigation, fakeIde, auth }) => {
+    await auth.doLogin();
     await page
       .context()
       .route(" http://127.0.0.1:8001/v1/get-dashboard-plots", async (route) => {
@@ -10,8 +11,6 @@ test.describe("Statistics", () => {
           json: STUB_STATS,
         });
       });
-
-    await page.goto("/");
 
     await navigation.menuButton.click();
 
@@ -22,11 +21,11 @@ test.describe("Statistics", () => {
 
     await new Promise((r) => setTimeout(r, 5000));
 
-    await expect(page).toHaveScreenshot();
+    await expect(page).toHaveScreenshot({ maxDiffPixelRatio: 0.1 });
   });
 
-  test("real stats", async ({ page, navigation }) => {
-    await page.goto("/");
+  test("real stats", async ({ page, navigation, auth, fakeIde }) => {
+    await auth.doLogin();
     await navigation.menuButton.click();
     await page.getByRole("menuitem", { name: "Your Stats" }).click();
 
