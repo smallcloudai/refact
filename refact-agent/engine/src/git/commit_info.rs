@@ -22,8 +22,8 @@ pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<Global
             Err(e) => { warn!("{}", e); continue; }
         };
 
-        let (staged_changes, unstaged_changes) = match get_diff_statuses(git2::StatusShow::IndexAndWorkdir, &repository, true) {
-            Ok((staged, unstaged)) 
+        let (staged_changes, unstaged_changes) = match get_diff_statuses(git2::StatusShow::IndexAndWorkdir, &repository, true, &[]) {
+            Ok((staged, unstaged))
                 if staged.is_empty() && unstaged.is_empty() => { continue; }
             Ok(changes) => changes,
             Err(e) => { warn!("{}", e); continue; }

@@ -143,7 +143,7 @@ pub fn make_v1_router() -> Router {
         .route("/links", post(handle_v1_links))
 
         .route("/file_edit_tool_dry_run", post(handle_v1_file_edit_tool_dry_run))
-        
+
         .route("/providers", get(handle_v1_providers))
         .route("/provider-templates", get(handle_v1_provider_templates))
         .route("/provider", get(handle_v1_get_provider))

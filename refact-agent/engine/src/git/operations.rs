@@ -7,10 +7,12 @@ use crate::custom_error::MapErrToString;
 use crate::files_correction::canonical_path;
 use crate::git::{FileChange, FileChangeStatus};
 
-fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
+fn status_options(include_unmodified: bool, show: git2::StatusShow, pathspecs: &[String]) -> git2::StatusOptions {
     let mut options = git2::StatusOptions::new();
+    for pathspec in pathspecs {
+        options.pathspec(pathspec);
+    }
     options
-        .disable_pathspec_match(true)
         .include_ignored(false)
         .include_unmodified(include_unmodified)
         .include_unreadable(false)
@@ -28,7 +30,7 @@ pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
         .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;
 
     let statuses = repository.statuses(Some(
-        &mut status_options(true, git2::StatusShow::IndexAndWorkdir)))
+        &mut status_options(true, git2::StatusShow::IndexAndWorkdir, &[])))
         .map_err(|e| error!("Failed to get statuses: {}", e)).ok()?;
 
     let mut files = Vec::new();
@@ -53,38 +55,38 @@ pub fn get_or_create_branch<'repo>(repository: &'repo Repository, branch_name: &
 }
 
 fn is_changed_in_wt(status: git2::Status) -> bool {
-    status.intersects(git2::Status::WT_NEW | 
-        git2::Status::WT_MODIFIED | 
-        git2::Status::WT_DELETED | 
-        git2::Status::WT_RENAMED | 
+    status.intersects(git2::Status::WT_NEW |
+        git2::Status::WT_MODIFIED |
+        git2::Status::WT_DELETED |
+        git2::Status::WT_RENAMED |
         git2::Status::WT_TYPECHANGE)
 }
 
 fn is_changed_in_index(status: git2::Status) -> bool {
-    status.intersects(git2::Status::INDEX_NEW | 
-        git2::Status::INDEX_MODIFIED | 
-        git2::Status::INDEX_DELETED | 
-        git2::Status::INDEX_RENAMED | 
+    status.intersects(git2::Status::INDEX_NEW |
+        git2::Status::INDEX_MODIFIED |
+        git2::Status::INDEX_DELETED |
+        git2::Status::INDEX_RENAMED |
         git2::Status::INDEX_TYPECHANGE)
 }
 
 /// Returns (staged_changes, unstaged_changes), note that one of them may be always empty based on show_opt
-/// 
-/// If include_abs_path is true, they are included in the FileChanges result, use it if they need to be 
+///
+/// If include_abs_path is true, they are included in the FileChanges result, use it if they need to be
 /// returned to the client or the absolute paths are needed
-pub fn get_diff_statuses(show_opt: git2::StatusShow, repo: &Repository, include_abs_paths: bool) -> Result<(Vec<FileChange>, Vec<FileChange>), String> {
+pub fn get_diff_statuses(show_opt: git2::StatusShow, repo: &Repository, include_abs_paths: bool, pathspecs: &[String]) -> Result<(Vec<FileChange>, Vec<FileChange>), String> {
     let repo_workdir = repo.workdir()
         .ok_or("Failed to get workdir from repository".to_string())?;
 
     let mut staged_changes = Vec::new();
     let mut unstaged_changes = Vec::new();
-    let statuses = repo.statuses(Some(&mut status_options(false, show_opt)))
+    let statuses = repo.statuses(Some(&mut status_options(false, show_opt, pathspecs)))
         .map_err_with_prefix("Failed to get statuses:")?;
-    
+
     for entry in statuses.iter() {
         let status = entry.status();
         let relative_path = PathBuf::from(String::from_utf8_lossy(entry.path_bytes()).to_string());
-        
+
         if entry.path_bytes().last() == Some(&b'/') && repo_workdir.join(&relative_path).join(".git").exists() {
             continue;
         }
@@ -99,7 +101,7 @@ pub fn get_diff_statuses(show_opt: git2::StatusShow, repo: &Repository, include_
             continue;
         }
 
-        let absolute_path = if include_abs_paths && (is_changed_in_index(status) || is_changed_in_wt(status)) { 
+        let absolute_path = if include_abs_paths && (is_changed_in_index(status) || is_changed_in_wt(status)) {
             canonical_path(repo_workdir.join(&relative_path).to_string_lossy())
         } else {
             PathBuf::new()
@@ -133,14 +135,14 @@ pub fn get_diff_statuses(show_opt: git2::StatusShow, repo: &Repository, include_
     Ok((staged_changes, unstaged_changes))
 }
 
-pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &git2::Oid, include_abs_paths: bool) -> Result<Vec<FileChange>, String> {
+pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &git2::Oid, include_abs_paths: bool, workspace_suffix: &str) -> Result<Vec<FileChange>, String> {
     let head = repository.head().map_err_with_prefix("Failed to get HEAD:")?;
     let original_head_ref = head.is_branch().then(|| head.name().map(ToString::to_string)).flatten();
     let original_head_oid = head.target();
 
     repository.set_head_detached(commit_oid.clone()).map_err_with_prefix("Failed to set HEAD:")?;
 
-    let result = get_diff_statuses(git2::StatusShow::Index, repository, include_abs_paths);
+    let result = get_diff_statuses(git2::StatusShow::Index, repository, include_abs_paths, &[workspace_suffix.to_string()]);
 
     let restore_result = match (&original_head_ref, original_head_oid) {
         (Some(head_ref), _) => repository.set_head(head_ref),
@@ -238,7 +240,7 @@ pub fn git_diff_head_to_workdir<'repo>(repository: &'repo Repository) -> Result<
 
     let diff = repository.diff_tree_to_workdir(Some(&head), Some(&mut diff_options))
         .map_err(|e| format!("Failed to generate diff: {}", e))?;
-    
+
     Ok(diff)
 }
 
