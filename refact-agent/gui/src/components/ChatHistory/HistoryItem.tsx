@@ -89,7 +89,7 @@ export const HistoryItem: React.FC<{
                   size="1"
                   style={{ display: "flex", gap: "4px", alignItems: "center" }}
                 >
-                  <Coin width="15px" height="15px" /> {totalCost.toFixed(2)}
+                  <Coin width="15px" height="15px" /> {Math.round(totalCost)}
                 </Text>
               ) : (
                 false

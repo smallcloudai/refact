@@ -55,7 +55,7 @@ const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
       </Text>
       <Text size="1">
         <Flex align="center" gap="2">
-          {value.toFixed(2)} <Coin width="12px" height="12px" />
+          {Math.round(value)} <Coin width="12px" height="12px" />
         </Flex>
       </Text>
     </Flex>
@@ -101,7 +101,7 @@ const DefaultHoverCard: React.FC = () => {
         <Text size="2">Coins spent</Text>
         <Text size="2">
           <Flex align="center" gap="2">
-            {total.toFixed(2)} <Coin width="15px" height="15px" />
+            {Math.round(total)} <Coin width="15px" height="15px" />
           </Flex>
         </Text>
       </Flex>
