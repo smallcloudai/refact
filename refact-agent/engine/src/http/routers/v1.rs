@@ -61,7 +61,7 @@ mod gui_help_handlers;
 pub mod links;
 pub mod lsp_like_handlers;
 pub mod snippet_accepted;
-mod status;
+pub mod status;
 mod subchat;
 pub mod sync_files;
 pub mod system_prompt;

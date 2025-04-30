@@ -64,6 +64,8 @@ pub struct CommandLine {
     pub ast_max_files: usize,
     #[structopt(long, default_value="", help="Give it a path for AST database to make it permanent, if there is the database already, process starts without parsing all the files (careful). This quick start is helpful for automated solution search.")]
     pub ast_permanent: String,
+    #[structopt(long, help="Wait until AST is ready before responding requests.")]
+    pub wait_ast: bool,
 
     #[cfg(feature="vecdb")]
     #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
@@ -77,6 +79,9 @@ pub struct CommandLine {
     #[cfg(feature="vecdb")]
     #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
     pub vecdb_force_path: String,
+    #[cfg(feature="vecdb")]
+    #[structopt(long, help="Wait until VecDB is ready before responding requests.")]
+    pub wait_vecdb: bool,
 
     #[structopt(long, short="f", default_value="", help="A path to jsonl file with {\"path\": ...} on each line, files will immediately go to VecDB and AST.")]
     pub files_jsonl_path: String,
