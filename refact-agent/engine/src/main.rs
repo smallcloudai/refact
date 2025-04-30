@@ -26,6 +26,7 @@ mod nicer_logs;
 mod caps;
 mod telemetry;
 mod global_context;
+mod indexing_utils;
 mod background_tasks;
 mod yaml_configs;
 mod json_utils;
