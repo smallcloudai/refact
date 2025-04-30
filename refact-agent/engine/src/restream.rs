@@ -213,8 +213,6 @@ pub async fn scratchpad_interaction_not_stream(
         meta
     ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
-
-    try_insert_usage(&mut scratchpad_response_json);
     scratchpad_response_json["compression_strength"] = crate::forward_to_openai_endpoint::try_get_compression_from_prompt(&prompt);
 
     let txt = serde_json::to_string_pretty(&scratchpad_response_json).unwrap();
@@ -380,7 +378,6 @@ pub async fn scratchpad_interaction_stream(
                                 if finish_reason != FinishReason::None { // last event has service info(usage and other), there is no finish_reason
                                     last_finish_reason = finish_reason;
                                 }
-                                try_insert_usage(&mut value);
                                 value["created"] = json!(t1.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
                                 let value_str = format!("data: {}\n\n", serde_json::to_string(&value).unwrap());
                                 // let last_60_chars: String = crate::nicer_logs::first_n_chars(&value_str, 60);

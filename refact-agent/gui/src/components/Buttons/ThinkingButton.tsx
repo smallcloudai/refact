@@ -1,6 +1,6 @@
 import React from "react";
 import { useThinking } from "../../hooks/useThinking";
-import { useAgentUsage, useAppSelector } from "../../hooks";
+import { useAppSelector, useStartPollingForUser } from "../../hooks";
 import { selectThreadBoostReasoning } from "../../features/Chat";
 import {
   Button,
@@ -22,7 +22,7 @@ export const ThinkingButton: React.FC = () => {
     areCapsInitialized,
   } = useThinking();
 
-  const { startPollingForUser } = useAgentUsage();
+  const { startPollingForUser } = useStartPollingForUser();
 
   if (!areCapsInitialized) {
     return (

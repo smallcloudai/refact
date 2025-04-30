@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Flex,
   Callout as RadixCallout,
   Card,
   Text,
   Button,
+  Strong,
+  Em,
 } from "@radix-ui/themes";
 import {
   ExclamationTriangleIcon,
@@ -13,8 +15,10 @@ import {
 import { useTimeout } from "usehooks-ts";
 import styles from "./Callout.module.css";
 import classNames from "classnames";
-import { useAppSelector, useLogout } from "../../hooks";
+import { useAppDispatch, useAppSelector, useLogout } from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
+import { selectBalance } from "../../features/CoinBalance";
+import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
 
@@ -204,5 +208,61 @@ export const CalloutFromTop: React.FC<
         </Flex>
       </RadixCallout.Root>
     </Card>
+  );
+};
+
+export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
+  onClick,
+}) => {
+  return (
+    <Callout
+      mt="2"
+      type="error"
+      color="red"
+      className={classNames(styles.callout_box_inner)}
+      timeout={null}
+      onClick={onClick}
+    >
+      <Text as="p">
+        💸 <Strong>Your balance is exhausted!</Strong>
+      </Text>
+      <Text as="p">
+        You have no coins left to use Refact&apos;s AI features.
+      </Text>
+      <Text as="p">
+        Please top up your balance or contact support if you believe this is a
+        mistake.
+      </Text>
+      <Flex justify="end">
+        <Em>Thank you for using Refact!</Em>
+      </Flex>
+    </Callout>
+  );
+};
+
+export const BallanceLowInformation: React.FC = () => {
+  const balance = useAppSelector(selectBalance);
+  const dispatch = useAppDispatch();
+  const handleClose = useCallback(() => {
+    dispatch(dismissBalanceLowCallout());
+  }, [dispatch]);
+
+  return (
+    <Callout
+      type="info"
+      color="blue"
+      mt="2"
+      timeout={null}
+      onClick={handleClose}
+    >
+      💸 <Strong>Your balance is {balance}</Strong>
+      <br />
+      Please top up your balance soon or contact support if you believe this is
+      a mistake.
+      <br />
+      <Flex as="span" justify="end">
+        <Em>Thank you for using Refact!</Em>
+      </Flex>
+    </Callout>
   );
 };

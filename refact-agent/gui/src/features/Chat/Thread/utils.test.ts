@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import {
   ChatMessages,
+  ChatResponse,
   PlainTextMessage,
   PlainTextResponse,
   UserMessage,
@@ -125,6 +126,448 @@ describe("formatChatResponse", () => {
     const expected = [plainTextMessage, updatedUserMessage];
 
     expect(result).toEqual(expected);
+  });
+
+  test("price with message", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "Hello\n",
+        checkpoints: [
+          {
+            workspace_folder: "/Users/marc/Projects/refact",
+            commit_hash: "9ff4c36e0f41f1a599a9ff203f00389c6c479b88",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: "Hello",
+              role: "assistant",
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: "!",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: " How",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: " can",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: " I",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: " assist",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: " you",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: " today",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              // refusal: null,
+              content: "?",
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        // citations: null,
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: "stop",
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              content: null,
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              content: null,
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              content: null,
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        usage: {
+          completion_tokens: 11,
+          prompt_tokens: 2818,
+          total_tokens: 2829,
+          completion_tokens_details: {
+            accepted_prediction_tokens: 0,
+            audio_tokens: 0,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: 0,
+          },
+          prompt_tokens_details: { audio_tokens: 0, cached_tokens: 0 },
+        },
+      },
+      {
+        id: "chatcmpl-0f045407-74a8-4278-ace1-8e7c96b2c50e",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        // object: "chat.completion.chunk",
+        // system_fingerprint: "fp_f5bdcc3276",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              // provider_specific_fields: null,
+              content: null,
+              role: null,
+              // function_call: null,
+              tool_calls: null,
+              // audio: null,
+            },
+            // logprobs: null,
+          },
+        ],
+        // provider_specific_fields: null,
+        // stream_options: { include_usage: true },
+        usage: {
+          completion_tokens: 11,
+          prompt_tokens: 2818,
+          total_tokens: 2829,
+          completion_tokens_details: {
+            accepted_prediction_tokens: 0,
+            audio_tokens: 0,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: 0,
+          },
+          prompt_tokens_details: { audio_tokens: 0, cached_tokens: 0 },
+        },
+        pp1000t_prompt: 2500,
+        pp1000t_generated: 10000,
+        pp1000t_cache_creation: 0,
+        pp1000t_cache_read: 1250,
+        metering_prompt_tokens_n: 2818,
+        metering_generated_tokens_n: 11,
+        metering_cache_creation_tokens_n: 0,
+        metering_cache_read_tokens_n: 0,
+        metering_balance: -2688820,
+      },
+      {
+        choices: [
+          {
+            index: 0,
+            delta: { role: "assistant", content: "", tool_calls: null },
+            finish_reason: "stop",
+          },
+        ],
+        // object: "chat.completion.chunk",
+        created: 1745945724.54118,
+        model: "gpt-4o",
+        id: "", // missing irl
+      },
+    ];
+
+    const result = chunks.reduce<ChatMessages>((acc, cur) => {
+      return formatChatResponse(acc, cur);
+    }, []);
+
+    expect(result).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "9ff4c36e0f41f1a599a9ff203f00389c6c479b88",
+            workspace_folder: "/Users/marc/Projects/refact",
+          },
+        ],
+        compression_strength: "absent",
+        content: "Hello\n",
+        role: "user",
+      },
+      {
+        content: "Hello! How can I assist you today?",
+        finish_reason: "stop",
+        metering_balance: -2688820,
+        metering_cache_creation_tokens_n: 0,
+        metering_cache_read_tokens_n: 0,
+        metering_prompt_tokens_n: 2818,
+        pp1000t_cache_creation: 0,
+        pp1000t_cache_read: 1250,
+        pp1000t_generated: 10000,
+        pp1000t_prompt: 2500,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: undefined,
+        usage: {
+          completion_tokens: 11,
+          completion_tokens_details: {
+            accepted_prediction_tokens: 0,
+            audio_tokens: 0,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: 0,
+          },
+          prompt_tokens: 2818,
+          prompt_tokens_details: {
+            audio_tokens: 0,
+            cached_tokens: 0,
+          },
+          total_tokens: 2829,
+        },
+      },
+    ]);
   });
 });
 

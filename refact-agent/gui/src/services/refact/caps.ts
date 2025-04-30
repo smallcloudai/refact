@@ -49,6 +49,35 @@ export const capsApi = createApi({
 
 export const capsEndpoints = capsApi.endpoints;
 
+export type CapCost = {
+  prompt: number;
+  generated: number;
+  cache_read?: number;
+  cache_creation?: number;
+};
+
+function isCapCost(json: unknown): json is CapCost {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("prompt" in json)) return false;
+  if (typeof json.prompt !== "number") return false;
+  if (!("generated" in json)) return false;
+  if (typeof json.generated !== "number") return false;
+  return true;
+}
+type CapsMetadata = {
+  pricing?: Record<string, CapCost>;
+};
+
+function isCapsMetadata(json: unknown): json is CapsMetadata {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if ("pricing" in json && json.pricing) {
+    return Object.values(json.pricing).every(isCapCost);
+  }
+  return true;
+}
+
 export type CapsResponse = {
   caps_version: number;
   cloud_name: string;
@@ -72,12 +101,15 @@ export type CapsResponse = {
   telemetry_basic_retrieve_my_own: string;
   tokenizer_rewrite_path: Record<string, unknown>;
   support_metadata: boolean;
+  metadata: CapsMetadata;
   customization: string;
 };
 
 export function isCapsResponse(json: unknown): json is CapsResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
+  if (!("metadata" in json)) return false;
+  if (!isCapsMetadata(json.metadata)) return false;
   if (!("chat_default_model" in json)) return false;
   if (typeof json.chat_default_model !== "string") return false;
   if (!("chat_models" in json)) return false;

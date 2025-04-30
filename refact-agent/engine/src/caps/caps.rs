@@ -199,6 +199,9 @@ pub struct CodeAssistantCaps {
 
     #[serde(default = "default_hf_tokenizer_template")]
     pub hf_tokenizer_template: String,  // template for HuggingFace tokenizer URLs
+
+    #[serde(default)]  // Need for metadata from cloud, e.g. pricing for models; used only in chat-js
+    pub metadata: serde_json::Value
 }
 
 fn default_telemetry_retrieve_my_own() -> String {

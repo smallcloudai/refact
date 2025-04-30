@@ -472,6 +472,134 @@ export const STUB_CAPS_RESPONSE: CapsResponse = {
   caps_version: 0,
   code_chat_default_system_prompt: "default",
   support_metadata: true,
+  metadata: {
+    pricing: {
+      "gpt-3.5-turbo": {
+        prompt: 0.5,
+        generated: 1.5,
+      },
+      "gpt-4-turbo": {
+        prompt: 10.0,
+        generated: 30.0,
+      },
+      "gpt-4o": {
+        prompt: 2.5,
+        generated: 10.0,
+        cache_read: 1.25,
+      },
+      "gpt-4o-mini": {
+        prompt: 0.15,
+        generated: 0.6,
+        cache_read: 0.075,
+      },
+      "chatgpt-4o": {
+        prompt: 5.0,
+        generated: 15.0,
+      },
+      o1: {
+        prompt: 15.0,
+        generated: 60.0,
+        cache_read: 7.5,
+      },
+      "o1-mini": {
+        prompt: 1.1,
+        generated: 4.4,
+        cache_read: 0.55,
+      },
+      "o3-mini": {
+        prompt: 1.1,
+        generated: 4.4,
+        cache_read: 0.55,
+      },
+      o3: {
+        prompt: 10.0,
+        generated: 40.0,
+        cache_read: 2.5,
+      },
+      "o4-mini": {
+        prompt: 1.1,
+        generated: 4.4,
+        cache_read: 0.275,
+      },
+      "gpt-4.1": {
+        prompt: 2.0,
+        generated: 8.0,
+        cache_read: 0.5,
+      },
+      "gpt-4.1-mini": {
+        prompt: 0.4,
+        generated: 1.6,
+        cache_read: 0.1,
+      },
+      "gpt-4.1-nano": {
+        prompt: 0.1,
+        generated: 0.4,
+        cache_read: 0.025,
+      },
+      "claude-3-5-sonnet": {
+        prompt: 3.0,
+        generated: 15.0,
+        cache_creation: 3.75,
+        cache_read: 0.3,
+      },
+      "claude-3-5-haiku": {
+        prompt: 0.8,
+        generated: 4.0,
+        cache_creation: 1.0,
+        cache_read: 0.08,
+      },
+      "claude-3-7-sonnet": {
+        prompt: 3.0,
+        generated: 15.0,
+        cache_creation: 3.75,
+        cache_read: 0.3,
+      },
+      "groq-llama-3.1-8b": {
+        prompt: 0.05,
+        generated: 0.08,
+      },
+      "groq-llama-3.1-70b": {
+        prompt: 0.59,
+        generated: 0.79,
+      },
+      "gemini-2.0-flash-exp": {
+        prompt: 0.075,
+        generated: 0.3,
+      },
+      "gemini-1.5-flash": {
+        prompt: 0.075,
+        generated: 0.3,
+      },
+      "gemini-1.5-flash-8b": {
+        prompt: 0.0375,
+        generated: 0.15,
+      },
+      "gemini-1.5-pro": {
+        prompt: 1.25,
+        generated: 5.0,
+      },
+      "gemini-2.0-exp-advanced": {
+        prompt: 1.25,
+        generated: 5.0,
+      },
+      "gemini-2.5-pro": {
+        prompt: 1.25,
+        generated: 10.0,
+      },
+      "grok-2": {
+        prompt: 5.0,
+        generated: 15.0,
+      },
+      "deepseek-chat": {
+        prompt: 0.27,
+        generated: 1.1,
+      },
+      "deepseek-reasoner": {
+        prompt: 0.55,
+        generated: 2.19,
+      },
+    },
+  },
   customization: "",
 };
 
@@ -493,6 +621,7 @@ export const EMPTY_CAPS_RESPONSE: CapsResponse = {
   tokenizer_path_template: "",
   customization: "",
   tokenizer_rewrite_path: {},
+  metadata: { pricing: {} },
   chat_light_model: "",
   chat_thinking_model: "",
   telemetry_basic_retrieve_my_own: "",
