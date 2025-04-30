@@ -34,7 +34,6 @@ use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provide
     handle_v1_delete_model, handle_v1_delete_provider, handle_v1_model_default, handle_v1_completion_model_families};
 
 #[cfg(feature = "vecdb")]
-#[cfg(feature = "vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 #[cfg(feature="vecdb")]
 use crate::http::routers::v1::handlers_memdb::{handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized};
