@@ -15,6 +15,7 @@ use tokio::task::{AbortHandle, JoinHandle};
 use rmcp::{RoleClient, ServiceExt, service::RunningService};
 use rmcp::model::{CallToolRequestParam, Tool as McpTool};
 use tempfile::NamedTempFile;
+use tracing::Level;
 
 use crate::custom_error::MapErrToString;
 use crate::global_context::GlobalContext;
@@ -29,12 +30,22 @@ const MCP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const MCP_SERVER_INIT_TIMEOUT: Duration = Duration::from_secs(60);
 const MCP_SERVER_STOP_TIMEOUT: Duration = Duration::from_secs(3);
 
-#[derive(Deserialize, Serialize, Clone, Default, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct SettingsMCP {
-    #[serde(rename = "command")]
+    #[serde(default = "default_server_transport")]
+    pub server_transport: String,
+    #[serde(rename = "command", default)]
     pub mcp_command: String,
     #[serde(default, rename = "env")]
     pub mcp_env: HashMap<String, String>,
+    #[serde(default)]
+    pub url: String,
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
+}
+
+fn default_server_transport() -> String {
+    "stdio".to_string()
 }
 
 pub struct ToolMCP {
@@ -79,8 +90,8 @@ impl IntegrationSession for SessionMCP {
                 let mut session_locked = self_arc.lock().await;
                 let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
                 (
-                    session_downcasted.debug_name.clone(), 
-                    session_downcasted.mcp_client.clone(), 
+                    session_downcasted.debug_name.clone(),
+                    session_downcasted.mcp_client.clone(),
                     session_downcasted.logs.clone(),
                     session_downcasted.startup_task_handles.clone(),
                     session_downcasted.stderr_file_path.clone(),
@@ -92,7 +103,7 @@ impl IntegrationSession for SessionMCP {
                 abort_handle.abort();
             }
 
-            if let Some(client) = client {   
+            if let Some(client) = client {
                 _session_kill_process(&debug_name, client, logs).await;
             }
             if let Some(stderr_file) = &stderr_file {
@@ -109,7 +120,7 @@ impl IntegrationSession for SessionMCP {
 async fn _add_log_entry(session_logs: Arc<AMutex<Vec<String>>>, entry: String) {
     let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
     let log_entry = format!("[{}] {}", timestamp, entry);
-    
+
     let mut session_logs_locked = session_logs.lock().await;
     session_logs_locked.extend(log_entry.lines().into_iter().map(|s| s.to_string()));
 
@@ -120,8 +131,8 @@ async fn _add_log_entry(session_logs: Arc<AMutex<Vec<String>>>, entry: String) {
 }
 
 pub async fn update_logs_from_stderr(
-    stderr_file_path: &PathBuf, 
-    stderr_cursor: Arc<AMutex<u64>>, 
+    stderr_file_path: &PathBuf,
+    stderr_cursor: Arc<AMutex<u64>>,
     session_logs: Arc<AMutex<Vec<String>>>
 ) -> Result<(), String> {
     let (buffer, bytes_read) = read_file_with_cursor(stderr_file_path, stderr_cursor.clone()).await
@@ -133,18 +144,18 @@ pub async fn update_logs_from_stderr(
 }
 
 async fn _session_kill_process(
-    debug_name: &str, 
-    mcp_client: Arc<AMutex<Option<RunningService<RoleClient, ()>>>>, 
+    debug_name: &str,
+    mcp_client: Arc<AMutex<Option<RunningService<RoleClient, ()>>>>,
     session_logs: Arc<AMutex<Vec<String>>>,
 ) {
     tracing::info!("Stopping MCP Server for {}", debug_name);
     _add_log_entry(session_logs.clone(), "Stopping MCP Server".to_string()).await;
-    
+
     let client_to_cancel = {
         let mut mcp_client_locked = mcp_client.lock().await;
         mcp_client_locked.take()
     };
-    
+
     if let Some(client) = client_to_cancel {
         match timeout(MCP_SERVER_STOP_TIMEOUT, client.cancel()).await {
             Ok(Ok(reason)) => {
@@ -211,7 +222,7 @@ async fn _session_apply_settings(
                 return;
             }
         }
-    
+
         let startup_task_join_handle = tokio::spawn(async move {
             let (mcp_client, logs, debug_name, stderr_file) = {
                 let mut session_locked = session_arc_clone.lock().await;
@@ -225,110 +236,149 @@ async fn _session_apply_settings(
                     std::mem::take(&mut mcp_session.stderr_file_path),
                 )
             };
-            
-            _add_log_entry(logs.clone(), "Applying new settings".to_string()).await;
+
+            let log = async |level: Level, msg: String| {
+                match level {
+                    Level::ERROR => tracing::error!("{msg} for {debug_name}"),
+                    Level::WARN => tracing::warn!("{msg} for {debug_name}"),
+                    _ => tracing::info!("{msg} for {debug_name}"),
+                }
+                _add_log_entry(logs.clone(), msg).await;
+            };
+
+            log(Level::INFO, "Applying new settings".to_string()).await;
 
             if let Some(mcp_client) = mcp_client {
                 _session_kill_process(&debug_name, mcp_client, logs.clone()).await;
             }
             if let Some(stderr_file) = &stderr_file {
                 if let Err(e) = tokio::fs::remove_file(stderr_file).await {
-                    tracing::error!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e);
+                    log(Level::ERROR, format!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e)).await;
                 }
             }
 
-            let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
-                Ok(args) => {
-                    if args.is_empty() {
-                        let error_msg = "Empty command".to_string();
-                        tracing::info!("{error_msg} for {debug_name}");
-                        _add_log_entry(logs.clone(), error_msg).await;
+            let client = match new_cfg_clone.server_transport.to_lowercase().trim() {
+                "stdio" => {
+                    let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
+                        Ok(args) => {
+                            if args.is_empty() {
+                                log(Level::ERROR, "Empty command".to_string()).await;
+                                return;
+                            }
+                            args
+                        }
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to parse command: {}", e)).await;
+                            return;
+                        }
+                    };
+
+                    let mut command = tokio::process::Command::new(&parsed_args[0]);
+                    command.args(&parsed_args[1..]);
+                    for (key, value) in &new_cfg_clone.mcp_env {
+                        command.env(key, value);
+                    }
+
+                    match NamedTempFile::new().map(|f| f.keep()) {
+                        Ok(Ok((file, path))) => {
+                            {
+                                let mut session_locked = session_arc_clone.lock().await;
+                                let mcp_session = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
+
+                                mcp_session.stderr_file_path = Some(path.clone());
+                                mcp_session.stderr_cursor = Arc::new(AMutex::new(0));
+                            }
+                            command.stderr(Stdio::from(file));
+                        },
+                        Ok(Err(e)) => tracing::error!("Failed to persist stderr file for {debug_name}: {e}"),
+                        Err(e)  => tracing::error!("Failed to create stderr file for {debug_name}: {e}"),
+                    }
+
+                    let transport = match rmcp::transport::TokioChildProcess::new(&mut command) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to init Tokio child process: {}", e)).await;
+                            return;
+                        }
+                    };
+                    match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
+                        Ok(Ok(client)) => client,
+                        Ok(Err(e)) => {
+                            log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
+                            return;
+                        },
+                        Err(_) => {
+                            log(Level::ERROR, format!("Request timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs())).await;
+                            return;
+                        }
+                    }
+                },
+                "sse" => {
+                    if new_cfg_clone.url.is_empty() {
+                        log(Level::ERROR, "URL is required for MCP with SSE transport".to_string()).await;
                         return;
                     }
-                    args
-                }
-                Err(e) => {
-                    let error_msg = format!("Failed to parse command: {}", e);
-                    tracing::info!("{error_msg} for {debug_name}");
-                    _add_log_entry(logs.clone(), error_msg).await;
-                    return;
-                }
-            };
 
-            let mut command = tokio::process::Command::new(&parsed_args[0]);
-            command.args(&parsed_args[1..]);
-            for (key, value) in &new_cfg_clone.mcp_env {
-                command.env(key, value);
-            }
-
-            match NamedTempFile::new().map(|f| f.keep()) {
-                Ok(Ok((file, path))) => {
-                    {
-                        let mut session_locked = session_arc_clone.lock().await;
-                        let mcp_session = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-                    
-                        mcp_session.stderr_file_path = Some(path.clone());
-                        mcp_session.stderr_cursor = Arc::new(AMutex::new(0));
+                    let mut header_map = reqwest::header::HeaderMap::new();
+                    for (k, v) in &new_cfg_clone.headers {
+                        match (reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                            reqwest::header::HeaderValue::from_str(v),
+                        ) {
+                            (Ok(name), Ok(value)) => {
+                                header_map.insert(name, value);
+                            }
+                            _ => log(Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
+                        }
                     }
-                    command.stderr(Stdio::from(file));
-                },
-                Ok(Err(e)) => tracing::error!("Failed to persist stderr file for {debug_name}: {e}"),
-                Err(e)  => tracing::error!("Failed to create stderr file for {debug_name}: {e}"),
-            }
-
-            let transport = match rmcp::transport::TokioChildProcess::new(&mut command) {
-                Ok(t) => t,
-                Err(e) => {
-                    let err_msg = format!("Failed to init process: {}", e);
-                    tracing::error!("{err_msg} for {debug_name}");
-                    _add_log_entry(logs.clone(), err_msg).await;
+                    let client = match reqwest::Client::builder().default_headers(header_map).build() {
+                        Ok(c) => c,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
+                            return;
+                        }
+                    };
+                    let transport = match rmcp::transport::SseTransport::start_with_client(&new_cfg_clone.url, client).await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
+                            return;
+                        }
+                    };
+                    match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
+                        Ok(Ok(client)) => client,
+                        Ok(Err(e)) => {
+                            log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
+                            return;
+                        },
+                        Err(_) => {
+                            log(Level::ERROR, format!("Request timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs())).await;
+                            return;
+                        }
+                    }
+                }
+                _ => {
+                    log(Level::ERROR, format!("Unsupported server transport: {}", new_cfg_clone.server_transport)).await;
                     return;
                 }
             };
 
-            let client = match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
-                Ok(Ok(c)) => c,
-                Ok(Err(e)) => {
-                    let err_msg = format!("Failed to init server: {}", e);
-                    tracing::error!("{err_msg} for {debug_name}");
-                    _add_log_entry(logs.clone(), err_msg).await;
-                    return;
-                },
-                Err(_) => {
-                    let err_msg = format!("Server initialization timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs());
-                    tracing::error!("{err_msg} for {debug_name}");
-                    _add_log_entry(logs.clone(), err_msg).await;
-                    return;
-                }
-            };
+            log(Level::INFO, "Listing tools".to_string()).await;
 
-            tracing::info!("MCP START SESSION (2) {:?}", debug_name);
-            _add_log_entry(logs.clone(), "Listing tools".to_string()).await;
-            
             let tools_result = match timeout(MCP_REQUEST_TIMEOUT, client.list_tools(None)).await {
-                Ok(Ok(result)) => {
-                    let success_msg = format!("Successfully listed {} tools", result.tools.len());
-                    tracing::info!("{} for {}", success_msg, debug_name);
-                    result
-                },
+                Ok(Ok(result)) => result,
                 Ok(Err(tools_error)) => {
-                    let err_msg = format!("Failed to list tools: {:?}", tools_error);
-                    tracing::error!("{} for {}", err_msg, debug_name);
-                    _add_log_entry(logs.clone(), err_msg).await;
+                    log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
                     return;
                 },
                 Err(_) => {
-                    let err_msg = format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs());
-                    tracing::error!("{} for {}", err_msg, debug_name);
-                    _add_log_entry(logs.clone(), err_msg).await;
+                    log(Level::ERROR, format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs())).await;
                     return;
                 }
             };
-  
+
             let new_mcp_client = Arc::new(AMutex::new(Some(client)));
-            
+
             let tools_len = {
-                tracing::info!("MCP START SESSION (3) {:?}", debug_name);
                 let mut session_locked = session_arc_clone.lock().await;
                 let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
 
@@ -337,12 +387,10 @@ async fn _session_apply_settings(
 
                 session_downcasted.mcp_tools.len()
             };
-            
-            let setup_msg = format!("MCP session setup complete with {tools_len} tools");
-            tracing::info!("{} for {}", setup_msg, debug_name);
-            _add_log_entry(logs.clone(), setup_msg).await;
+
+            log(Level::INFO, format!("MCP session setup complete with {tools_len} tools")).await;
         });
-        
+
         let startup_task_abort_handle = startup_task_join_handle.abort_handle();
         session_downcasted.startup_task_handles = Some(
             (Arc::new(AMutex::new(Some(startup_task_join_handle))), startup_task_abort_handle)
@@ -358,7 +406,7 @@ async fn _session_wait_startup_task(
         let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
         session_downcasted.startup_task_handles.clone()
     };
-    
+
     if let Some((join_handler_arc, _)) = startup_task_handles {
         let mut join_handler_locked = join_handler_arc.lock().await;
         if let Some(join_handler) = join_handler_locked.take() {
@@ -392,7 +440,7 @@ impl IntegrationTrait for IntegrationMCP {
 
     async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
         let session_key = format!("{}", self.config_path);
-        
+
         let gcx = match self.gcx_option.clone() {
             Some(gcx_weak) => match gcx_weak.upgrade() {
                 Some(gcx) => gcx,
@@ -406,7 +454,7 @@ impl IntegrationTrait for IntegrationMCP {
                 return vec![];
             }
         };
-        
+
         let session_maybe = gcx.read().await.integration_sessions.get(&session_key).cloned();
         let session = match session_maybe {
             Some(session) => session,
@@ -472,7 +520,7 @@ impl Tool for ToolMCP {
             let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
             session_downcasted.logs.clone()
         };
-        
+
         _add_log_entry(session_logs.clone(), format!("Executing tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args)).await;
 
         let result_probably = {
@@ -488,15 +536,15 @@ impl Tool for ToolMCP {
                     })
                 ).await {
                     Ok(result) => result,
-                    Err(_) => Err(rmcp::service::ServiceError::Timeout { 
-                        timeout: MCP_REQUEST_TIMEOUT 
+                    Err(_) => Err(rmcp::service::ServiceError::Timeout {
+                        timeout: MCP_REQUEST_TIMEOUT
                     }),
                 }
             } else {
                 return Err("MCP client is not available".to_string());
             }
         };
-        
+
         let tool_output = match result_probably {
             Ok(result) => {
                 if result.is_error.unwrap_or(false) {
@@ -504,7 +552,7 @@ impl Tool for ToolMCP {
                     _add_log_entry(session_logs.clone(), error_msg.clone()).await;
                     return Err(error_msg);
                 }
-                
+
                 if let Some(content) = result.content.get(0) {
                     if let rmcp::model::RawContent::Text(text_content) = &content.raw {
                         let text = text_content.text.clone();
@@ -630,15 +678,33 @@ impl Tool for ToolMCP {
 
 pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:
+  server_transport:
+    f_type: enum
+    f_enum_values: ["stdio", "sse"]
+    f_default: "stdio"
+    f_desc: "The transport protocol to use. 'stdio' for local processes, 'sse' for remote servers using Server-Sent Events."
   command:
     f_type: string
-    f_desc: "The MCP command to execute, like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
+    f_desc: "The MCP command to execute (for stdio transport), like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
   env:
     f_type: string_to_string_map
+    f_desc: "Environment variables to pass to the MCP command (for stdio transport)."
+  url:
+    f_type: string
+    f_desc: "The URL of the MCP server (for sse transport), e.g., 'https://api.example.com/mcp/sse'."
+  headers:
+    f_type: string_to_string_map
+    f_desc: "HTTP headers to include in requests to the MCP server (for sse transport)."
+    f_default:
+      User-Agent: "Refact.ai (+https://github.com/smallcloudai/refact)"
+      Accept: text/event-stream
+      Content-Type: application/json
 description: |
-  You can add almost any MCP (Model Context Protocol) server here! This supports local MCP servers,
-  with remote servers coming up as the specificion gets updated. You can read more
-  here https://www.anthropic.com/news/model-context-protocol
+  You can add almost any MCP (Model Context Protocol) server here! This supports both local MCP servers (stdio)
+  and remote MCP servers (sse). You can read more about MCP here: https://www.anthropic.com/news/model-context-protocol
+
+  For local servers, use server_transport="stdio" and provide the command to execute.
+  For remote servers, use server_transport="sse" and provide the URL of the server.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
