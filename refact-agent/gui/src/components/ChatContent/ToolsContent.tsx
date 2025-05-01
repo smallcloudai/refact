@@ -146,7 +146,7 @@ export const SingleModelToolContent: React.FC<{
   const results = useAppSelector(selectManyToolResultsByIds(toolCallsId));
   const diffs = useAppSelector(selectManyDiffMessageByIds(toolCallsId));
   const allResolved = useMemo(() => {
-    return results.length === toolCallsId.length + diffs.length;
+    return results.length + diffs.length === toolCallsId.length;
   }, [diffs.length, results.length, toolCallsId.length]);
 
   const handleClose = useCallback(() => {
@@ -372,8 +372,9 @@ const MultiModalToolContent: React.FC<{
   });
 
   const hasResults = useMemo(() => {
-    if (diffs.length) return true;
-    const resultIds = toolResults.map((d) => d.tool_call_id);
+    const diffIds = diffs.map((diff) => diff.tool_call_id);
+    const toolIds = toolResults.map((d) => d.tool_call_id);
+    const resultIds = [...diffIds, ...toolIds];
     return toolCalls.every(
       (toolCall) => toolCall.id && resultIds.includes(toolCall.id),
     );
