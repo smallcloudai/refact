@@ -825,6 +825,191 @@ describe("formatChatResponse", () => {
       },
     ]);
   });
+
+  test.only("byok short usage", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "please tell me a joke, don't call any tools\n",
+        checkpoints: [
+          {
+            workspace_folder:
+              "/home/andrii-lashchov/Desktop/work/refact/refact-agent/engine",
+            commit_hash: "b71c8387f951b81a1b9cd388f3d46c94eb302ebe",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "I'",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "d tell you a joke about UDP, but you",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " might not get it.\n\nWait",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: ", here's another one:",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " Why do programmers prefer dark mode?",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " Because light attracts bugs!",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: "stop",
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+        usage: {
+          completion_tokens: 41,
+          prompt_tokens: 9359,
+          total_tokens: 9400,
+        },
+      },
+      {
+        id: "",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+    ];
+
+    const result = chunks.reduce<ChatMessages>(
+      (messages, chunk) => formatChatResponse(messages, chunk),
+      [],
+    );
+
+    expect(result).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "b71c8387f951b81a1b9cd388f3d46c94eb302ebe",
+            workspace_folder:
+              "/home/andrii-lashchov/Desktop/work/refact/refact-agent/engine",
+          },
+        ],
+        compression_strength: "absent",
+        content: "please tell me a joke, don't call any tools\n",
+        role: "user",
+      },
+      {
+        content:
+          "I'd tell you a joke about UDP, but you might not get it.\n\nWait, here's another one: Why do programmers prefer dark mode? Because light attracts bugs!",
+        finish_reason: "stop",
+        metering_balance: undefined,
+        metering_cache_creation_tokens_n: undefined,
+        metering_cache_read_tokens_n: undefined,
+        metering_coins_cache_creation: undefined,
+        metering_coins_cache_read: undefined,
+        metering_coins_generated: undefined,
+        metering_coins_prompt: undefined,
+        metering_prompt_tokens_n: undefined,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: undefined,
+        usage: {
+          completion_tokens: 41,
+          prompt_tokens: 9359,
+          total_tokens: 9400,
+        },
+      },
+    ]);
+  });
 });
 
 describe("mergeToolCalls", () => {
