@@ -6,6 +6,7 @@ use std::sync::Weak;
 use std::future::Future;
 use std::process::Stdio;
 use async_trait::async_trait;
+use rmcp::model::PaginatedRequestParamInner;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -364,26 +365,34 @@ async fn _session_apply_settings(
 
             log(Level::INFO, "Listing tools".to_string()).await;
 
-            let tools_result = match timeout(MCP_REQUEST_TIMEOUT, client.list_tools(None)).await {
-                Ok(Ok(result)) => result,
-                Ok(Err(tools_error)) => {
-                    log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
-                    return;
-                },
-                Err(_) => {
-                    log(Level::ERROR, format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs())).await;
-                    return;
-                }
-            };
-
-            let new_mcp_client = Arc::new(AMutex::new(Some(client)));
+            // List tools, with pagination if needed
+            let mut all_tools = Vec::new();
+            let mut cursor = None;
+            loop {
+                let tools_result = match timeout(MCP_REQUEST_TIMEOUT,
+                    client.list_tools(Some(PaginatedRequestParamInner { cursor: cursor.clone() }))
+                ).await {
+                    Ok(Ok(result)) => result,
+                    Ok(Err(tools_error)) => {
+                        log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
+                        return;
+                    },
+                    Err(_) => {
+                        log(Level::ERROR, format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs())).await;
+                        return;
+                    }
+                };
+                all_tools.extend(tools_result.tools);
+                cursor = tools_result.next_cursor;
+                if cursor.is_none() { break; }
+            }
 
             let tools_len = {
                 let mut session_locked = session_arc_clone.lock().await;
                 let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
 
-                session_downcasted.mcp_client = Some(new_mcp_client);
-                session_downcasted.mcp_tools = tools_result.tools;
+                session_downcasted.mcp_client = Some(Arc::new(AMutex::new(Some(client))));
+                session_downcasted.mcp_tools = all_tools;
 
                 session_downcasted.mcp_tools.len()
             };
