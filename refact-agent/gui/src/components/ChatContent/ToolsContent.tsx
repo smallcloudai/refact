@@ -24,6 +24,7 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll } from "../../hooks";
 import {
+  selectManyDiffMessageByIds,
   selectManyToolResultsByIds,
   selectToolResultById,
 } from "../../features/Chat/Thread/selectors";
@@ -143,9 +144,10 @@ export const SingleModelToolContent: React.FC<{
   }, [toolCalls]);
 
   const results = useAppSelector(selectManyToolResultsByIds(toolCallsId));
+  const diffs = useAppSelector(selectManyDiffMessageByIds(toolCallsId));
   const allResolved = useMemo(() => {
-    return results.length === toolCallsId.length;
-  }, [results.length, toolCallsId.length]);
+    return results.length === toolCallsId.length + diffs.length;
+  }, [diffs.length, results.length, toolCallsId.length]);
 
   const handleClose = useCallback(() => {
     handleHide();
@@ -327,6 +329,14 @@ const MultiModalToolContent: React.FC<{
   const [open, setOpen] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
+  const ids = useMemo(() => {
+    return toolCalls
+      .map((toolCall) => toolCall.id)
+      .filter((id) => id !== undefined);
+  }, [toolCalls]);
+
+  const diffs = useAppSelector(selectManyDiffMessageByIds(ids));
+
   const handleClose = useCallback(() => {
     handleHide();
     setOpen(false);
@@ -361,11 +371,12 @@ const MultiModalToolContent: React.FC<{
   });
 
   const hasResults = useMemo(() => {
+    if (diffs.length) return true;
     const resultIds = toolResults.map((d) => d.tool_call_id);
     return toolCalls.every(
       (toolCall) => toolCall.id && resultIds.includes(toolCall.id),
     );
-  }, [toolCalls, toolResults]);
+  }, [toolCalls, toolResults, diffs]);
 
   return (
     <Container>
