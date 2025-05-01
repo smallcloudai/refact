@@ -233,14 +233,14 @@ export function formatChatResponse(
 
   const currentUsage = response.usage;
   const {
-    pp1000t_cache_creation,
-    pp1000t_cache_read,
-    pp1000t_generated,
-    pp1000t_prompt,
     metering_balance,
     metering_cache_creation_tokens_n,
     metering_cache_read_tokens_n,
     metering_prompt_tokens_n,
+    metering_coins_prompt,
+    metering_coins_generated,
+    metering_coins_cache_creation,
+    metering_coins_cache_read,
   } = response;
 
   if (currentUsage) {
@@ -268,14 +268,14 @@ export function formatChatResponse(
         ? {
             ...message,
             usage: usageToStore,
-            pp1000t_cache_creation,
-            pp1000t_cache_read,
-            pp1000t_generated,
-            pp1000t_prompt,
             metering_balance,
             metering_cache_creation_tokens_n,
             metering_cache_read_tokens_n,
             metering_prompt_tokens_n,
+            metering_coins_prompt,
+            metering_coins_generated,
+            metering_coins_cache_creation,
+            metering_coins_cache_read,
           }
         : message,
     );
@@ -301,14 +301,14 @@ export function formatChatResponse(
         thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
         usage: currentUsage,
-        pp1000t_cache_creation,
-        pp1000t_cache_read,
-        pp1000t_generated,
-        pp1000t_prompt,
         metering_balance,
         metering_cache_creation_tokens_n,
         metering_cache_read_tokens_n,
         metering_prompt_tokens_n,
+        metering_coins_prompt,
+        metering_coins_generated,
+        metering_coins_cache_creation,
+        metering_coins_cache_read,
       };
       return acc.concat([msg]);
     }
@@ -340,12 +340,7 @@ export function formatChatResponse(
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
-          pp1000t_cache_creation:
-            lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
-          pp1000t_cache_read:
-            lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
-          pp1000t_generated: lastMessage.pp1000t_generated ?? pp1000t_generated,
-          pp1000t_prompt: lastMessage.pp1000t_prompt ?? pp1000t_prompt,
+
           metering_balance: lastMessage.metering_balance ?? metering_balance,
           metering_cache_creation_tokens_n:
             lastMessage.metering_cache_creation_tokens_n ??
@@ -355,6 +350,15 @@ export function formatChatResponse(
             metering_prompt_tokens_n,
           metering_prompt_tokens_n:
             lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+          metering_coins_prompt:
+            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+          metering_coins_generated:
+            lastMessage.metering_coins_generated ?? metering_coins_generated,
+          metering_coins_cache_creation:
+            lastMessage.metering_coins_cache_creation ??
+            metering_coins_cache_creation,
+          metering_coins_cache_read:
+            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
         },
       ]);
     }
@@ -389,12 +393,6 @@ export function formatChatResponse(
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
-          pp1000t_cache_creation:
-            lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
-          pp1000t_cache_read:
-            lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
-          pp1000t_generated: lastMessage.pp1000t_generated ?? pp1000t_generated,
-          pp1000t_prompt: lastMessage.pp1000t_prompt ?? pp1000t_prompt,
           metering_balance: lastMessage.metering_balance ?? metering_balance,
           metering_cache_creation_tokens_n:
             lastMessage.metering_cache_creation_tokens_n ??
@@ -404,6 +402,15 @@ export function formatChatResponse(
             metering_prompt_tokens_n,
           metering_prompt_tokens_n:
             lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+          metering_coins_prompt:
+            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+          metering_coins_generated:
+            lastMessage.metering_coins_generated ?? metering_coins_generated,
+          metering_coins_cache_creation:
+            lastMessage.metering_coins_cache_creation ??
+            metering_coins_cache_creation,
+          metering_coins_cache_read:
+            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
         },
       ]);
     }
@@ -426,12 +433,7 @@ export function formatChatResponse(
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
-          pp1000t_cache_creation:
-            lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
-          pp1000t_cache_read:
-            lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
-          pp1000t_generated: lastMessage.pp1000t_generated ?? pp1000t_generated,
-          pp1000t_prompt: lastMessage.pp1000t_prompt ?? pp1000t_prompt,
+
           metering_balance: lastMessage.metering_balance ?? metering_balance,
           metering_cache_creation_tokens_n:
             lastMessage.metering_cache_creation_tokens_n ??
@@ -441,6 +443,15 @@ export function formatChatResponse(
             metering_prompt_tokens_n,
           metering_prompt_tokens_n:
             lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+          metering_coins_prompt:
+            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+          metering_coins_generated:
+            lastMessage.metering_coins_generated ?? metering_coins_generated,
+          metering_coins_cache_creation:
+            lastMessage.metering_coins_cache_creation ??
+            metering_coins_cache_creation,
+          metering_coins_cache_read:
+            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
         },
       ]);
     } else if (
@@ -455,14 +466,15 @@ export function formatChatResponse(
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: currentUsage,
-          pp1000t_cache_creation,
-          pp1000t_cache_read,
-          pp1000t_generated,
-          pp1000t_prompt,
+
           metering_balance,
           metering_cache_creation_tokens_n,
           metering_cache_read_tokens_n,
           metering_prompt_tokens_n,
+          metering_coins_prompt,
+          metering_coins_generated,
+          metering_coins_cache_creation,
+          metering_coins_cache_read,
         },
       ]);
     } else if (cur.delta.role === "assistant") {
@@ -484,14 +496,15 @@ export function formatChatResponse(
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: currentUsage,
-            pp1000t_cache_creation,
-            pp1000t_cache_read,
-            pp1000t_generated,
-            pp1000t_prompt,
+
             metering_balance,
             metering_cache_creation_tokens_n,
             metering_cache_read_tokens_n,
             metering_prompt_tokens_n,
+            metering_coins_prompt,
+            metering_coins_generated,
+            metering_coins_cache_creation,
+            metering_coins_cache_read,
           },
         ]);
       }
@@ -512,13 +525,6 @@ export function formatChatResponse(
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: lastMessage.usage ?? currentUsage,
-            pp1000t_cache_creation:
-              lastMessage.pp1000t_cache_creation ?? pp1000t_cache_creation,
-            pp1000t_cache_read:
-              lastMessage.pp1000t_cache_read ?? pp1000t_cache_read,
-            pp1000t_generated:
-              lastMessage.pp1000t_generated ?? pp1000t_generated,
-            pp1000t_prompt: lastMessage.pp1000t_prompt ?? pp1000t_prompt,
             metering_balance: lastMessage.metering_balance ?? metering_balance,
             metering_cache_creation_tokens_n:
               lastMessage.metering_cache_creation_tokens_n ??
@@ -528,6 +534,16 @@ export function formatChatResponse(
               metering_prompt_tokens_n,
             metering_prompt_tokens_n:
               lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+            metering_coins_prompt:
+              lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+            metering_coins_generated:
+              lastMessage.metering_coins_generated ?? metering_coins_generated,
+            metering_coins_cache_creation:
+              lastMessage.metering_coins_cache_creation ??
+              metering_coins_cache_creation,
+            metering_coins_cache_read:
+              lastMessage.metering_coins_cache_read ??
+              metering_coins_cache_read,
           },
         ]);
       }

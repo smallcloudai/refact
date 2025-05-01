@@ -12,41 +12,30 @@ export function calculateTotalCostOfMessages(messages: ChatMessages) {
   if (assistantMessages.length === 0) return null;
 
   return assistantMessages.reduce<{
-    cache_creation: number;
-    cache_read: number;
-    prompt: number;
-    generated: number;
+    metering_coins_prompt: number;
+    metering_coins_generated: number;
+    metering_coins_cache_creation: number;
+    metering_coins_cache_read: number;
   }>(
     (acc, message) => {
-      const creation = calculateCost(
-        message.metering_cache_creation_tokens_n ?? 0,
-        message.pp1000t_cache_creation,
-      );
-
-      const read = calculateCost(
-        message.metering_cache_read_tokens_n ?? 0,
-        message.pp1000t_cache_read,
-      );
-
-      // TODO: units don't match up
-      const prompt = calculateCost(
-        message.metering_prompt_tokens_n ?? 0,
-        message.pp1000t_prompt ?? 0,
-      );
-
-      const generated = calculateCost(
-        message.metering_generated_tokens_n ?? 0,
-        message.pp1000t_generated ?? 0,
-      );
-
       return {
-        cache_creation: acc.cache_creation + creation,
-        cache_read: acc.cache_read + read,
-        prompt: acc.prompt + prompt,
-        generated: acc.generated + generated,
+        metering_coins_prompt:
+          acc.metering_coins_prompt + message.metering_coins_prompt,
+        metering_coins_generated:
+          acc.metering_coins_generated + message.metering_coins_generated,
+        metering_coins_cache_creation:
+          acc.metering_coins_cache_creation +
+          message.metering_coins_cache_creation,
+        metering_coins_cache_read:
+          acc.metering_coins_cache_read + message.metering_coins_cache_read,
       };
     },
-    { cache_creation: 0, cache_read: 0, prompt: 0, generated: 0 },
+    {
+      metering_coins_prompt: 0,
+      metering_coins_generated: 0,
+      metering_coins_cache_creation: 0,
+      metering_coins_cache_read: 0,
+    },
   );
 }
 function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
@@ -56,26 +45,20 @@ function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
     cache_creation_input_tokens?: number;
     cache_read_input_tokens?: number;
   };
-  pp1000t_cache_creation: number;
-  pp1000t_cache_read: number;
+  metering_coins_prompt: number;
+  metering_coins_generated: number;
+  metering_coins_cache_creation: number;
+  metering_coins_cache_read: number;
 } {
   if (!isAssistantMessage(message)) return false;
   if (!("usage" in message)) return false;
   if (!message.usage) return false;
   if (typeof message.usage.completion_tokens !== "number") return false;
   if (typeof message.usage.prompt_tokens !== "number") return false;
-  // if (typeof message.usage?.cache_creation_input_tokens !== "number")
-  //   return false;
-  // if (typeof message.usage.cache_read_input_tokens !== "number") return false;
-  if (typeof message.pp1000t_cache_creation !== "number") return false;
-  if (typeof message.pp1000t_cache_read !== "number") return false;
+  if (typeof message.metering_coins_prompt !== "number") return false;
+  if (typeof message.metering_coins_prompt !== "number") return false;
+  if (typeof message.metering_coins_cache_creation !== "number") return false;
+  if (typeof message.metering_coins_cache_read !== "number") return false;
 
   return true;
-}
-
-function calculateCost(tokens: number, costPerThousand: number): number {
-  const costPerToken = costPerThousand / 1000;
-  const totalCost = tokens * costPerToken;
-  const ktok = totalCost / 1_000;
-  return ktok;
 }

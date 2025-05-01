@@ -27,10 +27,10 @@ export const HistoryItem: React.FC<{
     if (totals === null) return null;
 
     return (
-      totals.cache_creation +
-      totals.cache_read +
-      totals.generated +
-      totals.prompt
+      totals.metering_coins_cache_creation +
+      totals.metering_coins_cache_read +
+      totals.metering_coins_generated +
+      totals.metering_coins_prompt
     );
   }, [historyItem.messages]);
 

@@ -45,7 +45,7 @@ export const informationSlice = createSlice({
         state.dismissed &&
         "metering_balance" in action.payload &&
         typeof action.payload.metering_balance === "number" &&
-        action.payload.metering_balance > 2
+        action.payload.metering_balance > 2000
       ) {
         state.dismissed = false;
       }
@@ -53,7 +53,7 @@ export const informationSlice = createSlice({
       if (state.message) return state;
       if (!("metering_balance" in action.payload)) return state;
       if (typeof action.payload.metering_balance !== "number") return state;
-      if (action.payload.metering_balance <= 2) {
+      if (action.payload.metering_balance <= 2000) {
         state.type = "balance";
         state.message =
           "Your account is running low on credits. Please top up your account to continue using the service.";
@@ -66,7 +66,7 @@ export const informationSlice = createSlice({
       (state, action) => {
         if (state.dismissed) return state;
         if (state.message) return state;
-        if (action.payload.metering_balance <= 2) {
+        if (action.payload.metering_balance <= 2000) {
           state.type = "balance";
           state.message =
             "Your account is running low on credits. Please top up your account to continue using the service.";

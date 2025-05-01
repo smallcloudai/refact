@@ -602,15 +602,16 @@ export function isCDInstructionResponse(
 }
 
 type CostInfo = {
-  pp1000t_prompt?: number;
-  pp1000t_generated?: number;
-  pp1000t_cache_creation?: number;
-  pp1000t_cache_read?: number;
   metering_prompt_tokens_n?: number;
   metering_generated_tokens_n?: number;
   metering_cache_creation_tokens_n?: number;
   metering_cache_read_tokens_n?: number;
   metering_balance?: number;
+
+  metering_coins_prompt?: number;
+  metering_coins_generated?: number;
+  metering_coins_cache_creation?: number;
+  metering_coins_cache_read?: number;
 };
 
 type ChatResponseChoice = {

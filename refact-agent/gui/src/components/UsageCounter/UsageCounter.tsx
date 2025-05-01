@@ -62,6 +62,40 @@ const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
   );
 };
 
+const CoinsDisplay: React.FC<{
+  total: number;
+  prompt?: number;
+  generated?: number;
+  cacheRead?: number;
+  cacheCreation?: number;
+}> = ({ total, prompt, generated, cacheRead, cacheCreation }) => {
+  return (
+    <Flex direction="column" align="start" gap="2">
+      <Flex align="center" justify="between" width="100%" gap="4" mb="2">
+        <Text size="2">Coins spent</Text>
+        <Text size="2">
+          <Flex align="center" gap="2">
+            {Math.round(total)} <Coin width="15px" height="15px" />
+          </Flex>
+        </Text>
+      </Flex>
+
+      {prompt && <CoinDisplay label="Prompt" value={prompt} />}
+
+      {generated !== undefined && (
+        <CoinDisplay label="Completion" value={generated} />
+      )}
+
+      {cacheRead !== undefined && (
+        <CoinDisplay label="Prompt cache read" value={cacheRead} />
+      )}
+      {cacheCreation !== undefined && (
+        <CoinDisplay label="Prompt cache creation" value={cacheCreation} />
+      )}
+    </Flex>
+  );
+};
+
 const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
   messageTokens,
 }) => {
@@ -84,41 +118,58 @@ const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
   );
 };
 
-const DefaultHoverCard: React.FC = () => {
+const DefaultHoverCard: React.FC<{
+  inputTokens: number;
+  outputTokens: number;
+}> = ({ inputTokens, outputTokens }) => {
   const cost = useTotalCostForChat();
+  const { currentThreadUsage } = useUsageCounter();
   const total = useMemo(() => {
     return (
-      (cost?.cache_creation ?? 0) +
-      (cost?.cache_creation ?? 0) +
-      (cost?.prompt ?? 0) +
-      (cost?.generated ?? 0)
+      (cost?.metering_coins_prompt ?? 0) +
+      (cost?.metering_coins_generated ?? 0) +
+      (cost?.metering_coins_cache_creation ?? 0) +
+      (cost?.metering_coins_cache_read ?? 0)
     );
   }, [cost]);
 
+  if (total > 0) {
+    return (
+      <CoinsDisplay
+        total={total}
+        prompt={cost?.metering_coins_prompt}
+        generated={cost?.metering_coins_generated}
+        cacheRead={cost?.metering_coins_cache_read}
+        cacheCreation={cost?.metering_coins_cache_creation}
+      />
+    );
+  }
+
   return (
     <Flex direction="column" align="start" gap="2">
-      <Flex align="center" justify="between" width="100%" gap="4" mb="2">
-        <Text size="2">Coins spent</Text>
-        <Text size="2">
-          <Flex align="center" gap="2">
-            {Math.round(total)} <Coin width="15px" height="15px" />
-          </Flex>
-        </Text>
-      </Flex>
-
-      {cost?.cache_read !== undefined && (
-        <CoinDisplay label="Prompt cache read" value={cost.cache_read} />
-      )}
-      {cost?.cache_creation !== undefined && (
-        <CoinDisplay
-          label="Prompt cache creation"
-          value={cost.cache_creation}
+      <Text size="2" mb="2">
+        Tokens spent per chat thread:
+      </Text>
+      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+      {currentThreadUsage?.cache_read_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache read input tokens"
+          value={currentThreadUsage.cache_read_input_tokens}
         />
       )}
-      {cost?.generated !== undefined && (
-        <CoinDisplay label="Completion" value={cost.generated} />
+      {currentThreadUsage?.cache_creation_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache creation input tokens"
+          value={currentThreadUsage.cache_creation_input_tokens}
+        />
       )}
-      {cost?.prompt && <CoinDisplay label="Prompt" value={cost.prompt} />}
+      <TokenDisplay label="Completion tokens" value={outputTokens} />
+      {currentThreadUsage?.completion_tokens_details && (
+        <TokenDisplay
+          label="Reasoning tokens"
+          value={currentThreadUsage.completion_tokens_details.reasoning_tokens}
+        />
+      )}
     </Flex>
   );
 };
@@ -242,7 +293,10 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           {isInline ? (
             <InlineHoverCard messageTokens={messageTokens} />
           ) : (
-            <DefaultHoverCard />
+            <DefaultHoverCard
+              inputTokens={inputTokens}
+              outputTokens={outputTokens}
+            />
           )}
         </HoverCard.Content>
       </ScrollArea>
