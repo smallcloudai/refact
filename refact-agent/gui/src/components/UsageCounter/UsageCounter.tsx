@@ -88,10 +88,10 @@ const DefaultHoverCard: React.FC = () => {
   const cost = useTotalCostForChat();
   const total = useMemo(() => {
     return (
-      (cost?.cache_creation ?? 0) +
-      (cost?.cache_creation ?? 0) +
-      (cost?.prompt ?? 0) +
-      (cost?.generated ?? 0)
+      (cost?.metering_coins_prompt ?? 0) +
+      (cost?.metering_coins_generated ?? 0) +
+      (cost?.metering_coins_cache_creation ?? 0) +
+      (cost?.metering_coins_cache_read ?? 0)
     );
   }, [cost]);
 
@@ -106,19 +106,26 @@ const DefaultHoverCard: React.FC = () => {
         </Text>
       </Flex>
 
-      {cost?.cache_read !== undefined && (
-        <CoinDisplay label="Prompt cache read" value={cost.cache_read} />
+      {cost?.metering_coins_prompt && (
+        <CoinDisplay label="Prompt" value={cost.metering_coins_prompt} />
       )}
-      {cost?.cache_creation !== undefined && (
+
+      {cost?.metering_coins_generated !== undefined && (
+        <CoinDisplay label="Completion" value={cost.metering_coins_generated} />
+      )}
+
+      {cost?.metering_coins_cache_read !== undefined && (
         <CoinDisplay
-          label="Prompt cache creation"
-          value={cost.cache_creation}
+          label="Prompt cache read"
+          value={cost.metering_coins_cache_read}
         />
       )}
-      {cost?.generated !== undefined && (
-        <CoinDisplay label="Completion" value={cost.generated} />
+      {cost?.metering_coins_cache_creation !== undefined && (
+        <CoinDisplay
+          label="Prompt cache creation"
+          value={cost.metering_coins_cache_creation}
+        />
       )}
-      {cost?.prompt && <CoinDisplay label="Prompt" value={cost.prompt} />}
     </Flex>
   );
 };
