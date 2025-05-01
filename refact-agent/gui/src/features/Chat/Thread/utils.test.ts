@@ -496,6 +496,335 @@ describe("formatChatResponse", () => {
       },
     ]);
   });
+
+  test("byok usage", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "call tree and then do nothing\n",
+        checkpoints: [
+          {
+            workspace_folder: "/someplace",
+            commit_hash: "d7fd24f70133348f01a80f6f9a54628e2ee56777",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "I'll call",
+              role: "assistant",
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: " the `tree` function to show the project structure",
+              role: null,
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: " and then do nothing else as requested.",
+              role: null,
+
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "",
+              role: "assistant",
+
+              tool_calls: [
+                {
+                  id: "toolu_01SZSQHfY6jRi4TSd9HTRy6e",
+                  function: {
+                    arguments: "",
+                    name: "tree",
+                  },
+                  type: "function",
+                  index: 0,
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "",
+              role: "assistant",
+
+              tool_calls: [
+                // odd that some of these are null?
+                // {
+                //   id: null,
+                //   function: {
+                //     arguments: "",
+                //     name: null,
+                //   },
+                //   type: "function",
+                //   index: 0,
+                // },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "",
+              role: "assistant",
+
+              tool_calls: [
+                // {
+                //   id: null,
+                //   function: {
+                //     arguments: "{}",
+                //     name: null,
+                //   },
+                //   type: "function",
+                //   index: 0,
+                // },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: "tool_calls",
+            index: 0,
+            delta: {
+              content: null,
+              role: null,
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: null,
+              role: null,
+
+              tool_calls: null,
+            },
+          },
+        ],
+
+        usage: {
+          completion_tokens: 56,
+          prompt_tokens: 3,
+          total_tokens: 59,
+          completion_tokens_details: {
+            accepted_prediction_tokens: null,
+            audio_tokens: null,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: null,
+          },
+          prompt_tokens_details: {
+            audio_tokens: null,
+            cached_tokens: 0,
+          },
+          cache_creation_input_tokens: 9170,
+          cache_read_input_tokens: 0,
+        },
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: null,
+              role: null,
+              tool_calls: null,
+            },
+          },
+        ],
+        usage: {
+          completion_tokens: 56,
+          prompt_tokens: 3,
+          total_tokens: 59,
+          completion_tokens_details: {
+            accepted_prediction_tokens: null,
+            audio_tokens: null,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: null,
+          },
+          prompt_tokens_details: {
+            audio_tokens: null,
+            cached_tokens: 0,
+          },
+          cache_creation_input_tokens: 9170,
+          cache_read_input_tokens: 0,
+        },
+        metering_coins_prompt: 0.009,
+        metering_coins_generated: 0.84,
+        metering_coins_cache_creation: 34.3875,
+        metering_coins_cache_read: 0.0,
+        metering_prompt_tokens_n: 3,
+        metering_generated_tokens_n: 56,
+        metering_cache_creation_tokens_n: 9170,
+        metering_cache_read_tokens_n: 0,
+        metering_balance: 952433,
+        refact_agent_request_available: null,
+        refact_agent_max_request_num: 400,
+      },
+      {
+        id: "",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+      },
+    ];
+
+    const results = chunks.reduce<ChatMessages>(
+      (acc, cur) => formatChatResponse(acc, cur),
+      [],
+    );
+
+    expect(results).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "d7fd24f70133348f01a80f6f9a54628e2ee56777",
+            workspace_folder: "/someplace",
+          },
+        ],
+        compression_strength: "absent",
+        content: "call tree and then do nothing\n",
+        role: "user",
+      },
+      {
+        content:
+          "I'll call the `tree` function to show the project structure and then do nothing else as requested.",
+        finish_reason: "stop",
+        metering_balance: 952433,
+        metering_cache_creation_tokens_n: 9170,
+        metering_cache_read_tokens_n: 3,
+        metering_coins_cache_creation: 34.3875,
+        metering_coins_cache_read: 0,
+        metering_coins_generated: 0.84,
+        metering_coins_prompt: 0.009,
+        metering_prompt_tokens_n: 3,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: [
+          {
+            function: {
+              arguments: "",
+              name: "tree",
+            },
+            id: "toolu_01SZSQHfY6jRi4TSd9HTRy6e",
+            index: 0,
+            type: "function",
+          },
+        ],
+        usage: {
+          cache_creation_input_tokens: 9170,
+          cache_read_input_tokens: 0,
+          completion_tokens: 56,
+          completion_tokens_details: {
+            accepted_prediction_tokens: null,
+            audio_tokens: null,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: null,
+          },
+          prompt_tokens: 3,
+          prompt_tokens_details: {
+            audio_tokens: null,
+            cached_tokens: 0,
+          },
+          total_tokens: 59,
+        },
+      },
+    ]);
+  });
 });
 
 describe("mergeToolCalls", () => {
