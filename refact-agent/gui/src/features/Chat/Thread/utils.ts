@@ -34,7 +34,6 @@ import {
   isUserResponse,
   ThinkingBlock,
   isToolCallMessage,
-  Usage,
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
