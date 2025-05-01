@@ -25,12 +25,16 @@ static ROOT_CAUSE_ANALYSIS_PROMPT: &str = r#"Based on the conversation and conte
 2. Underlying causes - deeper systemic issues that might be contributing.
 3. Environmental factors - external conditions that might influence the problem.
 4. Edge cases - unusual scenarios that could trigger this issue.
+5. Focus on special methods and implicit conversions and investigate cross-component interactions.
+
 For each potential cause, explain:
 - Why it might be causing the problem
 - How it could manifest in the observed symptoms
 - What evidence supports or refutes this cause
 
-Finally, rank the causes from most to least likely, and explain your reasoning.
+Rank the causes from most to least likely, and explain your reasoning.
+
+Your final goal is to find the root cause of the problem! Take as many time as needed.
 Do not create code, just write text."#;
 
 
