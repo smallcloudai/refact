@@ -263,7 +263,7 @@ async fn docker_container_create(
         format!("--entrypoint={0}", isolation.docker_entrypoint)
     };
     let run_command = format!(
-        "container create --name={container_name} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "container create --name={container_name} --shm-size=8g --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         {ports_to_forward_as_arg_list} {network_if_set} {extra_params} {entrypoint} {docker_image_id} -c '{lsp_command}'",
     );
 
