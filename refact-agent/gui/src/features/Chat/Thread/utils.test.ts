@@ -468,7 +468,7 @@ describe("formatChatResponse", () => {
         finish_reason: "stop",
         metering_balance: 1085,
         metering_cache_creation_tokens_n: 0,
-        metering_cache_read_tokens_n: 0,
+        metering_cache_read_tokens_n: 2818,
         metering_coins_cache_creation: 0,
         metering_coins_cache_read: 0,
         metering_coins_generated: 0.112,

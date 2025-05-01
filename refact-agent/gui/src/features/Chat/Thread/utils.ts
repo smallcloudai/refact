@@ -243,44 +243,6 @@ export function formatChatResponse(
     metering_coins_cache_read,
   } = response;
 
-  if (currentUsage) {
-    const lastAssistantIndex = lastIndexOf(messages, isAssistantMessage);
-    if (lastAssistantIndex === -1) return messages;
-
-    const lastAssistantMessage = messages[lastAssistantIndex];
-    if (!isAssistantMessage(lastAssistantMessage)) return messages;
-
-    const maybeLastAssistantMessageUsage = lastAssistantMessage.usage;
-    let usageToStore = currentUsage;
-
-    if (
-      maybeLastAssistantMessageUsage &&
-      Object.entries(currentUsage).every(
-        ([key, value]) =>
-          maybeLastAssistantMessageUsage[key as keyof Usage] === value,
-      )
-    ) {
-      usageToStore = { ...maybeLastAssistantMessageUsage, ...currentUsage };
-    }
-
-    return messages.map((message, index) =>
-      index === lastAssistantIndex
-        ? {
-            ...message,
-            usage: usageToStore,
-            metering_balance,
-            metering_cache_creation_tokens_n,
-            metering_cache_read_tokens_n,
-            metering_prompt_tokens_n,
-            metering_coins_prompt,
-            metering_coins_generated,
-            metering_coins_cache_creation,
-            metering_coins_cache_read,
-          }
-        : message,
-    );
-  }
-
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       const msg = { role: cur.delta.role, content: cur.delta.content };
