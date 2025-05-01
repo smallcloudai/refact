@@ -139,7 +139,7 @@ impl Tool for ToolPdb {
             .ok_or("Failed to downcast to PdbSession")?;
 
         let output = match command_args[0].as_str() {
-            "kill" => {
+            "kill" | "q" | "quit" => {
                 let mut gcx_locked = gcx.write().await;
                 gcx_locked.integration_sessions.remove(&session_hashmap_key);
                 "Pdb session has been killed".to_string()

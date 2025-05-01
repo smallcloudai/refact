@@ -37,6 +37,31 @@ Rank the causes from most to least likely, and explain your reasoning.
 Your final goal is to find the root cause of the problem! Take as many time as needed.
 Do not create code, just write text."#;
 
+static CRITIQUE_PROMPT: &str = r#"Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis.
+Remember, that the final solution must be minimal, robust, effective. 
+Also use those extra rules:
+### Agent Guard rules
+1. **Contract First**  
+   Never change public signatures, return types, log formats, or exception classes unless tests demand it; add features via defaults or **kwargs, never break old calls.
+2. **Fix Upstream, Validate Up-Front**  
+   Centralize input sanitization/normalization at the highest shared layer and let every caller flow through it; patch the root cause, not the symptom.
+3. **Type & Shape Fidelity**  
+   Preserve incoming container kinds and indices (list→list, set→set, DataFrame index untouched); don’t coerce mutables silently.
+4. **Loud, Consistent Failure**  
+   Replace `assert` with framework-specific exceptions and keep canonical wording; log or warn exactly as the library already does, use `DeprecationWarning` before behavior flips.
+5. **State-Safe Sequencing**  
+   Build internal structures before triggering callbacks or side-effects; after each `yield`, re-check container size to catch in-loop mutations.
+6. **Canonical Values & Hashes**  
+   Use the framework’s canonical sentinels (`S.One`, ISO-8601 w/ microseconds, etc.); when you add `__eq__`, add `__hash__`, and include every identity-changing field (email, password) in hashes/tokens.
+7. **Deterministic Ordering**  
+   Deduplicate with order-preserving tools (`OrderedDict`, `sorted(key=…)`) so outputs stay stable across runs and Python versions.
+8. **Holistic Serialization**  
+   Serialize original, unscaled state (e.g., pre-device-DPI) and restore verbatim; ensure round-trips leave objects functionally identical.
+9. **Feature Flags & Compatibility**  
+   Ship new behavior behind opt-in flags; keep fallbacks for custom models, backends, or deprecated APIs until the deprecation window closes.
+10. **Documentation-Driven Development**  
+    Write a failing test or docstring example first, reference it in the patch, and leave inline comments explaining any non-obvious branch."#;
+
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -227,8 +252,7 @@ impl Tool for ToolStrategicPlanning {
 
         // SECOND ITERATION: Ask for a critique
         tracing::info!("THIRD ITERATION: Ask for a critique");
-        let critique_prompt = "Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis. Remember, that the final solution must be minimal, robust, effective. We can create new tests but cannot modify existing.";
-        history.push(ChatMessage::new("user".to_string(), critique_prompt.to_string()));
+        history.push(ChatMessage::new("user".to_string(), CRITIQUE_PROMPT.to_string()));
         let (crit_session, critique_reply) = _execute_subchat_iteration(
             ccx_subchat.clone(),
             &subchat_params,

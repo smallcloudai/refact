@@ -147,6 +147,7 @@ pub async fn tools_merged_and_filtered(
         ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
+        ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
@@ -484,6 +485,20 @@ tools:
     description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
     parameters: []
     parameters_required: []
+    
+  - name: "debug_script"
+    agentic: true
+    description: "Uses pdb to debug a Python script and investigate a problem, then summarizes the debugging session."
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Path to the file which needs to be debugged"
+      - name: "problem"
+        type: "string"
+        description: "Description of the problem to investigate"
+    parameters_required:
+      - "path"
+      - "problem"
 "####;
 
 

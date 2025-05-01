@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::{sync::Arc, sync::Weak, time::SystemTime};
 use std::future::Future;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
-use tokio::time::Duration;
+use tokio::time::{sleep, Duration};
 use tracing::{error, info, warn};
 use url::Url;
 use walkdir::WalkDir;
@@ -257,7 +257,7 @@ async fn docker_container_create(
     } else {
         format!("--entrypoint={0}", isolation.docker_entrypoint)
     };
-    let host_vecdb_path = format!("{}/vecdb_model_thenlper_gte-base_esize_768.sqlite", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
+    let host_vecdb_path = format!("{}/vecdb_model_thenlper_gte-base_esize_768_for_docker.sqlite", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
     let container_vecdb_path = "/root/.cache/refact/vecdb_model_thenlper_gte-base_esize_768.sqlite";
     
     let run_command = format!(
@@ -458,6 +458,7 @@ async fn docker_container_sync_workspace(
 
     docker_container_copy(docker, gcx.clone(), container_id, 
         &temp_tar_file.to_string_lossy().to_string(), &container_workspace_folder).await?;
+    sleep(Duration::from_secs(10)).await;
 
     let sync_files_post = SyncFilesExtractTarPost {
         tar_path: format!("{}/{}", container_workspace_folder.trim_end_matches('/'), tar_file_name),
