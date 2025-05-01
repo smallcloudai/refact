@@ -241,10 +241,16 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       <br />
       You have no coins left to use Refact&apos;s AI features.
       <br />
-      <TopUpLink />
-      <br />
-      Please top up your balance or contact support if you believe this is a
-      mistake.
+      Please{" "}
+      <Link
+        href="https://refact.smallcloud.ai/?topup"
+        target="_blank"
+        rel="noreferrer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        top up your balance
+      </Link>{" "}
+      or contact support if you believe this is a mistake.
       <br />
       <Flex justify="end">
         <Em>Thank you for using Refact!</Em>
@@ -270,10 +276,16 @@ export const BallanceLowInformation: React.FC = () => {
     >
       💸 <Strong>Your balance is {balance}</Strong>
       <br />
-      Please top up your balance soon or contact support if you believe this is
-      a mistake.
-      <br />
-      <TopUpLink />
+      Please{" "}
+      <Link
+        href="https://refact.smallcloud.ai/?topup"
+        target="_blank"
+        rel="noreferrer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        top up your balance
+      </Link>{" "}
+      soon or contact support if you believe this is a mistake.
       <br />
       <Flex as="span" justify="end">
         <Em>Thank you for using Refact!</Em>
