@@ -38,7 +38,7 @@ Your final goal is to find the root cause of the problem! Take as many time as n
 Do not create code, just write text."#;
 
 static CRITIQUE_PROMPT: &str = r#"Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis.
-Remember, that the final solution must be minimal, robust, effective. 
+Remember, that the final solution must be minimal, robust, effective. You cannot change existing tests.
 Also use those extra rules:
 ### Agent Guard rules
 1. **Contract First**  
