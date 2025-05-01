@@ -305,7 +305,7 @@ async fn _session_apply_settings(
                     match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
                         Ok(Ok(client)) => client,
                         Ok(Err(e)) => {
-                            log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to init stdio server: {}", e)).await;
                             return;
                         },
                         Err(_) => {
@@ -365,34 +365,25 @@ async fn _session_apply_settings(
 
             log(Level::INFO, "Listing tools".to_string()).await;
 
-            // List tools, with pagination if needed
-            let mut all_tools = Vec::new();
-            let mut cursor = None;
-            loop {
-                let tools_result = match timeout(MCP_REQUEST_TIMEOUT,
-                    client.list_tools(Some(PaginatedRequestParamInner { cursor: cursor.clone() }))
-                ).await {
-                    Ok(Ok(result)) => result,
-                    Ok(Err(tools_error)) => {
-                        log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
-                        return;
-                    },
-                    Err(_) => {
-                        log(Level::ERROR, format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs())).await;
-                        return;
-                    }
-                };
-                all_tools.extend(tools_result.tools);
-                cursor = tools_result.next_cursor;
-                if cursor.is_none() { break; }
-            }
+            let tools = match timeout(MCP_REQUEST_TIMEOUT, client.list_all_tools()).await {
+                Ok(Ok(result)) => result,
+                Ok(Err(tools_error)) => {
+                    log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
+                    return;
+                },
+                Err(_) => {
+                    log(Level::ERROR, format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs())).await;
+                    return;
+                }
+            };
+            let tools_len = tools.len();
 
-            let tools_len = {
+            {
                 let mut session_locked = session_arc_clone.lock().await;
                 let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
 
                 session_downcasted.mcp_client = Some(Arc::new(AMutex::new(Some(client))));
-                session_downcasted.mcp_tools = all_tools;
+                session_downcasted.mcp_tools = tools;
 
                 session_downcasted.mcp_tools.len()
             };
