@@ -237,9 +237,16 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       >
         top up your balance
       </Link>{" "}
-      or contact support if you believe this is a mistake.
-      <br />
-      <Flex justify="end">
+      or contact support if you believe this is a mistake.{" "}
+      <Link
+        href="https://docs.refact.ai/"
+        target="_blank"
+        rel="noreferrer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        Read more about usage balance.
+      </Link>
+      <Flex as="span" justify="end" mt="2">
         <Em>Thank you for using Refact!</Em>
       </Flex>
     </Callout>
@@ -272,9 +279,17 @@ export const BallanceLowInformation: React.FC = () => {
       >
         top up your balance
       </Link>{" "}
-      soon or contact support if you believe this is a mistake.
+      soon or contact support if you believe this is a mistake.{" "}
+      <Link
+        href="https://docs.refact.ai/"
+        target="_blank"
+        rel="noreferrer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        Read more about usage balance.
+      </Link>
       <br />
-      <Flex as="span" justify="end">
+      <Flex as="span" justify="end" mt="2">
         <Em>Thank you for using Refact!</Em>
       </Flex>
     </Callout>
