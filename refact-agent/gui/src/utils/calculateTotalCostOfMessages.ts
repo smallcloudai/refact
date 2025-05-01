@@ -9,7 +9,6 @@ import {
 // TODO: cap cost should be in the messages:/
 export function calculateTotalCostOfMessages(messages: ChatMessages) {
   const assistantMessages = messages.filter(hasUsageAndPrice);
-  console.log({ messages, assistantMessages });
   if (assistantMessages.length === 0) return null;
 
   return assistantMessages.reduce<{

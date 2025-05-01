@@ -212,19 +212,6 @@ export const CalloutFromTop: React.FC<
   );
 };
 
-const TopUpLink: React.FC = () => {
-  return (
-    <Link
-      href="https://refact.smallcloud.ai/?topup"
-      target="_blank"
-      rel="noreferrer"
-      onClick={(event) => event.stopPropagation()}
-    >
-      Click here to top-up
-    </Link>
-  );
-};
-
 export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
   onClick,
 }) => {
