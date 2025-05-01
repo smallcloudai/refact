@@ -25,19 +25,31 @@ export function useDiffFileReload() {
 
     prevMessageCount.current = messages.length;
 
-    if (messages.length === 0 || configIdeHost !== "jetbrains") return;
-    const lastMessage = messages[messages.length - 1];
-
-    if (!isDiffMessage(lastMessage)) return;
-    const messageId = `${lastMessage.role}-${messages.length}`;
-
-    if (processedMessageIds.current.has(messageId)) return;
-    processedMessageIds.current.add(messageId);
+    if (messages.length === 0 || configIdeHost !== "jetbrains") {
+      return;
+    }
 
     const uniqueFilePaths = new Set<string>();
-    lastMessage.content.forEach((diff) => {
-      uniqueFilePaths.add(diff.file_name);
-      diff.file_name_rename && uniqueFilePaths.add(diff.file_name_rename);
+
+    messages.forEach((message, index) => {
+      if (!isDiffMessage(message)) {
+        return;
+      }
+
+      const messageId = `${message.role}-${index + 1}`;
+
+      if (processedMessageIds.current.has(messageId)) {
+        return;
+      }
+
+      processedMessageIds.current.add(messageId);
+
+      message.content.forEach((diff) => {
+        uniqueFilePaths.add(diff.file_name);
+        if (diff.file_name_rename) {
+          uniqueFilePaths.add(diff.file_name_rename);
+        }
+      });
     });
 
     uniqueFilePaths.forEach((filePath) => {
