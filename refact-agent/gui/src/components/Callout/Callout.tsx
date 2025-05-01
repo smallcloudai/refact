@@ -7,6 +7,7 @@ import {
   Button,
   Strong,
   Em,
+  Link,
 } from "@radix-ui/themes";
 import {
   ExclamationTriangleIcon,
@@ -211,6 +212,19 @@ export const CalloutFromTop: React.FC<
   );
 };
 
+const TopUpLink: React.FC = () => {
+  return (
+    <Link
+      href="https://refact.smallcloud.ai/?topup"
+      target="_blank"
+      rel="noreferrer"
+      onClick={(event) => event.stopPropagation()}
+    >
+      Click here to top-up
+    </Link>
+  );
+};
+
 export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
   onClick,
 }) => {
@@ -223,16 +237,15 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       timeout={null}
       onClick={onClick}
     >
-      <Text as="p">
-        💸 <Strong>Your balance is exhausted!</Strong>
-      </Text>
-      <Text as="p">
-        You have no coins left to use Refact&apos;s AI features.
-      </Text>
-      <Text as="p">
-        Please top up your balance or contact support if you believe this is a
-        mistake.
-      </Text>
+      💸 <Strong>Your balance is exhausted!</Strong>
+      <br />
+      You have no coins left to use Refact&apos;s AI features.
+      <br />
+      <TopUpLink />
+      <br />
+      Please top up your balance or contact support if you believe this is a
+      mistake.
+      <br />
       <Flex justify="end">
         <Em>Thank you for using Refact!</Em>
       </Flex>
@@ -259,6 +272,8 @@ export const BallanceLowInformation: React.FC = () => {
       <br />
       Please top up your balance soon or contact support if you believe this is
       a mistake.
+      <br />
+      <TopUpLink />
       <br />
       <Flex as="span" justify="end">
         <Em>Thank you for using Refact!</Em>
