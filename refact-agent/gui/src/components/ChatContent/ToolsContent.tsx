@@ -330,9 +330,10 @@ const MultiModalToolContent: React.FC<{
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
   const ids = useMemo(() => {
-    return toolCalls
-      .map((toolCall) => toolCall.id)
-      .filter((id) => id !== undefined);
+    return toolCalls.reduce<string[]>((acc, cur) => {
+      if (typeof cur === "string") return [...acc, cur];
+      return acc;
+    }, []);
   }, [toolCalls]);
 
   const diffs = useAppSelector(selectManyDiffMessageByIds(ids));
