@@ -2,6 +2,89 @@
 import { general_error } from './error.js';
 let show_toast = false;
 
+function initExtraHeadersUI() {
+    const container = document.getElementById('extra-headers-container');
+    container.innerHTML = '';
+
+    const addButton = document.getElementById('add-extra-header-btn');
+    addButton.addEventListener('click', function() {
+        addExtraHeaderRow();
+    });
+}
+
+// Function to add a new extra header row
+function addExtraHeaderRow(key = '', value = '') {
+    const container = document.getElementById('extra-headers-container');
+    const headerIndex = container.children.length;
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'extra-header-row row mb-2';
+    headerRow.dataset.index = headerIndex;
+
+    headerRow.innerHTML = `
+        <div class="col-5">
+            <input type="text" class="form-control extra-header-key"
+                   placeholder="Header Name" value="${key}" data-index="${headerIndex}">
+        </div>
+        <div class="col-5">
+            <input type="text" class="form-control extra-header-value"
+                   placeholder="Header Value" value="${value}" data-index="${headerIndex}">
+        </div>
+        <div class="col-2 text-center">
+            <button type="button" class="btn btn-danger remove-header-btn" data-index="${headerIndex}">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `;
+
+    container.appendChild(headerRow);
+
+    const removeButton = headerRow.querySelector('.remove-header-btn');
+    removeButton.addEventListener('click', function() {
+        removeExtraHeaderRow(this.dataset.index);
+    });
+}
+
+function removeExtraHeaderRow(index) {
+    const container = document.getElementById('extra-headers-container');
+    const rowToRemove = container.querySelector(`.extra-header-row[data-index="${index}"]`);
+    if (rowToRemove) {
+        container.removeChild(rowToRemove);
+    }
+}
+
+function collectExtraHeaders() {
+    const headers = {};
+    const container = document.getElementById('extra-headers-container');
+
+    if (!container) {
+        return headers;
+    }
+
+    const rows = container.querySelectorAll('.extra-header-row');
+    if (rows.length === 0) {
+        return headers;
+    }
+
+    rows.forEach((row, index) => {
+        const keyInput = row.querySelector('.extra-header-key');
+        const valueInput = row.querySelector('.extra-header-value');
+
+        if (!keyInput || !valueInput) {
+            console.log(`Inputs not found for row ${index}`);
+            return;
+        }
+
+        const key = keyInput.value.trim();
+        const value = valueInput.value.trim();
+        if (key && value) {
+            headers[key] = value;
+        }
+    });
+
+    return headers;
+}
+
 // Provider default configurations with their available models
 // This will be populated from litellm
 let PROVIDER_DEFAULT_CONFIGS = {};
@@ -602,6 +685,23 @@ function showAddModelModal(providerId) {
                 </div>
             </div>
         </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">Extra Headers</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <p class="form-text mb-2">Add optional HTTP headers to be sent with requests to this model's API.</p>
+                    <div id="extra-headers-container">
+                        <!-- Headers will be added here dynamically -->
+                    </div>
+                    <button type="button" class="btn btn-primary mt-2" id="add-extra-header-btn">
+                        <i class="bi bi-plus"></i> Add Header
+                    </button>
+                </div>
+            </div>
+        </div>
     `;
 
     // Create the unified model configuration form
@@ -701,11 +801,11 @@ function showAddModelModal(providerId) {
         collapseElement.classList.add("show");
     }
 
-    // Don't show api base for predefined models
     const apiBaseContainer = document.getElementById('custom-model-api-base-container');
     apiBaseContainer.style.display = hasPredefined ? 'none' : '';
 
-    // Add event listener to pre-fill capabilities when a model is selected
+    initExtraHeadersUI();
+
     const modelSelect = document.getElementById('third-party-model-id');
     if (modelSelect && hasPredefined) {
         modelSelect.addEventListener('change', function() {
@@ -802,6 +902,8 @@ function addModel() {
 
     let reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
     let boostReasoning = document.getElementById('third-party-model-boost-reasoning').checked;
+
+    const extraHeaders = collectExtraHeaders();
 
     if (boostReasoning && !reasoningType) {
         const error_message = "Boost reasoning requires a reasoning type to be selected";
@@ -918,6 +1020,7 @@ function addModel() {
                 api_key: customApiKey,
                 n_ctx: customNCtx,
                 max_tokens: customMaxTokens,
+                extra_headers: Object.keys(extraHeaders).length > 0 ? extraHeaders : {},
                 capabilities: {
                     agent: !!supportsAgentic,
                     clicks: !!supportsClicks,
@@ -990,6 +1093,14 @@ function showEditModelModal(providerId, modelId) {
     modelIdContainer.dataset.providerId = providerId;
     modelIdContainer.dataset.modelId = modelId;
     modelIdContainer.dataset.isEdit = 'true';
+
+    if (modelConfig.extra_headers && Object.keys(modelConfig.extra_headers).length > 0) {
+        const container = document.getElementById('extra-headers-container');
+        container.innerHTML = '';
+        Object.entries(modelConfig.extra_headers).forEach(([key, value]) => {
+            addExtraHeaderRow(key, value);
+        });
+    }
 
     // Now pre-populate the fields with the data from the existing model configuration
     const modelIdElement = document.getElementById('third-party-model-id');
@@ -1097,6 +1208,8 @@ function updateModel() {
         }
     }
 
+    const extraHeaders = collectExtraHeaders();
+
     let reasoningType = document.getElementById('third-party-model-reasoning-type').value.trim();
     let boostReasoning = document.getElementById('third-party-model-boost-reasoning').checked;
 
@@ -1175,6 +1288,7 @@ function updateModel() {
 
     modelConfig.api_base = customApiBase ? customApiBase : null;
     modelConfig.api_key = customApiKey ? customApiKey : null;
+    modelConfig.extra_headers = Object.keys(extraHeaders).length > 0 ? extraHeaders : {};
 
     // Update tokenizer ID if provided, otherwise set to null
     if (customTokenizerId) {

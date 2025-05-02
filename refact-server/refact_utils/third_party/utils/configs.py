@@ -30,6 +30,7 @@ class ModelConfig(BaseModel):
     max_tokens: int
     capabilities: ModelCapabilities
     tokenizer_id: Optional[str] = None
+    extra_headers: Dict[str, str] = Field(default_factory=dict)
 
     # NOTE: weird function for backward compatibility
     def compose_usage_dict(self, prompt_tokens_n: int, generated_tokens_n: int) -> Dict[str, int]:

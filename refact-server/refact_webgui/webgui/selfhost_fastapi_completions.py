@@ -563,6 +563,7 @@ class BaseCompletionsRouter(APIRouter):
             "tool_choice": post.tool_choice,
             "stop": post.stop if post.stop else None,
             "n": post.n,
+            "extra_headers": model_config.extra_headers if model_config.extra_headers else None,
         }
 
         if post.reasoning_effort or post.thinking:
