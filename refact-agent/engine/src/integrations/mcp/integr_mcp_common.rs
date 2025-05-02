@@ -11,6 +11,7 @@ use serde_json::Value;
 
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationCommon;
+use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
 use super::session_mcp::{SessionMCP, add_log_entry, cancel_mcp_client};
 use super::tool_mcp::ToolMCP;
@@ -44,7 +45,7 @@ pub async fn mcp_integr_tools(
     common: &IntegrationCommon,
     request_timeout: u64
 ) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-    let session_key = format!("{}", config_path);
+    let session_key = get_session_hashmap_key("mcp", config_path);
 
     let gcx = match gcx_option {
         Some(gcx_weak) => match gcx_weak.upgrade() {
@@ -99,7 +100,7 @@ pub async fn mcp_session_setup<T: MCPTransportInitializer + 'static>(
     init_timeout: u64,
     request_timeout: u64
 ) {
-    let session_key = format!("{}", config_path);
+    let session_key = get_session_hashmap_key("mcp", &config_path);
 
     let session_arc = {
         let mut gcx_write = gcx.write().await;
