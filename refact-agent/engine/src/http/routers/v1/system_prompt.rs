@@ -8,7 +8,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::call_validation::{ChatMessage, ChatMeta};
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::indexing_utils::wait_for_indexing;
+use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
@@ -28,7 +28,7 @@ pub async fn handle_v1_prepend_system_prompt_and_maybe_more_initial_messages(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
-    wait_for_indexing(gcx.clone()).await;
+    wait_for_indexing_if_needed(gcx.clone()).await;
 
     let post = serde_json::from_slice::<PrependSystemPromptPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
