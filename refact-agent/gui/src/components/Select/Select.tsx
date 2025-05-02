@@ -9,6 +9,7 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   title?: string;
   contentPosition?: "item-aligned" | "popper";
   value?: string;
+  disabled?: boolean;
 };
 
 export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
@@ -58,19 +59,22 @@ export const Select: React.FC<SelectProps> = ({
   }, [props.value, options]);
   return (
     <Root {...props} onValueChange={onChange} size="1">
-      {maybeSelectedOption && maybeSelectedOption.tooltip ? (
+      {props.disabled && maybeSelectedOption && maybeSelectedOption.tooltip ? (
         <HoverCard.Root>
           <HoverCard.Trigger>
-            <Trigger title={title} />
+            <Trigger />
           </HoverCard.Trigger>
-          <HoverCard.Content size="1">
+          <HoverCard.Content size="1" side="top">
             {maybeSelectedOption.tooltip}
           </HoverCard.Content>
         </HoverCard.Root>
       ) : (
         <Trigger title={title} />
       )}
-      <Content position={contentPosition ? contentPosition : "popper"}>
+      <Content
+        position={contentPosition ? contentPosition : "popper"}
+        side="top"
+      >
         {options.map((option, index) => {
           if (typeof option === "string") {
             return (
