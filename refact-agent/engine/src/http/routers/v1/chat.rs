@@ -112,7 +112,6 @@ async fn _chat(
 
     let inside_container = gcx.read().await.cmdline.inside_container;
 
-    // Wait for some(possibly none) indexing to finish 
     if chat_post.meta.chat_remote == inside_container {
         wait_for_indexing(gcx.clone()).await;
     }
