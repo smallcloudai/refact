@@ -190,14 +190,29 @@ pub async fn mcp_session_setup<T: MCPTransportInitializer + 'static>(
                 Ok(Ok(result)) => result,
                 Ok(Err(tools_error)) => {
                     log(tracing::Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
-                    return;
+                    Vec::new()
                 },
                 Err(_) => {
                     log(tracing::Level::ERROR, format!("Request timed out after {} seconds", request_timeout)).await;
-                    return;
+                    Vec::new()
                 }
             };
             let tools_len = tools.len();
+
+            let resources = match timeout(Duration::from_secs(request_timeout), client.list_all_resources()).await {
+                Ok(Ok(r)) => Some(r),
+                Ok(Err(e)) => {
+                    log(tracing::Level::ERROR, format!("Failed to list resources: {:?}", e)).await;
+                    None
+                },
+                Err(_) => {
+                    log(tracing::Level::ERROR, format!("Listing resources timed out after {request_timeout} seconds")).await;
+                    None
+                }
+            };
+            let resources_len = resources.as_ref().map(|r| r.len());
+
+            if tools.is_empty() && resources.is_none() { return; }
 
             {
                 let mut session_locked = session_arc_clone.lock().await;
@@ -205,11 +220,13 @@ pub async fn mcp_session_setup<T: MCPTransportInitializer + 'static>(
 
                 session_downcasted.mcp_client = Some(Arc::new(AMutex::new(Some(client))));
                 session_downcasted.mcp_tools = tools;
+                session_downcasted.mcp_resources = resources;
 
                 session_downcasted.mcp_tools.len()
             };
 
-            log(tracing::Level::INFO, format!("MCP session setup complete with {tools_len} tools")).await;
+            let resources_len_str = resources_len.map_or("no".to_string(), |len| len.to_string());
+            log(tracing::Level::INFO, format!("MCP session setup complete with {tools_len} tools and {resources_len_str} resources")).await;
         });
 
         let startup_task_abort_handle = startup_task_join_handle.abort_handle();
