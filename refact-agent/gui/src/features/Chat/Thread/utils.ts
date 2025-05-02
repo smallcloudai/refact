@@ -382,7 +382,6 @@ export function formatChatResponse(
       typeof cur.delta.content === "string"
     ) {
       const last = acc.slice(0, -1);
-
       return last.concat([
         {
           role: "assistant",
@@ -393,7 +392,7 @@ export function formatChatResponse(
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
-          usage: lastMessage.usage ?? currentUsage,
+          usage: currentUsage ?? lastMessage.usage,
 
           metering_balance: lastMessage.metering_balance ?? metering_balance,
           metering_cache_creation_tokens_n:
@@ -426,7 +425,7 @@ export function formatChatResponse(
           reasoning_content: cur.delta.reasoning_content,
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
-          usage: currentUsage,
+          usage: currentUsage, // here?
 
           metering_balance,
           metering_cache_creation_tokens_n,
@@ -440,6 +439,7 @@ export function formatChatResponse(
       ]);
     } else if (cur.delta.role === "assistant") {
       // empty message from JB
+      // maybe here?
       return acc;
     }
 
@@ -456,7 +456,7 @@ export function formatChatResponse(
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
-            usage: currentUsage,
+            usage: currentUsage, // here
 
             metering_balance,
             metering_cache_creation_tokens_n,
@@ -485,6 +485,34 @@ export function formatChatResponse(
             tool_calls: lastMessage.tool_calls,
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
+            usage: lastMessage.usage ?? currentUsage,
+            metering_balance: lastMessage.metering_balance ?? metering_balance,
+            metering_cache_creation_tokens_n:
+              lastMessage.metering_cache_creation_tokens_n ??
+              metering_cache_creation_tokens_n,
+            metering_cache_read_tokens_n:
+              lastMessage.metering_cache_read_tokens_n ??
+              metering_prompt_tokens_n,
+            metering_prompt_tokens_n:
+              lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+            metering_coins_prompt:
+              lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+            metering_coins_generated:
+              lastMessage.metering_coins_generated ?? metering_coins_generated,
+            metering_coins_cache_creation:
+              lastMessage.metering_coins_cache_creation ??
+              metering_coins_cache_creation,
+            metering_coins_cache_read:
+              lastMessage.metering_coins_cache_read ??
+              metering_coins_cache_read,
+          },
+        ]);
+      }
+
+      if (isAssistantMessage(lastMessage) && currentUsage) {
+        return last.concat([
+          {
+            ...lastMessage,
             usage: lastMessage.usage ?? currentUsage,
             metering_balance: lastMessage.metering_balance ?? metering_balance,
             metering_cache_creation_tokens_n:
