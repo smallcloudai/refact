@@ -34,6 +34,7 @@ import {
   isUserResponse,
   ThinkingBlock,
   isToolCallMessage,
+  Usage,
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
@@ -159,6 +160,72 @@ function replaceLastUserMessage(
   return result.concat([userMessage]);
 }
 
+function takeHighestUsage(a?: Usage, b?: Usage): Usage | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  if (a.total_tokens > b.total_tokens) return a;
+  return b;
+}
+
+type MeteringBalance = Pick<
+  AssistantMessage,
+  | "metering_balance"
+  | "metering_cache_creation_tokens_n"
+  | "metering_cache_read_tokens_n"
+  | "metering_prompt_tokens_n"
+  | "metering_coins_prompt"
+  | "metering_coins_generated"
+  | "metering_coins_cache_creation"
+  | "metering_coins_cache_read"
+>;
+
+function lowestNumber(a?: number, b?: number): number | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return Math.min(a, b);
+}
+function highestNumber(a?: number, b?: number): number | undefined {
+  if (a === undefined) return b;
+  if (b === undefined) return a;
+  return Math.max(a, b);
+}
+function mergeMetering(
+  a: MeteringBalance,
+  b: MeteringBalance,
+): MeteringBalance {
+  return {
+    metering_balance: lowestNumber(a.metering_balance, b.metering_balance),
+    metering_cache_creation_tokens_n: highestNumber(
+      a.metering_cache_creation_tokens_n,
+      b.metering_cache_creation_tokens_n,
+    ),
+    metering_cache_read_tokens_n: highestNumber(
+      a.metering_cache_read_tokens_n,
+      b.metering_cache_read_tokens_n,
+    ),
+    metering_prompt_tokens_n: highestNumber(
+      a.metering_prompt_tokens_n,
+      b.metering_prompt_tokens_n,
+    ),
+    metering_coins_prompt: highestNumber(
+      a.metering_coins_prompt,
+      b.metering_coins_prompt,
+    ),
+    metering_coins_generated: highestNumber(
+      a.metering_coins_generated,
+      b.metering_coins_generated,
+    ),
+    metering_coins_cache_read: highestNumber(
+      a.metering_coins_cache_read,
+      b.metering_coins_cache_read,
+    ),
+    metering_coins_cache_creation: highestNumber(
+      a.metering_coins_cache_creation,
+      b.metering_coins_cache_creation,
+    ),
+  };
+}
+
 export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
@@ -230,18 +297,6 @@ export function formatChatResponse(
     return messages;
   }
 
-  const currentUsage = response.usage;
-  const {
-    metering_balance,
-    metering_cache_creation_tokens_n,
-    metering_cache_read_tokens_n,
-    metering_prompt_tokens_n,
-    metering_coins_prompt,
-    metering_coins_generated,
-    metering_coins_cache_creation,
-    metering_coins_cache_read,
-  } = response;
-
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       const msg = { role: cur.delta.role, content: cur.delta.content };
@@ -261,15 +316,8 @@ export function formatChatResponse(
         tool_calls: cur.delta.tool_calls,
         thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
-        usage: currentUsage,
-        metering_balance,
-        metering_cache_creation_tokens_n,
-        metering_cache_read_tokens_n,
-        metering_prompt_tokens_n,
-        metering_coins_prompt,
-        metering_coins_generated,
-        metering_coins_cache_creation,
-        metering_coins_cache_read,
+        usage: response.usage,
+        ...mergeMetering({}, response),
       };
       return acc.concat([msg]);
     }
@@ -300,26 +348,8 @@ export function formatChatResponse(
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
-          usage: lastMessage.usage ?? currentUsage,
-
-          metering_balance: lastMessage.metering_balance ?? metering_balance,
-          metering_cache_creation_tokens_n:
-            lastMessage.metering_cache_creation_tokens_n ??
-            metering_cache_creation_tokens_n,
-          metering_cache_read_tokens_n:
-            lastMessage.metering_cache_read_tokens_n ??
-            metering_prompt_tokens_n,
-          metering_prompt_tokens_n:
-            lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
-          metering_coins_prompt:
-            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
-          metering_coins_generated:
-            lastMessage.metering_coins_generated ?? metering_coins_generated,
-          metering_coins_cache_creation:
-            lastMessage.metering_coins_cache_creation ??
-            metering_coins_cache_creation,
-          metering_coins_cache_read:
-            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
+          usage: takeHighestUsage(lastMessage.usage, response.usage),
+          ...mergeMetering(lastMessage, response),
         },
       ]);
     }
@@ -353,25 +383,8 @@ export function formatChatResponse(
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
-          usage: lastMessage.usage ?? currentUsage,
-          metering_balance: lastMessage.metering_balance ?? metering_balance,
-          metering_cache_creation_tokens_n:
-            lastMessage.metering_cache_creation_tokens_n ??
-            metering_cache_creation_tokens_n,
-          metering_cache_read_tokens_n:
-            lastMessage.metering_cache_read_tokens_n ??
-            metering_prompt_tokens_n,
-          metering_prompt_tokens_n:
-            lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
-          metering_coins_prompt:
-            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
-          metering_coins_generated:
-            lastMessage.metering_coins_generated ?? metering_coins_generated,
-          metering_coins_cache_creation:
-            lastMessage.metering_coins_cache_creation ??
-            metering_coins_cache_creation,
-          metering_coins_cache_read:
-            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
+          usage: takeHighestUsage(lastMessage.usage, response.usage),
+          ...mergeMetering(lastMessage, response),
         },
       ]);
     }
@@ -392,26 +405,8 @@ export function formatChatResponse(
           tool_calls: lastMessage.tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
-          usage: currentUsage ?? lastMessage.usage,
-
-          metering_balance: lastMessage.metering_balance ?? metering_balance,
-          metering_cache_creation_tokens_n:
-            lastMessage.metering_cache_creation_tokens_n ??
-            metering_cache_creation_tokens_n,
-          metering_cache_read_tokens_n:
-            lastMessage.metering_cache_read_tokens_n ??
-            metering_prompt_tokens_n,
-          metering_prompt_tokens_n:
-            lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
-          metering_coins_prompt:
-            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
-          metering_coins_generated:
-            lastMessage.metering_coins_generated ?? metering_coins_generated,
-          metering_coins_cache_creation:
-            lastMessage.metering_coins_cache_creation ??
-            metering_coins_cache_creation,
-          metering_coins_cache_read:
-            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
+          usage: takeHighestUsage(lastMessage.usage, response.usage),
+          ...mergeMetering(lastMessage, response),
         },
       ]);
     } else if (
@@ -425,16 +420,9 @@ export function formatChatResponse(
           reasoning_content: cur.delta.reasoning_content,
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
-          usage: currentUsage, // here?
-
-          metering_balance,
-          metering_cache_creation_tokens_n,
-          metering_cache_read_tokens_n,
-          metering_prompt_tokens_n,
-          metering_coins_prompt,
-          metering_coins_generated,
-          metering_coins_cache_creation,
-          metering_coins_cache_read,
+          // usage: currentUsage, // here?
+          usage: response.usage,
+          ...mergeMetering({}, response),
         },
       ]);
     } else if (cur.delta.role === "assistant") {
@@ -456,16 +444,8 @@ export function formatChatResponse(
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
-            usage: currentUsage, // here
-
-            metering_balance,
-            metering_cache_creation_tokens_n,
-            metering_cache_read_tokens_n,
-            metering_prompt_tokens_n,
-            metering_coins_prompt,
-            metering_coins_generated,
-            metering_coins_cache_creation,
-            metering_coins_cache_read,
+            usage: response.usage,
+            ...mergeMetering({}, response),
           },
         ]);
       }
@@ -485,54 +465,18 @@ export function formatChatResponse(
             tool_calls: lastMessage.tool_calls,
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
-            usage: lastMessage.usage ?? currentUsage,
-            metering_balance: lastMessage.metering_balance ?? metering_balance,
-            metering_cache_creation_tokens_n:
-              lastMessage.metering_cache_creation_tokens_n ??
-              metering_cache_creation_tokens_n,
-            metering_cache_read_tokens_n:
-              lastMessage.metering_cache_read_tokens_n ??
-              metering_prompt_tokens_n,
-            metering_prompt_tokens_n:
-              lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
-            metering_coins_prompt:
-              lastMessage.metering_coins_prompt ?? metering_coins_prompt,
-            metering_coins_generated:
-              lastMessage.metering_coins_generated ?? metering_coins_generated,
-            metering_coins_cache_creation:
-              lastMessage.metering_coins_cache_creation ??
-              metering_coins_cache_creation,
-            metering_coins_cache_read:
-              lastMessage.metering_coins_cache_read ??
-              metering_coins_cache_read,
+            usage: takeHighestUsage(lastMessage.usage, response.usage),
+            ...mergeMetering(lastMessage, response),
           },
         ]);
       }
 
-      if (isAssistantMessage(lastMessage) && currentUsage) {
+      if (isAssistantMessage(lastMessage) && response.usage) {
         return last.concat([
           {
             ...lastMessage,
-            usage: lastMessage.usage ?? currentUsage,
-            metering_balance: lastMessage.metering_balance ?? metering_balance,
-            metering_cache_creation_tokens_n:
-              lastMessage.metering_cache_creation_tokens_n ??
-              metering_cache_creation_tokens_n,
-            metering_cache_read_tokens_n:
-              lastMessage.metering_cache_read_tokens_n ??
-              metering_prompt_tokens_n,
-            metering_prompt_tokens_n:
-              lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
-            metering_coins_prompt:
-              lastMessage.metering_coins_prompt ?? metering_coins_prompt,
-            metering_coins_generated:
-              lastMessage.metering_coins_generated ?? metering_coins_generated,
-            metering_coins_cache_creation:
-              lastMessage.metering_coins_cache_creation ??
-              metering_coins_cache_creation,
-            metering_coins_cache_read:
-              lastMessage.metering_coins_cache_read ??
-              metering_coins_cache_read,
+            usage: takeHighestUsage(lastMessage.usage, response.usage),
+            ...mergeMetering(lastMessage, response),
           },
         ]);
       }

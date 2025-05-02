@@ -136,7 +136,7 @@ describe("formatChatResponse", () => {
         content: "hello\n",
         checkpoints: [
           {
-            workspace_folder: "/Users/marc/Projects/refact",
+            workspace_folder: "/refact",
             commit_hash: "6710babc75beb5198be8a7a2b4ba6c095afa2158",
           },
         ],
@@ -456,7 +456,7 @@ describe("formatChatResponse", () => {
         checkpoints: [
           {
             commit_hash: "6710babc75beb5198be8a7a2b4ba6c095afa2158",
-            workspace_folder: "/Users/marc/Projects/refact",
+            workspace_folder: "/refact",
           },
         ],
         compression_strength: "absent",
@@ -468,7 +468,7 @@ describe("formatChatResponse", () => {
         finish_reason: "stop",
         metering_balance: 1085,
         metering_cache_creation_tokens_n: 0,
-        metering_cache_read_tokens_n: 2818,
+        metering_cache_read_tokens_n: 0,
         metering_coins_cache_creation: 0,
         metering_coins_cache_read: 0,
         metering_coins_generated: 0.112,
@@ -785,7 +785,7 @@ describe("formatChatResponse", () => {
         finish_reason: "stop",
         metering_balance: 952433,
         metering_cache_creation_tokens_n: 9170,
-        metering_cache_read_tokens_n: 3,
+        metering_cache_read_tokens_n: 0,
         metering_coins_cache_creation: 34.3875,
         metering_coins_cache_read: 0,
         metering_coins_generated: 0.84,
@@ -1006,6 +1006,156 @@ describe("formatChatResponse", () => {
           completion_tokens: 41,
           prompt_tokens: 9359,
           total_tokens: 9400,
+        },
+      },
+    ]);
+  });
+
+  test("gemini", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "call tree\n",
+        checkpoints: [
+          {
+            workspace_folder: "/emergency_frog_situation",
+            commit_hash: "9592d97a746d392d180491bd5a44339d83f1c19c",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        choices: [
+          {
+            delta: {
+              content: "Okay, I will",
+              role: "assistant",
+            },
+            index: 0,
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+        id: "",
+        usage: {
+          completion_tokens: 4,
+          prompt_tokens: 3547,
+          total_tokens: 3577,
+        },
+      },
+      {
+        choices: [
+          {
+            delta: {
+              content: " call the `tree()` tool to show the project structure.",
+              role: "assistant",
+            },
+            index: 0,
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+        id: "",
+        usage: {
+          completion_tokens: 16,
+          prompt_tokens: 3547,
+          total_tokens: 3601,
+        },
+      },
+      {
+        choices: [
+          {
+            delta: {
+              role: "assistant",
+              tool_calls: [
+                {
+                  function: {
+                    arguments: "{}",
+                    name: "tree",
+                  },
+                  id: "call_247e2a7b080d44fe83a655fd18d17277",
+                  type: "function",
+                  index: 0,
+                },
+              ],
+            },
+            finish_reason: "tool_calls",
+            index: 0,
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+        usage: {
+          completion_tokens: 24,
+          prompt_tokens: 3547,
+          total_tokens: 3604,
+        },
+      },
+      {
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+      },
+    ];
+
+    const result = chunks.reduce<ChatMessages>(
+      (acc, cur) => formatChatResponse(acc, cur),
+      [],
+    );
+
+    expect(result).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "9592d97a746d392d180491bd5a44339d83f1c19c",
+            workspace_folder: "/emergency_frog_situation",
+          },
+        ],
+        compression_strength: "absent",
+        content: "call tree\n",
+        role: "user",
+      },
+      {
+        content:
+          "Okay, I will call the `tree()` tool to show the project structure.",
+        finish_reason: "stop",
+        metering_balance: undefined,
+        metering_cache_creation_tokens_n: undefined,
+        metering_cache_read_tokens_n: undefined,
+        metering_coins_cache_creation: undefined,
+        metering_coins_cache_read: undefined,
+        metering_coins_generated: undefined,
+        metering_coins_prompt: undefined,
+        metering_prompt_tokens_n: undefined,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: [
+          {
+            function: {
+              arguments: "{}",
+              name: "tree",
+            },
+            id: "call_247e2a7b080d44fe83a655fd18d17277",
+            index: 0,
+            type: "function",
+          },
+        ],
+        usage: {
+          completion_tokens: 24,
+          prompt_tokens: 3547,
+          total_tokens: 3604,
         },
       },
     ]);
