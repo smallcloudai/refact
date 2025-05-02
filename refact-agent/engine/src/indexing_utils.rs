@@ -44,7 +44,7 @@ pub async fn wait_for_indexing(
         }
 
         if waiting_ast || waiting_vecdb {
-            tokio::time::sleep(Duration::from_secs(1)).await;
+            tokio::time::sleep(Duration::from_millis(200)).await;
         }
     }
 }
