@@ -22,6 +22,7 @@ class ModelCapabilities(BaseModel):
 
 
 class ModelConfig(BaseModel):
+    extra_headers: Dict[str, str] = Field(default_factory=dict)
     model_id: str
     provider_id: str
     api_base: Optional[str]

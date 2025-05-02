@@ -214,6 +214,21 @@ function get_models()
 }
 
 function save_model_assigned() {
+    const extraHeaders = document.getElementById('model-headers').value;
+    let headersObj = {};
+    try {
+        if (extraHeaders.trim()) {
+            headersObj = JSON.parse(extraHeaders);
+        }
+    } catch (e) {
+        alert('Invalid JSON format for extra headers');
+        return;
+    }
+
+    // Add the extra headers to the model assign data
+    for (let index in models_data.model_assign) {
+        models_data.model_assign[index].extra_headers = headersObj;
+    }
     const data = {
         model_assign: {
             ...models_data.model_assign,
