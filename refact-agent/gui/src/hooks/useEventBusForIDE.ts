@@ -51,6 +51,10 @@ export const ideSetCodeCompletionModel = createAction<string>(
   "ide/setCodeCompletionModel",
 );
 
+export const ideSetLoginMessage = createAction<string>(
+  "ide/ideSetLoginMessage",
+);
+
 export const ideForceReloadFileByPath = createAction<string>(
   "ide/forceReloadFileByPath",
 );
@@ -214,6 +218,14 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setLoginMessage = useCallback(
+    (message: string) => {
+      const action = ideSetLoginMessage(message);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
   const [getIntegrationsPath] = pathApi.useLazyIntegrationsPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
@@ -282,5 +294,6 @@ export const useEventsBusForIDE = () => {
     setForceReloadFileByPath,
     sendToolCallToIde,
     setCodeCompletionModel,
+    setLoginMessage,
   };
 };

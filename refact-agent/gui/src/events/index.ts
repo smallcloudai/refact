@@ -77,10 +77,11 @@ export {
   ideToolCall,
   ideToolCallResponse,
   ideSetCodeCompletionModel,
+  ideSetLoginMessage,
 } from "../hooks/useEventBusForIDE";
 
 export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
-
+export { toPascalCase } from "../utils/toPascalCase";
 export const fim = {
   request,
   ready,
