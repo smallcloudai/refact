@@ -65,7 +65,7 @@ pub struct AstDB {
     pub ast_max_files: usize,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone)]
 pub struct AstStatus {
     #[serde(skip)]
     pub astate_notify: Arc<ANotify>,

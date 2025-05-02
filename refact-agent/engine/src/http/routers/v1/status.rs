@@ -7,7 +7,7 @@ use crate::ast::ast_structs::AstStatus;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize)]
 pub struct RagStatus {
     pub ast: Option<AstStatus>,
     ast_alive: String,
