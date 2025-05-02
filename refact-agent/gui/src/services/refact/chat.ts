@@ -119,14 +119,14 @@ export type DeterministicMessage = {
 };
 
 export type CompletionTokenDetails = {
-  accepted_prediction_tokens: number;
-  audio_tokens: number;
-  reasoning_tokens: number;
-  rejected_prediction_tokens: number;
+  accepted_prediction_tokens: number | null;
+  audio_tokens: number | null;
+  reasoning_tokens: number | null;
+  rejected_prediction_tokens: number | null;
 };
 
 export type PromptTokenDetails = {
-  audio_tokens: number;
+  audio_tokens: number | null;
   cached_tokens: number;
 };
 
@@ -134,8 +134,8 @@ export type Usage = {
   completion_tokens: number;
   prompt_tokens: number;
   total_tokens: number;
-  completion_tokens_details: CompletionTokenDetails | null;
-  prompt_tokens_details: PromptTokenDetails | null;
+  completion_tokens_details?: CompletionTokenDetails | null;
+  prompt_tokens_details?: PromptTokenDetails | null;
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };

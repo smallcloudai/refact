@@ -164,7 +164,7 @@ const DefaultHoverCard: React.FC<{
         />
       )}
       <TokenDisplay label="Completion tokens" value={outputTokens} />
-      {currentThreadUsage?.completion_tokens_details && (
+      {currentThreadUsage?.completion_tokens_details?.reasoning_tokens && (
         <TokenDisplay
           label="Reasoning tokens"
           value={currentThreadUsage.completion_tokens_details.reasoning_tokens}
