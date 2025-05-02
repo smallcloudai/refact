@@ -70,7 +70,7 @@ export const ChatLinkButton: React.FC<{
       variant="surface"
       title={
         disabled
-          ? "You have no coins left to use Refact's AI features. Please top up your ballance"
+          ? "You have no coins left to use Refact's AI features. Please top up your balance"
           : title
       }
       onClick={handleClick}
