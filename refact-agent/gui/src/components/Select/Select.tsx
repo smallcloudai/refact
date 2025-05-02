@@ -67,7 +67,9 @@ export const Select: React.FC<SelectProps> = ({
                       {option.children ?? option.textValue ?? option.value}
                     </div>
                   </HoverCard.Trigger>
-                  <HoverCard.Content>{option.tooltip}</HoverCard.Content>
+                  <HoverCard.Content size="1">
+                    {option.tooltip}
+                  </HoverCard.Content>
                 </HoverCard.Root>
               </Item>
             );
