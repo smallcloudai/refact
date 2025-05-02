@@ -171,8 +171,10 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
         if (!caps.data) return option;
         if (!caps.data.metadata) return option;
         if (!caps.data.metadata.pricing) return option;
-        if (!(option.value in caps.data.metadata.pricing)) return option;
-        const pricingForModel = caps.data.metadata.pricing[option.value];
+        if (!option.value.startsWith("refact/")) return option;
+        const key = option.value.replace("refact/", "");
+        if (!(key in caps.data.metadata.pricing)) return option;
+        const pricingForModel = caps.data.metadata.pricing[key];
         const tooltip = (
           <Flex direction="column" gap="4">
             <Text size="1">Cost per Million Tokens</Text>
