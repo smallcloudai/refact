@@ -169,11 +169,6 @@ export const RetryForm: React.FC<{
           size="1"
           type="submit"
           disabled={disableInput}
-          title={
-            disableInput
-              ? "You have reached your usage limit of 20 messages a day. You can use agent again tomorrow, or upgrade to PRO."
-              : ""
-          }
         >
           Submit
         </Button>
