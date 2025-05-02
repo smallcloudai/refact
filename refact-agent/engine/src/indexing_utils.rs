@@ -3,7 +3,6 @@ use tracing::info;
 use tokio::sync::RwLock as ARwLock;
 use std::sync::Arc;
 
-use crate::ast::ast_structs::AstStatus;
 use crate::global_context::GlobalContext;
 use crate::http::routers::v1::status::get_rag_status;
 
