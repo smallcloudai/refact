@@ -40,6 +40,7 @@ import {
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
 import { toPascalCase } from "../../utils/toPascalCase";
+import { Coin } from "../../images";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -178,7 +179,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
         const pricingForModel = caps.data.metadata.pricing[key];
         const tooltip = (
           <Flex direction="column" gap="4">
-            <Text size="1">Cost per Million Tokens</Text>
+            <Text size="1">Cost per Thousand Tokens</Text>
             <DataList.Root size="1" trim="both" className={styles.data_list}>
               {Object.entries(pricingForModel).map(([key, value]) => {
                 return (
@@ -187,7 +188,9 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
                       {toPascalCase(key)}
                     </DataList.Label>
                     <DataList.Value className={styles.data_list__value}>
-                      {value}
+                      <Flex justify="between" align="center" gap="2">
+                        {value / 1_000} <Coin width="12px" height="12px" />
+                      </Flex>
                     </DataList.Value>
                   </DataList.Item>
                 );
