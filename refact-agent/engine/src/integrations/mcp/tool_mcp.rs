@@ -10,6 +10,7 @@ use tokio::time::Duration;
 
 use crate::caps::resolve_chat_model;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::integrations::sessions::get_session_hashmap_key;
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
@@ -36,7 +37,7 @@ impl Tool for ToolMCP {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let session_key = format!("{}", self.config_path);
+        let session_key = get_session_hashmap_key("mcp", &self.config_path);
         let (gcx, current_model) = {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.current_model.clone())

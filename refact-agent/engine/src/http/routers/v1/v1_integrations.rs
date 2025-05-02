@@ -11,6 +11,7 @@ use axum::extract::Query;
 use rust_embed::RustEmbed;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
 use crate::integrations::mcp::session_mcp::SessionMCP;
 
@@ -202,7 +203,7 @@ pub async fn handle_v1_integrations_mcp_logs(
     let post = serde_json::from_slice::<IntegrationsMcpLogsRequest>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let session_key = post.config_path;
+    let session_key = get_session_hashmap_key("mcp", &post.config_path);
     let session = gcx.read().await.integration_sessions.get(&session_key).cloned()
         .ok_or(ScratchError::new(StatusCode::NOT_FOUND, format!("session {} not found", session_key)))?;
 
@@ -219,14 +220,14 @@ pub async fn handle_v1_integrations_mcp_logs(
 
     if let Some(stderr_path) = &stderr_file_path {
         if let Err(e) = crate::integrations::mcp::session_mcp::update_logs_from_stderr(
-            stderr_path, 
-            stderr_cursor, 
+            stderr_path,
+            stderr_cursor,
             logs_arc.clone()
         ).await {
             tracing::warn!("Failed to read stderr file: {}", e);
         }
     }
-    
+
     return Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")

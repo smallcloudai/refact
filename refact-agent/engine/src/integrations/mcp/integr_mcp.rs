@@ -16,6 +16,7 @@ use tracing::Level;
 
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+use crate::integrations::sessions::get_session_hashmap_key;
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
 use super::session_mcp::{SessionMCP, _add_log_entry, _session_kill_process};
 use super::tool_mcp::ToolMCP;
@@ -60,7 +61,7 @@ pub async fn _session_apply_settings(
     config_path: String,
     new_cfg: SettingsMCP,
 ) {
-    let session_key = format!("{}", config_path);
+    let session_key = get_session_hashmap_key("mcp", &config_path);
 
     let session_arc = {
         let mut gcx_write = gcx.write().await;
@@ -321,7 +322,7 @@ impl IntegrationTrait for IntegrationMCP {
     }
 
     async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-        let session_key = format!("{}", self.config_path);
+        let session_key = get_session_hashmap_key("mcp", &self.config_path);
 
         let gcx = match self.gcx_option.clone() {
             Some(gcx_weak) => match gcx_weak.upgrade() {
