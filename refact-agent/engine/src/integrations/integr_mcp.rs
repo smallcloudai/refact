@@ -25,7 +25,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
-use crate::integrations::sessions::IntegrationSession;
+use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::integrations::process_io_utils::read_file_with_cursor;
 
 const MCP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -185,7 +185,7 @@ async fn _session_apply_settings(
     config_path: String,
     new_cfg: SettingsMCP,
 ) {
-    let session_key = format!("{}", config_path);
+    let session_key = get_session_hashmap_key("mcp", &config_path);
 
     let session_arc = {
         let mut gcx_write = gcx.write().await;
@@ -197,6 +197,7 @@ async fn _session_apply_settings(
                 launched_cfg: new_cfg.clone(),
                 mcp_client: None,
                 mcp_tools: Vec::new(),
+                mcp_resources: None,
                 startup_task_handles: None,
                 logs: Arc::new(AMutex::new(Vec::new())),
                 stderr_file_path: None,
@@ -456,7 +457,7 @@ impl IntegrationTrait for IntegrationMCP {
     }
 
     async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-        let session_key = format!("{}", self.config_path);
+        let session_key = get_session_hashmap_key("mcp", &self.config_path);
 
         let gcx = match self.gcx_option.clone() {
             Some(gcx_weak) => match gcx_weak.upgrade() {
@@ -519,7 +520,7 @@ impl Tool for ToolMCP {
         tool_call_id: &String,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let session_key = format!("{}", self.config_path);
+        let session_key = get_session_hashmap_key("mcp", &self.config_path);
         let gcx = ccx.lock().await.global_context.clone();
         let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
         if session_option.is_none() {
