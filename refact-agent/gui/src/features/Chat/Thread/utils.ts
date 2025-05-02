@@ -232,6 +232,16 @@ export function formatChatResponse(
   }
 
   const currentUsage = response.usage;
+  const {
+    metering_balance,
+    metering_cache_creation_tokens_n,
+    metering_cache_read_tokens_n,
+    metering_prompt_tokens_n,
+    metering_coins_prompt,
+    metering_coins_generated,
+    metering_coins_cache_creation,
+    metering_coins_cache_read,
+  } = response;
 
   if (currentUsage) {
     const lastAssistantIndex = lastIndexOf(messages, isAssistantMessage);
@@ -258,6 +268,14 @@ export function formatChatResponse(
         ? {
             ...message,
             usage: usageToStore,
+            metering_balance,
+            metering_cache_creation_tokens_n,
+            metering_cache_read_tokens_n,
+            metering_prompt_tokens_n,
+            metering_coins_prompt,
+            metering_coins_generated,
+            metering_coins_cache_creation,
+            metering_coins_cache_read,
           }
         : message,
     );
@@ -283,6 +301,14 @@ export function formatChatResponse(
         thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
         usage: currentUsage,
+        metering_balance,
+        metering_cache_creation_tokens_n,
+        metering_cache_read_tokens_n,
+        metering_prompt_tokens_n,
+        metering_coins_prompt,
+        metering_coins_generated,
+        metering_coins_cache_creation,
+        metering_coins_cache_read,
       };
       return acc.concat([msg]);
     }
@@ -314,6 +340,25 @@ export function formatChatResponse(
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
+
+          metering_balance: lastMessage.metering_balance ?? metering_balance,
+          metering_cache_creation_tokens_n:
+            lastMessage.metering_cache_creation_tokens_n ??
+            metering_cache_creation_tokens_n,
+          metering_cache_read_tokens_n:
+            lastMessage.metering_cache_read_tokens_n ??
+            metering_prompt_tokens_n,
+          metering_prompt_tokens_n:
+            lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+          metering_coins_prompt:
+            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+          metering_coins_generated:
+            lastMessage.metering_coins_generated ?? metering_coins_generated,
+          metering_coins_cache_creation:
+            lastMessage.metering_coins_cache_creation ??
+            metering_coins_cache_creation,
+          metering_coins_cache_read:
+            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
         },
       ]);
     }
@@ -348,6 +393,24 @@ export function formatChatResponse(
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
+          metering_balance: lastMessage.metering_balance ?? metering_balance,
+          metering_cache_creation_tokens_n:
+            lastMessage.metering_cache_creation_tokens_n ??
+            metering_cache_creation_tokens_n,
+          metering_cache_read_tokens_n:
+            lastMessage.metering_cache_read_tokens_n ??
+            metering_prompt_tokens_n,
+          metering_prompt_tokens_n:
+            lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+          metering_coins_prompt:
+            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+          metering_coins_generated:
+            lastMessage.metering_coins_generated ?? metering_coins_generated,
+          metering_coins_cache_creation:
+            lastMessage.metering_coins_cache_creation ??
+            metering_coins_cache_creation,
+          metering_coins_cache_read:
+            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
         },
       ]);
     }
@@ -370,6 +433,25 @@ export function formatChatResponse(
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: lastMessage.usage ?? currentUsage,
+
+          metering_balance: lastMessage.metering_balance ?? metering_balance,
+          metering_cache_creation_tokens_n:
+            lastMessage.metering_cache_creation_tokens_n ??
+            metering_cache_creation_tokens_n,
+          metering_cache_read_tokens_n:
+            lastMessage.metering_cache_read_tokens_n ??
+            metering_prompt_tokens_n,
+          metering_prompt_tokens_n:
+            lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+          metering_coins_prompt:
+            lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+          metering_coins_generated:
+            lastMessage.metering_coins_generated ?? metering_coins_generated,
+          metering_coins_cache_creation:
+            lastMessage.metering_coins_cache_creation ??
+            metering_coins_cache_creation,
+          metering_coins_cache_read:
+            lastMessage.metering_coins_cache_read ?? metering_coins_cache_read,
         },
       ]);
     } else if (
@@ -384,6 +466,15 @@ export function formatChatResponse(
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: currentUsage,
+
+          metering_balance,
+          metering_cache_creation_tokens_n,
+          metering_cache_read_tokens_n,
+          metering_prompt_tokens_n,
+          metering_coins_prompt,
+          metering_coins_generated,
+          metering_coins_cache_creation,
+          metering_coins_cache_read,
         },
       ]);
     } else if (cur.delta.role === "assistant") {
@@ -405,6 +496,15 @@ export function formatChatResponse(
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: currentUsage,
+
+            metering_balance,
+            metering_cache_creation_tokens_n,
+            metering_cache_read_tokens_n,
+            metering_prompt_tokens_n,
+            metering_coins_prompt,
+            metering_coins_generated,
+            metering_coins_cache_creation,
+            metering_coins_cache_read,
           },
         ]);
       }
@@ -425,6 +525,25 @@ export function formatChatResponse(
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: lastMessage.usage ?? currentUsage,
+            metering_balance: lastMessage.metering_balance ?? metering_balance,
+            metering_cache_creation_tokens_n:
+              lastMessage.metering_cache_creation_tokens_n ??
+              metering_cache_creation_tokens_n,
+            metering_cache_read_tokens_n:
+              lastMessage.metering_cache_read_tokens_n ??
+              metering_prompt_tokens_n,
+            metering_prompt_tokens_n:
+              lastMessage.metering_prompt_tokens_n ?? metering_prompt_tokens_n,
+            metering_coins_prompt:
+              lastMessage.metering_coins_prompt ?? metering_coins_prompt,
+            metering_coins_generated:
+              lastMessage.metering_coins_generated ?? metering_coins_generated,
+            metering_coins_cache_creation:
+              lastMessage.metering_coins_cache_creation ??
+              metering_coins_cache_creation,
+            metering_coins_cache_read:
+              lastMessage.metering_coins_cache_read ??
+              metering_coins_cache_read,
           },
         ]);
       }

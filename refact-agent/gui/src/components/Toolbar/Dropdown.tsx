@@ -11,7 +11,7 @@ import {
   useLogout,
   useAppSelector,
   useAppDispatch,
-  useAgentUsage,
+  useStartPollingForUser,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
@@ -31,7 +31,8 @@ import {
 import { clearHistory } from "../../features/History/historySlice";
 import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
-//import { Coin } from "../../images";
+import { Coin } from "../../images";
+import { useCoinBallance } from "../../hooks/useCoinBalance";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -78,10 +79,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const user = useGetUser();
   const host = useAppSelector(selectHost);
   const dispatch = useAppDispatch();
-  const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
+  // TODO: check how much of this is still used.
+  // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
+  const coinBalance = useCoinBallance();
   const logout = useLogout();
   const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
-  const { startPollingForUser } = useAgentUsage();
+  const { startPollingForUser } = useStartPollingForUser();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
@@ -126,7 +129,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
         {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
-              {currentAgentUsage}/{maxAgentUsageAmount} requests
+              {/**TODO: there could be multiple source for this */}
+              {coinBalance} <Coin />
               <HoverCard.Root>
                 <HoverCard.Trigger>
                   <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
@@ -134,10 +138,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 <HoverCard.Content size="2" maxWidth="280px">
                   <Flex direction="column" gap="2">
                     <Text as="p" size="2">
-                      First number indicates your available requests today
-                    </Text>
-                    <Text as="p" size="2">
-                      Second number indicates maximum daily request limit
+                      Current balance
                     </Text>
                   </Flex>
                 </HoverCard.Content>

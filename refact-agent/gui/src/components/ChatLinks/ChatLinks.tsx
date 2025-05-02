@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@radix-ui/themes";
 import { type ChatLink } from "../../services/refact/links";
-import { useAgentUsage, useLinksFromLsp } from "../../hooks";
+import { useLinksFromLsp } from "../../hooks";
 import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 
@@ -19,9 +19,7 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 
 export const ChatLinks: React.FC = () => {
   const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
-  const { disableInput } = useAgentUsage();
   if (streaming) return null;
-  if (disableInput) return null;
 
   const submittingChatActions = ["post-chat", "follow-up", "summarize-project"];
 
@@ -60,9 +58,6 @@ export const ChatLinkButton: React.FC<{
 }> = ({ link, onClick, disabled = false }) => {
   const title = link.link_tooltip ?? maybeConcatActionAndGoToStrings(link);
   const handleClick = React.useCallback(() => onClick(link), [link, onClick]);
-  const { disableInput } = useAgentUsage();
-
-  const shouldLinkBeDisabled = disableInput && disabled;
   return (
     <Button
       // variant="classic"
@@ -73,13 +68,13 @@ export const ChatLinkButton: React.FC<{
 
       variant="surface"
       title={
-        shouldLinkBeDisabled
+        disabled
           ? "You have reached your usage limit for the day. You can use agent again tomorrow, or upgrade to PRO."
           : title
       }
       onClick={handleClick}
       className={styles.chat_link_button}
-      disabled={shouldLinkBeDisabled}
+      disabled={disabled}
     >
       <TruncateRight>{link.link_text}</TruncateRight>
     </Button>

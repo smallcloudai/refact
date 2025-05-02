@@ -13,7 +13,7 @@ export const MARS_ROVER_CHAT: ChatHistoryItem = {
     //   "system",
     //   "Use backquotes for code blocks. Pay close attention to indent when editing code blocks: indent must be exactly the same as in the original code block.",
     // ],
-    { role: "user", content: "mars rover kata" },
+    { role: "user", content: "mars rover kata." },
     {
       role: "context_file",
       content: [

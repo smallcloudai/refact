@@ -164,6 +164,7 @@
                 "context_format": "chat",
                 "rag_ratio": 0.5
             },
+            "experimental": true,
             "tokenizer": "hf://Xenova/gpt-4o",
             "similar_models": [
                 "gpt-4o-2024-05-13",
@@ -186,6 +187,7 @@
                 "context_format": "chat",
                 "rag_ratio": 0.5
             },
+            "experimental": true,
             "tokenizer": "hf://Xenova/claude-tokenizer",
             "similar_models": [
                 "claude-3-haiku",
@@ -240,6 +242,7 @@
             "supports_tools": true,
             "supports_multimodality": true,
             "supports_agent": false,
+            "experimental": true,
             "scratchpad": "PASSTHROUGH",
             "tokenizer": "hf://Xenova/gemma2-tokenizer",
             "similar_models": [
@@ -252,6 +255,7 @@
             "supports_tools": true,
             "supports_multimodality": true,
             "supports_agent": true,
+            "experimental": true,
             "scratchpad": "PASSTHROUGH",
             "tokenizer": "hf://Xenova/gemma2-tokenizer",
             "similar_models": [
@@ -263,6 +267,7 @@
             "n_ctx": 128000,
             "supports_tools": true,
             "supports_agent": true,
+            "experimental": true,
             "scratchpad": "REPLACE_PASSTHROUGH",
             "scratchpad_patch": {
                 "context_format": "chat",
@@ -276,6 +281,7 @@
         },
         "grok-vision-beta": {
             "n_ctx": 8192,
+            "experimental": true,
             "scratchpad": "REPLACE_PASSTHROUGH",
             "scratchpad_patch": {
                 "context_format": "chat",
@@ -285,6 +291,7 @@
         },
         "grok-2-vision-1212": {
             "n_ctx": 32000,
+            "experimental": true,
             "scratchpad": "REPLACE_PASSTHROUGH",
             "scratchpad_patch": {
                 "context_format": "chat",
@@ -297,6 +304,7 @@
         },
         "deepseek-chat": {
             "n_ctx": 64000,
+            "experimental": true,
             "scratchpad": "REPLACE_PASSTHROUGH",
             "scratchpad_patch": {
                 "context_format": "chat",
@@ -428,6 +436,21 @@
                 "openai/o3",
                 "o4-mini",
                 "openai/o4-mini"
+            ]
+        },      
+        "o4-mini": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_agent": true,
+            "supports_reasoning": "openai",
+            "supports_boost_reasoning": true,
+            "scratchpad": "PASSTHROUGH",
+            "tokenizer": "hf://Xenova/gpt-4o",
+            "similar_models": [
+                "openai/o4-mini",
+                "o3",
+                "openai/o3"
             ]
         },
         "gpt-4.5-preview": {

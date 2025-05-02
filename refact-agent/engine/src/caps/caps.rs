@@ -47,6 +47,8 @@ pub struct BaseModelRecord {
 
     #[serde(default = "default_true")]
     pub enabled: bool,
+    #[serde(default)]
+    pub experimental: bool,
     // Fields used for Config/UI management
     #[serde(skip_deserializing)]
     pub removable: bool,
@@ -197,6 +199,9 @@ pub struct CodeAssistantCaps {
 
     #[serde(default = "default_hf_tokenizer_template")]
     pub hf_tokenizer_template: String,  // template for HuggingFace tokenizer URLs
+
+    #[serde(default)]  // Need for metadata from cloud, e.g. pricing for models; used only in chat-js
+    pub metadata: serde_json::Value
 }
 
 fn default_telemetry_retrieve_my_own() -> String {
@@ -316,9 +321,9 @@ pub async fn load_caps(
     cmdline: crate::global_context::CommandLine,
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<Arc<CodeAssistantCaps>, String> {
-    let (config_dir, cmdline_api_key) = {
+    let (config_dir, cmdline_api_key, experimental) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.api_key.clone())
+        (gcx_locked.config_dir.clone(), gcx_locked.cmdline.api_key.clone(), gcx_locked.cmdline.experimental)
     };
 
     let (caps_value, caps_url) = load_caps_value_from_url(cmdline, gcx).await?;
@@ -338,13 +343,13 @@ pub async fn load_caps(
     caps.telemetry_basic_dest = relative_to_full_url(&caps_url, &caps.telemetry_basic_dest)?;
     caps.telemetry_basic_retrieve_my_own = relative_to_full_url(&caps_url, &caps.telemetry_basic_retrieve_my_own)?;
 
-    let (mut providers, error_log) = read_providers_d(server_providers, &config_dir).await;
+    let (mut providers, error_log) = read_providers_d(server_providers, &config_dir, experimental).await;
     providers.retain(|p| p.enabled);
     for e in error_log {
         tracing::error!("{e}");
     }
     for provider in &mut providers {
-        post_process_provider(provider, false);
+        post_process_provider(provider, false, experimental);
         provider.api_key = resolve_provider_api_key(&provider, &cmdline_api_key);
     }
     add_models_to_caps(&mut caps, providers);

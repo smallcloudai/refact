@@ -29,7 +29,6 @@ import { setInformation } from "../features/Errors/informationSlice";
 import { debugIntegrations, debugRefact } from "../debugConfig";
 import { telemetryApi } from "../services/refact/telemetry";
 import { isAbsolutePath } from "../utils";
-import { useAgentUsage } from "./useAgentUsage";
 
 export function useGetLinksFromLsp() {
   const dispatch = useAppDispatch();
@@ -40,7 +39,6 @@ export function useGetLinksFromLsp() {
   const chatId = useAppSelector(selectChatId);
   const maybeIntegration = useAppSelector(selectIntegration);
   const threadMode = useAppSelector(selectThreadMode);
-  const { shouldShow, disableInput } = useAgentUsage();
 
   // TODO: add the model
   const caps = useGetCapsQuery();
@@ -62,20 +60,10 @@ export function useGetLinksFromLsp() {
       messages.length > 0 && isUserMessage(messages[messages.length - 1]);
     if (!model) return true;
     if (!caps.data) return true;
-    if (shouldShow && disableInput) return true;
     return (
       isStreaming || isWaiting || unCalledTools || lastMessageIsUserMessage
     );
-  }, [
-    caps.data,
-    isStreaming,
-    isWaiting,
-    shouldShow,
-    disableInput,
-    messages,
-    model,
-    unCalledTools,
-  ]);
+  }, [caps.data, isStreaming, isWaiting, messages, model, unCalledTools]);
 
   const linksResult = linksApi.useGetLinksForChatQuery(
     {

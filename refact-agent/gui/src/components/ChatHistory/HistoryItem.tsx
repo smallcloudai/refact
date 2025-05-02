@@ -1,6 +1,5 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Card, Flex, Text, Box, Spinner } from "@radix-ui/themes";
-// import type { ChatHistoryItem } from "../../hooks/useChatHistory";
 import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../Buttons/Buttons";
 import { IconButton } from "@radix-ui/themes";
@@ -8,6 +7,8 @@ import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
 import { isUserMessage } from "../../services/refact";
 import { useAppSelector } from "../../hooks";
+import { calculateTotalCostOfMessages } from "../../utils/calculateTotalCostOfMessages";
+import { Coin } from "../../images";
 
 export const HistoryItem: React.FC<{
   historyItem: ChatHistoryItem;
@@ -19,6 +20,19 @@ export const HistoryItem: React.FC<{
   const dateCreated = new Date(historyItem.createdAt);
   const dateTimeString = dateCreated.toLocaleString();
   const cache = useAppSelector((app) => app.chat.cache);
+
+  const totalCost = useMemo(() => {
+    const totals = calculateTotalCostOfMessages(historyItem.messages);
+
+    if (totals === null) return null;
+
+    return (
+      totals.metering_coins_cache_creation +
+      totals.metering_coins_cache_read +
+      totals.metering_coins_generated +
+      totals.metering_coins_prompt
+    );
+  }, [historyItem.messages]);
 
   const isStreaming = historyItem.id in cache;
   return (
@@ -62,13 +76,25 @@ export const HistoryItem: React.FC<{
           </Flex>
 
           <Flex justify="between" mt="8px">
-            <Text
-              size="1"
-              style={{ display: "flex", gap: "4px", alignItems: "center" }}
-            >
-              <ChatBubbleIcon />{" "}
-              {historyItem.messages.filter(isUserMessage).length}
-            </Text>
+            <Flex gap="4">
+              <Text
+                size="1"
+                style={{ display: "flex", gap: "4px", alignItems: "center" }}
+              >
+                <ChatBubbleIcon />{" "}
+                {historyItem.messages.filter(isUserMessage).length}
+              </Text>
+              {totalCost ? (
+                <Text
+                  size="1"
+                  style={{ display: "flex", gap: "4px", alignItems: "center" }}
+                >
+                  <Coin width="15px" height="15px" /> {Math.round(totalCost)}
+                </Text>
+              ) : (
+                false
+              )}
+            </Flex>
 
             <Text size="1">{dateTimeString}</Text>
           </Flex>
