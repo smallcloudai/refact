@@ -13,7 +13,7 @@ use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::git::checkpoints::create_workspace_checkpoint;
 use crate::global_context::{GlobalContext, SharedGlobalContext};
-use crate::indexing_utils::wait_for_indexing;
+use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
 
 
@@ -113,7 +113,7 @@ async fn _chat(
     let inside_container = gcx.read().await.cmdline.inside_container;
 
     if chat_post.meta.chat_remote == inside_container {
-        wait_for_indexing(gcx.clone()).await;
+        wait_for_indexing_if_needed(gcx.clone()).await;
     }
 
     let mut messages = deserialize_messages_from_post(&chat_post.messages)?;
