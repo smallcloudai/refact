@@ -39,6 +39,7 @@ import {
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
+import { toPascalCase } from "../../utils/toPascalCase";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -171,17 +172,23 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
         if (!caps.data) return option;
         if (!caps.data.metadata) return option;
         if (!caps.data.metadata.pricing) return option;
-        if (!(option.value in caps.data.metadata.pricing)) return option;
-        const pricingForModel = caps.data.metadata.pricing[option.value];
+        if (!option.value.startsWith("refact/")) return option;
+        const key = option.value.replace("refact/", "");
+        if (!(key in caps.data.metadata.pricing)) return option;
+        const pricingForModel = caps.data.metadata.pricing[key];
         const tooltip = (
           <Flex direction="column" gap="4">
             <Text size="1">Cost per Million Tokens</Text>
-            <DataList.Root size="1">
+            <DataList.Root size="1" trim="both" className={styles.data_list}>
               {Object.entries(pricingForModel).map(([key, value]) => {
                 return (
-                  <DataList.Item key={key}>
-                    <DataList.Label>{key}</DataList.Label>
-                    <DataList.Value>{value}</DataList.Value>
+                  <DataList.Item key={key} align="stretch">
+                    <DataList.Label minWidth="88px">
+                      {toPascalCase(key)}
+                    </DataList.Label>
+                    <DataList.Value className={styles.data_list__value}>
+                      {value}
+                    </DataList.Value>
                   </DataList.Item>
                 );
               })}

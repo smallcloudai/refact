@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React, { ReactNode, useMemo } from "react";
 import { HoverCard, Select as RadixSelect } from "@radix-ui/themes";
 import styles from "./select.module.css";
 import classnames from "classnames";
@@ -8,6 +8,7 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   options: (string | ItemProps)[];
   title?: string;
   contentPosition?: "item-aligned" | "popper";
+  value?: string;
 };
 
 export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
@@ -46,9 +47,29 @@ export const Select: React.FC<SelectProps> = ({
   contentPosition,
   ...props
 }) => {
+  const maybeSelectedOption = useMemo(() => {
+    if (typeof props.value === "undefined") return null;
+    const selectOption = options.find(
+      (option) => typeof option !== "string" && option.value === props.value,
+    );
+    if (!selectOption) return null;
+    if (typeof selectOption === "string") return null;
+    return selectOption;
+  }, [props.value, options]);
   return (
     <Root {...props} onValueChange={onChange} size="1">
-      <Trigger title={title} />
+      {maybeSelectedOption && maybeSelectedOption.tooltip ? (
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <Trigger title={title} />
+          </HoverCard.Trigger>
+          <HoverCard.Content size="1">
+            {maybeSelectedOption.tooltip}
+          </HoverCard.Content>
+        </HoverCard.Root>
+      ) : (
+        <Trigger title={title} />
+      )}
       <Content position={contentPosition ? contentPosition : "popper"}>
         {options.map((option, index) => {
           if (typeof option === "string") {
@@ -67,7 +88,9 @@ export const Select: React.FC<SelectProps> = ({
                       {option.children ?? option.textValue ?? option.value}
                     </div>
                   </HoverCard.Trigger>
-                  <HoverCard.Content>{option.tooltip}</HoverCard.Content>
+                  <HoverCard.Content size="1">
+                    {option.tooltip}
+                  </HoverCard.Content>
                 </HoverCard.Root>
               </Item>
             );
