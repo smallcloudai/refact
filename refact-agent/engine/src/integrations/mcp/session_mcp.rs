@@ -5,7 +5,7 @@ use std::future::Future;
 use tokio::sync::Mutex as AMutex;
 use tokio::task::{AbortHandle, JoinHandle};
 use rmcp::{RoleClient, service::RunningService};
-use rmcp::model::Tool as McpTool;
+use rmcp::model::{Annotated, RawResource, Tool as McpTool};
 use tokio::time::{timeout, Duration};
 
 use crate::integrations::sessions::IntegrationSession;
@@ -18,6 +18,7 @@ pub struct SessionMCP {
     pub launched_cfg: SettingsMCP,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
     pub mcp_client: Option<Arc<AMutex<Option<RunningService<RoleClient, ()>>>>>,
     pub mcp_tools: Vec<McpTool>,
+    pub mcp_resources: Option<Vec<Annotated<RawResource>>>,
     pub startup_task_handles: Option<(Arc<AMutex<Option<JoinHandle<()>>>>, AbortHandle)>,
     pub logs: Arc<AMutex<Vec<String>>>,          // Store log messages
     pub stderr_file_path: Option<PathBuf>,       // Path to the temporary file for stderr

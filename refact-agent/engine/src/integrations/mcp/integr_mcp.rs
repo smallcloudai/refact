@@ -12,6 +12,7 @@ use rmcp::transport::SseTransport;
 use rmcp::serve_client;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
+use tracing::Level;
 
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
@@ -71,6 +72,7 @@ pub async fn _session_apply_settings(
                 launched_cfg: new_cfg.clone(),
                 mcp_client: None,
                 mcp_tools: Vec::new(),
+                mcp_resources: None,
                 startup_task_handles: None,
                 logs: Arc::new(AMutex::new(Vec::new())),
                 stderr_file_path: None,
@@ -114,29 +116,29 @@ pub async fn _session_apply_settings(
                 )
             };
 
-            let log = async |level: tracing::Level, msg: String| {
+            let log = async |level: Level, msg: String| {
                 match level {
-                    tracing::Level::ERROR => tracing::error!("{msg} for {debug_name}"),
-                    tracing::Level::WARN => tracing::warn!("{msg} for {debug_name}"),
+                    Level::ERROR => tracing::error!("{msg} for {debug_name}"),
+                    Level::WARN => tracing::warn!("{msg} for {debug_name}"),
                     _ => tracing::info!("{msg} for {debug_name}"),
                 }
                 _add_log_entry(logs.clone(), msg).await;
             };
 
-            log(tracing::Level::INFO, "Applying new settings".to_string()).await;
+            log(Level::INFO, "Applying new settings".to_string()).await;
 
             if let Some(mcp_client) = mcp_client {
                 _session_kill_process(&debug_name, mcp_client, logs.clone()).await;
             }
             if let Some(stderr_file) = &stderr_file {
                 if let Err(e) = tokio::fs::remove_file(stderr_file).await {
-                    log(tracing::Level::ERROR, format!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e)).await;
+                    log(Level::ERROR, format!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e)).await;
                 }
             }
 
             let client = match (new_cfg_clone.mcp_url.trim(), new_cfg_clone.mcp_command.trim()) {
                 ("", "") => {
-                    log(tracing::Level::ERROR, "Url and command are both empty, set up either url for sse protocol, or command for stdio protocol".to_string()).await;
+                    log(Level::ERROR, "Url and command are both empty, set up either url for sse protocol, or command for stdio protocol".to_string()).await;
                     return;
                 },
                 (url, "") => {
@@ -148,38 +150,38 @@ pub async fn _session_apply_settings(
                             (Ok(name), Ok(value)) => {
                                 header_map.insert(name, value);
                             }
-                            _ => log(tracing::Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
+                            _ => log(Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
                         }
                     }
                     let reqwest_client = match reqwest::Client::builder().default_headers(header_map).build() {
                         Ok(reqwest_client) => reqwest_client,
                         Err(e) => {
-                            log(tracing::Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
                             return;
                         }
                     };
                     let sse_client = match ReqwestSseClient::new_with_client(url, reqwest_client).await {
                         Ok(sse_client) => sse_client,
                         Err(e) => {
-                            log(tracing::Level::ERROR, format!("Failed to init SSE client: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to init SSE client: {}", e)).await;
                             return;
                         },
                     };
                     let transport = match SseTransport::start_with_client(sse_client).await {
                         Ok(t) => t,
                         Err(e) => {
-                            log(tracing::Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
                             return;
                         }
                     };
                     match timeout(Duration::from_secs(new_cfg_clone.init_timeout), serve_client((), transport)).await {
                         Ok(Ok(client)) => client,
                         Ok(Err(e)) => {
-                            log(tracing::Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
                             return;
                         },
                         Err(_) => {
-                            log(tracing::Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.init_timeout)).await;
+                            log(Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.init_timeout)).await;
                             return;
                         }
                     }
@@ -188,13 +190,13 @@ pub async fn _session_apply_settings(
                     let parsed_args = match shell_words::split(&command) {
                         Ok(args) => {
                             if args.is_empty() {
-                                log(tracing::Level::ERROR, "Empty command".to_string()).await;
+                                log(Level::ERROR, "Empty command".to_string()).await;
                                 return;
                             }
                             args
                         }
                         Err(e) => {
-                            log(tracing::Level::ERROR, format!("Failed to parse command: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to parse command: {}", e)).await;
                             return;
                         }
                     };
@@ -223,42 +225,56 @@ pub async fn _session_apply_settings(
                     let transport = match rmcp::transport::TokioChildProcess::new(command) {
                         Ok(t) => t,
                         Err(e) => {
-                            log(tracing::Level::ERROR, format!("Failed to init Tokio child process: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to init Tokio child process: {}", e)).await;
                             return;
                         }
                     };
                     match timeout(Duration::from_secs(new_cfg_clone.init_timeout), serve_client((), transport)).await {
                         Ok(Ok(client)) => client,
                         Ok(Err(e)) => {
-                            log(tracing::Level::ERROR, format!("Failed to init stdio server: {}", e)).await;
+                            log(Level::ERROR, format!("Failed to init stdio server: {}", e)).await;
                             return;
                         },
                         Err(_) => {
-                            log(tracing::Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.init_timeout)).await;
+                            log(Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.init_timeout)).await;
                             return;
                         }
                     }
                 },
                 (_url, _command) => {
-                    log(tracing::Level::ERROR, "Url and command cannot be specified at the same time, set up either url for sse protocol, or command for stdio protocol".to_string()).await;
+                    log(Level::ERROR, "Url and command cannot be specified at the same time, set up either url for sse protocol, or command for stdio protocol".to_string()).await;
                     return;
                 },
             };
 
-            log(tracing::Level::INFO, "Listing tools".to_string()).await;
+            log(Level::INFO, "Listing tools".to_string()).await;
 
             let tools = match timeout(Duration::from_secs(new_cfg_clone.request_timeout), client.list_all_tools()).await {
                 Ok(Ok(result)) => result,
                 Ok(Err(tools_error)) => {
-                    log(tracing::Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
-                    return;
+                    log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
+                    Vec::new()
                 },
                 Err(_) => {
-                    log(tracing::Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.request_timeout)).await;
-                    return;
+                    log(Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.request_timeout)).await;
+                    Vec::new()
                 }
             };
             let tools_len = tools.len();
+
+            let resources = match timeout(Duration::from_secs(new_cfg_clone.request_timeout), client.list_all_resources()).await {
+                Ok(Ok(r)) => Some(r),
+                Ok(Err(e)) => {
+                    log(Level::ERROR, format!("Failed to list resources: {:?}", e)).await;
+                    None
+                },
+                Err(_) => {
+                    log(Level::ERROR, format!("Listing resources timed out after {} seconds", new_cfg_clone.request_timeout)).await;
+                    None
+                }
+            };
+
+            if tools.is_empty() && resources.is_none() { return; }
 
             {
                 let mut session_locked = session_arc_clone.lock().await;
@@ -266,11 +282,12 @@ pub async fn _session_apply_settings(
 
                 session_downcasted.mcp_client = Some(Arc::new(AMutex::new(Some(client))));
                 session_downcasted.mcp_tools = tools;
+                session_downcasted.mcp_resources = resources;
 
                 session_downcasted.mcp_tools.len()
             };
 
-            log(tracing::Level::INFO, format!("MCP session setup complete with {tools_len} tools")).await;
+            log(Level::INFO, format!("MCP session setup complete with {tools_len} tools")).await;
         });
 
         let startup_task_abort_handle = startup_task_join_handle.abort_handle();
