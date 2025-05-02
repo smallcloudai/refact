@@ -6,8 +6,7 @@ use std::sync::Arc;
 use crate::global_context::GlobalContext;
 use crate::http::routers::v1::status::get_rag_status;
 
-/// Waits for both AST and VecDB indexing to complete before proceeding.
-/// This is useful for operations that require up-to-date indexes.
+/// Waits for both AST and VecDB indexing to complete based on --wait-ast and --wait-vecdb.
 pub async fn wait_for_indexing(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
