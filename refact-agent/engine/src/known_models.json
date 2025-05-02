@@ -198,6 +198,7 @@
                 "claude-3-5-sonnet-20241022",
                 "claude-3-7-sonnet",
                 "claude-3-7-sonnet-20250219",
+                "claude-3-7-sonnet-token-efficient-tools",
                 "anthropic/claude-3-sonnet",
                 "anthropic/claude-3-haiku",
                 "anthropic/claude-3-5-haiku",
