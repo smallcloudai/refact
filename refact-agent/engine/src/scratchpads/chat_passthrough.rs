@@ -233,8 +233,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             limited_msgs
         };
 
-        let model_id = model_record_mb.map(|m| m.base.id.clone()).unwrap_or_default();
-        let converted_messages = convert_messages_to_openai_format(limited_adapted_msgs, &style, &model_id);
+        let converted_messages = convert_messages_to_openai_format(limited_adapted_msgs, &style);
         big_json["messages"] = json!(converted_messages);
         big_json["compression_strength"] = json!(compression_strength);
 

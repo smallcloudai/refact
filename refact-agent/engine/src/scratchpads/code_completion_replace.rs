@@ -905,7 +905,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         let use_rag = self.t.rag_ratio > 0.0 && self.post.use_ast && self.ast_service.is_some();
         sampling_parameters_to_patch.max_new_tokens = MAX_NEW_TOKENS;
         sampling_parameters_to_patch.temperature = if !self.post.no_cache { Some(TEMPERATURE_INITIAL) } else { Some(TEMPERATURE_NOCACHE) };
-        sampling_parameters_to_patch.stop = vec![]; // avoid model cutting completion too early 
+        sampling_parameters_to_patch.stop = vec![]; // avoid model cutting completion too early
         let cpath = crate::files_correction::canonical_path(&self.post.inputs.cursor.file);
         let source = self
             .post
@@ -1011,9 +1011,8 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             ..Default::default()
         });
 
-        let model = resolve_completion_model(caps.clone(), &self.post.model, true)?;
         let json_messages = &serde_json::to_string(&json!({
-            "messages":  messages.iter().map(|x| { x.into_value(&None, &model.base.id) }).collect::<Vec<_>>(),
+            "messages":  messages.iter().map(|x| { x.into_value(&None) }).collect::<Vec<_>>(),
         }))
         .unwrap();
         let prompt = format!("PASSTHROUGH {json_messages}").to_string();

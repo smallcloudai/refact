@@ -64,7 +64,7 @@ pub async fn handle_v1_subchat(
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let new_messages = new_messages.into_iter()
-        .map(|msgs|msgs.iter().map(|msg|msg.into_value(&None, &model.base.id)).collect::<Vec<_>>())
+        .map(|msgs|msgs.iter().map(|msg|msg.into_value(&None)).collect::<Vec<_>>())
        .collect::<Vec<Vec<_>>>();
     let resp_serialised = serde_json::to_string_pretty(&new_messages).unwrap();
     Ok(
@@ -132,7 +132,7 @@ pub async fn handle_v1_subchat_single(
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e)))?;
 
     let new_messages = new_messages.into_iter()
-        .map(|msgs|msgs.iter().map(|msg|msg.into_value(&None, &model.base.id)).collect::<Vec<_>>())
+        .map(|msgs|msgs.iter().map(|msg|msg.into_value(&None)).collect::<Vec<_>>())
         .collect::<Vec<Vec<_>>>();
     let resp_serialised = serde_json::to_string_pretty(&new_messages).unwrap();
     Ok(
