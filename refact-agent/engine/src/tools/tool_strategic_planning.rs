@@ -63,6 +63,11 @@ Also use those extra rules:
     Write a failing test or docstring example first, reference it in the patch, and leave inline comments explaining any non-obvious branch."#;
 
 
+static GUARDRAILS_PROMPT: &str = r#"- Do not create documents, README.md, or other files which are non-related to fixing the problem. 
+- Convert those patches into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches!
+- Do not modify existing tests.
+- Create new test files only using `create_textdoc()`."#;
+
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
     subchat_params: &SubchatParameters,
@@ -281,11 +286,12 @@ impl Tool for ToolStrategicPlanning {
         ).await?;
 
         let final_message = format!(
-            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}",
+            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}\n\n{}",
             root_cause_reply.content.content_text_only(),
             first_reply.content.content_text_only(),
             critique_reply.content.content_text_only(),
-            improved_reply.content.content_text_only()
+            improved_reply.content.content_text_only(),
+            GUARDRAILS_PROMPT.to_string()
         );
         tracing::info!("strategic planning response (combined):\n{}", final_message);
         let mut results = vec![];

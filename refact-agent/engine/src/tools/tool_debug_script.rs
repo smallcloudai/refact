@@ -116,31 +116,30 @@ Find—and prove—the root cause of the error in the supplied Python script.
      * Key `pdb` commands and outputs that reveal the bug  
      * The definitive root cause (what, where, why)  
      * Evidence: variable dumps, stack traces, erroneous logic, etc.  
-     * Suggested fix or next steps
 
 ### Style Guide  
 - **Explain your reasoning** at every step; don’t just show commands.  
 - Investigate *all* anomalies before moving on.  
-- You can update the script and run `pdb` again if necesary.
+- You can update the script and run `pdb` again if necessary.
 - Keep logs clean—include only `pdb` excerpts that prove your point.  
 - Write so another developer can reproduce your session and reach the same conclusion."###;
 
 const DEBUG_SUMMARY_PROMPT: &str = r###"**Task**  
-You will receive a raw debugging transcript (console output, stack traces, code snippets, notes). Create a concise, developer-friendly report with the sections below.
+You will receive a raw debugging transcript (console output, stack traces, code snippets, notes). Create a concise and comprehensive report with the sections below.
 
 ### 1 – Problem Overview  
 - **Issue summary** – one sentence describing the observed bug or unexpected behaviour.  
 - **Expected behaviour** – what the script/module should have done.
 
-### 2 – Files & Symbols Touched  
-| File | Key symbols (functions / classes / vars) | Purpose / responsibility |
+### 2 – Project's Files & Symbols observed in the debugging process   
+| File | Key symbols (functions / classes / vars)  | Purpose / responsibility |
 |------|-------------------------------------------|--------------------------|
-| …    | …                                        | …                        |
+| …    | …                                         | …                        |
 
 List every source file that appears in the transcript. Under “Key symbols” include notable functions, classes, globals, CLI commands, or config entries referenced.
 
 ### 3 – Debugging Timeline  
-Provide a step-by-step narrative of the investigation:  
+Provide a comprehensive step-by-step narrative of the investigation:  
 1. Command or action executed  
 2. Where execution paused, failed, or produced output  
 3. Crucial variable values or state changes  
@@ -149,10 +148,8 @@ Provide a step-by-step narrative of the investigation:
 Highlight pivotal moments (first reliable reproduction, root-cause identification, fix verification).
 
 ### 4 – Lessons & Recommendations  
-- **Effective techniques** – approaches that accelerated diagnosis (e.g., selective logging, binary search over commits).  
 - **Pitfalls / anti-patterns** – missteps or code smells uncovered.  
-- **Codebase insights** – architecture quirks, brittle areas, missing tests.  
-- **Next actions** – concrete suggestions (tests to add, refactors, docs)."###;
+- **Codebase insights** – architecture quirks, brittle areas, missing tests."###;
 
 
 pub struct ToolDebugScript;
