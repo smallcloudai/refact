@@ -27,58 +27,51 @@ Refact.ai uses a usage-based pricing system with coins. This page explains how c
       <th>Model</th>
       <th>Input Tokens</th>
       <th>Output Tokens</th>
-      <th>Cache Write</th>
       <th>Cache Read</th>
-      <th>Think Tokens</th>
+      <th>Cache Write</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>GPT-4o</td>
-      <td data-coins="5000" data-dollars="5">$5.00</td>
-      <td data-coins="15000" data-dollars="15">$15.00</td>
-      <td>-</td>
-      <td>-</td>
+      <td data-coins="2500" data-dollars="2.50">$2.50</td>
+      <td data-coins="10000" data-dollars="10.00">$10.00</td>
+      <td data-coins="1250" data-dollars="1.25">$1.25</td>
       <td>-</td>
     </tr>
     <tr>
       <td>GPT-4o-mini</td>
-      <td data-coins="1000" data-dollars="1">$1.00</td>
-      <td data-coins="3000" data-dollars="3">$3.00</td>
-      <td>-</td>
-      <td>-</td>
+      <td data-coins="150" data-dollars="0.15">$0.15</td>
+      <td data-coins="600" data-dollars="0.60">$0.60</td>
+      <td data-coins="75" data-dollars="0.075">$0.075</td>
       <td>-</td>
     </tr>
     <tr>
       <td>GPT-4.1</td>
-      <td data-coins="10000" data-dollars="10">$10.00</td>
-      <td data-coins="30000" data-dollars="30">$30.00</td>
-      <td>-</td>
-      <td>-</td>
+      <td data-coins="2000" data-dollars="2.00">$2.00</td>
+      <td data-coins="8000" data-dollars="8.00">$8.00</td>
+      <td data-coins="500" data-dollars="0.50">$0.50</td>
       <td>-</td>
     </tr>
     <tr>
       <td>Claude 3.7 Sonnet</td>
-      <td data-coins="3000" data-dollars="3">$3.00</td>
-      <td data-coins="15000" data-dollars="15">$15.00</td>
-      <td data-coins="3750" data-dollars="3.75">$3.75</td>
+      <td data-coins="3000" data-dollars="3.00">$3.00</td>
+      <td data-coins="15000" data-dollars="15.00">$15.00</td>
       <td data-coins="300" data-dollars="0.30">$0.30</td>
-      <td>Yes*</td>
+      <td data-coins="3750" data-dollars="3.75">$3.75</td>
     </tr>
     <tr>
       <td>Claude 3.5 Sonnet</td>
-      <td data-coins="3000" data-dollars="3">$3.00</td>
-      <td data-coins="15000" data-dollars="15">$15.00</td>
-      <td data-coins="3750" data-dollars="3.75">$3.75</td>
+      <td data-coins="3000" data-dollars="3.00">$3.00</td>
+      <td data-coins="15000" data-dollars="15.00">$15.00</td>
       <td data-coins="300" data-dollars="0.30">$0.30</td>
-      <td>-</td>
+      <td data-coins="3750" data-dollars="3.75">$3.75</td>
     </tr>
     <tr>
       <td>o3-mini</td>
-      <td data-coins="500" data-dollars="0.50">$0.50</td>
-      <td data-coins="1500" data-dollars="1.50">$1.50</td>
-      <td>-</td>
-      <td>-</td>
+      <td data-coins="1100" data-dollars="1.10">$1.10</td>
+      <td data-coins="4400" data-dollars="4.40">$4.40</td>
+      <td data-coins="550" data-dollars="0.55">$0.55</td>
       <td>-</td>
     </tr>
   </tbody>
@@ -103,9 +96,7 @@ showCoinsBtn.onclick = () => setTable('coins');
 showDollarsBtn.onclick = () => setTable('dollars');
 </script>
 
-*“Think tokens” apply to Claude 3.7 Sonnet for advanced reasoning; these are billed at the output token rate when enabled.*
-
-> **Note:** 1,000 coins = $1. For example, generating 10,000 output tokens with GPT-4o would cost 15,000 coins (or $15).
+> **Note:** 1,000 coins = $1. For example, generating 10,000 output tokens with GPT-4o would cost 10,000 coins (or $10).
 
 > **Note:** 1,000 coins = $1. For example, generating 10,000 output tokens with GPT-4o would cost 150 coins ($0.15).
 
@@ -136,4 +127,3 @@ If you prefer to use your own API key (for OpenAI, Anthropic, or local models), 
 **No commission:** For now, Refact.ai does not take any commission or markup on API usage. You pay only for the actual API cost of the model you use.
 
 For more information on how to use Bring Your Own Key (BYOK), see the [BYOK documentation](https://github.com/smallcloudai/refact/blob/main/docs/byok.md) in the repository.
-
