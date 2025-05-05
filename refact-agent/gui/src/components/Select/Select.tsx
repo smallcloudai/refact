@@ -59,8 +59,8 @@ export const Select: React.FC<SelectProps> = ({
   }, [props.value, options]);
   return (
     <Root {...props} onValueChange={onChange} size="1">
-      {props.disabled && maybeSelectedOption && maybeSelectedOption.tooltip ? (
-        <HoverCard.Root>
+      {maybeSelectedOption && maybeSelectedOption.tooltip ? (
+        <HoverCard.Root openDelay={1000}>
           <HoverCard.Trigger>
             <Trigger />
           </HoverCard.Trigger>
