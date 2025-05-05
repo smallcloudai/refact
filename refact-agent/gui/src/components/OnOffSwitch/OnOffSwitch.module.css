@@ -1,0 +1,12 @@
+.switch {
+  cursor: pointer;
+}
+
+.disabled {
+  cursor: not-allowed;
+}
+
+.unavailable {
+  cursor: not-allowed;
+  opacity: 0.35;
+}

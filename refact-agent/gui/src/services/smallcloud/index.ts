@@ -8,8 +8,6 @@ export type User = {
   inference: string;
   metering_balance: number;
   questionnaire: false | Record<string, string>;
-  refact_agent_max_request_num: number;
-  refact_agent_request_available: null | number; // null for PRO or ROBOT
 };
 
 function isUser(json: unknown): json is User {
@@ -24,11 +22,8 @@ function isUser(json: unknown): json is User {
     typeof json.inference_url === "string" &&
     "inference" in json &&
     typeof json.inference === "string" &&
-    "refact_agent_max_request_num" in json &&
-    typeof json.refact_agent_max_request_num === "number" &&
-    "refact_agent_request_available" in json &&
-    (json.refact_agent_request_available === null ||
-      typeof json.refact_agent_max_request_num === "number")
+    "metering_balance" in json &&
+    typeof json.metering_balance === "number"
   );
 }
 
@@ -41,9 +36,26 @@ export type GoodPollingResponse = User & {
   "longthink-functions-today-v2": Record<string, LongThinkFunction>;
 };
 
+export type DetailedUserResponse = User & {
+  tooltip_message: string;
+  login_message: string;
+};
+
 export function isGoodResponse(json: unknown): json is GoodPollingResponse {
   if (!isUser(json)) return false;
   return "secret_key" in json && typeof json.secret_key === "string";
+}
+
+export function isUserWithLoginMessage(
+  json: unknown,
+): json is DetailedUserResponse {
+  if (!isUser(json)) return false;
+  return (
+    "tooltip_message" in json &&
+    typeof json.tooltip_message === "string" &&
+    "login_message" in json &&
+    typeof json.login_message === "string"
+  );
 }
 
 type BadResponse = {
@@ -51,7 +63,7 @@ type BadResponse = {
   retcode: "FAILED";
 };
 
-export type StreamedLoginResponse = GoodPollingResponse | BadResponse;
+export type StreamedLoginResponse = DetailedUserResponse | BadResponse;
 
 export type LongThinkFunction = {
   label: string;

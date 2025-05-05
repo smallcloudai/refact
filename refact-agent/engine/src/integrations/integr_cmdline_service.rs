@@ -17,7 +17,7 @@ use crate::integrations::process_io_utils::{blocking_read_until_token_or_timeout
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::integr_cmdline::*;
-use crate::integrations::setting_up_integrations::YamlError;
+use crate::custom_error::YamlError;
 
 
 const REALLY_HORRIBLE_ROUNDTRIP: u64 = 3000;   // 3000 should be a really bad ping via internet, just in rare case it's a remote port

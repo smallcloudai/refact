@@ -1,7 +1,7 @@
-import { FC, MouseEventHandler } from "react";
+import type { FC, MouseEventHandler } from "react";
 import classNames from "classnames";
 
-import { Badge, Card, Flex, Text } from "@radix-ui/themes";
+import { Card, Flex, Text } from "@radix-ui/themes";
 import { useAppSelector } from "../../../hooks";
 import { useUpdateIntegration } from "./useUpdateIntegration";
 
@@ -15,6 +15,7 @@ import { formatIntegrationIconPath } from "../../../utils/formatIntegrationIconP
 import { getIntegrationInfo } from "../../../utils/getIntegrationInfo";
 
 import styles from "./IntegrationCard.module.css";
+import { OnOffSwitch } from "../../OnOffSwitch/OnOffSwitch";
 
 type IntegrationCardProps = {
   integration:
@@ -54,11 +55,6 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
     void updateIntegrationAvailability();
   };
 
-  const switches = [
-    { label: "On", leftRadius: true },
-    { label: "Off", rightRadius: true },
-  ];
-
   return (
     <Card
       className={classNames(styles.integrationCard, {
@@ -94,42 +90,10 @@ export const IntegrationCard: FC<IntegrationCardProps> = ({
             {displayName}
           </Text>
           {!isNotConfigured && (
-            <Flex
-              className={classNames(styles.availabilitySwitch, {
-                [styles.disabledAvailabilitySwitch]: isUpdatingAvailability,
-              })}
-              onClick={handleAvailabilityClick}
-            >
-              {switches.map(({ label, leftRadius }) => {
-                const isOn = label === "On";
-                const isActive =
-                  isOn === integrationAvailability.on_your_laptop;
-
-                return (
-                  <Badge
-                    key={label}
-                    color={
-                      isActive && !isUpdatingAvailability ? "jade" : "gray"
-                    }
-                    variant="soft"
-                    radius="medium"
-                    style={{
-                      ...(leftRadius
-                        ? {
-                            borderTopRightRadius: 0,
-                            borderBottomRightRadius: 0,
-                          }
-                        : {
-                            borderTopLeftRadius: 0,
-                            borderBottomLeftRadius: 0,
-                          }),
-                    }}
-                  >
-                    {label}
-                  </Badge>
-                );
-              })}
-            </Flex>
+            <OnOffSwitch
+              isEnabled={integrationAvailability.on_your_laptop}
+              handleClick={handleAvailabilityClick}
+            />
           )}
         </Flex>
       </Flex>

@@ -26,6 +26,7 @@ mod nicer_logs;
 mod caps;
 mod telemetry;
 mod global_context;
+mod indexing_utils;
 mod background_tasks;
 mod yaml_configs;
 mod json_utils;
@@ -48,8 +49,7 @@ mod at_commands;
 mod tools;
 mod postprocessing;
 mod completion_cache;
-mod cached_tokenizers;
-mod known_models;
+mod tokens;
 mod scratchpad_abstract;
 mod scratchpads;
 
@@ -152,12 +152,7 @@ async fn main() {
         let mut error_log = Vec::new();
         let cust = load_customization(gcx.clone(), false, &mut error_log).await;
         for e in error_log.iter() {
-            eprintln!(
-                "{}:{} {:?}",
-                crate::nicer_logs::last_n_chars(&e.integr_config_path, 30),
-                e.error_line,
-                e.error_msg,
-            );
+            eprintln!("{e}");
         }
         println!("{}", serde_json::to_string_pretty(&cust).unwrap());
         std::process::exit(0);

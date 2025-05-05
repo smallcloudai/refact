@@ -28,13 +28,10 @@ RUN git clone https://github.com/smallcloudai/linguist.git /tmp/linguist \
     && rake build_gem
 ENV PATH="${PATH}:/tmp/linguist/bin"
 
-RUN pip install --no-cache-dir torch==2.5.0
-RUN pip install --no-cache-dir xformers==v0.0.28.post2
+RUN pip install --no-cache-dir torch==2.6.0
+RUN pip install --no-cache-dir xformers==0.0.29.post2
 RUN pip install ninja
 RUN pip install packaging==24.1 setuptools==70.0.0 setuptools-scm==8.1.0
+# new cuda caps require cuda version >=12.8: 10.0, 10.1, 12.0
 ENV CMAKE_ARGS="-DLLAMA_CUBLAS=on -DCMAKE_CUDA_ARCHITECTURES=60;61;70;75;80;86;89;90+PTX"
-RUN pip install -v --no-build-isolation git+https://github.com/smallcloudai/vllm@refact_v0.7.3
-
-# there is no prebuild auto-gptq with torch 2.5.0 support
-ENV TORCH_CUDA_ARCH_LIST="6.0;6.1;7.0;7.5;8.0;8.6;8.9;9.0+PTX"
-RUN BUILD_CUDA_EXT=1 pip install -v --no-build-isolation git+https://github.com/PanQiWei/AutoGPTQ.git@v0.7.1
+RUN pip install -v --no-build-isolation vllm==v0.8.5

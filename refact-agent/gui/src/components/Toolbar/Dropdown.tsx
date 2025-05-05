@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
   selectHost,
   selectKnowledgeFeature,
@@ -6,13 +6,12 @@ import {
 } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
-  useConfig,
   useEventsBusForIDE,
   useGetUser,
   useLogout,
   useAppSelector,
   useAppDispatch,
-  useAgentUsage,
+  useStartPollingForUser,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
@@ -27,11 +26,14 @@ import {
   HamburgerMenuIcon,
   DiscordLogoIcon,
   QuestionMarkCircledIcon,
+  GearIcon,
 } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
 import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
-//import { Coin } from "../../images";
+import { Coin } from "../../images";
+import { useCoinBallance } from "../../hooks/useCoinBalance";
+import { isUserWithLoginMessage } from "../../services/smallcloud";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -41,6 +43,7 @@ export type DropdownNavigationOptions =
   | "restart tour"
   | "login page"
   | "integrations"
+  | "providers"
   | KnowledgeListPage["name"]
   | "";
 
@@ -77,17 +80,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const user = useGetUser();
   const host = useAppSelector(selectHost);
   const dispatch = useAppDispatch();
-  const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
+  // TODO: check how much of this is still used.
+  // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
+  const coinBalance = useCoinBallance();
   const logout = useLogout();
-  const { addressURL } = useConfig();
   const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
-  const { startPollingForUser } = useAgentUsage();
+  const { startPollingForUser } = useStartPollingForUser();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openBringYourOwnKeyFile, openCustomizationFile, openPrivacyFile } =
+  const { openCustomizationFile, openPrivacyFile, setLoginMessage } =
     useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
@@ -98,6 +102,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
     startPollingForUser();
     openUrl("https://refact.smallcloud.ai/pro");
   }, [openUrl, startPollingForUser]);
+
+  useEffect(() => {
+    if (isUserWithLoginMessage(user.data)) {
+      setLoginMessage(user.data.login_message);
+    }
+  }, [user.data, setLoginMessage]);
 
   const refactProductType = useMemo(() => {
     if (host === "jetbrains") return "Plugin";
@@ -127,7 +137,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
         {user.data && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
-              {currentAgentUsage}/{maxAgentUsageAmount} requests
+              {/**TODO: there could be multiple source for this */}
+              {coinBalance} <Coin />
               <HoverCard.Root>
                 <HoverCard.Trigger>
                   <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
@@ -135,10 +146,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                 <HoverCard.Content size="2" maxWidth="280px">
                   <Flex direction="column" gap="2">
                     <Text as="p" size="2">
-                      First number indicates your available requests today
-                    </Text>
-                    <Text as="p" size="2">
-                      Second number indicates maximum daily request limit
+                      Current balance
                     </Text>
                   </Flex>
                 </HoverCard.Content>
@@ -188,6 +196,10 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <PuzzleIcon /> Set up Agent Integrations
         </DropdownMenu.Item>
 
+        <DropdownMenu.Item onSelect={() => handleNavigation("providers")}>
+          <GearIcon /> Configure Providers
+        </DropdownMenu.Item>
+
         {knowledgeEnabled && (
           <DropdownMenu.Item
             onSelect={() => handleNavigation("knowledge list")}
@@ -219,16 +231,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
         >
           Edit privacy.yaml
         </DropdownMenu.Item>
-
-        {addressURL?.endsWith(".yaml") && (
-          <DropdownMenu.Item
-            onSelect={() => {
-              void openBringYourOwnKeyFile();
-            }}
-          >
-            Edit Bring Your Own Key
-          </DropdownMenu.Item>
-        )}
 
         <DropdownMenu.Separator />
 

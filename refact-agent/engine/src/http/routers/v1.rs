@@ -1,7 +1,5 @@
 use axum::Router;
-use axum::routing::get;
-use axum::routing::post;
-use axum::routing::delete;
+use axum::routing::{get, post, delete};
 use tower_http::cors::CorsLayer;
 
 use crate::http::utils::telemetry_middleware;
@@ -31,6 +29,9 @@ use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
 use crate::http::routers::v1::subchat::{handle_v1_subchat, handle_v1_subchat_single};
 use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::system_prompt::handle_v1_prepend_system_prompt_and_maybe_more_initial_messages;
+use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provider_templates,
+    handle_v1_get_model, handle_v1_get_provider, handle_v1_models, handle_v1_post_model, handle_v1_post_provider,
+    handle_v1_delete_model, handle_v1_delete_provider, handle_v1_model_default, handle_v1_completion_model_families};
 
 #[cfg(feature = "vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
@@ -60,12 +61,13 @@ mod gui_help_handlers;
 pub mod links;
 pub mod lsp_like_handlers;
 pub mod snippet_accepted;
-mod status;
+pub mod status;
 mod subchat;
 pub mod sync_files;
 pub mod system_prompt;
 pub mod telemetry_chat;
 pub mod telemetry_network;
+pub mod providers;
 
 mod file_edit_tools;
 #[cfg(feature = "vecdb")]
@@ -140,6 +142,18 @@ pub fn make_v1_router() -> Router {
         .route("/links", post(handle_v1_links))
 
         .route("/file_edit_tool_dry_run", post(handle_v1_file_edit_tool_dry_run))
+        
+        .route("/providers", get(handle_v1_providers))
+        .route("/provider-templates", get(handle_v1_provider_templates))
+        .route("/provider", get(handle_v1_get_provider))
+        .route("/provider", post(handle_v1_post_provider))
+        .route("/provider", delete(handle_v1_delete_provider))
+        .route("/models", get(handle_v1_models))
+        .route("/model", get(handle_v1_get_model))
+        .route("/model", post(handle_v1_post_model))
+        .route("/model", delete(handle_v1_delete_model))
+        .route("/model-defaults", get(handle_v1_model_default))
+        .route("/completion-model-families", get(handle_v1_completion_model_families))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))

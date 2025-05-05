@@ -4,7 +4,6 @@ use hyper::{Body, Response, StatusCode};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
@@ -14,10 +13,12 @@ use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::at_commands::execute_at::run_at_commands_locally;
-use crate::cached_tokenizers;
+use crate::indexing_utils::wait_for_indexing_if_needed;
+use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::call_validation::{ChatMeta, PostprocessSettings, SubchatParameters};
+use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
@@ -48,6 +49,8 @@ struct CommandPreviewPost {
     pub messages: Vec<Value>,
     #[serde(default)]
     model: String,
+    #[serde(default)]
+    provider: String,
     #[serde(default)]
     pub meta: ChatMeta,
 }
@@ -129,7 +132,7 @@ pub async fn handle_v1_command_completion(
         .unwrap())
 }
 
-async fn count_tokens(tokenizer_arc: Arc<StdRwLock<Tokenizer>>, messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
+async fn count_tokens(tokenizer_arc: Option<Arc<Tokenizer>>, messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
     let mut accum: u64 = 0;
 
     for message in messages {
@@ -169,38 +172,25 @@ pub async fn handle_v1_command_preview(
     };
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let (model_name, recommended_model_record) = {
-        let caps_locked = caps.read().unwrap();
-        let tmp = crate::caps::which_model_to_use(
-                &caps_locked.code_chat_models,
-                &post.model,
-                &caps_locked.code_chat_default_model,
-            );
-        match tmp {
-            Ok(x) => (x.0, x.1.clone()),
-            Err(e) => {
-                tracing::warn!("can't find model: {}", e);
-                return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("can't find model: {}", e)))?;
-            }
-        }
-    };
-    let tokenizer_arc: Arc<StdRwLock<Tokenizer>> = match cached_tokenizers::cached_tokenizer(caps.clone(), global_context.clone(), model_name.clone()).await {
+    let model_rec = resolve_chat_model(caps, &post.model)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let tokenizer_arc = match tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await {
         Ok(x) => x,
         Err(e) => {
-            tracing::warn!("can't load tokenizer for preview: {}", e);
-            return Err(ScratchError::new(StatusCode::BAD_REQUEST, format!("can't load tokenizer for preview: {}", e)))?;
+            tracing::error!(e);
+            return Err(ScratchError::new(StatusCode::BAD_REQUEST, e));
         }
     };
 
-    let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
+    let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
-        recommended_model_record.n_ctx,
+        model_rec.base.n_ctx,
         crate::http::routers::v1::chat::CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),
         false,
-        model_name.clone(),
+        model_rec.base.id.clone(),
     ).await));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(
@@ -208,7 +198,7 @@ pub async fn handle_v1_command_preview(
         &mut query
     ).await;
 
-    let rag_n_ctx = max_tokens_for_rag_chat(recommended_model_record.n_ctx, 512);  // real maxgen may be different -- comes from request
+    let rag_n_ctx = max_tokens_for_rag_chat(model_rec.base.n_ctx, 512);  // real maxgen may be different -- comes from request
 
     let mut preview: Vec<ChatMessage> = vec![];
     for exec_result in messages_for_postprocessing.iter() {
@@ -277,8 +267,8 @@ pub async fn handle_v1_command_preview(
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(
-            &json!({"messages": preview, "model": model_name, "highlight": highlights, 
-                "current_context": tokens_number, "number_context": recommended_model_record.n_ctx})
+            &json!({"messages": preview, "model": model_rec.base.id, "highlight": highlights, 
+                "current_context": tokens_number, "number_context": model_rec.base.n_ctx})
         ).unwrap()))
         .unwrap())
 }
@@ -287,12 +277,17 @@ pub async fn handle_v1_at_command_execute(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    wait_for_indexing_if_needed(global_context.clone()).await;
+
     let post = serde_json::from_slice::<CommandExecutePost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let caps = try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, global_context.clone(), post.model_name.clone()).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+    let model_rec = resolve_chat_model(caps, &post.model_name)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let tokenizer = tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),
@@ -302,7 +297,7 @@ pub async fn handle_v1_at_command_execute(
         vec![],
         "".to_string(),
         false,
-        post.model_name.clone(),
+        model_rec.base.id.clone(),
     ).await;
     ccx.subchat_tool_parameters = post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = post.postprocess_parameters.clone();

@@ -47,6 +47,14 @@ export const ideEscapeKeyPressed = createAction<string>("ide/escapeKeyPressed");
 export const ideIsChatStreaming = createAction<boolean>("ide/isChatStreaming");
 export const ideIsChatReady = createAction<boolean>("ide/isChatReady");
 
+export const ideSetCodeCompletionModel = createAction<string>(
+  "ide/setCodeCompletionModel",
+);
+
+export const ideSetLoginMessage = createAction<string>(
+  "ide/ideSetLoginMessage",
+);
+
 export const ideForceReloadFileByPath = createAction<string>(
   "ide/forceReloadFileByPath",
 );
@@ -202,10 +210,25 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setCodeCompletionModel = useCallback(
+    (model: string) => {
+      const action = ideSetCodeCompletionModel(model);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
+  const setLoginMessage = useCallback(
+    (message: string) => {
+      const action = ideSetLoginMessage(message);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
   const [getCustomizationPath] = pathApi.useLazyCustomizationPathQuery();
   const [getIntegrationsPath] = pathApi.useLazyIntegrationsPathQuery();
   const [getPrivacyPath] = pathApi.useLazyPrivacyPathQuery();
-  const [getBringYourOwnKeyPath] = pathApi.useLazyBringYourOwnKeyPathQuery();
 
   // Creating a generic function to trigger different queries from RTK Query (to avoid duplicative code)
   const openFileFromPathQuery = useCallback(
@@ -242,9 +265,6 @@ export const useEventsBusForIDE = () => {
   const openPrivacyFile = () => openFileFromPathQuery(getPrivacyPath);
   const openIntegrationsFile = () => openFileFromPathQuery(getIntegrationsPath);
 
-  const openBringYourOwnKeyFile = () =>
-    openFileFromPathQuery(getBringYourOwnKeyPath);
-
   const sendToolCallToIde = useCallback(
     (toolCall: TextDocToolCall, edit: ToolEditResult, chatId: string) => {
       const action = ideToolCall({ toolCall, edit, chatId });
@@ -264,7 +284,6 @@ export const useEventsBusForIDE = () => {
     queryPathThenOpenFile,
     openCustomizationFile,
     openPrivacyFile,
-    openBringYourOwnKeyFile,
     openIntegrationsFile,
     stopFileAnimation,
     startFileAnimation,
@@ -274,5 +293,7 @@ export const useEventsBusForIDE = () => {
     setIsChatReady,
     setForceReloadFileByPath,
     sendToolCallToIde,
+    setCodeCompletionModel,
+    setLoginMessage,
   };
 };

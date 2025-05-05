@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-#[cfg(feature="vecdb")]
-use std::sync::RwLock as StdRwLock;
 use std::cell::RefCell;
 use uuid::Uuid;
 use crate::files_in_workspace::Document;
@@ -22,27 +20,6 @@ pub mod chunk_utils;
 
 pub mod parse_python;
 pub mod parse_common;
-
-
-#[cfg(feature="vecdb")]
-pub fn count_tokens(
-    tokenizer: Option<Arc<StdRwLock<tokenizers::Tokenizer>>>,
-    text: &str,
-) -> usize {
-    if let Some(tokenizer) = tokenizer {
-        let tokenizer_locked = tokenizer.write().unwrap();
-        let tokens = match tokenizer_locked.encode(text, false) {
-            Ok(tokens) => tokens,
-            Err(err) => {
-                tracing::warn!("Encoding error: {}", err);
-                return 0;
-            }
-        };
-        tokens.len()
-    } else {
-        1 + text.len() / 3
-    }
-}
 
 pub fn lowlevel_file_markup(
     doc: &Document,

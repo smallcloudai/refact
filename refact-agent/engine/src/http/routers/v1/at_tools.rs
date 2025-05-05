@@ -9,10 +9,11 @@ use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::cached_tokenizers;
 use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSettings, SubchatParameters};
+use crate::caps::resolve_chat_model;
 use crate::http::http_post_json;
 use crate::http::routers::v1::chat::CHAT_TOP_N;
+use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
 use crate::custom_error::ScratchError;
@@ -222,12 +223,16 @@ pub async fn handle_v1_tools_execute(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    wait_for_indexing_if_needed(gcx.clone()).await;
+
     let tools_execute_post = serde_json::from_slice::<ToolsExecutePost>(&body_bytes)
       .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let tokenizer = cached_tokenizers::cached_tokenizer(caps, gcx.clone(), tools_execute_post.model_name.clone()).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error loading tokenizer: {}", e)))?;
+    let model_rec = resolve_chat_model(caps, &tools_execute_post.model_name)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
@@ -237,7 +242,7 @@ pub async fn handle_v1_tools_execute(
         tools_execute_post.messages.clone(),
         tools_execute_post.chat_id.clone(),
         false,
-        tools_execute_post.model_name.clone(),
+        model_rec.base.id.clone(),
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
@@ -246,7 +251,7 @@ pub async fn handle_v1_tools_execute(
     let mut at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
     })?;
-    let (messages, tools_ran) = run_tools( // todo: fix typo "runned"
+    let (messages, tools_ran) = run_tools(
         ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 

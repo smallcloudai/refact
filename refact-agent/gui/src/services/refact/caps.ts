@@ -1,6 +1,7 @@
 import { RootState } from "../../app/store";
 import { CAPS_URL } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { CodeChatModel, CodeCompletionModel, EmbeddingModel } from "./models";
 
 export const capsApi = createApi({
   reducerPath: "caps",
@@ -48,59 +49,70 @@ export const capsApi = createApi({
 
 export const capsEndpoints = capsApi.endpoints;
 
-export type CodeChatModel = {
-  default_scratchpad: string;
-  n_ctx: number;
-  similar_models: string[];
-  supports_tools?: boolean | null | undefined;
-  supports_scratchpads: Record<
-    string,
-    {
-      default_system_message?: string;
-    }
-  >;
-  supports_multimodality?: boolean;
-  supports_clicks?: boolean;
-  // TODO: could be defined
-  supports_agent?: boolean;
-  supports_boost_reasoning?: boolean;
+export type CapCost = {
+  prompt: number;
+  generated: number;
+  cache_read?: number;
+  cache_creation?: number;
 };
 
-export type CodeCompletionModel = {
-  default_scratchpad: string;
-  n_ctx: number;
-  similar_models: string[];
-  supports_scratchpads: Record<string, Record<string, unknown>>;
-  supports_tools?: boolean;
-  supports_multimodality?: boolean;
-  supports_clicks?: boolean;
+function isCapCost(json: unknown): json is CapCost {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (!("prompt" in json)) return false;
+  if (typeof json.prompt !== "number") return false;
+  if (!("generated" in json)) return false;
+  if (typeof json.generated !== "number") return false;
+  return true;
+}
+type CapsMetadata = {
+  pricing?: Record<string, CapCost>;
 };
+
+function isCapsMetadata(json: unknown): json is CapsMetadata {
+  if (json === null) return true;
+  if (typeof json !== "object") return false;
+  if ("pricing" in json && json.pricing) {
+    return Object.values(json.pricing).every(isCapCost);
+  }
+  return true;
+}
 
 export type CapsResponse = {
   caps_version: number;
   cloud_name: string;
-  code_chat_default_model: string;
+
+  chat_default_model: string;
+  chat_models: Record<string, CodeChatModel>;
   code_chat_default_system_prompt: string;
-  code_chat_models: Record<string, CodeChatModel>;
-  code_completion_default_model: string;
-  code_completion_models: Record<string, CodeCompletionModel>;
+  completion_models: Record<string, CodeCompletionModel>;
+  completion_default_model: string;
   code_completion_n_ctx: number;
+  embedding_model?: EmbeddingModel;
+  chat_thinking_model: string;
+  chat_light_model: string;
+
   endpoint_chat_passthrough: string;
   endpoint_style: string;
   endpoint_template: string;
   running_models: string[];
   telemetry_basic_dest: string;
   tokenizer_path_template: string;
+  telemetry_basic_retrieve_my_own: string;
   tokenizer_rewrite_path: Record<string, unknown>;
   support_metadata: boolean;
+  metadata: CapsMetadata | null;
+  customization: string;
 };
 
 export function isCapsResponse(json: unknown): json is CapsResponse {
   if (!json) return false;
   if (typeof json !== "object") return false;
-  if (!("code_chat_default_model" in json)) return false;
-  if (typeof json.code_chat_default_model !== "string") return false;
-  if (!("code_chat_models" in json)) return false;
+  if (!("metadata" in json)) return false;
+  if (!isCapsMetadata(json.metadata)) return false;
+  if (!("chat_default_model" in json)) return false;
+  if (typeof json.chat_default_model !== "string") return false;
+  if (!("chat_models" in json)) return false;
   return true;
 }
 

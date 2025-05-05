@@ -1,11 +1,10 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Avatar, Button, Flex, Box } from "@radix-ui/themes";
 import { FileRejection, useDropzone } from "react-dropzone";
 import { TextArea } from "../TextArea";
 import { useOnPressedEnter } from "../../hooks/useOnPressedEnter";
 import { Form } from "./Form";
-
-import { useAgentUsage, useAppSelector, useCapsForToolUse } from "../../hooks";
+import { useAppSelector, useCapsForToolUse } from "../../hooks";
 import { selectSubmitOption } from "../../features/Config/configSlice";
 import {
   ProcessedUserMessageContentWithImages,
@@ -14,6 +13,7 @@ import {
 } from "../../services/refact";
 import { ImageIcon, CrossCircledIcon } from "@radix-ui/react-icons";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
+import { selectIsStreaming, selectIsWaiting } from "../../features/Chat";
 
 function getTextFromUserMessage(messages: UserMessage["content"]): string {
   if (typeof messages === "string") return messages;
@@ -58,12 +58,18 @@ export const RetryForm: React.FC<{
   onClose: () => void;
 }> = (props) => {
   const shiftEnterToSubmit = useAppSelector(selectSubmitOption);
-  const { disableInput } = useAgentUsage();
   const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
   const inputText = getTextFromUserMessage(props.value);
   const inputImages = getImageFromUserMessage(props.value);
   const [textValue, onChangeTextValue] = useState(inputText);
   const [imageValue, onChangeImageValue] = useState(inputImages);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+
+  const disableInput = useMemo(
+    () => isStreaming || isWaiting,
+    [isStreaming, isWaiting],
+  );
 
   const addImage = useCallback((image: UserImage) => {
     onChangeImageValue((prev) => {
@@ -78,7 +84,6 @@ export const RetryForm: React.FC<{
   };
 
   const handleRetry = () => {
-    if (disableInput) return;
     const trimmedText = textValue.trim();
     if (imageValue.length === 0 && trimmedText.length > 0) {
       props.onSubmit(trimmedText);
@@ -164,11 +169,6 @@ export const RetryForm: React.FC<{
           size="1"
           type="submit"
           disabled={disableInput}
-          title={
-            disableInput
-              ? "You have reached your usage limit of 20 messages a day. You can use agent again tomorrow, or upgrade to PRO."
-              : ""
-          }
         >
           Submit
         </Button>

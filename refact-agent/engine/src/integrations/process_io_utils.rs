@@ -172,7 +172,7 @@ pub async fn execute_command(mut cmd: Command, timeout_secs: u64, cmd_str: &str)
     let mut child = ChildWithKillOnDrop(child);
 
     tokio::time::timeout(
-        tokio::time::Duration::from_secs(timeout_secs), 
+        tokio::time::Duration::from_secs(timeout_secs),
         wait_with_output(child.0.inner_mut())
     ).await
         .map_err(|_| format!("command '{cmd_str}' timed out after {timeout_secs} seconds"))?

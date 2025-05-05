@@ -36,7 +36,7 @@ type IntegrationFormProps = {
   MCPArguments: string[];
   MCPEnvironmentVariables: Record<string, string>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  handleDeleteIntegration: (path: string, name: string) => void;
+  handleDeleteIntegration: (path: string) => void;
   handleChange: (event: FormEvent<HTMLFormElement>) => void;
   onSchema: (schema: Integration["integr_schema"]) => void;
   onValues: (values: Integration["integr_values"]) => void;

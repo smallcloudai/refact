@@ -1,0 +1,32 @@
+completion_endpoint: "http://localhost:11434/v1/completions"
+chat_endpoint:       "http://localhost:11434/v1/chat/completions"
+supports_completion: true
+
+api_key: any-will-work
+
+completion_models:
+  qwen2.5-coder:1.5b-base:
+    n_ctx: 2048
+    model_family: qwen2.5-coder-base
+    tokenizer: hf://Qwen/Qwen2.5-Coder-1.5B
+    scratchpad: FIM-PSM
+    scratchpad_patch:
+      fim_prefix: <|fim_prefix|>
+      fim_suffix: <|fim_suffix|>
+      fim_middle: <|fim_middle|>
+      eot: <|endoftext|>
+      extra_stop_tokens:
+      - <|repo_name|>
+      - <|file_sep|>
+      - <|fim_pad|>
+      - <|cursor|>
+      context_format: qwen2.5
+      rag_ratio: 0.5
+
+model_default_settings_ui:
+  chat:
+    n_ctx: 2048
+    tokenizer: fake
+  completion:
+    n_ctx: 2048
+    tokenizer: fake

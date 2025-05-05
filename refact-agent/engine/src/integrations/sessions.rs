@@ -34,11 +34,12 @@ async fn remove_expired_sessions(gcx: Arc<ARwLock<GlobalContext>>) {
         }
         expired_sessions
     };
+    let mut futures = Vec::new();
     for session in expired_sessions {
         let future = Box::into_pin(session.lock().await.try_stop(session.clone()));
-        // no session lock
-        future.await;
+        futures.push(future);
     }
+    futures::future::join_all(futures).await;
     // sessions still keeps a reference on all sessions, just in case a destructor is called in the block above
 }
 
@@ -60,9 +61,10 @@ pub async fn stop_sessions(gcx: Arc<ARwLock<GlobalContext>>) {
         gcx_locked.integration_sessions.clear();
         sessions
     };
+    let mut futures = Vec::new();
     for session in sessions {
         let future = Box::into_pin(session.lock().await.try_stop(session.clone()));
-        // no session lock
-        future.await;
+        futures.push(future);
     }
+    futures::future::join_all(futures).await;
 }

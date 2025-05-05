@@ -1,0 +1,14 @@
+chat_endpoint: https://api.groq.com/openai/v1/chat/completions
+supports_completion: false
+
+api_key: gsk_...
+
+running_models:
+  - qwen-qwq-32b
+
+model_default_settings_ui:
+  chat:
+    n_ctx: 131072
+    supports_tools: true
+    supports_agent: true
+    tokenizer: fake

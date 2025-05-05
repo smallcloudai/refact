@@ -17,14 +17,18 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
     let mut results = Vec::new();
     let config_dir = gcx.read().await.config_dir.clone();
 
-    let integrations_d = config_dir.join("integrations.d");
-    if let Err(e) = tokio::fs::create_dir_all(&integrations_d).await {
-        tracing::warn!("Failed to create directory {:?}: {}", integrations_d, e);
-        results.push(format!("Error creating directory {:?}: {}", integrations_d, e));
+    let dirs_to_create = [
+        config_dir.join("integrations.d"),
+        config_dir.join("providers.d"),
+    ];
+    for dir in dirs_to_create {
+        if let Err(e) = tokio::fs::create_dir_all(&dir).await {
+            tracing::warn!("Failed to create directory {:?}: {}", dir, e);
+            results.push(format!("Error creating directory {:?}: {}", dir, e));
+        }
     }
 
     let files = vec![
-        ("bring-your-own-key.yaml", crate::caps::BRING_YOUR_OWN_KEY_SAMPLE),
         ("customization.yaml", include_str!("default_customization.yaml")),
         ("privacy.yaml", include_str!("default_privacy.yaml")),
         ("indexing.yaml", include_str!("default_indexing.yaml")),
@@ -33,7 +37,7 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
 
     for (file_name, content) in files {
         let file_path = if file_name == "integrations.d/shell.yaml" {
-            integrations_d.join("shell.yaml")
+            config_dir.join("integrations.d").join("shell.yaml")
         } else {
             config_dir.join(file_name)
         };

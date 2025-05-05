@@ -1,10 +1,6 @@
 import React from "react";
-import classnames from "classnames";
-import styles from "./coin.module.css";
 
-export const Coin: React.FC<
-  React.SVGProps<SVGSVGElement> & { className?: string }
-> = ({ className, ...props }) => {
+export const Coin: React.FC<React.SVGProps<SVGSVGElement>> = (props) => {
   return (
     <svg
       width="16"
@@ -13,7 +9,6 @@ export const Coin: React.FC<
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       {...props}
-      className={classnames(styles.coin, className)}
     >
       <circle
         cx="12"

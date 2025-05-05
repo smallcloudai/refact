@@ -43,3 +43,13 @@ export const KNOWLEDGE_UPDATE_URL = "/v1/mem-upd";
 export const KNOWLEDGE_CREATE_URL = "/v1/trajectory-save";
 
 export const COMPRESS_MESSAGES_URL = "/v1/trajectory-compress";
+
+// Providers & Models
+export const CONFIGURED_PROVIDERS_URL = "/v1/providers";
+export const PROVIDER_TEMPLATES_URL = "/v1/provider-templates";
+export const PROVIDER_URL = "/v1/provider";
+
+export const MODELS_URL = "/v1/models";
+export const MODEL_URL = "/v1/model";
+export const MODEL_DEFAULTS_URL = "/v1/model-defaults";
+export const COMPLETION_MODEL_FAMILIES_URL = "/v1/completion-model-families";

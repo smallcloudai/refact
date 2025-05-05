@@ -223,22 +223,27 @@ async fn docker_container_create(
     }
     let host_lsp_path  = format!("{}/refact-lsp", get_host_cache_dir(gcx.clone(), &docker.settings_docker).await);
 
-    let (cmdline_address_url, api_key, integrations_yaml) = {
-        let gcx_locked = gcx.read().await;
-        (gcx_locked.cmdline.address_url.clone(), gcx_locked.cmdline.api_key.clone(), gcx_locked.cmdline.integrations_yaml.clone())
-    };
+    let cmdline = gcx.read().await.cmdline.clone();
 
     let address_url = if !isolation.isolation_address_url.is_empty() {
         &isolation.isolation_address_url
     } else {
-        &cmdline_address_url
+        &cmdline.address_url
     };
 
     let mut lsp_command = format!(
-        "{DEFAULT_CONTAINER_LSP_PATH} --http-port {lsp_port} --logs-stderr --inside-container \
-        --address-url {address_url} --api-key {api_key} --vecdb --reset-memory --ast --experimental",
+        "{} --http-port {} --logs-stderr --inside-container \
+        --address-url {} --api-key {} {} {} --experimental {} {}",
+        shell_words::quote(DEFAULT_CONTAINER_LSP_PATH),
+        shell_words::quote(lsp_port),
+        shell_words::quote(address_url),
+        shell_words::quote(&cmdline.api_key),
+        if cmdline.vecdb {"--vecdb --reset-memory"} else {""},
+        if cmdline.ast {"--ast"} else {""},
+        if cmdline.wait_ast {"--wait-ast"} else {""},
+        if cmdline.wait_vecdb {"--wait-vecdb"} else {""},
     );
-    if !integrations_yaml.is_empty() {
+    if !cmdline.integrations_yaml.is_empty() {
         lsp_command.push_str(" --integrations-yaml ~/.config/refact/integrations.yaml");
     }
 
@@ -258,7 +263,7 @@ async fn docker_container_create(
         format!("--entrypoint={0}", isolation.docker_entrypoint)
     };
     let run_command = format!(
-        "container create --name={container_name} --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
+        "container create --name={container_name} --shm-size=8g --volume={host_lsp_path}:{DEFAULT_CONTAINER_LSP_PATH} \
         {ports_to_forward_as_arg_list} {network_if_set} {extra_params} {entrypoint} {docker_image_id} -c '{lsp_command}'",
     );
 

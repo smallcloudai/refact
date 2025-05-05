@@ -2,69 +2,78 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::subchat::subchat_single;
-use crate::agentic::generate_commit_message::remove_fencing;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use tracing::warn;
 use crate::caps::strip_model_from_finetune;
 
-const COMPRESSION_MESSAGE: &str = r#"
-Compress the chat above.
+const COMPRESSION_MESSAGE: &str = r#"Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.
+This summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.
 
-Guidelines:
+Before providing your final summary, wrap your analysis in <analysis> tags to organize your thoughts and ensure you've covered all necessary points. In your analysis process:
 
-1. Always prefer specifics over generic phrases. Write file names, symbol names, folder names, actions, facts, user attitude
-towards entities in the project. If something is junk according to the user, that's the first priority to remember.
-2. The first message in the chat is the goal. Summarize it up to 15 words, always prefer specifics.
-3. The most important part is decision making by assistant. What new information assistant has learned? Skip the plans,
-fluff, explanations for the user. Write one sentense: the evidence (specifics and facts), the thought process, motivated decision.
-4. Each tool call should be a separate record. Write all the parameters. Summarize facts about output of a tool, especially the facts
-useful for the goal, what the assistant learned, what was surprising to see?
-5. Skip unsuccesful calls that are later corrected. Keep the corrected one.
-6. When writing paths to files, only output short relative paths from the project dir.
-7. The last line is the outcome, pick SUCCESS/FAIL/PROGRESS
+1. Chronologically analyze each message and section of the conversation. For each section thoroughly identify:
+   - The user's explicit requests and intents
+   - Your approach to addressing the user's requests
+   - Key decisions, technical concepts and code patterns
+   - Specific details like file names, full code snippets, function signatures, file edits, etc
+2. Double-check for technical accuracy and completeness, addressing each required element thoroughly.
 
-Output format is list of tuples, each tuple is has:
-EITHER (1) call with all parameters, maybe shortened, but all parameters, (2) explanation of significance of tool output
-OR     (1) goal/thinking/coding/outcome (2) string according to the guidelines
+Your summary should include the following sections:
 
-Example:
-[
-["goal", "Rename my_function1 to my_function2"],
-["thinking", "There are definition(), search(), regex_search() and locate() tools, all can be used to find my_function1, system prompt says I need to start with locate()."],
-["locate(problem_statement=\"Rename my_function1 to my_function2\")", "The file my_script.py (1337 lines) has my_function1 on line 42."],
-["thinking", "I can rewrite my_function1 inside my_script.py, so I'll do that."],
-["update_textdoc(path=\"my_script\", old_str=\"...\", replacement=\"...\", multiple=false)", "The output of update_textdoc() has 15 lines_add and 15 lines_remove, confirming the operation."],
-["outcome", "SUCCESS"]
-]
+1. Primary Request and Intent: Capture all of the user's explicit requests and intents in detail
+2. Key Technical Concepts: List all important technical concepts, technologies, and frameworks discussed.
+3. Files and Code Sections: Enumerate specific files and code sections examined, modified, or created. Pay special attention to the most recent messages and include full code snippets where applicable and include a summary of why this file read or edit is important.
+4. Problem Solving: Document problems solved and any ongoing troubleshooting efforts.
+5. Pending Tasks: Outline any pending tasks that you have explicitly been asked to work on.
+6. Current Work: Describe in detail precisely what was being worked on immediately before this summary request, paying special attention to the most recent messages from both user and assistant. Include file names and code snippets where applicable.
+7. Optional Next Step: List the next step that you will take that is related to the most recent work you were doing. IMPORTANT: ensure that this step is DIRECTLY in line with the user's explicit requests, and the task you were working on immediately before this summary request. If your last task was concluded, then only list next steps if they are explicitly in line with the users request. Do not start on tangential requests without confirming with the user first.
+8. If there is a next step, include direct quotes from the most recent conversation showing exactly what task you were working on and where you left off. This should be verbatim to ensure there's no drift in task interpretation.
 
-Write only the json and nothing else.
-"#;
+Here's an example of how your output should be structured:
+
+<example>
+<analysis>
+[Your thought process, ensuring all points are covered thoroughly and accurately]
+</analysis>
+
+<summary>
+1. Primary Request and Intent:
+   [Detailed description]
+
+2. Key Technical Concepts:
+   - [Concept 1]
+   - [Concept 2]
+   - [...]
+
+3. Files and Code Sections:
+   - [File Name 1]
+      - [Summary of why this file is important]
+      - [Summary of the changes made to this file, if any]
+      - [Important Code Snippet]
+   - [File Name 2]
+      - [Important Code Snippet]
+   - [...]
+
+4. Problem Solving:
+   [Description of solved problems and ongoing troubleshooting]`
+
+5. Pending Tasks:
+   - [Task 1]
+   - [Task 2]
+   - [...]
+
+6. Current Work:
+   [Precise description of current work]
+
+7. Optional Next Step:
+   [Optional Next step to take]
+
+</summary>
+</example>
+
+Please provide your summary based on the conversation so far, following this structure and ensuring precision and thoroughness in your response."#;
 const TEMPERATURE: f32 = 0.0;
-
-fn parse_goal(trajectory: &String) -> Option<String> {
-    let traj_message_parsed: Vec<(String, String)> = match serde_json::from_str(trajectory.as_str()) {
-        Ok(data) => data,
-        Err(e) => {
-            warn!("Error while parsing: {}\nTrajectory:\n{}", e, trajectory);
-            return None;
-        }
-    };
-    let (name, content) = match traj_message_parsed.first() {
-        Some(data) => data,
-        None => {
-            warn!("Empty trajectory:\n{}", trajectory);
-            return None;
-        }
-    };
-    if name != "goal" {
-        warn!("Trajectory does not have a goal message");
-        None
-    } else {
-        Some(content.clone())
-    }
-}
 
 fn gather_used_tools(messages: &Vec<ChatMessage>) -> Vec<String> {
     let mut tools: Vec<String> = Vec::new();
@@ -89,16 +98,15 @@ pub async fn compress_trajectory(
     if messages.is_empty() {
         return Err("The provided chat is empty".to_string());
     }
-    let (model_name, n_ctx) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+    let (model_id, n_ctx) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
-            let caps_locked = caps.read().unwrap();
-            let model_name = caps_locked.code_chat_default_model.clone();
-            if let Some(model_rec) = caps_locked.code_completion_models.get(&strip_model_from_finetune(&model_name)) {
-                Ok((model_name, model_rec.n_ctx))
+            let model_id = caps.defaults.chat_default_model.clone();
+            if let Some(model_rec) = caps.chat_models.get(&strip_model_from_finetune(&model_id)) {
+                Ok((model_id, model_rec.base.n_ctx))
             } else {
                 Err(format!(
-                    "Model '{}' not found. Server has these models: {:?}",
-                    model_name, caps_locked.code_completion_models.keys()
+                    "Model '{}' not found, server has these models: {:?}",
+                    model_id, caps.chat_models.keys()
                 ))
             }
         },
@@ -120,12 +128,12 @@ pub async fn compress_trajectory(
         messages_compress.clone(),
         "".to_string(),
         false,
-        model_name.clone(),
+        model_id.clone(),
     ).await));
     let tools = gather_used_tools(&messages);
     let new_messages = subchat_single(
         ccx.clone(),
-        model_name.as_str(),
+        &model_id,
         messages_compress,
         Some(tools),
         None,
@@ -152,12 +160,6 @@ pub async fn compress_trajectory(
         .flatten()
         .flatten()
         .ok_or("No traj message was generated".to_string())?;
-    let code_blocks = remove_fencing(&content);
-    let trajectory = if !code_blocks.is_empty() {
-        code_blocks[0].clone()
-    } else {
-        content.clone()
-    };
-    let goal = parse_goal(&trajectory).unwrap_or("".to_string());
-    Ok((goal, trajectory))
+    let compressed_message = format!("{content}\n\nPlease, continue the conversation based on the provided summary");
+    Ok(("".to_string(), compressed_message))
 }

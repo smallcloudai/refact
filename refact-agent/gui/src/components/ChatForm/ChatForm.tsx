@@ -27,15 +27,24 @@ import { CapsSelect, ChatControls } from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
-import { clearError, getErrorMessage } from "../../features/Errors/errorsSlice";
+import {
+  clearError,
+  getErrorMessage,
+  getErrorType,
+} from "../../features/Errors/errorsSlice";
 import { useTourRefs } from "../../features/Tour";
 import { useAttachedFiles, useCheckboxes } from "./useCheckBoxes";
 import { useInputValue } from "./useInputValue";
 import {
   clearInformation,
   getInformationMessage,
+  showBalanceLowCallout,
 } from "../../features/Errors/informationSlice";
-import { InformationCallout } from "../Callout/Callout";
+import {
+  BallanceCallOut,
+  BallanceLowInformation,
+  InformationCallout,
+} from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
 import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { AttachImagesButton, FileList } from "../Dropzone";
@@ -79,6 +88,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const config = useConfig();
   const toolUse = useAppSelector(selectToolUse);
   const globalError = useAppSelector(getErrorMessage);
+  const globalErrorType = useAppSelector(getErrorType);
   const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
@@ -95,6 +105,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
+  const shouldSowBallanceLow = useAppSelector(showBalanceLowCallout);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -298,12 +309,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setIsSendImmediately,
   ]);
 
+  if (globalErrorType === "balance") {
+    return <BallanceCallOut onClick={() => dispatch(clearError())} />;
+  }
+
   if (globalError) {
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {globalError}
       </ErrorCallout>
     );
+  }
+  if (shouldSowBallanceLow) {
+    return <BallanceLowInformation />;
   }
 
   if (information) {
@@ -376,7 +394,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="1" wrap="wrap" py="1" px="2">
-            <CapsSelect />
+            <CapsSelect
+              disabled={messages.length > 0 || isStreaming || isWaiting}
+            />
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               <ThinkingButton />

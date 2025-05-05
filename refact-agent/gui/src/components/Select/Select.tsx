@@ -1,5 +1,5 @@
-import React from "react";
-import { Select as RadixSelect } from "@radix-ui/themes";
+import React, { ReactNode, useMemo } from "react";
+import { HoverCard, Select as RadixSelect } from "@radix-ui/themes";
 import styles from "./select.module.css";
 import classnames from "classnames";
 
@@ -8,6 +8,8 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   options: (string | ItemProps)[];
   title?: string;
   contentPosition?: "item-aligned" | "popper";
+  value?: string;
+  disabled?: boolean;
 };
 
 export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
@@ -26,7 +28,9 @@ export const Content: React.FC<ContentProps & { className?: string }> = (
   />
 );
 
-export type ItemProps = React.ComponentProps<typeof RadixSelect.Item>;
+export type ItemProps = React.ComponentProps<typeof RadixSelect.Item> & {
+  tooltip?: ReactNode;
+};
 export const Item: React.FC<ItemProps & { className?: string }> = (props) => (
   <RadixSelect.Item
     {...props}
@@ -44,15 +48,54 @@ export const Select: React.FC<SelectProps> = ({
   contentPosition,
   ...props
 }) => {
+  const maybeSelectedOption = useMemo(() => {
+    if (typeof props.value === "undefined") return null;
+    const selectOption = options.find(
+      (option) => typeof option !== "string" && option.value === props.value,
+    );
+    if (!selectOption) return null;
+    if (typeof selectOption === "string") return null;
+    return selectOption;
+  }, [props.value, options]);
   return (
     <Root {...props} onValueChange={onChange} size="1">
-      <Trigger title={title} />
-      <Content position={contentPosition ? contentPosition : "popper"}>
+      {maybeSelectedOption && maybeSelectedOption.tooltip ? (
+        <HoverCard.Root openDelay={1000}>
+          <HoverCard.Trigger>
+            <Trigger />
+          </HoverCard.Trigger>
+          <HoverCard.Content size="1" side="top">
+            {maybeSelectedOption.tooltip}
+          </HoverCard.Content>
+        </HoverCard.Root>
+      ) : (
+        <Trigger title={title} />
+      )}
+      <Content
+        position={contentPosition ? contentPosition : "popper"}
+        side="top"
+      >
         {options.map((option, index) => {
           if (typeof option === "string") {
             return (
               <Item key={`select-item-${index}-${option}`} value={option}>
                 {option}
+              </Item>
+            );
+          }
+          if (option.tooltip) {
+            return (
+              <Item key={`select-item-${index}-${option.value}`} {...option}>
+                <HoverCard.Root>
+                  <HoverCard.Trigger>
+                    <div>
+                      {option.children ?? option.textValue ?? option.value}
+                    </div>
+                  </HoverCard.Trigger>
+                  <HoverCard.Content size="1">
+                    {option.tooltip}
+                  </HoverCard.Content>
+                </HoverCard.Root>
               </Item>
             );
           }

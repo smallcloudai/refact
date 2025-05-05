@@ -154,7 +154,7 @@ export type ProcessedUserMessageContentWithImages = {
   m_type: string;
   m_content: string;
 };
-export interface AssistantMessage extends BaseMessage {
+export interface AssistantMessage extends BaseMessage, CostInfo {
   role: "assistant";
   content: string | null;
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
@@ -308,13 +308,18 @@ export function isCDInstructionMessage(
 
 interface BaseDelta {
   role?: ChatRole | null;
+  // TODO: what are these felids for
+  // provider_specific_fields?: null;
+  // refusal?: null;
+  // function_call?: null;
+  // audio?: null;
 }
 
 interface AssistantDelta extends BaseDelta {
   role?: "assistant" | null;
   content?: string | null; // might be undefined, will be null if tool_calls
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
-  tool_calls?: ToolCall[];
+  tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
 }
 
@@ -405,6 +410,8 @@ export type ChatChoice = {
   delta: Delta;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   index: number;
+  // TODO: what's this for?
+  // logprobs?: null;
 };
 
 export type ChatUserMessageResponse =
@@ -594,15 +601,28 @@ export function isCDInstructionResponse(
   return json.role === "cd_instruction";
 }
 
+type CostInfo = {
+  metering_prompt_tokens_n?: number;
+  metering_generated_tokens_n?: number;
+  metering_cache_creation_tokens_n?: number;
+  metering_cache_read_tokens_n?: number;
+  metering_balance?: number;
+
+  metering_coins_prompt?: number;
+  metering_coins_generated?: number;
+  metering_coins_cache_creation?: number;
+  metering_coins_cache_read?: number;
+};
+
 type ChatResponseChoice = {
   choices: ChatChoice[];
   created: number;
   model: string;
-  id: string;
+  id?: string;
   usage?: Usage;
   refact_agent_request_available?: null | number;
   refact_agent_max_request_num?: number;
-};
+} & CostInfo;
 
 export function isChatResponseChoice(
   res: ChatResponse,

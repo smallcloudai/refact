@@ -27,15 +27,6 @@ const handlers = [
 
 server.use(...handlers);
 
-const goodAgentUsage = {
-  _persist: {
-    rehydrated: true,
-    version: 1,
-  },
-  agent_max_usage_amount: 20,
-  agent_usage: 20,
-};
-
 const App: React.FC<Partial<ChatFormProps>> = ({ ...props }) => {
   const defaultProps: ChatFormProps = {
     onSubmit: (_str: string) => ({}),
@@ -54,11 +45,7 @@ describe("ChatForm", () => {
   test("when I push enter it should call onSubmit", async () => {
     const fakeOnSubmit = vi.fn();
 
-    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />, {
-      preloadedState: {
-        agentUsage: goodAgentUsage,
-      },
-    });
+    const { user, ...app } = render(<App onSubmit={fakeOnSubmit} />);
 
     const textarea: HTMLTextAreaElement | null =
       app.container.querySelector("textarea");
@@ -104,7 +91,6 @@ describe("ChatForm", () => {
           can_paste: true,
         },
         config: { host: "vscode", themeProps: {}, lspPort: 8001 },
-        agentUsage: goodAgentUsage,
       },
     });
 

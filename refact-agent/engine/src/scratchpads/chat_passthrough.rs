@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
@@ -10,6 +9,7 @@ use tracing::info;
 use crate::at_commands::execute_at::{run_at_commands_locally, run_at_commands_remotely};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ReasoningEffort, SamplingParameters};
+use crate::caps::resolve_chat_model;
 use crate::http::http_get_json;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
@@ -68,7 +68,7 @@ pub struct ChatPassthrough {
 
 impl ChatPassthrough {
     pub fn new(
-        tokenizer: Arc<StdRwLock<Tokenizer>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         post: &ChatPost,
         messages: &Vec<ChatMessage>,
         prepend_system_prompt: bool,
@@ -215,23 +215,17 @@ impl ScratchpadAbstract for ChatPassthrough {
             let gcx_locked = gcx.write().await;
             gcx_locked.caps.clone().unwrap()
         };
-        let model_record_mb = {
-            let caps_locked = caps.read().unwrap();
-            caps_locked.code_chat_models.get(&self.post.model).cloned()
-        };
+        let model_record_mb = resolve_chat_model(caps, &self.post.model).ok();
 
-        let supports_reasoning = if let Some(model_record) = model_record_mb.clone() {
-            !model_record.supports_reasoning.is_none()
-        } else {
-            false
-        };
+        let supports_reasoning = model_record_mb.as_ref()
+            .map_or(false, |m| m.supports_reasoning.is_some());
 
         let limited_adapted_msgs = if supports_reasoning {
-            let model_record = model_record_mb.unwrap();
+            let model_record = model_record_mb.clone().unwrap();
             _adapt_for_reasoning_models(
-                &limited_msgs,
+                limited_msgs,
                 sampling_parameters_to_patch,
-                model_record.supports_reasoning.unwrap(),
+                model_record.supports_reasoning.as_ref().unwrap().clone(),
                 model_record.default_temperature.clone(),
                 model_record.supports_boost_reasoning.clone(),
             )
@@ -239,7 +233,8 @@ impl ScratchpadAbstract for ChatPassthrough {
             limited_msgs
         };
 
-        let converted_messages = convert_messages_to_openai_format(limited_adapted_msgs, &style);
+        let model_id = model_record_mb.map(|m| m.base.id.clone()).unwrap_or_default();
+        let converted_messages = convert_messages_to_openai_format(limited_adapted_msgs, &style, &model_id);
         big_json["messages"] = json!(converted_messages);
         big_json["compression_strength"] = json!(compression_strength);
 
@@ -285,7 +280,7 @@ impl ScratchpadAbstract for ChatPassthrough {
 }
 
 fn _adapt_for_reasoning_models(
-    messages: &Vec<ChatMessage>,
+    messages: Vec<ChatMessage>,
     sampling_parameters: &mut SamplingParameters,
     supports_reasoning: String,
     default_temperature: Option<f32>,
@@ -299,8 +294,7 @@ fn _adapt_for_reasoning_models(
             sampling_parameters.temperature = default_temperature;
 
             // NOTE: OpenAI prefer user message over system
-            messages.iter().map(|msg| {
-                let mut msg = msg.clone();
+            messages.into_iter().map(|mut msg| {
                 if msg.role == "system" {
                     msg.role = "user".to_string();
                 }
@@ -319,11 +313,11 @@ fn _adapt_for_reasoning_models(
                     "budget_tokens": budget_tokens,
                 }));
             }
-            messages.clone()
+            messages
         },
         _ => {
             sampling_parameters.temperature = default_temperature.clone();
-            messages.clone()
+            messages
         }
     }
 }

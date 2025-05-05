@@ -16,7 +16,7 @@ use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDen
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
-use crate::integrations::setting_up_integrations::YamlError;
+use crate::custom_error::YamlError;
 use crate::tools::tools_execute::command_should_be_denied;
 
 

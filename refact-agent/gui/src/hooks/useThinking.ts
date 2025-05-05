@@ -24,10 +24,10 @@ export function useThinking() {
   const { data: userData } = useGetUser();
 
   const supportsBoostReasoning = useMemo(() => {
-    const models = caps.data?.code_chat_models;
+    const models = caps.data?.chat_models;
     const item = models?.[caps.currentModel];
     return item?.supports_boost_reasoning ?? false;
-  }, [caps.data?.code_chat_models, caps.currentModel]);
+  }, [caps.data?.chat_models, caps.currentModel]);
 
   const shouldBeTeasing = useMemo(
     () => userData?.inference === "FREE",

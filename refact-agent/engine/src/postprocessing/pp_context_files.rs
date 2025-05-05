@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::RwLock;
 use std::collections::HashSet;
 use tracing::{info, warn};
 use tokenizers::Tokenizer;
@@ -12,7 +11,7 @@ use crate::ast::ast_structs::AstDefinition;
 use crate::global_context::GlobalContext;
 use crate::nicer_logs::{first_n_chars, last_n_chars};
 use crate::postprocessing::pp_utils::{color_with_gradient_type, colorize_comments_up, colorize_if_more_useful, colorize_minus_one, colorize_parentof, downgrade_lines_if_subsymbol, pp_ast_markup_files};
-use crate::scratchpads::scratchpad_utils::count_tokens;
+use crate::tokens::count_text_tokens_with_fallback;
 
 
 pub const RESERVE_FOR_QUESTION_AND_FOLLOWUP: usize = 1024;  // tokens
@@ -236,7 +235,7 @@ pub async fn pp_color_lines(
 
 async fn pp_limit_and_merge(
     lines_in_files: &mut IndexMap<String, Vec<FileLine>>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
     settings: &PostprocessSettings,
@@ -259,7 +258,7 @@ async fn pp_limit_and_merge(
         if !line_ref.take_ignoring_floor && line_ref.useful <= settings.take_floor {
             continue;
         }
-        let mut ntokens = count_tokens(&tokenizer.read().unwrap(), &line_ref.line_content);
+        let mut ntokens = count_text_tokens_with_fallback(tokenizer.clone(), &line_ref.line_content);
 
         if !files_mentioned_set.contains(&line_ref.file_ref.cpath) {
             if files_mentioned_set.len() >= settings.max_files_n {
@@ -268,7 +267,7 @@ async fn pp_limit_and_merge(
             files_mentioned_set.insert(line_ref.file_ref.cpath.clone());
             files_mentioned_sequence.push(line_ref.file_ref.cpath.clone());
             if !single_file_mode {
-                ntokens += count_tokens(&tokenizer.read().unwrap(), &line_ref.file_ref.cpath.as_str());
+                ntokens += count_text_tokens_with_fallback(tokenizer.clone(), &line_ref.file_ref.cpath.as_str());
                 ntokens += 5;  // a margin for any overhead: file_sep, new line, etc
             }
         }
@@ -350,7 +349,7 @@ async fn pp_limit_and_merge(
 pub async fn postprocess_context_files(
     gcx: Arc<ARwLock<GlobalContext>>,
     context_file_vec: &mut Vec<ContextFile>,
-    tokenizer: Arc<RwLock<Tokenizer>>,
+    tokenizer: Option<Arc<Tokenizer>>,
     tokens_limit: usize,
     single_file_mode: bool,
     settings: &PostprocessSettings,

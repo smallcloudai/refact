@@ -9,7 +9,6 @@ import {
   useAutoSend,
   useGetCapsQuery,
   useCapsForToolUse,
-  useAgentUsage,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
@@ -24,7 +23,6 @@ import {
 import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
-import { AgentUsage } from "../../features/AgentUsage";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
@@ -56,7 +54,6 @@ export const Chat: React.FC<ChatProps> = ({
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   const messages = useAppSelector(selectMessages);
   const capsForToolUse = useCapsForToolUse();
-  const { disableInput } = useAgentUsage();
 
   const { shouldCheckpointsPopupBeShown } = useCheckpoints();
 
@@ -101,7 +98,6 @@ export const Chat: React.FC<ChatProps> = ({
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 
-        <AgentUsage />
         <SuggestNewChat
           shouldBeVisible={
             threadNewChatSuggested.wasSuggested &&
@@ -113,9 +109,7 @@ export const Chat: React.FC<ChatProps> = ({
             <Card style={{ width: "100%" }}>
               <Flex direction="column" align="center" gap="2" width="100%">
                 Chat was interrupted with uncalled tools calls.
-                <Button onClick={onEnableSend} disabled={disableInput}>
-                  Resume
-                </Button>
+                <Button onClick={onEnableSend}>Resume</Button>
               </Flex>
             </Card>
           </Flex>
@@ -135,8 +129,7 @@ export const Chat: React.FC<ChatProps> = ({
               <Flex align="center" gap="1">
                 <Text size="1">
                   model:{" "}
-                  {capsForToolUse.currentModel ||
-                    caps.data?.code_chat_default_model}{" "}
+                  {capsForToolUse.currentModel || caps.data?.chat_default_model}{" "}
                 </Text>{" "}
                 •{" "}
                 <Text

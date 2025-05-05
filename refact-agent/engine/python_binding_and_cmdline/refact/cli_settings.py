@@ -8,15 +8,12 @@ import aiohttp
 
 class CapsModel(BaseModel):
     n_ctx: int
-    similar_models: List[str]
     supports_tools: bool
 
 
 class Caps(BaseModel):
-    cloud_name: str
-    code_chat_models: Dict[str, CapsModel]
-    code_chat_default_model: str
-    embedding_model: str
+    chat_models: Dict[str, CapsModel]
+    chat_default_model: str
 
 
 class SettingsCLI(BaseModel):
@@ -40,9 +37,7 @@ class SettingsCLI(BaseModel):
 
 
 default_config = """
-# The caps file is bring-your-own-key.yaml by default, that in turn works with OPENAI_API_KEY inside by default.
-# But you can change it to:
-#address_url: Refact
+address_url: Refact
 #api_key: <take-from-website>
 #address_url: http://your-self-hosting-server/
 #api_key: your-secret-key
@@ -66,14 +61,14 @@ vecdb_max_files: 5000
 class CmdlineArgs:
     def __init__(self, caps: Caps, *, model: str, path_to_project: str, always_pause: bool, chat_id: str, chat_remote: bool):
         self.caps = caps
-        self.model = model or caps.code_chat_default_model
+        self.model = model or caps.chat_default_model
         self.project_path = path_to_project
         self.always_pause = always_pause
         self.chat_id = chat_id
         self.chat_remote = chat_remote
 
     def n_ctx(self):
-        return self.caps.code_chat_models[self.model].n_ctx
+        return self.caps.chat_models[self.model].n_ctx
 
 
 args: Optional[CmdlineArgs] = None

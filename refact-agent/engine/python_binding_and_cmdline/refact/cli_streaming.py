@@ -109,7 +109,7 @@ def process_streaming_data(data: Dict[str, Any], deltas_collector: Optional[chat
                 assert deltas_collector.choices[0].tool_calls is not None
                 streaming_toolcall = list(deltas_collector.choices[0].tool_calls)
                 update_entertainment_box()
-        finish_reason = choices[0]['finish_reason']
+        finish_reason = choices[0].get('finish_reason')
         if finish_reason == "stop":
             print_response("\n")
         if finish_reason == "tool_calls":

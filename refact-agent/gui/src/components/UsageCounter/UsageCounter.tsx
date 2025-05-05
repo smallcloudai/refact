@@ -1,5 +1,5 @@
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
-import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
+import { Box, Card, Flex, HoverCard, Tabs, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import React, { useMemo, useState } from "react";
 
@@ -13,9 +13,15 @@ import {
   selectThreadMaximumTokens,
 } from "../../features/Chat";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
-import { useAppSelector, useEffectOnce } from "../../hooks";
+import {
+  useAppSelector,
+  useEffectOnce,
+  useTotalCostForChat,
+} from "../../hooks";
 
 import styles from "./UsageCounter.module.css";
+import { Coin } from "../../images";
+import { Usage } from "../../services/refact";
 
 type UsageCounterProps =
   | {
@@ -38,6 +44,99 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
     <Text size="1">{formatNumberToFixed(value)}</Text>
   </Flex>
 );
+
+const TokensDisplay: React.FC<{
+  currentThreadUsage?: Usage;
+  inputTokens: number;
+  outputTokens: number;
+}> = ({ currentThreadUsage, inputTokens, outputTokens }) => {
+  if (!currentThreadUsage) return;
+  const {
+    cache_read_input_tokens,
+    cache_creation_input_tokens,
+    completion_tokens_details,
+  } = currentThreadUsage;
+
+  return (
+    <Flex direction="column" align="start" gap="2">
+      <Text size="2" mb="2">
+        Tokens spent per chat thread:
+      </Text>
+      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+      {cache_read_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache read input tokens"
+          value={cache_read_input_tokens}
+        />
+      )}
+      {cache_creation_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache creation input tokens"
+          value={cache_creation_input_tokens}
+        />
+      )}
+      <TokenDisplay label="Completion tokens" value={outputTokens} />
+      {completion_tokens_details?.reasoning_tokens !== null && (
+        <TokenDisplay
+          label="Reasoning tokens"
+          value={completion_tokens_details?.reasoning_tokens ?? 0}
+        />
+      )}
+    </Flex>
+  );
+};
+
+const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
+  label,
+  value,
+}) => {
+  return (
+    <Flex align="center" justify="between" width="100%" gap="4">
+      <Text size="1" weight="bold">
+        {label}
+      </Text>
+      <Text size="1">
+        <Flex align="center" gap="2">
+          {Math.round(value)} <Coin width="12px" height="12px" />
+        </Flex>
+      </Text>
+    </Flex>
+  );
+};
+
+const CoinsDisplay: React.FC<{
+  total: number;
+  prompt?: number;
+  generated?: number;
+  cacheRead?: number;
+  cacheCreation?: number;
+}> = ({ total, prompt, generated, cacheRead, cacheCreation }) => {
+  return (
+    <Flex direction="column" align="start" gap="2">
+      <Flex align="center" justify="between" width="100%" gap="4" mb="2">
+        <Text size="2">Coins spent</Text>
+        <Text size="2">
+          <Flex align="center" gap="2">
+            {Math.round(total)} <Coin width="15px" height="15px" />
+          </Flex>
+        </Text>
+      </Flex>
+
+      {prompt && <CoinDisplay label="Prompt" value={prompt} />}
+
+      {generated !== undefined && (
+        <CoinDisplay label="Completion" value={generated} />
+      )}
+
+      {cacheRead !== undefined && (
+        <CoinDisplay label="Prompt cache read" value={cacheRead} />
+      )}
+      {cacheCreation !== undefined && (
+        <CoinDisplay label="Prompt cache creation" value={cacheCreation} />
+      )}
+    </Flex>
+  );
+};
 
 const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
   messageTokens,
@@ -65,34 +164,74 @@ const DefaultHoverCard: React.FC<{
   inputTokens: number;
   outputTokens: number;
 }> = ({ inputTokens, outputTokens }) => {
+  const cost = useTotalCostForChat();
   const { currentThreadUsage } = useUsageCounter();
+  const total = useMemo(() => {
+    return (
+      (cost?.metering_coins_prompt ?? 0) +
+      (cost?.metering_coins_generated ?? 0) +
+      (cost?.metering_coins_cache_creation ?? 0) +
+      (cost?.metering_coins_cache_read ?? 0)
+    );
+  }, [cost]);
+
+  const tabsOptions = useMemo(() => {
+    const options = [];
+    if (total > 0) {
+      options.push({
+        value: "coins",
+        label: "Coins",
+      });
+    }
+    options.push({
+      value: "tokens",
+      label: "Tokens",
+    });
+    return options;
+  }, [total]);
+
+  const renderContent = (optionValue: string) => {
+    if (optionValue === "tokens") {
+      return (
+        <TokensDisplay
+          currentThreadUsage={currentThreadUsage}
+          inputTokens={inputTokens}
+          outputTokens={outputTokens}
+        />
+      );
+    }
+    return (
+      <CoinsDisplay
+        total={total}
+        prompt={cost?.metering_coins_prompt}
+        generated={cost?.metering_coins_generated}
+        cacheRead={cost?.metering_coins_cache_read}
+        cacheCreation={cost?.metering_coins_cache_creation}
+      />
+    );
+  };
+
+  if (tabsOptions.length === 1) {
+    return <Box pt="3">{renderContent(tabsOptions[0].value)}</Box>;
+  }
 
   return (
-    <Flex direction="column" align="start" gap="2">
-      <Text size="2" mb="2">
-        Tokens spent per chat thread:
-      </Text>
-      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
-      {currentThreadUsage?.cache_read_input_tokens !== undefined && (
-        <TokenDisplay
-          label="Cache read input tokens"
-          value={currentThreadUsage.cache_read_input_tokens}
-        />
-      )}
-      {currentThreadUsage?.cache_creation_input_tokens !== undefined && (
-        <TokenDisplay
-          label="Cache creation input tokens"
-          value={currentThreadUsage.cache_creation_input_tokens}
-        />
-      )}
-      <TokenDisplay label="Completion tokens" value={outputTokens} />
-      {currentThreadUsage?.completion_tokens_details && (
-        <TokenDisplay
-          label="Reasoning tokens"
-          value={currentThreadUsage.completion_tokens_details.reasoning_tokens}
-        />
-      )}
-    </Flex>
+    <Tabs.Root defaultValue={tabsOptions[0].value}>
+      <Tabs.List size="1">
+        {tabsOptions.map((option) => (
+          <Tabs.Trigger value={option.value} key={option.value}>
+            {option.label}
+          </Tabs.Trigger>
+        ))}
+      </Tabs.List>
+      <Box pt="3">
+        {tabsOptions.map((option) => (
+          <Tabs.Content value={option.value} key={option.value}>
+            {renderContent(option.value)}
+          </Tabs.Content>
+        ))}
+      </Box>
+    </Tabs.Root>
   );
 };
 
@@ -111,22 +250,26 @@ const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
-  outputValue: string;
-}> = ({ inputTokens, outputValue }) => {
+  outputTokens: number;
+}> = ({ inputTokens, outputTokens }) => {
   return (
     <>
-      <Flex align="center">
-        <ArrowUpIcon width="12" height="12" />
-        <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
-      </Flex>
-      <Flex align="center">
-        <ArrowDownIcon width="12" height="12" />
-        <Text size="1">{outputValue}</Text>
-      </Flex>
+      {inputTokens !== 0 && (
+        <Flex align="center">
+          <ArrowUpIcon width="12" height="12" />
+          <Text size="1">{formatNumberToFixed(inputTokens)}</Text>
+        </Flex>
+      )}
+      {outputTokens !== 0 && (
+        <Flex align="center">
+          <ArrowDownIcon width="12" height="12" />
+          <Text size="1">{formatNumberToFixed(outputTokens)}</Text>
+        </Flex>
+      )}
     </>
   );
 };
-
+// here ?
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
   isMessageEmpty,
@@ -154,7 +297,10 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     usage: currentThreadUsage,
     keys: ["completion_tokens"],
   });
-  const outputValue = formatNumberToFixed(outputTokens);
+
+  const shouldUsageBeHidden = useMemo(() => {
+    return !isInline && inputTokens === 0 && outputTokens === 0;
+  }, [outputTokens, inputTokens, isInline]);
 
   useEffectOnce(() => {
     const handleScroll = (event: WheelEvent) => {
@@ -172,6 +318,8 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     };
   });
 
+  if (shouldUsageBeHidden) return null;
+
   return (
     <HoverCard.Root open={open} onOpenChange={setOpen}>
       <HoverCard.Trigger>
@@ -187,7 +335,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           ) : (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
-              outputValue={outputValue}
+              outputTokens={outputTokens}
             />
           )}
         </Card>

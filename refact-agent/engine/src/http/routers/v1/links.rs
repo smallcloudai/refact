@@ -6,16 +6,13 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
+use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
-use crate::global_context::GlobalContext;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::integrations::go_to_configuration_message;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
-
-
-// TODO: remove this dirty hack when we add light_chat_model in caps
-const LIGHT_MODEL_NAME: &str = "gpt-4o-mini";
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
@@ -225,8 +222,8 @@ pub async fn handle_v1_links(
         for e in integration_yaml_errors {
             links.push(Link {
                 link_action: LinkAction::Goto,
-                link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.integr_config_path, 20)),
-                link_goto: Some(format!("SETTINGS:{}", e.integr_config_path)),
+                link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.path, 20)),
+                link_goto: Some(format!("SETTINGS:{}", e.path)),
                 link_summary_path: None,
                 link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
                 ..Default::default()
@@ -347,8 +344,13 @@ pub async fn handle_v1_links(
         && post.messages.len() > 2
         && post.messages.last().map(|x| x.role == "assistant").unwrap_or(false)
     {
+        let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+        let model_id = match resolve_chat_model(caps.clone(), &caps.defaults.chat_light_model) {
+            Ok(light_model) => light_model.base.id.clone(),
+            Err(_) => post.model_name.clone(),
+        };
         let follow_up_response = generate_follow_up_message(
-            post.messages.clone(), gcx.clone(), LIGHT_MODEL_NAME.to_string(), &post.model_name, &post.meta.chat_id
+            post.messages.clone(), gcx.clone(), &model_id, &post.meta.chat_id
         ).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         new_chat_suggestion = follow_up_response.topic_changed;

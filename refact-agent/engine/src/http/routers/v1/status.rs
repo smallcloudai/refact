@@ -8,19 +8,16 @@ use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
 #[derive(Serialize)]
-struct RagStatus {
-    ast: Option<AstStatus>,
+pub struct RagStatus {
+    pub ast: Option<AstStatus>,
     ast_alive: String,
     #[cfg(feature="vecdb")]
-    vecdb: Option<crate::vecdb::vdb_structs::VecDbStatus>,
+    pub vecdb: Option<crate::vecdb::vdb_structs::VecDbStatus>,
     vecdb_alive: String,
     vec_db_error: String,
 }
 
-pub async fn handle_v1_rag_status(
-    Extension(gcx): Extension<SharedGlobalContext>,
-    _: hyper::body::Bytes,
-) -> Result<Response<Body>, ScratchError> {
+pub async fn get_rag_status(gcx: SharedGlobalContext) -> RagStatus {
     let (vec_db_module, vec_db_error, ast_module) = {
         let gcx_locked = gcx.write().await;
         (gcx_locked.vec_db.clone(), gcx_locked.vec_db_error.clone(), gcx_locked.ast_service.clone())
@@ -45,14 +42,20 @@ pub async fn handle_v1_rag_status(
         None => (None, "turned_off".to_string())
     };
 
-    let status = RagStatus {
+    RagStatus {
         ast: maybe_ast_status,
         ast_alive: ast_message,
         #[cfg(feature="vecdb")]
         vecdb: maybe_vecdb_status,
         vecdb_alive: vecdb_message,
         vec_db_error,
-    };
+    }
+}
+
+pub async fn handle_v1_rag_status(
+    Extension(gcx): Extension<SharedGlobalContext>,
+) -> Result<Response<Body>, ScratchError> {
+    let status = get_rag_status(gcx).await;
 
     let json_string = serde_json::to_string_pretty(&status).map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON serialization problem: {}", e))

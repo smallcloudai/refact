@@ -8,3 +8,5 @@ pub mod at_tree;
 
 #[cfg(feature="vecdb")]
 pub mod at_search;
+#[cfg(feature="vecdb")]
+pub mod at_knowledge;

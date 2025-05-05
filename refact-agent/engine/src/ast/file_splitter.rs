@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use itertools::Itertools;
+use tokenizers::Tokenizer;
 use tokio::sync::RwLock;
-use std::sync::RwLock as StdRwLock;
 use uuid::Uuid;
 
 use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
@@ -30,7 +30,7 @@ impl AstBasedFileSplitter {
     pub async fn vectorization_split(
         &self,
         doc: &Document,
-        tokenizer: Option<Arc<StdRwLock<tokenizers::Tokenizer>>>,
+        tokenizer: Option<Arc<Tokenizer>>,
         gcx: Arc<RwLock<crate::global_context::GlobalContext>>,
         tokens_limit: usize,
     ) -> Result<Vec<crate::vecdb::vdb_structs::SplitResult>, String> {

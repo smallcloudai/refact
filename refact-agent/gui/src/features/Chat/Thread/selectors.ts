@@ -2,6 +2,7 @@ import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import {
   CompressionStrength,
+  isDiffMessage,
   isToolMessage,
   isUserMessage,
 } from "../../../services/refact/types";
@@ -60,6 +61,22 @@ export const selectManyToolResultsByIds = (ids: string[]) =>
     return messages
       .filter((message) => ids.includes(message.content.tool_call_id))
       .map((toolMessage) => toolMessage.content);
+  });
+
+const selectDiffMessages = createSelector(selectMessages, (messages) =>
+  messages.filter(isDiffMessage),
+);
+
+export const selectDiffMessageById = createSelector(
+  [selectDiffMessages, (_, id?: string) => id],
+  (messages, id) => {
+    return messages.find((message) => message.tool_call_id === id);
+  },
+);
+
+export const selectManyDiffMessageByIds = (ids: string[]) =>
+  createSelector(selectDiffMessages, (diffs) => {
+    return diffs.filter((message) => ids.includes(message.tool_call_id));
   });
 
 export const getSelectedToolUse = (state: RootState) =>

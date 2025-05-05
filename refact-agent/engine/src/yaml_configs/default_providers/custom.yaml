@@ -1,0 +1,7 @@
+supports_completion: true
+
+model_default_settings_ui:
+  chat:
+    tokenizer: fake
+  completion:
+    tokenizer: fake

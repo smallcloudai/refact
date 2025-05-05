@@ -21,20 +21,12 @@ export interface EnterpriseHost {
   apiKey: string;
 }
 
-export interface BringYourOwnKey {
-  type: "bring-your-own-key";
-}
-
 export interface ActionFromSetup {
   type: EVENT_NAMES_FROM_SETUP;
   payload?: Record<string, unknown>;
 }
 
-export type HostSettings =
-  | CloudHost
-  | SelfHost
-  | EnterpriseHost
-  | BringYourOwnKey;
+export type HostSettings = CloudHost | SelfHost | EnterpriseHost;
 
 export function isActionFromSetup(action: unknown): action is ActionFromSetup {
   if (!action) return false;

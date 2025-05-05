@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Flex,
   Callout as RadixCallout,
   Card,
   Text,
   Button,
+  Strong,
+  Link,
 } from "@radix-ui/themes";
 import {
   ExclamationTriangleIcon,
@@ -13,8 +15,16 @@ import {
 import { useTimeout } from "usehooks-ts";
 import styles from "./Callout.module.css";
 import classNames from "classnames";
-import { useAppSelector, useLogout } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useConfig,
+  useLogout,
+  useOpenUrl,
+} from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
+import { selectBalance } from "../../features/CoinBalance";
+import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
 
 type RadixCalloutProps = React.ComponentProps<typeof RadixCallout.Root>;
 
@@ -204,5 +214,104 @@ export const CalloutFromTop: React.FC<
         </Flex>
       </RadixCallout.Root>
     </Card>
+  );
+};
+
+export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
+  onClick,
+}) => {
+  const openUrl = useOpenUrl();
+  const { host } = useConfig();
+  const handleLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.stopPropagation();
+      if (host === "web") return;
+      event.preventDefault();
+      openUrl(event.currentTarget.href);
+    },
+    [openUrl, host],
+  );
+  return (
+    <Callout
+      mt="2"
+      type="error"
+      color="red"
+      className={classNames(styles.callout_box_inner)}
+      timeout={null}
+      onClick={onClick}
+    >
+      💸 <Strong>Your balance is exhausted!</Strong>
+      <br />
+      You have no coins left to use Refact&apos;s AI features.
+      <br />
+      Please{" "}
+      <Link
+        href="https://refact.smallcloud.ai/?topup"
+        target="_blank"
+        rel="noreferrer"
+        onClick={handleLinkClick}
+      >
+        top up your balance
+      </Link>{" "}
+      or contact support if you believe this is a mistake.{" "}
+      <Link
+        href="https://docs.refact.ai/"
+        target="_blank"
+        rel="noreferrer"
+        onClick={handleLinkClick}
+      >
+        Read more about usage balance.
+      </Link>
+    </Callout>
+  );
+};
+
+export const BallanceLowInformation: React.FC = () => {
+  const balance = useAppSelector(selectBalance);
+  const dispatch = useAppDispatch();
+  const handleClose = useCallback(() => {
+    dispatch(dismissBalanceLowCallout());
+  }, [dispatch]);
+  const openUrl = useOpenUrl();
+  const { host } = useConfig();
+  const handleLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.stopPropagation();
+      if (host === "web") return;
+      event.preventDefault();
+      openUrl(event.currentTarget.href);
+    },
+    [openUrl, host],
+  );
+
+  return (
+    <Callout
+      type="info"
+      color="blue"
+      mt="2"
+      timeout={null}
+      onClick={handleClose}
+    >
+      💸 <Strong>Your balance is {balance}</Strong>
+      <br />
+      Please{" "}
+      <Link
+        href="https://refact.smallcloud.ai/?topup"
+        target="_blank"
+        rel="noreferrer"
+        onClick={handleLinkClick}
+      >
+        top up your balance
+      </Link>{" "}
+      soon or contact support if you believe this is a mistake.{" "}
+      <Link
+        href="https://docs.refact.ai/"
+        target="_blank"
+        rel="noreferrer"
+        onClick={handleLinkClick}
+      >
+        Read more about usage balance.
+      </Link>
+    </Callout>
   );
 };
