@@ -63,6 +63,9 @@ export const PromptSelect: React.FC = () => {
     [promptsRequest.isLoading, promptsRequest.isFetching, caps.isLoading],
   );
 
+  if (options.length <= 1) 
+    return null;
+
   return (
     <Flex
       gap="2"
