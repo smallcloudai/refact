@@ -255,7 +255,7 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       </Link>{" "}
       or contact support if you believe this is a mistake.{" "}
       <Link
-        href="https://docs.refact.ai/"
+        href="https://docs.refact.ai/introduction/usage-based-pricing/"
         target="_blank"
         rel="noreferrer"
         onClick={handleLinkClick}
@@ -305,7 +305,7 @@ export const BallanceLowInformation: React.FC = () => {
       </Link>{" "}
       soon or contact support if you believe this is a mistake.{" "}
       <Link
-        href="https://docs.refact.ai/"
+        href="https://docs.refact.ai/introduction/usage-based-pricing/"
         target="_blank"
         rel="noreferrer"
         onClick={handleLinkClick}
