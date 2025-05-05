@@ -6,7 +6,6 @@ import {
   Text,
   Button,
   Strong,
-  Em,
   Link,
 } from "@radix-ui/themes";
 import {
@@ -263,9 +262,6 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       >
         Read more about usage balance.
       </Link>
-      <Flex as="span" justify="end" mt="2">
-        <Em>Thank you for using Refact!</Em>
-      </Flex>
     </Callout>
   );
 };
@@ -316,10 +312,6 @@ export const BallanceLowInformation: React.FC = () => {
       >
         Read more about usage balance.
       </Link>
-      <br />
-      <Flex as="span" justify="end" mt="2">
-        <Em>Thank you for using Refact!</Em>
-      </Flex>
     </Callout>
   );
 };
