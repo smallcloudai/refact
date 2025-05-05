@@ -91,7 +91,9 @@ docker volume rm VVV
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for installation without a docker container.
 
-### Running Refact Proxy (experimental)
+<details><summary>Refact Proxy (experimental)</summary>
+
+### Running Refact Proxy
 
 A light version of the server that doesn't require an Nvidia GPU. This is the ideal choice if you're:
 * Self-hosting models using Ollama, vLLM, etc.
@@ -108,6 +110,8 @@ And run it:
 ```commandline
 docker run -d --rm --shm-size=256m -p 8008:8008 -v refact-proxy-perm-storage:/perm_storage refact_proxy
 ```
+
+</details>
 
 ### Setting Up Plugins
 
