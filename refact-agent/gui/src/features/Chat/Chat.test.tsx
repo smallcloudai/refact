@@ -13,6 +13,7 @@ import {
   render,
   waitFor,
   stubResizeObserver,
+  within,
   // setUpSystemPromptsForChat,
   cleanup,
   screen,
@@ -675,4 +676,144 @@ describe("Chat", () => {
 
   //   expect(button).not.toBeNull();
   // });
+});
+
+describe("attached file", () => {
+  test("given a file has been attached to a message, it should un-attach the file after sending", async () => {
+    const encoder = new TextEncoder();
+    server.use(...handlers);
+    server.use(
+      http.post("http://127.0.0.1:8001/v1/chat", () => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  content: "hello\n",
+                  role: "user",
+                  tool_call_id: "",
+                  usage: null,
+                })}\n\n`,
+              ),
+            );
+
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  choices: [
+                    {
+                      delta: {
+                        content: "hello",
+                        function_call: null,
+                        role: "assistant",
+                        tool_calls: null,
+                      },
+                      finish_reason: null,
+                      index: 0,
+                      logprobs: null,
+                    },
+                  ],
+                })}\n\n`,
+              ),
+            );
+
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  choices: [
+                    {
+                      delta: {
+                        content: " there",
+                        function_call: null,
+                        role: null,
+                        tool_calls: null,
+                      },
+                      finish_reason: null,
+                      index: 0,
+                      logprobs: null,
+                    },
+                  ],
+                })}\n\n`,
+              ),
+            );
+
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  choices: [
+                    {
+                      delta: {
+                        content: null,
+                        function_call: null,
+                        role: null,
+                        tool_calls: null,
+                      },
+                      finish_reason: "stop",
+                      index: 0,
+                      logprobs: null,
+                    },
+                  ],
+                })}\n\n`,
+              ),
+            );
+
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify(["DONE"])}\n\n`),
+            );
+
+            controller.close();
+          },
+        });
+
+        return new HttpResponse(stream, {
+          headers: {
+            "Content-Type": "application/json",
+            "Transfer-Encoding": "chunked",
+          },
+        });
+      }),
+    );
+    const { user, ...app } = render(<App />, {
+      preloadedState: {
+        config: {
+          host: "ide",
+          lspPort: 8001,
+          themeProps: {},
+        },
+        active_file: {
+          name: "test_file.md",
+          line1: null,
+          line2: null,
+          // attach: false,
+          can_paste: false,
+          path: "path/test_file.md",
+          cursor: null,
+        },
+        selected_snippet: {
+          language: "md",
+          code: "### Hello",
+          path: "path/test_file.md",
+          basename: "test_file.md",
+        },
+      },
+    });
+
+    const fileList = app.getByTestId("attached_file_list");
+    expect(fileList).not.toBeNull();
+
+    const fileButton = within(fileList).queryByRole("button", {
+      name: /test_file\.md/i,
+    });
+
+    expect(fileButton).not.toBeNull();
+
+    const textarea = app.getByTestId("chat-form-textarea");
+    expect(textarea).not.toBeNull();
+    await user.type(textarea, "👋");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() =>
+      expect(app.queryByTestId("attached_file_list")).toBeNull(),
+    );
+  });
 });

@@ -129,7 +129,7 @@ export const FileList: React.FC<FileListProps> = ({ attachedFiles }) => {
   const { images, removeImage } = useAttachedImages();
   if (images.length === 0 && attachedFiles.files.length === 0) return null;
   return (
-    <Flex wrap="wrap" gap="1" py="2">
+    <Flex wrap="wrap" gap="1" py="2" data-testid="attached_file_list">
       {images.map((file, index) => {
         const key = `image-${file.name}-${index}`;
         return (
