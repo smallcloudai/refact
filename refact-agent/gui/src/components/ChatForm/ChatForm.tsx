@@ -255,6 +255,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       const trimmedCommand = command.trim();
       if (!trimmedCommand) {
         setLineSelectionInteracted(false);
+      } else {
+        setLineSelectionInteracted(true);
       }
 
       if (trimmedCommand === "@help") {

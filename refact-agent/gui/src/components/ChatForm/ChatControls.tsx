@@ -20,6 +20,8 @@ import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import {
   ExclamationTriangleIcon,
+  LockClosedIcon,
+  LockOpen1Icon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
@@ -258,6 +260,7 @@ export type Checkbox = {
   fileName?: string;
   hide?: boolean;
   info?: CheckboxHelp;
+  locked?: boolean;
 };
 
 export type ChatControlsProps = {
@@ -281,6 +284,7 @@ const ChatControlCheckBox: React.FC<{
   infoText?: string;
   href?: string;
   linkText?: string;
+  locked?: boolean;
 }> = ({
   name,
   checked,
@@ -291,6 +295,7 @@ const ChatControlCheckBox: React.FC<{
   infoText,
   href,
   linkText,
+  locked,
 }) => {
   return (
     <Flex justify="between">
@@ -308,6 +313,8 @@ const ChatControlCheckBox: React.FC<{
             <TruncateLeft>{fileName}</TruncateLeft>
           </Flex>
         )}
+        {locked && <LockClosedIcon opacity="0.6" />}
+        {locked === false && <LockOpen1Icon opacity="0.6" />}
       </Checkbox>
       {infoText && (
         <HoverCard.Root>
@@ -386,6 +393,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
             href={checkbox.info?.link}
             linkText={checkbox.info?.linkText}
             fileName={checkbox.fileName}
+            locked={checkbox.locked}
           />
         );
       })}

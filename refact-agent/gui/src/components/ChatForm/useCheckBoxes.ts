@@ -142,6 +142,7 @@ const useAttachSelectedSnippet = (
       info: {
         text: "Adds the currently selected lines as a snippet for analysis or modification. Equivalent to code in triple backticks ``` in the text.",
       },
+      locked: false,
     });
 
   useEffect(() => {
@@ -154,6 +155,7 @@ const useAttachSelectedSnippet = (
           disabled: !snippet.code,
           hide: host === "web",
           checked: !!snippet.code && !interacted,
+          locked: false,
         };
       });
     }
@@ -171,6 +173,7 @@ const useAttachSelectedSnippet = (
       return {
         ...prev,
         checked: !prev.checked,
+        locked: !prev.checked,
       };
     });
   }, []);
@@ -181,6 +184,7 @@ const useAttachSelectedSnippet = (
         return {
           ...prev,
           checked: false,
+          locked: false,
         };
       });
     }
