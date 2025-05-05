@@ -43,7 +43,6 @@ import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { Coin } from "../../images";
-import { push } from "../../features/Pages/pagesSlice";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -170,12 +169,9 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
 
-  
-
   const optionsWithToolTips = useMemo(
-    () => {
-      // Map existing models with tooltips
-      const modelOptions = caps.usableModelsForPlan.map((option) => {
+    () =>
+      caps.usableModelsForPlan.map((option) => {
         if (!caps.data) return option;
         if (!caps.data.metadata) return option;
         if (!caps.data.metadata.pricing) return option;
@@ -187,9 +183,9 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
           <Flex direction="column" gap="4">
             <Text size="1">Cost per Million Tokens</Text>
             <DataList.Root size="1" trim="both" className={styles.data_list}>
-              {Object.entries(pricingForModel).map(([key, value], idx) => {
+              {Object.entries(pricingForModel).map(([key, value]) => {
                 return (
-                  <DataList.Item key={`${option.value}-${key}-${idx}`} align="stretch">
+                  <DataList.Item key={key} align="stretch">
                     <DataList.Label minWidth="88px">
                       {toPascalCase(key)}
                     </DataList.Label>
@@ -209,20 +205,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
           tooltip,
           // title,
         };
-      });
-      
-      // Add separator and "Add new model" option
-      return [
-        ...modelOptions,
-        { type: 'separator', key: 'add-new-model-separator' }, // Separator line
-        { 
-          value: 'add-new-model', 
-          key: 'add-new-model',
-          children: 'Add new model',
-          textValue: 'Add new model'
-        }
-      ];
-    },
+      }),
     [caps.data, caps.usableModelsForPlan],
   );
 
@@ -230,24 +213,6 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
     if (typeof option === "string") return false;
     return option.disabled;
   });
-
-  if (disabled) 
-    return null;
-
-   const dispatch = useAppDispatch();
-   const handleAddNewModelClick= useCallback(() => {
-      dispatch(push({ name: "providers page" }));
-   }, [dispatch]);
-    
-
-  const onSelectChange = useCallback(
-    (value: string) => {
-      if (value === "add-new-model") {
-        handleAddNewModelClick();
-        return;
-      }
-      return caps.setCapModel(value);
-  })
 
   return (
     <Flex
@@ -270,7 +235,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
               title="chat model"
               options={optionsWithToolTips}
               value={caps.currentModel}
-              onChange={onSelectChange}
+              onChange={caps.setCapModel}
               disabled={disabled}
             />
           )}
