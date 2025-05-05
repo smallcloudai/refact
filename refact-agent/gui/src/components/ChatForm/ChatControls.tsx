@@ -169,22 +169,8 @@ export const AgentRollbackSwitch: React.FC = () => {
 export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
-  const dispatch = useAppDispatch();
-  
-  const handleAddNewModelClick = useCallback(() => {
-    dispatch(push({ name: "providers page" }));
-  }, [dispatch]);
 
-  const onSelectChange = useCallback(
-    (value: string) => {
-      if (value === "add-new-model") {
-        handleAddNewModelClick();
-        return;
-      }
-      caps.setCapModel(value);
-    },
-    [handleAddNewModelClick, caps]
-  );
+  
 
   const optionsWithToolTips = useMemo(
     () => {
@@ -247,6 +233,21 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
 
   if (disabled) 
     return null;
+
+   const dispatch = useAppDispatch();
+   const handleAddNewModelClick= useCallback(() => {
+      dispatch(push({ name: "providers page" }));
+   }, [dispatch]);
+    
+
+  const onSelectChange = useCallback(
+    (value: string) => {
+      if (value === "add-new-model") {
+        handleAddNewModelClick();
+        return;
+      }
+      return caps.setCapModel(value);
+  })
 
   return (
     <Flex
