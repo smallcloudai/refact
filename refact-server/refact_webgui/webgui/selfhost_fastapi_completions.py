@@ -6,6 +6,7 @@ import aiofiles
 import termcolor
 import os
 import re
+import uuid
 import litellm
 import traceback
 
@@ -517,14 +518,19 @@ class BaseCompletionsRouter(APIRouter):
         }
 
     async def _chat_completions(self, post: ChatContext, authorization: str = Header(None)):
+        created_ts = time.time()
+        request_id = f"chat-comp-{str(uuid.uuid4()).replace('-', '')[0:12]}"
+
         _account = await self._account_from_bearer(authorization)
         caps_version = self._caps_version
 
         messages = []
+        # drop empty optional fields
         for m in (i.dict() for i in post.messages):
-            # drop tool_calls if empty, otherwise litellm tokenizing won't work
             if "tool_calls" in m and not m["tool_calls"]:
                 del m["tool_calls"]
+            if "thinking_blocks" in m and not m["thinking_blocks"]:
+                del m["thinking_blocks"]
             messages.append(m)
 
         prefix, postfix = "data: ", "\n\n"
@@ -540,10 +546,10 @@ class BaseCompletionsRouter(APIRouter):
 
         model_config = available_third_party_models().get(post.model)
         if model_config:
-            log(f"chat/completions: resolve {post.model} -> {model_config.model_id}")
+            log(f"{request_id}: resolve {post.model} -> {model_config.model_id}")
         else:
             err_message = f"model {post.model} is not running on server"
-            log(f"chat/completions: {err_message}")
+            log(f"{request_id}: {err_message}")
             raise HTTPException(status_code=400, detail=err_message)
 
         prompt_tokens_n = litellm.token_counter(model_config.model_id, messages=messages)
@@ -602,9 +608,10 @@ class BaseCompletionsRouter(APIRouter):
 
                 # NOTE: DONE needed by refact-lsp server
                 yield _wrap_output("[DONE]")
+                log(f"{request_id} /finished in {red_time(created_ts)}")
             except BaseException as e:
-                err_msg = f"litellm error (1): {e}"
-                log(err_msg)
+                err_msg = f"litellm error (streaming): {e}"
+                log(f"{request_id} /error: {err_msg}, {red_time(created_ts)}")
                 yield _wrap_output(json.dumps(_patch_caps_version({"error": err_msg})))
 
         async def litellm_non_streamer():
@@ -625,9 +632,10 @@ class BaseCompletionsRouter(APIRouter):
                 except json.JSONDecodeError:
                     data = {"choices": [{"finish_reason": finish_reason}]}
                 yield json.dumps(_patch_caps_version(data))
+                log(f"{request_id} /finished in {red_time(created_ts)}")
             except BaseException as e:
-                err_msg = f"litellm error (2): {e}"
-                log(err_msg)
+                err_msg = f"litellm error (no streaming): {e}"
+                log(f"{request_id} /error: {err_msg}, {red_time(created_ts)}")
                 yield json.dumps(_patch_caps_version({"error": err_msg}))
 
         response_streamer = litellm_streamer() if post.stream else litellm_non_streamer()
