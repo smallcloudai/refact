@@ -57,7 +57,6 @@ export function useAttachedFiles() {
 
   const removeAll = useCallback(() => {
     setFiles([]);
-    setInteracted(false);
   }, []);
 
   useEffect(() => {
