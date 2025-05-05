@@ -24,7 +24,7 @@ all_refact_packages = {
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"]),
     "refact_known_models": PyPackage(),
     "refact_utils": PyPackage(
-        requires=["litellm>=1.63.2", "pydantic>=2", "aiohttp", "aiofiles"],
+        requires=["litellm>=1.68.0", "pydantic>=2", "aiohttp", "aiofiles"],
         data=["third_party/tokenizers/*"]
     ),
     "refact_data_pipeline": PyPackage(
