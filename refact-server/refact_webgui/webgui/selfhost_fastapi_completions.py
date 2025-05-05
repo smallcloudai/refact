@@ -552,9 +552,8 @@ class BaseCompletionsRouter(APIRouter):
             log(f"{request_id}: {err_message}")
             raise HTTPException(status_code=400, detail=err_message)
 
-        prompt_tokens_n = litellm.token_counter(model_config.model_id, messages=messages)
-        if post.tools:
-            prompt_tokens_n += litellm.token_counter(model_config.model_id, text=json.dumps(post.tools))
+        messages_to_count = [{k: v for k, v in m.items() if k not in ["thinking_blocks"]} for m in messages]
+        prompt_tokens_n = litellm.token_counter(model_config.model_id, messages=messages_to_count, tools=post.tools)
 
         max_tokens = min(model_config.max_tokens, post.actual_max_tokens)
         completion_kwargs = {
