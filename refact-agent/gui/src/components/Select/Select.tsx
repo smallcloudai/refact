@@ -83,9 +83,12 @@ export const Select: React.FC<SelectProps> = ({
               </Item>
             );
           }
+          if (option.type === 'separator') {
+            return <Separator key={option.key || `separator-${index}`} />;
+          }
           if (option.tooltip) {
             return (
-              <Item key={`select-item-${index}-${option.value}`} {...option}>
+              <Item key={option.key || `select-item-${index}-${option.value}`} {...option}>
                 <HoverCard.Root>
                   <HoverCard.Trigger>
                     <div>
@@ -100,7 +103,7 @@ export const Select: React.FC<SelectProps> = ({
             );
           }
           return (
-            <Item key={`select-item-${index}-${option.value}`} {...option}>
+            <Item key={option.key || `select-item-${index}-${option.value}`} {...option}>
               {option.children ?? option.textValue ?? option.value}
             </Item>
           );
