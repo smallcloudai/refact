@@ -25,7 +25,7 @@ export const calculateUsageInputTokens = ({
   usage,
 }: {
   keys: (keyof Usage)[];
-  usage?: Usage;
+  usage?: Usage | null;
 }): number => {
   return keys.reduce((acc, key) => {
     if (!(usage && key in usage)) return acc;
@@ -136,7 +136,9 @@ export const mergePromptTokensDetails = (
  * // returns { completion_tokens: 50, prompt_tokens: 180, total_tokens: 230, ... }
  * ```
  */
-export function mergeUsages(usages: (Usage | undefined)[]): Usage | undefined {
+export function mergeUsages(
+  usages: (Usage | undefined | null)[],
+): Usage | undefined | null {
   const validUsages = usages.filter((usage): usage is Usage => !!usage);
 
   if (validUsages.length === 0) return undefined;

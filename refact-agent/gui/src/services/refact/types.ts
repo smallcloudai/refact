@@ -161,7 +161,7 @@ export interface AssistantMessage extends BaseMessage, CostInfo {
   tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
-  usage?: Usage;
+  usage?: Usage | null;
 }
 
 export interface ToolCallMessage extends AssistantMessage {
@@ -619,7 +619,7 @@ type ChatResponseChoice = {
   created: number;
   model: string;
   id?: string;
-  usage?: Usage;
+  usage?: Usage | null;
   refact_agent_request_available?: null | number;
   refact_agent_max_request_num?: number;
 } & CostInfo;

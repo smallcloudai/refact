@@ -1160,6 +1160,474 @@ describe("formatChatResponse", () => {
       },
     ]);
   });
+
+  test("byok openai usage", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "hello\n",
+        checkpoints: [
+          {
+            workspace_folder: "/Users/marc/Projects/refact",
+            commit_hash: "5365c0e1efde9a8a4b9be199ea8cd47e4cc5acfd",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              // refusal: null,
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "Hello",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "!",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " I'm",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " Ref",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "act",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " Agent",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: ",",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " your",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " coding",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " assistant",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: ".",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " How",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " can",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " I",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " help",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " you",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " today",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "?",
+            },
+            finish_reason: null,
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: "stop",
+          },
+        ],
+        usage: null,
+      },
+      {
+        id: "chatcmpl-BUBWQDOHxOWUxzDW2DxvUR462yMpT",
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+        // service_tier: "default",
+        // system_fingerprint: "fp_8810992130",
+        choices: [],
+        usage: {
+          prompt_tokens: 2876,
+          completion_tokens: 222,
+          total_tokens: 3098,
+          prompt_tokens_details: {
+            cached_tokens: 2688,
+            audio_tokens: 0,
+          },
+          completion_tokens_details: {
+            reasoning_tokens: 192,
+            audio_tokens: 0,
+            accepted_prediction_tokens: 0,
+            rejected_prediction_tokens: 0,
+          },
+        },
+      },
+      {
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+        // object: "chat.completion.chunk",
+        created: 1746533829.888066,
+        model: "o3-mini",
+      },
+    ];
+
+    const result = chunks.reduce<ChatMessages>(
+      (acc, cur) => formatChatResponse(acc, cur),
+      [],
+    );
+
+    expect(result).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "5365c0e1efde9a8a4b9be199ea8cd47e4cc5acfd",
+            workspace_folder: "/Users/marc/Projects/refact",
+          },
+        ],
+        compression_strength: "absent",
+        content: "hello\n",
+        role: "user",
+      },
+      {
+        content:
+          "Hello! I'm Refact Agent, your coding assistant. How can I help you today?",
+        finish_reason: "stop",
+        metering_balance: undefined,
+        metering_cache_creation_tokens_n: undefined,
+        metering_cache_read_tokens_n: undefined,
+        metering_coins_cache_creation: undefined,
+        metering_coins_cache_read: undefined,
+        metering_coins_generated: undefined,
+        metering_coins_prompt: undefined,
+        metering_prompt_tokens_n: undefined,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: undefined,
+        usage: {
+          prompt_tokens: 2876,
+          completion_tokens: 222,
+          total_tokens: 3098,
+          prompt_tokens_details: {
+            cached_tokens: 2688,
+            audio_tokens: 0,
+          },
+          completion_tokens_details: {
+            reasoning_tokens: 192,
+            audio_tokens: 0,
+            accepted_prediction_tokens: 0,
+            rejected_prediction_tokens: 0,
+          },
+        },
+      },
+    ]);
+  });
 });
 
 describe("mergeToolCalls", () => {
