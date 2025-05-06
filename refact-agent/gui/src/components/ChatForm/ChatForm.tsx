@@ -128,7 +128,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
-    if (globalErrorType === "balance") return true;
     // if (
     //   currentThreadMaximumContextTokens &&
     //   currentThreadUsage?.prompt_tokens &&
@@ -140,7 +139,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return isWaiting || isStreaming || !isOnline || preventSend;
   }, [
     allDisabled,
-    globalErrorType,
     messages.length,
     isWaiting,
     isStreaming,
