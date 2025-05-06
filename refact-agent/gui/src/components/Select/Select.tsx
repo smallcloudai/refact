@@ -3,9 +3,16 @@ import { HoverCard, Select as RadixSelect } from "@radix-ui/themes";
 import styles from "./select.module.css";
 import classnames from "classnames";
 
+type SeparatorOption = { type: "separator"; key?: string };
+function isSeparator(option: unknown): option is SeparatorOption {
+  if (!option) return false;
+  if (typeof option !== "object") return false;
+  if (!("type" in option)) return false;
+  return option.type === "separator";
+}
 export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   onChange: (value: string) => void;
-  options: (string | ItemProps)[];
+  options: (string | ItemProps | SeparatorOption)[];
   title?: string;
   contentPosition?: "item-aligned" | "popper";
   value?: string;
@@ -31,6 +38,7 @@ export const Content: React.FC<ContentProps & { className?: string }> = (
 export type ItemProps = React.ComponentProps<typeof RadixSelect.Item> & {
   tooltip?: ReactNode;
 };
+
 export const Item: React.FC<ItemProps & { className?: string }> = (props) => (
   <RadixSelect.Item
     {...props}
@@ -51,7 +59,10 @@ export const Select: React.FC<SelectProps> = ({
   const maybeSelectedOption = useMemo(() => {
     if (typeof props.value === "undefined") return null;
     const selectOption = options.find(
-      (option) => typeof option !== "string" && option.value === props.value,
+      (option) =>
+        typeof option !== "string" &&
+        "value" in option &&
+        option.value === props.value,
     );
     if (!selectOption) return null;
     if (typeof selectOption === "string") return null;
@@ -59,7 +70,9 @@ export const Select: React.FC<SelectProps> = ({
   }, [props.value, options]);
   return (
     <Root {...props} onValueChange={onChange} size="1">
-      {maybeSelectedOption && maybeSelectedOption.tooltip ? (
+      {maybeSelectedOption &&
+      "tooltip" in maybeSelectedOption &&
+      maybeSelectedOption.tooltip ? (
         <HoverCard.Root openDelay={1000}>
           <HoverCard.Trigger>
             <Trigger />
@@ -83,12 +96,12 @@ export const Select: React.FC<SelectProps> = ({
               </Item>
             );
           }
-          if (option.type === 'separator') {
-            return <Separator key={option.key || `separator-${index}`} />;
+          if (isSeparator(option)) {
+            return <Separator key={option.key ?? `separator-${index}`} />;
           }
           if (option.tooltip) {
             return (
-              <Item key={option.key || `select-item-${index}-${option.value}`} {...option}>
+              <Item key={`select-item-${index}-${option.value}`} {...option}>
                 <HoverCard.Root>
                   <HoverCard.Trigger>
                     <div>
@@ -103,7 +116,7 @@ export const Select: React.FC<SelectProps> = ({
             );
           }
           return (
-            <Item key={option.key || `select-item-${index}-${option.value}`} {...option}>
+            <Item key={`select-item-${index}-${option.value}`} {...option}>
               {option.children ?? option.textValue ?? option.value}
             </Item>
           );
