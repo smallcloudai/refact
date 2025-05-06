@@ -175,6 +175,7 @@ type MeteringBalance = Pick<
   | "metering_cache_creation_tokens_n"
   | "metering_cache_read_tokens_n"
   | "metering_prompt_tokens_n"
+  | "metering_generated_tokens_n"
   | "metering_coins_prompt"
   | "metering_coins_generated"
   | "metering_coins_cache_creation"
@@ -208,6 +209,10 @@ function mergeMetering(
     metering_prompt_tokens_n: highestNumber(
       a.metering_prompt_tokens_n,
       b.metering_prompt_tokens_n,
+    ),
+    metering_generated_tokens_n: highestNumber(
+      a.metering_generated_tokens_n,
+      b.metering_generated_tokens_n,
     ),
     metering_coins_prompt: highestNumber(
       a.metering_coins_prompt,

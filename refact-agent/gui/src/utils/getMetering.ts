@@ -7,7 +7,7 @@ import {
 } from "../services/refact/types";
 
 // TODO: cap cost should be in the messages:/
-export function calculateTotalCostOfMessages(messages: ChatMessages) {
+export function getTotalCostMeteringForMessages(messages: ChatMessages) {
   const assistantMessages = messages.filter(hasUsageAndPrice);
   if (assistantMessages.length === 0) return null;
 
@@ -38,6 +38,44 @@ export function calculateTotalCostOfMessages(messages: ChatMessages) {
     },
   );
 }
+
+export function getTotalTokenMeteringForMessages(messages: ChatMessages) {
+  const assistantMessages = messages.filter(hasUsageAndPrice);
+  if (assistantMessages.length === 0) return null;
+
+  return assistantMessages.reduce<{
+    metering_prompt_tokens_n: number;
+    metering_generated_tokens_n: number;
+    metering_cache_creation_tokens_n: number;
+    metering_cache_read_tokens_n: number;
+  }>(
+    (acc, message) => {
+      const {
+        metering_prompt_tokens_n,
+        metering_generated_tokens_n,
+        metering_cache_read_tokens_n,
+        metering_cache_creation_tokens_n,
+      } = message;
+      return {
+        metering_prompt_tokens_n:
+          acc.metering_prompt_tokens_n + metering_prompt_tokens_n,
+        metering_generated_tokens_n:
+          acc.metering_generated_tokens_n + metering_generated_tokens_n,
+        metering_cache_creation_tokens_n:
+          acc.metering_cache_creation_tokens_n +
+          metering_cache_creation_tokens_n,
+        metering_cache_read_tokens_n:
+          acc.metering_cache_read_tokens_n + metering_cache_read_tokens_n,
+      };
+    },
+    {
+      metering_prompt_tokens_n: 0,
+      metering_generated_tokens_n: 0,
+      metering_cache_creation_tokens_n: 0,
+      metering_cache_read_tokens_n: 0,
+    },
+  );
+}
 function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
   usage: Usage & {
     completion_tokens: number;
@@ -49,6 +87,11 @@ function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
   metering_coins_generated: number;
   metering_coins_cache_creation: number;
   metering_coins_cache_read: number;
+
+  metering_prompt_tokens_n: number;
+  metering_generated_tokens_n: number;
+  metering_cache_creation_tokens_n: number;
+  metering_cache_read_tokens_n: number;
 } {
   if (!isAssistantMessage(message)) return false;
   if (!("usage" in message)) return false;
@@ -59,6 +102,13 @@ function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
   if (typeof message.metering_coins_prompt !== "number") return false;
   if (typeof message.metering_coins_cache_creation !== "number") return false;
   if (typeof message.metering_coins_cache_read !== "number") return false;
+
+  if (typeof message.metering_prompt_tokens_n !== "number") return false;
+  if (typeof message.metering_generated_tokens_n !== "number") return false;
+  if (typeof message.metering_cache_creation_tokens_n !== "number") {
+    return false;
+  }
+  if (typeof message.metering_cache_read_tokens_n !== "number") return false;
 
   return true;
 }
