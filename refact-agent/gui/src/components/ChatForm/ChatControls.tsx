@@ -224,10 +224,9 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
       };
     });
 
-    // Add separator and "Add new model" option
     return [
       ...modelOptions,
-      { type: "separator" }, // Separator line
+      { type: "separator" },
       {
         value: "add-new-model",
         textValue: "Add new model",
@@ -239,8 +238,6 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
     if (typeof option === "string") return false;
     return option.disabled;
   });
-
-  if (disabled) return null;
 
   return (
     <Flex
