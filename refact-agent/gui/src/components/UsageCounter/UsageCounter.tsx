@@ -55,6 +55,7 @@ const TokensDisplay: React.FC<{
     cache_read_input_tokens,
     cache_creation_input_tokens,
     completion_tokens_details,
+    prompt_tokens,
   } = currentThreadUsage;
 
   return (
@@ -63,6 +64,9 @@ const TokensDisplay: React.FC<{
         Tokens spent per chat thread:
       </Text>
       <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+
+      <TokenDisplay label="Prompt tokens" value={prompt_tokens} />
+
       {cache_read_input_tokens !== undefined && (
         <TokenDisplay
           label="Cache read input tokens"
