@@ -217,9 +217,9 @@ export const CalloutFromTop: React.FC<
   );
 };
 
-export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
-  onClick,
-}) => {
+export const BallanceCallOut: React.FC<
+  Omit<CalloutProps, "type"> & { onClick: () => void }
+> = ({ onClick, ...props }) => {
   const openUrl = useOpenUrl();
   const { host } = useConfig();
   const handleLinkClick = useCallback(
@@ -236,9 +236,9 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
       mt="2"
       type="error"
       color="red"
-      className={classNames(styles.callout_box_inner)}
       timeout={null}
       onClick={onClick}
+      {...props}
     >
       💸 <Strong>Your balance is exhausted!</Strong>
       <br />
@@ -266,7 +266,9 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
   );
 };
 
-export const BallanceLowInformation: React.FC = () => {
+export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
+  props,
+) => {
   const balance = useAppSelector(selectBalance);
   const dispatch = useAppDispatch();
   const handleClose = useCallback(() => {
@@ -291,6 +293,7 @@ export const BallanceLowInformation: React.FC = () => {
       mt="2"
       timeout={null}
       onClick={handleClose}
+      {...props}
     >
       💸 <Strong>Your balance is {balance}</Strong>
       <br />

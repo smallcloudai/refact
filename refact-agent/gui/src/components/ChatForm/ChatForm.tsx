@@ -105,7 +105,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
-  const shouldSowBallanceLow = useAppSelector(showBalanceLowCallout);
+  const shouldShowBalanceLow = useAppSelector(showBalanceLowCallout);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -128,6 +128,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const disableSend = useMemo(() => {
     // TODO: if interrupting chat some errors can occur
     if (allDisabled) return true;
+    if (globalErrorType === "balance") return true;
     // if (
     //   currentThreadMaximumContextTokens &&
     //   currentThreadUsage?.prompt_tokens &&
@@ -139,6 +140,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     return isWaiting || isStreaming || !isOnline || preventSend;
   }, [
     allDisabled,
+    globalErrorType,
     messages.length,
     isWaiting,
     isStreaming,
@@ -311,19 +313,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setIsSendImmediately,
   ]);
 
-  if (globalErrorType === "balance") {
-    return <BallanceCallOut onClick={() => dispatch(clearError())} />;
-  }
-
   if (globalError) {
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {globalError}
       </ErrorCallout>
     );
-  }
-  if (shouldSowBallanceLow) {
-    return <BallanceLowInformation />;
   }
 
   if (information) {
@@ -342,6 +337,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   return (
     <Card mt="1" style={{ flexShrink: 0, position: "relative" }}>
+      {globalErrorType === "balance" && (
+        <BallanceCallOut
+          mt="0"
+          mb="2"
+          mx="0"
+          onClick={() => dispatch(clearError())}
+        />
+      )}
+      {shouldShowBalanceLow && <BallanceLowInformation mt="0" mb="2" mx="0" />}
       {!isOnline && (
         <Callout type="info" mb="2">
           Oops, seems that connection was lost... Check your internet connection
