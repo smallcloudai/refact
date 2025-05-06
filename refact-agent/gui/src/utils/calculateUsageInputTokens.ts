@@ -138,7 +138,7 @@ export const mergePromptTokensDetails = (
  */
 export function mergeUsages(
   usages: (Usage | undefined | null)[],
-): Usage | undefined | null {
+): Usage | undefined {
   const validUsages = usages.filter((usage): usage is Usage => !!usage);
 
   if (validUsages.length === 0) return undefined;
