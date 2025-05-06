@@ -6,7 +6,8 @@ use std::sync::Weak;
 use std::future::Future;
 use std::process::Stdio;
 use async_trait::async_trait;
-use rmcp::model::PaginatedRequestParamInner;
+use rmcp::transport::sse::ReqwestSseClient;
+use rmcp::transport::SseTransport;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -295,7 +296,7 @@ async fn _session_apply_settings(
                         Err(e)  => tracing::error!("Failed to create stderr file for {debug_name}: {e}"),
                     }
 
-                    let transport = match rmcp::transport::TokioChildProcess::new(&mut command) {
+                    let transport = match rmcp::transport::TokioChildProcess::new(command) {
                         Ok(t) => t,
                         Err(e) => {
                             log(Level::ERROR, format!("Failed to init Tokio child process: {}", e)).await;
@@ -331,14 +332,21 @@ async fn _session_apply_settings(
                             _ => log(Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
                         }
                     }
-                    let client = match reqwest::Client::builder().default_headers(header_map).build() {
-                        Ok(c) => c,
+                    let reqwest_client = match reqwest::Client::builder().default_headers(header_map).build() {
+                        Ok(reqwest_client) => reqwest_client,
                         Err(e) => {
                             log(Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
                             return;
                         }
                     };
-                    let transport = match rmcp::transport::SseTransport::start_with_client(&new_cfg_clone.url, client).await {
+                    let sse_client = match ReqwestSseClient::new_with_client(&new_cfg_clone.url, reqwest_client).await {
+                        Ok(sse_client) => sse_client,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to init SSE client: {}", e)).await;
+                            return;
+                        },
+                    };
+                    let transport = match SseTransport::start_with_client(sse_client).await {
                         Ok(t) => t,
                         Err(e) => {
                             log(Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
@@ -639,7 +647,7 @@ impl Tool for ToolMCP {
             name: self.tool_name(),
             agentic: true,
             experimental: false,
-            description: self.mcp_tool.description.to_string(),
+            description: self.mcp_tool.description.to_owned().unwrap_or_default().to_string(),
             parameters,
             parameters_required,
         }
