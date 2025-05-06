@@ -316,15 +316,15 @@ async fn pp_limit_and_merge(
             anything = true;
             if first_line == 0 { first_line = i; }
             if i > prev_line + 1 {
-                out.push_str("...\n".to_string().as_str());
+                out.push_str("...\n");
             }
-            out.push_str(&line_ref.line_content);
-            out.push_str("\n");
+            out.push_str(&format!("{:4} | {}\n", line_ref.line_n + 1, line_ref.line_content));
             prev_line = i;
         }
         if last_line > prev_line + 1 {
             out.push_str("...\n");
         }
+
         if DEBUG >= 2 {
             info!("file {:?}:\n{}", cpath, out);
         } else if DEBUG == 1 {
