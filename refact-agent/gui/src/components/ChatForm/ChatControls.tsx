@@ -11,7 +11,7 @@ import {
   Button,
   DataList,
 } from "@radix-ui/themes";
-import { Select } from "../Select";
+import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
@@ -235,7 +235,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
   const dispatch = useAppDispatch();
-  
+
   const handleAddNewModelClick = useCallback(() => {
     dispatch(push({ name: "providers page" }));
   }, [dispatch]);
@@ -248,70 +248,64 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
       }
       caps.setCapModel(value);
     },
-    [handleAddNewModelClick, caps]
+    [handleAddNewModelClick, caps],
   );
 
-  const optionsWithToolTips = useMemo(
-    () => {
-      // Map existing models with tooltips
-      const modelOptions = caps.usableModelsForPlan.map((option) => {
-        if (!caps.data) return option;
-        if (!caps.data.metadata) return option;
-        if (!caps.data.metadata.pricing) return option;
-        if (!option.value.startsWith("refact/")) return option;
-        const key = option.value.replace("refact/", "");
-        if (!(key in caps.data.metadata.pricing)) return option;
-        const pricingForModel = caps.data.metadata.pricing[key];
-        const tooltip = (
-          <Flex direction="column" gap="4">
-            <Text size="1">Cost per Million Tokens</Text>
-            <DataList.Root size="1" trim="both" className={styles.data_list}>
-              {Object.entries(pricingForModel).map(([key, value], idx) => {
-                return (
-                  <DataList.Item key={`${option.value}-${key}-${idx}`} align="stretch">
-                    <DataList.Label minWidth="88px">
-                      {toPascalCase(key)}
-                    </DataList.Label>
-                    <DataList.Value className={styles.data_list__value}>
-                      <Flex justify="between" align="center" gap="2">
-                        {value * 1_000} <Coin width="12px" height="12px" />
-                      </Flex>
-                    </DataList.Value>
-                  </DataList.Item>
-                );
-              })}
-            </DataList.Root>
-          </Flex>
-        );
-        return {
-          ...option,
-          tooltip,
-          // title,
-        };
-      });
-      
-      // Add separator and "Add new model" option
-      return [
-        ...modelOptions,
-        { type: 'separator', key: 'add-new-model-separator' }, // Separator line
-        { 
-          value: 'add-new-model', 
-          key: 'add-new-model',
-          children: 'Add new model',
-          textValue: 'Add new model'
-        }
-      ];
-    },
-    [caps.data, caps.usableModelsForPlan],
-  );
+  const optionsWithToolTips: SelectProps["options"] = useMemo(() => {
+    // Map existing models with tooltips
+    const modelOptions = caps.usableModelsForPlan.map((option) => {
+      if (!caps.data) return option;
+      if (!caps.data.metadata) return option;
+      if (!caps.data.metadata.pricing) return option;
+      if (!option.value.startsWith("refact/")) return option;
+      const key = option.value.replace("refact/", "");
+      if (!(key in caps.data.metadata.pricing)) return option;
+      const pricingForModel = caps.data.metadata.pricing[key];
+      const tooltip = (
+        <Flex direction="column" gap="4">
+          <Text size="1">Cost per Million Tokens</Text>
+          <DataList.Root size="1" trim="both" className={styles.data_list}>
+            {Object.entries(pricingForModel).map(([key, value]) => {
+              return (
+                <DataList.Item key={key} align="stretch">
+                  <DataList.Label minWidth="88px">
+                    {toPascalCase(key)}
+                  </DataList.Label>
+                  <DataList.Value className={styles.data_list__value}>
+                    <Flex justify="between" align="center" gap="2">
+                      {value * 1_000} <Coin width="12px" height="12px" />
+                    </Flex>
+                  </DataList.Value>
+                </DataList.Item>
+              );
+            })}
+          </DataList.Root>
+        </Flex>
+      );
+      return {
+        ...option,
+        tooltip,
+        // title,
+      };
+    });
+
+    // Add separator and "Add new model" option
+    return [
+      ...modelOptions,
+      { type: "separator" }, // Separator line
+      {
+        value: "add-new-model",
+        textValue: "Add new model",
+      },
+    ];
+  }, [caps.data, caps.usableModelsForPlan]);
 
   const allDisabled = caps.usableModelsForPlan.every((option) => {
     if (typeof option === "string") return false;
     return option.disabled;
   });
 
-  if (disabled) 
-    return null;
+  if (disabled) return null;
 
   return (
     <Flex
