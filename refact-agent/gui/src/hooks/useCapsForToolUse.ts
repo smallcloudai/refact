@@ -38,7 +38,10 @@ export function useCapsForToolUse() {
 
   const setCapModel = useCallback(
     (value: string) => {
-      const model = caps.data?.chat_default_model === value ? "" : value;
+      const model =
+        caps.data?.chat_default_model === value
+          ? caps.data.chat_default_model
+          : value;
       const action = setChatModel(model);
       dispatch(action);
       const tokens =
