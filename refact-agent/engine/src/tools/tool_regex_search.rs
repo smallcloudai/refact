@@ -36,15 +36,15 @@ async fn search_single_file(
     
     for (line_idx, line) in lines.iter().enumerate() {
         if regex.is_match(line) {
-            let line_num = line_idx + 1;
+            let line_num = (line_idx + 1) as i64;
             let context_start = line_idx.saturating_sub(2);
             let context_end = (line_idx + 3).min(lines.len());
             let context_content = lines[context_start..context_end].join("\n");
             file_results.push(ContextFile {
                 file_name: file_path.clone(),
                 file_content: context_content,
-                line1: (line_num - 10).max(1),
-                line2: (line_num + 10).min(lines.len()),
+                line1: (line_num - 10).max(1) as usize,
+                line2: (line_num + 10).min(lines.len() as i64) as usize,
                 symbols: vec![],
                 gradient_type: 5,
                 usefulness: 100.0,
