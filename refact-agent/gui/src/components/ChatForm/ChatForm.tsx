@@ -146,6 +146,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     preventSend,
   ]);
 
+  const isModelSelectVisible = useMemo(() => messages.length < 1, [messages]);
+
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
     (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -398,9 +400,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="1" wrap="wrap" py="1" px="2">
-            <CapsSelect
-              disabled={messages.length > 0 || isStreaming || isWaiting}
-            />
+            {isModelSelectVisible && <CapsSelect />}
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               <ThinkingButton />
