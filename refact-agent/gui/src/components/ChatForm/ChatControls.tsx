@@ -28,6 +28,7 @@ import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
 import {
   ToolUse,
+  selectAreFollowUpsEnabled,
   selectAutomaticPatch,
   selectChatId,
   selectCheckpointsEnabled,
@@ -35,6 +36,7 @@ import {
   selectIsWaiting,
   selectMessages,
   selectToolUse,
+  setAreFollowUpsEnabled,
   setAutomaticPatch,
   setEnabledCheckpoints,
   setToolUse,
@@ -154,6 +156,69 @@ export const AgentRollbackSwitch: React.FC = () => {
                   <Text as="p" size="1">
                     Warning: may slow down performance of Agent in large
                     projects
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
+export const FollowUpsSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+
+  const handleFollowUpsEnabledChange = (checked: boolean) => {
+    dispatch(setAreFollowUpsEnabled(checked));
+  };
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Follow-Ups messages
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Enable/disable follow-ups messages generation by Agent"
+          checked={areFollowUpsEnabled}
+          onCheckedChange={handleFollowUpsEnabledChange}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content size="2" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="2">
+                When enabled, Refact Agent will automatically generate related
+                follow-ups to the conversation
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may increase coins spending
                   </Text>
                 </Flex>
               </Badge>
