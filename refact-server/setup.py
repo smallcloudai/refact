@@ -24,7 +24,7 @@ all_refact_packages = {
         requires=["cdifflib", "termcolor", "numpy", "dataclasses"]),
     "refact_known_models": PyPackage(),
     "refact_utils": PyPackage(
-        requires=["litellm>=1.63.2", "pydantic>=2", "aiohttp", "aiofiles"],
+        requires=["litellm>=1.68.0", "pydantic>=2", "aiohttp", "aiofiles"],
         data=["third_party/tokenizers/*"]
     ),
     "refact_data_pipeline": PyPackage(
@@ -36,7 +36,7 @@ all_refact_packages = {
         data=["git_command.exp"],
     ),
     "refact_webgui": PyPackage(
-        requires=["cryptography", "fastapi>=0.111.0", "giturlparse",
+        requires=["cryptography", "fastapi>=0.115.2", "giturlparse",
                   "starlette==0.37.2", "uvicorn", "uvloop", "termcolor", "python-multipart", "more_itertools",
                   "scyllapy==1.3.0", "pandas>=2.0.3"],
         requires_packages=["refact_known_models", "refact_utils"],
@@ -44,9 +44,9 @@ all_refact_packages = {
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
               "webgui/static/assets/fonts/*"]),
     "self_hosting_machinery": PyPackage(
-        requires=["python-multipart", "auto-gptq==0.7.1", "accelerate",
-                  "termcolor", "torch", "transformers==4.47.1",  # Qwen2 is completely changed in transformers>=4.48
-                  "bitsandbytes", "safetensors", "peft", "triton",
+        requires=["python-multipart", "accelerate",
+                  "termcolor", "torch", "transformers>=4.51.0",
+                  "bitsandbytes>=0.45.5", "safetensors", "peft", "triton",
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
                   "sentence-transformers>=3.4.1", "huggingface-hub>=0.29.2",
                   "aiohttp", "setproctitle", "google-auth>=2.37.0"],
@@ -95,7 +95,7 @@ else:
 
 setup(
     name="refact-self-hosting",
-    version="1.10.0",
+    version="1.11.0",
     py_modules=list(setup_packages.keys()),
     package_data={
         name: py_package.data

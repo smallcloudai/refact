@@ -1,5 +1,5 @@
 import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
-import { Card, Flex, HoverCard, Text } from "@radix-ui/themes";
+import { Box, Card, Flex, HoverCard, Tabs, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import React, { useMemo, useState } from "react";
 
@@ -21,6 +21,7 @@ import {
 
 import styles from "./UsageCounter.module.css";
 import { Coin } from "../../images";
+import { Usage } from "../../services/refact";
 
 type UsageCounterProps =
   | {
@@ -43,6 +44,47 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
     <Text size="1">{formatNumberToFixed(value)}</Text>
   </Flex>
 );
+
+const TokensDisplay: React.FC<{
+  currentThreadUsage?: Usage;
+  inputTokens: number;
+  outputTokens: number;
+}> = ({ currentThreadUsage, inputTokens, outputTokens }) => {
+  if (!currentThreadUsage) return;
+  const {
+    cache_read_input_tokens,
+    cache_creation_input_tokens,
+    completion_tokens_details,
+  } = currentThreadUsage;
+
+  return (
+    <Flex direction="column" align="start" gap="2">
+      <Text size="2" mb="2">
+        Tokens spent per chat thread:
+      </Text>
+      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+      {cache_read_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache read input tokens"
+          value={cache_read_input_tokens}
+        />
+      )}
+      {cache_creation_input_tokens !== undefined && (
+        <TokenDisplay
+          label="Cache creation input tokens"
+          value={cache_creation_input_tokens}
+        />
+      )}
+      <TokenDisplay label="Completion tokens" value={outputTokens} />
+      {completion_tokens_details?.reasoning_tokens !== null && (
+        <TokenDisplay
+          label="Reasoning tokens"
+          value={completion_tokens_details?.reasoning_tokens ?? 0}
+        />
+      )}
+    </Flex>
+  );
+};
 
 const CoinDisplay: React.FC<{ label: React.ReactNode; value: number }> = ({
   label,
@@ -133,7 +175,31 @@ const DefaultHoverCard: React.FC<{
     );
   }, [cost]);
 
-  if (total > 0) {
+  const tabsOptions = useMemo(() => {
+    const options = [];
+    if (total > 0) {
+      options.push({
+        value: "coins",
+        label: "Coins",
+      });
+    }
+    options.push({
+      value: "tokens",
+      label: "Tokens",
+    });
+    return options;
+  }, [total]);
+
+  const renderContent = (optionValue: string) => {
+    if (optionValue === "tokens") {
+      return (
+        <TokensDisplay
+          currentThreadUsage={currentThreadUsage}
+          inputTokens={inputTokens}
+          outputTokens={outputTokens}
+        />
+      );
+    }
     return (
       <CoinsDisplay
         total={total}
@@ -143,34 +209,29 @@ const DefaultHoverCard: React.FC<{
         cacheCreation={cost?.metering_coins_cache_creation}
       />
     );
+  };
+
+  if (tabsOptions.length === 1) {
+    return <Box pt="3">{renderContent(tabsOptions[0].value)}</Box>;
   }
 
   return (
-    <Flex direction="column" align="start" gap="2">
-      <Text size="2" mb="2">
-        Tokens spent per chat thread:
-      </Text>
-      <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
-      {currentThreadUsage?.cache_read_input_tokens !== undefined && (
-        <TokenDisplay
-          label="Cache read input tokens"
-          value={currentThreadUsage.cache_read_input_tokens}
-        />
-      )}
-      {currentThreadUsage?.cache_creation_input_tokens !== undefined && (
-        <TokenDisplay
-          label="Cache creation input tokens"
-          value={currentThreadUsage.cache_creation_input_tokens}
-        />
-      )}
-      <TokenDisplay label="Completion tokens" value={outputTokens} />
-      {currentThreadUsage?.completion_tokens_details && (
-        <TokenDisplay
-          label="Reasoning tokens"
-          value={currentThreadUsage.completion_tokens_details.reasoning_tokens}
-        />
-      )}
-    </Flex>
+    <Tabs.Root defaultValue={tabsOptions[0].value}>
+      <Tabs.List size="1">
+        {tabsOptions.map((option) => (
+          <Tabs.Trigger value={option.value} key={option.value}>
+            {option.label}
+          </Tabs.Trigger>
+        ))}
+      </Tabs.List>
+      <Box pt="3">
+        {tabsOptions.map((option) => (
+          <Tabs.Content value={option.value} key={option.value}>
+            {renderContent(option.value)}
+          </Tabs.Content>
+        ))}
+      </Box>
+    </Tabs.Root>
   );
 };
 

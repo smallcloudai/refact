@@ -70,7 +70,7 @@ type CapsMetadata = {
 };
 
 function isCapsMetadata(json: unknown): json is CapsMetadata {
-  if (!json) return false;
+  if (json === null) return true;
   if (typeof json !== "object") return false;
   if ("pricing" in json && json.pricing) {
     return Object.values(json.pricing).every(isCapCost);
@@ -101,7 +101,7 @@ export type CapsResponse = {
   telemetry_basic_retrieve_my_own: string;
   tokenizer_rewrite_path: Record<string, unknown>;
   support_metadata: boolean;
-  metadata: CapsMetadata;
+  metadata: CapsMetadata | null;
   customization: string;
 };
 

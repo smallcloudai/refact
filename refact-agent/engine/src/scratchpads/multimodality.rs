@@ -264,6 +264,10 @@ impl ChatMessage {
         if model_supports_empty_strings(model_id) || !chat_content_raw.is_empty() {
             dict.insert("content".to_string(), json!(chat_content_raw));
         }
+        if !model_supports_empty_strings(model_id) && chat_content_raw.is_empty()
+            && self.tool_calls.is_none() && self.thinking_blocks.is_none() {
+            dict.insert("content".to_string(), "_".into());
+        }
         if let Some(tool_calls) = self.tool_calls.clone() {
             dict.insert("tool_calls".to_string(), json!(tool_calls));
         }

@@ -6,6 +6,7 @@ import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 
 import styles from "./ChatLinks.module.css";
+import { useCoinBallance } from "../../hooks/useCoinBalance";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
   const hasAction = "link_action" in link;
@@ -19,9 +20,8 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 
 export const ChatLinks: React.FC = () => {
   const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
+  const balance = useCoinBallance();
   if (streaming) return null;
-
-  const submittingChatActions = ["post-chat", "follow-up", "summarize-project"];
 
   // TODO: waiting, errors, maybe add a title
 
@@ -42,7 +42,7 @@ export const ChatLinks: React.FC = () => {
           key={key}
           link={link}
           onClick={handleLinkAction}
-          disabled={submittingChatActions.includes(link.link_action)}
+          disabled={balance <= 0}
         />
       );
     });
@@ -57,6 +57,7 @@ export const ChatLinkButton: React.FC<{
   disabled?: boolean;
 }> = ({ link, onClick, disabled = false }) => {
   const title = link.link_tooltip ?? maybeConcatActionAndGoToStrings(link);
+
   const handleClick = React.useCallback(() => onClick(link), [link, onClick]);
   return (
     <Button
@@ -69,7 +70,7 @@ export const ChatLinkButton: React.FC<{
       variant="surface"
       title={
         disabled
-          ? "You have reached your usage limit for the day. You can use agent again tomorrow, or upgrade to PRO."
+          ? "You have no coins left to use Refact's AI features. Please top up your balance"
           : title
       }
       onClick={handleClick}

@@ -136,7 +136,7 @@ describe("formatChatResponse", () => {
         content: "hello\n",
         checkpoints: [
           {
-            workspace_folder: "/Users/marc/Projects/refact",
+            workspace_folder: "/refact",
             commit_hash: "6710babc75beb5198be8a7a2b4ba6c095afa2158",
           },
         ],
@@ -456,7 +456,7 @@ describe("formatChatResponse", () => {
         checkpoints: [
           {
             commit_hash: "6710babc75beb5198be8a7a2b4ba6c095afa2158",
-            workspace_folder: "/Users/marc/Projects/refact",
+            workspace_folder: "/refact",
           },
         ],
         compression_strength: "absent",
@@ -492,6 +492,670 @@ describe("formatChatResponse", () => {
             cached_tokens: 0,
           },
           total_tokens: 2832,
+        },
+      },
+    ]);
+  });
+
+  test("byok usage", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "call tree and then do nothing\n",
+        checkpoints: [
+          {
+            workspace_folder: "/someplace",
+            commit_hash: "d7fd24f70133348f01a80f6f9a54628e2ee56777",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "I'll call",
+              role: "assistant",
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: " the `tree` function to show the project structure",
+              role: null,
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: " and then do nothing else as requested.",
+              role: null,
+
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "",
+              role: "assistant",
+
+              tool_calls: [
+                {
+                  id: "toolu_01SZSQHfY6jRi4TSd9HTRy6e",
+                  function: {
+                    arguments: "",
+                    name: "tree",
+                  },
+                  type: "function",
+                  index: 0,
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "",
+              role: "assistant",
+
+              tool_calls: [
+                // odd that some of these are null?
+                // {
+                //   id: null,
+                //   function: {
+                //     arguments: "",
+                //     name: null,
+                //   },
+                //   type: "function",
+                //   index: 0,
+                // },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: "",
+              role: "assistant",
+
+              tool_calls: [
+                // {
+                //   id: null,
+                //   function: {
+                //     arguments: "{}",
+                //     name: null,
+                //   },
+                //   type: "function",
+                //   index: 0,
+                // },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: "tool_calls",
+            index: 0,
+            delta: {
+              content: null,
+              role: null,
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: null,
+              role: null,
+
+              tool_calls: null,
+            },
+          },
+        ],
+
+        usage: {
+          completion_tokens: 56,
+          prompt_tokens: 3,
+          total_tokens: 59,
+          completion_tokens_details: {
+            accepted_prediction_tokens: null,
+            audio_tokens: null,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: null,
+          },
+          prompt_tokens_details: {
+            audio_tokens: null,
+            cached_tokens: 0,
+          },
+          cache_creation_input_tokens: 9170,
+          cache_read_input_tokens: 0,
+        },
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              content: null,
+              role: null,
+              tool_calls: null,
+            },
+          },
+        ],
+        usage: {
+          completion_tokens: 56,
+          prompt_tokens: 3,
+          total_tokens: 59,
+          completion_tokens_details: {
+            accepted_prediction_tokens: null,
+            audio_tokens: null,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: null,
+          },
+          prompt_tokens_details: {
+            audio_tokens: null,
+            cached_tokens: 0,
+          },
+          cache_creation_input_tokens: 9170,
+          cache_read_input_tokens: 0,
+        },
+        metering_coins_prompt: 0.009,
+        metering_coins_generated: 0.84,
+        metering_coins_cache_creation: 34.3875,
+        metering_coins_cache_read: 0.0,
+        metering_prompt_tokens_n: 3,
+        metering_generated_tokens_n: 56,
+        metering_cache_creation_tokens_n: 9170,
+        metering_cache_read_tokens_n: 0,
+        metering_balance: 952433,
+        refact_agent_request_available: null,
+        refact_agent_max_request_num: 400,
+      },
+      {
+        id: "",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+      },
+    ];
+
+    const results = chunks.reduce<ChatMessages>(
+      (acc, cur) => formatChatResponse(acc, cur),
+      [],
+    );
+
+    expect(results).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "d7fd24f70133348f01a80f6f9a54628e2ee56777",
+            workspace_folder: "/someplace",
+          },
+        ],
+        compression_strength: "absent",
+        content: "call tree and then do nothing\n",
+        role: "user",
+      },
+      {
+        content:
+          "I'll call the `tree` function to show the project structure and then do nothing else as requested.",
+        finish_reason: "stop",
+        metering_balance: 952433,
+        metering_cache_creation_tokens_n: 9170,
+        metering_cache_read_tokens_n: 0,
+        metering_coins_cache_creation: 34.3875,
+        metering_coins_cache_read: 0,
+        metering_coins_generated: 0.84,
+        metering_coins_prompt: 0.009,
+        metering_prompt_tokens_n: 3,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: [
+          {
+            function: {
+              arguments: "",
+              name: "tree",
+            },
+            id: "toolu_01SZSQHfY6jRi4TSd9HTRy6e",
+            index: 0,
+            type: "function",
+          },
+        ],
+        usage: {
+          cache_creation_input_tokens: 9170,
+          cache_read_input_tokens: 0,
+          completion_tokens: 56,
+          completion_tokens_details: {
+            accepted_prediction_tokens: null,
+            audio_tokens: null,
+            reasoning_tokens: 0,
+            rejected_prediction_tokens: null,
+          },
+          prompt_tokens: 3,
+          prompt_tokens_details: {
+            audio_tokens: null,
+            cached_tokens: 0,
+          },
+          total_tokens: 59,
+        },
+      },
+    ]);
+  });
+
+  test("byok short usage", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "please tell me a joke, don't call any tools\n",
+        checkpoints: [
+          {
+            workspace_folder:
+              "/home/andrii-lashchov/Desktop/work/refact/refact-agent/engine",
+            commit_hash: "b71c8387f951b81a1b9cd388f3d46c94eb302ebe",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "I'",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: "d tell you a joke about UDP, but you",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " might not get it.\n\nWait",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: ", here's another one:",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " Why do programmers prefer dark mode?",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              content: " Because light attracts bugs!",
+            },
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+      {
+        id: "msg_01SrL8iCZWJGWhYF2obVNXeV",
+        choices: [
+          {
+            index: 0,
+            delta: {},
+            finish_reason: "stop",
+          },
+        ],
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+        usage: {
+          completion_tokens: 41,
+          prompt_tokens: 9359,
+          total_tokens: 9400,
+        },
+      },
+      {
+        id: "",
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+
+        created: 1746117659.9634643,
+        model: "claude-3-7-sonnet-latest",
+      },
+    ];
+
+    const result = chunks.reduce<ChatMessages>(
+      (messages, chunk) => formatChatResponse(messages, chunk),
+      [],
+    );
+
+    expect(result).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "b71c8387f951b81a1b9cd388f3d46c94eb302ebe",
+            workspace_folder:
+              "/home/andrii-lashchov/Desktop/work/refact/refact-agent/engine",
+          },
+        ],
+        compression_strength: "absent",
+        content: "please tell me a joke, don't call any tools\n",
+        role: "user",
+      },
+      {
+        content:
+          "I'd tell you a joke about UDP, but you might not get it.\n\nWait, here's another one: Why do programmers prefer dark mode? Because light attracts bugs!",
+        finish_reason: "stop",
+        metering_balance: undefined,
+        metering_cache_creation_tokens_n: undefined,
+        metering_cache_read_tokens_n: undefined,
+        metering_coins_cache_creation: undefined,
+        metering_coins_cache_read: undefined,
+        metering_coins_generated: undefined,
+        metering_coins_prompt: undefined,
+        metering_prompt_tokens_n: undefined,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: undefined,
+        usage: {
+          completion_tokens: 41,
+          prompt_tokens: 9359,
+          total_tokens: 9400,
+        },
+      },
+    ]);
+  });
+
+  test("gemini", () => {
+    const chunks: ChatResponse[] = [
+      {
+        id: "",
+        role: "user",
+        content: "call tree\n",
+        checkpoints: [
+          {
+            workspace_folder: "/emergency_frog_situation",
+            commit_hash: "9592d97a746d392d180491bd5a44339d83f1c19c",
+          },
+        ],
+        compression_strength: "absent",
+      },
+      {
+        choices: [
+          {
+            delta: {
+              content: "Okay, I will",
+              role: "assistant",
+            },
+            index: 0,
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+        id: "",
+        usage: {
+          completion_tokens: 4,
+          prompt_tokens: 3547,
+          total_tokens: 3577,
+        },
+      },
+      {
+        choices: [
+          {
+            delta: {
+              content: " call the `tree()` tool to show the project structure.",
+              role: "assistant",
+            },
+            index: 0,
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+        id: "",
+        usage: {
+          completion_tokens: 16,
+          prompt_tokens: 3547,
+          total_tokens: 3601,
+        },
+      },
+      {
+        choices: [
+          {
+            delta: {
+              role: "assistant",
+              tool_calls: [
+                {
+                  function: {
+                    arguments: "{}",
+                    name: "tree",
+                  },
+                  id: "call_247e2a7b080d44fe83a655fd18d17277",
+                  type: "function",
+                  index: 0,
+                },
+              ],
+            },
+            finish_reason: "tool_calls",
+            index: 0,
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+        usage: {
+          completion_tokens: 24,
+          prompt_tokens: 3547,
+          total_tokens: 3604,
+        },
+      },
+      {
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "",
+              tool_calls: null,
+            },
+            finish_reason: "stop",
+          },
+        ],
+        created: 1746186404.4522197,
+        model: "gemini-2.5-pro-exp-03-25",
+      },
+    ];
+
+    const result = chunks.reduce<ChatMessages>(
+      (acc, cur) => formatChatResponse(acc, cur),
+      [],
+    );
+
+    expect(result).toEqual([
+      {
+        checkpoints: [
+          {
+            commit_hash: "9592d97a746d392d180491bd5a44339d83f1c19c",
+            workspace_folder: "/emergency_frog_situation",
+          },
+        ],
+        compression_strength: "absent",
+        content: "call tree\n",
+        role: "user",
+      },
+      {
+        content:
+          "Okay, I will call the `tree()` tool to show the project structure.",
+        finish_reason: "stop",
+        metering_balance: undefined,
+        metering_cache_creation_tokens_n: undefined,
+        metering_cache_read_tokens_n: undefined,
+        metering_coins_cache_creation: undefined,
+        metering_coins_cache_read: undefined,
+        metering_coins_generated: undefined,
+        metering_coins_prompt: undefined,
+        metering_prompt_tokens_n: undefined,
+        reasoning_content: "",
+        role: "assistant",
+        thinking_blocks: undefined,
+        tool_calls: [
+          {
+            function: {
+              arguments: "{}",
+              name: "tree",
+            },
+            id: "call_247e2a7b080d44fe83a655fd18d17277",
+            index: 0,
+            type: "function",
+          },
+        ],
+        usage: {
+          completion_tokens: 24,
+          prompt_tokens: 3547,
+          total_tokens: 3604,
         },
       },
     ]);
@@ -595,67 +1259,4 @@ describe("consumeStream", () => {
       content: '```py\nprint("hello")\n\n```\n',
     });
   });
-});
-
-describe.skip("cache", () => {
-  // test("loading the cache correctly", () => {
-  //   const initialState = createInitialState();
-  //   const chat1id = uuidv4();
-  //   const chat2id = uuidv4();
-  //   function create_restore_chat(
-  //     fromId: string,
-  //     toId: string,
-  //     message: string,
-  //   ) {
-  //     return {
-  //       type: EVENT_NAMES_TO_CHAT.RESTORE_CHAT,
-  //       payload: {
-  //         id: fromId,
-  //         chat: {
-  //           messages: [["user", message]],
-  //           model: "gpt-3.5-turbo",
-  //           id: toId,
-  //         },
-  //       },
-  //     };
-  //   }
-  //   function create_chat_response(id: string, message: string) {
-  //     return {
-  //       type: EVENT_NAMES_TO_CHAT.CHAT_RESPONSE,
-  //       payload: {
-  //         id,
-  //         choices: [
-  //           {
-  //             delta: {
-  //               content: message,
-  //               role: "assistant",
-  //             },
-  //             finish_reason: null,
-  //             index: 0,
-  //           },
-  //         ],
-  //         created: 1710777171.188,
-  //         model: "gpt-3.5-turbo",
-  //       },
-  //     };
-  //   }
-  //   const actions: ActionToChat[] = [
-  //     create_restore_chat(initialState.chat.id, chat1id, "Hello"),
-  //     create_chat_response(chat1id, "test"),
-  //     create_restore_chat(chat1id, chat2id, "Goodbye"),
-  //     create_chat_response(chat1id, " response"),
-  //     create_restore_chat(chat2id, chat1id, "Test"),
-  //   ];
-  //   expect(() => {
-  //     const reduce = reducer(window.postMessage);
-  //     let state = initialState;
-  //     for (const action of actions) {
-  //       state = reduce(state, action);
-  //     }
-  //     expect(state.chat.messages).toEqual([
-  //       ["user", "Hello"],
-  //       ["assistant", "test response", undefined],
-  //     ]);
-  //   }).not.toThrow();
-  // });
 });

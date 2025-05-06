@@ -13,6 +13,7 @@ use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::at_commands::execute_at::run_at_commands_locally;
+use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
@@ -276,6 +277,8 @@ pub async fn handle_v1_at_command_execute(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    wait_for_indexing_if_needed(global_context.clone()).await;
+
     let post = serde_json::from_slice::<CommandExecutePost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 

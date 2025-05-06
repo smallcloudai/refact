@@ -20,6 +20,8 @@ import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import {
   ExclamationTriangleIcon,
+  LockClosedIcon,
+  LockOpen1Icon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 import { useTourRefs } from "../../features/Tour";
@@ -39,6 +41,8 @@ import {
 } from "../../features/Chat/Thread";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
+import { toPascalCase } from "../../utils/toPascalCase";
+import { Coin } from "../../images";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -169,18 +173,27 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
     () =>
       caps.usableModelsForPlan.map((option) => {
         if (!caps.data) return option;
+        if (!caps.data.metadata) return option;
         if (!caps.data.metadata.pricing) return option;
-        if (!(option.value in caps.data.metadata.pricing)) return option;
-        const pricingForModel = caps.data.metadata.pricing[option.value];
+        if (!option.value.startsWith("refact/")) return option;
+        const key = option.value.replace("refact/", "");
+        if (!(key in caps.data.metadata.pricing)) return option;
+        const pricingForModel = caps.data.metadata.pricing[key];
         const tooltip = (
           <Flex direction="column" gap="4">
             <Text size="1">Cost per Million Tokens</Text>
-            <DataList.Root size="1">
+            <DataList.Root size="1" trim="both" className={styles.data_list}>
               {Object.entries(pricingForModel).map(([key, value]) => {
                 return (
-                  <DataList.Item key={key}>
-                    <DataList.Label>{key}</DataList.Label>
-                    <DataList.Value>{value}</DataList.Value>
+                  <DataList.Item key={key} align="stretch">
+                    <DataList.Label minWidth="88px">
+                      {toPascalCase(key)}
+                    </DataList.Label>
+                    <DataList.Value className={styles.data_list__value}>
+                      <Flex justify="between" align="center" gap="2">
+                        {value * 1_000} <Coin width="12px" height="12px" />
+                      </Flex>
+                    </DataList.Value>
                   </DataList.Item>
                 );
               })}
@@ -247,6 +260,7 @@ export type Checkbox = {
   fileName?: string;
   hide?: boolean;
   info?: CheckboxHelp;
+  locked?: boolean;
 };
 
 export type ChatControlsProps = {
@@ -270,6 +284,7 @@ const ChatControlCheckBox: React.FC<{
   infoText?: string;
   href?: string;
   linkText?: string;
+  locked?: boolean;
 }> = ({
   name,
   checked,
@@ -280,6 +295,7 @@ const ChatControlCheckBox: React.FC<{
   infoText,
   href,
   linkText,
+  locked,
 }) => {
   return (
     <Flex justify="between">
@@ -297,6 +313,8 @@ const ChatControlCheckBox: React.FC<{
             <TruncateLeft>{fileName}</TruncateLeft>
           </Flex>
         )}
+        {locked && <LockClosedIcon opacity="0.6" />}
+        {locked === false && <LockOpen1Icon opacity="0.6" />}
       </Checkbox>
       {infoText && (
         <HoverCard.Root>
@@ -375,6 +393,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
             href={checkbox.info?.link}
             linkText={checkbox.info?.linkText}
             fileName={checkbox.fileName}
+            locked={checkbox.locked}
           />
         );
       })}

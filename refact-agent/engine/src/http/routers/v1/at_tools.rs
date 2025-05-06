@@ -13,6 +13,7 @@ use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSet
 use crate::caps::resolve_chat_model;
 use crate::http::http_post_json;
 use crate::http::routers::v1::chat::CHAT_TOP_N;
+use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
 use crate::custom_error::ScratchError;
@@ -222,6 +223,8 @@ pub async fn handle_v1_tools_execute(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    wait_for_indexing_if_needed(gcx.clone()).await;
+
     let tools_execute_post = serde_json::from_slice::<ToolsExecutePost>(&body_bytes)
       .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 

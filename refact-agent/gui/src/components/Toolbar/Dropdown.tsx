@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import {
   selectHost,
   selectKnowledgeFeature,
@@ -33,6 +33,7 @@ import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
+import { isUserWithLoginMessage } from "../../services/smallcloud";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -90,7 +91,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openCustomizationFile, openPrivacyFile } = useEventsBusForIDE();
+  const { openCustomizationFile, openPrivacyFile, setLoginMessage } =
+    useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
@@ -100,6 +102,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
     startPollingForUser();
     openUrl("https://refact.smallcloud.ai/pro");
   }, [openUrl, startPollingForUser]);
+
+  useEffect(() => {
+    if (isUserWithLoginMessage(user.data)) {
+      setLoginMessage(user.data.login_message);
+    }
+  }, [user.data, setLoginMessage]);
 
   const refactProductType = useMemo(() => {
     if (host === "jetbrains") return "Plugin";

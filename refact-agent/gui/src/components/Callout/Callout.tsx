@@ -6,7 +6,6 @@ import {
   Text,
   Button,
   Strong,
-  Em,
   Link,
 } from "@radix-ui/themes";
 import {
@@ -16,7 +15,13 @@ import {
 import { useTimeout } from "usehooks-ts";
 import styles from "./Callout.module.css";
 import classNames from "classnames";
-import { useAppDispatch, useAppSelector, useLogout } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useConfig,
+  useLogout,
+  useOpenUrl,
+} from "../../hooks";
 import { getIsAuthError } from "../../features/Errors/errorsSlice";
 import { selectBalance } from "../../features/CoinBalance";
 import { dismissBalanceLowCallout } from "../../features/Errors/informationSlice";
@@ -215,6 +220,17 @@ export const CalloutFromTop: React.FC<
 export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
   onClick,
 }) => {
+  const openUrl = useOpenUrl();
+  const { host } = useConfig();
+  const handleLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.stopPropagation();
+      if (host === "web") return;
+      event.preventDefault();
+      openUrl(event.currentTarget.href);
+    },
+    [openUrl, host],
+  );
   return (
     <Callout
       mt="2"
@@ -233,7 +249,7 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
         href="https://refact.smallcloud.ai/?topup"
         target="_blank"
         rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
+        onClick={handleLinkClick}
       >
         top up your balance
       </Link>{" "}
@@ -242,13 +258,10 @@ export const BallanceCallOut: React.FC<{ onClick: () => void }> = ({
         href="https://docs.refact.ai/"
         target="_blank"
         rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
+        onClick={handleLinkClick}
       >
         Read more about usage balance.
       </Link>
-      <Flex as="span" justify="end" mt="2">
-        <Em>Thank you for using Refact!</Em>
-      </Flex>
     </Callout>
   );
 };
@@ -259,6 +272,17 @@ export const BallanceLowInformation: React.FC = () => {
   const handleClose = useCallback(() => {
     dispatch(dismissBalanceLowCallout());
   }, [dispatch]);
+  const openUrl = useOpenUrl();
+  const { host } = useConfig();
+  const handleLinkClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.stopPropagation();
+      if (host === "web") return;
+      event.preventDefault();
+      openUrl(event.currentTarget.href);
+    },
+    [openUrl, host],
+  );
 
   return (
     <Callout
@@ -275,7 +299,7 @@ export const BallanceLowInformation: React.FC = () => {
         href="https://refact.smallcloud.ai/?topup"
         target="_blank"
         rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
+        onClick={handleLinkClick}
       >
         top up your balance
       </Link>{" "}
@@ -284,14 +308,10 @@ export const BallanceLowInformation: React.FC = () => {
         href="https://docs.refact.ai/"
         target="_blank"
         rel="noreferrer"
-        onClick={(event) => event.stopPropagation()}
+        onClick={handleLinkClick}
       >
         Read more about usage balance.
       </Link>
-      <br />
-      <Flex as="span" justify="end" mt="2">
-        <Em>Thank you for using Refact!</Em>
-      </Flex>
     </Callout>
   );
 };
