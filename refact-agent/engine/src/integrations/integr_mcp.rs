@@ -34,20 +34,14 @@ const MCP_SERVER_STOP_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct SettingsMCP {
-    #[serde(default = "default_server_transport")]
-    pub server_transport: String,
     #[serde(rename = "command", default)]
     pub mcp_command: String,
     #[serde(default, rename = "env")]
     pub mcp_env: HashMap<String, String>,
-    #[serde(default)]
-    pub url: String,
-    #[serde(default)]
-    pub headers: HashMap<String, String>,
-}
-
-fn default_server_transport() -> String {
-    "stdio".to_string()
+    #[serde(default, rename = "url")]
+    pub mcp_url: String,
+    #[serde(default, rename = "headers")]
+    pub mcp_headers: HashMap<String, String>,
 }
 
 pub struct ToolMCP {
@@ -259,9 +253,58 @@ async fn _session_apply_settings(
                 }
             }
 
-            let client = match new_cfg_clone.server_transport.to_lowercase().trim() {
-                "stdio" => {
-                    let parsed_args = match shell_words::split(&new_cfg_clone.mcp_command) {
+            let client = match (new_cfg_clone.mcp_url.trim(), new_cfg_clone.mcp_command.trim()) {
+                ("", "") => {
+                    log(Level::ERROR, "Url and command are both empty, set up either url for sse protocol, or command for stdio protocol".to_string()).await;
+                    return;
+                },
+                (url, "") => {
+                    let mut header_map = reqwest::header::HeaderMap::new();
+                    for (k, v) in &new_cfg_clone.mcp_headers {
+                        match (reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                            reqwest::header::HeaderValue::from_str(v),
+                        ) {
+                            (Ok(name), Ok(value)) => {
+                                header_map.insert(name, value);
+                            }
+                            _ => log(Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
+                        }
+                    }
+                    let reqwest_client = match reqwest::Client::builder().default_headers(header_map).build() {
+                        Ok(reqwest_client) => reqwest_client,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
+                            return;
+                        }
+                    };
+                    let sse_client = match ReqwestSseClient::new_with_client(url, reqwest_client).await {
+                        Ok(sse_client) => sse_client,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to init SSE client: {}", e)).await;
+                            return;
+                        },
+                    };
+                    let transport = match SseTransport::start_with_client(sse_client).await {
+                        Ok(t) => t,
+                        Err(e) => {
+                            log(Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
+                            return;
+                        }
+                    };
+                    match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
+                        Ok(Ok(client)) => client,
+                        Ok(Err(e)) => {
+                            log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
+                            return;
+                        },
+                        Err(_) => {
+                            log(Level::ERROR, format!("Request timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs())).await;
+                            return;
+                        }
+                    }
+                },
+                ("", command) => {
+                    let parsed_args = match shell_words::split(&command) {
                         Ok(args) => {
                             if args.is_empty() {
                                 log(Level::ERROR, "Empty command".to_string()).await;
@@ -315,60 +358,10 @@ async fn _session_apply_settings(
                         }
                     }
                 },
-                "sse" => {
-                    if new_cfg_clone.url.is_empty() {
-                        log(Level::ERROR, "URL is required for MCP with SSE transport".to_string()).await;
-                        return;
-                    }
-
-                    let mut header_map = reqwest::header::HeaderMap::new();
-                    for (k, v) in &new_cfg_clone.headers {
-                        match (reqwest::header::HeaderName::from_bytes(k.as_bytes()),
-                            reqwest::header::HeaderValue::from_str(v),
-                        ) {
-                            (Ok(name), Ok(value)) => {
-                                header_map.insert(name, value);
-                            }
-                            _ => log(Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
-                        }
-                    }
-                    let reqwest_client = match reqwest::Client::builder().default_headers(header_map).build() {
-                        Ok(reqwest_client) => reqwest_client,
-                        Err(e) => {
-                            log(Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
-                            return;
-                        }
-                    };
-                    let sse_client = match ReqwestSseClient::new_with_client(&new_cfg_clone.url, reqwest_client).await {
-                        Ok(sse_client) => sse_client,
-                        Err(e) => {
-                            log(Level::ERROR, format!("Failed to init SSE client: {}", e)).await;
-                            return;
-                        },
-                    };
-                    let transport = match SseTransport::start_with_client(sse_client).await {
-                        Ok(t) => t,
-                        Err(e) => {
-                            log(Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
-                            return;
-                        }
-                    };
-                    match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
-                        Ok(Ok(client)) => client,
-                        Ok(Err(e)) => {
-                            log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
-                            return;
-                        },
-                        Err(_) => {
-                            log(Level::ERROR, format!("Request timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs())).await;
-                            return;
-                        }
-                    }
-                }
-                _ => {
-                    log(Level::ERROR, format!("Unsupported server transport: {}", new_cfg_clone.server_transport)).await;
+                (_url, _command) => {
+                    log(Level::ERROR, "Url and command cannot be specified at the same time, set up either url for sse protocol, or command for stdio protocol".to_string()).await;
                     return;
-                }
+                },
             };
 
             log(Level::INFO, "Listing tools".to_string()).await;
@@ -686,11 +679,6 @@ impl Tool for ToolMCP {
 
 pub const MCP_INTEGRATION_SCHEMA: &str = r#"
 fields:
-  server_transport:
-    f_type: enum
-    f_enum_values: ["stdio", "sse"]
-    f_default: "stdio"
-    f_desc: "The transport protocol to use. 'stdio' for local processes, 'sse' for remote servers using Server-Sent Events."
   command:
     f_type: string
     f_desc: "The MCP command to execute (for stdio transport), like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
@@ -711,8 +699,8 @@ description: |
   You can add almost any MCP (Model Context Protocol) server here! This supports both local MCP servers (stdio)
   and remote MCP servers (sse). You can read more about MCP here: https://www.anthropic.com/news/model-context-protocol
 
-  For local servers, use server_transport="stdio" and provide the command to execute.
-  For remote servers, use server_transport="sse" and provide the URL of the server.
+  For servers using stdio protocol, provide the command to execute, and optionally, set the environment variables.
+  For remote using sse protocol, provide the URL of the server, and optionally, add more headers.
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
