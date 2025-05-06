@@ -33,6 +33,8 @@ export const selectThreadCurrentMessageTokens = (state: RootState) =>
   state.chat.thread.currentMessageContextTokens;
 export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
+export const selectAreFollowUpsEnabled = (state: RootState) =>
+  state.chat.follow_ups_enabled;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
 export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
 export const selectChatError = (state: RootState) => state.chat.error;

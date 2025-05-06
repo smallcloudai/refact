@@ -12,6 +12,7 @@ import { useGetCapsQuery } from "./useGetCapsQuery";
 import { useSendChatRequest } from "./useSendChatRequest";
 import {
   chatModeToLspMode,
+  selectAreFollowUpsEnabled,
   selectChatId,
   selectIntegration,
   selectIsStreaming,
@@ -39,6 +40,7 @@ export function useGetLinksFromLsp() {
   const chatId = useAppSelector(selectChatId);
   const maybeIntegration = useAppSelector(selectIntegration);
   const threadMode = useAppSelector(selectThreadMode);
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
   // TODO: add the model
   const caps = useGetCapsQuery();
@@ -61,9 +63,21 @@ export function useGetLinksFromLsp() {
     if (!model) return true;
     if (!caps.data) return true;
     return (
-      isStreaming || isWaiting || unCalledTools || lastMessageIsUserMessage
+      !areFollowUpsEnabled ||
+      isStreaming ||
+      isWaiting ||
+      unCalledTools ||
+      lastMessageIsUserMessage
     );
-  }, [caps.data, isStreaming, isWaiting, messages, model, unCalledTools]);
+  }, [
+    caps.data,
+    areFollowUpsEnabled,
+    isStreaming,
+    isWaiting,
+    messages,
+    model,
+    unCalledTools,
+  ]);
 
   const linksResult = linksApi.useGetLinksForChatQuery(
     {

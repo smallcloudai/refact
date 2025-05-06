@@ -117,6 +117,9 @@ export const enableSend = createAction<PayloadWithId>("chatThread/enableSend");
 export const setPreventSend = createAction<PayloadWithId>(
   "chatThread/preventSend",
 );
+export const setAreFollowUpsEnabled = createAction<boolean>(
+  "chat/setAreFollowUpsEnabled",
+);
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
