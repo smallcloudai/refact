@@ -130,7 +130,7 @@ impl Tool for ToolPdb {
         let command_session = {
             let gcx_locked = gcx.read().await;
             gcx_locked.integration_sessions.get(&session_hashmap_key)
-                .ok_or("There is no active pdb session in this chat, you can open it by running pdb(\"python -m pdb my_script.py\")")?
+                .ok_or("There is no active pdb session in this chat. Open a new session by running pdb(\"python -m pdb my_script.py\")")?
                 .clone()
         };
 

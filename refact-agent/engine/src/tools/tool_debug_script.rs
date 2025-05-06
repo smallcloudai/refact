@@ -116,6 +116,7 @@ Find—and prove—the root cause of the error in the supplied Python script.
      * Key `pdb` commands and outputs that reveal the bug  
      * The definitive root cause (what, where, why)  
      * Evidence: variable dumps, stack traces, erroneous logic, etc.  
+     * Suggested fix or next steps
 
 ### Style Guide  
 - **Explain your reasoning** at every step; don’t just show commands.  
@@ -149,7 +150,8 @@ Highlight pivotal moments (first reliable reproduction, root-cause identificatio
 
 ### 4 – Lessons & Recommendations  
 - **Pitfalls / anti-patterns** – missteps or code smells uncovered.  
-- **Codebase insights** – architecture quirks, brittle areas, missing tests."###;
+- **Codebase insights** – architecture quirks, brittle areas, missing tests.
+- Suggested fix or next steps"###;
 
 
 pub struct ToolDebugScript;
@@ -329,7 +331,8 @@ impl Tool for ToolDebugScript {
             "Completed debugging session"
         );
         
-        let final_result = vec![ContextEnum::ChatMessage(ChatMessage {
+        let final_result = vec![
+            ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(format!(
                 "# Debugging Summary for {}\n\n{}\n\n",
@@ -339,6 +342,11 @@ impl Tool for ToolDebugScript {
             usage: Some(usage_collector),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
+            ..Default::default()
+        }),
+            ContextEnum::ChatMessage(ChatMessage {
+            role: "cd_instruction".to_string(),
+            content: ChatContent::SimpleText(format!("💿 Open all mentioned files using `cat(file1,file2,file3,...)` and then fix the problem!")),
             ..Default::default()
         })];
         
