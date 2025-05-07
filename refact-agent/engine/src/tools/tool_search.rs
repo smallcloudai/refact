@@ -10,7 +10,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::{vec_context_file_to_context_tools, AtCommandsContext};
 use crate::at_commands::at_search::execute_at_search;
 use crate::tools::scope_utils::create_scope_filter;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
 
@@ -33,6 +33,28 @@ async fn execute_att_search(
 #[async_trait]
 impl Tool for ToolSearch {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "search".to_string(),
+            agentic: false,
+            experimental: false,
+            description: "Find semantically similar pieces of code or text using vector database (semantic search)".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "query".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Single line, paragraph or code sample to search for semantically similar content.".to_string(),
+                },
+                ToolParam {
+                    name: "scope".to_string(),
+                    param_type: "string".to_string(),
+                    description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file.".to_string(),
+                }
+            ],
+            parameters_required: vec!["query".to_string(), "scope".to_string()],
+        }
+    }
     
     async fn tool_execute(
         &mut self,
