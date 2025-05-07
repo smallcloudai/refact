@@ -6,7 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::vecdb::vdb_highlev::memories_search;
 
@@ -17,6 +17,23 @@ pub struct ToolGetKnowledge;
 #[async_trait]
 impl Tool for ToolGetKnowledge {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "knowledge".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "search_key".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search.".to_string(),
+                }
+            ],
+            parameters_required: vec!["search_key".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
