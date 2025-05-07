@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
 pub struct ToolAstDefinition;
@@ -84,6 +84,23 @@ impl Tool for ToolAstDefinition {
             Ok((corrections, result_messages))
         } else {
             Err("attempt to use @definition with no ast turned on".to_string())
+        }
+    }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "definition".to_string(),
+            agentic: false,
+            experimental: false,
+            description: "Find definition of a symbol in the project using AST".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "symbol".to_string(),
+                    description: "The exact name of a function, method, class, type alias. No spaces allowed.".to_string(),
+                    param_type: "string".to_string(),
+                },
+            ],
+            parameters_required: vec!["symbol".to_string()],
         }
     }
 
