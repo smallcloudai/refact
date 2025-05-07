@@ -42,33 +42,15 @@ Rank the causes from most to least likely, and explain your reasoning.
 Your final goal is to find the root cause of the problem! Take as many time as needed.
 Do not create code, just write text."#;
 
-static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files
-# Solution rules
-1. **Contract First**  
-   Never change public signatures, return types, log formats, or exception classes unless tests demand it; add features via defaults or **kwargs, never break old calls.
-2. **Fix Upstream, Validate Up-Front**  
-   Centralize input sanitization/normalization at the highest shared layer and let every caller flow through it; patch the root cause, not the symptom.
-3. **Type & Shape Fidelity**  
-   Preserve incoming container kinds and indices (list→list, set→set, DataFrame index untouched); don’t coerce mutables silently.
-4. **Loud, Consistent Failure**  
-   Replace `assert` with framework-specific exceptions and keep canonical wording; log or warn exactly as the library already does, use `DeprecationWarning` before behavior flips.
-5. **State-Safe Sequencing**  
-   Build internal structures before triggering callbacks or side-effects; after each `yield`, re-check container size to catch in-loop mutations.
-6. **Canonical Values & Hashes**  
-   Use the framework’s canonical sentinels (`S.One`, ISO-8601 w/ microseconds, etc.); when you add `__eq__`, add `__hash__`, and include every identity-changing field (email, password) in hashes/tokens.
-7. **Deterministic Ordering**  
-   Deduplicate with order-preserving tools (`OrderedDict`, `sorted(key=…)`) so outputs stay stable across runs and Python versions.
-8. **Holistic Serialization**  
-   Serialize original, unscaled state (e.g., pre-device-DPI) and restore verbatim; ensure round-trips leave objects functionally identical.
-9. **Feature Flags & Compatibility**  
-   Ship new behavior behind opt-in flags; keep fallbacks for custom models, backends, or deprecated APIs until the deprecation window closes.
-"#;
+static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files.
+The solution must be robust and complete and adressing all corner cases."#;
 
 
-static GUARDRAILS_PROMPT: &str = r#"Reminders:
+static GUARDRAILS_PROMPT: &str = r#"💿 Now implement the solution above.
+Reminders:
 - Do not create documents, README.md, or other files which are non-related to fixing the problem. 
-- Convert generated changes into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches!
-- Do not modify existing tests.
+- Convert generated changes into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches (in diff format), monkey-patches!
+- Change the project directly to fix the issue but do not modify existing tests.
 - Create new test files only using `create_textdoc()`."#;
 
 async fn _make_prompt(
@@ -329,12 +311,11 @@ impl Tool for ToolStrategicPlanning {
         // ).await?;
 
         let final_message = format!(
-            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n{}",
+            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}",
             root_cause_reply.content.content_text_only(),
             initial_solution.content.content_text_only(),
             // critique.content.content_text_only(),
             // improved_solution.content.content_text_only(),
-            GUARDRAILS_PROMPT.to_string()
         );
         tracing::info!("strategic planning response (combined):\n{}", final_message);
         let mut results = vec![];
@@ -344,6 +325,11 @@ impl Tool for ToolStrategicPlanning {
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             usage: Some(usage_collector),
+            ..Default::default()
+        }));  
+        results.push(ContextEnum::ChatMessage(ChatMessage {
+            role: "cd_instruction".to_string(),
+            content: ChatContent::SimpleText(GUARDRAILS_PROMPT.to_string()),
             ..Default::default()
         }));
 
