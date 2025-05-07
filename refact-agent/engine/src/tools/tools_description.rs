@@ -324,20 +324,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "gitlab"
-    agentic: true
-    description: "Access to glab command line command, to fetch issues, review PRs."
-    parameters:
-      - name: "project_dir"
-        type: "string"
-        description: "Look at system prompt for location of version control (.git folder) of the active file."
-      - name: "command"
-        type: "string"
-        description: 'Examples:\nglab issue create --description "hello world" --title "Testing glab integration"\nglab issue list --author @me\n'
-    parameters_required:
-      - "project_dir"
-      - "command"
-
   - name: "postgres"
     agentic: true
     description: "PostgreSQL integration, can run a single query per call."
