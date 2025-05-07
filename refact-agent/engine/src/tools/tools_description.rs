@@ -338,17 +338,17 @@ tools:
       - "scope"
 
   # -- agentic tools below --
-  - name: "locate"
+
+
+  - name: "deep_analysis"
     agentic: true
-    description: "Get a list of files that are relevant to solve a particular task."
+    description: "Deeply analyze a complex problem to make a good solution or a plan to follow. Do not call it unless the user asks explicitly."
     parameters:
       - name: "problem_statement"
         type: "string"
-        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words. Avoid trailing spaces and tabs from all lines."
+        description: "What's the topic and what kind of result do you want?"
     parameters_required:
       - "problem_statement"
-
-
 
 
   - name: "github"

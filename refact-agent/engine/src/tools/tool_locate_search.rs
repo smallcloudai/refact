@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::subchat::subchat;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -100,6 +100,23 @@ Don't write backquotes, json format only.
 #[async_trait]
 impl Tool for ToolLocateSearch {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "locate".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Get a list of files that are relevant to solve a particular task.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "problem_statement".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words. Avoid trailing spaces and tabs from all lines.".to_string(),
+                }
+            ],
+            parameters_required: vec!["problem_statement".to_string()],
+        }
+    }
     
     async fn tool_execute(
         &mut self,
