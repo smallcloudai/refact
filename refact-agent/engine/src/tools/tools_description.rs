@@ -324,19 +324,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "postgres"
-    agentic: true
-    description: "PostgreSQL integration, can run a single query per call."
-    parameters:
-      - name: "query"
-        type: "string"
-        description: |
-          Don't forget semicolon at the end, examples:
-          SELECT * FROM table_name;
-          CREATE INDEX my_index_users_email ON my_users (email);
-    parameters_required:
-      - "query"
-
   - name: "mysql"
     agentic: true
     description: "MySQL integration, can run a single query per call."
