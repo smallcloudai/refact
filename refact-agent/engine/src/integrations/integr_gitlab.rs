@@ -64,6 +64,28 @@ impl IntegrationTrait for ToolGitlab {
 impl Tool for ToolGitlab {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "gitlab".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Access to glab command line command, to fetch issues, review PRs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "project_dir".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Look at system prompt for location of version control (.git folder) of the active file.".to_string(),
+                },
+                ToolParam {
+                    name: "command".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Examples:\nglab issue create --description \"hello world\" --title \"Testing glab integration\"\nglab issue list --author @me\n".to_string(),
+                },
+            ],
+            parameters_required: vec!["project_dir".to_string(), "command".to_string()],
+        }
+    }
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
