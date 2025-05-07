@@ -41,7 +41,7 @@ pub trait Tool: Send + Sync {
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String>;
 
-    fn tool_description(&self) -> ToolDesc;
+    // fn tool_description(&self) -> ToolDesc;
 
     async fn match_against_confirm_deny(
         &self,
@@ -109,6 +109,10 @@ pub trait Tool: Send + Sync {
 
     fn tool_name(&self) -> String  {
         return "".to_string();
+    }
+
+    fn tool_description(&self) -> ToolDesc {
+        unimplemented!();
     }
 }
 
@@ -333,14 +337,19 @@ tools:
       - "query"
       - "scope"
 
-  - name: "web"
-    description: "Fetch a web page and convert to readable plain text."
+  - name: "tree"
+    description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
     parameters:
-      - name: "url"
+      - name: "path"
         type: "string"
-        description: "URL of the web page to fetch."
-    parameters_required:
-      - "url"
+        description: "An absolute path to get files tree for. Do not pass it if you need a full project tree."
+      - name: "use_ast"
+        type: "boolean"
+        description: "If true, for each file an array of AST symbols will appear as well as its filename"
+    parameters_required: []
+
+
+
 
   - name: "cat"
     description: "Like cat in console, but better: it can read multiple files and images. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
