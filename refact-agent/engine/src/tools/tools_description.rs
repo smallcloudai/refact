@@ -324,22 +324,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "search"
-    description: "Find semantically similar pieces of code or text using vector database (semantic search)"
-    parameters:
-      - name: "query"
-        type: "string"
-        description: "Single line, paragraph or code sample to search for semantically similar content."
-      - name: "scope"
-        type: "string"
-        description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
-    parameters_required:
-      - "query"
-      - "scope"
-
-  # -- agentic tools below --
-
-
   - name: "deep_analysis"
     agentic: true
     description: "Deeply analyze a complex problem to make a good solution or a plan to follow. Do not call it unless the user asks explicitly."
