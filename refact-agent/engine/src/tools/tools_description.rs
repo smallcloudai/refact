@@ -348,15 +348,8 @@ tools:
     parameters_required:
       - "problem_statement"
 
-  - name: "deep_analysis"
-    agentic: true
-    description: "Deeply analyze a complex problem to make a good solution or a plan to follow. Do not call it unless the user asks explicitly."
-    parameters:
-      - name: "problem_statement"
-        type: "string"
-        description: "What's the topic and what kind of result do you want?"
-    parameters_required:
-      - "problem_statement"
+
+
 
   - name: "github"
     agentic: true
