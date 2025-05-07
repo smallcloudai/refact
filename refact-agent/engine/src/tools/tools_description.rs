@@ -353,23 +353,7 @@ tools:
 
 
 
-  - name: "rm"
-    description: "Deletes a file or directory. Use recursive=true for directories. Set dry_run=true to preview without deletion."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute or relative path of the file or directory to delete."
-      - name: "recursive"
-        type: "boolean"
-        description: "If true and target is a directory, delete recursively. Defaults to false."
-      - name: "dry_run"
-        type: "boolean"
-        description: "If true, only report what would be done without deleting."
-      - name: "max_depth"
-        type: "number"
-        description: "(Optional) Maximum depth (currently unused)."
-    parameters_required:
-      - "path"
+
 
   - name: "mv"
     description: "Moves or renames files and directories. If a simple rename fails due to a cross-device error and the source is a file, it falls back to copying and deleting. Use overwrite=true to replace an existing target."
