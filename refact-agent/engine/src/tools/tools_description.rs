@@ -352,21 +352,7 @@ tools:
 
 
 
-  - name: "mv"
-    description: "Moves or renames files and directories. If a simple rename fails due to a cross-device error and the source is a file, it falls back to copying and deleting. Use overwrite=true to replace an existing target."
-    parameters:
-      - name: "source"
-        type: "string"
-        description: "Path of the file or directory to move."
-      - name: "destination"
-        type: "string"
-        description: "Target path where the file or directory should be placed."
-      - name: "overwrite"
-        type: "boolean"
-        description: "If true and target exists, replace it. Defaults to false."
-    parameters_required:
-      - "source"
-      - "destination"
+
 
   - name: "create_textdoc"
     agentic: false
