@@ -438,16 +438,7 @@ tools:
     parameters_required:
       - "query"
 
-  - name: "docker"
-    agentic: true
-    experimental: true
-    description: "Access to docker cli, in a non-interactive way, don't open a shell."
-    parameters:
-      - name: "command"
-        type: "string"
-        description: "Examples: docker images"
-    parameters_required:
-      - "command"
+
 
   - name: "knowledge"
     agentic: true
