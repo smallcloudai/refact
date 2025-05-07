@@ -361,27 +361,7 @@ tools:
 
 
 
-  - name: "update_textdoc_regex"
-    agentic: false
-    description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. Avoid trailing spaces and tabs."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute path to the file to change."
-      - name: "pattern"
-        type: "string"
-        description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance."
-      - name: "replacement"
-        type: "string"
-        description: "The new text that will replace the matched pattern."
-      - name: "multiple"
-        type: "boolean"
-        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."
-    parameters_required:
-      - "path"
-      - "pattern"
-      - "replacement"
-      - "multiple"
+
 
   # -- agentic tools below --
   - name: "locate"
