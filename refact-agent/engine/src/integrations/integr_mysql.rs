@@ -12,7 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
 
@@ -111,6 +111,23 @@ impl ToolMysql {
 #[async_trait]
 impl Tool for ToolMysql {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "mysql".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "MySQL integration, can run a single query per call.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "query".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Don't forget semicolon at the end, examples:\nSELECT * FROM table_name;\nCREATE INDEX my_index_users_email ON my_users (email);".to_string(),
+                },
+            ],
+            parameters_required: vec!["query".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
