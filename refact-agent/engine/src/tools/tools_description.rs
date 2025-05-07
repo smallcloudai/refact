@@ -198,15 +198,6 @@ tools:
       - "query"
       - "scope"
 
-  - name: "definition"
-    description: "Find definition of a symbol in the project using AST"
-    parameters:
-      - name: "symbol"
-        type: "string"
-        description: "The exact name of a function, method, class, type alias. No spaces allowed."
-    parameters_required:
-      - "symbol"
-
   - name: "references"
     description: "Find usages of a symbol within a project using AST"
     parameters:
