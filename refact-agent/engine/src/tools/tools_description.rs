@@ -356,27 +356,7 @@ tools:
 
 
 
-  - name: "update_textdoc"
-    agentic: false
-    description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient. Avoid trailing spaces and tabs."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute path to the file to change."
-      - name: "old_str"
-        type: "string"
-        description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching."
-      - name: "replacement"
-        type: "string"
-        description: "The new text that will replace the old text."
-      - name: "multiple"
-        type: "boolean"
-        description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced."
-    parameters_required:
-      - "path"
-      - "old_str"
-      - "replacement"
-      - "multiple"
+
 
   - name: "update_textdoc_regex"
     agentic: false
