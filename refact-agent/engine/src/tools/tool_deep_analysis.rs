@@ -8,7 +8,7 @@ use axum::http::StatusCode;
 use crate::caps::resolve_chat_model;
 use crate::subchat::subchat_single;
 use crate::tokens::count_text_tokens_with_fallback;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::custom_error::ScratchError;
@@ -102,6 +102,23 @@ async fn _make_prompt(
 #[async_trait]
 impl Tool for ToolDeepAnalysis {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "deep_analysis".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Deeply analyze a complex problem to make a good solution or a plan to follow. Do not call it unless the user asks explicitly.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "problem_statement".to_string(),
+                    param_type: "string".to_string(),
+                    description: "What's the topic and what kind of result do you want?".to_string(),
+                }
+            ],
+            parameters_required: vec!["problem_statement".to_string()],
+        }
+    }
     
     async fn tool_execute(
         &mut self,
