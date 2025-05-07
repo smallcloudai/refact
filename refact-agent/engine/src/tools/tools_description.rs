@@ -320,32 +320,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "create_knowledge"
-    agentic: true
-    description: "Creates a new knowledge entry in the vector database to help with future tasks."
-    parameters:
-      - name: "im_going_to_use_tools"
-        type: "string"
-        description: "Which tools have you used? Comma-separated list, examples: hg, git, gitlab, rust debugger"
-      - name: "im_going_to_apply_to"
-        type: "string"
-        description: "What have your actions been applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
-      - name: "search_key"
-        type: "string"
-        description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search."
-      - name: "language_slash_framework"
-        type: "string"
-        description: "What programming language and framework has the current project used? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
-      - name: "knowledge_entry"
-        type: "string"
-        description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve."
-    parameters_required:
-      - "im_going_to_use_tools"
-      - "im_going_to_apply_to"
-      - "search_key"
-      - "language_slash_framework"
-      - "knowledge_entry"
-
   - name: "create_memory_bank"
     agentic: true
     description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."

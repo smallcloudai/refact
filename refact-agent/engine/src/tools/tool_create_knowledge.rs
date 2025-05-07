@@ -7,13 +7,56 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 
 pub struct ToolCreateKnowledge;
 
 #[async_trait]
 impl Tool for ToolCreateKnowledge {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "create_knowledge".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Creates a new knowledge entry in the vector database to help with future tasks.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "im_going_to_use_tools".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Which tools have you used? Comma-separated list, examples: hg, git, gitlab, rust debugger".to_string(),
+                },
+                ToolParam {
+                    name: "im_going_to_apply_to".to_string(),
+                    param_type: "string".to_string(),
+                    description: "What have your actions been applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues".to_string(),
+                },
+                ToolParam {
+                    name: "search_key".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search.".to_string(),
+                },
+                ToolParam {
+                    name: "language_slash_framework".to_string(),
+                    param_type: "string".to_string(),
+                    description: "What programming language and framework has the current project used? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio".to_string(),
+                },
+                ToolParam {
+                    name: "knowledge_entry".to_string(),
+                    param_type: "string".to_string(),
+                    description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve.".to_string(),
+                }
+            ],
+            parameters_required: vec![
+                "im_going_to_use_tools".to_string(),
+                "im_going_to_apply_to".to_string(),
+                "search_key".to_string(),
+                "language_slash_framework".to_string(),
+                "knowledge_entry".to_string(),
+            ],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
