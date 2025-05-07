@@ -41,7 +41,7 @@ pub struct SettingsMCP {
     pub mcp_env: HashMap<String, String>,
     #[serde(default, rename = "url")]
     pub mcp_url: String,
-    #[serde(default, rename = "headers")]
+    #[serde(default = "default_headers", rename = "headers")]
     pub mcp_headers: HashMap<String, String>,
     #[serde(default = "default_init_timeout", serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
     pub init_timeout: u64,
@@ -51,6 +51,13 @@ pub struct SettingsMCP {
 
 fn default_init_timeout() -> u64 { 60 }
 fn default_request_timeout() -> u64 { 30 }
+fn default_headers() -> HashMap<String, String> {
+    HashMap::from([
+        ("User-Agent".to_string(), "Refact.ai (+https://github.com/smallcloudai/refact)".to_string()),
+        ("Accept".to_string(), "text/event-stream".to_string()),
+        ("Content-Type".to_string(), "application/json".to_string()),
+    ])
+}
 
 pub struct ToolMCP {
     pub common: IntegrationCommon,
