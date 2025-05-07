@@ -324,17 +324,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "deep_analysis"
-    agentic: true
-    description: "Deeply analyze a complex problem to make a good solution or a plan to follow. Do not call it unless the user asks explicitly."
-    parameters:
-      - name: "problem_statement"
-        type: "string"
-        description: "What's the topic and what kind of result do you want?"
-    parameters_required:
-      - "problem_statement"
-
-
   - name: "github"
     agentic: true
     description: "Access to gh command line command, to fetch issues, review PRs."
