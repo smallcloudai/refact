@@ -198,15 +198,6 @@ tools:
       - "query"
       - "scope"
 
-  - name: "references"
-    description: "Find usages of a symbol within a project using AST"
-    parameters:
-      - name: "symbol"
-        type: "string"
-        description: "The exact name of a function, method, class, type alias. No spaces allowed."
-    parameters_required:
-      - "symbol"
-
   - name: "tree"
     description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
     parameters:
