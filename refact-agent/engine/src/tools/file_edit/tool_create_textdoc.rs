@@ -5,7 +5,7 @@ use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLeve
 use crate::tools::file_edit::auxiliary::{
     await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
 };
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -180,5 +180,27 @@ impl Tool for ToolCreateTextDoc {
             ask_user: vec!["create_textdoc*".to_string()],
             deny: vec![],
         })
+    }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "create_textdoc".to_string(),
+            agentic: false,
+            experimental: false,
+            description: "Creates a new text document or code or completely replaces the content of an existing document. Avoid trailing spaces and tabs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "path".to_string(),
+                    description: "Absolute path to new file.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "content".to_string(),
+                    description: "The initial text or code.".to_string(),
+                    param_type: "string".to_string(),
+                }
+            ],
+            parameters_required: vec!["path".to_string(), "content".to_string()],
+        }
     }
 }

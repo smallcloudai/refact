@@ -354,19 +354,7 @@ tools:
 
 
 
-  - name: "create_textdoc"
-    agentic: false
-    description: "Creates a new text document or code or completely replaces the content of an existing document. Avoid trailing spaces and tabs."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Absolute path to new file."
-      - name: "content"
-        type: "string"
-        description: "The initial text or code."
-    parameters_required:
-      - "path"
-      - "content"
+
 
   - name: "update_textdoc"
     agentic: false
