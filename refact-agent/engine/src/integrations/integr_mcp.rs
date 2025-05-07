@@ -7,6 +7,7 @@ use std::future::Future;
 use std::process::Stdio;
 use async_trait::async_trait;
 use rmcp::model::RawContent;
+use rmcp::serve_client;
 use rmcp::transport::sse::ReqwestSseClient;
 use rmcp::transport::SseTransport;
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::time::timeout;
 use tokio::time::Duration;
 use tokio::task::{AbortHandle, JoinHandle};
-use rmcp::{RoleClient, ServiceExt, service::RunningService};
+use rmcp::{RoleClient, service::RunningService};
 use rmcp::model::{CallToolRequestParam, Tool as McpTool};
 use tempfile::NamedTempFile;
 use tracing::Level;
@@ -30,10 +31,7 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::process_io_utils::read_file_with_cursor;
-
-const MCP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
-const MCP_SERVER_INIT_TIMEOUT: Duration = Duration::from_secs(60);
-const MCP_SERVER_STOP_TIMEOUT: Duration = Duration::from_secs(3);
+use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct SettingsMCP {
@@ -45,13 +43,21 @@ pub struct SettingsMCP {
     pub mcp_url: String,
     #[serde(default, rename = "headers")]
     pub mcp_headers: HashMap<String, String>,
+    #[serde(default = "default_init_timeout", serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
+    pub init_timeout: u64,
+    #[serde(default = "default_request_timeout", serialize_with = "serialize_num_to_str", deserialize_with = "deserialize_str_to_num")]
+    pub request_timeout: u64,
 }
+
+fn default_init_timeout() -> u64 { 60 }
+fn default_request_timeout() -> u64 { 30 }
 
 pub struct ToolMCP {
     pub common: IntegrationCommon,
     pub config_path: String,
     pub mcp_client: Arc<AMutex<Option<RunningService<RoleClient, ()>>>>,
     pub mcp_tool: McpTool,
+    pub request_timeout: u64,
 }
 
 #[derive(Default)]
@@ -156,7 +162,7 @@ async fn _session_kill_process(
     };
 
     if let Some(client) = client_to_cancel {
-        match timeout(MCP_SERVER_STOP_TIMEOUT, client.cancel()).await {
+        match timeout(Duration::from_secs(3), client.cancel()).await {
             Ok(Ok(reason)) => {
                 let success_msg = format!("MCP server stopped: {:?}", reason);
                 tracing::info!("{} for {}", success_msg, debug_name);
@@ -168,7 +174,7 @@ async fn _session_kill_process(
                 _add_log_entry(session_logs, error_msg).await;
             },
             Err(_) => {
-                let error_msg = format!("MCP server stop operation timed out after {} seconds", MCP_SERVER_STOP_TIMEOUT.as_secs());
+                let error_msg = "MCP server stop operation timed out after 3 seconds".to_string();
                 tracing::error!("{} for {}", error_msg, debug_name);
                 _add_log_entry(session_logs, error_msg).await;
             }
@@ -294,14 +300,14 @@ async fn _session_apply_settings(
                             return;
                         }
                     };
-                    match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
+                    match timeout(Duration::from_secs(new_cfg_clone.init_timeout), serve_client((), transport)).await {
                         Ok(Ok(client)) => client,
                         Ok(Err(e)) => {
                             log(Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
                             return;
                         },
                         Err(_) => {
-                            log(Level::ERROR, format!("Request timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs())).await;
+                            log(Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.init_timeout)).await;
                             return;
                         }
                     }
@@ -349,14 +355,14 @@ async fn _session_apply_settings(
                             return;
                         }
                     };
-                    match timeout(MCP_SERVER_INIT_TIMEOUT, ().serve(transport)).await {
+                    match timeout(Duration::from_secs(new_cfg_clone.init_timeout), serve_client((), transport)).await {
                         Ok(Ok(client)) => client,
                         Ok(Err(e)) => {
                             log(Level::ERROR, format!("Failed to init stdio server: {}", e)).await;
                             return;
                         },
                         Err(_) => {
-                            log(Level::ERROR, format!("Request timed out after {} seconds", MCP_SERVER_INIT_TIMEOUT.as_secs())).await;
+                            log(Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.init_timeout)).await;
                             return;
                         }
                     }
@@ -369,14 +375,14 @@ async fn _session_apply_settings(
 
             log(Level::INFO, "Listing tools".to_string()).await;
 
-            let tools = match timeout(MCP_REQUEST_TIMEOUT, client.list_all_tools()).await {
+            let tools = match timeout(Duration::from_secs(new_cfg_clone.request_timeout), client.list_all_tools()).await {
                 Ok(Ok(result)) => result,
                 Ok(Err(tools_error)) => {
                     log(Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
                     return;
                 },
                 Err(_) => {
-                    log(Level::ERROR, format!("Request timed out after {} seconds", MCP_REQUEST_TIMEOUT.as_secs())).await;
+                    log(Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.request_timeout)).await;
                     return;
                 }
             };
@@ -482,6 +488,7 @@ impl IntegrationTrait for IntegrationMCP {
                     config_path: self.config_path.clone(),
                     mcp_client: session_downcasted.mcp_client.clone().unwrap(),
                     mcp_tool: tool.clone(),
+                    request_timeout: self.cfg.request_timeout,
                 }));
             }
         }
@@ -539,7 +546,7 @@ impl Tool for ToolMCP {
         let result_probably = {
             let mcp_client_locked = self.mcp_client.lock().await;
             if let Some(client) = &*mcp_client_locked {
-                match timeout(MCP_REQUEST_TIMEOUT,
+                match timeout(Duration::from_secs(self.request_timeout),
                     client.call_tool(CallToolRequestParam {
                         name: self.mcp_tool.name.clone(),
                         arguments: match json_args {
@@ -549,9 +556,9 @@ impl Tool for ToolMCP {
                     })
                 ).await {
                     Ok(result) => result,
-                    Err(_) => Err(rmcp::service::ServiceError::Timeout {
-                        timeout: MCP_REQUEST_TIMEOUT
-                    }),
+                    Err(_) => {Err(rmcp::service::ServiceError::Timeout {
+                        timeout: Duration::from_secs(self.request_timeout),
+                    })},
                 }
             } else {
                 return Err("MCP client is not available".to_string());
@@ -741,6 +748,16 @@ fields:
       User-Agent: "Refact.ai (+https://github.com/smallcloudai/refact)"
       Accept: text/event-stream
       Content-Type: application/json
+  init_timeout:
+    f_type: string_short
+    f_desc: "Timeout in seconds for MCP server initialization."
+    f_default: "60"
+    f_extra: true
+  request_timeout:
+    f_type: string_short
+    f_desc: "Timeout in seconds for MCP requests."
+    f_default: "30"
+    f_extra: true
 description: |
   You can add almost any MCP (Model Context Protocol) server here! This supports both local MCP servers (stdio)
   and remote MCP servers (sse). You can read more about MCP here: https://www.anthropic.com/news/model-context-protocol
