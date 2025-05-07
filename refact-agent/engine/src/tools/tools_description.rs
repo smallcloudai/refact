@@ -336,16 +336,6 @@ tools:
 
   # -- agentic tools below --
 
-  - name: "knowledge"
-    agentic: true
-    description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success."
-    parameters:
-      - name: "search_key"
-        type: "string"
-        description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search."
-    parameters_required:
-      - "search_key"
-
   - name: "create_knowledge"
     agentic: true
     description: "Creates a new knowledge entry in the vector database to help with future tasks."
