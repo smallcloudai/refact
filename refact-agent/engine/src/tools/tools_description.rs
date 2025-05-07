@@ -348,21 +348,6 @@ tools:
         description: "If true, for each file an array of AST symbols will appear as well as its filename"
     parameters_required: []
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   # -- agentic tools below --
   - name: "locate"
     agentic: true
@@ -438,8 +423,6 @@ tools:
     parameters_required:
       - "query"
 
-
-
   - name: "knowledge"
     agentic: true
     description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success."
@@ -449,19 +432,6 @@ tools:
         description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search."
     parameters_required:
       - "search_key"
-      
-  - name: "regex_search"
-    description: "Search for exact text patterns in files using regular expressions (pattern matching)"
-    parameters:
-      - name: "pattern"
-        type: "string"
-        description: "Regular expression pattern to search for. Use (?i) at the start for case-insensitive search."
-      - name: "scope"
-        type: "string"
-        description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
-    parameters_required:
-      - "pattern"
-      - "scope"
 
   - name: "create_knowledge"
     agentic: true
