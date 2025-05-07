@@ -320,11 +320,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-  - name: "create_memory_bank"
-    agentic: true
-    description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
-    parameters: []
-    parameters_required: []
 "####;
 
 
