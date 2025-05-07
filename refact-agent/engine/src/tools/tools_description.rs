@@ -181,6 +181,143 @@ pub async fn tools_merged_and_filtered(
     Ok(filtered_tools)
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ToolDesc {
+    pub name: String,
+    #[serde(default)]
+    pub agentic: bool,
+    #[serde(default)]
+    pub experimental: bool,
+    pub description: String,
+    pub parameters: Vec<ToolParam>,
+    pub parameters_required: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ToolParam {
+    #[serde(deserialize_with = "validate_snake_case")]
+    pub name: String,
+    #[serde(rename = "type", default = "default_param_type")]
+    pub param_type: String,
+    pub description: String,
+}
+
+fn validate_snake_case<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if !s.chars().next().map_or(false, |c| c.is_ascii_lowercase())
+        || !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+        || s.contains("__")
+        || s.ends_with('_')
+    {
+        return Err(serde::de::Error::custom(
+            format!("name {:?} must be in snake_case format: lowercase letters, numbers and single underscores, must start with letter", s)
+        ));
+    }
+    Ok(s)
+}
+
+fn default_param_type() -> String {
+    "string".to_string()
+}
+
+/// TODO: Think a better way to know if we can send array type to the model
+/// 
+/// For now, anthropic models support it, gpt models don't, for other, we'll need to test
+pub fn model_supports_array_param_type(model_id: &str) -> bool {
+    model_id.contains("claude")
+}
+
+pub fn make_openai_tool_value(
+    name: String,
+    agentic: bool,
+    description: String,
+    parameters_required: Vec<String>,
+    parameters: Vec<ToolParam>,
+) -> Value {
+    let params_properties = parameters.iter().map(|param| {
+        (
+            param.name.clone(),
+            json!({
+                "type": param.param_type,
+                "description": param.description
+            })
+        )
+    }).collect::<serde_json::Map<_, _>>();
+
+    let function_json = json!({
+            "type": "function",
+            "function": {
+                "name": name,
+                "agentic": agentic, // this field is not OpenAI's
+                "description": description,
+                "parameters": {
+                    "type": "object",
+                    "properties": params_properties,
+                    "required": parameters_required
+                }
+            }
+        });
+    function_json
+}
+
+impl ToolDesc {
+    pub fn into_openai_style(self) -> Value {
+        make_openai_tool_value(
+            self.name,
+            self.agentic,
+            self.description,
+            self.parameters_required,
+            self.parameters,
+        )
+    }
+
+    pub fn is_supported_by(&self, model: &str) -> bool {
+        if !model_supports_array_param_type(model) {
+            for param in &self.parameters {
+                if param.param_type == "array" {
+                    tracing::warn!("Tool {} has array parameter, but model {} does not support it", self.name, model);
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ToolDictDeserialize {
+    pub tools: Vec<ToolDesc>,
+}
+
+pub async fn tool_description_list_from_yaml(
+    tools: IndexMap<String, Box<dyn Tool + Send>>,
+    turned_on: Option<&Vec<String>>,
+    allow_experimental: bool,
+) -> Result<Vec<ToolDesc>, String> {
+    let tool_desc_deser: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
+        .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
+
+    let mut tool_desc_vec = vec![];
+    tool_desc_vec.extend(tool_desc_deser.tools.iter().cloned());
+
+    for (tool_name, tool) in tools {
+        if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
+            tool_desc_vec.push(tool.tool_description());
+        }
+    }
+
+    Ok(tool_desc_vec.iter()
+        .filter(|x| {
+            turned_on.map_or(true, |turned_on_vec| turned_on_vec.contains(&x.name)) &&
+            (allow_experimental || !x.experimental)
+        })
+        .cloned()
+        .collect::<Vec<_>>())
+}
+
 const BUILT_IN_TOOLS: &str = r####"
 tools:
   - name: "search"
@@ -474,141 +611,3 @@ const NOT_READY_TOOLS: &str = r####"
         description: "Path to the specific file to diff (optional)."
     parameters_required:
 "####;
-
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ToolDesc {
-    pub name: String,
-    #[serde(default)]
-    pub agentic: bool,
-    #[serde(default)]
-    pub experimental: bool,
-    pub description: String,
-    pub parameters: Vec<ToolParam>,
-    pub parameters_required: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ToolParam {
-    #[serde(deserialize_with = "validate_snake_case")]
-    pub name: String,
-    #[serde(rename = "type", default = "default_param_type")]
-    pub param_type: String,
-    pub description: String,
-}
-
-fn validate_snake_case<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    if !s.chars().next().map_or(false, |c| c.is_ascii_lowercase())
-        || !s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-        || s.contains("__")
-        || s.ends_with('_')
-    {
-        return Err(serde::de::Error::custom(
-            format!("name {:?} must be in snake_case format: lowercase letters, numbers and single underscores, must start with letter", s)
-        ));
-    }
-    Ok(s)
-}
-
-fn default_param_type() -> String {
-    "string".to_string()
-}
-
-/// TODO: Think a better way to know if we can send array type to the model
-/// 
-/// For now, anthropic models support it, gpt models don't, for other, we'll need to test
-pub fn model_supports_array_param_type(model_id: &str) -> bool {
-    model_id.contains("claude")
-}
-
-pub fn make_openai_tool_value(
-    name: String,
-    agentic: bool,
-    description: String,
-    parameters_required: Vec<String>,
-    parameters: Vec<ToolParam>,
-) -> Value {
-    let params_properties = parameters.iter().map(|param| {
-        (
-            param.name.clone(),
-            json!({
-                "type": param.param_type,
-                "description": param.description
-            })
-        )
-    }).collect::<serde_json::Map<_, _>>();
-
-    let function_json = json!({
-            "type": "function",
-            "function": {
-                "name": name,
-                "agentic": agentic, // this field is not OpenAI's
-                "description": description,
-                "parameters": {
-                    "type": "object",
-                    "properties": params_properties,
-                    "required": parameters_required
-                }
-            }
-        });
-    function_json
-}
-
-impl ToolDesc {
-    pub fn into_openai_style(self) -> Value {
-        make_openai_tool_value(
-            self.name,
-            self.agentic,
-            self.description,
-            self.parameters_required,
-            self.parameters,
-        )
-    }
-
-    pub fn is_supported_by(&self, model: &str) -> bool {
-        if !model_supports_array_param_type(model) {
-            for param in &self.parameters {
-                if param.param_type == "array" {
-                    tracing::warn!("Tool {} has array parameter, but model {} does not support it", self.name, model);
-                    return false;
-                }
-            }
-        }
-        true
-    }
-}
-
-#[derive(Deserialize)]
-pub struct ToolDictDeserialize {
-    pub tools: Vec<ToolDesc>,
-}
-
-pub async fn tool_description_list_from_yaml(
-    tools: IndexMap<String, Box<dyn Tool + Send>>,
-    turned_on: Option<&Vec<String>>,
-    allow_experimental: bool,
-) -> Result<Vec<ToolDesc>, String> {
-    let tool_desc_deser: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
-        .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
-
-    let mut tool_desc_vec = vec![];
-    tool_desc_vec.extend(tool_desc_deser.tools.iter().cloned());
-
-    for (tool_name, tool) in tools {
-        if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
-            tool_desc_vec.push(tool.tool_description());
-        }
-    }
-
-    Ok(tool_desc_vec.iter()
-        .filter(|x| {
-            turned_on.map_or(true, |turned_on_vec| turned_on_vec.contains(&x.name)) &&
-            (allow_experimental || !x.experimental)
-        })
-        .cloned()
-        .collect::<Vec<_>>())
-}
