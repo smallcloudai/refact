@@ -7,7 +7,6 @@ import {
   useAppDispatch,
   useSendChatRequest,
   useAutoSend,
-  useGetCapsQuery,
   useCapsForToolUse,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
@@ -45,7 +44,6 @@ export const Chat: React.FC<ChatProps> = ({
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
-  const caps = useGetCapsQuery();
 
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retryFromIndex } = useSendChatRequest();
@@ -127,11 +125,7 @@ export const Chat: React.FC<ChatProps> = ({
           {messages.length > 0 && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="1">
-                <Text size="1">
-                  model:{" "}
-                  {capsForToolUse.currentModel || caps.data?.chat_default_model}{" "}
-                </Text>{" "}
-                •{" "}
+                <Text size="1">model: {capsForToolUse.currentModel} </Text> •{" "}
                 <Text
                   size="1"
                   onClick={() => setIsDebugChatHistoryVisible((prev) => !prev)}

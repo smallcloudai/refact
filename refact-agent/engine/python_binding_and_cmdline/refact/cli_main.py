@@ -271,7 +271,6 @@ async def chat_main():
         refact_args.extend(["--workspace-folder", args_parsed.path_to_project])
     lsp_runner = LSPServerRunner(
         refact_args,
-        wait_for_ast_vecdb=False,
         refact_lsp_log=None,
         verbose=False
     )

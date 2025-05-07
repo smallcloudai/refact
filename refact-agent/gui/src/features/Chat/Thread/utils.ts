@@ -160,11 +160,13 @@ function replaceLastUserMessage(
   return result.concat([userMessage]);
 }
 
-function takeHighestUsage(a?: Usage, b?: Usage): Usage | undefined {
-  if (a === undefined) return b;
-  if (b === undefined) return a;
-  if (a.total_tokens > b.total_tokens) return a;
-  return b;
+function takeHighestUsage(
+  a?: Usage | null,
+  b?: Usage | null,
+): Usage | undefined {
+  if (a == null) return b ?? undefined;
+  if (b == null) return a;
+  return a.total_tokens > b.total_tokens ? a : b;
 }
 
 type MeteringBalance = Pick<

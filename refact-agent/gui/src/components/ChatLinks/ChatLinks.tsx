@@ -1,12 +1,13 @@
 import React from "react";
 import { Button } from "@radix-ui/themes";
 import { type ChatLink } from "../../services/refact/links";
-import { useLinksFromLsp } from "../../hooks";
+import { useAppSelector, useLinksFromLsp } from "../../hooks";
 import { Spinner } from "@radix-ui/themes";
 import { TruncateRight } from "../Text/TruncateRight";
 
 import styles from "./ChatLinks.module.css";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
+import { selectAreFollowUpsEnabled } from "../../features/Chat";
 
 function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
   const hasAction = "link_action" in link;
@@ -21,7 +22,8 @@ function maybeConcatActionAndGoToStrings(link: ChatLink): string | undefined {
 export const ChatLinks: React.FC = () => {
   const { linksResult, handleLinkAction, streaming } = useLinksFromLsp();
   const balance = useCoinBallance();
-  if (streaming) return null;
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+  if (streaming || !areFollowUpsEnabled) return null;
 
   // TODO: waiting, errors, maybe add a title
 

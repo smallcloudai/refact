@@ -3,9 +3,14 @@ import {
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 import { Flex, HoverCard, IconButton, Popover, Text } from "@radix-ui/themes";
-import { AgentRollbackSwitch, ApplyPatchSwitch } from "./ChatControls";
+import {
+  AgentRollbackSwitch,
+  ApplyPatchSwitch,
+  FollowUpsSwitch,
+} from "./ChatControls";
 import { useAppSelector } from "../../hooks";
 import {
+  selectAreFollowUpsEnabled,
   selectAutomaticPatch,
   selectCheckpointsEnabled,
 } from "../../features/Chat";
@@ -14,7 +19,7 @@ import { useMemo } from "react";
 export const AgentCapabilities = () => {
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
-
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
   const agenticFeatures = useMemo(() => {
     return [
       {
@@ -22,8 +27,9 @@ export const AgentCapabilities = () => {
         enabled: isPatchAutomatic,
       },
       { name: "Files rollback", enabled: isAgentRollbackEnabled },
+      { name: "Follow-Ups", enabled: areFollowUpsEnabled },
     ];
-  }, [isPatchAutomatic, isAgentRollbackEnabled]);
+  }, [isPatchAutomatic, isAgentRollbackEnabled, areFollowUpsEnabled]);
 
   return (
     <Flex mb="2" gap="2" align="center">
@@ -37,6 +43,7 @@ export const AgentCapabilities = () => {
           <Flex gap="2" direction="column">
             <ApplyPatchSwitch />
             <AgentRollbackSwitch />
+            <FollowUpsSwitch />
           </Flex>
         </Popover.Content>
       </Popover.Root>

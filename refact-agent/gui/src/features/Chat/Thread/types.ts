@@ -50,6 +50,7 @@ export type Chat = {
   system_prompt: SystemPrompts;
   tool_use: ToolUse;
   send_immediately: boolean;
+  follow_ups_enabled?: boolean;
 };
 
 export type PayloadWithId = { id: string };

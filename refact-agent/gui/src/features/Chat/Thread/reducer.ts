@@ -39,6 +39,7 @@ import {
   setIsNewChatSuggestionRejected,
   upsertToolCall,
   setIncreaseMaxTokens,
+  setAreFollowUpsEnabled,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -144,6 +145,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.prevent_send = false;
   });
 
+  builder.addCase(setAreFollowUpsEnabled, (state, action) => {
+    state.follow_ups_enabled = action.payload;
+  });
+
   builder.addCase(clearChatError, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.error = null;
@@ -169,6 +174,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.thread.model = state.thread.model;
     next.system_prompt = state.system_prompt;
     next.checkpoints_enabled = state.checkpoints_enabled;
+    next.follow_ups_enabled = state.follow_ups_enabled;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
     // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {

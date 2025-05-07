@@ -105,7 +105,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
-  const shouldSowBallanceLow = useAppSelector(showBalanceLowCallout);
+  const shouldShowBalanceLow = useAppSelector(showBalanceLowCallout);
 
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
@@ -145,6 +145,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     isOnline,
     preventSend,
   ]);
+
+  const isModelSelectVisible = useMemo(() => messages.length < 1, [messages]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
@@ -311,19 +313,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     setIsSendImmediately,
   ]);
 
-  if (globalErrorType === "balance") {
-    return <BallanceCallOut onClick={() => dispatch(clearError())} />;
-  }
-
   if (globalError) {
     return (
       <ErrorCallout mt="2" onClick={onClearError} timeout={null}>
         {globalError}
       </ErrorCallout>
     );
-  }
-  if (shouldSowBallanceLow) {
-    return <BallanceLowInformation />;
   }
 
   if (information) {
@@ -342,6 +337,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   return (
     <Card mt="1" style={{ flexShrink: 0, position: "relative" }}>
+      {globalErrorType === "balance" && (
+        <BallanceCallOut
+          mt="0"
+          mb="2"
+          mx="0"
+          onClick={() => dispatch(clearError())}
+        />
+      )}
+      {shouldShowBalanceLow && <BallanceLowInformation mt="0" mb="2" mx="0" />}
       {!isOnline && (
         <Callout type="info" mb="2">
           Oops, seems that connection was lost... Check your internet connection
@@ -396,9 +400,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="1" wrap="wrap" py="1" px="2">
-            <CapsSelect
-              disabled={messages.length > 0 || isStreaming || isWaiting}
-            />
+            {isModelSelectVisible && <CapsSelect />}
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               <ThinkingButton />

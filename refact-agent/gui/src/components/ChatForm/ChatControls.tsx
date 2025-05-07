@@ -11,7 +11,7 @@ import {
   Button,
   DataList,
 } from "@radix-ui/themes";
-import { Select } from "../Select";
+import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
@@ -28,6 +28,7 @@ import { useTourRefs } from "../../features/Tour";
 import { ToolUseSwitch } from "./ToolUseSwitch";
 import {
   ToolUse,
+  selectAreFollowUpsEnabled,
   selectAutomaticPatch,
   selectChatId,
   selectCheckpointsEnabled,
@@ -35,6 +36,7 @@ import {
   selectIsWaiting,
   selectMessages,
   selectToolUse,
+  setAreFollowUpsEnabled,
   setAutomaticPatch,
   setEnabledCheckpoints,
   setToolUse,
@@ -43,6 +45,7 @@ import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
 import { toPascalCase } from "../../utils/toPascalCase";
 import { Coin } from "../../images";
+import { push } from "../../features/Pages/pagesSlice";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -164,50 +167,137 @@ export const AgentRollbackSwitch: React.FC = () => {
     </Flex>
   );
 };
+export const FollowUpsSwitch: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+
+  const handleFollowUpsEnabledChange = (checked: boolean) => {
+    dispatch(setAreFollowUpsEnabled(checked));
+  };
+
+  return (
+    <Flex
+      gap="4"
+      align="center"
+      wrap="wrap"
+      flexGrow="1"
+      flexShrink="0"
+      width="100%"
+      justify="between"
+    >
+      <Text size="2" mr="auto">
+        Follow-Ups messages
+      </Text>
+      <Flex gap="2" align="center">
+        <Switch
+          size="1"
+          title="Enable/disable follow-ups messages generation by Agent"
+          checked={areFollowUpsEnabled}
+          onCheckedChange={handleFollowUpsEnabledChange}
+        />
+        <HoverCard.Root>
+          <HoverCard.Trigger>
+            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+          </HoverCard.Trigger>
+          <HoverCard.Content size="2" maxWidth="280px">
+            <Flex direction="column" gap="2">
+              <Text as="p" size="2">
+                When enabled, Refact Agent will automatically generate related
+                follow-ups to the conversation
+              </Text>
+              <Badge
+                color="yellow"
+                asChild
+                style={{
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                <Flex gap="2" p="2" align="center">
+                  <ExclamationTriangleIcon
+                    width={16}
+                    height={16}
+                    style={{ flexGrow: 1, flexShrink: 0 }}
+                  />
+                  <Text as="p" size="1">
+                    Warning: may increase coins spending
+                  </Text>
+                </Flex>
+              </Badge>
+            </Flex>
+          </HoverCard.Content>
+        </HoverCard.Root>
+      </Flex>
+    </Flex>
+  );
+};
 
 export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
   const refs = useTourRefs();
   const caps = useCapsForToolUse();
+  const dispatch = useAppDispatch();
 
-  const optionsWithToolTips = useMemo(
-    () =>
-      caps.usableModelsForPlan.map((option) => {
-        if (!caps.data) return option;
-        if (!caps.data.metadata) return option;
-        if (!caps.data.metadata.pricing) return option;
-        if (!option.value.startsWith("refact/")) return option;
-        const key = option.value.replace("refact/", "");
-        if (!(key in caps.data.metadata.pricing)) return option;
-        const pricingForModel = caps.data.metadata.pricing[key];
-        const tooltip = (
-          <Flex direction="column" gap="4">
-            <Text size="1">Cost per Million Tokens</Text>
-            <DataList.Root size="1" trim="both" className={styles.data_list}>
-              {Object.entries(pricingForModel).map(([key, value]) => {
-                return (
-                  <DataList.Item key={key} align="stretch">
-                    <DataList.Label minWidth="88px">
-                      {toPascalCase(key)}
-                    </DataList.Label>
-                    <DataList.Value className={styles.data_list__value}>
-                      <Flex justify="between" align="center" gap="2">
-                        {value * 1_000} <Coin width="12px" height="12px" />
-                      </Flex>
-                    </DataList.Value>
-                  </DataList.Item>
-                );
-              })}
-            </DataList.Root>
-          </Flex>
-        );
-        return {
-          ...option,
-          tooltip,
-          // title,
-        };
-      }),
-    [caps.data, caps.usableModelsForPlan],
+  const handleAddNewModelClick = useCallback(() => {
+    dispatch(push({ name: "providers page" }));
+  }, [dispatch]);
+
+  const onSelectChange = useCallback(
+    (value: string) => {
+      if (value === "add-new-model") {
+        handleAddNewModelClick();
+        return;
+      }
+      caps.setCapModel(value);
+    },
+    [handleAddNewModelClick, caps],
   );
+
+  const optionsWithToolTips: SelectProps["options"] = useMemo(() => {
+    // Map existing models with tooltips
+    const modelOptions = caps.usableModelsForPlan.map((option) => {
+      if (!caps.data) return option;
+      if (!caps.data.metadata) return option;
+      if (!caps.data.metadata.pricing) return option;
+      if (!option.value.startsWith("refact/")) return option;
+      const key = option.value.replace("refact/", "");
+      if (!(key in caps.data.metadata.pricing)) return option;
+      const pricingForModel = caps.data.metadata.pricing[key];
+      const tooltip = (
+        <Flex direction="column" gap="4">
+          <Text size="1">Cost per Million Tokens</Text>
+          <DataList.Root size="1" trim="both" className={styles.data_list}>
+            {Object.entries(pricingForModel).map(([key, value]) => {
+              return (
+                <DataList.Item key={key} align="stretch">
+                  <DataList.Label minWidth="88px">
+                    {toPascalCase(key)}
+                  </DataList.Label>
+                  <DataList.Value className={styles.data_list__value}>
+                    <Flex justify="between" align="center" gap="2">
+                      {value * 1_000} <Coin width="12px" height="12px" />
+                    </Flex>
+                  </DataList.Value>
+                </DataList.Item>
+              );
+            })}
+          </DataList.Root>
+        </Flex>
+      );
+      return {
+        ...option,
+        tooltip,
+        // title,
+      };
+    });
+
+    return [
+      ...modelOptions,
+      { type: "separator" },
+      {
+        value: "add-new-model",
+        textValue: "Add new model",
+      },
+    ];
+  }, [caps.data, caps.usableModelsForPlan]);
 
   const allDisabled = caps.usableModelsForPlan.every((option) => {
     if (typeof option === "string") return false;
@@ -235,7 +325,7 @@ export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
               title="chat model"
               options={optionsWithToolTips}
               value={caps.currentModel}
-              onChange={caps.setCapModel}
+              onChange={onSelectChange}
               disabled={disabled}
             />
           )}
