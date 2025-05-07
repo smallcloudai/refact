@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
 use serde_json::Value;
@@ -9,8 +10,11 @@ use crate::subchat::subchat_single;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
+use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::tokens::count_text_tokens_with_fallback;
@@ -20,7 +24,8 @@ pub struct ToolStrategicPlanning;
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
 
-static ROOT_CAUSE_ANALYSIS_PROMPT: &str = r#"Based on the conversation and context below, please perform a thorough root cause analysis of the problem. Identify all possible causes, including:
+static ROOT_CAUSE_ANALYSIS_PROMPT: &str = r#"Based on the conversation and context below, please perform a thorough root cause analysis of the problem. Pay attention on provided debugging report.
+Identify all possible causes, including:
 1. Direct causes - immediate factors that could lead to this issue.
 2. Underlying causes - deeper systemic issues that might be contributing.
 3. Environmental factors - external conditions that might influence the problem.
@@ -37,9 +42,11 @@ Rank the causes from most to least likely, and explain your reasoning.
 Your final goal is to find the root cause of the problem! Take as many time as needed.
 Do not create code, just write text."#;
 
+static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files"#;
+
 static CRITIQUE_PROMPT: &str = r#"Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis.
-Remember, that the final solution must be minimal, robust, effective. You cannot change existing tests.
-Also use those extra rules:
+Remember, that the final solution must be full, robust, effective. You cannot change existing tests.
+Use those extra rules as well:
 ### Agent Guard rules
 1. **Contract First**  
    Never change public signatures, return types, log formats, or exception classes unless tests demand it; add features via defaults or **kwargs, never break old calls.
@@ -58,13 +65,12 @@ Also use those extra rules:
 8. **Holistic Serialization**  
    Serialize original, unscaled state (e.g., pre-device-DPI) and restore verbatim; ensure round-trips leave objects functionally identical.
 9. **Feature Flags & Compatibility**  
-   Ship new behavior behind opt-in flags; keep fallbacks for custom models, backends, or deprecated APIs until the deprecation window closes.
-10. **Documentation-Driven Development**  
-    Write a failing test or docstring example first, reference it in the patch, and leave inline comments explaining any non-obvious branch."#;
+   Ship new behavior behind opt-in flags; keep fallbacks for custom models, backends, or deprecated APIs until the deprecation window closes."#;
 
 
-static GUARDRAILS_PROMPT: &str = r#"- Do not create documents, README.md, or other files which are non-related to fixing the problem. 
-- Convert those patches into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches!
+static GUARDRAILS_PROMPT: &str = r#"Reminders:
+- Do not create documents, README.md, or other files which are non-related to fixing the problem. 
+- Convert generated changes into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches!
 - Do not modify existing tests.
 - Create new test files only using `create_textdoc()`."#;
 
@@ -72,7 +78,8 @@ async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
     subchat_params: &SubchatParameters,
     problem_statement: &String, 
-    previous_messages: &Vec<ChatMessage>
+    important_paths: &Vec<PathBuf>,
+    previous_messages: &Vec<ChatMessage>,
 ) -> Result<String, String> {
     let gcx = ccx.lock().await.global_context.clone();
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
@@ -83,8 +90,29 @@ async fn _make_prompt(
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
     let final_message = problem_statement.to_string();
     tokens_budget -= count_text_tokens_with_fallback(tokenizer.clone(), &final_message) as i64;
-    let mut context = "".to_string(); 
-    let mut context_files: Vec<ContextFile> = vec![];
+    let mut context = "".to_string();
+    let mut context_files = vec![];
+    for p in important_paths.iter() {
+        context_files.push(match get_file_text_from_memory_or_disk(gcx.clone(), &p).await {
+            Ok(text) => {
+                let total_lines = text.lines().count();
+                tracing::info!("adding file '{:?}' to the context", p);
+                ContextFile {
+                    file_name: p.to_string_lossy().to_string(),
+                    file_content: "".to_string(),
+                    line1: 1,
+                    line2: total_lines.max(1),
+                    symbols: vec![],
+                    gradient_type: 4,
+                    usefulness: 100.0,
+                }
+            },
+            Err(_) => {
+                tracing::warn!("failed to read file '{:?}'. Skipping...", p);
+                continue;
+            }
+        })
+    }
     for message in previous_messages.iter().rev() {
         let message_row = match message.role.as_str() {
             "system" => {
@@ -97,16 +125,11 @@ async fn _make_prompt(
             "assistant" => {
                 format!("🤖:\n{}\n\n", &message.content.content_text_only())
             }
-            "context_file" => {
-                context_files.extend(serde_json::from_str::<Vec<ContextFile>>(&message.content.content_text_only())
-                    .map_err(|e| format!("Failed to decode context_files JSON: {:?}", e))?);
-                continue;
-            }
             "tool" => {
                 format!("📎:\n{}\n\n", &message.content.content_text_only())
             }
             _ => {
-                tracing::info!("skip adding message to the context: {}", message.content.content_text_only());
+                tracing::info!("skip adding message to the context: {}", crate::nicer_logs::first_n_chars(&message.content.content_text_only(), 40));
                 continue;
             }
         };
@@ -139,9 +162,9 @@ async fn _make_prompt(
                          context_file.file_content)
             );
         }
-        Ok(format!("{final_message}{context}\n***Files context:***\n{files_context}"))
+        Ok(format!("{final_message}\n\n# Conversation\n{context}\n\n# Files context\n{files_context}"))
     } else {
-        Ok(format!("{final_message}{context}"))
+        Ok(format!("{final_message}\n\n# Conversation\n{context}"))
     }
 }
 
@@ -188,8 +211,29 @@ impl Tool for ToolStrategicPlanning {
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        _args: &HashMap<String, Value>
+        args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let gcx = ccx.lock().await.global_context.clone();
+        let important_paths = match args.get("important_paths") {
+            Some(Value::String(s)) => {
+                let mut paths = vec![];
+                for s in s.split(",") {
+                    let s_raw = s.trim().to_string();
+                    let candidates_file = file_repair_candidates(gcx.clone(), &s_raw, 3, false).await;
+                    paths.push(match return_one_candidate_or_a_good_error(gcx.clone(), &s_raw, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+                        Ok(f) => canonicalize_normalized_path(PathBuf::from(preprocess_path_for_normalization(f.trim().to_string()))),
+                        Err(_) => {
+                            tracing::info!("cannot find a good file candidate for `{s_raw}`");
+                            continue;
+                        }
+                    })
+                }
+                paths
+            },
+            Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
+            None => return Err("Missing argument `paths`".to_string())
+        };
+        
         let mut usage_collector = ChatUsage { ..Default::default() };
         let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "strategic_planning").await?;
@@ -220,6 +264,7 @@ impl Tool for ToolStrategicPlanning {
             ccx.clone(),
             &subchat_params,
             &ROOT_CAUSE_ANALYSIS_PROMPT.to_string(),
+            &important_paths,
             &external_messages
         ).await?;
         let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
@@ -238,12 +283,13 @@ impl Tool for ToolStrategicPlanning {
         let prompt = _make_prompt(
             ccx.clone(),
             &subchat_params,
-            &format!("***Problem:***\n{}\n\n***Problem context:***\n", root_cause_reply.content.content_text_only()),
+            &format!("{SOLVER_PROMPT} # Root cause analysis:\n{}", root_cause_reply.content.content_text_only()),
+            &important_paths,
             &external_messages
         ).await?;
         let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
         tracing::info!("FIRST ITERATION: Get the initial solution");
-        let (sol_session, first_reply) = _execute_subchat_iteration(
+        let (sol_session, initial_solution) = _execute_subchat_iteration(
             ccx_subchat.clone(),
             &subchat_params,
             history.clone(),
@@ -258,7 +304,7 @@ impl Tool for ToolStrategicPlanning {
         // SECOND ITERATION: Ask for a critique
         tracing::info!("THIRD ITERATION: Ask for a critique");
         history.push(ChatMessage::new("user".to_string(), CRITIQUE_PROMPT.to_string()));
-        let (crit_session, critique_reply) = _execute_subchat_iteration(
+        let (crit_session, critique) = _execute_subchat_iteration(
             ccx_subchat.clone(),
             &subchat_params,
             history.clone(),
@@ -274,7 +320,7 @@ impl Tool for ToolStrategicPlanning {
         tracing::info!("FOURTH ITERATION: Ask for an improved solution");
         let improve_prompt = "Please improve the original solution based on the critique. Provide a refined solution that addresses the weaknesses identified in the critique.";
         history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
-        let (_imp_session, improved_reply) = _execute_subchat_iteration(
+        let (_imp_session, improved_solution) = _execute_subchat_iteration(
             ccx_subchat,
             &subchat_params,
             history.clone(),
@@ -288,9 +334,9 @@ impl Tool for ToolStrategicPlanning {
         let final_message = format!(
             "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}\n\n{}",
             root_cause_reply.content.content_text_only(),
-            first_reply.content.content_text_only(),
-            critique_reply.content.content_text_only(),
-            improved_reply.content.content_text_only(),
+            initial_solution.content.content_text_only(),
+            critique.content.content_text_only(),
+            improved_solution.content.content_text_only(),
             GUARDRAILS_PROMPT.to_string()
         );
         tracing::info!("strategic planning response (combined):\n{}", final_message);

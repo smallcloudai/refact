@@ -138,7 +138,7 @@ pub async fn tools_merged_and_filtered(
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
-        // ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
+        ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
         // ("critique".to_string(), Box::new(crate::tools::tool_critique::ToolCritique{}) as Box<dyn Tool + Send>),
         ("search_pattern".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
@@ -147,7 +147,7 @@ pub async fn tools_merged_and_filtered(
         ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
-        // ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
+        ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
@@ -353,8 +353,12 @@ tools:
   - name: "strategic_planning"
     agentic: true
     description: "Strategically plan a solution for a complex problem or create a comprehensive approach."
-    parameters: []
-    parameters_required: []
+    parameters:
+      - name: "important_paths"
+        type: "string"
+        description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure."
+    parameters_required:
+      - "important_paths"
 
   - name: "critique"
     agentic: true

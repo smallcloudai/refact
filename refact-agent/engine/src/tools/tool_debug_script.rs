@@ -87,7 +87,6 @@ async fn parse_args(
         problem,
     })
 }
-
 const DEBUG_SYSTEM_PROMPT: &str = r###"**Role**  
 You are a Python debugger who uses `pdb` to track down elusive bugs.
 
@@ -99,13 +98,15 @@ Find—and prove—the root cause of the error in the supplied Python script.
    * Skim the script and any problem description to learn what *should* happen vs. what *does* happen.
 2. **Outline a Strategy**  
    * Jot a brief plan: where you’ll set breakpoints, which inputs you’ll try, and why.
-3. **Drive `pdb`**  
-   * Run the script under `pdb`.  
-   * Use all available commands.  
-4. **Observe & Record**  
-   * At each critical line, log variable states, branch decisions, and side effects.  
-   * Pay maximum attention on implicit operations (__bool__, __call__, ...).  
+   * Зrepare all required environment to run it.
+3. **Drive `pdb`**
+   * Create a new debugging session pdb(\"python -m pdb my_script.py\").
+   * Use all available commands to observe and record the state of the program.
+4. **Observe & Record**
+   * At each critical line, log variable states, branch decisions, and side effects.
+   * Pay maximum attention on implicit operations (__bool__, __call__, ...).
    * Note exceptions, warnings, or suspicious values.
+   * Dig deeper, try different ideas, monkey-patching on the fly.
 5. **Hypothesize ➜ Test ➜ Confirm**  
    * Form theories about the fault.  
    * Validate (or reject) them with targeted probes and reruns.
@@ -117,6 +118,7 @@ Find—and prove—the root cause of the error in the supplied Python script.
      * The definitive root cause (what, where, why)  
      * Evidence: variable dumps, stack traces, erroneous logic, etc.  
      * Suggested fix or next steps
+     * List all project's files & symbols observed and visited in the debugging process
 
 ### Style Guide  
 - **Explain your reasoning** at every step; don’t just show commands.  
@@ -126,13 +128,13 @@ Find—and prove—the root cause of the error in the supplied Python script.
 - Write so another developer can reproduce your session and reach the same conclusion."###;
 
 const DEBUG_SUMMARY_PROMPT: &str = r###"**Task**  
-You will receive a raw debugging transcript (console output, stack traces, code snippets, notes). Create a concise and comprehensive report with the sections below.
+You will receive a debugging transcript (console output, stack traces, code snippets, notes). Create a concise and comprehensive report with the sections below.
 
 ### 1 – Problem Overview  
 - **Issue summary** – one sentence describing the observed bug or unexpected behaviour.  
 - **Expected behaviour** – what the script/module should have done.
 
-### 2 – Project's Files & Symbols observed in the debugging process   
+### 2 – Project's Files & Symbols observed and visited in the debugging process
 | File | Key symbols (functions / classes / vars)  | Purpose / responsibility |
 |------|-------------------------------------------|--------------------------|
 | …    | …                                         | …                        |
@@ -249,6 +251,7 @@ impl Tool for ToolDebugScript {
             };
             debug_session.push_str(&iter_row);
         }
+        let initial_report = debug_result.last().unwrap().content.content_text_only();
         let ccx_summary = {
             let ccx_lock = ccx.lock().await;
             let mut ctx = AtCommandsContext::new(
@@ -266,9 +269,8 @@ impl Tool for ToolDebugScript {
             Arc::new(AMutex::new(ctx))
         };
         let summary_prompt = format!(
-            "{}\n\nScript: {}\n\nProblem description: {}\n\nDebugging session transcript:\n\n{}",
+            "{}\n\nInitial problem description: {}\n\nDebugging session transcript:\n\n{}",
             DEBUG_SUMMARY_PROMPT,
-            path_str,
             parsed_args.problem,
             debug_session
         );
@@ -335,7 +337,8 @@ impl Tool for ToolDebugScript {
             ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(format!(
-                "# Debugging Summary for {}\n\n{}\n\n",
+                "# Initial debugging report {}\n\n# Debugging Summary for {}\n\n{}\n\n",
+                initial_report,
                 path_str,
                 summary
             )),
@@ -346,7 +349,7 @@ impl Tool for ToolDebugScript {
         }),
             ContextEnum::ChatMessage(ChatMessage {
             role: "cd_instruction".to_string(),
-            content: ChatContent::SimpleText(format!("💿 Open all mentioned files using `cat(file1,file2,file3,...)` and then fix the problem!")),
+            content: ChatContent::SimpleText(format!("💿 Open all visited files using `cat(file1,file2,file3,...)`!")),
             ..Default::default()
         })];
         
