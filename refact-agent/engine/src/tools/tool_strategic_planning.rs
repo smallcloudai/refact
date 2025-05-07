@@ -42,12 +42,8 @@ Rank the causes from most to least likely, and explain your reasoning.
 Your final goal is to find the root cause of the problem! Take as many time as needed.
 Do not create code, just write text."#;
 
-static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files"#;
-
-static CRITIQUE_PROMPT: &str = r#"Please critique the solution above. Identify any weaknesses, limitations, or bugs. Be specific and thorough in your analysis.
-Remember, that the final solution must be full, robust, effective. You cannot change existing tests.
-Use those extra rules as well:
-### Agent Guard rules
+static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files
+# Solution rules
 1. **Contract First**  
    Never change public signatures, return types, log formats, or exception classes unless tests demand it; add features via defaults or **kwargs, never break old calls.
 2. **Fix Upstream, Validate Up-Front**  
@@ -65,7 +61,8 @@ Use those extra rules as well:
 8. **Holistic Serialization**  
    Serialize original, unscaled state (e.g., pre-device-DPI) and restore verbatim; ensure round-trips leave objects functionally identical.
 9. **Feature Flags & Compatibility**  
-   Ship new behavior behind opt-in flags; keep fallbacks for custom models, backends, or deprecated APIs until the deprecation window closes."#;
+   Ship new behavior behind opt-in flags; keep fallbacks for custom models, backends, or deprecated APIs until the deprecation window closes.
+"#;
 
 
 static GUARDRAILS_PROMPT: &str = r#"Reminders:
@@ -302,41 +299,41 @@ impl Tool for ToolStrategicPlanning {
         history = sol_session.clone();
 
         // SECOND ITERATION: Ask for a critique
-        tracing::info!("THIRD ITERATION: Ask for a critique");
-        history.push(ChatMessage::new("user".to_string(), CRITIQUE_PROMPT.to_string()));
-        let (crit_session, critique) = _execute_subchat_iteration(
-            ccx_subchat.clone(),
-            &subchat_params,
-            history.clone(),
-            subchat_params.subchat_max_new_tokens / 3,
-            &mut usage_collector,
-            tool_call_id,
-            "critique",
-            &log_prefix,
-        ).await?;
-        history = crit_session.clone();
-
-        // THIRD ITERATION: Ask for an improved solution
-        tracing::info!("FOURTH ITERATION: Ask for an improved solution");
-        let improve_prompt = "Please improve the original solution based on the critique. Provide a refined solution that addresses the weaknesses identified in the critique.";
-        history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
-        let (_imp_session, improved_solution) = _execute_subchat_iteration(
-            ccx_subchat,
-            &subchat_params,
-            history.clone(),
-            subchat_params.subchat_max_new_tokens / 3,
-            &mut usage_collector,
-            tool_call_id,
-            "solution-refinement",
-            &log_prefix,
-        ).await?;
+        // tracing::info!("THIRD ITERATION: Ask for a critique");
+        // history.push(ChatMessage::new("user".to_string(), CRITIQUE_PROMPT.to_string()));
+        // let (crit_session, critique) = _execute_subchat_iteration(
+        //     ccx_subchat.clone(),
+        //     &subchat_params,
+        //     history.clone(),
+        //     subchat_params.subchat_max_new_tokens / 3,
+        //     &mut usage_collector,
+        //     tool_call_id,
+        //     "critique",
+        //     &log_prefix,
+        // ).await?;
+        // history = crit_session.clone();
+        // 
+        // // THIRD ITERATION: Ask for an improved solution
+        // tracing::info!("FOURTH ITERATION: Ask for an improved solution");
+        // let improve_prompt = "Please improve the original solution based on the critique. Provide a refined solution that addresses the weaknesses identified in the critique.";
+        // history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
+        // let (_imp_session, improved_solution) = _execute_subchat_iteration(
+        //     ccx_subchat,
+        //     &subchat_params,
+        //     history.clone(),
+        //     subchat_params.subchat_max_new_tokens / 3,
+        //     &mut usage_collector,
+        //     tool_call_id,
+        //     "solution-refinement",
+        //     &log_prefix,
+        // ).await?;
 
         let final_message = format!(
-            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n\n# Critique\n\n{}\n\n# Improved Solution\n\n{}\n\n{}",
+            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}\n{}",
             root_cause_reply.content.content_text_only(),
             initial_solution.content.content_text_only(),
-            critique.content.content_text_only(),
-            improved_solution.content.content_text_only(),
+            // critique.content.content_text_only(),
+            // improved_solution.content.content_text_only(),
             GUARDRAILS_PROMPT.to_string()
         );
         tracing::info!("strategic planning response (combined):\n{}", final_message);
