@@ -351,17 +351,7 @@ tools:
 
 
 
-  - name: "cat"
-    description: "Like cat in console, but better: it can read multiple files and images. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full."
-    parameters:
-      - name: "paths"
-        type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4."
-      - name: "symbols"
-        type: "string"
-        description: "Comma separated AST symbols: MyClass, MyClass::method, my_function"
-    parameters_required:
-      - "paths"
+
 
   - name: "rm"
     description: "Deletes a file or directory. Use recursive=true for directories. Set dry_run=true to preview without deletion."

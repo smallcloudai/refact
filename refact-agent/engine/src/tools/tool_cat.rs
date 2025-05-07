@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use resvg::{tiny_skia, usvg};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
 use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
@@ -98,6 +98,28 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
 #[async_trait]
 impl Tool for ToolCat {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "cat".to_string(),
+            agentic: false,
+            experimental: false,
+            description: "Like cat in console, but better: it can read multiple files and images. Give it AST symbols important for the goal (classes, functions, variables, etc) to see them in full.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "paths".to_string(),
+                    description: "Comma separated file names or directories: dir1/file1.ext, dir2/file2.ext:10-20, dir3/dir4.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "symbols".to_string(),
+                    description: "Comma separated AST symbols: MyClass, MyClass::method, my_function".to_string(),
+                    param_type: "string".to_string(),
+                }
+            ],
+            parameters_required: vec!["paths".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
