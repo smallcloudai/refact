@@ -330,17 +330,6 @@ tools:
       - "queries"
       - "scope"
 
-  - name: "tree"
-    description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "An absolute path to get files tree for. Do not pass it if you need a full project tree."
-      - name: "use_ast"
-        type: "boolean"
-        description: "If true, for each file an array of AST symbols will appear as well as its filename"
-    parameters_required: []
-
   - name: "web"
     description: "Fetch a web page and convert to readable plain text."
     parameters:
