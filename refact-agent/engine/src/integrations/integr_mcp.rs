@@ -6,6 +6,7 @@ use std::sync::Weak;
 use std::future::Future;
 use std::process::Stdio;
 use async_trait::async_trait;
+use rmcp::model::RawContent;
 use rmcp::transport::sse::ReqwestSseClient;
 use rmcp::transport::SseTransport;
 use serde::{Deserialize, Serialize};
@@ -19,9 +20,11 @@ use rmcp::model::{CallToolRequestParam, Tool as McpTool};
 use tempfile::NamedTempFile;
 use tracing::Level;
 
+use crate::caps::resolve_chat_model;
 use crate::custom_error::MapErrToString;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
@@ -504,13 +507,22 @@ impl Tool for ToolMCP {
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let session_key = format!("{}", self.config_path);
-        let gcx = ccx.lock().await.global_context.clone();
-        let session_option = gcx.read().await.integration_sessions.get(&session_key).cloned();
-        if session_option.is_none() {
+        let (gcx, current_model) = {
+            let ccx_locked = ccx.lock().await;
+            (ccx_locked.global_context.clone(), ccx_locked.current_model.clone())
+        };
+        let (session_maybe, caps_maybe) = {
+            let gcx_locked = gcx.read().await;
+            (gcx_locked.integration_sessions.get(&session_key).cloned(), gcx_locked.caps.clone())
+        };
+        if session_maybe.is_none() {
             tracing::error!("No session for {:?}, strange (2)", session_key);
             return Err(format!("No session for {:?}", session_key));
         }
-        let session = session_option.unwrap();
+        let session = session_maybe.unwrap();
+        let model_supports_multimodality = caps_maybe.is_some_and(|caps| {
+            resolve_chat_model(caps, &current_model).is_ok_and(|m| m.supports_multimodality)
+        });
         _session_wait_startup_task(session.clone()).await;
 
         let json_args = serde_json::json!(args);
@@ -546,7 +558,7 @@ impl Tool for ToolMCP {
             }
         };
 
-        let tool_output = match result_probably {
+        let result_message = match result_probably {
             Ok(result) => {
                 if result.is_error.unwrap_or(false) {
                     let error_msg = format!("Tool execution error: {:?}", result.content);
@@ -554,21 +566,63 @@ impl Tool for ToolMCP {
                     return Err(error_msg);
                 }
 
-                if let Some(content) = result.content.get(0) {
-                    if let rmcp::model::RawContent::Text(text_content) = &content.raw {
-                        let text = text_content.text.clone();
-                        let success_msg = format!("Tool '{}' executed successfully", self.mcp_tool.name);
-                        _add_log_entry(session_logs.clone(), success_msg).await;
-                        text
-                    } else {
-                        let error_msg = format!("Unexpected tool output format: {:?}", result.content);
-                        tracing::error!("{}", error_msg);
-                        _add_log_entry(session_logs.clone(), error_msg.clone()).await;
-                        return Err("Unexpected tool output format".to_string());
+                let mut elements = Vec::new();
+                for content in result.content {
+                    match content.raw {
+                        RawContent::Text(text_content) => {
+                            elements.push(MultimodalElement {
+                                m_type: "text".to_string(),
+                                m_content: text_content.text,
+                            })
+                        }
+                        RawContent::Image(image_content) => {
+                            if model_supports_multimodality {
+                                let mime_type = if image_content.mime_type.starts_with("image/") {
+                                    image_content.mime_type
+                                } else {
+                                    format!("image/{}", image_content.mime_type)
+                                };
+                                elements.push(MultimodalElement {
+                                    m_type: mime_type,
+                                    m_content: image_content.data,
+                                })
+                            } else {
+                                elements.push(MultimodalElement {
+                                    m_type: "text".to_string(),
+                                    m_content: "Server returned an image, but model does not support multimodality".to_string(),
+                                })
+                            }
+                        },
+                        RawContent::Audio(_) => {
+                            elements.push(MultimodalElement {
+                                m_type: "text".to_string(),
+                                m_content: "Server returned audio, which is not supported".to_string(),
+                            })
+                        },
+                        RawContent::Resource(_) => {
+                            elements.push(MultimodalElement {
+                                m_type: "text".to_string(),
+                                m_content: "Server returned resource, which is not supported".to_string(),
+                            })
+                        },
                     }
-                } else {
-                    String::new()
                 }
+
+                let content = if elements.iter().all(|el| el.m_type == "text") {
+                    ChatContent::SimpleText(
+                        elements.into_iter().map(|el| el.m_content).collect::<Vec<_>>().join("\n\n")
+                    )
+                } else {
+                    ChatContent::Multimodal(elements)
+                };
+
+                ContextEnum::ChatMessage(ChatMessage {
+                    role: "tool".to_string(),
+                    content,
+                    tool_calls: None,
+                    tool_call_id: tool_call_id.clone(),
+                    ..Default::default()
+                })
             }
             Err(e) => {
                 let error_msg = format!("Failed to call tool: {:?}", e);
@@ -578,15 +632,7 @@ impl Tool for ToolMCP {
             }
         };
 
-        let result = vec![ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content: ChatContent::SimpleText(tool_output),
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        })];
-
-        Ok((false, result))
+        Ok((false, vec![result_message]))
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
