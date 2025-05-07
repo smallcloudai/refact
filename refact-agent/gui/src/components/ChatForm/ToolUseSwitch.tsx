@@ -1,7 +1,8 @@
 import React from "react";
-import { Flex, SegmentedControl, Text, HoverCard } from "@radix-ui/themes";
+import { Flex, Text, HoverCard } from "@radix-ui/themes";
 import { ToolUse } from "../../features/Chat/Thread";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { Select } from "../Select";
 
 type ToolUseSwitchProps = {
   toolUse: ToolUse;
@@ -12,21 +13,24 @@ export const ToolUseSwitch = React.forwardRef<
   HTMLDivElement,
   ToolUseSwitchProps
 >(({ toolUse, setToolUse }, ref) => {
+  const options = [
+    { value: "quick", textValue: "Quick" },
+    { value: "explore", textValue: "Explore" },
+    { value: "agent", textValue: "Agent" }
+  ];
+
   return (
-    <Flex direction="column" gap="3" mb="2" align="start" ref={ref}>
-      <Text size="2">How fast do you want the answer:</Text>
+    <Flex direction="row" gap="2" mb="2" align="center" ref={ref}>
+      <Flex align="center" gap="1">
+        <Text size="2">⚡ Response Mode:</Text>
+      </Flex>
       <Flex direction="row" gap="1" align="center">
-        <SegmentedControl.Root
-          defaultValue="quick"
+        <Select
+          title="Response Mode"
+          options={options}
           value={toolUse}
-          onValueChange={(x) => {
-            setToolUse(x as ToolUse);
-          }}
-        >
-          <SegmentedControl.Item value="quick">Quick</SegmentedControl.Item>
-          <SegmentedControl.Item value="explore">Explore</SegmentedControl.Item>
-          <SegmentedControl.Item value="agent">Agent</SegmentedControl.Item>
-        </SegmentedControl.Root>
+          onChange={(value) => setToolUse(value as ToolUse)}
+        />
         <HoverCard.Root>
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
