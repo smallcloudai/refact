@@ -20,7 +20,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, ChatToolCall, ChatToolFunction};
 use crate::subchat::subchat;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc};
 
 
 async fn result_to_json(gcx: Arc<ARwLock<GlobalContext>>, result: IndexMap<String, ReduceFileOutput>) -> String {
@@ -62,6 +62,10 @@ pub struct ToolRelevantFiles;
 #[async_trait]
 impl Tool for ToolRelevantFiles {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        unimplemented!();
+    }
     
     async fn tool_execute(
         &mut self,
