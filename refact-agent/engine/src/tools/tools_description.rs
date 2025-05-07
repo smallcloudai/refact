@@ -41,6 +41,8 @@ pub trait Tool: Send + Sync {
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String>;
 
+    fn tool_description(&self) -> ToolDesc;
+
     async fn match_against_confirm_deny(
         &self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
@@ -107,10 +109,6 @@ pub trait Tool: Send + Sync {
 
     fn tool_name(&self) -> String  {
         return "".to_string();
-    }
-
-    fn tool_description(&self) -> ToolDesc {
-        unimplemented!();
     }
 }
 
