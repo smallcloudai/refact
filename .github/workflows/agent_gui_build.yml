@@ -3,7 +3,7 @@ name: Refact Agent GUI CI build (Node.js)
 on:
   push:
     branches: [main, dev]
-    paths: 
+    paths:
       - "refact-agent/gui/**"
       - ".github/workflows/agent_gui_*"
   pull_request:
@@ -21,11 +21,15 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [lts/*, latest]
+        node-version: [
+            lts/*,
+            22,
+            # latest ## jsdom breaks in v24
+          ]
 
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -53,7 +57,7 @@ jobs:
           pkg_name=$(ls refact-chat-js-*.tgz)
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
           echo "PACKAGE_NAME=$pkg_name" >> $GITHUB_ENV
-          
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
