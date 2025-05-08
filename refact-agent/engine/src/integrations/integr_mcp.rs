@@ -512,26 +512,26 @@ impl Tool for ToolMCP {
             }
         }
 
+        let tool_name = {
+            let yaml_name = std::path::Path::new(&self.config_path)
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .unwrap_or("unknown");
+            let sanitized_yaml_name = format!("{}_{}", yaml_name, self.mcp_tool.name)
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect::<String>();
+            sanitized_yaml_name
+        };
+
         ToolDesc {
-            name: self.tool_name(),
+            name: tool_name,
             agentic: true,
             experimental: false,
             description: self.mcp_tool.description.clone(),
             parameters,
             parameters_required,
         }
-    }
-
-    fn tool_name(&self) -> String  {
-        let yaml_name = std::path::Path::new(&self.config_path)
-            .file_stem()
-            .and_then(|name| name.to_str())
-            .unwrap_or("unknown");
-        let sanitized_yaml_name = format!("{}_{}", yaml_name, self.mcp_tool.name)
-            .chars()
-            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-            .collect::<String>();
-        sanitized_yaml_name
     }
 
     fn command_to_match_against_confirm_deny(
