@@ -15,7 +15,7 @@ use crate::http::http_post_json;
 use crate::http::routers::v1::chat::CHAT_TOP_N;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
-use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
+use crate::tools::tools_description::{get_available_tools, MatchConfirmDenyResult, ToolDesc};
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::tools::tools_execute::run_tools;
@@ -67,31 +67,18 @@ pub struct ToolExecuteResponse {
 
 pub async fn handle_v1_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    _: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
-    let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
-        Ok(tools) => tools,
-        Err(e) => {
-            let error_body = serde_json::json!({ "detail": e }).to_string();
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header("Content-Type", "application/json")
-                .body(Body::from(error_body))
-                .unwrap());
-        }
-    };
+    let all_tools = get_available_tools(gcx.clone(), true).await.map_err(|e| {
+        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)
+    })?;
 
-    let turned_on = all_tools.keys().cloned().collect::<Vec<_>>();
-    let allow_experimental = gcx.read().await.cmdline.experimental;
+    let tools_desc: Vec<ToolDesc> = all_tools.values().map(|tool| {
+        tool.tool_description()
+    }).collect();
 
-    let tool_desclist = tool_description_list_from_yaml(all_tools, Some(&turned_on), allow_experimental).await.unwrap_or_else(|e| {
-        tracing::error!("Error loading compiled_in_tools: {:?}", e);
-        vec![]
-    });
+    let body = serde_json::to_string_pretty(&tools_desc)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("JSON problem: {}", e)))?;
 
-    let tools_openai_stype = tool_desclist.into_iter().map(|x| x.into_openai_style()).collect::<Vec<_>>();
-
-    let body = serde_json::to_string_pretty(&tools_openai_stype).map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
@@ -144,7 +131,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         "".to_string(),
     ).await)); // used only for should_confirm
 
-    let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
+    let all_tools = match get_available_tools(gcx.clone(), true).await {
         Ok(tools) => tools,
         Err(e) => {
             let error_body = serde_json::json!({ "detail": e }).to_string();
@@ -248,7 +235,7 @@ pub async fn handle_v1_tools_execute(
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
-    let mut at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
+    let mut at_tools = get_available_tools(gcx.clone(), false).await.map_err(|e|{
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
     })?;
     let (messages, tools_ran) = run_tools(
