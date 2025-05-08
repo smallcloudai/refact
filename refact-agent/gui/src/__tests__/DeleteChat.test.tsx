@@ -7,12 +7,20 @@ import {
   chatLinks,
   telemetryChat,
   telemetryNetwork,
+  goodCaps,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 import { HistoryState } from "../features/History/historySlice";
 
 describe("Delete a Chat form history", () => {
-  server.use(goodUser, goodPing, chatLinks, telemetryChat, telemetryNetwork);
+  server.use(
+    goodUser,
+    goodPing,
+    chatLinks,
+    telemetryChat,
+    telemetryNetwork,
+    goodCaps,
+  );
   it("can delete a chat", async () => {
     const now = new Date().toISOString();
     const history: HistoryState = {
