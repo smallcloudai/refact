@@ -100,7 +100,6 @@
     "happy-dom": "^17.4.6",
     "husky": ">=6",
     "js-cookie": "^3.0.5",
-    "jsdom": "^26.0.0",
     "lint-staged": ">=10",
     "lodash.groupby": "^4.6.0",
     "lodash.isequal": "^4.5.0",
