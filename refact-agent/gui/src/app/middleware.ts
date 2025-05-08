@@ -383,14 +383,14 @@ startListening({
       toolsApi.endpoints.getTools.initiate(undefined),
     );
     toolsRequest.unsubscribe();
-    const toolResult = await toolsRequest.unwrap();
+    // const toolResult = await toolsRequest.unwrap();
     // TODO: set mode to configure ? or infer it later
     // TODO: create a dedicated thunk for this.
     await listenerApi.dispatch(
       chatAskQuestionThunk({
         messages: state.chat.thread.messages,
         chatId: state.chat.thread.id,
-        tools: toolResult,
+        // tools: toolResult,
       }),
     );
   },

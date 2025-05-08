@@ -19,7 +19,7 @@ import {
 } from "../features/Chat/Thread/selectors";
 import {
   useCheckForConfirmationMutation,
-  useGetToolsLazyQuery,
+  // useGetToolsLazyQuery,
 } from "./useGetToolsQuery";
 import {
   ChatMessage,
@@ -95,7 +95,7 @@ export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortControllers = useAbortControllers();
 
-  const [triggerGetTools] = useGetToolsLazyQuery();
+  // const [triggerGetTools] = useGetToolsLazyQuery();
   const [triggerCheckForConfirmation] = useCheckForConfirmationMutation();
 
   const chatId = useAppSelector(selectChatId);
@@ -129,20 +129,22 @@ export const useSendChatRequest = () => {
   const sendMessages = useCallback(
     async (messages: ChatMessages, maybeMode?: LspChatMode) => {
       dispatch(setIsWaitingForResponse(true));
-      let tools = await triggerGetTools(undefined).unwrap();
-      // TODO: save tool use to state.chat
-      // if (toolUse && isToolUse(toolUse)) {
-      //   dispatch(setToolUse(toolUse));
+      // TODO: should be safe to remove
+
+      // let tools = await triggerGetTools(undefined).unwrap();
+      // // TODO: save tool use to state.chat
+      // // if (toolUse && isToolUse(toolUse)) {
+      // //   dispatch(setToolUse(toolUse));
+      // // }
+      // if (toolUse === "quick") {
+      //   tools = [];
+      // } else if (toolUse === "explore") {
+      //   tools = tools.filter((t) => !t.function.agentic);
       // }
-      if (toolUse === "quick") {
-        tools = [];
-      } else if (toolUse === "explore") {
-        tools = tools.filter((t) => !t.function.agentic);
-      }
-      tools = tools.map((t) => {
-        const { agentic: _, ...remaining } = t.function;
-        return { ...t, function: { ...remaining } };
-      });
+      // tools = tools.map((t) => {
+      //   const { agentic: _, ...remaining } = t.function;
+      //   return { ...t, function: { ...remaining } };
+      // });
 
       const lastMessage = messages.slice(-1)[0];
 
@@ -184,7 +186,7 @@ export const useSendChatRequest = () => {
 
       const action = chatAskQuestionThunk({
         messages,
-        tools,
+        // tools
         checkpointsEnabled,
         chatId,
         mode,
@@ -194,7 +196,7 @@ export const useSendChatRequest = () => {
       abortControllers.addAbortController(chatId, dispatchedAction.abort);
     },
     [
-      triggerGetTools,
+      // triggerGetTools,
       toolUse,
       isWaiting,
       dispatch,
