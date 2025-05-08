@@ -17,7 +17,7 @@ use crate::scratchpads::chat_utils_limit_history::fix_and_limit_messages_history
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::passthrough_convert_messages::convert_messages_to_openai_format;
-use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered};
+use crate::tools::tools_description::{tool_description_list_from_yaml, get_available_tools};
 use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
 
 
@@ -112,7 +112,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         };
         let style = self.post.style.clone();
         let mut at_tools = if !should_execute_remotely {
-            tools_merged_and_filtered(gcx.clone(), self.supports_clicks).await?
+            get_available_tools(gcx.clone(), self.supports_clicks).await?
         } else {
             IndexMap::new()
         };
