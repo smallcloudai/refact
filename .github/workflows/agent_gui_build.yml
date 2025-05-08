@@ -21,11 +21,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [
-            lts/*,
-            22,
-            # latest ## jsdom breaks in v24
-          ]
+        node-version: [lts/*, latest]
 
     steps:
       - uses: actions/checkout@v3

@@ -1,0 +1,13 @@
+diff --git a/node_modules/happy-dom/lib/fetch/utilities/FetchBodyUtility.js b/node_modules/happy-dom/lib/fetch/utilities/FetchBodyUtility.js
+index 75fe85f..b18cd80 100644
+--- a/node_modules/happy-dom/lib/fetch/utilities/FetchBodyUtility.js
++++ b/node_modules/happy-dom/lib/fetch/utilities/FetchBodyUtility.js
+@@ -127,7 +127,7 @@ export default class FetchBodyUtility {
+         const [stream1, stream2] = requestOrResponse.body.tee();
+         // Sets the body of the cloned request to the first pass through stream.
+         // TODO: check id this is required as request should be read only object
+-        requestOrResponse.body == stream1;
++        requestOrResponse.body = stream1;
+         // Returns the other stream as the clone
+         return stream2;
+     }
