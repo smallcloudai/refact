@@ -302,8 +302,7 @@ const DefaultHoverTriggerContent: React.FC<{
     </>
   );
 };
-// here ?
-// TODO: inline should also use metering if available.
+
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
   isMessageEmpty,
@@ -386,7 +385,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             [styles.isOverflown]: isOverflown,
           })}
         >
-          {/**here" use metering if available */}
           {isInline ? (
             <InlineHoverTriggerContent messageTokens={messageTokens} />
           ) : (
@@ -408,7 +406,6 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           side="top"
           hideWhenDetached
         >
-          {/**here" use metering if available */}
           {isInline ? (
             <InlineHoverCard messageTokens={messageTokens} />
           ) : (
