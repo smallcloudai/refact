@@ -16,6 +16,7 @@ use tracing::info;
 use crate::files_correction::canonical_path;
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
+use crate::integrations::running_integrations::load_integrations;
 use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
@@ -626,6 +627,8 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
+    let allow_experimental = gcx.read().await.cmdline.experimental;
+
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 
@@ -633,6 +636,9 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     tokio::spawn(async move {
         crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
     });
+
+    // Start or connect to mcp servers
+    let _ = load_integrations(gcx.clone(), allow_experimental, &["**/mcp_*".to_string()]).await;
 
     files_enqueued
 }
@@ -808,18 +814,18 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                             canonical_path(repo_p.to_string_lossy())
                         })
                 })
-                .map(|p| { 
-                    let exists = p.join(".git").exists(); 
-                    (p.clone(), exists) 
+                .map(|p| {
+                    let exists = p.join(".git").exists();
+                    (p.clone(), exists)
                 })
                 .collect::<Vec<_>>();
-            
+
             if repo_paths.is_empty() {
                 return;
             }
-            
+
             let workspace_vcs_roots = gcx.read().await.documents_state.workspace_vcs_roots.clone();
-            
+
             let mut should_reindex = false;
             {
                 let mut workspace_vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
@@ -848,7 +854,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter().any(
             |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
         ) => on_dot_git_dir_change(gcx_weak.clone(), event).await,
-        
+
         // In Windows, we receive generic events (Any subtype), but we receive them about each exact folder
         EventKind::Create(CreateKind::Any) | EventKind::Modify(ModifyKind::Any) | EventKind::Remove(RemoveKind::Any)
             if event.paths.iter().any(|p| p.ends_with(".git")) =>
@@ -856,7 +862,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
             on_file_change(gcx_weak.clone(), event).await,
-        
+
         EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
 }

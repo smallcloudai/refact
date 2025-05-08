@@ -11,6 +11,7 @@ use tokio::io::AsyncWriteExt;
 use crate::custom_error::YamlError;
 use crate::global_context::GlobalContext;
 use crate::files_correction::any_glob_matches_path;
+use crate::integrations::running_integrations::load_integrations;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
@@ -537,6 +538,7 @@ pub async fn integration_config_save(
     integr_config_path: &String,
     integr_values: &serde_json::Value,
 ) -> Result<(), String> {
+    let allow_experimental = gcx.read().await.cmdline.experimental;
     let config_path = crate::files_correction::canonical_path(integr_config_path);
     let (integr_name, _project_path) = crate::integrations::setting_up_integrations::split_path_into_project_and_integration(&config_path)
         .map_err(|e| format!("Failed to split path: {}", e))?;
@@ -569,6 +571,11 @@ pub async fn integration_config_save(
     file.write_all(sanitized_yaml_string.as_bytes()).await.map_err(|e| {
         format!("Failed to write to {}: {}", config_path.display(), e)
     })?;
+
+    // If it is an mcp integration, ensure we restart or reconnect to the server
+    if config_path.file_name().and_then(|f| f.to_str()).is_some_and(|f| f.starts_with("mcp_")) {
+        let _ = load_integrations(gcx.clone(), allow_experimental, &["**/mcp_*".to_string()]).await;
+    }
 
     Ok(())
 }
