@@ -36,15 +36,15 @@ impl Tool for ToolSearch {
 
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
-            name: "search".to_string(),
+            name: "search_semantic".to_string(),
             agentic: false,
             experimental: false,
             description: "Find semantically similar pieces of code or text using vector database (semantic search)".to_string(),
             parameters: vec![
                 ToolParam {
-                    name: "query".to_string(),
+                    name: "queries".to_string(),
                     param_type: "string".to_string(),
-                    description: "Single line, paragraph or code sample to search for semantically similar content.".to_string(),
+                    description: "Comma-separated list of queries. Each query can be a single line, paragraph or code sample to search for semantically similar content.".to_string(),
                 },
                 ToolParam {
                     name: "scope".to_string(),
@@ -52,7 +52,7 @@ impl Tool for ToolSearch {
                     description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file.".to_string(),
                 }
             ],
-            parameters_required: vec!["query".to_string(), "scope".to_string()],
+            parameters_required: vec!["queries".to_string(), "scope".to_string()],
         }
     }
     
