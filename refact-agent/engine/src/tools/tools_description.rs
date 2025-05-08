@@ -287,21 +287,12 @@ impl ToolDesc {
     }
 }
 
-#[derive(Deserialize)]
-pub struct ToolDictDeserialize {
-    pub tools: Vec<ToolDesc>,
-}
-
 pub async fn tool_description_list_from_yaml(
     tools: IndexMap<String, Box<dyn Tool + Send>>,
     turned_on: Option<&Vec<String>>,
     allow_experimental: bool,
 ) -> Result<Vec<ToolDesc>, String> {
-    let tool_desc_deser: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
-        .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
-
-    let mut tool_desc_vec = vec![];
-    tool_desc_vec.extend(tool_desc_deser.tools.iter().cloned());
+    let mut tool_desc_vec: Vec<ToolDesc> = vec![];
 
     for (tool_name, tool) in tools {
         if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
@@ -317,12 +308,6 @@ pub async fn tool_description_list_from_yaml(
         .cloned()
         .collect::<Vec<_>>())
 }
-
-const BUILT_IN_TOOLS: &str = r####"
-tools:
-"####;
-
-
 
 #[allow(dead_code)]
 const NOT_READY_TOOLS: &str = r####"
