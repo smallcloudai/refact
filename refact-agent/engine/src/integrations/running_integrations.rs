@@ -16,7 +16,7 @@ pub async fn load_integration_tools(
     let mut tools = IndexMap::new();
     for (name, integr) in integraions_map {
         for tool in integr.integr_tools(&name).await {
-            let mut tool_name = tool.tool_name();
+            let mut tool_name = tool.tool_description().name;
             if tool_name.is_empty() {
                 tool_name = name.clone();
             }
