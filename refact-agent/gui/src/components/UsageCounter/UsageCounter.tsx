@@ -17,6 +17,7 @@ import {
   useAppSelector,
   useEffectOnce,
   useTotalCostForChat,
+  useTotalTokenMeteringForChat,
 } from "../../hooks";
 
 import styles from "./UsageCounter.module.css";
@@ -55,6 +56,7 @@ const TokensDisplay: React.FC<{
     cache_read_input_tokens,
     cache_creation_input_tokens,
     completion_tokens_details,
+    prompt_tokens,
   } = currentThreadUsage;
 
   return (
@@ -63,6 +65,9 @@ const TokensDisplay: React.FC<{
         Tokens spent per chat thread:
       </Text>
       <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
+
+      <TokenDisplay label="Prompt tokens" value={prompt_tokens} />
+
       {cache_read_input_tokens !== undefined && (
         <TokenDisplay
           label="Cache read input tokens"
@@ -165,6 +170,7 @@ const DefaultHoverCard: React.FC<{
   outputTokens: number;
 }> = ({ inputTokens, outputTokens }) => {
   const cost = useTotalCostForChat();
+  const meteringTokens = useTotalTokenMeteringForChat();
   const { currentThreadUsage } = useUsageCounter();
   const total = useMemo(() => {
     return (
@@ -174,6 +180,13 @@ const DefaultHoverCard: React.FC<{
       (cost?.metering_coins_cache_read ?? 0)
     );
   }, [cost]);
+  const totalMetering = useMemo(() => {
+    if (meteringTokens === null) return null;
+    return Object.values(meteringTokens).reduce<number>(
+      (acc, cur) => acc + cur,
+      0,
+    );
+  }, [meteringTokens]);
 
   const tabsOptions = useMemo(() => {
     const options = [];
@@ -191,7 +204,27 @@ const DefaultHoverCard: React.FC<{
   }, [total]);
 
   const renderContent = (optionValue: string) => {
-    if (optionValue === "tokens") {
+    if (optionValue === "tokens" && meteringTokens && totalMetering !== null) {
+      const usage: Usage = {
+        prompt_tokens: meteringTokens.metering_prompt_tokens_n,
+        total_tokens: totalMetering,
+        cache_creation_input_tokens:
+          meteringTokens.metering_cache_creation_tokens_n,
+        cache_read_input_tokens: meteringTokens.metering_cache_read_tokens_n,
+        completion_tokens: meteringTokens.metering_generated_tokens_n,
+      };
+      return (
+        <TokensDisplay
+          currentThreadUsage={usage}
+          inputTokens={
+            meteringTokens.metering_prompt_tokens_n +
+            meteringTokens.metering_cache_read_tokens_n +
+            meteringTokens.metering_cache_creation_tokens_n
+          }
+          outputTokens={meteringTokens.metering_generated_tokens_n}
+        />
+      );
+    } else if (optionValue === "tokens") {
       return (
         <TokensDisplay
           currentThreadUsage={currentThreadUsage}
@@ -269,7 +302,7 @@ const DefaultHoverTriggerContent: React.FC<{
     </>
   );
 };
-// here ?
+
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
   isMessageEmpty,
@@ -278,6 +311,7 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
   const maybeAttachedImages = useAppSelector(selectAllImages);
   const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
   const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
+  const meteringTokens = useTotalTokenMeteringForChat();
 
   const messageTokens = useMemo(() => {
     if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
@@ -285,7 +319,21 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
     return currentMessageTokens;
   }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
 
-  const inputTokens = calculateUsageInputTokens({
+  const inputMeteringTokens = useMemo(() => {
+    if (meteringTokens === null) return null;
+    return (
+      meteringTokens.metering_cache_creation_tokens_n +
+      meteringTokens.metering_cache_read_tokens_n +
+      meteringTokens.metering_prompt_tokens_n
+    );
+  }, [meteringTokens]);
+
+  const outputMeteringTokens = useMemo(() => {
+    if (meteringTokens === null) return null;
+    return meteringTokens.metering_generated_tokens_n;
+  }, [meteringTokens]);
+
+  const inputUsageTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
     keys: [
       "prompt_tokens",
@@ -293,10 +341,17 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
       "cache_read_input_tokens",
     ],
   });
-  const outputTokens = calculateUsageInputTokens({
+  const outputUsageTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
     keys: ["completion_tokens"],
   });
+
+  const inputTokens = useMemo(() => {
+    return inputMeteringTokens ?? inputUsageTokens;
+  }, [inputMeteringTokens, inputUsageTokens]);
+  const outputTokens = useMemo(() => {
+    return outputMeteringTokens ?? outputUsageTokens;
+  }, [outputMeteringTokens, outputUsageTokens]);
 
   const shouldUsageBeHidden = useMemo(() => {
     return !isInline && inputTokens === 0 && outputTokens === 0;

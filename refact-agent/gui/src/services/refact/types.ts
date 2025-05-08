@@ -606,6 +606,7 @@ type CostInfo = {
   metering_generated_tokens_n?: number;
   metering_cache_creation_tokens_n?: number;
   metering_cache_read_tokens_n?: number;
+
   metering_balance?: number;
 
   metering_coins_prompt?: number;

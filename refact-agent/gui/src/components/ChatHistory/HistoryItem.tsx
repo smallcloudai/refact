@@ -7,7 +7,7 @@ import { OpenInNewWindowIcon } from "@radix-ui/react-icons";
 import type { ChatHistoryItem } from "../../features/History/historySlice";
 import { isUserMessage } from "../../services/refact";
 import { useAppSelector } from "../../hooks";
-import { calculateTotalCostOfMessages } from "../../utils/calculateTotalCostOfMessages";
+import { getTotalCostMeteringForMessages } from "../../utils/getMetering";
 import { Coin } from "../../images";
 
 export const HistoryItem: React.FC<{
@@ -22,7 +22,7 @@ export const HistoryItem: React.FC<{
   const cache = useAppSelector((app) => app.chat.cache);
 
   const totalCost = useMemo(() => {
-    const totals = calculateTotalCostOfMessages(historyItem.messages);
+    const totals = getTotalCostMeteringForMessages(historyItem.messages);
 
     if (totals === null) return null;
 
