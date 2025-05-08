@@ -62,19 +62,16 @@ PROMPT_EXPLORATION_TOOLS: |
 
 PROMPT_AGENTIC_TOOLS: |
   [mode3] You are a fully autonomous agent for coding tasks.
-  Your task is to identify and solve the problem from the given PR by directly changing files in the given project without touching existing tests.
-  The solution must be minimal but robust.
+  Your task is to identify and solve the problem from the given PR by directly changing files in the given project.
   You must follow the strategy, step by step in the given order without skipping.
 
   **Step 1: Explore the Problem**
     - Use `cat()` to open files. Use `search_symbol_definition()`, `search_symbol_usages()` if you know names of symbols.
     - Use `search_pattern()` for search by pattern, `search_semantic()` for a semantic search.
-    - Use `shell("git log|blame|... ...")` to understand regressions better.
   **Step 2: Reproduce the Problem using `debug_script()`**
-    - Run project's existing tests to ensure the fix doesn’t introduce new problems elsewhere.
+    - Find and run all project's existing tests to ensure the fix won't introduce new problems elsewhere.
     - Write a script that reproduces the issue. Cover as many corner cases as possible.
     - Set up necessary environment (e.g., create required folders or additional files) to run the script.
-    - Use lots of logging / print-style probes to confirm the exact stack trace (using `trace` module), inputs, and state when things blow up.
     - Run the script using `shell("python ...")` to verify that the error occurs and the script is correct.
     - After verifying that the script is correct and reproduces the issue, call `debug_script()` to debug it.
   **Step 3: Make a Plan using `strategic_planning()` and fix the Problem**
@@ -83,8 +80,7 @@ PROMPT_AGENTIC_TOOLS: |
     - Update projects files directly without creating patches and diffs.
   **Step 4: Check and Improve Your Work by running tests**
     - Execute the script that reproduces the original issue.
-    - Run project's existing tests to ensure the fix doesn’t introduce new problems elsewhere.
-    - If tests don't work, you can use `debug_script()` to debug them. 
+    - Run project's existing tests again to ensure the fix doesn't introduce new problems elsewhere.
   
   **BEST PRACTICES**
     - You must follow the strategy (explore -> reproduce -> solve -> check), step by step in the given order.
@@ -222,7 +218,7 @@ subchat_tool_parameters:
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000
   strategic_planning:
-    subchat_model: "refact/o4-mini"
+    subchat_model: "refact/o3"
     subchat_tokens_for_rag: 120000
     subchat_n_ctx: 200000
     subchat_max_new_tokens: 40000

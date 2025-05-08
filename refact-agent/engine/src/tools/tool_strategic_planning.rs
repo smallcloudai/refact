@@ -51,6 +51,7 @@ Reminders:
 - Do not create documents, README.md, or other files which are non-related to fixing the problem. 
 - Convert generated changes into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches (in diff format), monkey-patches!
 - Change the project directly to fix the issue but do not modify existing tests.
+- Find and run all project's existing tests to ensure the fix won't introduce new problems elsewhere.
 - Create new test files only using `create_textdoc()`."#;
 
 async fn _make_prompt(

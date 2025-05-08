@@ -221,26 +221,27 @@ fn is_content_duplicate(
     first_line1: usize, 
     first_line2: usize
 ) -> bool {
-    let lines_overlap = first_line1 <= current_line2 && first_line2 >= current_line1;
-    // If line ranges don't overlap at all, it's definitely not a duplicate
-    if !lines_overlap {
-        return false;
-    }
-    // Consider empty contents are not duplicate
-    if current_content.is_empty() || first_content.is_empty() {
-        return false;
-    }
-    // Check if current content is entirely contained in first content
-    if first_content.contains(current_content) {
-        return true;
-    }
-    // Check for substantial line overlap
-    let first_lines: HashSet<&str> = first_content.lines().filter(|x| !x.starts_with("...")).collect();
-    let current_lines: HashSet<&str> = current_content.lines().filter(|x| !x.starts_with("...")).collect();
-    let intersect_count = first_lines.intersection(&current_lines).count();
-    let min_count = first_lines.len().min(current_lines.len());
-    
-    min_count > 0 && intersect_count >= current_lines.len()
+    current_content == first_content
+    // let lines_overlap = first_line1 <= current_line2 && first_line2 >= current_line1;
+    // // If line ranges don't overlap at all, it's definitely not a duplicate
+    // if !lines_overlap {
+    //     return false;
+    // }
+    // // Consider empty contents are not duplicate
+    // if current_content.is_empty() || first_content.is_empty() {
+    //     return false;
+    // }
+    // // Check if current content is entirely contained in first content
+    // if first_content.contains(current_content) {
+    //     return true;
+    // }
+    // // Check for substantial line overlap
+    // let first_lines: HashSet<&str> = first_content.lines().filter(|x| !x.starts_with("...")).collect();
+    // let current_lines: HashSet<&str> = current_content.lines().filter(|x| !x.starts_with("...")).collect();
+    // let intersect_count = first_lines.intersection(&current_lines).count();
+    // let min_count = first_lines.len().min(current_lines.len());
+    // 
+    // min_count > 0 && intersect_count >= current_lines.len()
 }
 
 /// Stage 0: Compress duplicate ContextFiles based on content comparison - keeping the first occurrence
