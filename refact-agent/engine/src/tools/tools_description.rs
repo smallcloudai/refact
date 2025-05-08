@@ -30,6 +30,27 @@ pub struct MatchConfirmDeny {
     pub rule: String,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ToolDesc {
+    pub name: String,
+    #[serde(default)]
+    pub agentic: bool,
+    #[serde(default)]
+    pub experimental: bool,
+    pub description: String,
+    pub parameters: Vec<ToolParam>,
+    pub parameters_required: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ToolParam {
+    #[serde(deserialize_with = "validate_snake_case")]
+    pub name: String,
+    #[serde(rename = "type", default = "default_param_type")]
+    pub param_type: String,
+    pub description: String,
+}
+
 #[async_trait]
 pub trait Tool: Send + Sync {
     fn as_any(&self) -> &dyn std::any::Any;
@@ -176,27 +197,6 @@ pub async fn tools_merged_and_filtered(
     }
 
     Ok(filtered_tools)
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ToolDesc {
-    pub name: String,
-    #[serde(default)]
-    pub agentic: bool,
-    #[serde(default)]
-    pub experimental: bool,
-    pub description: String,
-    pub parameters: Vec<ToolParam>,
-    pub parameters_required: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ToolParam {
-    #[serde(deserialize_with = "validate_snake_case")]
-    pub name: String,
-    #[serde(rename = "type", default = "default_param_type")]
-    pub param_type: String,
-    pub description: String,
 }
 
 fn validate_snake_case<'de, D>(deserializer: D) -> Result<String, D::Error>
