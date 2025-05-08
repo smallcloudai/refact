@@ -239,10 +239,6 @@ impl Tool for ToolRm {
         Ok((corrections, messages))
     }
 
-    fn tool_name(&self) -> String {
-        "rm".to_string()
-    }
-
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "rm".to_string(),

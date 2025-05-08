@@ -323,10 +323,6 @@ impl Tool for ToolMv {
         })
     }
 
-    fn tool_name(&self) -> String {
-        "mv".to_string()
-    }
-
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "mv".to_string(),

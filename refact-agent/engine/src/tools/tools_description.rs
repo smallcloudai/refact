@@ -128,10 +128,6 @@ pub trait Tool: Send + Sync {
         #[allow(static_mut_refs)]
         unsafe { &mut DEFAULT_USAGE }
     }
-
-    fn tool_name(&self) -> String  {
-        return "".to_string();
-    }
 }
 
 pub fn get_builtin_tools() -> IndexMap<String, Box<dyn Tool + Send>> {
