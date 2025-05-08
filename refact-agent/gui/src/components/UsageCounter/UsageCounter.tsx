@@ -46,7 +46,7 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
 );
 
 const TokensDisplay: React.FC<{
-  currentThreadUsage?: Usage;
+  currentThreadUsage?: Usage | null;
   inputTokens: number;
   outputTokens: number;
 }> = ({ currentThreadUsage, inputTokens, outputTokens }) => {

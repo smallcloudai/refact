@@ -299,6 +299,21 @@ export function formatChatResponse(
     return messages;
   }
 
+  const maybeLastMessage = messages[messages.length - 1];
+
+  if (
+    response.choices.length === 0 &&
+    response.usage &&
+    isAssistantMessage(maybeLastMessage)
+  ) {
+    const msg: AssistantMessage = {
+      ...maybeLastMessage,
+      usage: response.usage,
+      ...mergeMetering(maybeLastMessage, response),
+    };
+    return messages.slice(0, -1).concat(msg);
+  }
+
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
       const msg = { role: cur.delta.role, content: cur.delta.content };
