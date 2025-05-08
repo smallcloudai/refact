@@ -52,6 +52,7 @@
     "@tanstack/react-table": "^8.20.6",
     "@types/react": "^18.2.43",
     "debug": "^4.3.7",
+    "framer-motion": "^12.10.4",
     "react-redux": "^9.1.2"
   },
   "devDependencies": {

@@ -124,23 +124,45 @@ export const toolsApi = createApi({
   refetchOnMountOrArgChange: true,
 });
 
-export type ToolParams = {
+export type ToolGroup = {
+  name: string;
+  description: string;
+  tools: Tool[];
+};
+
+export type ToolSource = {
+  source_type: "builtin" | "integration";
+  config_path: string;
+};
+
+export type ToolParam = {
   name: string;
   type: string;
   description: string;
 };
 
-export type ToolFunction = {
-  agentic?: boolean;
+export type ToolSpec = {
   name: string;
+  display_name: string;
   description: string;
-  // parameters: ToolParams[];
-  parameters: Record<string, unknown>;
+
+  // TODO: investigate on parameters
+  parameters: ToolParam[];
+  // parameters: Record<string, unknown>;
+  source: ToolSource;
+
   parameters_required?: string[];
+  agentic: boolean;
+  experimental?: boolean;
+};
+
+export type Tool = {
+  spec: ToolSpec;
+  enabled: boolean;
 };
 
 export type ToolCommand = {
-  function: ToolFunction;
+  function: ToolSpec;
   type: "function";
 };
 
