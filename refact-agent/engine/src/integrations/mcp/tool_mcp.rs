@@ -212,6 +212,25 @@ impl Tool for ToolMCP {
             }
         }
 
+        let tool_name = {
+            let yaml_name = std::path::Path::new(&self.config_path)
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .unwrap_or("unknown");
+            let shortened_yaml_name = if let Some(stripped) = yaml_name.strip_prefix("mcp_stdio_") {
+                format!("mcp_{}", stripped)
+            } else if let Some(stripped) = yaml_name.strip_prefix("mcp_sse_") {
+                format!("mcp_{}", stripped)
+            } else {
+                yaml_name.to_string()
+            };
+            let sanitized_tool_name = format!("{}_{}", shortened_yaml_name, self.mcp_tool.name)
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect::<String>();
+            sanitized_tool_name
+        };
+
         ToolDesc {
             name: self.tool_name(),
             agentic: true,
@@ -220,25 +239,6 @@ impl Tool for ToolMCP {
             parameters,
             parameters_required,
         }
-    }
-
-    fn tool_name(&self) -> String  {
-        let yaml_name = std::path::Path::new(&self.config_path)
-            .file_stem()
-            .and_then(|name| name.to_str())
-            .unwrap_or("unknown");
-        let shortened_yaml_name = if let Some(stripped) = yaml_name.strip_prefix("mcp_stdio_") {
-            format!("mcp_{}", stripped)
-        } else if let Some(stripped) = yaml_name.strip_prefix("mcp_sse_") {
-            format!("mcp_{}", stripped)
-        } else {
-            yaml_name.to_string()
-        };
-        let sanitized_tool_name = format!("{}_{}", shortened_yaml_name, self.mcp_tool.name)
-            .chars()
-            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-            .collect::<String>();
-        sanitized_tool_name
     }
 
     async fn command_to_match_against_confirm_deny(
