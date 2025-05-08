@@ -284,21 +284,12 @@ impl ToolDesc {
     }
 }
 
-#[derive(Deserialize)]
-pub struct ToolDictDeserialize {
-    pub tools: Vec<ToolDesc>,
-}
-
 pub async fn tool_description_list_from_yaml(
     tools: IndexMap<String, Box<dyn Tool + Send>>,
     turned_on: Option<&Vec<String>>,
     allow_experimental: bool,
 ) -> Result<Vec<ToolDesc>, String> {
-    let tool_desc_deser: ToolDictDeserialize = serde_yaml::from_str(BUILT_IN_TOOLS)
-        .map_err(|e|format!("Failed to parse BUILT_IN_TOOLS: {}", e))?;
-
-    let mut tool_desc_vec = vec![];
-    tool_desc_vec.extend(tool_desc_deser.tools.iter().cloned());
+    let mut tool_desc_vec: Vec<ToolDesc> = vec![];
 
     for (tool_name, tool) in tools {
         if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
@@ -314,24 +305,6 @@ pub async fn tool_description_list_from_yaml(
         .cloned()
         .collect::<Vec<_>>())
 }
-
-const BUILT_IN_TOOLS: &str = r####"
-tools:
-  - name: "search_semantic"
-    description: "Find semantically similar pieces of code or text using vector database (semantic search)"
-    parameters:
-      - name: "queries"
-        type: "string"
-        description: "Comma-separated list of queries. Each query can be a single line, paragraph or code sample to search for semantically similar content."
-      - name: "scope"
-        type: "string"
-        description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
-    parameters_required:
-      - "queries"
-      - "scope"
-"####;
-
-
 
 #[allow(dead_code)]
 const NOT_READY_TOOLS: &str = r####"
