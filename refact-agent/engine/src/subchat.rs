@@ -7,7 +7,7 @@ use tracing::{error, info, warn};
 
 use crate::caps::resolve_chat_model;
 use crate::caps::ChatModelRecord;
-use crate::tools::tools_description::{tools_merged_and_filtered, tool_description_list_from_yaml};
+use crate::tools::tools_description::{get_available_tools, tool_description_list_from_yaml};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall, ReasoningEffort};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
@@ -268,7 +268,7 @@ pub async fn subchat_single(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
     };
-    let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone(), false).await?;
+    let tools_turned_on_by_cmdline = get_available_tools(gcx.clone(), false).await?;
     let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.keys().cloned().collect();
     let tools_on_intersection: Vec<String> = if let Some(tools_s) = &tools_subset {
         let tools_turn_on_set: HashSet<String> = tools_s.iter().cloned().collect();

@@ -12,6 +12,7 @@ use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
+use crate::integrations::running_integrations::load_integration_tools;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
 // use crate::integrations::docker::integr_docker::ToolDocker;
 
@@ -133,20 +134,8 @@ pub trait Tool: Send + Sync {
     }
 }
 
-pub async fn tools_merged_and_filtered(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    _supports_clicks: bool,  // XXX
-) -> Result<IndexMap<String, Box<dyn Tool + Send>>, String> {
-    let (ast_on, vecdb_on, allow_experimental) = {
-        let gcx_locked = gcx.read().await;
-        #[cfg(feature="vecdb")]
-        let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        #[cfg(not(feature="vecdb"))]
-        let vecdb_on = false;
-        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
-    };
-
-    let mut tools_all = IndexMap::from([
+pub fn get_builtin_tools() -> IndexMap<String, Box<dyn Tool + Send>> {
+    IndexMap::from([
         ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
         ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
         ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
@@ -171,18 +160,30 @@ pub async fn tools_merged_and_filtered(
         ("search".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
-    ]);
+    ])
+}
 
-    let integrations = crate::integrations::running_integrations::load_integration_tools(
-        gcx.clone(),
-        allow_experimental,
-    ).await;
-    tools_all.extend(integrations);
-
-    let is_there_a_thinking_model = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
-        Err(_) => false,
+pub async fn get_available_tools(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    _supports_clicks: bool,  // XXX
+) -> Result<IndexMap<String, Box<dyn Tool + Send>>, String> {
+    let (ast_on, vecdb_on, allow_experimental) = {
+        let gcx_locked = gcx.read().await;
+        #[cfg(feature="vecdb")]
+        let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
+        #[cfg(not(feature="vecdb"))]
+        let vecdb_on = false;
+        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
     };
+
+    let is_there_a_thinking_model = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.is_ok_and(|caps| {
+        caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some()
+    });
+
+    let mut tools_all = get_builtin_tools();
+    tools_all.extend(
+        load_integration_tools(gcx, allow_experimental).await
+    );
 
     let mut filtered_tools = IndexMap::new();
     for (tool_name, tool) in tools_all {
@@ -194,6 +195,9 @@ pub async fn tools_merged_and_filtered(
             continue;
         }
         if dependencies.contains(&"thinking".to_string()) && !is_there_a_thinking_model {
+            continue;
+        }
+        if tool.tool_description().experimental && !allow_experimental {
             continue;
         }
         filtered_tools.insert(tool_name, tool);
