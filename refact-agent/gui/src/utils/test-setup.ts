@@ -5,7 +5,7 @@ import {
   stubIntersectionObserver,
 } from "./test-utils";
 import MatchMediaMock from "vitest-matchmedia-mock";
-
+import React from "react";
 const matchMediaMock = new MatchMediaMock();
 
 beforeAll(() => {
@@ -20,4 +20,16 @@ afterEach(() => {
 
 afterAll(() => {
   matchMediaMock.destroy();
+});
+
+vi.mock("lottie-react", () => {
+  return {
+    default: vi.fn(),
+    useLottie: vi.fn(() => {
+      return {
+        View: React.createElement("div"),
+        playSegments: vi.fn(),
+      };
+    }),
+  };
 });

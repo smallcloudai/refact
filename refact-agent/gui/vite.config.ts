@@ -54,14 +54,13 @@ function makeConfig(library: "browser" | "node") {
       },
       test: {
         retry: 2,
-        environment: "jsdom",
+        environment: "happy-dom",
         coverage: {
           exclude: coverageConfigDefaults.exclude.concat(
             "**/*.stories.@(js|jsx|mjs|ts|tsx)",
           ),
         },
         setupFiles: ["./src/utils/test-setup.ts"],
-        isolate: true,
       },
       css: {
         modules: {},
