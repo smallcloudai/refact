@@ -7,9 +7,11 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 
-pub struct ToolCreateKnowledge;
+pub struct ToolCreateKnowledge {
+    pub config_path: String,
+}
 
 #[async_trait]
 impl Tool for ToolCreateKnowledge {
@@ -18,6 +20,11 @@ impl Tool for ToolCreateKnowledge {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "create_knowledge".to_string(),
+            display_name: "Create Knowledge".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Creates a new knowledge entry in the vector database to help with future tasks.".to_string(),

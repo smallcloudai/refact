@@ -26,7 +26,7 @@ pub async fn get_builtin_tools(
         Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
         Box::new(crate::tools::tool_rm::ToolRm{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
         Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_deep_analysis::ToolDeepAnalysis{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
+        Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
         Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
         Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
         Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{config_path: config_path.clone()}) as Box<dyn Tool + Send>,

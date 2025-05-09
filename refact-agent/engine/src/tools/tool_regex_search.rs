@@ -18,9 +18,11 @@ use crate::files_correction::shortify_paths;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::GlobalContext;
 use crate::tools::scope_utils::{resolve_scope, validate_scope_files};
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 
-pub struct ToolRegexSearch;
+pub struct ToolRegexSearch {
+    pub config_path: String,
+}
 
 async fn search_single_file(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -168,6 +170,11 @@ impl Tool for ToolRegexSearch {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "search_pattern".to_string(),
+            display_name: "Regex Search".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Search for files and folders whose names or paths match the given regular expression patterns, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections.".to_string(),
