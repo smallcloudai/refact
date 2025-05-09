@@ -1,6 +1,6 @@
 import { IntegrationMeta, LspChatMode } from "../../features/Chat";
 import { CHAT_URL } from "./consts";
-import { ToolCommand } from "./tools";
+// import { ToolCommand } from "./tools";
 import {
   ChatRole,
   ThinkingBlock,
@@ -59,7 +59,7 @@ type SendChatArgs = {
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
   chatId?: string;
-  tools: ToolCommand[] | null;
+  // tools: ToolCommand[] | null;
   port?: number;
   apiKey?: string | null;
   // isConfig?: boolean;
@@ -150,7 +150,7 @@ export async function sendChat({
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
-  tools,
+  // tools,
   port = 8001,
   apiKey,
   checkpointsEnabled = true,
@@ -175,7 +175,7 @@ export async function sendChat({
     messages,
     model: model,
     stream,
-    tools,
+    // tools,
     only_deterministic_messages,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,

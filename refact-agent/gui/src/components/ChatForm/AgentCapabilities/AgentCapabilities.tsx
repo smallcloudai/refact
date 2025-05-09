@@ -2,19 +2,27 @@ import {
   MixerVerticalIcon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
-import { Flex, HoverCard, IconButton, Popover, Text } from "@radix-ui/themes";
+import {
+  Flex,
+  HoverCard,
+  IconButton,
+  Popover,
+  Separator,
+  Text,
+} from "@radix-ui/themes";
 import {
   AgentRollbackSwitch,
   ApplyPatchSwitch,
   FollowUpsSwitch,
-} from "./ChatControls";
-import { useAppSelector } from "../../hooks";
+} from "../ChatControls";
+import { useAppSelector } from "../../../hooks";
 import {
   selectAreFollowUpsEnabled,
   selectAutomaticPatch,
   selectCheckpointsEnabled,
-} from "../../features/Chat";
+} from "../../../features/Chat";
 import { useMemo } from "react";
+import { ToolGroups } from "./ToolGroups";
 
 export const AgentCapabilities = () => {
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
@@ -25,9 +33,18 @@ export const AgentCapabilities = () => {
       {
         name: "Auto-patch",
         enabled: isPatchAutomatic,
+        switcher: <ApplyPatchSwitch />,
       },
-      { name: "Files rollback", enabled: isAgentRollbackEnabled },
-      { name: "Follow-Ups", enabled: areFollowUpsEnabled },
+      {
+        name: "Files rollback",
+        enabled: isAgentRollbackEnabled,
+        switcher: <AgentRollbackSwitch />,
+      },
+      {
+        name: "Follow-Ups",
+        enabled: areFollowUpsEnabled,
+        switcher: <FollowUpsSwitch />,
+      },
     ];
   }, [isPatchAutomatic, isAgentRollbackEnabled, areFollowUpsEnabled]);
 
@@ -41,9 +58,11 @@ export const AgentCapabilities = () => {
         </Popover.Trigger>
         <Popover.Content side="top" alignOffset={-10} sideOffset={20}>
           <Flex gap="2" direction="column">
-            <ApplyPatchSwitch />
-            <AgentRollbackSwitch />
-            <FollowUpsSwitch />
+            {agenticFeatures.map((feature) => {
+              return feature.switcher;
+            })}
+            <Separator size="4" mt="2" mb="1" />
+            <ToolGroups />
           </Flex>
         </Popover.Content>
       </Popover.Root>
