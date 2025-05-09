@@ -68,8 +68,6 @@ pub struct CommandLine {
 
     #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
     pub vecdb: bool,
-    #[structopt(long, help="Delete all memories, start with empty memory.")]
-    pub reset_memory: bool,
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
     #[structopt(long, default_value="", help="Set VecDB storage path manually.")]

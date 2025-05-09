@@ -3,7 +3,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage, ChatMeta};
 use crate::integrations::setting_up_integrations::integrations_all;
-use crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info;
+use crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -37,7 +37,7 @@ pub async fn mix_project_summary_messages(
         sp_text = sp_text.replace("%AVAILABLE_INTEGRATIONS%", &integrations.iter().map(|x|x.integr_name.clone()).collect::<Vec<_>>().join(", "));
     }
 
-    sp_text = system_prompt_add_workspace_info(gcx.clone(), &sp_text).await;    // print inside
+    sp_text = system_prompt_add_extra_instructions(gcx.clone(), &sp_text).await;    // print inside
 
     let system_message = ChatMessage {
         role: "system".to_string(),

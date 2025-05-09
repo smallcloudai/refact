@@ -4,6 +4,7 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::task::JoinHandle;
 use async_trait::async_trait;
 use tracing::{error, info};
+use serde_json;
 
 use crate::background_tasks::BackgroundTasksHolder;
 use crate::fetch_embedding;
@@ -171,30 +172,77 @@ pub async fn memories_add(
     project_name: &str,
     m_type: &str,
     m_memory: &str,
-) -> Result<(), String> nd mem{
-    // let (memdb, vectorizer_service) = {
-    //     let vec_db_guard = vec_db.lock().await;
-    //     let vec_db = vec_db_guard.as_ref().ok_or("VecDb is not initialized")?;
-    //     (vec_db.memdb.clone(), vec_db.vectorizer_service.clone())
-    // };
-    // 
-    // let memid = {
-    //     let mut memdb_locked = memdb.lock().await;
-    //     let x = memdb_locked.permdb_add(m_type, m_goal, m_project, m_payload, m_origin).await?;
-    //     memdb_locked.dirty_memids.push(x.clone());
-    //     x
-    // };
-    // vectorizer_enqueue_dirty_memory(vectorizer_service).await;  // sets queue_additions inside
-    // Ok(memid)
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let body = serde_json::json!({
+        "project_name": project_name,
+        "knowledge_type": m_type,
+        "knowledge_origin": "client",
+        "knowledge_memory": m_memory
+    });
+    let response = client.post("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?workspace_id=1")
+        .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await;
+    match response {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                info!("Successfully added memory to remote server");
+                Ok(())
+            } else {
+                let status = resp.status();
+                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                Err(format!("Failed to add memory: HTTP status {}, error: {}", status, error_text))
+            }
+        },
+        Err(e) => Err(format!("Failed to send memory add request: {}", e))
+    }
 }
 
 
 pub async fn memories_search(
     gcx: Arc<ARwLock<GlobalContext>>,
+    project_name: &str,
     query: &String,
     top_n: usize,
 ) -> Result<MemoSearchResult, String> {
-    // Ok(MemoSearchResult { query_text: query.clone(), results })
+    let client = reqwest::Client::new();
+    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id=1&limit={}", top_n);
+    
+    let body = serde_json::json!({
+        "project_name": project_name,
+        "q": query
+    });
+    let response = client.post(&url)
+        .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await;
+    
+    match response {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                let response_body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+                let results: Vec<MemoRecord> = serde_json::from_str(&response_body)
+                    .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+                Ok(MemoSearchResult {
+                    query_text: query.clone(),
+                    project_name: project_name.to_string(),
+                    results,
+                })
+            } else {
+                let status = resp.status();
+                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                Err(format!("Failed to search memories: HTTP status {}, error: {}", status, error_text))
+            }
+        },
+        Err(e) => Err(format!("Failed to send memory search request: {}", e))
+    }
 }
 
 pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<VecDbStatus>, String> {
