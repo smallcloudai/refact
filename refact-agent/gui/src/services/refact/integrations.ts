@@ -211,13 +211,13 @@ export function isPrimitive(json: unknown): json is IntegrationPrimitive {
 }
 
 export type ToolConfirmation = {
-  ask_user: string[];
   deny: string[];
+  allow: string[];
 };
 
 export type SchemaToolConfirmation = {
-  ask_user_default: string[];
   deny_default: string[];
+  allow_default: string[];
   not_applicable?: boolean;
 };
 
@@ -739,15 +739,15 @@ export function areToolConfirmation(json: unknown): json is ToolConfirmation {
   const obj = json as Record<string, unknown>;
 
   if (
-    !Array.isArray(obj.ask_user) ||
-    !obj.ask_user.every((v) => typeof v === "string")
+    !Array.isArray(obj.deny) ||
+    !obj.deny.every((v) => typeof v === "string")
   ) {
     return false;
   }
 
   if (
-    !Array.isArray(obj.deny) ||
-    !obj.deny.every((v) => typeof v === "string")
+    !Array.isArray(obj.allow) ||
+    !obj.allow.every((v) => typeof v === "string")
   ) {
     return false;
   }

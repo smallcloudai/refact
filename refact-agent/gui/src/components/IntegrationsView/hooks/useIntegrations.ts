@@ -277,8 +277,8 @@ export const useIntegrations = ({
   >({});
 
   const [confirmationRules, setConfirmationRules] = useState<ToolConfirmation>({
-    ask_user: [],
     deny: [],
+    allow: [],
   });
 
   const [MCPArguments, setMCPArguments] = useState<MCPArgs>([]);
@@ -518,8 +518,8 @@ export const useIntegrations = ({
     setAvailabilityValues({});
     setToolParameters([]);
     setConfirmationRules({
-      ask_user: [],
       deny: [],
+      allow: [],
     });
     setMCPArguments([]);
     setMCPEnvironmentVariables({});

@@ -37,8 +37,8 @@ export const INTEGRATIONS_RESPONSE: Integration = {
       },
     },
     confirmation: {
-      ask_user_default: [],
       deny_default: [],
+      allow_default: [],
     },
     available: {
       on_your_laptop_possible: true,

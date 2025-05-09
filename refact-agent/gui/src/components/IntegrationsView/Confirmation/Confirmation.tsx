@@ -23,8 +23,8 @@ export const Confirmation: FC<ConfirmationProps> = ({
 }) => {
   const transformedDefaultConfirmationObject: ToolConfirmation = useMemo(
     () => ({
-      ask_user: defaultConfirmationObject.ask_user_default,
       deny: defaultConfirmationObject.deny_default,
+      allow: defaultConfirmationObject.allow_default,
     }),
     [defaultConfirmationObject],
   );
