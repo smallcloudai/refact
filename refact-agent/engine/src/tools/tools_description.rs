@@ -12,7 +12,7 @@ use crate::call_validation::{ChatUsage, ContextEnum};
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
+use crate::tools::tools_execute::{command_should_be_allowed, command_should_be_denied};
 // use crate::integrations::docker::integr_docker::ToolDocker;
 
 
@@ -58,15 +58,15 @@ pub trait Tool: Send + Sync {
                     return Ok(MatchConfirmDeny {
                         result: MatchConfirmDenyResult::DENY,
                         command: command_to_match.clone(),
-                        rule: deny_rule.clone(),
+                        rule: deny_rule,
                     });
                 }
-                let (needs_confirmation, confirmation_rule) = command_should_be_confirmed_by_user(&command_to_match, &rules.ask_user);
-                if needs_confirmation {
+                let (is_allowed, allow_rule) = command_should_be_allowed(&command_to_match, &rules.allow);
+                if is_allowed {
                     return Ok(MatchConfirmDeny {
-                        result: MatchConfirmDenyResult::CONFIRMATION,
+                        result: MatchConfirmDenyResult::PASS,
                         command: command_to_match.clone(),
-                        rule: confirmation_rule.clone(),
+                        rule: allow_rule,
                     });
                 }
             } else {
@@ -74,7 +74,7 @@ pub trait Tool: Send + Sync {
             }
         }
         Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::PASS,
+            result: MatchConfirmDenyResult::CONFIRMATION,
             command: command_to_match.clone(),
             rule: "".to_string(),
         })

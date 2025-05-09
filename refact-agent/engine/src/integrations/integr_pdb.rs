@@ -407,8 +407,8 @@ available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 confirmation:
-  ask_user_default: []
   deny_default: []
+  allow_default: []
 smartlinks:
   - sl_label: "Test"
     sl_chat:

@@ -1324,8 +1324,8 @@ available:
   when_isolated_possible: true
 confirmation:
   not_applicable: true
-  ask_user_default: []
   deny_default: []
+  allow_default: ["*"]
 smartlinks:
   - sl_label: "Test"
     sl_chat:

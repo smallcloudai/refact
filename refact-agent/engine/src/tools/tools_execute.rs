@@ -402,11 +402,11 @@ fn tool_answer(content: String, tool_call_id: String) -> ChatMessage {
     }
 }
 
-pub fn command_should_be_confirmed_by_user(
+pub fn command_should_be_allowed(
     command: &String,
-    commands_need_confirmation_rules: &Vec<String>,
+    commands_allow_rules: &Vec<String>,
 ) -> (bool, String) {
-    if let Some(rule) = commands_need_confirmation_rules.iter().find(|glob| {
+    if let Some(rule) = commands_allow_rules.iter().find(|glob| {
         let pattern = Pattern::new(glob).unwrap();
         pattern.matches(&command)
     }) {

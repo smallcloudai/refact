@@ -176,8 +176,8 @@ impl Tool for ToolUpdateTextDocRegex {
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["update_textdoc_regex*".to_string()],
             deny: vec![],
+            allow: vec![],
         })
     }
 }

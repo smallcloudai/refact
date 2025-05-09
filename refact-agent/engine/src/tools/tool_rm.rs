@@ -65,10 +65,7 @@ impl Tool for ToolRm {
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
-        Some(IntegrationConfirmation {
-            ask_user: vec!["*".to_string()],
-            deny: vec![],
-        })
+        Some(IntegrationConfirmation::default())
     }
     
     async fn match_against_confirm_deny(

@@ -174,8 +174,8 @@ impl Tool for ToolCreateTextDoc {
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["create_textdoc*".to_string()],
             deny: vec![],
+            allow: vec![],
         })
     }
 }

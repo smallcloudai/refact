@@ -168,8 +168,8 @@ impl Tool for ToolUpdateTextDoc {
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
         Some(IntegrationConfirmation {
-            ask_user: vec!["update_textdoc*".to_string()],
             deny: vec![],
+            allow: vec![],
         })
     }
 }

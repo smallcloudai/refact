@@ -62,9 +62,9 @@ pub struct ISchemaConfirmation {
     #[serde(default, skip_serializing_if="is_default")]
     pub not_applicable: bool,
     #[serde(default)]
-    pub ask_user_default: Vec<String>,
-    #[serde(default)]
     pub deny_default: Vec<String>,
+    #[serde(default)]
+    pub allow_default: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]

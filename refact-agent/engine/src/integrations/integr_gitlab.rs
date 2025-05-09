@@ -199,8 +199,8 @@ available:
   on_your_laptop_possible: true
   when_isolated_possible: true
 confirmation:
-  ask_user_default: ["glab * delete *"]
   deny_default: ["glab auth token *"]
+  allow_default: ["glab * delete *"]
 smartlinks:
   - sl_label: "Test"
     sl_chat:

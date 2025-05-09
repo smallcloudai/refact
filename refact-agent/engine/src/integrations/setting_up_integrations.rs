@@ -23,8 +23,8 @@ pub struct IntegrationRecord {
     pub icon_path: String,
     pub on_your_laptop: bool,
     pub when_isolated: bool,
-    pub ask_user: Vec<String>,
     pub deny: Vec<String>,
+    pub allow: Vec<String>,
     #[serde(skip_serializing)]
     pub config_unparsed: serde_json::Value,
 }
@@ -510,8 +510,8 @@ pub async fn integration_config_get(
                         result.integr_values = integration_box.integr_settings_as_json();
                         result.integr_values["available"]["on_your_laptop"] = common_settings.available.on_your_laptop.into();
                         result.integr_values["available"]["when_isolated"] = common_settings.available.when_isolated.into();
-                        result.integr_values["confirmation"]["ask_user"] = common_settings.confirmation.ask_user.into();
                         result.integr_values["confirmation"]["deny"] = common_settings.confirmation.deny.into();
+                        result.integr_values["confirmation"]["allow"] = common_settings.confirmation.allow.into();
                     }
                     Err(err) => {
                         result.error_log.push(YamlError {
