@@ -8,7 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, SubchatParameters, PostprocessSettings};
-use crate::global_context::GlobalContext;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
@@ -110,7 +110,10 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
         (gcx_locked.ast_service.is_some(), vecdb_on)
     };
-
+    let allow_knowledge = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => caps.metadata.features.contains(&"knowledge".to_string()),
+        Err(_) => false,
+    };
     let mut result = HashMap::new();
     for (key, value) in at_commands_dict {
         let command = value.lock().await;
@@ -119,6 +122,9 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
             continue;
         }
         if depends_on.contains(&"vecdb".to_string()) && !vecdb_on {
+            continue;
+        }
+        if depends_on.contains(&"knowledge".to_string()) && !allow_knowledge {
             continue;
         }
         result.insert(key, value.clone());

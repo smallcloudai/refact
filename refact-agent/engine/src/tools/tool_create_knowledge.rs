@@ -52,6 +52,6 @@ impl Tool for ToolCreateKnowledge {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec![]
+        vec!["knowledge".to_string()]
     }
 }

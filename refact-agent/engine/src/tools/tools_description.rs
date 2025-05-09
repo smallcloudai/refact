@@ -152,9 +152,12 @@ pub async fn tools_merged_and_filtered(
     ).await;
     tools_all.extend(integrations);
 
-    let is_there_a_thinking_model = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
-        Err(_) => false,
+    let (is_there_a_thinking_model, allow_knowledge) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => {
+            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
+             caps.metadata.features.contains(&"knowledge".to_string()))
+        },
+        Err(_) => (false, false),
     };
 
     let mut filtered_tools = IndexMap::new();
@@ -167,6 +170,9 @@ pub async fn tools_merged_and_filtered(
             continue;
         }
         if dependencies.contains(&"thinking".to_string()) && !is_there_a_thinking_model {
+            continue;
+        }
+        if dependencies.contains(&"knowledge".to_string()) && !allow_knowledge {
             continue;
         }
         filtered_tools.insert(tool_name, tool);
