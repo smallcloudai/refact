@@ -17,7 +17,7 @@ use crate::http::routers::v1::dashboard::get_dashboard_plots;
 use crate::http::routers::v1::docker::{handle_v1_docker_container_action, handle_v1_docker_container_list};
 use crate::http::routers::v1::git::{handle_v1_git_commit, handle_v1_checkpoints_preview, handle_v1_checkpoints_restore};
 use crate::http::routers::v1::graceful_shutdown::handle_v1_graceful_shutdown;
-use crate::http::routers::v1::mcp::handle_mcp_servers;
+use crate::http::routers::v1::mcp::{handle_mcp_servers, handle_mcp_resources};
 use crate::http::routers::v1::snippet_accepted::handle_v1_snippet_accepted;
 use crate::http::routers::v1::telemetry_network::handle_v1_telemetry_network;
 use crate::http::routers::v1::telemetry_chat::handle_v1_telemetry_chat;
@@ -136,6 +136,7 @@ pub fn make_v1_router() -> Router {
 
         .route("/integrations-mcp-logs", post(handle_v1_integrations_mcp_logs))
         .route("/mcp-servers", get(handle_mcp_servers))
+        .route("/mcp-resources", get(handle_mcp_resources))
 
         .route("/docker-container-list", post(handle_v1_docker_container_list))
         .route("/docker-container-action", post(handle_v1_docker_container_action))

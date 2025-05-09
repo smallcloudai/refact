@@ -1,13 +1,14 @@
 use std::sync::Arc;
-use axum::Extension;
+use axum::{Extension, extract::Query};
 use axum::http::{Response, StatusCode};
 use hyper::Body;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use tokio::sync::RwLock as ARwLock;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
-use crate::integrations::mcp::session_mcp::SessionMCP;
+use crate::integrations::mcp::session_mcp::{fetch_and_update_mcp_resources, SessionMCP};
+use crate::integrations::sessions::get_session_hashmap_key;
 
 #[derive(Serialize)]
 pub struct McpServerDesc {
@@ -15,6 +16,11 @@ pub struct McpServerDesc {
     pub config_path: String,
     pub num_tools: usize,
     pub num_resources: usize,
+}
+
+#[derive(Deserialize)]
+pub struct McpResourceQuery {
+    pub config_path: String,
 }
 
 pub async fn handle_mcp_servers(
@@ -50,3 +56,29 @@ pub async fn handle_mcp_servers(
         .body(Body::from(body))
         .unwrap())
 }
+
+pub async fn handle_mcp_resources(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Query(query): Query<McpResourceQuery>,
+) -> Result<Response<Body>, ScratchError> {
+    let session_key = get_session_hashmap_key("mcp", &query.config_path);
+
+    let session_arc = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(&session_key)
+            .ok_or_else(|| ScratchError::new(StatusCode::NOT_FOUND, format!("No session for key {}", session_key)))?
+            .clone()
+    };
+
+    let resources = fetch_and_update_mcp_resources(session_arc)
+        .await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let body = serde_json::to_string_pretty(&resources).expect("Failed to serialize resources");
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(body))
+        .unwrap())
+}
+
