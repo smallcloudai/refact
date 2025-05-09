@@ -1,0 +1,9 @@
+.toolGroup {
+  box-sizing: border-box;
+  border-radius: 4px;
+  transition: background-color 0.15s ease-in-out;
+  cursor: pointer;
+  &:hover {
+    background-color: var(--gray-a2);
+  }
+}
