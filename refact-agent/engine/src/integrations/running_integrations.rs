@@ -35,14 +35,13 @@ pub async fn load_integration_tools(
 /// otherwise only those matching `include_paths_matching` glob patterns.
 pub async fn load_integrations(
     gcx: Arc<ARwLock<GlobalContext>>,
-    allow_experimental: bool,
     include_paths_matching: &[String],
 ) -> (IndexMap<String, Box<dyn IntegrationTrait + Send + Sync>>, Vec<YamlError>) {
     let active_project_path = crate::files_correction::get_active_project_path(gcx.clone()).await;
     let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone(), &active_project_path).await;
-    let (integrations_yaml_path, is_inside_container) = {
+    let (integrations_yaml_path, is_inside_container, allow_experimental) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cmdline.integrations_yaml.clone(), gcx_locked.cmdline.inside_container)
+        (gcx_locked.cmdline.integrations_yaml.clone(), gcx_locked.cmdline.inside_container, gcx_locked.cmdline.experimental)
     };
 
     let mut error_log: Vec<YamlError> = Vec::new();
