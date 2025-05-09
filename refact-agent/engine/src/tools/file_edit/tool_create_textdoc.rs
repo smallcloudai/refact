@@ -5,7 +5,7 @@ use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLeve
 use crate::tools::file_edit::auxiliary::{
     await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
 };
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -22,7 +22,9 @@ struct ToolCreateTextDocArgs {
     content: String,
 }
 
-pub struct ToolCreateTextDoc;
+pub struct ToolCreateTextDoc {
+    pub config_path: String,
+}
 
 async fn parse_args(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -182,6 +184,11 @@ impl Tool for ToolCreateTextDoc {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "create_textdoc".to_string(),
+            display_name: "Create Text Document".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Creates a new text document or code or completely replaces the content of an existing document. Avoid trailing spaces and tabs.".to_string(),
