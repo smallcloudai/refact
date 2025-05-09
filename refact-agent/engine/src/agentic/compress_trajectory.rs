@@ -94,7 +94,7 @@ fn gather_used_tools(messages: &Vec<ChatMessage>) -> Vec<String> {
 pub async fn compress_trajectory(
     gcx: Arc<ARwLock<GlobalContext>>,
     messages: &Vec<ChatMessage>,
-) -> Result<(String, String), String> {
+) -> Result<String, String> {
     if messages.is_empty() {
         return Err("The provided chat is empty".to_string());
     }
@@ -161,5 +161,5 @@ pub async fn compress_trajectory(
         .flatten()
         .ok_or("No traj message was generated".to_string())?;
     let compressed_message = format!("{content}\n\nPlease, continue the conversation based on the provided summary");
-    Ok(("".to_string(), compressed_message))
+    Ok(compressed_message)
 }

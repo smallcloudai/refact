@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use axum::http::{Response, StatusCode};
@@ -57,11 +58,10 @@ pub async fn handle_v1_trajectory_compress(
         )
     })?;
 
-    let (goal, trajectory) = compress_trajectory(global_context.clone(), &post.messages)
+    let trajectory = compress_trajectory(global_context.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
 
     let response = serde_json::json!({
-        "goal": goal,
         "trajectory": trajectory,
     });
 
@@ -74,7 +74,7 @@ pub async fn handle_v1_trajectory_compress(
 
 
 pub async fn handle_v1_trajectory_save(
-    Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> axum::response::Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<CompressTrajectoryPost>(&body_bytes).map_err(|e| {
@@ -83,25 +83,22 @@ pub async fn handle_v1_trajectory_save(
             format!("JSON problem: {}", e),
         )
     })?;
-
-    let mem_type = "trajectory";
-    let (goal, trajectory) = compress_trajectory(global_context.clone(), &post.messages)
+    let trajectory = compress_trajectory(gcx.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-
-    let vec_db = global_context.read().await.vec_db.clone();
-    let memid = crate::vecdb::vdb_highlev::memories_add(
-        vec_db,
-        &mem_type,
-        &goal.as_str(),
-        &post.project.as_str(),
+    let project_name = crate::files_correction::get_active_project_path(gcx.clone())
+        .await
+        .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
+        .unwrap_or("unknown".to_string());
+    crate::vecdb::vdb_highlev::memories_add(
+        gcx.clone(),
+        &project_name,
+        "trajectory",
         &trajectory.as_str(),
-        "local-compressed-traj",
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
 
     let response = serde_json::json!({
-        "memid": memid,
         "trajectory": trajectory,
     });
 

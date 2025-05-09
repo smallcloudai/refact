@@ -76,7 +76,6 @@ impl Document {
         Self { doc_path: doc_path.clone(),  doc_text: None }
     }
 
-    #[cfg(feature="vecdb")]
     pub async fn update_text_from_disk(&mut self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
         match read_file_from_disk(load_privacy_if_needed(gcx.clone()).await, &self.doc_path).await {
             Ok(res) => {
@@ -100,7 +99,6 @@ impl Document {
         self.doc_text = Some(Rope::from_str(text));
     }
 
-    #[cfg(feature="vecdb")]
     pub fn text_as_string(&self) -> Result<String, String> {
         if let Some(r) = &self.doc_text {
             return Ok(r.to_string());
@@ -532,12 +530,9 @@ async fn enqueue_some_docs(
         let cx = gcx.read().await;
         (cx.vec_db.clone(), cx.ast_service.clone())
     };
-    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&paths, force).await;
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         ast_indexer_enqueue_files(ast.clone(), paths, force).await;
     }
@@ -607,12 +602,9 @@ pub async fn enqueue_all_files_from_workspace_folders(
     updated_or_removed.extend(old_workspace_files.iter().map(|p| p.to_string_lossy().to_string()));
     let paths_nodups: Vec<String> = updated_or_removed.into_iter().collect();
 
-    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&paths_nodups, wake_up_indexers).await;
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
 
     if let Some(ast) = ast_service {
         if !vecdb_only {
@@ -723,7 +715,6 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
     (*dirty_arc.lock().await) = now;
 
-    #[cfg(feature="vecdb")]
     match *vec_db_module.lock().await {
         Some(ref mut db) => match db.remove_file(path).await {
             Ok(_) => {}
@@ -731,8 +722,6 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         },
         None => {}
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         let cpath = path.to_string_lossy().to_string();
         ast_indexer_enqueue_files(ast.clone(), &vec![cpath], false).await;

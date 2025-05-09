@@ -101,18 +101,13 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         // ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
         // ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
         ("@web".to_string(), Arc::new(AMutex::new(Box::new(AtWeb::new()) as Box<dyn AtCommand + Send>))),
-        #[cfg(feature="vecdb")]
         ("@search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_search::AtSearch::new()) as Box<dyn AtCommand + Send>))),
-        #[cfg(feature="vecdb")]
         ("@knowledge-load".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Box<dyn AtCommand + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
         let gcx_locked = gcx.read().await;
-        #[cfg(feature="vecdb")]
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        #[cfg(not(feature="vecdb"))]
-        let vecdb_on = false;
         (gcx_locked.ast_service.is_some(), vecdb_on)
     };
 

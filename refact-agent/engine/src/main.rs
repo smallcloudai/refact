@@ -37,12 +37,7 @@ mod files_in_jsonl;
 mod files_blocklist;
 mod fuzzy_search;
 mod files_correction;
-
-#[cfg(feature="vecdb")]
 mod vecdb;
-#[cfg(feature="vecdb")]
-mod knowledge;
-
 mod ast;
 mod subchat;
 mod at_commands;
@@ -53,24 +48,20 @@ mod tokens;
 mod scratchpad_abstract;
 mod scratchpads;
 
-#[cfg(feature="vecdb")]
 mod fetch_embedding;
 mod forward_to_hf_endpoint;
 mod forward_to_openai_endpoint;
 mod restream;
 
 mod call_validation;
-mod agent_db;
 mod dashboard;
 mod lsp;
 mod http;
-mod autonomy;
 
 mod integrations;
 mod privacy;
 mod git;
 mod agentic;
-mod trajectories;
 
 
 #[tokio::main]

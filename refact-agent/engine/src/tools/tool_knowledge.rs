@@ -42,13 +42,13 @@ impl Tool for ToolGetKnowledge {
         
         let mut seen_memids = HashSet::new();
         let unique_memories: Vec<_> = memories.results.into_iter()
-            .filter(|m| seen_memids.insert(m.memid.clone()))
+            .filter(|m| seen_memids.insert(m.iknow_id.clone()))
             .collect();
 
         let memories_str = unique_memories.iter().map(|m| {
-            let payload: String = m.m_payload.clone();
+            let payload: String = m.iknow_memory.clone();
             let mut combined = String::new();
-            combined.push_str(&format!("🗃️{}\n", m.memid));
+            combined.push_str(&format!("🗃️{}\n", m.iknow_id));
             combined.push_str(&payload);
             combined.push_str("\n\n");
             combined
