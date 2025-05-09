@@ -1,4 +1,4 @@
-const TEMPLATE_KEYWORDS = ["cmdline", "mcp", "service"] as const;
+const TEMPLATE_KEYWORDS = ["cmdline", "service"] as const;
 
 export const formatIntegrationIconPath = (iconPath: string) => {
   if (TEMPLATE_KEYWORDS.some((keyword) => iconPath.includes(keyword))) {
