@@ -12,11 +12,13 @@ use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{FilePrivacyLevel, load_privacy_if_needed, check_file_privacy};
 
-pub struct ToolMv;
+pub struct ToolMv {
+    pub config_path: String,
+}
 
 impl ToolMv {
     fn preformat_path(path: &String) -> String {
@@ -326,6 +328,11 @@ impl Tool for ToolMv {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "mv".to_string(),
+            display_name: "mv".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Moves or renames files and directories. If a simple rename fails due to a cross-device error and the source is a file, it falls back to copying and deleting. Use overwrite=true to replace an existing target.".to_string(),

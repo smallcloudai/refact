@@ -12,10 +12,12 @@ use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
 use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel};
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 
-pub struct ToolRm;
+pub struct ToolRm {
+    pub config_path: String,
+}
 
 impl ToolRm {
     fn preformat_path(path: &String) -> String {
@@ -242,6 +244,11 @@ impl Tool for ToolRm {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "rm".to_string(),
+            display_name: "rm".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Deletes a file or directory. Use recursive=true for directories. Set dry_run=true to preview without deletion.".to_string(),

@@ -6,11 +6,13 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_web::execute_at_web;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 
 
-pub struct ToolWeb;
+pub struct ToolWeb {
+    pub config_path: String,
+}
 
 #[async_trait]
 impl Tool for ToolWeb {
@@ -19,6 +21,11 @@ impl Tool for ToolWeb {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "web".to_string(),
+            display_name: "Web".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Fetch a web page and convert to readable plain text.".to_string(),

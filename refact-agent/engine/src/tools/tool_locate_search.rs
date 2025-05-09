@@ -8,13 +8,15 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::subchat::subchat;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 
 
-pub struct ToolLocateSearch;
+pub struct ToolLocateSearch {
+    pub config_path: String,
+}
 
 
 const LS_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files within a big project.
@@ -104,6 +106,11 @@ impl Tool for ToolLocateSearch {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "locate".to_string(),
+            display_name: "Locate".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Get a list of files that are relevant to solve a particular task.".to_string(),
