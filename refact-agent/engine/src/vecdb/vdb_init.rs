@@ -48,7 +48,6 @@ impl std::fmt::Display for VecDbInitError {
 
 pub async fn init_vecdb_fail_safe(
     cache_dir: &PathBuf,
-    config_dir: &PathBuf,
     cmdline: CommandLine,
     constants: VecdbConstants,
     init_config: VecDbInitConfig,
@@ -60,7 +59,7 @@ pub async fn init_vecdb_fail_safe(
         attempt += 1;
         info!("VecDb init attempt {}/{}", attempt, init_config.max_attempts);
         
-        match VecDb::init(cache_dir, config_dir, cmdline.clone(), constants.clone()).await {
+        match VecDb::init(cache_dir, cmdline.clone(), constants.clone()).await {
             Ok(vecdb) => {
                 info!("Successfully initialized VecDb on attempt {}", attempt);
                 
@@ -117,20 +116,19 @@ pub async fn initialize_vecdb_with_context(
     init_config: Option<VecDbInitConfig>,
 ) -> Result<(), VecDbInitError> {
     
-    let (cache_dir, config_dir, cmdline) = {
+    let (cache_dir, cmdline) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cache_dir.clone(), gcx_locked.config_dir.clone(), gcx_locked.cmdline.clone())
+        (gcx_locked.cache_dir.clone(), gcx_locked.cmdline.clone())
     };
     
-    let (base_dir_cache, base_dir_config) = match cmdline.vecdb_force_path.as_str() {
-        "" => (cache_dir, config_dir),
-        path => (PathBuf::from(path), PathBuf::from(path)),
+    let base_dir_cache = match cmdline.vecdb_force_path.as_str() {
+        "" => cache_dir,
+        path => PathBuf::from(path),
     };
     
     let config = init_config.unwrap_or_default();
     let vec_db = init_vecdb_fail_safe(
         &base_dir_cache,
-        &base_dir_config,
         cmdline.clone(),
         constants,
         config,

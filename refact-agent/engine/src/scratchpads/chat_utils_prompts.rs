@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation;
-use crate::global_context::GlobalContext;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::http::http_post_json;
 use crate::http::routers::v1::system_prompt::{PrependSystemPromptPost, PrependSystemPromptResponse};
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
@@ -115,7 +115,7 @@ async fn _read_project_summary(
     }
 }
 
-pub async fn system_prompt_add_workspace_info(
+pub async fn system_prompt_add_extra_instructions(
     gcx: Arc<ARwLock<GlobalContext>>,
     system_prompt: &String,
 ) -> String {
@@ -134,7 +134,25 @@ pub async fn system_prompt_add_workspace_info(
         let info = _workspace_info(&workspace_dirs, &active_file_path).await;
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
     }
-
+    if system_prompt.contains("%KNOWLEDGE_INSTRUCTIONS%") {
+        match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+            Ok(caps) => {
+                if caps.metadata.features.contains(&"knowledge".to_string()) {
+                    let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
+                    let knowledge_instructions = cfg.get("KNOWLEDGE_INSTRUCTIONS_META")
+                        .map(|x| x.as_str().unwrap_or("").to_string()).unwrap_or("".to_string());
+                    system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", &knowledge_instructions);
+                    tracing::info!("adding up extra knowledge instructions");
+                } else {
+                    system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
+                }
+            },
+            Err(_) => {
+                system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
+            },
+        };
+    }
+    
     if system_prompt.contains("%PROJECT_SUMMARY%") {
         let (exists, summary_path_option) = dig_for_project_summarization_file(gcx.clone()).await;
         if exists {
@@ -182,8 +200,8 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
 
     match chat_meta.chat_mode {
         ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
-            let system_message_content = system_prompt_add_workspace_info(gcx.clone(),
-                &get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await
+            let system_message_content = system_prompt_add_extra_instructions(gcx.clone(),
+                                                                              &get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await
             ).await;
             let msg = ChatMessage {
                 role: "system".to_string(),

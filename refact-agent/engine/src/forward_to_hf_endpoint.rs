@@ -4,7 +4,6 @@ use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde_json::json;
-#[cfg(feature="vecdb")]
 use tokio::sync::Mutex as AMutex;
 
 use crate::call_validation::{ChatMeta, SamplingParameters};
@@ -93,27 +92,23 @@ pub async fn forward_to_hf_style_endpoint_streaming(
     Ok(event_source)
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Serialize)]
 struct EmbeddingsPayloadHFOptions {
     pub wait_for_model: bool
 }
 
-#[cfg(feature="vecdb")]
 impl EmbeddingsPayloadHFOptions {
     pub fn new() -> Self {
         Self { wait_for_model: true }
     }
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Serialize)]
 struct EmbeddingsPayloadHF {
     pub inputs: Vec<String>,
     pub options: EmbeddingsPayloadHFOptions,
 }
 
-#[cfg(feature="vecdb")]
 pub async fn get_embedding_hf_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,

@@ -148,7 +148,7 @@ pub async fn mix_config_messages(
     let system_message = ChatMessage {
         role: "system".to_string(),
         content: ChatContent::SimpleText(
-            crate::scratchpads::chat_utils_prompts::system_prompt_add_workspace_info(gcx.clone(), &sp.text).await
+            crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(gcx.clone(), &sp.text).await
         ),
         ..Default::default()
     };
