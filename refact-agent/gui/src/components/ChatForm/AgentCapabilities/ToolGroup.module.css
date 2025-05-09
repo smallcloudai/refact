@@ -7,3 +7,12 @@
     background-color: var(--gray-a2);
   }
 }
+
+.categoryBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
