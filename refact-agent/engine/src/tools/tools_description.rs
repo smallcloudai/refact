@@ -4,18 +4,12 @@ use indexmap::IndexMap;
 use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
-use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
-use crate::global_context::try_load_caps_quickly_if_not_present;
-use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
-use crate::integrations::running_integrations::load_integration_tools;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
-// use crate::integrations::docker::integr_docker::ToolDocker;
-
 
 #[derive(Clone, Debug)]
 pub enum MatchConfirmDenyResult {
@@ -31,6 +25,31 @@ pub struct MatchConfirmDeny {
     pub rule: String,
 }
 
+pub enum ToolGroupCategory {
+    Builtin,
+    Integration,
+    MCP,
+}
+
+pub struct ToolGroup {
+    pub name: String,
+    pub description: String,
+    pub category: ToolGroupCategory,
+    pub tools: Vec<Box<dyn Tool + Send>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum ToolSourceType {
+    Builtin,
+    Integration,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ToolSource {
+    pub source_type: ToolSourceType,
+    pub config_path: String,
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ToolDesc {
     pub name: String,
@@ -41,6 +60,8 @@ pub struct ToolDesc {
     pub description: String,
     pub parameters: Vec<ToolParam>,
     pub parameters_required: Vec<String>,
+    pub display_name: String,
+    pub source: ToolSource,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -60,7 +81,7 @@ pub trait Tool: Send + Sync {
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
         tool_call_id: &String,
-        args: &HashMap<String, Value>
+        args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String>;
 
     fn tool_description(&self) -> ToolDesc;
@@ -68,7 +89,7 @@ pub trait Tool: Send + Sync {
     async fn match_against_confirm_deny(
         &self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
-        args: &HashMap<String, Value>
+        args: &HashMap<String, Value>,
     ) -> Result<MatchConfirmDeny, String> {
         let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
             format!("Error getting tool command to match: {}", e)
@@ -130,78 +151,6 @@ pub trait Tool: Send + Sync {
     }
 }
 
-pub fn get_builtin_tools() -> IndexMap<String, Box<dyn Tool + Send>> {
-    IndexMap::from([
-        ("definition".to_string(), Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{}) as Box<dyn Tool + Send>),
-        ("references".to_string(), Box::new(crate::tools::tool_ast_reference::ToolAstReference{}) as Box<dyn Tool + Send>),
-        ("tree".to_string(), Box::new(crate::tools::tool_tree::ToolTree{}) as Box<dyn Tool + Send>),
-        ("create_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
-        ("update_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
-        ("update_textdoc_regex".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex {}) as Box<dyn Tool + Send>),
-        ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
-        ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
-        ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
-        ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
-        ("deep_analysis".to_string(), Box::new(crate::tools::tool_deep_analysis::ToolDeepAnalysis{}) as Box<dyn Tool + Send>),
-        ("regex_search".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
-        ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
-        ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
-        ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
-        // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
-        // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
-        #[cfg(feature="vecdb")]
-        ("search".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
-        ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
-    ])
-}
-
-pub async fn get_available_tools(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    _supports_clicks: bool,  // XXX
-) -> Result<IndexMap<String, Box<dyn Tool + Send>>, String> {
-    let (ast_on, vecdb_on, allow_experimental) = {
-        let gcx_locked = gcx.read().await;
-        #[cfg(feature="vecdb")]
-        let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        #[cfg(not(feature="vecdb"))]
-        let vecdb_on = false;
-        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
-    };
-
-    let is_there_a_thinking_model = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.is_ok_and(|caps| {
-        caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some()
-    });
-
-    let mut tools_all = get_builtin_tools();
-    tools_all.extend(
-        load_integration_tools(gcx, allow_experimental).await
-    );
-
-    let mut filtered_tools = IndexMap::new();
-    for (tool_name, tool) in tools_all {
-        let dependencies = tool.tool_depends_on();
-        if dependencies.contains(&"ast".to_string()) && !ast_on {
-            continue;
-        }
-        if dependencies.contains(&"vecdb".to_string()) && !vecdb_on {
-            continue;
-        }
-        if dependencies.contains(&"thinking".to_string()) && !is_there_a_thinking_model {
-            continue;
-        }
-        if tool.tool_description().experimental && !allow_experimental {
-            continue;
-        }
-        filtered_tools.insert(tool_name, tool);
-    }
-
-    Ok(filtered_tools)
-}
-
 fn validate_snake_case<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -248,18 +197,18 @@ pub fn make_openai_tool_value(
     }).collect::<serde_json::Map<_, _>>();
 
     let function_json = json!({
-            "type": "function",
-            "function": {
-                "name": name,
-                "agentic": agentic, // this field is not OpenAI's
-                "description": description,
-                "parameters": {
-                    "type": "object",
-                    "properties": params_properties,
-                    "required": parameters_required
-                }
+        "type": "function",
+        "function": {
+            "name": name,
+            "agentic": agentic, // this field is not OpenAI's
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": params_properties,
+                "required": parameters_required
             }
-        });
+        }
+    });
     function_json
 }
 
