@@ -124,6 +124,7 @@ export const toolsApi = createApi({
 
 export type ToolGroup = {
   name: string;
+  category: "integration" | "mcp" | "builtin";
   description: string;
   tools: Tool[];
 };
