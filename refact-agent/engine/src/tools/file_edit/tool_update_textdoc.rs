@@ -3,7 +3,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel, PrivacySettings};
 use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace, sync_documents_ast};
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -22,7 +22,9 @@ struct ToolUpdateTextDocArgs {
     multiple: bool,
 }
 
-pub struct ToolUpdateTextDoc;
+pub struct ToolUpdateTextDoc {
+    pub config_path: String,
+}
 
 async fn parse_args(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -178,6 +180,11 @@ impl Tool for ToolUpdateTextDoc {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "update_textdoc".to_string(),
+            display_name: "Update Text Document".to_string(),
+            source: ToolSource { 
+                source_type: ToolSourceType::Builtin, 
+                config_path: self.config_path.clone(), 
+            },
             agentic: false,
             experimental: false,
             description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient. Avoid trailing spaces and tabs.".to_string(),
