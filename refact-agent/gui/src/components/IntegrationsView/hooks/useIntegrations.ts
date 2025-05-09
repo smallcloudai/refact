@@ -38,6 +38,7 @@ import {
   IntegrationWithIconRecordAndAddress,
   IntegrationWithIconResponse,
   isDetailMessage,
+  isDictionary,
   isMCPArgumentsArray,
   isMCPEnvironmentsDict,
   isNotConfiguredIntegrationWithIconRecord,
@@ -285,6 +286,8 @@ export const useIntegrations = ({
   const [MCPEnvironmentVariables, setMCPEnvironmentVariables] =
     useState<MCPEnvs>({});
 
+  const [headers, setHeaders] = useState<Record<string, string>>({});
+
   const [toolParameters, setToolParameters] = useState<
     ToolParameterEntity[] | null
   >(null);
@@ -414,6 +417,10 @@ export const useIntegrations = ({
           ? !isEqual(currentIntegrationValues.env, MCPEnvironmentVariables)
           : false;
 
+        const headersChanged = isDictionary(currentIntegrationValues.env)
+          ? !isEqual(currentIntegrationValues.headers, headers)
+          : false;
+
         const confirmationRulesChanged = !isEqual(
           confirmationRules,
           currentIntegrationValues.confirmation,
@@ -423,7 +430,8 @@ export const useIntegrations = ({
           confirmationRulesChanged ||
           toolParametersChanged ||
           MCPArgumentsChanged ||
-          MCPEnvironmentVariablesChanged;
+          MCPEnvironmentVariablesChanged ||
+          headersChanged;
 
         // Manually collecting data from the form
         const formElement = document.getElementById(
@@ -488,6 +496,7 @@ export const useIntegrations = ({
     currentIntegration,
     MCPArguments,
     MCPEnvironmentVariables,
+    headers,
   ]);
 
   const handleSetCurrentIntegrationSchema = (
@@ -575,6 +584,7 @@ export const useIntegrations = ({
       if (currentIntegration.integr_name.includes("mcp")) {
         formValues.env = MCPEnvironmentVariables;
         formValues.args = MCPArguments;
+        formValues.headers = headers;
       }
       if (!currentIntegrationSchema.confirmation.not_applicable) {
         formValues.confirmation = confirmationRules;
@@ -616,6 +626,7 @@ export const useIntegrations = ({
       toolParameters,
       MCPArguments,
       MCPEnvironmentVariables,
+      headers,
     ],
   );
 
@@ -960,6 +971,7 @@ export const useIntegrations = ({
     setToolParameters,
     setMCPArguments,
     setMCPEnvironmentVariables,
+    setHeaders,
     isDisabledIntegrationForm,
     isApplyingIntegrationForm,
     isDeletingIntegration,
