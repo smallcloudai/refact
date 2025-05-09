@@ -143,3 +143,33 @@ pub async fn _session_wait_startup_task(
         }
     }
 }
+
+pub async fn fetch_and_update_mcp_resources(
+    session_arc: Arc<AMutex<Box<dyn IntegrationSession>>>,
+) -> Result<Vec<Annotated<RawResource>>, String> {
+    let mcp_client_arc = {
+        let mut session_locked = session_arc.lock().await;
+        let session_mcp = session_locked.as_any_mut().downcast_mut::<SessionMCP>()
+            .ok_or_else(|| "Failed to downcast session".to_string())?;
+        session_mcp.mcp_client.as_ref()
+            .ok_or_else(|| "No MCP client in session".to_string())?
+            .clone()
+    };
+
+    let resources = {
+        let mcp_client_locked = mcp_client_arc.lock().await;
+        let client = mcp_client_locked.as_ref()
+            .ok_or_else(|| "MCP client not running".to_string())?;
+        client.list_all_resources().await
+            .map_err(|e| format!("Failed to list resources: {e}"))?
+    };
+
+    {
+        let mut session_locked = session_arc.lock().await;
+        let session_mcp = session_locked.as_any_mut().downcast_mut::<SessionMCP>()
+            .ok_or_else(|| "Failed to downcast session".to_string())?;
+        session_mcp.mcp_resources = Some(resources.clone());
+    }
+
+    Ok(resources)
+}
