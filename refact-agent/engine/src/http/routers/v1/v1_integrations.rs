@@ -12,7 +12,7 @@ use rust_embed::RustEmbed;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use crate::integrations::setting_up_integrations::split_path_into_project_and_integration;
-use crate::integrations::integr_mcp::SessionMCP;
+use crate::integrations::mcp::session_mcp::SessionMCP;
 
 
 pub async fn handle_v1_integrations(
@@ -218,7 +218,7 @@ pub async fn handle_v1_integrations_mcp_logs(
     };
 
     if let Some(stderr_path) = &stderr_file_path {
-        if let Err(e) = crate::integrations::integr_mcp::update_logs_from_stderr(
+        if let Err(e) = crate::integrations::mcp::session_mcp::update_logs_from_stderr(
             stderr_path, 
             stderr_cursor, 
             logs_arc.clone()

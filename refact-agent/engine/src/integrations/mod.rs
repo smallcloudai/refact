@@ -18,7 +18,7 @@ pub mod integr_mysql;
 pub mod integr_cmdline;
 pub mod integr_cmdline_service;
 pub mod integr_shell;
-pub mod integr_mcp;
+pub mod mcp;
 
 pub mod process_io_utils;
 pub mod docker;
@@ -52,7 +52,7 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
             Ok(Box::new(integr_cmdline_service::ToolService {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         mcp if mcp.starts_with("mcp_") => {
-            Ok(Box::new(integr_mcp::IntegrationMCP {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
+            Ok(Box::new(mcp::IntegrationMCP {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         "isolation" => Ok(Box::new(docker::integr_isolation::IntegrationIsolation {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>),
         _ => Err(format!("Unknown integration name: {}", n)),
