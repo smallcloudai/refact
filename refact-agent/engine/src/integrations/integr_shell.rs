@@ -12,12 +12,11 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::files_correction::get_active_project_path;
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::execute_command;
-use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
-use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
+use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait, IntegrationConfirmation};
 use crate::custom_error::YamlError;
-use crate::tools::tools_execute::command_should_be_denied;
 
 
 #[derive(Deserialize, Serialize, Clone, Default)]
@@ -134,41 +133,16 @@ impl Tool for ToolShell {
         }
     }
 
-    async fn match_against_confirm_deny(
-        &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
-        args: &HashMap<String, Value>
-    ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
-            format!("Error getting tool command to match: {}", e)
-        })?;
-        if command_to_match.is_empty() {
-            return Err("Empty command to match".to_string());
-        }
-        if let Some(rules) = &self.confirm_deny_rules() {
-            let (is_denied, deny_rule) = command_should_be_denied(&command_to_match, &rules.deny);
-            if is_denied {
-                return Ok(MatchConfirmDeny {
-                    result: MatchConfirmDenyResult::DENY,
-                    command: command_to_match.clone(),
-                    rule: deny_rule.clone(),
-                });
-            }
-        }
-        // NOTE: do not match command if not denied, always wait for confirmation from user
-        Ok(MatchConfirmDeny {
-            result: MatchConfirmDenyResult::CONFIRMATION,
-            command: command_to_match.clone(),
-            rule: "*".to_string(),
-        })
-    }
-
     fn command_to_match_against_confirm_deny(
         &self,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let (command, _) = parse_args(args)?;
         Ok(command)
+    }
+
+    fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {
+        Some(self.integr_common().confirmation)
     }
 
     fn has_config_path(&self) -> Option<String> {
@@ -201,7 +175,7 @@ pub async fn execute_shell_command(
     }
 
     cmd.arg(shell_arg).arg(command);
-    
+
     tracing::info!("SHELL: running command directory {:?}\n{:?}", workdir_maybe, command);
     let t0 = tokio::time::Instant::now();
     let output = execute_command(cmd, timeout, command).await?;
