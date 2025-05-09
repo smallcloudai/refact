@@ -43,7 +43,8 @@ Your final goal is to find the root cause of the problem! Take as many time as n
 Do not create code, just write text."#;
 
 static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files.
-The solution must be robust and complete and adressing all corner cases."#;
+The solution must be robust and complete and adressing all corner cases.
+Also make a couple of alternative ways to solve the problem, if the initial solution doesn't work."#;
 
 
 static GUARDRAILS_PROMPT: &str = r#"💿 Now implement the solution above.
