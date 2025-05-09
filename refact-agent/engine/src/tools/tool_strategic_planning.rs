@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use axum::http::StatusCode;
 use crate::subchat::subchat_single;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
@@ -19,7 +19,9 @@ use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::tokens::count_text_tokens_with_fallback;
 
-pub struct ToolStrategicPlanning;
+pub struct ToolStrategicPlanning {
+    pub config_path: String,
+}
 
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
@@ -167,6 +169,11 @@ impl Tool for ToolStrategicPlanning {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "strategic_planning".to_string(),
+            display_name: "Strategic Planning".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Strategically plan a solution for a complex problem or create a comprehensive approach.".to_string(),

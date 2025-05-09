@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use resvg::{tiny_skia, usvg};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
 use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
@@ -19,7 +19,9 @@ use std::io::Cursor;
 use image::imageops::FilterType;
 use image::{ImageFormat, ImageReader};
 
-pub struct ToolCat;
+pub struct ToolCat {
+    pub config_path: String,
+}
 
 
 const CAT_MAX_IMAGES_CNT: usize = 1;
@@ -103,6 +105,11 @@ impl Tool for ToolCat {
         ToolDesc {
             name: "cat".to_string(),
             agentic: false,
+            display_name: "Cat".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             experimental: false,
             description: "Like cat in console, but better: it can read multiple files and images. Prefer to open full files.".to_string(),
             parameters: vec![

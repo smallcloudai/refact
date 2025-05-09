@@ -10,19 +10,20 @@ use axum::http::StatusCode;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::subchat::subchat;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
-use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
-use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization}; 
+use crate::files_in_workspace::get_file_text_from_memory_or_disk; 
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::tokens::count_text_tokens_with_fallback;
-
-pub struct ToolLocateSearch;
+pub struct ToolLocateSearch {
+    pub config_path: String,
+}
 
 
 const LS_SYSTEM_PROMPT: &str = r###"**Task**
@@ -183,10 +184,7 @@ async fn _make_prompt(
             &mut context_files,
             tokenizer.clone(),
             subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
-            false,
-            &pp_settings,
-        ).await {
-            files_context.push_str(
+            false, &pp_settings,).await { files_context.push_str(
                 &format!("📎 {}:{}-{}\n```\n{}```\n\n",
                          context_file.file_name,
                          context_file.line1,
@@ -218,6 +216,11 @@ impl Tool for ToolLocateSearch {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "locate".to_string(),
+            display_name: "Locate".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Get a list of files that are relevant to solve a particular task.".to_string(),

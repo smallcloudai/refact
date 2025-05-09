@@ -6,12 +6,14 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::vecdb::vdb_highlev::memories_search;
 
 
-pub struct ToolGetKnowledge;
+pub struct ToolGetKnowledge {
+    pub config_path: String,
+}
 
 
 #[async_trait]
@@ -21,6 +23,11 @@ impl Tool for ToolGetKnowledge {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "knowledge".to_string(),
+            display_name: "Knowledge".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success.".to_string(),
