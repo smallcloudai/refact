@@ -7,10 +7,12 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
-pub struct ToolAstDefinition;
+pub struct ToolAstDefinition {
+    pub config_path: String,
+}
 
 #[async_trait]
 impl Tool for ToolAstDefinition {
@@ -108,6 +110,11 @@ impl Tool for ToolAstDefinition {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "search_symbol_definition".to_string(),
+            display_name: "Definition".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Find definition of a symbol in the project using AST".to_string(),

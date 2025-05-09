@@ -6,11 +6,13 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
 
-pub struct ToolAstReference;
+pub struct ToolAstReference {
+    pub config_path: String,
+}
 
 #[async_trait]
 impl Tool for ToolAstReference {
@@ -132,6 +134,11 @@ impl Tool for ToolAstReference {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "search_symbol_usages".to_string(),
+            display_name: "References".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: false,
             experimental: false,
             description: "Find usages of a symbol within a project using AST".to_string(),
