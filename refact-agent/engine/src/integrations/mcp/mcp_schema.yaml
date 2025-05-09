@@ -1,0 +1,47 @@
+fields:
+  command:
+    f_type: string
+    f_desc: "The MCP command to execute (for stdio transport), like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
+  env:
+    f_type: string_to_string_map
+    f_desc: "Environment variables to pass to the MCP command (for stdio transport)."
+  url:
+    f_type: string
+    f_desc: "The URL of the MCP server (for sse transport), e.g., 'https://api.example.com/mcp/sse'."
+  headers:
+    f_type: string_to_string_map
+    f_desc: "HTTP headers to include in requests to the MCP server (for sse transport)."
+    f_default:
+      User-Agent: "Refact.ai (+https://github.com/smallcloudai/refact)"
+      Accept: text/event-stream
+      Content-Type: application/json
+  init_timeout:
+    f_type: string_short
+    f_desc: "Timeout in seconds for MCP server initialization."
+    f_default: "60"
+    f_extra: true
+  request_timeout:
+    f_type: string_short
+    f_desc: "Timeout in seconds for MCP requests."
+    f_default: "30"
+    f_extra: true
+description: |
+  You can add almost any MCP (Model Context Protocol) server here! This supports both local MCP servers (stdio)
+  and remote MCP servers (sse). You can read more about MCP here: https://www.anthropic.com/news/model-context-protocol
+
+  For servers using stdio protocol, provide the command to execute, and optionally, set the environment variables.
+  For remote using sse protocol, provide the URL of the server, and optionally, add more headers.
+available:
+  on_your_laptop_possible: true
+  when_isolated_possible: true
+confirmation:
+  ask_user_default: ["*"]
+  deny_default: []
+smartlinks:
+  - sl_label: "Test"
+    sl_chat:
+      - role: "user"
+        content: >
+          🔧 Your job is to test %CURRENT_CONFIG%. Tools that this MCP server has created should be visible to you. Don't search anything, it should be visible as
+          a tools already. Run one and express happiness. If something does wrong, or you don't see the tools, ask user if they want to fix it by rewriting the config.
+    sl_enable_only_with_tool: true
