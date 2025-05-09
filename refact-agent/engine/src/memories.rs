@@ -86,7 +86,7 @@ pub async fn memories_migration(
     for (m_type, m_project, m_payload, m_origin) in memories {
         let project_name = m_project.split(",")
             .next()
-            .map(|s| s.trim().to_string())
+            .map(|s| if s.trim().is_empty() {"unknown".to_string()} else {s.trim().to_string()})
             .unwrap_or_else(|| "unknown".to_string());
         match memories_add(gcx.clone(), &m_type, &m_payload, Some(m_origin), Some(project_name)).await {
             Ok(_) => {
