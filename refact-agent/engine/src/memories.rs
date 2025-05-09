@@ -1,6 +1,7 @@
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use crate::global_context::GlobalContext;
@@ -47,7 +48,7 @@ pub async fn memories_migration(
         }
     };
     
-    let memories = match conn.call(|conn| {
+    let memories: Vec<(String, String, String, String)> = match conn.call(|conn| {
         // Query all memories
         let mut stmt = conn.prepare("SELECT m_type, m_project, m_payload, m_origin FROM memories")?;
         let rows = stmt.query_map([], |row| {
@@ -64,7 +65,7 @@ pub async fn memories_migration(
             memories.push(row?);
         }
         
-        Ok(memories)
+        Ok(memories.into_iter().unique_by(|(_, _, m_payload, _)| m_payload.clone()).collect())
     }).await {
         Ok(memories) => memories,
         Err(e) => {
@@ -88,6 +89,10 @@ pub async fn memories_migration(
             .next()
             .map(|s| if s.trim().is_empty() {"unknown".to_string()} else {s.trim().to_string()})
             .unwrap_or_else(|| "unknown".to_string());
+        if m_payload.is_empty() {
+            warn!("Memory payload is empty, skipping");
+            continue;
+        }
         match memories_add(gcx.clone(), &m_type, &m_payload, Some(m_origin), Some(project_name)).await {
             Ok(_) => {
                 success_count += 1;
