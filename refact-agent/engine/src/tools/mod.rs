@@ -1,4 +1,5 @@
 pub mod tools_description;
+pub mod tools_list;
 pub mod tools_execute;
 pub mod scope_utils;
 
