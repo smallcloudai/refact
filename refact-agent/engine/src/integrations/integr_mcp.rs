@@ -313,10 +313,10 @@ impl IntegrationTrait for IntegrationMCP {
         self
     }
 
-    async fn integr_settings_apply(&mut self, gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+    async fn integr_settings_apply(&mut self, gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value, common_settings: IntegrationCommon) -> Result<(), serde_json::Error> {
         self.gcx_option = Some(Arc::downgrade(&gcx));
         self.cfg = serde_json::from_value(value.clone())?;
-        self.common = serde_json::from_value(value.clone())?;
+        self.common = common_settings;
         self.config_path = config_path;
         _session_apply_settings(gcx.clone(), self.config_path.clone(), self.cfg.clone()).await;  // possibly saves coroutine in session
         Ok(())

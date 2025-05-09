@@ -11,6 +11,8 @@ use tokio::io::AsyncWriteExt;
 use crate::custom_error::YamlError;
 use crate::global_context::GlobalContext;
 use crate::files_correction::any_glob_matches_path;
+
+use super::integr_abstract::{IntegrationAvailable, IntegrationCommon, IntegrationConfirmation};
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
@@ -35,17 +37,15 @@ pub struct IntegrationResult {
     pub error_log: Vec<YamlError>,
 }
 
-fn get_array_of_str_or_empty(val: &serde_json::Value, path: &str) -> Vec<String> {
+fn get_array_of_str(val: &serde_json::Value, path: &str) -> Option<Vec<String>> {
     val.pointer(path)
         .and_then(|val| {
-            val.as_array().map(|array| {
-                array
-                    .iter()
-                    .filter_map(|v| v.as_str().map(ToString::to_string))
-                    .collect::<Vec<String>>()
+            val.as_array().and_then(|array| {
+                array.iter()
+                    .map(|v| v.as_str().map(ToString::to_string))
+                    .collect::<Option<Vec<String>>>()
             })
         })
-        .unwrap_or_default()
 }
 
 fn parse_and_validate_yaml(path: &str, content: &String) -> Result<serde_json::Value, YamlError> {
@@ -260,42 +260,25 @@ pub fn read_integrations_d(
         }
     }
 
-    // 5. Fill on_your_laptop/when_isolated in each record
+    // 5. Fill integration common settings
     for rec in &mut result {
-        if !rec.integr_config_exists {
-            continue;
-        }
-        if let Some(available) = rec.config_unparsed.get("available").and_then(|v| v.as_object()) {
-            rec.on_your_laptop = available.get("on_your_laptop").and_then(|v| v.as_bool()).unwrap_or(false);
-            rec.when_isolated = available.get("when_isolated").and_then(|v| v.as_bool()).unwrap_or(false);
-        } else {
-            // let short_pp = if rec.project_path.is_empty() { format!("global") } else { crate::nicer_logs::last_n_chars(&rec.project_path, 15) };
-            // tracing::info!("{} no 'available' mapping in `{}` will default to true", short_pp, rec.integr_name);
-            rec.on_your_laptop = true;
-            rec.when_isolated = true;
-        }
-    }
+        let schema = match crate::integrations::integration_from_name(rec.integr_name.as_str()) {
+            Ok(i) => {
+                serde_json::to_value(
+                    serde_yaml::from_str::<serde_yaml::Value>(i.integr_schema()).expect("schema is invalid")
+                ).expect("schema is invalid")
+            }
+            Err(err) => {
+                tracing::warn!("failed to retrieve schema from {}: {err}", rec.integr_name);
+                continue;
+            }
+        };
 
-    // 6. Fill confirmation in each record
-    for rec in &mut result {
-        if let Some(confirmation) = rec.config_unparsed.get("confirmation") {
-            rec.ask_user = get_array_of_str_or_empty(&confirmation, "/ask_user");
-            rec.deny = get_array_of_str_or_empty(&confirmation, "/deny");
-        } else {
-            let schema = match crate::integrations::integration_from_name(rec.integr_name.as_str()) {
-                Ok(i) => {
-                    serde_json::to_value(
-                        serde_yaml::from_str::<serde_yaml::Value>(i.integr_schema()).expect("schema is invalid")
-                    ).expect("schema is invalid")
-                }
-                Err(err) => {
-                    tracing::warn!("failed to retrieve schema from {}: {err}", rec.integr_name);
-                    continue;
-                }
-            };
-            rec.ask_user = get_array_of_str_or_empty(&schema, "/confirmation/ask_user_default");
-            rec.deny = get_array_of_str_or_empty(&schema, "/confirmation/deny_default");
-        }
+        let integr_common = load_integration_common(&rec.config_unparsed, &schema);
+        rec.on_your_laptop = integr_common.available.on_your_laptop;
+        rec.when_isolated = integr_common.available.when_isolated;
+        rec.deny = integr_common.confirmation.deny;
+        rec.allow = integr_common.confirmation.allow;
     }
 
     result
@@ -436,6 +419,28 @@ pub fn split_path_into_project_and_integration(cfg_path: &PathBuf) -> Result<(St
     }
 }
 
+fn load_integration_common(config: &serde_json::Value, schema: &serde_json::Value) -> IntegrationCommon {
+    let available: IntegrationAvailable = config.get("available")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .unwrap_or_default();
+
+    let deny = get_array_of_str(config, "/confirmation/deny")
+        .or_else(|| get_array_of_str(schema, "/confirmation/deny"))
+        .unwrap_or_default();
+
+    let allow = get_array_of_str(config, "/confirmation/allow")
+        .or_else(|| get_array_of_str(schema, "/confirmation/allow"))
+        .unwrap_or_default();
+
+    IntegrationCommon {
+        available,
+        confirmation: IntegrationConfirmation {
+            deny,
+            allow,
+        }
+    }
+}
+
 pub async fn integrations_all(
     gcx: Arc<ARwLock<GlobalContext>>,
     include_non_existent_records: bool,
@@ -483,11 +488,9 @@ pub async fn integration_config_get(
     };
 
     let mut integration_box = crate::integrations::integration_from_name(integr_name.as_str())?;
-    result.integr_schema = {
-        let y: serde_yaml::Value = serde_yaml::from_str(integration_box.integr_schema()).unwrap();
-        let j = serde_json::to_value(y).unwrap();
-        j
-    };
+    result.integr_schema = serde_json::to_value(
+        serde_yaml::from_str::<serde_yaml::Value>(integration_box.integr_schema()).unwrap()
+    ).unwrap();
 
     if exists {
         match fs::read_to_string(&sanitized_path) {
@@ -495,7 +498,8 @@ pub async fn integration_config_get(
                 match serde_yaml::from_str::<serde_yaml::Value>(&content) {
                     Ok(y) => {
                         let j = serde_json::to_value(y).unwrap();
-                        match integration_box.integr_settings_apply(gcx.clone(), better_integr_config_path.clone(), &j).await {
+                        let common_settings = load_integration_common(&j, &result.integr_schema);
+                        match integration_box.integr_settings_apply(gcx.clone(), better_integr_config_path.clone(), &j, common_settings).await {
                             Ok(_) => {}
                             Err(err) => {
                                 result.error_log.push(YamlError {
@@ -543,7 +547,11 @@ pub async fn integration_config_save(
     let mut integration_box = crate::integrations::integration_from_name(integr_name.as_str())
         .map_err(|e| format!("Failed to load integrations: {}", e))?;
 
-    integration_box.integr_settings_apply(gcx.clone(), integr_config_path.clone(), integr_values).await
+    let schema = serde_json::to_value(
+        serde_yaml::from_str::<serde_yaml::Value>(integration_box.integr_schema()).unwrap()
+    ).unwrap();
+    let common_settings = load_integration_common(integr_values, &schema);
+    integration_box.integr_settings_apply(gcx.clone(), integr_config_path.clone(), integr_values, common_settings).await
         .map_err(|e| format!("validation error at {}:{}: {}", integr_config_path, e.line(), e))?;
 
     let mut sanitized_json: serde_json::Value = integration_box.integr_settings_as_json();
@@ -587,11 +595,9 @@ mod tests {
         let integrations = crate::integrations::integrations_list(true);
         for name in integrations {
             let integration_box = crate::integrations::integration_from_name(name).unwrap();
-            let schema_json = {
-                let y: serde_yaml::Value = serde_yaml::from_str(integration_box.integr_schema()).unwrap();
-                let j = serde_json::to_value(y).unwrap();
-                j
-            };
+            let schema_json = serde_json::to_value(
+                serde_yaml::from_str::<serde_yaml::Value>(integration_box.integr_schema()).unwrap()
+            ).unwrap();
             let schema_yaml: serde_yaml::Value = serde_json::from_value(schema_json.clone()).unwrap();
             let compare_me1 = serde_yaml::to_string(&schema_yaml).unwrap();
             eprintln!("schema_json {:?}", schema_json);

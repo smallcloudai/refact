@@ -44,9 +44,9 @@ impl IntegrationTrait for ToolShell {
         SHELL_INTEGRATION_SCHEMA
     }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value, common_settings: IntegrationCommon) -> Result<(), serde_json::Error> {
         self.cfg = serde_json::from_value(value.clone())?;
-        self.common = serde_json::from_value(value.clone())?;
+        self.common = common_settings;
         self.config_path = config_path;
         Ok(())
     }

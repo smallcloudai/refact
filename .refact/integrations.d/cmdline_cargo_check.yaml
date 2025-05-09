@@ -18,5 +18,5 @@ available:
   on_your_laptop: true
   when_isolated: true
 confirmation:
-  ask_user: []
+  allow: ["*"]
   deny: []

@@ -3,5 +3,5 @@ available:
   on_your_laptop: true
   when_isolated: true
 confirmation:
-  ask_user: ["*"]
   deny: ["sudo*"]
+  allow: []

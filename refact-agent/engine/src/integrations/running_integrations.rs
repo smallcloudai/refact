@@ -5,7 +5,7 @@ use tokio::sync::RwLock as ARwLock;
 use crate::custom_error::YamlError;
 use crate::tools::tools_description::Tool;
 use crate::global_context::GlobalContext;
-use crate::integrations::integr_abstract::IntegrationTrait;
+use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
 
 
 pub async fn load_integration_tools(
@@ -71,7 +71,7 @@ pub async fn load_integrations(
                 continue;
             }
         };
-        let should_be_fine = integr.integr_settings_apply(gcx.clone(), rec.integr_config_path.clone(), &rec.config_unparsed).await;
+        let should_be_fine = integr.integr_settings_apply(gcx.clone(), rec.integr_config_path.clone(), &rec.config_unparsed, IntegrationCommon::from(&rec)).await;
         if let Err(err) = should_be_fine {
             let error_line = err.line();
             error_log.push(YamlError {

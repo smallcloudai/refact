@@ -38,12 +38,12 @@ pub struct ToolPostgres {
 impl IntegrationTrait for ToolPostgres {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
-    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value) -> Result<(), serde_json::Error> {
-      self.settings_postgres = serde_json::from_value(value.clone())?;
-      self.common = serde_json::from_value(value.clone())?;
-      self.config_path = config_path;
-      Ok(())
-  }
+    async fn integr_settings_apply(&mut self, _gcx: Arc<ARwLock<GlobalContext>>, config_path: String, value: &serde_json::Value, common_settings: IntegrationCommon) -> Result<(), serde_json::Error> {
+        self.settings_postgres = serde_json::from_value(value.clone())?;
+        self.common = common_settings;
+        self.config_path = config_path;
+        Ok(())
+    }
 
     fn integr_settings_as_json(&self) -> Value {
         serde_json::to_value(&self.settings_postgres).unwrap()
