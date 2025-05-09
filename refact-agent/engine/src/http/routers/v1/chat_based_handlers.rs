@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 use axum::http::{Response, StatusCode};
@@ -85,15 +84,12 @@ pub async fn handle_v1_trajectory_save(
     })?;
     let trajectory = compress_trajectory(gcx.clone(), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-    let project_name = crate::files_correction::get_active_project_path(gcx.clone())
-        .await
-        .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
-        .unwrap_or("unknown".to_string());
-    crate::vecdb::vdb_highlev::memories_add(
+    crate::memories::memories_add(
         gcx.clone(),
-        &project_name,
         "trajectory",
         &trajectory.as_str(),
+        None,
+        None,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;

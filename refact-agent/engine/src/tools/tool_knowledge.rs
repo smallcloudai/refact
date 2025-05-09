@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet};
-use std::ffi::OsStr;
 use serde_json::Value;
 use tracing::info;
 use tokio::sync::Mutex as AMutex;
@@ -9,7 +8,7 @@ use async_trait::async_trait;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::vecdb::vdb_highlev::memories_search;
+use crate::memories::memories_search;
 
 
 pub struct ToolGetKnowledge;
@@ -39,11 +38,7 @@ impl Tool for ToolGetKnowledge {
         };
 
         let mem_top_n = 5;
-        let project_name = crate::files_correction::get_active_project_path(gcx.clone())
-            .await
-            .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
-            .unwrap_or("unknown".to_string());
-        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &project_name, &search_key, mem_top_n).await?;
+        let memories: crate::memories::MemoSearchResult = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
         
         let mut seen_memids = HashSet::new();
         let unique_memories: Vec<_> = memories.results.into_iter()

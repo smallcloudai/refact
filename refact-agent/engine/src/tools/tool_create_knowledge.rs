@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::Value;
@@ -32,15 +31,12 @@ impl Tool for ToolCreateKnowledge {
             Some(v) => return Err(format!("argument `knowledge_entry` is not a string: {:?}", v)),
             None => return Err("argument `knowledge_entry` is missing".to_string())
         };
-        let project_name = crate::files_correction::get_active_project_path(gcx.clone())
-            .await
-            .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
-            .unwrap_or("unknown".to_string());
-        crate::vecdb::vdb_highlev::memories_add(
+        crate::memories::memories_add(
             gcx.clone(),
-            &project_name,
-            "memory",
+            "knowledge-entry",
             &knowledge_entry,
+            None,
+            None,
         ).await.map_err(|e| format!("Failed to store knowledge: {e}"))?;
 
         let mut results = vec![];

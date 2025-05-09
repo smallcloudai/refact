@@ -62,7 +62,7 @@ mod integrations;
 mod privacy;
 mod git;
 mod agentic;
-
+mod memories;
 
 #[tokio::main]
 async fn main() {
@@ -169,7 +169,7 @@ async fn main() {
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
-    let mut background_tasks = start_background_tasks(gcx.clone()).await;
+    let mut background_tasks = start_background_tasks(gcx.clone(), &config_dir).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;

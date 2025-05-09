@@ -1,13 +1,12 @@
 use std::sync::Arc;
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ContextEnum, ContextFile};
-use crate::vecdb::vdb_highlev::memories_search;
+use crate::memories::memories_search;
 
 /// @knowledge-load command - loads knowledge entries by search key or memory ID
 pub struct AtLoadKnowledge {
@@ -38,19 +37,14 @@ impl AtCommand for AtLoadKnowledge {
             return Err("Usage: @knowledge-load <search_key>".to_string());
         }
 
-        let gcx = ccx.lock().await.global_context.clone();
         let search_key = args[0].text.clone();
-        let project_name = crate::files_correction::get_active_project_path(gcx.clone())
-            .await
-            .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
-            .unwrap_or("unknown".to_string());
         let gcx = {
             let ccx_locked = ccx.lock().await;
             ccx_locked.global_context.clone()
         };
 
         let mem_top_n = 5;
-        let memories = memories_search(gcx.clone(), &project_name, &search_key, mem_top_n).await?;
+        let memories = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
         let mut seen_memids = HashSet::new();
         let unique_memories: Vec<_> = memories.results.into_iter()
             .filter(|m| seen_memids.insert(m.iknow_id.clone()))

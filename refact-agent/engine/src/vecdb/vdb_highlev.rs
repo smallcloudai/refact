@@ -4,13 +4,12 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 use tokio::task::JoinHandle;
 use async_trait::async_trait;
 use tracing::{error, info};
-use serde_json;
 
 use crate::background_tasks::BackgroundTasksHolder;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
-use crate::vecdb::vdb_structs::{MemoRecord, MemoSearchResult, SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
+use crate::vecdb::vdb_structs::{SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_files, FileVectorizerService};
 
 
@@ -167,83 +166,6 @@ impl VecDb {
     }
 }
 
-pub async fn memories_add(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    project_name: &str,
-    m_type: &str,
-    m_memory: &str,
-) -> Result<(), String> {
-    let client = reqwest::Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
-    let body = serde_json::json!({
-        "project_name": project_name,
-        "knowledge_type": m_type,
-        "knowledge_origin": "client",
-        "knowledge_memory": m_memory
-    });
-    let response = client.post("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?workspace_id=1")
-        .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await;
-    match response {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                info!("Successfully added memory to remote server");
-                Ok(())
-            } else {
-                let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-                Err(format!("Failed to add memory: HTTP status {}, error: {}", status, error_text))
-            }
-        },
-        Err(e) => Err(format!("Failed to send memory add request: {}", e))
-    }
-}
-
-
-pub async fn memories_search(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    project_name: &str,
-    query: &String,
-    top_n: usize,
-) -> Result<MemoSearchResult, String> {
-    let client = reqwest::Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
-    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id=1&limit={}", top_n);
-    
-    let body = serde_json::json!({
-        "project_name": project_name,
-        "q": query
-    });
-    let response = client.post(&url)
-        .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await;
-    
-    match response {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                let response_body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
-                let results: Vec<MemoRecord> = serde_json::from_str(&response_body)
-                    .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-                Ok(MemoSearchResult {
-                    query_text: query.clone(),
-                    project_name: project_name.to_string(),
-                    results,
-                })
-            } else {
-                let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-                Err(format!("Failed to search memories: HTTP status {}, error: {}", status, error_text))
-            }
-        },
-        Err(e) => Err(format!("Failed to send memory search request: {}", e))
-    }
-}
 
 pub async fn get_status(vec_db: Arc<AMutex<Option<VecDb>>>) -> Result<Option<VecDbStatus>, String> {
     let vectorizer_service = {

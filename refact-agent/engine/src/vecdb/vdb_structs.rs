@@ -75,20 +75,3 @@ pub struct SearchResult {
     pub query_text: String,
     pub results: Vec<VecdbRecord>,
 }
-
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct MemoRecord {
-    pub iknow_id: i64,
-    pub iknow_type: String,
-    pub iknow_origin: String,
-    pub iknow_memory: String,
-    pub iknow_times_used: i64,
-    pub iknow_mstat_relevant: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MemoSearchResult {
-    pub query_text: String,
-    pub project_name: String,
-    pub results: Vec<MemoRecord>,
-}
