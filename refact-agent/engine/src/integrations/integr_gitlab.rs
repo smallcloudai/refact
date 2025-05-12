@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 use crate::integrations::process_io_utils::AnsiStrippable;
 
@@ -68,6 +68,11 @@ impl Tool for ToolGitlab {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "gitlab".to_string(),
+            display_name: "GitLab".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Access to glab command line command, to fetch issues, review PRs.".to_string(),
