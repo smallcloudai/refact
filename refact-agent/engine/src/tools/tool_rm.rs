@@ -168,7 +168,13 @@ impl Tool for ToolRm {
         let mut file_content = String::new();
         let is_dir = true_path.is_dir();
         if !is_dir {
-            file_content = get_file_text_from_memory_or_disk(gcx.clone(), &true_path).await?;
+            file_content = match get_file_text_from_memory_or_disk(gcx.clone(), &true_path).await {
+                Ok(content) => content,
+                Err(e) => {
+                    tracing::warn!("Failed to get file content: {}", e);
+                    String::new()
+                },
+            };
         }
         let mut messages: Vec<ContextEnum> = Vec::new();
         let corrections = path_str != corrected_path;
