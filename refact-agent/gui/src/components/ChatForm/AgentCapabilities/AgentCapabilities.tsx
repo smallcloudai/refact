@@ -14,20 +14,26 @@ import {
   AgentRollbackSwitch,
   ApplyPatchSwitch,
   FollowUpsSwitch,
+  TitleGenerationSwitch,
 } from "../ChatControls";
 import { useAppSelector } from "../../../hooks";
 import {
   selectAreFollowUpsEnabled,
   selectAutomaticPatch,
   selectCheckpointsEnabled,
+  selectIsTitleGenerationEnabled,
 } from "../../../features/Chat";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { ToolGroups } from "./ToolGroups";
 
 export const AgentCapabilities = () => {
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
   const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+  const isTitleGenerationEnabled = useAppSelector(
+    selectIsTitleGenerationEnabled,
+  );
+
   const agenticFeatures = useMemo(() => {
     return [
       {
@@ -45,8 +51,27 @@ export const AgentCapabilities = () => {
         enabled: areFollowUpsEnabled,
         switcher: <FollowUpsSwitch />,
       },
+      {
+        name: "Chat Titles",
+        enabled: isTitleGenerationEnabled,
+        switcher: <TitleGenerationSwitch />,
+      },
     ];
-  }, [isPatchAutomatic, isAgentRollbackEnabled, areFollowUpsEnabled]);
+  }, [
+    isPatchAutomatic,
+    isAgentRollbackEnabled,
+    areFollowUpsEnabled,
+    isTitleGenerationEnabled,
+  ]);
+
+  const enabledAgenticFeatures = useMemo(
+    () =>
+      agenticFeatures
+        .filter((feature) => feature.enabled)
+        .map((feature) => feature.name)
+        .join(", ") || "None",
+    [agenticFeatures],
+  );
 
   return (
     <Flex mb="2" gap="2" align="center">
@@ -59,7 +84,7 @@ export const AgentCapabilities = () => {
         <Popover.Content side="top" alignOffset={-10} sideOffset={20}>
           <Flex gap="2" direction="column">
             {agenticFeatures.map((feature) => {
-              return feature.switcher;
+              return <Fragment key={feature.name}>{feature.switcher}</Fragment>;
             })}
             <Separator size="4" mt="2" mb="1" />
             <ToolGroups />
@@ -68,13 +93,7 @@ export const AgentCapabilities = () => {
       </Popover.Root>
       <Text size="2">
         Enabled Features:
-        <Text color="gray">
-          {" "}
-          {agenticFeatures
-            .filter((feature) => feature.enabled)
-            .map((feature) => feature.name)
-            .join(", ") || "None"}
-        </Text>
+        <Text color="gray"> {enabledAgenticFeatures}</Text>
       </Text>
       <HoverCard.Root>
         <HoverCard.Trigger>

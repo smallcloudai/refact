@@ -120,6 +120,9 @@ export const setPreventSend = createAction<PayloadWithId>(
 export const setAreFollowUpsEnabled = createAction<boolean>(
   "chat/setAreFollowUpsEnabled",
 );
+export const setIsTitleGenerationEnabled = createAction<boolean>(
+  "chat/setIsTitleGenerationEnabled",
+);
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
