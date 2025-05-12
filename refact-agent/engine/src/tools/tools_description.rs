@@ -64,6 +64,19 @@ pub struct ToolDesc {
     pub source: ToolSource,
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+pub struct ToolConfig {
+    pub enabled: bool,
+}
+
+impl Default for ToolConfig {
+    fn default() -> Self {
+        ToolConfig {
+            enabled: true,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ToolParam {
     #[serde(deserialize_with = "validate_snake_case")]
@@ -140,6 +153,32 @@ pub trait Tool: Send + Sync {
 
     fn has_config_path(&self) -> Option<String> {
         return None;
+    }
+
+    fn config(&self) -> Result<ToolConfig, String> {
+        let tool_desc = self.tool_description();
+
+        let tool_name = tool_desc.name;
+        let config_path = tool_desc.source.config_path;
+
+        // Read the config file as yaml, and get field tools.tool_name
+        let config = std::fs::read_to_string(config_path)
+            .map_err(|e| format!("Error reading config file: {}", e))?;
+
+        let config: serde_yaml::Value = serde_yaml::from_str(&config)
+            .map_err(|e| format!("Error parsing config file: {}", e))?;
+
+        let config = config.get("tools")
+            .and_then(|tools| tools.get(&tool_name));
+
+        match config {
+            None => Ok(ToolConfig::default()),
+            Some(config) => {
+                let config: ToolConfig = serde_yaml::from_value(config.clone())
+                    .unwrap_or_default();
+                Ok(config)
+            }
+        }
     }
 
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
