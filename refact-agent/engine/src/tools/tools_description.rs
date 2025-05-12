@@ -25,10 +25,11 @@ pub struct MatchConfirmDeny {
     pub rule: String,
 }
 
+#[derive(Clone, Copy, Serialize, Debug)]
 pub enum ToolGroupCategory {
     Builtin,
     Integration,
-    MCP,
+    // MCP,
 }
 
 pub struct ToolGroup {
