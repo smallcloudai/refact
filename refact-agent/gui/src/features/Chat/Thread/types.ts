@@ -51,6 +51,7 @@ export type Chat = {
   tool_use: ToolUse;
   send_immediately: boolean;
   follow_ups_enabled?: boolean;
+  title_generation_enabled?: boolean;
 };
 
 export type PayloadWithId = { id: string };
