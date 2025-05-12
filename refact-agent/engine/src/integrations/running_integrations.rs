@@ -3,31 +3,8 @@ use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::custom_error::YamlError;
-use crate::tools::tools_description::Tool;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationTrait;
-
-
-pub async fn load_integration_tools(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    allow_experimental: bool,
-) -> IndexMap<String, Box<dyn Tool + Send>> {
-    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental, &["**/*".to_string()]).await;
-    let mut tools = IndexMap::new();
-    for (name, integr) in integraions_map {
-        for tool in integr.integr_tools(&name).await {
-            let mut tool_name = tool.tool_description().name;
-            if tool_name.is_empty() {
-                tool_name = name.clone();
-            }
-            if tools.contains_key(&tool_name) {
-                tracing::warn!("tool with name '{}' already exists, overwriting previous definition", tool_name);
-            }
-            tools.insert(tool_name, tool);
-        }
-    }
-    tools
-}
 
 /// Loads and set up integrations from config files.
 ///
