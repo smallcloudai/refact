@@ -20,7 +20,7 @@ use crate::files_correction::preprocess_path_for_normalization;
 use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
-use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
@@ -120,6 +120,11 @@ impl Tool for ToolShell {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "shell".to_string(),
+            display_name: "Shell".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
