@@ -13,6 +13,7 @@ use std::borrow::Cow;
 #[cfg(not(target_os = "windows"))]
 use shell_escape::escape;
 
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::integrations::process_io_utils::execute_command;
@@ -182,12 +183,12 @@ pub fn create_command_from_string(
 
     if command_workdir.is_empty() {
         if let Some(first_project_dir) = project_dirs.first() {
-            cmd.current_dir(first_project_dir);
+            cmd.current_dir_simplified(first_project_dir);
         } else {
             tracing::warn!("no working directory, using whatever directory this binary is run :/");
         }
     } else {
-        cmd.current_dir(command_workdir);
+        cmd.current_dir_simplified(command_workdir);
     }
 
     for (key, value) in env_variables {

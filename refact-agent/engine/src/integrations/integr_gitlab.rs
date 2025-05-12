@@ -7,6 +7,7 @@ use tokio::process::Command;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
@@ -82,7 +83,7 @@ impl Tool for ToolGitlab {
         }
         let output = Command::new(&glab_binary_path)
             .args(&command_args)
-            .current_dir(canonical_path(project_dir))
+            .current_dir_simplified(&canonical_path(project_dir))
             .env("GITLAB_TOKEN", &self.settings_gitlab.glab_token)
             .stdin(std::process::Stdio::null())
             .output()
