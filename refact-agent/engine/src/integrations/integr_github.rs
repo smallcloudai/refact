@@ -12,7 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use serde_json::Value;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
@@ -27,8 +27,7 @@ pub struct SettingsGitHub {
 #[derive(Default)]
 pub struct ToolGithub {
     pub common: IntegrationCommon,
-    pub settings_github: SettingsGitHub,
-    pub config_path: String,
+    pub settings_github: SettingsGitHub, pub config_path: String,
 }
 
 #[async_trait]
@@ -68,6 +67,11 @@ impl Tool for ToolGithub {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "github".to_string(),
+            display_name: "GitHub CLI".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Access to gh command line command, to fetch issues, review PRs.".to_string(),

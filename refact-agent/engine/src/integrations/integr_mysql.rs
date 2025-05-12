@@ -12,7 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
 
@@ -115,6 +115,11 @@ impl Tool for ToolMysql {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "mysql".to_string(),
+            display_name: "MySQL".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "MySQL integration, can run a single query per call.".to_string(),

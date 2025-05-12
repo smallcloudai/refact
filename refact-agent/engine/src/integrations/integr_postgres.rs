@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -114,6 +114,11 @@ impl Tool for ToolPostgres {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "postgres".to_string(),
+            display_name: "PostgreSQL".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "PostgreSQL integration, can run a single query per call.".to_string(),

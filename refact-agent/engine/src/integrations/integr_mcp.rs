@@ -13,7 +13,7 @@ use mcp_client_rs::client::ClientBuilder;
 
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::sessions::IntegrationSession;
@@ -525,7 +525,12 @@ impl Tool for ToolMCP {
         };
 
         ToolDesc {
-            name: tool_name,
+            name: tool_name.clone(),
+            display_name: tool_name,
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: self.mcp_tool.description.clone(),
