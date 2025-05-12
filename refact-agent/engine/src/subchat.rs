@@ -1,13 +1,12 @@
 use std::sync::Arc;
-use std::collections::HashSet;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::caps::resolve_chat_model;
 use crate::caps::ChatModelRecord;
-use crate::tools::tools_description::tool_description_list_from_yaml;
+use crate::tools::tools_description::ToolDesc;
 use crate::tools::tools_list::get_available_tools;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall, ReasoningEffort};
@@ -269,23 +268,33 @@ pub async fn subchat_single(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
     };
-    let tools_turned_on_by_cmdline = get_available_tools(gcx.clone(), false).await?;
-    let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.keys().cloned().collect();
-    let tools_on_intersection: Vec<String> = if let Some(tools_s) = &tools_subset {
-        let tools_turn_on_set: HashSet<String> = tools_s.iter().cloned().collect();
-        tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect()
-    } else {
-        tools_turned_on_by_cmdline_set.iter().cloned().collect()
-    };
-    let allow_experimental = gcx.read().await.cmdline.experimental;
-    let tools_desclist = tool_description_list_from_yaml(tools_turned_on_by_cmdline, Some(&tools_on_intersection), allow_experimental).await.unwrap_or_else(|e|{
-        error!("Error loading compiled_in_tools: {:?}", e);
-        vec![]
-    });
-    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
+
     info!("tools_subset {:?}", tools_subset);
-    info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
-    info!("tools_on_intersection {:?}", tools_on_intersection);
+
+    let tools_desclist: Vec<ToolDesc> = {
+        let tools_turned_on_by_cmdline = get_available_tools(gcx.clone(), false).await.iter().map(|tool| {
+            tool.tool_description()
+        }).collect::<Vec<_>>();
+
+        info!("tools_turned_on_by_cmdline {:?}", tools_turned_on_by_cmdline.iter().map(|tool| {
+            &tool.name
+        }).collect::<Vec<_>>());
+
+        match tools_subset {
+            Some(tools_subset) => {
+                tools_turned_on_by_cmdline.into_iter().filter(|tool| {
+                    tools_subset.contains(&tool.name)
+                }).collect()
+            }
+            None => tools_turned_on_by_cmdline,
+        }
+    };
+
+    info!("tools_on_intersection {:?}", tools_desclist.iter().map(|tool| {
+        &tool.name
+    }).collect::<Vec<_>>());
+
+    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
 
     let max_new_tokens = max_new_tokens.unwrap_or(MAX_NEW_TOKENS);
     let (mut chat_post, spad, model_rec) = create_chat_post_and_scratchpad(

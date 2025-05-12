@@ -137,7 +137,7 @@ async fn get_integration_tools(
     tool_groups
 }
 
-pub async fn get_available_tools(
+pub async fn get_available_tool_groups(
     gcx: Arc<ARwLock<GlobalContext>>,
     _supports_clicks: bool,  // XXX
 ) -> Vec<ToolGroup> {
@@ -147,4 +147,11 @@ pub async fn get_available_tools(
     );
 
     tools_all
+}
+
+pub async fn get_available_tools(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    _supports_clicks: bool,  // XXX
+) -> Vec<Box<dyn Tool + Send>> {
+    get_available_tool_groups(gcx, _supports_clicks).await.into_iter().flat_map(|g| g.tools).collect()
 }
