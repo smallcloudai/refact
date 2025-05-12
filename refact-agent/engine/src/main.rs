@@ -77,6 +77,12 @@ mod trajectories;
 async fn main() {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+
+        // Disabling owner validation in Git can theoretically allow code execution, but libgit2 doesn't run
+        // executables, so the original risk doesn't apply. Repos in locations like CARGO_HOME would otherwise
+        // be blocked, plus several more common cases in Windows. IDEs like VSCode and JetBrains already
+        // prompt for trust when adding folders, so we disable the check.
+        let _ = git2::opts::set_verify_owner_validation(false);
     }
 
     let cpu_num = std::thread::available_parallelism().unwrap().get();
