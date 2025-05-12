@@ -417,7 +417,7 @@ export const useIntegrations = ({
           ? !isEqual(currentIntegrationValues.env, MCPEnvironmentVariables)
           : false;
 
-        const headersChanged = isDictionary(currentIntegrationValues.env)
+        const headersChanged = isDictionary(currentIntegrationValues.headers)
           ? !isEqual(currentIntegrationValues.headers, headers)
           : false;
 
