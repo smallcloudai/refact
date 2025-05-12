@@ -10,6 +10,7 @@ use tokio::process::Command;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::files_correction::get_active_project_path;
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::execute_command;
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
@@ -189,9 +190,9 @@ pub async fn execute_shell_command(
     let mut cmd = Command::new(shell);
 
     if let Some(workdir) = workdir_maybe {
-        cmd.current_dir(workdir);
+        cmd.current_dir_simplified(workdir);
     } else if let Some(project_path) = get_active_project_path(gcx.clone()).await {
-        cmd.current_dir(project_path);
+        cmd.current_dir_simplified(&project_path);
     } else {
         tracing::warn!("no working directory, using whatever directory this binary is run :/");
     }
@@ -201,7 +202,7 @@ pub async fn execute_shell_command(
     }
 
     cmd.arg(shell_arg).arg(command);
-    
+
     tracing::info!("SHELL: running command directory {:?}\n{:?}", workdir_maybe, command);
     let t0 = tokio::time::Instant::now();
     let output = execute_command(cmd, timeout, command).await?;

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use std::path::{PathBuf, Component, Path};
 use serde::Deserialize;
+use tokio::process::Command;
 use tokio::sync::RwLock as ARwLock;
 use tracing::info;
 
@@ -470,6 +471,18 @@ pub fn serialize_path<S: serde::Serializer>(path: &PathBuf, serializer: S) -> Re
 
 pub fn deserialize_path<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<PathBuf, D::Error> {
     Ok(PathBuf::from(String::deserialize(deserializer)?))
+}
+
+pub trait CommandSimplifiedDirExt {
+    /// Set current directory, in non-Windows as-is, in Windows try to remove UNC prefix if possible,
+    /// since tokio::process::Command::current_dir doesn't like it
+    fn current_dir_simplified<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self;
+}
+
+impl CommandSimplifiedDirExt for Command {
+    fn current_dir_simplified<P: AsRef<Path>>(&mut self, dir: P) -> &mut Self {
+        self.current_dir(dunce::simplified(dir.as_ref()))
+    }
 }
 
 #[cfg(test)]
