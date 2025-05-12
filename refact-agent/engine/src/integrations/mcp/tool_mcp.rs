@@ -11,7 +11,7 @@ use tokio::time::Duration;
 use crate::caps::resolve_chat_model;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::scratchpads::multimodality::MultimodalElement;
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation};
 use super::session_mcp::{add_log_entry, mcp_session_wait_startup};
@@ -232,7 +232,12 @@ impl Tool for ToolMCP {
         };
 
         ToolDesc {
-            name: self.tool_name(),
+            name: tool_name.clone(),
+            display_name: self.mcp_tool.name,
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: self.mcp_tool.description.to_owned().unwrap_or_default().to_string(),
