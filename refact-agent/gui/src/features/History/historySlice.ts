@@ -208,6 +208,8 @@ startHistoryListening({
   actionCreator: doneStreaming,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
+    const isTitleGenerationEnabled = state.chat.title_generation_enabled;
+
     const thread =
       action.payload.id in state.chat.cache
         ? state.chat.cache[action.payload.id]
@@ -225,7 +227,7 @@ startHistoryListening({
       const firstUserMessage = thread.messages.find(isUserMessage);
       if (firstUserMessage) {
         // Checking if chat title is already generated, if not - generating it
-        if (!isTitleGenerated) {
+        if (!isTitleGenerated && isTitleGenerationEnabled) {
           listenerApi
             .dispatch(
               chatGenerateTitleThunk({
