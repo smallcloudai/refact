@@ -1,13 +1,13 @@
 import { toolsApi } from "../services/refact/tools";
 import { useHasCaps } from "./useHasCaps";
 
-export const useGetToolsQuery = () => {
+export const useGetToolGroupsQuery = () => {
   const hasCaps = useHasCaps();
-  return toolsApi.useGetToolsQuery(undefined, { skip: !hasCaps });
+  return toolsApi.useGetToolGroupsQuery(undefined, { skip: !hasCaps });
 };
 
 export const useGetToolsLazyQuery = () => {
-  return toolsApi.useLazyGetToolsQuery();
+  return toolsApi.useLazyGetToolGroupsQuery();
 };
 
 export const useCheckForConfirmationMutation = () => {

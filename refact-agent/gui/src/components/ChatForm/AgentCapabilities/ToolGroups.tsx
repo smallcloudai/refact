@@ -3,23 +3,29 @@ import {
   Flex,
   Heading,
   HoverCard,
+  Skeleton,
   Switch,
   Text,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "framer-motion";
 import React, { useState } from "react";
-import { STUB_TOOL_RESPONSE } from "../../../__fixtures__/tools_response";
 import {
   ChevronLeftIcon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
+
+import { useGetToolGroupsQuery } from "../../../hooks";
 import { ToolGroup as ToolGroupType } from "../../../services/refact";
-import { ToolGroup } from "./ToolGroup";
+
 import { ScrollArea } from "../../ScrollArea";
+import { ToolGroup } from "./ToolGroup";
 
 export const ToolGroups: React.FC = () => {
+  const { data: toolsGroups, isLoading, isSuccess } = useGetToolGroupsQuery();
   const [selectedToolGroup, setSelectedToolGroup] =
     useState<ToolGroupType | null>(null);
+
+  if (isLoading || !isSuccess) return <ToolGroupsSkeleton />;
 
   return (
     <Flex direction="column" gap="3" style={{ overflow: "hidden" }}>
@@ -42,8 +48,12 @@ export const ToolGroups: React.FC = () => {
                 maxHeight: "125px",
               }}
             >
-              <Flex direction="column" gap="1" pr="3">
-                {STUB_TOOL_RESPONSE.map((toolGroup) => (
+              <Flex
+                direction="column"
+                gap="1"
+                pr={toolsGroups.length < 4 ? "0" : "3"}
+              >
+                {toolsGroups.map((toolGroup) => (
                   <ToolGroup
                     key={toolGroup.name}
                     group={toolGroup}
@@ -86,7 +96,12 @@ export const ToolGroups: React.FC = () => {
               >
                 <Flex direction="column" gap="3" pr="4">
                   {selectedToolGroup.tools.map((tool) => (
-                    <Flex key={tool.spec.name} align="center" justify="between">
+                    <Flex
+                      key={tool.spec.name}
+                      align="center"
+                      gap="4"
+                      justify="between"
+                    >
                       <Flex align="center" gap="2">
                         <Text as="p" size="2">
                           🔨 {tool.spec.display_name}
@@ -104,7 +119,7 @@ export const ToolGroups: React.FC = () => {
                           </HoverCard.Content>
                         </HoverCard.Root>
                       </Flex>
-                      <Switch size="1" />
+                      <Switch size="1" defaultChecked={tool.enabled} />
                     </Flex>
                   ))}
                 </Flex>
@@ -113,6 +128,28 @@ export const ToolGroups: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+    </Flex>
+  );
+};
+
+const ToolGroupsSkeleton: React.FC = () => {
+  return (
+    <Flex direction="column" gap="3" style={{ overflow: "hidden" }}>
+      <Skeleton loading={true}>
+        <Heading size="3" as="h3">
+          Manage Tool Groups
+        </Heading>
+      </Skeleton>
+      <Flex direction="column" gap="1">
+        {[1, 2].map((idx) => (
+          <Flex key={idx} align="center" justify="between" gap="1">
+            <Skeleton width="30px" height="25px" />
+            <Skeleton width="100%" height="25px" />
+            <Skeleton width="30px" height="25px" />
+            <Skeleton width="30px" height="25px" />
+          </Flex>
+        ))}
+      </Flex>
     </Flex>
   );
 };
