@@ -41,7 +41,7 @@ async fn parse_args(
                 ));
             };
             let path = if !raw_path.is_absolute() {
-                if let Some(parent) = raw_path.parent() {
+                if let Some(parent) = raw_path.parent().filter(|p| !p.as_os_str().is_empty()) {
                     let parent_str = parent.to_string_lossy().to_string();
                     let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &parent_str, false, 3).await;
                     let candidate_parent_dir = match return_one_candidate_or_a_good_error(gcx.clone(), &parent_str, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
@@ -139,7 +139,7 @@ impl Tool for ToolCreateTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
+
         async fn can_execute_tool_edit(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
             let _ = parse_args(gcx.clone(), args, privacy_settings).await?;
             Ok(())
