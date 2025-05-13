@@ -32,6 +32,10 @@ pub async fn memories_migration(
     gcx: Arc<ARwLock<GlobalContext>>,
     config_dir: PathBuf
 ) {
+    if let None = gcx.read().await.active_workspace_id.clone() {
+        info!("No active workspace, skipping memory migration");
+        return;
+    }
     
     let legacy_db_path = config_dir.join("memories.sqlite");
     if !legacy_db_path.exists() {
