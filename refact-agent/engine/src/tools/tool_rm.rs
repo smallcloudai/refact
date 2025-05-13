@@ -166,6 +166,7 @@ impl Tool for ToolRm {
         }
 
         let mut file_content = String::new();
+        let mut file_size = None;
         let is_dir = true_path.is_dir();
         if !is_dir {
             file_content = match get_file_text_from_memory_or_disk(gcx.clone(), &true_path).await {
@@ -175,6 +176,9 @@ impl Tool for ToolRm {
                     String::new()
                 },
             };
+            if let Ok(meta) = fs::metadata(&true_path).await {
+                file_size = Some(meta.len());
+            }
         }
         let mut messages: Vec<ContextEnum> = Vec::new();
         let corrections = path_str != corrected_path;
@@ -216,24 +220,38 @@ impl Tool for ToolRm {
             fs::remove_file(&true_path).await.map_err(|e| {
                 format!("Failed to remove file '{}': {}", corrected_path, e)
             })?;
-            let diff_chunk = DiffChunk {
-                file_name: corrected_path.clone(),
-                file_action: "remove".to_string(),
-                line1: 1,
-                line2: file_content.lines().count(),
-                lines_remove: file_content.clone(),
-                lines_add: "".to_string(),
-                file_name_rename: None,
-                is_file: true,
-                application_details: format!("File `{}` removed", corrected_path),
-            };
-            messages.push(ContextEnum::ChatMessage(ChatMessage {
-                role: "diff".to_string(),
-                content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
-                tool_calls: None,
-                tool_call_id: tool_call_id.clone(),
-                ..Default::default()
-            }));
+            if !file_content.is_empty() {
+                let diff_chunk = DiffChunk {
+                    file_name: corrected_path.clone(),
+                    file_action: "remove".to_string(),
+                    line1: 1,
+                    line2: file_content.lines().count(),
+                    lines_remove: file_content.clone(),
+                    lines_add: "".to_string(),
+                    file_name_rename: None,
+                    is_file: true,
+                    application_details: format!("File `{}` removed", corrected_path),
+                };
+                messages.push(ContextEnum::ChatMessage(ChatMessage {
+                    role: "diff".to_string(),
+                    content: ChatContent::SimpleText(json!([diff_chunk]).to_string()),
+                    tool_calls: None,
+                    tool_call_id: tool_call_id.clone(),
+                    ..Default::default()
+                }));
+            } else {
+                let mut message = format!("Removed file '{}'", corrected_path);
+                if let Some(file_size) = file_size {
+                    message = format!("{} ({})", message, crate::nicer_logs::human_readable_bytes(file_size));
+                }
+                messages.push(ContextEnum::ChatMessage(ChatMessage {
+                    role: "tool".to_string(),
+                    content: ChatContent::SimpleText(message),
+                    tool_calls: None,
+                    tool_call_id: tool_call_id.clone(),
+                    ..Default::default()
+                }));
+            }
         }
 
         Ok((corrections, messages))
