@@ -23,6 +23,22 @@ fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::Sta
     options
 }
 
+pub fn get_git_remotes(repository_path: &Path) -> Result<Vec<(String, String)>, String> {
+    let repository = Repository::open(repository_path)
+        .map_err(|e| format!("Failed to open repository: {}", e))?;
+    let remotes = repository.remotes()
+        .map_err(|e| format!("Failed to get remotes: {}", e))?;
+    let mut result = Vec::new();
+    for name in remotes.iter().flatten() {
+        if let Ok(remote) = repository.find_remote(name) {
+            if let Some(url) = remote.url() {
+                result.push((name.to_string(), url.to_string()));
+            }
+        }
+    }
+    Ok(result)
+}
+
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {
     let repository = Repository::open(repository_path)
         .map_err(|e| error!("Failed to open repository: {}", e)).ok()?;

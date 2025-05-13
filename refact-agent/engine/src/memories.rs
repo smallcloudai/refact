@@ -130,7 +130,15 @@ pub async fn memories_add(
     let project_name = if m_project.is_some() { m_project.unwrap() } else {
         crate::files_correction::get_active_project_path(gcx.clone())
             .await
-            .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
+            .map(|x| {
+                if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
+                    remotes.first().map(|(_, url)| url.to_string()).unwrap_or_else(|| {
+                        format!("local://{}", x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
+                    })
+                } else {
+                    "unknown".to_string()
+                }
+            })
             .unwrap_or("unknown".to_string())
     };
     let body = serde_json::json!({
@@ -142,7 +150,7 @@ pub async fn memories_add(
     let response = client.post(
         format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?workspace_id={}", active_workspace_id)
     )
-        .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
+        .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
@@ -174,7 +182,15 @@ pub async fn memories_search(
         .ok_or("active_workspace_id must be set")?;
     let project_name = crate::files_correction::get_active_project_path(gcx.clone())
         .await
-        .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
+        .map(|x| {
+            if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
+                remotes.first().map(|(_, url)| url.to_string()).unwrap_or_else(|| {
+                    format!("local://{}", x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
+                })
+            } else {
+                "unknown".to_string()
+            }
+        })
         .unwrap_or("unknown".to_string());
     let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id={}&limit={}", active_workspace_id, top_n);
 
@@ -183,7 +199,7 @@ pub async fn memories_search(
         "q": query
     });
     let response = client.post(&url)
-        .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
+        .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
