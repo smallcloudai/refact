@@ -50,9 +50,6 @@ impl AtCommand for AtLoadKnowledge {
         let unique_memories: Vec<_> = memories.results.into_iter()
             .filter(|m| seen_memids.insert(m.iknow_id.clone()))
             .collect();
-        if unique_memories.is_empty() {
-            return Err(format!("No knowledge entries found for: {}", search_key));
-        }
         let mut results = String::new();
         for memory in unique_memories {
             let mut content = String::new();

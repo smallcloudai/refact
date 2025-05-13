@@ -125,6 +125,8 @@ pub async fn memories_add(
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
+    let active_workspace_id = gcx.read().await.active_workspace_id.clone()
+        .ok_or("active_workspace_id must be set")?;
     let project_name = if m_project.is_some() { m_project.unwrap() } else {
         crate::files_correction::get_active_project_path(gcx.clone())
             .await
@@ -137,7 +139,9 @@ pub async fn memories_add(
         "knowledge_origin": m_origin.unwrap_or_else(|| "user-created".to_string()),
         "knowledge_memory": m_memory
     });
-    let response = client.post("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?workspace_id=1")
+    let response = client.post(
+        format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?workspace_id={}", active_workspace_id)
+    )
         .header("Authorization", format!("Bearer {}", "sk_acme_13579"))
         .header("Content-Type", "application/json")
         .json(&body)
@@ -166,11 +170,13 @@ pub async fn memories_search(
 ) -> Result<MemoSearchResult, String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
+    let active_workspace_id = gcx.read().await.active_workspace_id.clone()
+        .ok_or("active_workspace_id must be set")?;
     let project_name = crate::files_correction::get_active_project_path(gcx.clone())
         .await
         .map(|x| x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
         .unwrap_or("unknown".to_string());
-    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id=1&limit={}", top_n);
+    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id={}&limit={}", active_workspace_id, top_n);
 
     let body = serde_json::json!({
         "project_name": project_name,
