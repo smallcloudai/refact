@@ -1,3 +1,4 @@
+use at_tools::handle_v1_post_tools;
 use axum::Router;
 use axum::routing::{get, post, delete};
 use tower_http::cors::CorsLayer;
@@ -7,7 +8,7 @@ use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, h
 use crate::http::routers::v1::code_lens::handle_v1_code_lens;
 use crate::http::routers::v1::ast::{handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_status};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview, handle_v1_at_command_execute};
-use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
+use crate::http::routers::v1::at_tools::{handle_v1_get_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
@@ -93,7 +94,8 @@ pub fn make_v1_router() -> Router {
 
         .route("/caps", get(handle_v1_caps))
 
-        .route("/tools", get(handle_v1_tools))
+        .route("/tools", get(handle_v1_get_tools))
+        .route("/tools", post(handle_v1_post_tools))
         .route("/tools-check-if-confirmation-needed", post(handle_v1_tools_check_if_confirmation_needed))
         .route("/tools-execute", post(handle_v1_tools_execute)) // because it works remotely
 
