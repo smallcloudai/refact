@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::integrations::sessions::get_session_hashmap_key;
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
-use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
+use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation};
 use super::session_mcp::{add_log_entry, mcp_session_wait_startup};
 
@@ -139,21 +139,10 @@ impl Tool for ToolMCP {
                     }
                 }
 
-                let content = if elements.iter().all(|el| el.m_type == "text") {
-                    ChatContent::SimpleText(
-                        elements.into_iter().map(|el| el.m_content).collect::<Vec<_>>().join("\n\n")
-                    )
-                } else {
-                    ChatContent::Multimodal(elements)
-                };
+                let mut message = ChatMessage::from_multimodal_elements("tool".to_string(), elements);
+                message.tool_call_id = tool_call_id.to_string();
 
-                ContextEnum::ChatMessage(ChatMessage {
-                    role: "tool".to_string(),
-                    content,
-                    tool_calls: None,
-                    tool_call_id: tool_call_id.clone(),
-                    ..Default::default()
-                })
+                ContextEnum::ChatMessage(message)
             }
             Err(e) => {
                 let error_msg = format!("Failed to call tool: {:?}", e);

@@ -282,6 +282,27 @@ impl ChatMessage {
 
         Value::Object(dict)
     }
+
+    pub fn from_multimodal_elements(role: String, content: Vec<MultimodalElement>) -> Self {
+        if content.iter().all(|el| el.m_type == "text") {
+            let combined_text = content.into_iter()
+                .map(|el| el.m_content)
+                .collect::<Vec<_>>()
+                .join("\n\n");
+
+            ChatMessage {
+                role,
+                content: ChatContent::SimpleText(combined_text),
+                ..Default::default()
+            }
+        } else {
+            ChatMessage {
+                role,
+                content: ChatContent::Multimodal(content),
+                ..Default::default()
+            }
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for ChatMessage {
