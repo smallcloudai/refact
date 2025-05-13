@@ -20,7 +20,7 @@ import {
 import {
   useCheckForConfirmationMutation,
   // useGetToolsLazyQuery,
-} from "./useGetToolsQuery";
+} from "./useGetToolGroupsQuery";
 import {
   ChatMessage,
   ChatMessages,
