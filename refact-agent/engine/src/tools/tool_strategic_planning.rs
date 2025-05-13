@@ -42,7 +42,7 @@ Rank the causes from most to least likely, and explain your reasoning.
 Your final goal is to find the root cause of the problem! Take as many time as needed.
 Do not create code, just write text."#;
 
-static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given root cause analysis of the problem, conversation and context files.
+static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given conversation and context files.
 The solution must be robust and complete and adressing all corner cases.
 Also make a couple of alternative ways to solve the problem, if the initial solution doesn't work."#;
 
@@ -240,31 +240,31 @@ impl Tool for ToolStrategicPlanning {
         };
         
         // ZERO ITERATION: Root Cause Analysis
-        tracing::info!("ZERO ITERATION: Root Cause Analysis");
-        let prompt = _make_prompt(
-            ccx.clone(),
-            &subchat_params,
-            &ROOT_CAUSE_ANALYSIS_PROMPT.to_string(),
-            &important_paths,
-            &external_messages
-        ).await?;
-        let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
-        let (_, root_cause_reply) = _execute_subchat_iteration(
-            ccx_subchat.clone(),
-            &subchat_params,
-            history.clone(),
-            subchat_params.subchat_max_new_tokens,
-            &mut usage_collector,
-            tool_call_id,
-            "root-cause-analysis",
-            &log_prefix,
-        ).await?;
+        // tracing::info!("ZERO ITERATION: Root Cause Analysis");
+        // let prompt = _make_prompt(
+        //     ccx.clone(),
+        //     &subchat_params,
+        //     &ROOT_CAUSE_ANALYSIS_PROMPT.to_string(),
+        //     &important_paths,
+        //     &external_messages
+        // ).await?;
+        // let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
+        // let (_, root_cause_reply) = _execute_subchat_iteration(
+        //     ccx_subchat.clone(),
+        //     &subchat_params,
+        //     history.clone(),
+        //     subchat_params.subchat_max_new_tokens,
+        //     &mut usage_collector,
+        //     tool_call_id,
+        //     "root-cause-analysis",
+        //     &log_prefix,
+        // ).await?;
         
         // FIRST ITERATION: Get the initial solution
         let prompt = _make_prompt(
             ccx.clone(),
             &subchat_params,
-            &format!("{SOLVER_PROMPT} # Root cause analysis:\n{}", root_cause_reply.content.content_text_only()),
+            &SOLVER_PROMPT.to_string(),
             &important_paths,
             &external_messages
         ).await?;
@@ -313,8 +313,8 @@ impl Tool for ToolStrategicPlanning {
         // ).await?;
 
         let final_message = format!(
-            "# Root cause analysis:\n\n{}\n\n# Initial Solution\n\n{}",
-            root_cause_reply.content.content_text_only(),
+            "# Solution\n{}",
+            // root_cause_reply.content.content_text_only(),
             initial_solution.content.content_text_only(),
             // critique.content.content_text_only(),
             // improved_solution.content.content_text_only(),
