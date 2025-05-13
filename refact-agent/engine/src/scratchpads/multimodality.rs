@@ -6,6 +6,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall};
 use crate::scratchpads::scratchpad_utils::{calculate_image_tokens_openai, image_reader_from_b64string, parse_image_b64_from_image_url_openai};
 use crate::tokens::count_text_tokens;
 
+pub const MULTIMODALITY_IMAGE_EXTENSIONS: [&'static str; 5] = ["png", "jpeg", "jpg", "gif", "webp"];
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct MultimodalElement {
@@ -221,7 +222,8 @@ pub fn chat_content_raw_from_value(value: Value) -> Result<ChatContentRaw, Strin
                     return Err("Invalid multimodal element: type must be `image_url`".to_string());
                 }
                 if parse_image_b64_from_image_url_openai(&el.image_url.url).is_none() {
-                    return Err("Invalid image URL in MultimodalElementImageOpenAI: must pass regexp `data:image/(png|jpeg|jpg|webp|gif);base64,([A-Za-z0-9+/=]+)`".to_string());
+                    let extensions = MULTIMODALITY_IMAGE_EXTENSIONS.join("|");
+                    return Err(format!("Invalid image URL in MultimodalElementImageOpenAI: must pass regexp `data:image/({extensions});base64,([A-Za-z0-9+/=]+)`"));
                 }
             }
             ChatMultimodalElement::MultimodalElement(_el) => {}

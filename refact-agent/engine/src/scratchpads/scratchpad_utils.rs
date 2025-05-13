@@ -2,8 +2,10 @@ use std::io::Cursor;
 use image::ImageReader;
 use regex::Regex;
 use serde_json::Value;
+
 use crate::call_validation::{ChatToolCall, ContextFile};
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
+use crate::scratchpads::multimodality::MULTIMODALITY_IMAGE_EXTENSIONS;
 
 pub struct HasRagResults {
     pub was_sent: bool,
@@ -34,7 +36,8 @@ impl HasRagResults {
 }
 
 pub fn parse_image_b64_from_image_url_openai(image_url: &str) -> Option<(String, String, String)> {
-    let re = Regex::new(r"data:(image/(png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=]+)").unwrap();
+    let extensions = MULTIMODALITY_IMAGE_EXTENSIONS.join("|");
+    let re = Regex::new(&format!(r"data:(image/({extensions}));base64,([A-Za-z0-9+/=]+)")).unwrap();
     re.captures(image_url).and_then(|captures| {
         let image_type = captures.get(1)?.as_str().to_string();
         let encoding = "base64".to_string();
@@ -63,7 +66,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
         } else {
             false
         };
-        
+
         let tool_limit = match tool.function.name.as_str() {
             "search_semantic" | "search_pattern" | "search_symbol_definition" | "search_symbol_usages" | "cat" if is_cat_with_lines => {
                 (4096 * context_files_len).min(base_limit / 2).max(4096)
@@ -71,7 +74,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
             "cat" | "locate" => (8192 * context_files_len).min(base_limit / 2).max(8192),
             _ => (4096 * context_files_len).min(base_limit / 2).max(4096)
         };
-        
+
         overall_tool_limit += tool_limit;
     }
     base_limit.min(overall_tool_limit)
