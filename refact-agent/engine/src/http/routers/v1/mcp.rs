@@ -7,8 +7,10 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
+use crate::integrations::mcp;
 use crate::integrations::mcp::session_mcp::{fetch_and_update_mcp_resources, SessionMCP};
 use crate::integrations::sessions::get_session_hashmap_key;
+use crate::call_validation::ChatMessage;
 
 #[derive(Serialize)]
 pub struct McpServerDesc {
@@ -21,6 +23,17 @@ pub struct McpServerDesc {
 #[derive(Deserialize)]
 pub struct McpResourceQuery {
     pub config_path: String,
+}
+
+#[derive(Deserialize)]
+pub struct McpResourceContentQuery {
+    pub config_path: String,
+    pub uri: String,
+}
+
+#[derive(Serialize)]
+pub struct ResourceContentResponse {
+    pub messages: Vec<ChatMessage>,
 }
 
 pub async fn handle_mcp_servers(
@@ -82,3 +95,31 @@ pub async fn handle_mcp_resources(
         .unwrap())
 }
 
+pub async fn handle_mcp_resource_content(
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Query(query): Query<McpResourceContentQuery>,
+) -> Result<Response<Body>, ScratchError> {
+    let session_key = get_session_hashmap_key("mcp", &query.config_path);
+
+    let session_arc = {
+        let gcx_locked = gcx.read().await;
+        gcx_locked.integration_sessions.get(&session_key)
+            .ok_or_else(|| ScratchError::new(StatusCode::NOT_FOUND, format!("No session for key {}", session_key)))?
+            .clone()
+    };
+
+    let resource_contents = mcp::mcp_resources::read_resource(session_arc, query.uri.clone())
+        .await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    let elements = mcp::mcp_resources::convert_resource_contents_to_multimodal_elements(resource_contents);
+    let message = ChatMessage::from_multimodal_elements("user".to_string(), elements);
+
+    let response = ResourceContentResponse { messages: vec![message] };
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string_pretty(&response).unwrap()))
+        .unwrap())
+}
