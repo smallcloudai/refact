@@ -31,7 +31,7 @@ pub struct MatchConfirmDeny {
 pub enum ToolGroupCategory {
     Builtin,
     Integration,
-    // MCP,
+    MCP,
 }
 
 pub struct ToolGroup {
