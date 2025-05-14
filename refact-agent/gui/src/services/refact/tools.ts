@@ -5,7 +5,13 @@ import {
   TOOLS,
 } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { ChatMessage, DiffChunk, isDiffChunk, ToolCall } from "./types";
+import {
+  ChatMessage,
+  DiffChunk,
+  isDiffChunk,
+  isSuccess,
+  ToolCall,
+} from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 export const toolsApi = createApi({
@@ -49,7 +55,7 @@ export const toolsApi = createApi({
         return { data: toolGroups };
       },
     }),
-    updateToolGroups: builder.mutation<ToolGroup[], ToolGroupUpdate[]>({
+    updateToolGroups: builder.mutation<{ success: true }, ToolGroupUpdate[]>({
       queryFn: async (newToolGroups, api, _extraOptions, baseQuery) => {
         const getState = api.getState as () => RootState;
         const state = getState();
@@ -65,7 +71,7 @@ export const toolsApi = createApi({
           redirect: "follow",
         });
         if (result.error) return result;
-        if (!Array.isArray(result.data)) {
+        if (!isSuccess(result.data)) {
           return {
             error: {
               error: "Invalid response from tools",
@@ -74,11 +80,8 @@ export const toolsApi = createApi({
             },
           };
         }
-        const updatedToolGroups = result.data.filter((d) =>
-          isToolGroup(d),
-        ) as ToolGroup[];
 
-        return { data: updatedToolGroups };
+        return { data: result.data };
       },
     }),
     checkForConfirmation: builder.mutation<
