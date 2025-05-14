@@ -123,11 +123,21 @@ async fn get_integration_tools(
             category: ToolGroupCategory::Integration,
             tools: vec![],
         },
+        ToolGroup { 
+            name: "mcp".to_string(), 
+            description: "MCP tools".to_string(), 
+            category: ToolGroupCategory::MCP, 
+            tools: vec![],
+        },
     ];
     let (integrations_map, _yaml_errors) = load_integrations(gcx.clone(), &["**/*".to_string()]).await;
     for (name, integr) in integrations_map {
         for tool in integr.integr_tools(&name).await {
-            tool_groups[0].tools.push(tool);
+            if tool.tool_description().name.starts_with("mcp") {
+                tool_groups[1].tools.push(tool);
+            } else {
+                tool_groups[0].tools.push(tool);
+            }
         }
     }
     for tool_group in tool_groups.iter_mut() {
