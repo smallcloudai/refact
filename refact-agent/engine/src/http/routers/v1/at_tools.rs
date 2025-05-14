@@ -123,7 +123,7 @@ pub struct ToolPostReq {
 
 #[derive(Serialize)]
 pub struct ToolPostResponse {
-    sucess: bool,
+    success: bool,
 }
 
 pub async fn handle_v1_post_tools(
@@ -144,7 +144,7 @@ pub async fn handle_v1_post_tools(
     }
 
     Ok(Json(ToolPostResponse {
-        sucess: true,
+        success: true,
     }))
 }
 
