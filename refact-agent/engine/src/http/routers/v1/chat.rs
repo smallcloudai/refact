@@ -127,7 +127,7 @@ async fn _chat(
          None
     } else {
         // All available tools for the current lsp config in openai style
-        let tools: Vec<Value> = get_available_tools(gcx.clone(), false).await.into_iter().filter_map(|tool| {
+        let tools: Vec<Value> = get_available_tools(gcx.clone()).await.into_iter().filter_map(|tool| {
             let tool_desc = tool.tool_description();
             if tool.config().unwrap_or_default().enabled && tool_desc.agentic == (chat_post.meta.chat_mode == ChatMode::AGENT) {
                 let mut openai_style_tool = tool_desc.into_openai_style();
