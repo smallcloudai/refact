@@ -17,7 +17,7 @@ class BDistWheel(bdist_wheel):
         return (
             self.python_tag,
             "none",
-            os.environ.get('WHL_TAG', re.sub("[^\w\d]+", "_", sysconfig.get_platform().replace('.', '_'), re.UNICODE))
+            os.environ.get('WHL_TAG', re.sub("[^\w\d]+", "_", sysconfig.get_platform().replace('.', '_'), flgs=re.UNICODE))
         )
 
 cmdclass = {
