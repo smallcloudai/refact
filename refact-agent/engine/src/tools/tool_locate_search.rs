@@ -1,100 +1,199 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::string::ToString;
 use std::sync::Arc;
 use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use async_trait::async_trait;
+use axum::http::StatusCode;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::subchat::subchat;
 use crate::tools::tools_description::Tool;
-use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile};
-use crate::global_context::GlobalContext;
+use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::at_commands::at_commands::AtCommandsContext;
-
+use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
+use crate::caps::resolve_chat_model;
+use crate::custom_error::ScratchError;
+use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
+use crate::files_in_workspace::get_file_text_from_memory_or_disk;
+use crate::postprocessing::pp_context_files::postprocess_context_files;
+use crate::tokens::count_text_tokens_with_fallback;
 
 pub struct ToolLocateSearch;
 
 
-const LS_SYSTEM_PROMPT: &str = r###"You are an expert in finding relevant files within a big project.
+const LS_SYSTEM_PROMPT: &str = r###"Your task is to locate and tag files/symbols relevant to the problem witch is desctibed in the given conversation.
+Consider already included files in the context - these are the files you have already inspected.
 
-Here's the list of reasons a file or symbol might be relevant wrt task description:
+Relevance tags:
+* **FOUND** – explicitly mentioned targets / main edit locations
+* **NEWFILE** – files that must be created
+* **MORE_TOCHANGE** – collateral edits caused by the task
+* **USAGE** – code that calls or references target symbols
+* **SIMILAR** – examples with similar logic or style
 
-FOUND = the files and the symbols that the task explicitly tells you to find, or the files and symbols the main changes should go into if the task requires changes
-NEWFILE = sometimes the task requires creating new files
-MORE_TOCHANGE = likely to change as well, as a consequence of completing the task
-USAGE = code that uses the things the task description is about
-SIMILAR = code that might provide an example of how to write similar things
+Search tools:
+* `tree()` – tree of the project
+* `search_symbol_definition()` – find definitions
+* `search_symbol_usages()` – find call sites
+* `search_pattern()` – regex search
+* `search_semantic()` – broader semantic search
 
-Your job is to use search() and regex_search() calls and summarize the results.
-
-Some good ideas:
-
-search("MyClass1")                  -- if MyClass1 mentioned in the task, for semantic search of each symbol
-search("log message 1 mentioned")   -- when the task has log messages, for semantic search of each message
-search("    def f():\n        print(\"the example function!\")")   -- look for semantically similar code to the piece mentioned in the task
-search("imaginary_call(imaginary_arguments)\nmore_calls()\n")      -- you can imagine what kind of code you need to find
-
-regex_search("MyClass1")            -- if you need to find exact occurrences of a class name
-regex_search("(?i)error.*not found") -- if you need to find specific error patterns
-regex_search("function\\s+name\\s*\\(")  -- if you need to find function declarations with specific patterns
-
-Call any of those that make sense in parallel. Make at least two calls in parallel, pay special attention that at least one
-search() call should not have a restrictive scope, because you are running the risk of getting no results at all.
-"###;
+Make multiple steps, your search must be deep and complete. Explain each action. Make a small report at the end."###;
 
 
-const LS_WRAP_UP: &str = r###"
-Look at the task at the top, and the files collected so far. Not all files are actually useful, many of them are irrelevant.
-Follow these guidelines:
+const LS_WRAP_UP: &str = r###"Inspect the task description and the files collected so far, then sort the relevant paths into the JSON structure below.
 
-0. Does the task make sense at all, after looking at the files? Fill the "rejection" output structure if it doesn't, and stop.
+Guidelines
+----------
 
-1. If the task tells to find something, it should go to FOUND. If the task requires changes, decide which one or two files
-need to go to FOUND, or is it NEWFILE, it can't be no files at all if the task requires changes, fill "rejection" if that's the case.
+0. **Sanity-check the task**  
+   If, after reviewing the files, the task itself is impossible or incoherent, populate the `"rejection"` field with a **specific** reason and stop.
 
-2. If you see similar code, take the best, most similar to whatever the task is about. It can't be one of FOUND files.
-No such files (zero) is a perfectly good answer. If the task tells to implement something by analogy, the files to draw the
-analogy from should go to SIMILAR. Limit the number of SIMILAR files to 1, maybe 2, 3 at most.
+1. **Determine what must be found or changed**  
+   • If the task is *find-only*, list the target files/symbols under **FOUND**.  
+   • If the task requires *code changes*, put the one or two files that must change under **FOUND**.  
+   • If the change belongs in an *entirely new* file, use **NEW_FILE** instead.  
+   • If the task clearly needs changes but no files qualify, reject.
 
-4. Of course there could be a lot of MORE_TOCHANGE or USAGE files, potentially every file in the project can be.
-Limit the number of USAGE to 3 files, and MORE_TOCHANGE to 3 files. Prefer small and simple files.
-No such files (zero) is a perfectly good answer, don't guess and make stuff up. Don't put files here just in case.
-Only if you are reasonably certain they will also need to change (MORE_TOCHANGE) or they use the thing that
-changes (USAGE).
+2. **Pick reference material for analogies**  
+   If the task says “implement by analogy” or you see near-duplicate code, list up to **3** of the *best* reference files (not already in FOUND) under **SIMILAR**. Zero is fine.
 
-If not sure, drop the file, compact output is better.
+3. **Flag additional impact**  
+   *MORE_TOCHANGE* – Up to **3** small, simple files you are **reasonably sure** will also need edits.  
+   *USAGE* – Up to **3** files that **call or depend on** the code you will change. Name the exact symbols being used.
 
-Use the following structure:
+4. **Be sparing**  
+   Irrelevant files hurt more than missing ones. If uncertain, leave it out.
 
+Output format
+-------------
+
+```json
 {
-    "rejection": "string"                           // Fill this if there are no files matching the task, avoid generic language, name specific things that you did or didn't find, what exactly didn't add up, and stop.
+  "rejection": "string explaining the concrete mismatch, if any"
 }
+```
 
 or
 
+```json
 {
-    "NEW_FILE": {                                   // Does the task require any new files? Don't make stuff up if the task doesn't require any.
-        "dir/dir/file1.ext": ""                     // For new files, don't fill any symbols to look up and prioritize (because none exist yet)
-    },
-    "FOUND": {                                      // Does the task require to find files or symbols? Does the task require to change existing files?
-        "dir/dir/file2.ext": "symbol1,symbol2",     // Be specific, what symbols require changes or match the description in the task?
-        "dir/dir/file3.ext": "symbol1,symbol2"
-    },
-    "SIMILAR": {                                    // Don't list the same files again
-        "dir/dir/file4.ext": "symbol1,symbol2"      // For files not in FOUND, list symbols with similar code to what the task is about
-    },
-    "MORE_TOCHANGE": {
-        ...more files and symbols in them to change...
-    },
-    "USAGE": {
-        ...files with code that uses the thing to change, very important to name specific symbols where the use happens...
+  "NEW_FILE": {                    // Omit if no new files are required
+    "dir/new_module.py": ""
+  },
+  "FOUND": {                       // Must not be empty for change tasks
+    "core/handler.py": "process_event,handle_error"
+  },
+  "SIMILAR": {
+    "core/legacy_handler.py": "process_event"
+  },
+  "MORE_TOCHANGE": {
+    "api/views.py": "EventView"
+  },
+  "USAGE": {
+    "tests/test_handler.py": "process_event",
+    "app/main.py": "handle_error"
+  }
+}
+```"###;
+
+static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
+
+
+async fn _make_prompt(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    subchat_params: &SubchatParameters,
+    problem_statement: &String,
+    important_paths: &Vec<PathBuf>,
+    previous_messages: &Vec<ChatMessage>,
+) -> Result<String, String> {
+    let gcx = ccx.lock().await.global_context.clone();
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
+    let model_rec = resolve_chat_model(caps, &subchat_params.subchat_model)?;
+    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)).map_err(|x| x.message)?;
+    let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
+    let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
+    let final_message = problem_statement.to_string();
+    tokens_budget -= count_text_tokens_with_fallback(tokenizer.clone(), &final_message) as i64;
+    let mut context = "".to_string();
+    let mut context_files = vec![];
+    for p in important_paths.iter() {
+        context_files.push(match get_file_text_from_memory_or_disk(gcx.clone(), &p).await {
+            Ok(text) => {
+                let total_lines = text.lines().count();
+                ContextFile {
+                    file_name: p.to_string_lossy().to_string(),
+                    file_content: "".to_string(),
+                    line1: 1,
+                    line2: total_lines.max(1),
+                    symbols: vec![],
+                    gradient_type: 4,
+                    usefulness: 100.0,
+                }
+            },
+            Err(_) => {
+                tracing::warn!("failed to read file '{:?}'. Skipping...", p);
+                continue;
+            }
+        })
+    }
+    for message in previous_messages.iter().rev() {
+        let message_row = match message.role.as_str() {
+            "system" => {
+                continue;
+            }
+            "user" => {
+                format!("👤:\n{}\n\n", &message.content.content_text_only())
+            }
+            "assistant" => {
+                format!("🤖:\n{}\n\n", &message.content.content_text_only())
+            }
+            "tool" => {
+                format!("📎:\n{}\n\n", &message.content.content_text_only())
+            }
+            _ => {
+                tracing::info!("skip adding message to the context: {}", crate::nicer_logs::first_n_chars(&message.content.content_text_only(), 40));
+                continue;
+            }
+        };
+        let left_tokens = tokens_budget - count_text_tokens_with_fallback(tokenizer.clone(), &message_row) as i64;
+        if left_tokens < 0 {
+            continue;
+        } else {
+            tokens_budget = left_tokens;
+            context.insert_str(0, &message_row);
+        }
+    }
+    if !context_files.is_empty() {
+        let mut pp_settings = PostprocessSettings::new();
+        pp_settings.max_files_n = context_files.len();
+        let mut files_context = "".to_string();
+        for context_file in postprocess_context_files(
+            gcx.clone(),
+            &mut context_files,
+            tokenizer.clone(),
+            subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
+            false,
+            &pp_settings,
+        ).await {
+            files_context.push_str(
+                &format!("📎 {}:{}-{}\n```\n{}```\n\n",
+                         context_file.file_name,
+                         context_file.line1,
+                         context_file.line2,
+                         context_file.file_content)
+            );
+        }
+        Ok(format!("{final_message}\n\n# Conversation\n{context}\n\n# Already explored files\n{files_context}"))
+    } else {
+        Ok(format!("{final_message}\n\n# Conversation\n{context}"))
     }
 }
-
-Don't write backquotes, json format only.
-"###;
 
 
 #[async_trait]
@@ -107,19 +206,34 @@ impl Tool for ToolLocateSearch {
         tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let problem_statement = match args.get("problem_statement") {
-            Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `problem_statement` is not a string: {:?}", v)),
-            None => return Err("Missing argument `problem_statement`".to_string())
+        let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate").await?;
+        let gcx = ccx.lock().await.global_context.clone();
+        let important_paths = match args.get("important_paths") {
+            Some(Value::String(s)) => {
+                let mut paths = vec![];
+                for s in s.split(",") {
+                    let s_raw = s.trim().to_string();
+                    let candidates_file = file_repair_candidates(gcx.clone(), &s_raw, 3, false).await;
+                    paths.push(match return_one_candidate_or_a_good_error(gcx.clone(), &s_raw, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+                        Ok(f) => canonicalize_normalized_path(PathBuf::from(preprocess_path_for_normalization(f.trim().to_string()))),
+                        Err(_) => {
+                            tracing::info!("cannot find a good file candidate for `{s_raw}`");
+                            continue;
+                        }
+                    })
+                }
+                paths
+            },
+            Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
+            None => vec![]
         };
 
-        let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate_search").await?;
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
             let mut t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
-                7,  // top_n
+                1,
                 false,
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
@@ -131,13 +245,23 @@ impl Tool for ToolLocateSearch {
             Arc::new(AMutex::new(t))
         };
 
-        ccx.lock().await.pp_skeleton = true;
 
+        let external_messages = {
+            let ccx_lock = ccx.lock().await;
+            ccx_lock.messages.clone()
+        };
+        let prompt = _make_prompt(
+            ccx.clone(),
+            &params,
+            &LS_SYSTEM_PROMPT.to_string(),
+            &important_paths,
+            &external_messages
+        ).await?;
         let (mut results, usage, tool_message, cd_instruction) = find_relevant_files_with_search(
             ccx_subchat,
             params,
             tool_call_id.clone(),
-            problem_statement,
+            prompt,
         ).await?;
 
         tracing::info!("\n{}", tool_message);
@@ -196,19 +320,22 @@ async fn find_relevant_files_with_search(
     let mut msgs = vec![];
     msgs.push(ChatMessage::new("system".to_string(), LS_SYSTEM_PROMPT.to_string()));
     msgs.push(ChatMessage::new("user".to_string(), user_query.to_string()));
-    msgs.push(ChatMessage::new("cd_instruction".to_string(), "Look at user query above. Follow the system prompt. Run several search() and regex_search() calls in parallel.".to_string()));
 
     let result = subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         msgs,
-        vec!["search".to_string(), "regex_search".to_string()],
-        1,
+        vec![
+            "tree".to_string(),
+            "search_symbol_definition".to_string(), "search_symbol_usages".to_string(),
+            "search_pattern".to_string(), "search_semantic".to_string(),
+        ],
+        16,
         subchat_params.subchat_max_new_tokens,
         LS_WRAP_UP,
         1,
-        Some(0.1),
         None,
+        subchat_params.subchat_reasoning_effort,
         Some(tool_call_id.clone()),
         Some(format!("{log_prefix}-locate-search")),
         Some(false),  

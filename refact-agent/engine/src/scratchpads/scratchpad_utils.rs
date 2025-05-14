@@ -66,10 +66,10 @@ pub fn max_tokens_for_rag_chat_by_tools(
         
         let tool_limit = match tool.function.name.as_str() {
             "search" | "regex_search" | "definition" | "references" | "cat" if is_cat_with_lines => {
-                (4096 * context_files_len).min(base_limit)
+                (4096 * context_files_len).min(base_limit / 2).max(4096)
             },
-            "cat" | "locate" => (8192 * context_files_len).min(base_limit),
-            _ => (4096 * context_files_len).min(base_limit)
+            "cat" | "locate" => (8192 * context_files_len).min(base_limit / 2).max(8192),
+            _ => (4096 * context_files_len).min(base_limit / 2).max(4096)
         };
         
         overall_tool_limit += tool_limit;

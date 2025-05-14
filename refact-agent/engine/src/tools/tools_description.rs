@@ -146,8 +146,6 @@ pub async fn tools_merged_and_filtered(
         ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
-        // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
-        // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
         ("search_semantic".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
@@ -342,11 +340,10 @@ tools:
     agentic: true
     description: "Get a list of files that are relevant to solve a particular task."
     parameters:
-      - name: "problem_statement"
+      - name: "important_paths"
         type: "string"
-        description: "Copy word-for-word the problem statement as provided by the user, if available. Otherwise, tell what you need to do in your own words. Avoid trailing spaces and tabs from all lines."
-    parameters_required:
-      - "problem_statement"
+        description: "Comma-separated list of all filenames which are already explored."
+    parameters_required: []
 
   - name: "strategic_planning"
     agentic: true

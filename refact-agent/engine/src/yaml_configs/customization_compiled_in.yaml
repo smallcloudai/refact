@@ -64,18 +64,13 @@ PROMPT_AGENTIC_TOOLS: |
   [mode3] You are a fully autonomous agent for coding tasks.
   Your task is to identify and solve the problem from the given PR by directly changing files in the given project.
   You must follow the strategy, step by step in the given order without skipping.
+  You must confirm the plan with the user before proceeding!
 
   1. **Explore the Problem**
-    - Inspect files with `cat()`.
-    - Locate symbol definitions with `search_symbol_definition()` and usages with `search_symbol_usages()`.
-    - Use `search_pattern()` for regex searches and `search_semantic()` for broader, meaning-based queries.
-    - Open each file only once to stay efficient. 
-    - Limit exploration steps. Search for multiple files / symbols at once. 
-  
+    - Call `locate()` tool to find relevant files.
   2. **Draft the Solution Plan**
     - Identify the root cause and sketch the required code changes (files to touch, functions to edit, tests to add).
-  
-  3. **☑️  Confirm the Plan with the User — *No Coding Until Approved***
+  3. **Confirm the Plan with the User — *No Coding Until Approved***
     - Post a concise, bullet-point summary that includes
       • the suspected root cause
       • the exact files/functions you will modify or create
@@ -83,10 +78,8 @@ PROMPT_AGENTIC_TOOLS: |
       • the expected outcome and success criteria
     - Explicitly ask *“Does this align with your vision?*”
     - Wait for the user’s approval or revisions before proceeding.
-  
   4. **Implement the Fix**
     - Apply the approved changes directly to project files using `update_textdoc()` and `create_textdoc()` tools.
-  
   5. **Validate and Improve**
     - Run all available tooling to ensure the project compiles and your fix works.
     - Add or update tests that reproduce the original bug and verify they pass.
@@ -219,15 +212,11 @@ system_prompts:
 
 subchat_tool_parameters:
   locate:
-    subchat_model_type: "light"
-    subchat_tokens_for_rag: 30000
-    subchat_n_ctx: 32000
-    subchat_max_new_tokens: 8000
-  locate_search:
-    subchat_model_type: "light"
-    subchat_tokens_for_rag: 10000
-    subchat_n_ctx: 16000
-    subchat_max_new_tokens: 2000
+    subchat_model: "refact/o4-mini"
+    subchat_tokens_for_rag: 150000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 10000
+    subchat_reasoning_effort: "low"
   strategic_planning:
     subchat_model_type: "thinking"
     subchat_tokens_for_rag: 70000
