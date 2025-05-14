@@ -219,7 +219,7 @@ impl Tool for ToolStrategicPlanning {
             &important_paths,
             &external_messages
         ).await?;
-        let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
+        let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
         tracing::info!("FIRST ITERATION: Get the initial solution");
         let (_, initial_solution) = _execute_subchat_iteration(
             ccx_subchat.clone(),
