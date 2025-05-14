@@ -91,6 +91,28 @@ docker volume rm VVV
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for installation without a docker container.
 
+<details><summary>Refact Proxy (experimental)</summary>
+
+### Running Refact Proxy
+
+A light version of the server that doesn't require an Nvidia GPU. This is the ideal choice if you're:
+* Self-hosting models using Ollama, vLLM, etc.
+* Using third-party model providers like OpenAI, Anthropic, etc.
+
+Build docker container:
+```commandline
+git clone https://github.com/smallcloudai/refact.git
+cd refact/refact-server
+docker build -t refact_proxy -f Dockerfile.proxy .
+```
+
+And run it:
+```commandline
+docker run -d --rm --shm-size=256m -p 8008:8008 -v refact-proxy-perm-storage:/perm_storage refact_proxy
+```
+
+</details>
+
 ### Setting Up Plugins
 
 Download Refact for [VS Code](https://marketplace.visualstudio.com/items?itemName=smallcloud.codify) or [JetBrains](https://plugins.jetbrains.com/plugin/20647-refact-ai).
@@ -108,12 +130,6 @@ Extensions > Refact.ai Assistant > Settings > Infurl
 
 | Model                                                                                          | Completion | Chat | Fine-tuning | [Deprecated](## "Will be removed in next versions") |
 | ---------------------------------------------------------------------------------------------- | ---------- | ---- | ----------- | --------------------------------------------------- |
-| [Refact/1.6B](https://huggingface.co/smallcloudai/Refact-1_6B-fim)                             | +          |      | +           | +                                                   |
-| [starcoder2/3b/base](https://huggingface.co/bigcode/starcoder2-3b)                             | +          |      | +           | +                                                   |
-| [starcoder2/7b/base](https://huggingface.co/bigcode/starcoder2-7b)                             | +          |      | +           | +                                                   |
-| [starcoder2/15b/base](https://huggingface.co/bigcode/starcoder2-15b)                           | +          |      | +           | +                                                   |
-| [deepseek-coder/1.3b/base](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-base)        | +          |      | +           | +                                                   |
-| [deepseek-coder/5.7b/mqa-base](https://huggingface.co/deepseek-ai/deepseek-coder-5.7bmqa-base) | +          |      | +           | +                                                   |
 | [llama3.1/8b/instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)           | +          | +    |             |                                                     |
 | [llama3.2/1b/instruct](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)                | +          | +    |             |                                                     |
 | [llama3.2/3b/instruct](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)                | +          | +    |             |                                                     |

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage};
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::subchat::subchat_single;
 use std::sync::Arc;
@@ -342,7 +343,7 @@ pub async fn _generate_commit_message_for_projects(
         };
 
         let output = tokio::process::Command::new(command)
-            .current_dir(&folder)
+            .current_dir_simplified(&folder)
             .stdin(std::process::Stdio::null())
             .output()
             .await

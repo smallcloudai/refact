@@ -17,6 +17,8 @@ export type SelectProps = React.ComponentProps<typeof RadixSelect.Root> & {
   contentPosition?: "item-aligned" | "popper";
   value?: string;
   disabled?: boolean;
+  open?: SelectRootProps["open"];
+  defaultOpen?: SelectRootProps["defaultOpen"];
 };
 
 export type SelectRootProps = React.ComponentProps<typeof RadixSelect.Root>;
@@ -56,6 +58,9 @@ export const Select: React.FC<SelectProps> = ({
   contentPosition,
   ...props
 }) => {
+  const [isOpen, setIsOpen] = React.useState(
+    props.open ?? props.defaultOpen ?? false,
+  );
   const maybeSelectedOption = useMemo(() => {
     if (typeof props.value === "undefined") return null;
     const selectOption = options.find(
@@ -68,11 +73,13 @@ export const Select: React.FC<SelectProps> = ({
     if (typeof selectOption === "string") return null;
     return selectOption;
   }, [props.value, options]);
+
   return (
-    <Root {...props} onValueChange={onChange} size="1">
+    <Root {...props} onValueChange={onChange} onOpenChange={setIsOpen} size="1">
       {maybeSelectedOption &&
       "tooltip" in maybeSelectedOption &&
-      maybeSelectedOption.tooltip ? (
+      maybeSelectedOption.tooltip &&
+      !isOpen ? (
         <HoverCard.Root openDelay={1000}>
           <HoverCard.Trigger>
             <Trigger />
@@ -102,7 +109,7 @@ export const Select: React.FC<SelectProps> = ({
           if (option.tooltip) {
             return (
               <Item key={`select-item-${index}-${option.value}`} {...option}>
-                <HoverCard.Root>
+                <HoverCard.Root openDelay={1000}>
                   <HoverCard.Trigger>
                     <div>
                       {option.children ?? option.textValue ?? option.value}

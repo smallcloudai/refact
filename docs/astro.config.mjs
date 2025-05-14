@@ -63,6 +63,13 @@ export default defineConfig({
               }
             },
             {
+              label: 'Usage Based Pricing',
+              link: '/introduction/usage-based-pricing/',
+              attrs: {
+                'aria-label': 'Learn about Usage Based Pricing'
+              }
+            },
+            {
               label: 'Installation',
               collapsed: true,
               items: [

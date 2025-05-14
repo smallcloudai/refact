@@ -175,6 +175,7 @@ type MeteringBalance = Pick<
   | "metering_cache_creation_tokens_n"
   | "metering_cache_read_tokens_n"
   | "metering_prompt_tokens_n"
+  | "metering_generated_tokens_n"
   | "metering_coins_prompt"
   | "metering_coins_generated"
   | "metering_coins_cache_creation"
@@ -208,6 +209,10 @@ function mergeMetering(
     metering_prompt_tokens_n: highestNumber(
       a.metering_prompt_tokens_n,
       b.metering_prompt_tokens_n,
+    ),
+    metering_generated_tokens_n: highestNumber(
+      a.metering_generated_tokens_n,
+      b.metering_generated_tokens_n,
     ),
     metering_coins_prompt: highestNumber(
       a.metering_coins_prompt,
@@ -297,6 +302,21 @@ export function formatChatResponse(
     // console.log("Not a good response");
     // console.log(response);
     return messages;
+  }
+
+  const maybeLastMessage = messages[messages.length - 1];
+
+  if (
+    response.choices.length === 0 &&
+    response.usage &&
+    isAssistantMessage(maybeLastMessage)
+  ) {
+    const msg: AssistantMessage = {
+      ...maybeLastMessage,
+      usage: response.usage,
+      ...mergeMetering(maybeLastMessage, response),
+    };
+    return messages.slice(0, -1).concat(msg);
   }
 
   return response.choices.reduce<ChatMessages>((acc, cur) => {

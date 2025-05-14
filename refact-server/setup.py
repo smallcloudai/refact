@@ -43,6 +43,11 @@ all_refact_packages = {
         data=["webgui/static/*", "webgui/static/components/modals/*",
               "webgui/static/dashboards/*", "webgui/static/assets/*", "webgui/static/utils/*",
               "webgui/static/assets/fonts/*"]),
+    "refact_proxy": PyPackage(
+        requires=["scyllapy==1.3.0", "pandas", "fastapi", "uvicorn", "pydantic", "aiohttp", "uvloop"],
+        requires_packages=["refact_webgui", "refact_utils", "refact_known_models"],
+        data=["webgui/static/*"],
+    ),
     "self_hosting_machinery": PyPackage(
         requires=["python-multipart", "accelerate",
                   "termcolor", "torch", "transformers>=4.51.0",

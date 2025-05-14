@@ -58,7 +58,7 @@ impl Tool for ToolRm {
             _ => return Ok("".to_string()),
         };
         let (recursive, _, dry_run) = Self::parse_recursive(args).unwrap_or((false, None, false));
-        Ok(format!("rm {} {} {}", 
+        Ok(format!("rm {} {} {}",
             if recursive { "-r" } else { "" },
             if dry_run { "--dry-run" } else { "" },
             path))
@@ -70,7 +70,7 @@ impl Tool for ToolRm {
             deny: vec![],
         })
     }
-    
+
     async fn match_against_confirm_deny(
         &self,
         _: Arc<AMutex<AtCommandsContext>>,
@@ -98,11 +98,14 @@ impl Tool for ToolRm {
             _ => return Err("Missing required argument `path`".to_string()),
         };
 
-        // Reject if wildcards are present.
-        if path_str.contains('*') || path_str.contains('?') || path_str.contains('[') {
+        // Reject if wildcards are present, '?' is allowed if preceeded by '\' or '/' only, like \\?\C:\Some\Path
+        if path_str.contains('*') || path_str.contains('[') ||
+            path_str.chars().enumerate().any(|(i, c)| {
+                c == '?' && !path_str[..i].chars().all(|ch| ch == '/' || ch == '\\')
+            }) {
             return Err("Wildcards and shell patterns are not supported".to_string());
         }
-        
+
         let (recursive, _max_depth, dry_run) = Self::parse_recursive(args)?;
         let gcx = ccx.lock().await.global_context.clone();
         let project_dirs = get_project_dirs(gcx.clone()).await;
@@ -134,8 +137,8 @@ impl Tool for ToolRm {
 
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
         if let Err(e) = check_file_privacy(
-            privacy_settings.clone(), 
-            &true_path, 
+            privacy_settings.clone(),
+            &true_path,
             &FilePrivacyLevel::AllowToSendAnywhere
         ) {
             return Err(format!("Cannot rm '{}': {}", path_str, e));
@@ -165,7 +168,13 @@ impl Tool for ToolRm {
         let mut file_content = String::new();
         let is_dir = true_path.is_dir();
         if !is_dir {
-            file_content = get_file_text_from_memory_or_disk(gcx.clone(), &true_path).await?;
+            file_content = match get_file_text_from_memory_or_disk(gcx.clone(), &true_path).await {
+                Ok(content) => content,
+                Err(e) => {
+                    tracing::warn!("Failed to get file content: {}", e);
+                    String::new()
+                },
+            };
         }
         let mut messages: Vec<ContextEnum> = Vec::new();
         let corrections = path_str != corrected_path;

@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
-use crate::files_correction::get_active_project_path;
+use crate::files_correction::{get_active_project_path, CommandSimplifiedDirExt};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
@@ -266,9 +266,9 @@ async fn start_pdb_session(
         .stderr(std::process::Stdio::piped());
 
     if let Some(workdir) = workdir_maybe {
-        process_command.current_dir(workdir);
+        process_command.current_dir_simplified(workdir);
     } else if let Some(project_path) = get_active_project_path(gcx.clone()).await {
-        process_command.current_dir(project_path);
+        process_command.current_dir_simplified(&project_path);
     } else {
         tracing::warn!("no working directory, using whatever directory this binary is run :/");
     }

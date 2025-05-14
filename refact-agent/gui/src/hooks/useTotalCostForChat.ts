@@ -1,8 +1,16 @@
 import { selectMessages } from "../features/Chat";
-import { calculateTotalCostOfMessages } from "../utils/calculateTotalCostOfMessages";
+import {
+  getTotalCostMeteringForMessages,
+  getTotalTokenMeteringForMessages,
+} from "../utils/getMetering";
 import { useAppSelector } from "./useAppSelector";
 
 export const useTotalCostForChat = () => {
   const messages = useAppSelector(selectMessages);
-  return calculateTotalCostOfMessages(messages);
+  return getTotalCostMeteringForMessages(messages);
+};
+
+export const useTotalTokenMeteringForChat = () => {
+  const messages = useAppSelector(selectMessages);
+  return getTotalTokenMeteringForMessages(messages);
 };
