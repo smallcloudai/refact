@@ -115,7 +115,7 @@ startListening({
       listenerApi.dispatch(setIsAuthError(isAuthError));
     }
     if (
-      toolsApi.endpoints.getTools.matchRejected(action) &&
+      toolsApi.endpoints.getToolGroups.matchRejected(action) &&
       !action.meta.condition
     ) {
       const errorStatus = action.payload?.status;
@@ -124,7 +124,7 @@ startListening({
         ? AUTH_ERROR_MESSAGE
         : isDetailMessage(action.payload?.data)
           ? action.payload.data.detail
-          : `fetching tools from lsp`;
+          : `fetching tool groups from lsp`;
 
       listenerApi.dispatch(setError(message));
       listenerApi.dispatch(setIsAuthError(isAuthError));
@@ -379,10 +379,10 @@ startListening({
     const state = listenerApi.getState();
 
     // TBD: should the endpoint need tools?
-    const toolsRequest = listenerApi.dispatch(
-      toolsApi.endpoints.getTools.initiate(undefined),
+    const toolGroupsRequest = listenerApi.dispatch(
+      toolsApi.endpoints.getToolGroups.initiate(undefined),
     );
-    toolsRequest.unsubscribe();
+    toolGroupsRequest.unsubscribe();
     // const toolResult = await toolsRequest.unwrap();
     // TODO: set mode to configure ? or infer it later
     // TODO: create a dedicated thunk for this.
