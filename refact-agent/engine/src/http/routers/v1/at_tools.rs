@@ -85,7 +85,11 @@ pub async fn handle_v1_get_tools(
 ) -> Json<Vec<ToolGroupResponse>> {
     let tool_groups = get_available_tool_groups(gcx.clone(), true).await;
 
-    let tool_groups: Vec<ToolGroupResponse> = tool_groups.into_iter().map(|tool_group| {
+    let tool_groups: Vec<ToolGroupResponse> = tool_groups.into_iter().filter_map(|tool_group| {
+        if tool_group.tools.is_empty() {
+            return None;
+        }
+
         let tools: Vec<ToolResponse> = tool_group.tools.into_iter().map(|tool| {
             let spec = tool.tool_description();
             ToolResponse {
@@ -94,12 +98,12 @@ pub async fn handle_v1_get_tools(
             }
         }).collect();
 
-        ToolGroupResponse {
+        Some(ToolGroupResponse {
             name: tool_group.name,
             description: tool_group.description,
             category: tool_group.category,
             tools,
-        }
+        })
     }).collect();
 
     Json(tool_groups)
