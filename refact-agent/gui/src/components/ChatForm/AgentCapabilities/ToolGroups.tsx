@@ -8,7 +8,7 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ChevronLeftIcon,
   QuestionMarkCircledIcon,
@@ -172,7 +172,7 @@ export const ToolGroups: React.FC = () => {
                           </HoverCard.Content>
                         </HoverCard.Root>
                       </Flex>
-                      <Switch size="1" defaultChecked={tool.enabled} />
+                      <Switch size="1" checked={tool.enabled} />
                     </Flex>
                   ))}
                 </Flex>
