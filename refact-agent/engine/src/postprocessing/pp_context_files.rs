@@ -325,7 +325,6 @@ async fn pp_limit_and_merge(
         if last_line > prev_line + 1 {
             out.push_str("...\n");
         }
-
         if DEBUG >= 2 {
             info!("file {:?}:\n{}", cpath, out);
         } else if DEBUG == 1 {

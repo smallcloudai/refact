@@ -161,6 +161,9 @@ pub async fn run_tools(
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let n_ctx = ccx.lock().await.n_ctx;
+    // Default tokens limit for tools that perform internal compression (`tree()`, ...) 
+    ccx.lock().await.tokens_for_rag = 4096;
+
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
         Some(m) => m.tool_calls.clone().unwrap_or(vec![]),
         None => return Ok((vec![], false)),
@@ -217,14 +220,6 @@ pub async fn run_tools(
                 continue;
             }
         };
-
-        let tokens_for_rag = max_tokens_for_rag_chat_by_tools(
-            &vec![t_call.clone()],
-            &context_files_for_pp,
-            n_ctx, maxgen
-        );
-        ccx.lock().await.tokens_for_rag = tokens_for_rag;
-        info!("run_tools: reserve_for_context {} tokens for {}()", tokens_for_rag, t_call.function.name);
 
         let (corrections, tool_execute_results) = {
             match cmd.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {

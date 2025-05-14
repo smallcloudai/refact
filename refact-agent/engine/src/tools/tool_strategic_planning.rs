@@ -24,36 +24,12 @@ pub struct ToolStrategicPlanning;
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
 
-static ROOT_CAUSE_ANALYSIS_PROMPT: &str = r#"Based on the conversation and context below, please perform a thorough root cause analysis of the problem. Pay attention on provided debugging report.
-Identify all possible causes, including:
-1. Direct causes - immediate factors that could lead to this issue.
-2. Underlying causes - deeper systemic issues that might be contributing.
-3. Environmental factors - external conditions that might influence the problem.
-4. Edge cases - unusual scenarios that could trigger this issue.
-5. Focus on special methods and implicit conversions and investigate cross-component interactions.
-
-For each potential cause, explain:
-- Why it might be causing the problem
-- How it could manifest in the observed symptoms
-- What evidence supports or refutes this cause
-
-Rank the causes from most to least likely, and explain your reasoning.
-
-Your final goal is to find the root cause of the problem! Take as many time as needed.
-Do not create code, just write text."#;
-
 static SOLVER_PROMPT: &str = r#"Your task is to identify and solve the problem by the given conversation and context files.
 The solution must be robust and complete and adressing all corner cases.
 Also make a couple of alternative ways to solve the problem, if the initial solution doesn't work."#;
 
 
-static GUARDRAILS_PROMPT: &str = r#"💿 Now implement the solution above.
-Reminders:
-- Do not create documents, README.md, or other files which are non-related to fixing the problem. 
-- Convert generated changes into the `update_textdoc()` or `create_textdoc()` tools calls. Do not create patches (in diff format), monkey-patches!
-- Change the project directly to fix the issue but do not modify existing tests.
-- Find and run all project's existing tests to ensure the fix won't introduce new problems elsewhere.
-- Create new test files only using `create_textdoc()`."#;
+static GUARDRAILS_PROMPT: &str = r#"💿 Now confirm the plan with the user"#;
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -149,7 +125,6 @@ async fn _make_prompt(
     }
 }
 
-/// Executes a subchat iteration and returns the last message from the response
 async fn _execute_subchat_iteration(
     ccx_subchat: Arc<AMutex<AtCommandsContext>>,
     subchat_params: &SubchatParameters,
@@ -214,7 +189,6 @@ impl Tool for ToolStrategicPlanning {
             Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
             None => return Err("Missing argument `paths`".to_string())
         };
-        
         let mut usage_collector = ChatUsage { ..Default::default() };
         let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let subchat_params: SubchatParameters = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "strategic_planning").await?;
@@ -238,29 +212,6 @@ impl Tool for ToolStrategicPlanning {
             t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
         };
-        
-        // ZERO ITERATION: Root Cause Analysis
-        // tracing::info!("ZERO ITERATION: Root Cause Analysis");
-        // let prompt = _make_prompt(
-        //     ccx.clone(),
-        //     &subchat_params,
-        //     &ROOT_CAUSE_ANALYSIS_PROMPT.to_string(),
-        //     &important_paths,
-        //     &external_messages
-        // ).await?;
-        // let history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
-        // let (_, root_cause_reply) = _execute_subchat_iteration(
-        //     ccx_subchat.clone(),
-        //     &subchat_params,
-        //     history.clone(),
-        //     subchat_params.subchat_max_new_tokens,
-        //     &mut usage_collector,
-        //     tool_call_id,
-        //     "root-cause-analysis",
-        //     &log_prefix,
-        // ).await?;
-        
-        // FIRST ITERATION: Get the initial solution
         let prompt = _make_prompt(
             ccx.clone(),
             &subchat_params,
@@ -270,7 +221,7 @@ impl Tool for ToolStrategicPlanning {
         ).await?;
         let mut history: Vec<ChatMessage> = vec![ChatMessage::new("user".to_string(), prompt)];
         tracing::info!("FIRST ITERATION: Get the initial solution");
-        let (sol_session, initial_solution) = _execute_subchat_iteration(
+        let (_, initial_solution) = _execute_subchat_iteration(
             ccx_subchat.clone(),
             &subchat_params,
             history.clone(),
@@ -280,45 +231,8 @@ impl Tool for ToolStrategicPlanning {
             "get-initial-solution",
             &log_prefix,
         ).await?;
-        history = sol_session.clone();
 
-        // SECOND ITERATION: Ask for a critique
-        // tracing::info!("THIRD ITERATION: Ask for a critique");
-        // history.push(ChatMessage::new("user".to_string(), CRITIQUE_PROMPT.to_string()));
-        // let (crit_session, critique) = _execute_subchat_iteration(
-        //     ccx_subchat.clone(),
-        //     &subchat_params,
-        //     history.clone(),
-        //     subchat_params.subchat_max_new_tokens / 3,
-        //     &mut usage_collector,
-        //     tool_call_id,
-        //     "critique",
-        //     &log_prefix,
-        // ).await?;
-        // history = crit_session.clone();
-        // 
-        // // THIRD ITERATION: Ask for an improved solution
-        // tracing::info!("FOURTH ITERATION: Ask for an improved solution");
-        // let improve_prompt = "Please improve the original solution based on the critique. Provide a refined solution that addresses the weaknesses identified in the critique.";
-        // history.push(ChatMessage::new("user".to_string(), improve_prompt.to_string()));
-        // let (_imp_session, improved_solution) = _execute_subchat_iteration(
-        //     ccx_subchat,
-        //     &subchat_params,
-        //     history.clone(),
-        //     subchat_params.subchat_max_new_tokens / 3,
-        //     &mut usage_collector,
-        //     tool_call_id,
-        //     "solution-refinement",
-        //     &log_prefix,
-        // ).await?;
-
-        let final_message = format!(
-            "# Solution\n{}",
-            // root_cause_reply.content.content_text_only(),
-            initial_solution.content.content_text_only(),
-            // critique.content.content_text_only(),
-            // improved_solution.content.content_text_only(),
-        );
+        let final_message = format!("# Solution\n{}", initial_solution.content.content_text_only());
         tracing::info!("strategic planning response (combined):\n{}", final_message);
         let mut results = vec![];
         results.push(ContextEnum::ChatMessage(ChatMessage {

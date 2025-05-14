@@ -41,7 +41,7 @@ impl Tool for ToolTree {
         let use_ast = match args.get("use_ast") {
             Some(Value::Bool(b)) => *b,
             Some(v) => return Err(format!("argument `use_ast` is not a boolean: {:?}", v)),
-            None => true,
+            None => false,
         };
 
 

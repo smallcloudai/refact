@@ -56,7 +56,7 @@ impl AtCommandsContext {
             global_context: global_context.clone(),
             n_ctx,
             top_n,
-            tokens_for_rag: 4096,
+            tokens_for_rag: 0,
             messages,
             is_preview,
             pp_skeleton: true,

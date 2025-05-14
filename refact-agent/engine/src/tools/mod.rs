@@ -12,8 +12,6 @@ mod tool_rm;
 mod tool_mv;
 mod tool_regex_search;
 mod tool_strategic_planning;
-mod tool_critique;
-mod tool_debug_script;
 
 #[cfg(feature="vecdb")]
 mod tool_search;

@@ -65,30 +65,41 @@ PROMPT_AGENTIC_TOOLS: |
   Your task is to identify and solve the problem from the given PR by directly changing files in the given project.
   You must follow the strategy, step by step in the given order without skipping.
 
-  **Step 1: Explore the Problem**
-    - Use `cat()` to open files. Use `search_symbol_definition()`, `search_symbol_usages()` if you know names of symbols.
-    - Use `search_pattern()` for search by pattern, `search_semantic()` for a semantic search.
-  **Step 2: Reproduce the Problem using `debug_script()`**
-    - Find and run all project's existing tests to ensure the fix won't introduce new problems elsewhere.
-    - Write a script that reproduces the issue. Cover as many corner cases as possible.
-    - Set up necessary environment (e.g., create required folders or additional files) to run the script.
-    - Run the script using `shell("python ...")` to verify that the error occurs and the script is correct.
-    - After verifying that the script is correct and reproduces the issue, call `debug_script()` to debug it.
-  **Step 3: Make a Plan using `strategic_planning()` and fix the Problem**
-    - Open all new files mentioned in `debug_script()` report.
-    - Call `strategic_planning()` once to think through and brainstorm the solution.
-    - Update projects files directly without creating patches and diffs.
-  **Step 4: Check and Improve Your Work by running tests**
-    - Execute the script that reproduces the original issue.
-    - Run project's existing tests again to ensure the fix doesn't introduce new problems elsewhere.
+  1. **Explore the Problem**
+    - Inspect files with `cat()`.
+    - Locate symbol definitions with `search_symbol_definition()` and usages with `search_symbol_usages()`.
+    - Use `search_pattern()` for regex searches and `search_semantic()` for broader, meaning-based queries.
+    - Open each file only once to stay efficient. 
+    - Limit exploration steps. Search for multiple files / symbols at once. 
   
+  2. **Draft the Solution Plan**
+    - Identify the root cause and sketch the required code changes (files to touch, functions to edit, tests to add).
+  
+  3. **☑️  Confirm the Plan with the User — *No Coding Until Approved***
+    - Post a concise, bullet-point summary that includes
+      • the suspected root cause
+      • the exact files/functions you will modify or create
+      • the new or updated tests you will add
+      • the expected outcome and success criteria
+    - Explicitly ask *“Does this align with your vision?*”
+    - Wait for the user’s approval or revisions before proceeding.
+  
+  4. **Implement the Fix**
+    - Apply the approved changes directly to project files using `update_textdoc()` and `create_textdoc()` tools.
+  
+  5. **Validate and Improve**
+    - Run all available tooling to ensure the project compiles and your fix works.
+    - Add or update tests that reproduce the original bug and verify they pass.
+    - Execute the full test suite to guard against regressions.
+    - Iterate until everything is green.
+
   **BEST PRACTICES**
-    - You must follow the strategy (explore -> reproduce -> solve -> check), step by step in the given order.
-    - Before each step explicitly announce your next actions. Make sure they are still align with the strategy.
-    - Include your thoughts wrapped in <think></think> before any action.
     - %CD_INSTRUCTIONS%
+    - %SHELL_INSTRUCTIONS%
   
   %WORKSPACE_INFO%
+  
+  %PROJECT_SUMMARY%
 
 
 PROMPT_CONFIGURATOR: |
@@ -209,31 +220,20 @@ system_prompts:
 subchat_tool_parameters:
   locate:
     subchat_model_type: "light"
-    subchat_tokens_for_rag: 88000
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 32000
+    subchat_tokens_for_rag: 30000
+    subchat_n_ctx: 32000
+    subchat_max_new_tokens: 8000
   locate_search:
     subchat_model_type: "light"
-    subchat_tokens_for_rag: 88000
+    subchat_tokens_for_rag: 10000
+    subchat_n_ctx: 16000
+    subchat_max_new_tokens: 2000
+  strategic_planning:
+    subchat_model_type: "thinking"
+    subchat_tokens_for_rag: 70000
     subchat_n_ctx: 128000
     subchat_max_new_tokens: 32000
-  strategic_planning:
-    subchat_model: "refact/o3"
-    subchat_tokens_for_rag: 120000
-    subchat_n_ctx: 200000
-    subchat_max_new_tokens: 40000
     subchat_reasoning_effort: "high"
-  debug_script:
-    subchat_model: "refact/o4-mini"
-    subchat_tokens_for_rag: 120000
-    subchat_n_ctx: 200000
-    subchat_max_new_tokens: 40000
-    subchat_reasoning_effort: "high"
-  critique:
-    subchat_model: "refact/o4-mini"
-    subchat_tokens_for_rag: 120000
-    subchat_n_ctx: 200000
-    subchat_max_new_tokens: 40000
   create_memory_bank:
     subchat_model_type: "default"
     subchat_tokens_for_rag: 88000

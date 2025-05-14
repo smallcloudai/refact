@@ -134,12 +134,11 @@ pub async fn tools_merged_and_filtered(
         ("create_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
         ("update_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
         ("update_textdoc_regex".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex {}) as Box<dyn Tool + Send>),
-        // ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
+        ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
-        // ("critique".to_string(), Box::new(crate::tools::tool_critique::ToolCritique{}) as Box<dyn Tool + Send>),
         ("search_pattern".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
@@ -147,7 +146,6 @@ pub async fn tools_merged_and_filtered(
         ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
-        ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
         // ("locate".to_string(), Box::new(crate::tools::tool_locate::ToolLocate{}) as Box<dyn Tool + Send>))),
         // ("locate".to_string(), Box::new(crate::tools::tool_relevant_files::ToolRelevantFiles{}) as Box<dyn Tool + Send>))),
         #[cfg(feature="vecdb")]
@@ -226,7 +224,7 @@ tools:
         description: "An absolute path to get files tree for. Do not pass it if you need a full project tree."
       - name: "use_ast"
         type: "boolean"
-        description: "If true, for each file an array of AST symbols will appear as well as its filename. True by default."
+        description: "If true, for each file an array of AST symbols will appear as well as its filename"
     parameters_required: []
 
   - name: "web"
@@ -360,16 +358,6 @@ tools:
     parameters_required:
       - "important_paths"
 
-  - name: "critique"
-    agentic: true
-    description: "Provide a thorough critique of code or a solution focusing on validity, robustness, minimality, and edge cases."
-    parameters:
-      - name: "critique_target"
-        type: "string"
-        description: "The code, solution, or approach that should be critiqued."
-    parameters_required:
-      - "critique_target"
-
   - name: "github"
     agentic: true
     description: "Access to gh command line command, to fetch issues, review PRs."
@@ -489,20 +477,6 @@ tools:
     description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
     parameters: []
     parameters_required: []
-    
-  - name: "debug_script"
-    agentic: true
-    description: "Uses pdb to debug a Python script and investigate a problem, then summarizes the debugging session."
-    parameters:
-      - name: "path"
-        type: "string"
-        description: "Path to the file which needs to be debugged"
-      - name: "problem"
-        type: "string"
-        description: "Description of the problem to investigate"
-    parameters_required:
-      - "path"
-      - "problem"
 "####;
 
 
