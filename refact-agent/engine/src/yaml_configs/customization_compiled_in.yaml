@@ -212,22 +212,23 @@ system_prompts:
 
 subchat_tool_parameters:
   locate:
-    subchat_model: "refact/o4-mini"
+    subchat_model_type: "thinking"
     subchat_tokens_for_rag: 150000
     subchat_n_ctx: 200000
     subchat_max_new_tokens: 10000
     subchat_reasoning_effort: "low"
   strategic_planning:
     subchat_model_type: "thinking"
-    subchat_tokens_for_rag: 70000
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 32000
+    subchat_tokens_for_rag: 120000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 40000
     subchat_reasoning_effort: "high"
   create_memory_bank:
-    subchat_model_type: "default"
-    subchat_tokens_for_rag: 88000
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 32000
+    subchat_model_type: "thinking"
+    subchat_tokens_for_rag: 120000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 10000
+    subchat_reasoning_effort: "low"
 
 
 code_lens:
