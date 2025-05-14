@@ -272,7 +272,7 @@ pub async fn subchat_single(
     info!("tools_subset {:?}", tools_subset);
 
     let tools_desclist: Vec<ToolDesc> = {
-        let tools_turned_on_by_cmdline = get_available_tools(gcx.clone(), false).await.iter().map(|tool| {
+        let tools_turned_on_by_cmdline = get_available_tools(gcx.clone()).await.iter().map(|tool| {
             tool.tool_description()
         }).collect::<Vec<_>>();
 

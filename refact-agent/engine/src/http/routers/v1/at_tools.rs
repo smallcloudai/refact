@@ -83,7 +83,7 @@ pub struct ToolGroupResponse {
 pub async fn handle_v1_get_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
 ) -> Json<Vec<ToolGroupResponse>> {
-    let tool_groups = get_available_tool_groups(gcx.clone(), true).await;
+    let tool_groups = get_available_tool_groups(gcx.clone()).await;
 
     let tool_groups: Vec<ToolGroupResponse> = tool_groups.into_iter().filter_map(|tool_group| {
         if tool_group.tools.is_empty() {
@@ -193,7 +193,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         "".to_string(),
     ).await)); // used only for should_confirm
 
-    let all_tools = get_available_tools(gcx.clone(), true).await.into_iter()
+    let all_tools = get_available_tools(gcx.clone()).await.into_iter()
         .map(|tool| {
             let spec = tool.tool_description();
             (spec.name, tool)
@@ -291,7 +291,7 @@ pub async fn handle_v1_tools_execute(
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
-    let mut at_tools = get_available_tools(gcx.clone(), false).await.into_iter()
+    let mut at_tools = get_available_tools(gcx.clone()).await.into_iter()
         .map(|tool| {
             let spec = tool.tool_description();
             (spec.name, tool)
