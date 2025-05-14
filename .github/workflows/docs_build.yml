@@ -2,6 +2,12 @@ name: Refact Docs Build
 # This workflow can be triggered manually
 on:
   workflow_dispatch:
+    inputs:
+      docs_branch:
+        description: 'Branch of docs to build'
+        required: true
+        default: 'main'
+        type: 'string'
 
 jobs:
   setup-vars:
@@ -14,7 +20,7 @@ jobs:
         name: Setup variables
         shell: bash
         run: |
-          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          GIT_BRANCH="${{ github.event.inputs.docs_branch }}"
           if [[ ${GIT_BRANCH} == "main" ]]; then 
               echo "now_tag=${GIT_BRANCH}.$(TZ=UTC date +'%Y-%m-%dT%H-%M-%SZ')" >> "$GITHUB_OUTPUT"
           else
@@ -34,6 +40,8 @@ jobs:
           sudo rm -rf /opt/ghc
 
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.docs_branch }}
       - name: npm install
         working-directory: ./docs
         run: |
