@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::call_validation::DiffChunk;
@@ -21,6 +22,7 @@ pub struct FileEditDryRunResponse {
     file_before: String,
     file_after: String,
     chunks: Vec<DiffChunk>,
+    corrected_path: PathBuf,
 }
 
 pub async fn handle_v1_file_edit_tool_dry_run(
@@ -33,7 +35,7 @@ pub async fn handle_v1_file_edit_tool_dry_run(
             format!("JSON problem: {}", e),
         )
     })?;
-    let (file_before, file_after, chunks) = match post.tool_name.as_str() {
+    let (file_before, file_after, chunks, corrected_path) = match post.tool_name.as_str() {
         "create_textdoc" => {
             crate::tools::file_edit::tool_create_textdoc::tool_create_text_doc_exec(
                 global_context.clone(),
@@ -77,6 +79,7 @@ pub async fn handle_v1_file_edit_tool_dry_run(
                 file_before,
                 file_after,
                 chunks,
+                corrected_path,
             })
             .unwrap(),
         ))

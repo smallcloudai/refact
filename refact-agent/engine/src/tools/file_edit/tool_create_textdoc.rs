@@ -94,14 +94,14 @@ pub async fn tool_create_text_doc_exec(
     gcx: Arc<ARwLock<GlobalContext>>,
     args: &HashMap<String, Value>,
     dry: bool
-) -> Result<(String, String, Vec<DiffChunk>), String> {
+) -> Result<(String, String, Vec<DiffChunk>, PathBuf), String> {
     let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
     let args = parse_args(gcx.clone(), args, privacy_settings).await?;
     await_ast_indexing(gcx.clone()).await?;
     let (before_text, after_text) = write_file(gcx.clone(), &args.path, &args.content, dry).await?;
     sync_documents_ast(gcx.clone(), &args.path).await?;
     let diff_chunks = convert_edit_to_diffchunks(args.path.clone(), &before_text, &after_text)?;
-    Ok((before_text, after_text, diff_chunks))
+    Ok((before_text, after_text, diff_chunks, args.path.clone()))
 }
 
 #[async_trait]
@@ -117,7 +117,7 @@ impl Tool for ToolCreateTextDoc {
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let gcx = ccx.lock().await.global_context.clone();
-        let (_, _, diff_chunks) = tool_create_text_doc_exec(gcx.clone(), args, false).await?;
+        let (_, _, diff_chunks, _) = tool_create_text_doc_exec(gcx.clone(), args, false).await?;
         let results = vec![ChatMessage {
             role: "diff".to_string(),
             content: ChatContent::SimpleText(json!(diff_chunks).to_string()),
@@ -139,7 +139,7 @@ impl Tool for ToolCreateTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
+
         async fn can_execute_tool_edit(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
             let _ = parse_args(gcx.clone(), args, privacy_settings).await?;
             Ok(())
