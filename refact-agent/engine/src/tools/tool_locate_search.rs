@@ -25,24 +25,27 @@ use crate::tokens::count_text_tokens_with_fallback;
 pub struct ToolLocateSearch;
 
 
-const LS_SYSTEM_PROMPT: &str = r###"Your task is to locate and tag files/symbols relevant to the problem witch is desctibed in the given conversation.
-Consider already included files in the context - these are the files you have already inspected.
+const LS_SYSTEM_PROMPT: &str = r###"**Task**
+Locate every file or symbol relevant to the problem described in the conversation.  
+> **Important:** If the conversation already supplies certain files, treat them as fully reviewed and **focus on finding *additional* relevant files or symbols**. Do not stop until you have exhausted the project for new, useful artefacts.
 
-Relevance tags:
-* **FOUND** – explicitly mentioned targets / main edit locations
-* **NEWFILE** – files that must be created
-* **MORE_TOCHANGE** – collateral edits caused by the task
-* **USAGE** – code that calls or references target symbols
-* **SIMILAR** – examples with similar logic or style
+**Available tools**
+- `tree()`                     — view the project directory tree
+- `search_symbol_definition()` — locate symbol definitions
+- `search_symbol_usages()`     — locate call sites
+- `search_pattern()`           — regex search
+- `search_semantic()`          — broader semantic search
 
-Search tools:
-* `tree()` – tree of the project
-* `search_symbol_definition()` – find definitions
-* `search_symbol_usages()` – find call sites
-* `search_pattern()` – regex search
-* `search_semantic()` – broader semantic search
-
-Make multiple steps, your search must be deep and complete. Explain each action. Make a small report at the end."###;
+**Workflow**
+1. **Plan** – Sketch a quick strategy: which tool you’ll start with and why.  
+2. **Investigate iteratively**  
+   - Run a tool.  
+   - Interpret the output.  
+   - Decide your next step.  
+   - Repeat until no new relevant artefacts remain.  
+3. **Explain** – Briefly justify each action as you take it.  
+4. **Report** – End with a concise summary listing all newly discovered files/symbols and why they matter.
+"###;
 
 
 const LS_WRAP_UP: &str = r###"Inspect the task description and the files collected so far, then sort the relevant paths into the JSON structure below.
