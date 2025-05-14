@@ -112,6 +112,11 @@ pub struct ToolPost {
     enabled: bool,
 }
 
+#[derive(Deserialize)]
+pub struct ToolPostReq {
+    tools: Vec<ToolPost>,
+}
+
 #[derive(Serialize)]
 pub struct ToolPostResponse {
     sucess: bool,
@@ -120,8 +125,9 @@ pub struct ToolPostResponse {
 pub async fn handle_v1_post_tools(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Json<ToolPostResponse>, ScratchError> {
-    let tools = serde_json::from_slice::<Vec<ToolPost>>(&body_bytes)
-        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+    let tools = serde_json::from_slice::<ToolPostReq>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?
+        .tools;
 
     for tool in tools {
         set_tool_config(
