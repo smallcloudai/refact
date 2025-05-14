@@ -41,6 +41,7 @@ describe("formatChatResponse", () => {
         content: {
           tool_call_id: "call_6qxVYwV6MTcazl1Fy5pRlImi",
           content: "stuff",
+          tool_failed: false,
         },
       },
       {

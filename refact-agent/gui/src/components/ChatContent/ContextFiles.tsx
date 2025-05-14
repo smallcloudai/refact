@@ -120,8 +120,8 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  // TODO: not optimal to do like this :/
-                  // maybe we can safely rename file_name -> file_path in ChatContextFile type
+                  // TODO: this maybe will need to be reworked in the future
+                  // but VSCode handles well file_path to be relative to the actual file_name as file_path
                   void onOpenFile({
                     ...file,
                     file_path: file.file_name,

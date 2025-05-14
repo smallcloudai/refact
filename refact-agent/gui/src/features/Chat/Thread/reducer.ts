@@ -516,6 +516,8 @@ export function maybeAppendToolCallResultFromIdeToMessages(
     content: {
       content: message,
       tool_call_id: toolCallId,
+      // assuming, that tool_failed is always false at this point
+      tool_failed: false,
     },
   };
 
