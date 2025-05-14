@@ -3,11 +3,11 @@ name: Refact Docs Build
 on:
   workflow_dispatch:
     inputs:
-      docs_branch:
-        description: 'Branch of docs to build'
-        required: true
-        default: 'main'
-        type: 'string'
+      override_branch:
+        description: 'Override branch name for tag (e.g. "main" to create main.date tag)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   setup-vars:
@@ -20,11 +20,15 @@ jobs:
         name: Setup variables
         shell: bash
         run: |
-          GIT_BRANCH="${{ github.event.inputs.docs_branch }}"
-          if [[ ${GIT_BRANCH} == "main" ]]; then 
-              echo "now_tag=${GIT_BRANCH}.$(TZ=UTC date +'%Y-%m-%dT%H-%M-%SZ')" >> "$GITHUB_OUTPUT"
+          GIT_BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          EFFECTIVE_BRANCH="${{ github.event.inputs.override_branch }}"
+          if [[ -z "$EFFECTIVE_BRANCH" ]]; then
+            EFFECTIVE_BRANCH=$GIT_BRANCH
+          fi
+          if [[ ${EFFECTIVE_BRANCH} == "main" ]]; then 
+              echo "now_tag=${EFFECTIVE_BRANCH}.$(TZ=UTC date +'%Y-%m-%dT%H-%M-%SZ')" >> "$GITHUB_OUTPUT"
           else
-              echo "now_tag=${GIT_BRANCH}" >> "$GITHUB_OUTPUT"
+              echo "now_tag=${EFFECTIVE_BRANCH}" >> "$GITHUB_OUTPUT"
           fi
 
   build-and-push-image:
@@ -40,8 +44,6 @@ jobs:
           sudo rm -rf /opt/ghc
 
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.docs_branch }}
       - name: npm install
         working-directory: ./docs
         run: |
