@@ -99,6 +99,8 @@ or
     "app/main.py": "handle_error"
   }
 }
+
+DO NOT CALL ANY TOOLS ANYMORE!
 ```"###;
 
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
