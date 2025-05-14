@@ -15,6 +15,7 @@ use crate::git::checkpoints::create_workspace_checkpoint;
 use crate::global_context::{GlobalContext, SharedGlobalContext};
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
+use crate::tools::tools_list::get_available_tools;
 
 
 pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
@@ -120,27 +121,31 @@ async fn _chat(
 
     tracing::info!("chat_mode {:?}", chat_post.meta.chat_mode);
 
-    if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
-        chat_post.tools = None;
+
+    chat_post.tools = if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
+         None
     } else {
-        if let Some(tools) = &mut chat_post.tools {
-            for tool in &mut *tools {
-                if let Some(function) = tool.get_mut("function") {
-                    function.as_object_mut().unwrap().remove("agentic");
-                }
+        // All available tools for the current lsp config in openai style
+        let tools: Vec<Value> = get_available_tools(gcx.clone(), false).await.into_iter().filter_map(|tool| {
+            if tool.config().is_ok_and(|t| t.enabled) {
+                let mut openai_style_tool = tool.tool_description().into_openai_style();
+                openai_style_tool["function"].as_object_mut().unwrap().remove("agentic");
+                Some(openai_style_tool)
+            } else {
+                None
             }
-            chat_post.tools = Some(available_tools_by_chat_mode(tools.clone(), &chat_post.meta.chat_mode));
-        } else {
-            // TODO at some point, get rid of /tools call on client, make so we can have chat_post.tools==None and just fill the tools here
-            chat_post.tools = Some(available_tools_by_chat_mode(vec![], &chat_post.meta.chat_mode));
-        }
-        tracing::info!("tools [{}]", chat_post.tools.as_ref().map_or("".to_string(), |tools| {
+        }).collect();
+
+        tracing::info!(
+            "tools [{}]", 
             tools.iter()
                 .filter_map(|tool| tool.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()))
                 .collect::<Vec<&str>>()
                 .join(", ")
-        }));
-    }
+        );
+
+        Some(available_tools_by_chat_mode(tools, &chat_post.meta.chat_mode))
+    };
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let model_rec = resolve_chat_model(caps, &chat_post.model)
