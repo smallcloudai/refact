@@ -750,3 +750,14 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
 
   return Object.values(json).every((value) => typeof value === "string");
 }
+
+export type SuccessResponse = { success: true };
+
+export function isSuccess(data: unknown): data is SuccessResponse {
+  if (!data) return false;
+  if (typeof data !== "object") return false;
+  if (!("success" in data)) return false;
+  if (typeof data.success !== "boolean") return false;
+  if (!data.success) return false;
+  return true;
+}

@@ -8,22 +8,69 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronLeftIcon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 
 import { useGetToolGroupsQuery } from "../../../hooks";
-import { ToolGroup as ToolGroupType } from "../../../services/refact";
+import {
+  ToolGroup as ToolGroupType,
+  ToolGroupUpdate,
+} from "../../../services/refact";
 
 import { ScrollArea } from "../../ScrollArea";
 import { ToolGroup } from "./ToolGroup";
+import { useUpdateToolGroupsMutation } from "../../../hooks/useUpdateToolGroupsMutation";
 
 export const ToolGroups: React.FC = () => {
   const { data: toolsGroups, isLoading, isSuccess } = useGetToolGroupsQuery();
+  const { mutationTrigger: updateToolGroups } = useUpdateToolGroupsMutation();
+
   const [selectedToolGroup, setSelectedToolGroup] =
     useState<ToolGroupType | null>(null);
+
+  const someToolsEnabled = useMemo(() => {
+    if (!selectedToolGroup) return false;
+    return selectedToolGroup.tools.some((tool) => tool.enabled);
+  }, [selectedToolGroup]);
+
+  const handleToggleToolGroup = useCallback(
+    (toolGroup: ToolGroupType) => {
+      const updatedTools = toolGroup.tools.map((tool) => ({
+        ...tool,
+        enabled: someToolsEnabled ? false : true,
+      }));
+
+      const updatedGroup = { ...toolGroup, tools: updatedTools };
+
+      const dataToSend: ToolGroupUpdate[] = updatedTools.map((tool) => ({
+        enabled: tool.enabled,
+        source: tool.spec.source,
+        name: tool.spec.name,
+      }));
+      console.log(`[DEBUG]: updating data: `, dataToSend);
+
+      updateToolGroups(dataToSend)
+        .then((result) => {
+          console.log(`[DEBUG]: result: `, result);
+          if (result.data) {
+            setSelectedToolGroup((prev) => {
+              console.log(
+                "[DEBUG]: Previous group: ",
+                prev,
+                "new group: ",
+                updatedGroup,
+              );
+              return updatedGroup;
+            });
+          }
+        })
+        .catch(alert);
+    },
+    [updateToolGroups, someToolsEnabled],
+  );
 
   if (isLoading || !isSuccess) return <ToolGroupsSkeleton />;
 
@@ -86,8 +133,14 @@ export const ToolGroups: React.FC = () => {
                   {selectedToolGroup.name}
                 </Heading>
               </Flex>
-              <Button size="1" variant="outline" color="gray" mb="2">
-                Unselect all
+              <Button
+                onClick={() => handleToggleToolGroup(selectedToolGroup)}
+                size="1"
+                variant="outline"
+                color="gray"
+                mb="2"
+              >
+                {someToolsEnabled ? "Unselect" : "Select"} all
               </Button>
               <ScrollArea
                 scrollbars="vertical"
@@ -135,11 +188,9 @@ export const ToolGroups: React.FC = () => {
 const ToolGroupsSkeleton: React.FC = () => {
   return (
     <Flex direction="column" gap="3" style={{ overflow: "hidden" }}>
-      <Skeleton loading={true}>
-        <Heading size="3" as="h3">
-          Manage Tool Groups
-        </Heading>
-      </Skeleton>
+      <Heading size="3" as="h3">
+        Manage Tool Groups
+      </Heading>
       <Flex direction="column" gap="1">
         {[1, 2].map((idx) => (
           <Flex key={idx} align="center" justify="between" gap="1">

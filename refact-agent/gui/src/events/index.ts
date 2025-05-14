@@ -35,7 +35,6 @@ export {
 export type { TextDocToolCall } from "../components/Tools/types";
 
 export type {
-  ToolCommand,
   CustomPromptsResponse,
   CapsResponse,
   UserMessage,
