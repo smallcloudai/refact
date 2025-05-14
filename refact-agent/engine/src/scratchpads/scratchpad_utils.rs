@@ -66,16 +66,10 @@ pub fn max_tokens_for_rag_chat_by_tools(
         
         let tool_limit = match tool.function.name.as_str() {
             "search" | "regex_search" | "definition" | "references" | "cat" if is_cat_with_lines => {
-                if context_files_len < crate::http::routers::v1::chat::CHAT_TOP_N {
-                    // Scale down proportionally to how much we exceed the context limit
-                    let scaling_factor = crate::http::routers::v1::chat::CHAT_TOP_N as f64 / context_files_len as f64;
-                    (4096.0 * scaling_factor) as usize
-                } else {
-                    4096
-                }
+                (4096 * context_files_len).min(base_limit)
             },
-            "cat" | "locate" => 8192,
-            _ => 4096,  // Default limit for other tools
+            "cat" | "locate" => (8192 * context_files_len).min(base_limit),
+            _ => (4096 * context_files_len).min(base_limit)
         };
         
         overall_tool_limit += tool_limit;
