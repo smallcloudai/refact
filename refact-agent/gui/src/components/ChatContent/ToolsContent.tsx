@@ -269,6 +269,7 @@ function processToolCalls(
       <TextDocTool
         key={`textdoc-tool-${head.function.name}-${processed.length}`}
         toolCall={head}
+        toolFailed={result?.tool_failed}
       />
     );
     return processToolCalls(tail, toolResults, features, [...processed, elem]);

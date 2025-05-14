@@ -71,6 +71,7 @@ export interface BaseToolResult {
   finish_reason?: string; // "call_failed" | "call_worked";
   content: ToolContent;
   compression_strength?: CompressionStrength;
+  tool_failed: boolean;
 }
 
 export interface SingleModelToolResult extends BaseToolResult {
@@ -438,6 +439,7 @@ export type ChatUserMessageResponse =
 export type ToolResponse = {
   id: string;
   role: "tool";
+  tool_failed: boolean;
 } & ToolResult;
 
 export function isChatUserMessageResponse(
@@ -538,6 +540,7 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
   if (!("tool_call_id" in json)) return false;
+  if (!("tool_failed" in json)) return false;
   return json.role === "tool";
 }
 
