@@ -59,7 +59,6 @@ type SendChatArgs = {
   takeNote?: boolean;
   onlyDeterministicMessages?: boolean;
   chatId?: string;
-  // tools: ToolCommand[] | null;
   port?: number;
   apiKey?: string | null;
   // isConfig?: boolean;
@@ -150,7 +149,6 @@ export async function sendChat({
   // takeNote = false,
   onlyDeterministicMessages: only_deterministic_messages,
   chatId: chat_id,
-  // tools,
   port = 8001,
   apiKey,
   checkpointsEnabled = true,
@@ -175,7 +173,6 @@ export async function sendChat({
     messages,
     model: model,
     stream,
-    // tools,
     only_deterministic_messages,
     checkpoints_enabled: checkpointsEnabled,
     // chat_id,
