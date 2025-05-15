@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
+use axum::extract::path;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -9,7 +10,14 @@ use async_trait::async_trait;
 use tokio::process::Command;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
+use crate::files_correction::canonical_path;
+use crate::files_correction::canonicalize_normalized_path;
+use crate::files_correction::check_if_its_inside_a_workspace_or_config;
+use crate::files_correction::correct_to_nearest_dir_path;
 use crate::files_correction::get_active_project_path;
+use crate::files_correction::get_project_dirs;
+use crate::files_correction::preprocess_path_for_normalization;
 use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::integrations::process_io_utils::execute_command;
@@ -221,7 +229,7 @@ pub async fn execute_shell_command(
     Ok(out)
 }
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
+async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -239,7 +247,20 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>)
             if s.is_empty() {
                 None
             } else {
-                let workdir = crate::files_correction::canonical_path(s);
+                let path_str = preprocess_path_for_normalization(s.to_string());
+                let path = PathBuf::from(&path_str);
+
+                let workdir = if path.is_absolute() {
+                    let path = canonicalize_normalized_path(path);
+                    check_if_its_inside_a_workspace_or_config(gcx.clone(), &path).await?;
+                    path
+                } else {
+                    let project_dirs = get_project_dirs(gcx.clone()).await;
+                    let candidates = correct_to_nearest_dir_path(gcx.clone(), &path_str, false, 3).await;
+                    canonical_path(
+                        return_one_candidate_or_a_good_error(gcx.clone(), &path_str, &candidates, &project_dirs, true).await?
+                    )
+                };
                 if !workdir.exists() {
                     return Err("Workdir doesn't exist".to_string());
                 } else {
