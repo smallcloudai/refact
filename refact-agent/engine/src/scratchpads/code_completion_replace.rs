@@ -602,8 +602,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        _exploration_tools: bool,
-        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.token_bos = patch
             .get("token_bos")
@@ -876,8 +874,6 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        _exploration_tools: bool,
-        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.t.context_format = patch
             .get("context_format")

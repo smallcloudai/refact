@@ -74,8 +74,6 @@ pub trait ScratchpadAbstract: Send {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        exploration_tools: bool,
-        agentic_tools: bool,
     ) -> Result<(), String>;
 
     async fn prompt(

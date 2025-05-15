@@ -96,8 +96,6 @@ impl ScratchpadAbstract for ChatPassthrough {
     async fn apply_model_adaptation_patch(
         &mut self,
         _patch: &Value,
-        _exploration_tools: bool,
-        _agentic_tools: bool,
     ) -> Result<(), String> {
         Ok(())
     }
