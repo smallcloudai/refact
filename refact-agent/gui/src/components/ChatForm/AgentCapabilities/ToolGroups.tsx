@@ -8,16 +8,19 @@ import {
   Text,
 } from "@radix-ui/themes";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronLeftIcon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 
-import { useGetToolGroupsQuery } from "../../../hooks";
+import { useAppDispatch, useGetToolGroupsQuery } from "../../../hooks";
 import {
+  Tool,
   ToolGroup as ToolGroupType,
   ToolGroupUpdate,
+  toolsApi,
+  ToolSpec,
 } from "../../../services/refact";
 
 import { ScrollArea } from "../../ScrollArea";
@@ -26,26 +29,35 @@ import { useUpdateToolGroupsMutation } from "../../../hooks/useUpdateToolGroupsM
 import { debugApp } from "../../../debugConfig";
 
 export const ToolGroups: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { data: toolsGroups, isLoading, isSuccess } = useGetToolGroupsQuery();
   const { mutationTrigger: updateToolGroups } = useUpdateToolGroupsMutation();
 
   const [selectedToolGroup, setSelectedToolGroup] =
     useState<ToolGroupType | null>(null);
+  const [selectedToolGroupTools, setSelectedToolGroupTools] = useState<
+    Tool[] | null
+  >(null);
 
   const someToolsEnabled = useMemo(() => {
     if (!selectedToolGroup) return false;
     return selectedToolGroup.tools.some((tool) => tool.enabled);
   }, [selectedToolGroup]);
 
-  const handleToggleToolGroup = useCallback(
-    (toolGroup: ToolGroupType) => {
-      const updatedTools = toolGroup.tools.map((tool) => ({
-        ...tool,
-        enabled: someToolsEnabled ? false : true,
-      }));
+  useEffect(() => {
+    if (selectedToolGroup) {
+      setSelectedToolGroupTools(selectedToolGroup.tools);
+    }
+  }, [selectedToolGroup]);
 
-      const updatedGroup = { ...toolGroup, tools: updatedTools };
-
+  const handleUpdateToolGroups = useCallback(
+    ({
+      updatedTools,
+      updatedGroup,
+    }: {
+      updatedTools: { enabled: boolean; spec: ToolSpec }[];
+      updatedGroup: ToolGroupType;
+    }) => {
       const dataToSend: ToolGroupUpdate[] = updatedTools.map((tool) => ({
         enabled: tool.enabled,
         source: tool.spec.source,
@@ -57,6 +69,22 @@ export const ToolGroups: React.FC = () => {
         .then((result) => {
           debugApp(`[DEBUG]: result: `, result);
           if (result.data) {
+            // it means, individual tool update
+            debugApp(`[DEBUG]: updating individual tool: `, updatedTools[0]);
+            if (selectedToolGroupTools && updatedTools.length === 1) {
+              setSelectedToolGroupTools((prev) => {
+                const tool = updatedTools[0];
+                return prev
+                  ? prev.map((t) => {
+                      if (t.spec.name === tool.spec.name) {
+                        return { ...t, enabled: tool.enabled };
+                      }
+                      return t;
+                    })
+                  : selectedToolGroupTools;
+              });
+              return;
+            }
             setSelectedToolGroup((prev) => {
               debugApp(
                 "[DEBUG]: Previous group: ",
@@ -70,7 +98,65 @@ export const ToolGroups: React.FC = () => {
         })
         .catch(alert);
     },
-    [updateToolGroups, someToolsEnabled],
+    [updateToolGroups, setSelectedToolGroupTools, selectedToolGroupTools],
+  );
+
+  const handleToggleToolsInToolGroup = useCallback(
+    (toolGroup: ToolGroupType) => {
+      const updatedTools = toolGroup.tools.map((tool) => ({
+        ...tool,
+        enabled: someToolsEnabled ? false : true,
+      }));
+
+      const updatedGroup = { ...toolGroup, tools: updatedTools };
+
+      handleUpdateToolGroups({
+        updatedTools,
+        updatedGroup,
+      });
+    },
+    [handleUpdateToolGroups, someToolsEnabled],
+  );
+
+  const handleResetSelectedGroup = useCallback(() => {
+    dispatch(toolsApi.util.invalidateTags(["TOOL_GROUPS"]));
+    setSelectedToolGroup(null);
+  }, [dispatch]);
+
+  const handleToggleSpecificToolFromToolGroup = useCallback(
+    ({
+      tool,
+      parentGroup,
+      togglingTo,
+    }: {
+      tool: ToolGroupType["tools"][number];
+      parentGroup: ToolGroupType;
+      togglingTo: boolean;
+    }) => {
+      const updatedTools: Tool[] = [
+        {
+          enabled: togglingTo,
+          spec: tool.spec,
+        },
+      ];
+
+      const updatedGroup = {
+        ...parentGroup,
+        tools: parentGroup.tools.map((t) => {
+          if (t.spec.name === tool.spec.name) {
+            return { ...tool };
+          }
+
+          return { ...t };
+        }),
+      };
+
+      handleUpdateToolGroups({
+        updatedTools,
+        updatedGroup,
+      });
+    },
+    [handleUpdateToolGroups],
   );
 
   if (isLoading || !isSuccess) return <ToolGroupsSkeleton />;
@@ -124,7 +210,7 @@ export const ToolGroups: React.FC = () => {
                 <Button
                   variant="outline"
                   size="1"
-                  onClick={() => setSelectedToolGroup(null)}
+                  onClick={handleResetSelectedGroup}
                   aria-label="Back"
                 >
                   <ChevronLeftIcon />
@@ -135,7 +221,7 @@ export const ToolGroups: React.FC = () => {
                 </Heading>
               </Flex>
               <Button
-                onClick={() => handleToggleToolGroup(selectedToolGroup)}
+                onClick={() => handleToggleToolsInToolGroup(selectedToolGroup)}
                 size="1"
                 variant="outline"
                 color="gray"
@@ -149,7 +235,7 @@ export const ToolGroups: React.FC = () => {
                 style={{ maxHeight: "125px" }}
               >
                 <Flex direction="column" gap="3" pr="4">
-                  {selectedToolGroup.tools.map((tool) => (
+                  {selectedToolGroupTools?.map((tool) => (
                     <Flex
                       key={tool.spec.name}
                       align="center"
@@ -160,20 +246,32 @@ export const ToolGroups: React.FC = () => {
                         <Text as="p" size="2">
                           🔨 {tool.spec.display_name}
                         </Text>
-                        <HoverCard.Root>
-                          <HoverCard.Trigger>
-                            <QuestionMarkCircledIcon
-                              style={{ marginLeft: 4 }}
-                            />
-                          </HoverCard.Trigger>
-                          <HoverCard.Content size="1">
-                            <Text as="p" size="2">
-                              {tool.spec.description}
-                            </Text>
-                          </HoverCard.Content>
-                        </HoverCard.Root>
+                        {tool.spec.description.trim() !== "" && (
+                          <HoverCard.Root>
+                            <HoverCard.Trigger>
+                              <QuestionMarkCircledIcon
+                                style={{ marginLeft: 4 }}
+                              />
+                            </HoverCard.Trigger>
+                            <HoverCard.Content size="1">
+                              <Text as="p" size="2">
+                                {tool.spec.description}
+                              </Text>
+                            </HoverCard.Content>
+                          </HoverCard.Root>
+                        )}
                       </Flex>
-                      <Switch size="1" checked={tool.enabled} />
+                      <Switch
+                        size="1"
+                        checked={tool.enabled}
+                        onCheckedChange={(newState) =>
+                          handleToggleSpecificToolFromToolGroup({
+                            tool,
+                            parentGroup: selectedToolGroup,
+                            togglingTo: newState,
+                          })
+                        }
+                      />
                     </Flex>
                   ))}
                 </Flex>
