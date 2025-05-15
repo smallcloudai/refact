@@ -23,6 +23,7 @@ import {
 import { ScrollArea } from "../../ScrollArea";
 import { ToolGroup } from "./ToolGroup";
 import { useUpdateToolGroupsMutation } from "../../../hooks/useUpdateToolGroupsMutation";
+import { debugApp } from "../../../debugConfig";
 
 export const ToolGroups: React.FC = () => {
   const { data: toolsGroups, isLoading, isSuccess } = useGetToolGroupsQuery();
@@ -50,14 +51,14 @@ export const ToolGroups: React.FC = () => {
         source: tool.spec.source,
         name: tool.spec.name,
       }));
-      console.log(`[DEBUG]: updating data: `, dataToSend);
+      debugApp(`[DEBUG]: updating data: `, dataToSend);
 
       updateToolGroups(dataToSend)
         .then((result) => {
-          console.log(`[DEBUG]: result: `, result);
+          debugApp(`[DEBUG]: result: `, result);
           if (result.data) {
             setSelectedToolGroup((prev) => {
-              console.log(
+              debugApp(
                 "[DEBUG]: Previous group: ",
                 prev,
                 "new group: ",
