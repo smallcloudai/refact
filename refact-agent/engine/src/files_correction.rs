@@ -135,10 +135,6 @@ async fn complete_path_with_project_dir(
         if path_exists(&candidate_path, is_dir) && candidate_path.starts_with(&p) {
             return Some(candidate_path);
         }
-        let j_path = p.join(&candidate_path);
-        if path_exists(&j_path, is_dir) {
-            return Some(j_path);
-        }
 
         // This might save a roundtrip:
         // .../project1/project1/1.cpp
