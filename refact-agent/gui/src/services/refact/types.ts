@@ -71,7 +71,7 @@ export interface BaseToolResult {
   finish_reason?: string; // "call_failed" | "call_worked";
   content: ToolContent;
   compression_strength?: CompressionStrength;
-  tool_failed: boolean;
+  tool_failed?: boolean;
 }
 
 export interface SingleModelToolResult extends BaseToolResult {
@@ -439,7 +439,7 @@ export type ChatUserMessageResponse =
 export type ToolResponse = {
   id: string;
   role: "tool";
-  tool_failed: boolean;
+  tool_failed?: boolean;
 } & ToolResult;
 
 export function isChatUserMessageResponse(
