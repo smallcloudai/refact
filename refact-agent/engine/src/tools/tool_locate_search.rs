@@ -26,7 +26,10 @@ pub struct ToolLocateSearch;
 
 
 const LS_SYSTEM_PROMPT: &str = r###"**Task**
-Locate every file or symbol relevant to the problem described in the conversation.  
+Locate every file or symbol relevant to the request:
+%%REQUEST%%
+
+There is an extra context described in the conversation below. 
 > **Important:** If the conversation already supplies certain files, treat them as fully reviewed and **focus on finding *additional* relevant files or symbols**. Do not stop until you have exhausted the project for new, useful artefacts.
 
 **Available tools**
@@ -211,6 +214,12 @@ impl Tool for ToolLocateSearch {
         tool_call_id: &String,
         args: &HashMap<String, Value>
     ) -> Result<(bool, Vec<ContextEnum>), String> {
+        let what_to_find = match args.get("what_to_find") {
+            Some(Value::String(s)) => s.clone(),
+            Some(v) => return Err(format!("argument `what_to_find` is not a string: {:?}", v)),
+            None => return Err("Missing argument `what_to_find`".to_string())
+        };
+        
         let params = crate::tools::tools_execute::unwrap_subchat_params(ccx.clone(), "locate").await?;
         let gcx = ccx.lock().await.global_context.clone();
         let important_paths = match args.get("important_paths") {
@@ -258,7 +267,7 @@ impl Tool for ToolLocateSearch {
         let prompt = _make_prompt(
             ccx.clone(),
             &params,
-            &LS_SYSTEM_PROMPT.to_string(),
+            &LS_SYSTEM_PROMPT.replace("%%REQUEST%%", &what_to_find),
             &important_paths,
             &external_messages
         ).await?;
