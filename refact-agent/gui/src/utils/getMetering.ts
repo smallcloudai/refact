@@ -51,22 +51,21 @@ export function getTotalTokenMeteringForMessages(messages: ChatMessages) {
   }>(
     (acc, message) => {
       const {
-        metering_prompt_tokens_n,
-        metering_generated_tokens_n,
-        metering_cache_read_tokens_n,
-        metering_cache_creation_tokens_n,
+        metering_prompt_tokens_n = 0,
+        metering_generated_tokens_n = 0,
+        metering_cache_read_tokens_n = 0,
+        metering_cache_creation_tokens_n = 0,
       } = message;
       return {
         metering_prompt_tokens_n:
-          acc.metering_prompt_tokens_n + (metering_prompt_tokens_n ?? 0),
+          acc.metering_prompt_tokens_n + metering_prompt_tokens_n,
         metering_generated_tokens_n:
-          acc.metering_generated_tokens_n + (metering_generated_tokens_n ?? 0),
+          acc.metering_generated_tokens_n + metering_generated_tokens_n,
         metering_cache_creation_tokens_n:
           acc.metering_cache_creation_tokens_n +
-          (metering_cache_creation_tokens_n ?? 0),
+          metering_cache_creation_tokens_n,
         metering_cache_read_tokens_n:
-          acc.metering_cache_read_tokens_n +
-          (metering_cache_read_tokens_n ?? 0),
+          acc.metering_cache_read_tokens_n + metering_cache_read_tokens_n,
       };
     },
     {
