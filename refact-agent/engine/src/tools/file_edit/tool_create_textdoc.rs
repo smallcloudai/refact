@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::{canonicalize_normalized_path, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
+use crate::files_correction::{canonicalize_normalized_path, check_if_its_inside_a_workspace_or_config, correct_to_nearest_dir_path, get_project_dirs, is_inside_a_workspace_or_config, preprocess_path_for_normalization};
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
@@ -56,7 +56,9 @@ async fn parse_args(
                     ));
                 }
             } else {
-                raw_path
+                let path = canonicalize_normalized_path(raw_path);
+                check_if_its_inside_a_workspace_or_config(gcx.clone(), &path).await?;
+                path
             };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(

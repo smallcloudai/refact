@@ -456,6 +456,17 @@ pub fn canonicalize_normalized_path(p: PathBuf) -> PathBuf {
     p.canonicalize().unwrap_or_else(|_| absolute(&p).unwrap_or(p))
 }
 
+pub async fn check_if_its_inside_a_workspace_or_config(gcx: Arc<ARwLock<GlobalContext>>, path: &Path) -> Result<(), String> {
+    let workspace_folders = get_project_dirs(gcx.clone()).await;
+    let config_dir = gcx.read().await.config_dir.clone();
+
+    if workspace_folders.iter().any(|d| path.starts_with(d)) || path.starts_with(&config_dir) {
+        Ok(())
+    } else {
+        Err(format!("Path '{path:?}' is outside of project directories:\n{workspace_folders:?}"))
+    }
+}
+
 pub fn any_glob_matches_path(globs: &[String], path: &Path) -> bool {
     globs.iter().any(|glob| {
         let pattern = glob::Pattern::new(glob).unwrap();
