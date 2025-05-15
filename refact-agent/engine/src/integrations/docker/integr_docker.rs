@@ -163,8 +163,9 @@ impl Tool for ToolDocker {
         ]))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let command = parse_command(args)?;

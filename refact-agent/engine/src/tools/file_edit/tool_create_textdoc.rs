@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::{canonicalize_normalized_path, check_if_its_inside_a_workspace_or_config, correct_to_nearest_dir_path, get_project_dirs, is_inside_a_workspace_or_config, preprocess_path_for_normalization};
+use crate::files_correction::{canonicalize_normalized_path, check_if_its_inside_a_workspace_or_config, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
@@ -167,8 +167,9 @@ impl Tool for ToolCreateTextDoc {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("create_textdoc".to_string())

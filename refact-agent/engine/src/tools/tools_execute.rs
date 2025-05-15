@@ -207,7 +207,7 @@ pub async fn run_tools(
                 match res.result {
                     MatchConfirmDenyResult::DENY => {
                         let command_to_match = cmd
-                            .command_to_match_against_confirm_deny(&args)
+                            .command_to_match_against_confirm_deny(ccx.clone(), &args).await
                             .unwrap_or("<error_command>".to_string());
                         generated_tool.push(tool_answer_err(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
                         continue;

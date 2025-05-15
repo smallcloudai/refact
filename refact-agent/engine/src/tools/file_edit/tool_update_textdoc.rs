@@ -160,8 +160,9 @@ impl Tool for ToolUpdateTextDoc {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("update_textdoc".to_string())

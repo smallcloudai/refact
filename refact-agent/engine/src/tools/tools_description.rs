@@ -43,10 +43,10 @@ pub trait Tool: Send + Sync {
 
     async fn match_against_confirm_deny(
         &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>
     ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
             format!("Error getting tool command to match: {}", e)
         })?;
 
@@ -80,8 +80,9 @@ pub trait Tool: Send + Sync {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("".to_string())
@@ -435,7 +436,7 @@ tools:
         description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search."
     parameters_required:
       - "search_key"
-      
+
   - name: "regex_search"
     description: "Search for exact text patterns in files using regular expressions (pattern matching)"
     parameters:
@@ -539,7 +540,7 @@ fn default_param_type() -> String {
 }
 
 /// TODO: Think a better way to know if we can send array type to the model
-/// 
+///
 /// For now, anthropic models support it, gpt models don't, for other, we'll need to test
 pub fn model_supports_array_param_type(model_id: &str) -> bool {
     model_id.contains("claude")

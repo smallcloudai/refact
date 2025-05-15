@@ -137,8 +137,9 @@ impl Tool for ToolMysql {
         Ok((true, results))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let query = match args.get("query") {

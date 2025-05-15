@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::Arc;
-use axum::extract::path;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
@@ -87,10 +86,10 @@ impl Tool for ToolShell {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let (command, workdir_maybe) = parse_args(args)?;
+        let gcx = ccx.lock().await.global_context.clone();
+        let (command, workdir_maybe) = parse_args(gcx.clone(), args).await?;
         let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
 
-        let gcx = ccx.lock().await.global_context.clone();
         let mut error_log = Vec::<YamlError>::new();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
 
@@ -145,10 +144,10 @@ impl Tool for ToolShell {
 
     async fn match_against_confirm_deny(
         &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>
     ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
             format!("Error getting tool command to match: {}", e)
         })?;
         if command_to_match.is_empty() {
@@ -172,11 +171,13 @@ impl Tool for ToolShell {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        let (command, _) = parse_args(args)?;
+        let gcx = ccx.lock().await.global_context.clone();
+        let (command, _) = parse_args(gcx, args).await?;
         Ok(command)
     }
 

@@ -287,8 +287,9 @@ impl Tool for ToolMv {
         }
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let src = match args.get("source") {
@@ -312,10 +313,10 @@ impl Tool for ToolMv {
 
     async fn match_against_confirm_deny(
         &self,
-        _: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
             format!("Error getting tool command to match: {}", e)
         })?;
         Ok(MatchConfirmDeny {
