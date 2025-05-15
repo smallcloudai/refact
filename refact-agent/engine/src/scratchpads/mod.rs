@@ -60,7 +60,7 @@ pub async fn create_code_completion_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", model_rec.scratchpad));
     }
-    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch, false, false).await?;
+    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -86,24 +86,7 @@ pub async fn create_chat_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", model_rec.scratchpad));
     }
-    let mut exploration_tools: bool = false;
-    let mut agentic_tools: bool = false;
-    if post.tools.is_some() {
-        for t in post.tools.as_ref().unwrap() {
-            let tobj = t.as_object().unwrap();
-            if let Some(function) = tobj.get("function") {
-                if let Some(name) = function.get("name") {
-                    if name.as_str() == Some("web") {  // anything that will still be on without ast and vecdb
-                        exploration_tools = true;
-                    }
-                    if name.as_str() == Some("apply_edit") {
-                        agentic_tools = true;
-                    }
-                }
-            }
-        }
-    }
-    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch, exploration_tools, agentic_tools).await?;
+    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }
