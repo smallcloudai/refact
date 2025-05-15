@@ -4,6 +4,7 @@ use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
+use indexmap::IndexMap;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
