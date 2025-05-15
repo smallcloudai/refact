@@ -9,7 +9,7 @@ use serde_json::json;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
-use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_correction::{canonical_path, correct_to_nearest_dir_path, correct_to_nearest_filename, get_project_dirs, preprocess_path_for_normalization};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel};
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
@@ -97,6 +97,7 @@ impl Tool for ToolRm {
             Some(Value::String(s)) if !s.trim().is_empty() => Self::preformat_path(&s.trim().to_string()),
             _ => return Err("Missing required argument `path`".to_string()),
         };
+        let path_str = preprocess_path_for_normalization(path_str);
 
         // Reject if wildcards are present, '?' is allowed if preceeded by '\' or '/' only, like \\?\C:\Some\Path
         if path_str.contains('*') || path_str.contains('[') ||
