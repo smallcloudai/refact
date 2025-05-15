@@ -27,8 +27,10 @@ export const toolsApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ["TOOL_GROUPS"],
   endpoints: (builder) => ({
     getToolGroups: builder.query<ToolGroup[], undefined>({
+      providesTags: ["TOOL_GROUPS"],
       queryFn: async (_args, api, _extraOptions, baseQuery) => {
         const getState = api.getState as () => RootState;
         const state = getState();
