@@ -27,13 +27,17 @@ pub struct ToolLocateSearch;
 
 const LS_SYSTEM_PROMPT: &str = r###"**Task**
 Locate every file or symbol relevant to the request:
+```
 %%REQUEST%%
+```
 
-There is an extra context described in the conversation below. 
-> **Important:** If the conversation already supplies certain files, treat them as fully reviewed and **focus on finding *additional* relevant files or symbols**. Do not stop until you have exhausted the project for new, useful artefacts.
+There is also an extra context described in the conversation below. 
+> **Important:** If the conversation already supplies certain files, treat them as fully reviewed and **focus on finding *additional* relevant files or symbols**. 
+Do not stop until you have exhausted the project for new, useful artefacts!
 
 **Available tools**
 - `tree()`                     — view the project directory tree
+- `cat()`                      — view files
 - `search_symbol_definition()` — locate symbol definitions
 - `search_symbol_usages()`     — locate call sites
 - `search_pattern()`           — regex search
@@ -46,34 +50,30 @@ There is an extra context described in the conversation below.
    - Interpret the output.  
    - Decide your next step.  
    - Repeat until no new relevant artefacts remain.  
+   - Bu sure that you are exploring new and unseen files.
 3. **Explain** – Briefly justify each action as you take it.  
 4. **Report** – End with a concise summary listing all newly discovered files/symbols and why they matter.
 "###;
 
 
 const LS_WRAP_UP: &str = r###"Inspect the task description and the files collected so far, then sort the relevant paths into the JSON structure below.
-
 Guidelines
 ----------
-
 0. **Sanity-check the task**  
    If, after reviewing the files, the task itself is impossible or incoherent, populate the `"rejection"` field with a **specific** reason and stop.
-
 1. **Determine what must be found or changed**  
    • If the task is *find-only*, list the target files/symbols under **FOUND**.  
    • If the task requires *code changes*, put the one or two files that must change under **FOUND**.  
    • If the change belongs in an *entirely new* file, use **NEW_FILE** instead.  
    • If the task clearly needs changes but no files qualify, reject.
-
 2. **Pick reference material for analogies**  
-   If the task says “implement by analogy” or you see near-duplicate code, list up to **3** of the *best* reference files (not already in FOUND) under **SIMILAR**. Zero is fine.
-
+   If the task says “implement by analogy” or you see near-duplicate code, list *best* reference files (not already in FOUND) under **SIMILAR**. Zero is fine.
 3. **Flag additional impact**  
-   *MORE_TOCHANGE* – Up to **3** small, simple files you are **reasonably sure** will also need edits.  
-   *USAGE* – Up to **3** files that **call or depend on** the code you will change. Name the exact symbols being used.
-
+   *MORE_TOCHANGE* – Files you are **reasonably sure** will also need edits.  
+   *USAGE* – Files that **call or depend on** the code you will change. Name the exact symbols being used.
 4. **Be sparing**  
    Irrelevant files hurt more than missing ones. If uncertain, leave it out.
+   Do not include already explored files!
 
 Output format
 -------------
@@ -305,7 +305,7 @@ impl Tool for ToolLocateSearch {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["vecdb".to_string()]
+        vec![]
     }
 }
 
@@ -331,21 +331,20 @@ async fn find_relevant_files_with_search(
 
     let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
 
-    let mut msgs = vec![];
-    msgs.push(ChatMessage::new("system".to_string(), LS_SYSTEM_PROMPT.to_string()));
-    msgs.push(ChatMessage::new("user".to_string(), user_query.to_string()));
-
+    let msgs = vec![
+        ChatMessage::new("user".to_string(), user_query.to_string())
+    ];
     let result = subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
         msgs,
         vec![
-            "tree".to_string(),
+            "tree".to_string(), "cat".to_string(),
             "search_symbol_definition".to_string(), "search_symbol_usages".to_string(),
             "search_pattern".to_string(), "search_semantic".to_string(),
         ],
         16,
-        subchat_params.subchat_max_new_tokens,
+        subchat_params.subchat_n_ctx,
         LS_WRAP_UP,
         1,
         None,
