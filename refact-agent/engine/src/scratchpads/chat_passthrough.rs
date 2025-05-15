@@ -113,7 +113,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         };
         let style = self.post.style.clone();
         let mut at_tools = if !should_execute_remotely {
-            get_available_tools(gcx.clone(), self.supports_clicks).await.into_iter().map(|x| {
+            get_available_tools(gcx.clone()).await.into_iter().map(|x| {
                 (x.tool_description().name, x)
             }).collect()
         } else {
