@@ -307,25 +307,18 @@ function checkForToolLoop(message: ChatMessages): boolean {
 }
 // TODO: add props for config chat
 
-// export function chatModeToLspMode(mode?: ToolUse) {
-//   if (mode === "agent") return "AGENT";
-//   if (mode === "quick") return "NO_TOOLS";
-//   return "EXPLORE";
-// }
-
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
     messages: ChatMessages;
     chatId: string;
-    // tools: ToolCommand[] | null;
     checkpointsEnabled?: boolean;
     mode?: LspChatMode; // used once for actions
     // TODO: make a separate function for this... and it'll need to be saved.
   }
 >(
   "chatThread/sendChat",
-  ({ messages, chatId, /*tools,*/ mode, checkpointsEnabled }, thunkAPI) => {
+  ({ messages, chatId, mode, checkpointsEnabled }, thunkAPI) => {
     const state = thunkAPI.getState();
 
     const thread =
@@ -348,7 +341,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       messages: messagesForLsp,
       last_user_message_id: maybeLastUserMessageId,
       model: state.chat.thread.model,
-      // tools,
       stream: true,
       abortSignal: thunkAPI.signal,
       increase_max_tokens: increaseMaxTokens,
