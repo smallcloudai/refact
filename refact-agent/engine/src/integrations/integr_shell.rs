@@ -248,25 +248,7 @@ async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Val
             if s.is_empty() {
                 None
             } else {
-                let path_str = preprocess_path_for_normalization(s.to_string());
-                let path = PathBuf::from(&path_str);
-
-                let workdir = if path.is_absolute() {
-                    let path = canonicalize_normalized_path(path);
-                    check_if_its_inside_a_workspace_or_config(gcx.clone(), &path).await?;
-                    path
-                } else {
-                    let project_dirs = get_project_dirs(gcx.clone()).await;
-                    let candidates = correct_to_nearest_dir_path(gcx.clone(), &path_str, false, 3).await;
-                    canonical_path(
-                        return_one_candidate_or_a_good_error(gcx.clone(), &path_str, &candidates, &project_dirs, true).await?
-                    )
-                };
-                if !workdir.exists() {
-                    return Err("Workdir doesn't exist".to_string());
-                } else {
-                    Some(workdir)
-                }
+                Some(resolve_shell_workdir(gcx.clone(), s).await?)
             }
         },
         Some(v) => return Err(format!("argument `workdir` is not a string: {:?}", v)),
@@ -274,6 +256,28 @@ async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Val
     };
 
     Ok((command, workdir))
+}
+
+async fn resolve_shell_workdir(gcx: Arc<ARwLock<GlobalContext>>, raw_path: &str) -> Result<PathBuf, String> {
+    let path_str = preprocess_path_for_normalization(raw_path.to_string());
+    let path = PathBuf::from(&path_str);
+
+    let workdir = if path.is_absolute() {
+        let path = canonicalize_normalized_path(path);
+        check_if_its_inside_a_workspace_or_config(gcx.clone(), &path).await?;
+        path
+    } else {
+        let project_dirs = get_project_dirs(gcx.clone()).await;
+        let candidates = correct_to_nearest_dir_path(gcx.clone(), &path_str, false, 3).await;
+        canonical_path(
+            return_one_candidate_or_a_good_error(gcx.clone(), &path_str, &candidates, &project_dirs, true).await?
+        )
+    };
+    if !workdir.exists() {
+        Err("Workdir doesn't exist".to_string())
+    } else {
+        Ok(workdir)
+    }
 }
 
 pub const SHELL_INTEGRATION_SCHEMA: &str = r#"
