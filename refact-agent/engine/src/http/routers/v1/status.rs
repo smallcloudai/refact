@@ -1,20 +1,20 @@
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_structs::AstStatus;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RagStatus {
     pub ast: Option<AstStatus>,
-    ast_alive: String,
+    pub ast_alive: String,
     #[cfg(feature="vecdb")]
     pub vecdb: Option<crate::vecdb::vdb_structs::VecDbStatus>,
-    vecdb_alive: String,
-    vec_db_error: String,
+    pub vecdb_alive: String,
+    pub vec_db_error: String,
 }
 
 pub async fn get_rag_status(gcx: SharedGlobalContext) -> RagStatus {

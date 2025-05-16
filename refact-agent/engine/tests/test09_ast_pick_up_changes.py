@@ -46,8 +46,8 @@ def sort_out_messages(response_messages):
 async def test_if_have_definition(symbol: str, should_be: str, should_not_be: str) -> None:
     print(f"testing({symbol!r})")
     initial_messages = [
-        chat_client.Message(role="user", content=f"Call definition() for {symbol}"),
-        chat_client.Message(role="assistant", content="Alright, here we go", tool_calls=[chat_client.pretend_function_call("definition", {"symbol": symbol})]),
+        chat_client.Message(role="user", content=f"Call search_symbol_definition() for {symbol}"),
+        chat_client.Message(role="assistant", content="Alright, here we go", tool_calls=[chat_client.pretend_function_call("search_symbol_definition", {"symbol": symbol})]),
     ]
     assistant_choices = await ask_chat(initial_messages)
     tool_call_message = sort_out_messages(assistant_choices[0][2:])

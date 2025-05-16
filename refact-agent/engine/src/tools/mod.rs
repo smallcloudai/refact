@@ -6,12 +6,11 @@ mod tool_ast_definition;
 mod tool_ast_reference;
 mod tool_web;
 mod tool_tree;
-mod tool_relevant_files;
 mod tool_cat;
 mod tool_rm;
 mod tool_mv;
 mod tool_regex_search;
-mod tool_deep_analysis;
+mod tool_strategic_planning;
 
 #[cfg(feature="vecdb")]
 mod tool_search;

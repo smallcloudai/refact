@@ -49,9 +49,12 @@ pub async fn forward_to_openai_style_endpoint(
         data["temperature"] = serde_json::Value::from(temperature);
     }
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
-    info!("NOT STREAMING TEMP {}", sampling_parameters.temperature
-        .map(|x| x.to_string())
-        .unwrap_or("None".to_string()));
+    info!("Request: model={}, reasoning_effort={}, T={}, n={}, stream=false", 
+        model_rec.name,
+        sampling_parameters.reasoning_effort.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.temperature.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.n.clone().map(|x| x.to_string()).unwrap_or("none".to_string())
+    );
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt, &model_rec.name);
     } else {
@@ -133,9 +136,12 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     }
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
 
-    info!("STREAMING TEMP {}", sampling_parameters.temperature
-        .map(|x| x.to_string())
-        .unwrap_or("None".to_string()));
+    info!("Request: model={}, reasoning_effort={}, T={}, n={}, stream=true", 
+        model_rec.name,
+        sampling_parameters.reasoning_effort.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.temperature.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.n.clone().map(|x| x.to_string()).unwrap_or("none".to_string())
+    );
 
     if let Some(meta) = meta {
         data["meta"] = json!(meta);

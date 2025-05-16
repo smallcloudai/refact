@@ -295,9 +295,14 @@ pub async fn doc_remove(ast_index: Arc<AMutex<AstDB>>, cpath: &String)
 
 pub async fn doc_defs(ast_index: Arc<AMutex<AstDB>>, cpath: &String) -> Vec<Arc<AstDefinition>>
 {
+    let db = ast_index.lock().await.sleddb.clone();
+    doc_def_internal(db, cpath)
+}
+
+pub fn doc_def_internal(db: Arc<Db>, cpath: &String) -> Vec<Arc<AstDefinition>>
+{
     let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d|{}::", to_search_prefix.join("::"));
-    let db = ast_index.lock().await.sleddb.clone();
     let mut defs = Vec::new();
     let mut iter = db.scan_prefix(d_prefix);
     while let Some(Ok((_, value))) = iter.next() {
