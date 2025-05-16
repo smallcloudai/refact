@@ -14,7 +14,6 @@ use crate::ast::file_splitter::AstBasedFileSplitter;
 use crate::fetch_embedding::get_embedding_with_retries;
 use crate::files_in_workspace::{is_path_to_enqueue_valid, Document};
 use crate::global_context::GlobalContext;
-use crate::knowledge::{vectorize_dirty_memories, MemoriesDatabase};
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{SimpleTextHashVector, SplitResult, VecDbStatus, VecdbConstants, VecdbRecord};
 
@@ -25,7 +24,6 @@ const COOLDOWN_SECONDS: u64 = 10;
 enum MessageToVecdbThread {
     RegularDocument(String),
     ImmediatelyRegularDocument(String),
-    MemoriesSomethingDirty(),
 }
 
 pub struct FileVectorizerService {
@@ -33,7 +31,6 @@ pub struct FileVectorizerService {
     pub vstatus: Arc<AMutex<VecDbStatus>>,
     pub vstatus_notify: Arc<ANotify>,   // fun stuff https://docs.rs/tokio/latest/tokio/sync/struct.Notify.html
     constants: VecdbConstants,
-    memdb: Arc<AMutex<MemoriesDatabase>>,
     vecdb_todo: Arc<AMutex<VecDeque<MessageToVecdbThread>>>,
 }
 
@@ -160,7 +157,6 @@ async fn vectorize_thread(
     let mut ready_to_vecdb: Vec<VecdbRecord> = vec![];
 
     let (vecdb_todo,
-        memdb,
         constants,
         vecdb_handler_arc,
         vstatus,
@@ -169,7 +165,6 @@ async fn vectorize_thread(
         let vservice_locked = vservice.lock().await;
         (
             vservice_locked.vecdb_todo.clone(),
-            vservice_locked.memdb.clone(),
             vservice_locked.constants.clone(),
             vservice_locked.vecdb_handler.clone(),
             vservice_locked.vstatus.clone(),
@@ -189,7 +184,7 @@ async fn vectorize_thread(
                     MessageToVecdbThread::RegularDocument(cpath) => {
                         last_updated.insert(cpath, current_time);
                     }
-                    MessageToVecdbThread::ImmediatelyRegularDocument(_) | MessageToVecdbThread::MemoriesSomethingDirty() => {
+                    MessageToVecdbThread::ImmediatelyRegularDocument(_) => {
                         work_on_one = Some(msg);
                         break;
                     }
@@ -264,18 +259,6 @@ async fn vectorize_thread(
                 Some(MessageToVecdbThread::RegularDocument(cpath)) |
                 Some(MessageToVecdbThread::ImmediatelyRegularDocument(cpath)) => {
                     cpath.clone()
-                }
-                Some(MessageToVecdbThread::MemoriesSomethingDirty()) => {
-                    info!("MEMDB VECTORIZER START");
-                    let r = vectorize_dirty_memories(
-                        memdb.clone(),
-                        vecdb_handler_arc.clone(),
-                        vstatus.clone(),
-                        client.clone(),
-                        constants.embedding_model.embedding_batch,
-                    ).await;
-                    info!("/MEMDB {:?}", r);
-                    continue;
                 }
                 None if last_updated.is_empty() => {
                     // no more files
@@ -414,7 +397,6 @@ impl FileVectorizerService {
     pub async fn new(
         vecdb_handler: Arc<AMutex<VecDBSqlite>>,
         constants: VecdbConstants,
-        memdb: Arc<AMutex<MemoriesDatabase>>,
     ) -> Self {
         let vstatus = Arc::new(AMutex::new(
             VecDbStatus {
@@ -435,7 +417,6 @@ impl FileVectorizerService {
             vstatus: vstatus.clone(),
             vstatus_notify: Arc::new(ANotify::new()),
             constants,
-            memdb,
             vecdb_todo: Default::default(),
         }
     }
@@ -454,26 +435,6 @@ pub async fn vecdb_start_background_tasks(
         )
     );
     vec![retrieve_thread_handle]
-}
-
-pub async fn vectorizer_enqueue_dirty_memory(
-    vservice: Arc<AMutex<FileVectorizerService>>
-) {
-    let (vecdb_todo, vstatus, vstatus_notify) = {
-        let service = vservice.lock().await;
-        (
-            service.vecdb_todo.clone(),
-            service.vstatus.clone(),
-            service.vstatus_notify.clone(),
-        )
-    };
-    {
-        // two locks in sequence, vecdb_todo.lock -> vstatus.lock
-        let mut qlocked = vecdb_todo.lock().await;
-        qlocked.push_back(MessageToVecdbThread::MemoriesSomethingDirty());
-        vstatus.lock().await.queue_additions = true;
-    }
-    vstatus_notify.notify_waiters();
 }
 
 fn _filter_docs_to_enqueue(docs: &Vec<String>) -> Vec<String> {

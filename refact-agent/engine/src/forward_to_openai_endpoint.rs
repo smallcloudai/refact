@@ -5,7 +5,6 @@ use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde_json::json;
-#[cfg(feature="vecdb")]
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
@@ -192,27 +191,23 @@ pub fn try_get_compression_from_prompt(
     }
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Serialize)]
 struct EmbeddingsPayloadOpenAI {
     pub input: Vec<String>,
     pub model: String,
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Deserialize)]
 struct EmbeddingsResultOpenAI {
     pub embedding: Vec<f32>,
     pub index: usize,
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Deserialize)]
 struct EmbeddingsResultOpenAINoIndex {
     pub embedding: Vec<f32>,
 }
 
-#[cfg(feature="vecdb")]
 pub async fn get_embedding_openai_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,

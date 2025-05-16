@@ -482,7 +482,7 @@ impl Tool for ToolCreateMemoryBank {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["ast".to_string(), "vecdb".to_string()]
+        vec![]
     }
 
     fn tool_description(&self) -> crate::tools::tools_description::ToolDesc {

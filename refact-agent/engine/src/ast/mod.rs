@@ -13,9 +13,7 @@ pub mod ast_parse_anything;
 pub mod ast_indexer_thread;
 pub mod ast_db;
 
-#[cfg(feature="vecdb")]
 pub mod file_splitter;
-#[cfg(feature="vecdb")]
 pub mod chunk_utils;
 
 pub mod parse_python;

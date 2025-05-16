@@ -16,14 +16,9 @@ pub async fn wait_for_indexing_if_needed(
     };
 
     let ast_done = async || get_rag_status(gcx.clone()).await.ast.is_some_and(|ast_status| ast_status.astate == "done");
-    #[cfg(feature = "vecdb")]
     let vecdb_done = async || get_rag_status(gcx.clone()).await.vecdb.is_some_and(|vecdb_status| vecdb_status.state == "done");
-
     let mut waiting_ast = cmdline.wait_ast && !ast_done().await;
-    #[cfg(feature = "vecdb")]
     let mut waiting_vecdb = cmdline.wait_vecdb && !vecdb_done().await;
-    #[cfg(not(feature = "vecdb"))]
-    let mut waiting_vecdb = false;
 
     if waiting_ast {
         info!("Waiting for AST to finish indexing.");
@@ -37,7 +32,6 @@ pub async fn wait_for_indexing_if_needed(
             info!("Ast finished indexing.");
             waiting_ast = false;
         }
-        #[cfg(feature = "vecdb")]
         if waiting_vecdb && vecdb_done().await {
             info!("Vecdb finished indexing.");
             waiting_vecdb = false;

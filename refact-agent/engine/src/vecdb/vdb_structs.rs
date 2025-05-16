@@ -75,24 +75,3 @@ pub struct SearchResult {
     pub query_text: String,
     pub results: Vec<VecdbRecord>,
 }
-
-#[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct MemoRecord {
-    pub memid: String,
-    pub thevec: Option<Vec<f32>>,
-    pub distance: f32,
-    pub m_type: String,
-    pub m_goal: String,
-    pub m_project: String,
-    pub m_payload: String,
-    pub m_origin: String,
-    pub mstat_correct: f64,
-    pub mstat_relevant: f64,
-    pub mstat_times_used: i32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MemoSearchResult {
-    pub query_text: String,
-    pub results: Vec<MemoRecord>,
-}

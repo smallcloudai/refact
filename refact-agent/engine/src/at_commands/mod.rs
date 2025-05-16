@@ -5,8 +5,5 @@ pub mod at_commands;
 pub mod at_file;
 pub mod at_web;
 pub mod at_tree;
-
-#[cfg(feature="vecdb")]
 pub mod at_search;
-#[cfg(feature="vecdb")]
 pub mod at_knowledge;

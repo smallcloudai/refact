@@ -121,10 +121,7 @@ pub async fn tools_merged_and_filtered(
 ) -> Result<IndexMap<String, Box<dyn Tool + Send>>, String> {
     let (ast_on, vecdb_on, allow_experimental) = {
         let gcx_locked = gcx.read().await;
-        #[cfg(feature="vecdb")]
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        #[cfg(not(feature="vecdb"))]
-        let vecdb_on = false;
         (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
     };
 
@@ -141,15 +138,10 @@ pub async fn tools_merged_and_filtered(
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
         ("search_pattern".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
         ("create_knowledge".to_string(), Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
         ("search_semantic".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
         ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
     ]);
 
@@ -159,9 +151,12 @@ pub async fn tools_merged_and_filtered(
     ).await;
     tools_all.extend(integrations);
 
-    let is_there_a_thinking_model = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
-        Err(_) => false,
+    let (is_there_a_thinking_model, allow_knowledge) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => {
+            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
+             caps.metadata.features.contains(&"knowledge".to_string()))
+        },
+        Err(_) => (false, false),
     };
 
     let mut filtered_tools = IndexMap::new();
@@ -174,6 +169,9 @@ pub async fn tools_merged_and_filtered(
             continue;
         }
         if dependencies.contains(&"thinking".to_string()) && !is_there_a_thinking_model {
+            continue;
+        }
+        if dependencies.contains(&"knowledge".to_string()) && !allow_knowledge {
             continue;
         }
         filtered_tools.insert(tool_name, tool);
@@ -452,26 +450,10 @@ tools:
     agentic: true
     description: "Creates a new knowledge entry in the vector database to help with future tasks."
     parameters:
-      - name: "im_going_to_use_tools"
-        type: "string"
-        description: "Which tools have you used? Comma-separated list, examples: hg, git, gitlab, rust debugger"
-      - name: "im_going_to_apply_to"
-        type: "string"
-        description: "What have your actions been applied to? List all you can identify, starting with the project name. Comma-separated list, examples: project1, file1.cpp, MyClass, PRs, issues"
-      - name: "search_key"
-        type: "string"
-        description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search."
-      - name: "language_slash_framework"
-        type: "string"
-        description: "What programming language and framework has the current project used? Use lowercase, dashes and dots. Examples: python/django, typescript/node.js, rust/tokio, ruby/rails, php/laravel, c++/boost-asio"
       - name: "knowledge_entry"
         type: "string"
         description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve."
     parameters_required:
-      - "im_going_to_use_tools"
-      - "im_going_to_apply_to"
-      - "search_key"
-      - "language_slash_framework"
       - "knowledge_entry"
 
   - name: "create_memory_bank"
