@@ -18,7 +18,7 @@ pub struct ISchemaField {
     #[serde(default, skip_serializing_if="is_default")]
     pub f_desc: String,
     #[serde(default, skip_serializing_if="is_default")]
-    pub f_default: String,
+    pub f_default: serde_json::Value,
     #[serde(default, skip_serializing_if="is_default")]
     pub f_placeholder: String,
     #[serde(default, skip_serializing_if="is_default")]

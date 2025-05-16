@@ -3,6 +3,7 @@ use std::env;
 use std::panic;
 
 use files_correction::canonical_path;
+use integrations::running_integrations;
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
@@ -180,6 +181,9 @@ async fn main() {
     tokio::spawn(async move {
         crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
     });
+
+    // Start or connect to mcp servers
+    let _ = running_integrations::load_integrations(gcx.clone(), cmdline.experimental, &["**/mcp_*".to_string()]).await;
 
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;

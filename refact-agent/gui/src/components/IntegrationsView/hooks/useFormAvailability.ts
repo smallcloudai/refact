@@ -17,6 +17,7 @@ type UseFormAvailabilityProps = {
   setMCPEnvironmentVariables: React.Dispatch<
     React.SetStateAction<Record<string, string>>
   >;
+  setHeaders: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 };
 
 export const useFormAvailability = ({
@@ -25,6 +26,7 @@ export const useFormAvailability = ({
   setToolParameters,
   setMCPArguments,
   setMCPEnvironmentVariables,
+  setHeaders,
 }: UseFormAvailabilityProps) => {
   const handleAvailabilityChange = useCallback(
     (fieldName: string, value: boolean) => {
@@ -64,11 +66,19 @@ export const useFormAvailability = ({
     [setMCPEnvironmentVariables],
   );
 
+  const handleHeaders = useCallback(
+    (updatedHeaders: Record<string, string>) => {
+      setHeaders(updatedHeaders);
+    },
+    [setHeaders],
+  );
+
   return {
     handleAvailabilityChange,
     handleConfirmationChange,
     handleToolParameters,
     handleMCPArguments,
     handleMCPEnvironmentVariables,
+    handleHeaders,
   };
 };
