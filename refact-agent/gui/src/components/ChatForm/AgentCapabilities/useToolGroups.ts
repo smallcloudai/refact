@@ -8,7 +8,6 @@ import {
   toolsApi,
   ToolSpec,
 } from "../../../services/refact";
-import { debugApp } from "../../../debugConfig";
 
 export function useToolGroups() {
   const dispatch = useAppDispatch();
@@ -46,15 +45,12 @@ export function useToolGroups() {
         source: tool.spec.source,
         name: tool.spec.name,
       }));
-      debugApp(`[DEBUG]: updating data: `, dataToSend);
 
       updateToolGroups(dataToSend)
         .then((result) => {
-          debugApp(`[DEBUG]: result: `, result);
           if (result.data) {
             // TODO: reduce complexity
             // it means, individual tool update
-            debugApp(`[DEBUG]: updating individual tool: `, updatedTools[0]);
             if (selectedToolGroupTools && updatedTools.length === 1) {
               setSelectedToolGroupTools((prev) => {
                 const tool = updatedTools[0];
@@ -69,18 +65,13 @@ export function useToolGroups() {
               });
               return;
             }
-            setSelectedToolGroup((prev) => {
-              debugApp(
-                "[DEBUG]: Previous group: ",
-                prev,
-                "new group: ",
-                updatedGroup,
-              );
-              return updatedGroup;
-            });
+            setSelectedToolGroup(updatedGroup);
           }
         })
-        .catch(alert);
+        .catch((error: unknown) => {
+          // eslint-disable-next-line no-console
+          console.log(error);
+        });
     },
     [updateToolGroups, setSelectedToolGroupTools, selectedToolGroupTools],
   );
