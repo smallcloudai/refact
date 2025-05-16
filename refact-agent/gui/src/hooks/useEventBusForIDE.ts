@@ -26,7 +26,7 @@ export const ideNewFileAction = createAction<string>("ide/newFile");
 export const ideOpenHotKeys = createAction("ide/openHotKeys");
 
 export type OpenFilePayload = {
-  file_name: string;
+  file_path: string;
   line?: number;
 };
 export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
@@ -154,9 +154,9 @@ export const useEventsBusForIDE = () => {
 
   const queryPathThenOpenFile = useCallback(
     async (file: OpenFilePayload) => {
-      const res = await getFullPath(file.file_name).unwrap();
-      const file_name = res ?? file.file_name;
-      const action = ideOpenFile({ file_name, line: file.line });
+      const res = await getFullPath(file.file_path).unwrap();
+      const file_name = res ?? file.file_path;
+      const action = ideOpenFile({ file_path: file_name, line: file.line });
       postMessage(action);
     },
     [getFullPath, postMessage],
@@ -240,7 +240,7 @@ export const useEventsBusForIDE = () => {
       const res = await getPathQuery(undefined).unwrap();
 
       if (res) {
-        const action = ideOpenFile({ file_name: res });
+        const action = ideOpenFile({ file_path: res });
         postMessage(action);
         const res_split = res.split("/");
         void sendTelemetryEvent({

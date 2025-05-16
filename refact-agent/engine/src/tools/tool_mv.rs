@@ -10,7 +10,7 @@ use serde_json::json;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, DiffChunk};
-use crate::files_correction::{get_project_dirs, canonical_path, correct_to_nearest_filename, correct_to_nearest_dir_path};
+use crate::files_correction::{canonical_path, correct_to_nearest_dir_path, correct_to_nearest_filename, get_project_dirs, preprocess_path_for_normalization};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
@@ -55,6 +55,8 @@ impl Tool for ToolMv {
             Some(Value::String(s)) if !s.trim().is_empty() => Self::preformat_path(&s.trim().to_string()),
             _ => return Err("Missing required argument `destination`".to_string()),
         };
+        let src_str = preprocess_path_for_normalization(src_str);
+        let dst_str = preprocess_path_for_normalization(dst_str);
         let overwrite = Self::parse_overwrite(args)?;
 
         let gcx = ccx.lock().await.global_context.clone();
@@ -114,15 +116,15 @@ impl Tool for ToolMv {
 
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
         if let Err(e) = check_file_privacy(
-            privacy_settings.clone(), 
-            &src_true_path, 
+            privacy_settings.clone(),
+            &src_true_path,
             &FilePrivacyLevel::AllowToSendAnywhere
         ) {
             return Err(format!("Cannot move '{}': {}", src_str, e));
         }
         if let Err(e) = check_file_privacy(
-            privacy_settings.clone(), 
-            &dst_true_path, 
+            privacy_settings.clone(),
+            &dst_true_path,
             &FilePrivacyLevel::AllowToSendAnywhere
         ) {
             return Err(format!("Cannot move to '{}': {}", src_str, e));
@@ -139,7 +141,7 @@ impl Tool for ToolMv {
 
         let src_metadata = fs::symlink_metadata(&src_true_path).await
             .map_err(|e| format!("Failed to access source '{}': {}", src_str, e))?;
-            
+
         let mut src_file_content = String::new();
         if !src_is_dir {
             src_file_content = get_file_text_from_memory_or_disk(gcx.clone(), &src_true_path).await?;
@@ -184,10 +186,10 @@ impl Tool for ToolMv {
                         line1: 1,
                         line2: src_file_content.lines().count(),
                         lines_remove: src_file_content.clone(),
-                        lines_add: "".to_string(), 
+                        lines_add: "".to_string(),
                         file_name_rename: Some(dst_corrected_path.clone()),
                         is_file: true,
-                        application_details: format!("File {} from '{}' to '{}'", 
+                        application_details: format!("File {} from '{}' to '{}'",
                             if src_true_path.parent() == dst_true_path.parent() { "renamed" } else { "moved" },
                             src_corrected_path, dst_corrected_path),
                     };
@@ -231,9 +233,9 @@ impl Tool for ToolMv {
                             .map_err(|e| format!("Failed to copy '{}' to '{}': {}", src_str, dst_str, e))?;
                         fs::remove_file(&src_true_path).await
                             .map_err(|e| format!("Failed to remove source file '{}' after copy: {}", src_str, e))?;
-                            
+
                         let mut messages = vec![];
-                        
+
                         if !src_file_content.is_empty() {
                             let diff_chunk = DiffChunk {
                                 file_name: src_corrected_path.clone(),
@@ -241,10 +243,10 @@ impl Tool for ToolMv {
                                 line1: 1,
                                 line2: src_file_content.lines().count(),
                                 lines_remove: src_file_content.clone(),
-                                lines_add: "".to_string(), 
+                                lines_add: "".to_string(),
                                 file_name_rename: Some(dst_corrected_path.clone()),
                                 is_file: true,
-                                application_details: format!("File renamed from '{}' to '{}'", 
+                                application_details: format!("File renamed from '{}' to '{}'",
                                     src_corrected_path, dst_corrected_path),
                             };
                             if !dst_file_content.is_empty() {
@@ -285,8 +287,9 @@ impl Tool for ToolMv {
         }
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let src = match args.get("source") {
@@ -310,10 +313,10 @@ impl Tool for ToolMv {
 
     async fn match_against_confirm_deny(
         &self,
-        _: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
             format!("Error getting tool command to match: {}", e)
         })?;
         Ok(MatchConfirmDeny {

@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, test, vi, expect, afterEach } from "vitest";
-import { render, cleanup } from "../../utils/test-utils";
+import { render, cleanup, waitFor } from "../../utils/test-utils";
 import { ComboBox, type ComboBoxProps } from "./ComboBox";
 import { TextArea, type TextAreaProps } from "../TextArea";
 import { useDebounceCallback } from "usehooks-ts";
@@ -242,11 +242,13 @@ describe("ComboBox", () => {
     expect(textarea.textContent).toEqual("@file /foo ");
   });
 
-  test("type part of the command, then press ender", async () => {
+  test("type part of the command, then press enter", async () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@fi{Enter}");
-    expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    await waitFor(() => {
+      expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    });
   });
 
   test("multiple commands", async () => {
@@ -322,7 +324,9 @@ describe("ComboBox", () => {
     const { user, ...app } = render(<App />);
     const textarea = app.getByRole("combobox");
     await user.type(textarea, "@fi{Enter}");
-    expect(textarea.textContent).toEqual("@file ");
+    await waitFor(() => {
+      expect(app.getByRole("combobox").textContent).toEqual("@file ");
+    });
     expect(app.queryByText("/foo")).not.toBeNull();
     expect(app.queryByText("/bar")).not.toBeNull();
     await user.keyboard("{Backspace}");

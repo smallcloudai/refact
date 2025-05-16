@@ -16,7 +16,7 @@ default = ["vecdb"]
 vecdb = ["sqlite-vec"]
 
 [build-dependencies]
-shadow-rs = "0.36.0"
+shadow-rs = "1.1.0"
 
 [dependencies]
 astral-tokio-tar = "0.5.2"
@@ -31,7 +31,7 @@ diff = "0.1.13"
 dunce = "1.0.5"
 dyn_partial_eq = "=0.1.2"
 futures = "0.3"
-git2 = "0.19.0"
+git2 = "0.20.2"
 glob = "0.3.1"
 hashbrown = "0.15.2"
 headless_chrome = "1.0.16"
@@ -63,7 +63,7 @@ serde_cbor = "0.11.2"
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_yaml = "0.9.31"
 # all features = ["compression", "docs", "event_log", "failpoints", "io_uring", "lock_free_delays", "measure_allocs", "miri_optimizations", "mutex", "no_inline", "no_logs", "pretty_backtrace", "testing"]
-shadow-rs = { version = "0.36.0", features = [], default-features = false }
+shadow-rs = { version = "1.1.0", features = [], default-features = false }
 sha2 = "0.10.8"
 shell-words = "1.1.0"
 shell-escape = "0.1.5"

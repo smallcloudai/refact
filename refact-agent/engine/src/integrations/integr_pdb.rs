@@ -161,8 +161,9 @@ impl Tool for ToolPdb {
         Ok(tool_answer(output, tool_call_id))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let (command, _) = parse_args(args)?;

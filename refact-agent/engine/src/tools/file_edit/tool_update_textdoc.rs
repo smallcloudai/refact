@@ -31,10 +31,11 @@ async fn parse_args(
 ) -> Result<ToolUpdateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let candidates_file = file_repair_candidates(gcx.clone(), &s, 3, false).await;
-            let path = match return_one_candidate_or_a_good_error(gcx.clone(), &s, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
-                Ok(f) => canonicalize_normalized_path(PathBuf::from(preprocess_path_for_normalization(f.trim().to_string()))),
-                Err(e) => return Err(e)
+            let raw_path = preprocess_path_for_normalization(s.trim().to_string());
+            let candidates_file = file_repair_candidates(gcx.clone(), &raw_path, 3, false).await;
+            let path = match return_one_candidate_or_a_good_error(gcx.clone(), &raw_path, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+                Ok(f) => canonicalize_normalized_path(PathBuf::from(f)),
+                Err(e) => return Err(e),
             };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(
@@ -133,7 +134,7 @@ impl Tool for ToolUpdateTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
+
         async fn can_execute_tool_edit(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
             let _ = parse_args(gcx.clone(), args, privacy_settings).await?;
             Ok(())
@@ -159,8 +160,9 @@ impl Tool for ToolUpdateTextDoc {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("update_textdoc".to_string())

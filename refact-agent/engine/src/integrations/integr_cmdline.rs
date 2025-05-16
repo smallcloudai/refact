@@ -305,8 +305,9 @@ impl Tool for ToolCmdline {
         }
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<String, String> {
         let (command, _workdir) = _parse_command_args(args, &self.cfg)?;

@@ -64,6 +64,7 @@ export const HISTORY: ChatHistoryItem[] = [
         content: {
           tool_call_id: "call_D0rhujadTb1nvKlMbZ8ZYLEt",
           content: "performed vecdb search, results below",
+          tool_failed: false,
         },
       },
       {
