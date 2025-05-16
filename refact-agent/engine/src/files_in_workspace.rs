@@ -13,7 +13,7 @@ use walkdir::WalkDir;
 use which::which;
 use tracing::info;
 
-use crate::files_correction::canonical_path;
+use crate::files_correction::{canonical_path, CommandSimplifiedDirExt};
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
 use crate::telemetry;
@@ -229,9 +229,9 @@ pub async fn read_file_from_disk(
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf, filter_out_status: bool) -> Option<Vec<PathBuf>> {
     info!("{} EXEC {} {}", path.display(), cmd, args.join(" "));
-    let output = async_process::Command::new(cmd)
+    let output = tokio::process::Command::new(cmd)
         .args(args)
-        .current_dir(path)
+        .current_dir_simplified(path)
         .output()
         .await
         .ok()?;
@@ -797,18 +797,18 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                             canonical_path(repo_p.to_string_lossy())
                         })
                 })
-                .map(|p| { 
-                    let exists = p.join(".git").exists(); 
-                    (p.clone(), exists) 
+                .map(|p| {
+                    let exists = p.join(".git").exists();
+                    (p.clone(), exists)
                 })
                 .collect::<Vec<_>>();
-            
+
             if repo_paths.is_empty() {
                 return;
             }
-            
+
             let workspace_vcs_roots = gcx.read().await.documents_state.workspace_vcs_roots.clone();
-            
+
             let mut should_reindex = false;
             {
                 let mut workspace_vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
@@ -837,7 +837,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter().any(
             |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
         ) => on_dot_git_dir_change(gcx_weak.clone(), event).await,
-        
+
         // In Windows, we receive generic events (Any subtype), but we receive them about each exact folder
         EventKind::Create(CreateKind::Any) | EventKind::Modify(ModifyKind::Any) | EventKind::Remove(RemoveKind::Any)
             if event.paths.iter().any(|p| p.ends_with(".git")) =>
@@ -845,7 +845,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
             on_file_change(gcx_weak.clone(), event).await,
-        
+
         EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
 }

@@ -59,7 +59,7 @@ PROMPT_EXPLORATION_TOOLS: |
   **Determine if the question is related to the current project**:
    - **If yes**:
        - Explain your plan briefly before calling any tools
-       - Gather the necessary context using `tree()`, `cat()`, `search()` (semantic search), `regex_search()` (pattern matching), `definition()`, `references()` and other tool calls, or follow the user’s instructions.
+       - Gather the necessary context using available exploration tools, or follow the user’s instructions.
        - Ask clarifying questions if needed, making as many iterations as necessary to refine the context.
        - After gathering context, propose required project changes.
        - Then use `*_textdoc()` tools to make changes.
@@ -74,49 +74,40 @@ PROMPT_EXPLORATION_TOOLS: |
 
 
 PROMPT_AGENTIC_TOOLS: |
-  [mode3] You are Refact Agent, an autonomous bot for coding tasks.
-  **STRATEGY**
-  **Step 1: Gather Context**
-    - *Goal:* Fully understand the task by gathering all important details.
-    - Do the following:
-      - Use `tree()` to check the project structure.
-      - Then use `search()`, `regex_search()`, `definition()`, and `references()`, `cat("filename:x-x")` tools to collect relevant information.
-      - You also can use `locate()` with the task description to find all necessary files automatically.
-      - Use `cat("filename")` to look inside the most important files without compression.
-    - Check any files that might indirectly relate to the task.
-    - Running available validation tools preliminary - is a good idea.
-  **Step 2: Make a Clear Plan**
-    - Goal: Create a clear, validated plan before making changes.
-    - After gathering context (Step 2), create your plan independently.
-  **Step 3: Make Changes Step-by-Step**
-    - Goal: Follow the validated plan carefully.
-    - Make changes step-by-step using `*_textdoc()` tools.
-    - Clearly comment each step and its results.
-    - After making changes, go to the assessment step.
-  **Step 4: Check and Improve Your Work**
-    - Goal: Make sure your changes are correct, complete, and really working.
-    - After changes:
-      - Run available build validation tools (`cmdline_cargo_check()`, `cmdline_pytest*()`, `cmdline_npm_test()`, etc...).
-      - If you find any issues, go back to Step 4 and fix them.
-      - Do not pay attention to skipped tests, they don't indicate any problems!
+  [mode3] You are a fully autonomous agent for coding tasks.
+  Your task is to identify and solve the problem from the given PR by directly changing files in the given project.
+  You must follow the strategy, step by step in the given order without skipping.
+  You must confirm the plan with the user before proceeding!
+
+  1. Explore the Problem
+    - Call `locate()` tool to find relevant files.
+  2. Draft the Solution Plan
+    - Identify the root cause and sketch the required code changes (files to touch, functions to edit, tests to add).
+  3. Confirm the Plan with the User — No Coding Until Approved
+    - Post a concise, bullet-point summary that includes
+      • the suspected root cause
+      • the exact files/functions you will modify or create
+      • the new or updated tests you will add
+      • the expected outcome and success criteria
+    - Explicitly ask “Does this align with your vision?
+    - Wait for the user’s approval or revisions before proceeding.
+  4. Implement the Fix
+    - Apply the approved changes directly to project files using `update_textdoc()` and `create_textdoc()` tools.
+  5. Validate and Improve
+    - Run all available tooling to ensure the project compiles and your fix works.
+    - Add or update tests that reproduce the original bug and verify they pass.
+    - Execute the full test suite to guard against regressions.
+    - Iterate until everything is green.
+
   **BEST PRACTICES**
-    - Don't Rush: Wait until you gathered enough context and the plan is clear and validated before making any changes.
-    - Always assess your changes using available testing tools.
+    - %CD_INSTRUCTIONS%
+    - %SHELL_INSTRUCTIONS%
+  
+  %WORKSPACE_INFO%
+  
+  %PROJECT_SUMMARY%
   
   %KNOWLEDGE_INSTRUCTIONS%
-  
-  %SHELL_INSTRUCTIONS%
-
-  %CD_INSTRUCTIONS%
-
-  %WORKSPACE_INFO%
-
-  %PROJECT_SUMMARY%
-
-  **Always test you solutions!**
-  **Clearly comment before each action.**
-  **Document results carefully.**
-  **Follow order of the steps without skipping them.**
 
 
 PROMPT_CONFIGURATOR: |
@@ -236,26 +227,23 @@ system_prompts:
 
 subchat_tool_parameters:
   locate:
-    subchat_model_type: "light"
-    subchat_tokens_for_rag: 30000
-    subchat_n_ctx: 32000
-    subchat_max_new_tokens: 8000
-  locate_search:
-    subchat_model_type: "light"
-    subchat_tokens_for_rag: 10000
-    subchat_n_ctx: 16000
-    subchat_max_new_tokens: 2000
-  deep_analysis:
     subchat_model_type: "thinking"
-    subchat_tokens_for_rag: 70000
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 32000
+    subchat_tokens_for_rag: 150000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 10000
+    subchat_reasoning_effort: "low"
+  strategic_planning:
+    subchat_model_type: "thinking"
+    subchat_tokens_for_rag: 120000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 40000
     subchat_reasoning_effort: "high"
   create_memory_bank:
-    subchat_model_type: "default"
-    subchat_tokens_for_rag: 88000
-    subchat_n_ctx: 128000
-    subchat_max_new_tokens: 32000
+    subchat_model_type: "thinking"
+    subchat_tokens_for_rag: 120000
+    subchat_n_ctx: 200000
+    subchat_max_new_tokens: 10000
+    subchat_reasoning_effort: "low"
 
 
 code_lens:

@@ -24,6 +24,7 @@ backtrace = "0.3.71"
 base64 = "0.22.1"
 chrono = { version = "0.4.31", features = ["serde"] }
 diff = "0.1.13"
+dunce = "1.0.5"
 dyn_partial_eq = "=0.1.2"
 futures = "0.3"
 git2 = "0.19.0"

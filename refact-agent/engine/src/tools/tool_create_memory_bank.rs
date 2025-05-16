@@ -435,7 +435,7 @@ impl Tool for ToolCreateMemoryBank {
 
                 // Update usage from subchat result
                 if let Some(last_msg) = subchat_result.last() {
-                    crate::tools::tool_relevant_files::update_usage_from_message(&mut usage_collector, last_msg);
+                    crate::tools::tools_execute::update_usage_from_message(&mut usage_collector, last_msg);
                     tracing::info!(
                         target = "memory_bank",
                         directory = target.target_name,
