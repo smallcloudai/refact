@@ -17,10 +17,7 @@ import {
   selectThreadMode,
   selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
-import {
-  useCheckForConfirmationMutation,
-  // useGetToolsLazyQuery,
-} from "./useGetToolGroupsQuery";
+import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
   ChatMessage,
   ChatMessages,
@@ -126,23 +123,6 @@ export const useSendChatRequest = () => {
   const sendMessages = useCallback(
     async (messages: ChatMessages, maybeMode?: LspChatMode) => {
       dispatch(setIsWaitingForResponse(true));
-      // TODO: should be safe to remove
-
-      // let tools = await triggerGetTools(undefined).unwrap();
-      // // TODO: save tool use to state.chat
-      // // if (toolUse && isToolUse(toolUse)) {
-      // //   dispatch(setToolUse(toolUse));
-      // // }
-      // if (toolUse === "quick") {
-      //   tools = [];
-      // } else if (toolUse === "explore") {
-      //   tools = tools.filter((t) => !t.function.agentic);
-      // }
-      // tools = tools.map((t) => {
-      //   const { agentic: _, ...remaining } = t.function;
-      //   return { ...t, function: { ...remaining } };
-      // });
-
       const lastMessage = messages.slice(-1)[0];
 
       if (
@@ -183,7 +163,6 @@ export const useSendChatRequest = () => {
 
       const action = chatAskQuestionThunk({
         messages,
-        // tools
         checkpointsEnabled,
         chatId,
         mode,
@@ -193,7 +172,6 @@ export const useSendChatRequest = () => {
       abortControllers.addAbortController(chatId, dispatchedAction.abort);
     },
     [
-      // triggerGetTools,
       toolUse,
       isWaiting,
       dispatch,
