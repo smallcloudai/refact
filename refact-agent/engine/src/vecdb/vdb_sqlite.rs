@@ -135,38 +135,6 @@ impl VecDBSqlite {
         Ok(VecDBSqlite { conn, emb_table_name: emb_table_name.clone() })
     }
 
-    pub async fn process_simple_hash_text_vector(
-        &mut self,
-        v: &mut Vec<SimpleTextHashVector>,
-    ) -> Result<(), String> {
-        let placeholders: String = v.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
-        let query = format!("SELECT vector, window_text_hash FROM embeddings_cache WHERE window_text_hash IN ({placeholders})");
-        let vclone = v.clone();
-        let found_vectors = match self.conn.call(move |connection| {
-            let mut statement = connection.prepare(&query)?;
-            let params = rusqlite::params_from_iter(vclone.iter().map(|x| &x.window_text_hash));
-            let result = statement.query_map(params, |row| {
-                let vector_blob: Vec<u8> = row.get(0)?;
-                let window_text_hash: String = row.get(1)?;
-                let vector: Vec<f32> = vector_blob
-                    .chunks_exact(4)
-                    .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
-                    .collect();
-                Ok((window_text_hash, vector))
-            })?;
-            Ok(result.filter_map(|r| r.ok()).collect::<HashMap<_, _>>())
-        }).await {
-            Ok(vectors) => vectors,
-            Err(err) => return Err(format!("Error querying database: {:?}", err))
-        };
-        for save in v.iter_mut() {
-            if let Some(vector) = found_vectors.get(&save.window_text_hash) {
-                save.vector = Some(vector.clone());
-            }
-        }
-        Ok(())
-    }
-
     pub async fn fetch_vectors_from_cache(&mut self, splits: &Vec<SplitResult>) -> Result<Vec<Option<Vec<f32>>>, String> {
         let placeholders: String = splits.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
         let query = format!("SELECT * FROM embeddings_cache WHERE window_text_hash IN ({placeholders})");

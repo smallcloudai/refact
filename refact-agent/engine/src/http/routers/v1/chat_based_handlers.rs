@@ -41,6 +41,7 @@ pub async fn handle_v1_commit_message_from_diff(
 
 #[derive(Deserialize)]
 struct CompressTrajectoryPost {
+    #[allow(dead_code)]
     project: String,
     messages: Vec<ChatMessage>,
 }
