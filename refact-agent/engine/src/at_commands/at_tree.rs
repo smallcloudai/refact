@@ -3,18 +3,16 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
+use sled::Db;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
-use crate::ast::ast_structs::AstDB;
-// use crate::ast::ast_indexer_thread::AstIndexService;
-// use crate::ast::treesitter::structs::SymbolType;
+use crate::ast::ast_structs::{AstDB, SymbolType};
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
-// use crate::files_in_workspace::Document;
 
 
 pub struct AtTree {
@@ -113,36 +111,27 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     root_nodes
 }
 
-fn _print_symbols(_entry: &PathsHolderNode) -> String
-{
-    // XXX fix tree
-    // if let Some(ast) = ast_index_maybe {
-    //     let doc = Document { doc_path: entry.path.clone(), doc_text: None };
-    //     match ast.get_by_file_path(RequestSymbolType::Declaration, &doc) {
-    //         Ok(symbols) => {
-    //             let symbols_list = symbols
-    //                 .iter()
-    //                 .filter(|x| x.symbol_type == SymbolType::StructDeclaration
-    //                     || x.symbol_type == SymbolType::FunctionDeclaration)
-    //                 .filter(|x| !x.name.is_empty() && !x.name.starts_with("anon-"))
-    //                 .map(|x| x.name.clone())
-    //                 .collect::<Vec<String>>()
-    //                 .join(", ");
-    //             if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
-    //         }
-    //         Err(_) => "".to_string()
-    //     }
-    // } else {
-        "".to_string()
-    // }
+fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
+    let cpath = entry.path.to_string_lossy().to_string();
+    let defs = crate::ast::ast_db::doc_def_internal(db.clone(), &cpath);
+    let symbols_list = defs
+        .iter()
+        .filter(|x| match x.symbol_type {
+            SymbolType::StructDeclaration | SymbolType::TypeAlias | SymbolType::FunctionDeclaration => true,
+            _ => false
+        })
+        .map(|x| x.name())
+        .collect::<Vec<String>>()
+        .join(", ");
+    if !symbols_list.is_empty() { format!(" ({symbols_list})") } else { "".to_string() }
 }
 
-fn _print_files_tree(
+async fn _print_files_tree(
     tree: &Vec<PathsHolderNodeArc>,
     ast_db: Option<Arc<AMutex<AstDB>>>,
     maxdepth: usize,
 ) -> String {
-    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, ast_db: Option<Arc<AMutex<AstDB>>>) -> Option<String> {
+    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, db_mb: Option<Arc<Db>>) -> Option<String> {
         if depth > maxdepth {
             return None;
         }
@@ -151,14 +140,18 @@ fn _print_files_tree(
         let indent = "  ".repeat(depth);
         let name = if node.is_dir { format!("{}/", node.file_name()) } else { node.file_name() };
         if !node.is_dir {
-            output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(&node)));
+            if let Some(db) = &db_mb {
+                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db.clone(), &node)));
+            } else {
+                output.push_str(&format!("{}{}\n", indent, name));
+            }
             return Some(output);
         }
         output.push_str(&format!("{}{}\n", indent, name));
         let (mut dirs, mut files) = (0, 0);
         let mut child_output = String::new();
         for child in &node.child_paths {
-            if let Some(child_str) = traverse(child, depth + 1, maxdepth, ast_db.clone()) {
+            if let Some(child_str) = traverse(child, depth + 1, maxdepth, db_mb.clone()) {
                 child_output.push_str(&child_str);
             } else {
                 dirs += child.0.read().unwrap().is_dir as usize;
@@ -175,7 +168,12 @@ fn _print_files_tree(
 
     let mut result = String::new();
     for node in tree {
-        if let Some(output) = traverse(&node, 0, maxdepth, ast_db.clone()) {
+        let db_mb = if let Some(ast) = ast_db.clone() {
+            Some(ast.lock().await.sleddb.clone())
+        } else {
+            None
+        };
+        if let Some(output) = traverse(&node, 0, maxdepth, db_mb.clone()) {
             result.push_str(&output);
         } else {
             break;
@@ -184,20 +182,20 @@ fn _print_files_tree(
     result
 }
 
-fn _print_files_tree_with_budget(
+async fn _print_files_tree_with_budget(
     tree: Vec<PathsHolderNodeArc>,
     char_limit: usize,
     ast_db: Option<Arc<AMutex<AstDB>>>,
 ) -> String {
     let mut good_enough = String::new();
     for maxdepth in 1..20 {
-        let bigger_tree_str = _print_files_tree(&tree, ast_db.clone(), maxdepth);
+        let bigger_tree_str = _print_files_tree(&tree, ast_db.clone(), maxdepth).await;
         if bigger_tree_str.len() > char_limit {
             break;
         }
         good_enough = bigger_tree_str;
     }
-    return good_enough;
+    good_enough
 }
 
 pub async fn print_files_tree_with_budget(
@@ -218,10 +216,11 @@ pub async fn print_files_tree_with_budget(
     }
     match ast_module_option {
         Some(ast_module) => {
+            crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_module.clone(), 20_000, true).await;
             let ast_db: Option<Arc<AMutex<AstDB>>> = Some(ast_module.lock().await.ast_index.clone());
-            Ok(_print_files_tree_with_budget(tree, char_limit, ast_db.clone()))
+            Ok(_print_files_tree_with_budget(tree, char_limit, ast_db.clone()).await)
         }
-        None => Ok(_print_files_tree_with_budget(tree, char_limit, None)),
+        None => Ok(_print_files_tree_with_budget(tree, char_limit, None).await),
     }
 }
 
@@ -267,7 +266,6 @@ impl AtCommand for AtTree {
         };
 
         let use_ast = args.iter().any(|x| x.text == "--ast");
-
         let tree = print_files_tree_with_budget(ccx.clone(), tree, use_ast).await.map_err(|err| {
             warn!("{}", err);
             err

@@ -548,7 +548,10 @@ def print_messages(
 
     def con(x):
         if console:
-            console.print(x)
+            try:
+                console.print(x)
+            except:
+                print(x)
 
     def _is_tool_call(m: Message) -> bool:
         return m.tool_calls is not None and len(m.tool_calls) > 0

@@ -9,7 +9,7 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ContextEnum, ContextFile, SubchatParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ChatUsage, ContextEnum, ContextFile, SubchatParameters};
 use crate::custom_error::MapErrToString;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::http::http_post_json;
@@ -427,4 +427,12 @@ pub fn command_should_be_denied(
     }
 
     (false, "".to_string())
+}
+
+pub fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
+    if let Some(u) = message.usage.as_ref() {
+        usage.total_tokens += u.total_tokens;
+        usage.completion_tokens += u.completion_tokens;
+        usage.prompt_tokens += u.prompt_tokens;
+    }
 }

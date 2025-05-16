@@ -356,6 +356,7 @@ pub async fn subchat(
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let mut messages = messages.clone();
     let mut usage_collector = ChatUsage { ..Default::default() };
+    let mut tx_chatid_mb = tx_chatid_mb.clone();
     // for attempt in attempt_n
     {
         // keep session
@@ -393,6 +394,14 @@ pub async fn subchat(
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
             ).await?[0].clone();
+            let last_message = messages.last().unwrap();
+            let tool_call_mb = last_message.tool_calls.clone().map(|x|{
+                let tool_call = x.get(0).unwrap();
+                format!("{}({})", tool_call.function.name, tool_call.function.arguments).to_string()
+            }).unwrap_or_default();
+            let content = format!("🤖:\n{}\n{}\n", &last_message.content.content_text_only(), tool_call_mb);
+            tx_chatid_mb = Some(format!("{step_n}/{wrap_up_depth}: {content}"));
+            info!("subchat request {step_n}/{wrap_up_depth}: {content}");
             step_n += 1;
         }
         // result => session
