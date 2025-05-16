@@ -9,11 +9,11 @@ use crate::custom_error::ScratchError;
 
 pub fn get_build_info() -> IndexMap<&'static str, &'static str> {
     IndexMap::from([
-        ("version", crate::version::build_info::PKG_VERSION),
-        ("commit", crate::version::build_info::COMMIT_HASH),
-        ("build_os", crate::version::build_info::BUILD_OS),
-        ("rust_version", crate::version::build_info::RUST_VERSION),
-        ("cargo_version", crate::version::build_info::CARGO_VERSION),
+        ("version", crate::version::build::PKG_VERSION),
+        ("commit", crate::version::build::COMMIT_HASH),
+        ("build_os", crate::version::build::BUILD_OS),
+        ("rust_version", crate::version::build::RUST_VERSION),
+        ("cargo_version", crate::version::build::CARGO_VERSION),
     ])
 }
 

@@ -283,7 +283,7 @@ pub async fn load_caps_value_from_url(
 
     if !cmdline.api_key.is_empty() {
         headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(&format!("Bearer {}", cmdline.api_key)).unwrap());
-        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build_info::PKG_VERSION)).unwrap());
+        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build::PKG_VERSION)).unwrap());
     }
 
     let mut last_status = 0;
