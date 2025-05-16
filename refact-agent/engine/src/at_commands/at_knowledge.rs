@@ -47,7 +47,7 @@ impl AtCommand for AtLoadKnowledge {
         let mem_top_n = 5;
         let memories = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
         let mut seen_memids = HashSet::new();
-        let unique_memories: Vec<_> = memories.results.into_iter()
+        let unique_memories: Vec<_> = memories.into_iter()
             .filter(|m| seen_memids.insert(m.iknow_id.clone()))
             .collect();
         let mut results = String::new();

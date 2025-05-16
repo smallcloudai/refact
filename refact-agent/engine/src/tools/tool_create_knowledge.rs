@@ -36,7 +36,7 @@ impl Tool for ToolCreateKnowledge {
             "knowledge-entry",
             &knowledge_entry,
             None,
-            None,
+            false
         ).await.map_err(|e| format!("Failed to store knowledge: {e}"))?;
 
         let mut results = vec![];

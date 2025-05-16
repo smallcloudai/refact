@@ -89,7 +89,7 @@ pub async fn handle_v1_trajectory_save(
         "trajectory",
         &trajectory.as_str(),
         None,
-        None,
+        false,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;

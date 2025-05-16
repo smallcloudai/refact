@@ -139,8 +139,14 @@ pub async fn system_prompt_add_extra_instructions(
             Ok(caps) => {
                 if caps.metadata.features.contains(&"knowledge".to_string()) {
                     let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
-                    let knowledge_instructions = cfg.get("KNOWLEDGE_INSTRUCTIONS_META")
+                    let mut knowledge_instructions = cfg.get("KNOWLEDGE_INSTRUCTIONS_META")
                         .map(|x| x.as_str().unwrap_or("").to_string()).unwrap_or("".to_string());
+                    if let Some(core_memories) = crate::memories::memories_get_core(gcx.clone()).await.ok() {
+                        knowledge_instructions.push_str("\nThere are some pre-existing core memories:\n");
+                        for mem in core_memories {
+                            knowledge_instructions.push_str(&format!("🗃️\n{}\n\n", mem.iknow_memory));
+                        }
+                    }
                     system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", &knowledge_instructions);
                     tracing::info!("adding up extra knowledge instructions");
                 } else {

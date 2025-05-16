@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use itertools::Itertools;
@@ -18,13 +17,6 @@ pub struct MemoRecord {
     pub iknow_memory: String,
     pub iknow_times_used: i64,
     pub iknow_mstat_relevant: i64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MemoSearchResult {
-    pub query_text: String,
-    pub project_name: String,
-    pub results: Vec<MemoRecord>,
 }
 
 
@@ -52,15 +44,14 @@ pub async fn memories_migration(
         }
     };
     
-    let memories: Vec<(String, String, String, String)> = match conn.call(|conn| {
+    let memories: Vec<(String, String, String)> = match conn.call(|conn| {
         // Query all memories
-        let mut stmt = conn.prepare("SELECT m_type, m_project, m_payload, m_origin FROM memories")?;
+        let mut stmt = conn.prepare("SELECT m_type, m_payload, m_origin FROM memories")?;
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?
             ))
         })?;
         
@@ -69,7 +60,7 @@ pub async fn memories_migration(
             memories.push(row?);
         }
         
-        Ok(memories.into_iter().unique_by(|(_, _, m_payload, _)| m_payload.clone()).collect())
+        Ok(memories.into_iter().unique_by(|(_, m_payload, _)| m_payload.clone()).collect())
     }).await {
         Ok(memories) => memories,
         Err(e) => {
@@ -88,16 +79,12 @@ pub async fn memories_migration(
     // Migrate each memory to the cloud
     let mut success_count = 0;
     let mut error_count = 0;
-    for (m_type, m_project, m_payload, m_origin) in memories {
-        let project_name = m_project.split(",")
-            .next()
-            .map(|s| if s.trim().is_empty() {"unknown".to_string()} else {s.trim().to_string()})
-            .unwrap_or_else(|| "unknown".to_string());
+    for (m_type,  m_payload, m_origin) in memories {
         if m_payload.is_empty() {
             warn!("Memory payload is empty, skipping");
             continue;
         }
-        match memories_add(gcx.clone(), &m_type, &m_payload, Some(m_origin), Some(project_name)).await {
+        match memories_add(gcx.clone(), &m_type, &m_payload, Some(m_origin), true).await {
             Ok(_) => {
                 success_count += 1;
                 if success_count % 10 == 0 {
@@ -125,28 +112,29 @@ pub async fn memories_add(
     m_type: &str,
     m_memory: &str,
     m_origin: Option<String>,
-    m_project: Option<String>,
+    unknown_project: bool
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_workspace_id = gcx.read().await.active_workspace_id.clone()
         .ok_or("active_workspace_id must be set")?;
-    let project_name = if m_project.is_some() { m_project.unwrap() } else {
-        crate::files_correction::get_active_project_path(gcx.clone())
-            .await
+    let project_info = if !unknown_project {
+        crate::files_correction::get_active_project_path(gcx.clone()).await
             .map(|x| {
-                if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
-                    remotes.first().map(|(_, url)| url.to_string()).unwrap_or_else(|| {
-                        format!("local://{}", x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
-                    })
+                let remotes = if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
+                    remotes.into_iter().map(|(_, url)| url.to_string()).collect()
                 } else {
-                    "unknown".to_string()
-                }
+                    vec![]
+                };
+                Some(serde_json::json!({
+                "repo_remotes": remotes,
+                "local_path": x.to_string_lossy().to_string()
+            }))
             })
-            .unwrap_or("unknown".to_string())
-    };
+            .unwrap_or(None)
+    } else { None };
     let body = serde_json::json!({
-        "project_name": project_name,
+        "project_information": project_info,
         "knowledge_type": m_type,
         "knowledge_origin": m_origin.unwrap_or_else(|| "user-created".to_string()),
         "knowledge_memory": m_memory
@@ -179,27 +167,28 @@ pub async fn memories_search(
     gcx: Arc<ARwLock<GlobalContext>>,
     query: &String,
     top_n: usize,
-) -> Result<MemoSearchResult, String> {
+) -> Result<Vec<MemoRecord>, String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_workspace_id = gcx.read().await.active_workspace_id.clone()
         .ok_or("active_workspace_id must be set")?;
-    let project_name = crate::files_correction::get_active_project_path(gcx.clone())
-        .await
+    let project_info = crate::files_correction::get_active_project_path(gcx.clone()).await
         .map(|x| {
-            if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
-                remotes.first().map(|(_, url)| url.to_string()).unwrap_or_else(|| {
-                    format!("local://{}", x.file_name().unwrap_or(OsStr::new("unknown")).to_string_lossy().to_string())
-                })
+            let remotes = if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
+                remotes.into_iter().map(|(_, url)| url.to_string()).collect()
             } else {
-                "unknown".to_string()
-            }
+                vec![]
+            };
+            Some(serde_json::json!({
+                "repo_remotes": remotes,
+                "local_path": x.to_string_lossy().to_string()
+            }))
         })
-        .unwrap_or("unknown".to_string());
+        .unwrap_or(None);
     let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id={}&limit={}", active_workspace_id, top_n);
 
     let body = serde_json::json!({
-        "project_name": project_name,
+        "project_information": project_info,
         "q": query
     });
     let response = client.post(&url)
@@ -215,11 +204,57 @@ pub async fn memories_search(
                 let response_body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
                 let results: Vec<MemoRecord> = serde_json::from_str(&response_body)
                     .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-                Ok(MemoSearchResult {
-                    query_text: query.clone(),
-                    project_name: project_name.to_string(),
-                    results,
-                })
+                Ok(results)
+            } else {
+                let status = resp.status();
+                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                Err(format!("Failed to search memories: HTTP status {}, error: {}", status, error_text))
+            }
+        },
+        Err(e) => Err(format!("Failed to send memory search request: {}", e))
+    }
+}
+
+pub async fn memories_get_core(
+    gcx: Arc<ARwLock<GlobalContext>>
+) -> Result<Vec<MemoRecord>, String> {
+    let client = reqwest::Client::new();
+    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let active_workspace_id = gcx.read().await.active_workspace_id.clone()
+        .ok_or("active_workspace_id must be set")?;
+    let project_info = crate::files_correction::get_active_project_path(gcx.clone()).await
+        .map(|x| {
+            let remotes = if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
+                remotes.into_iter().map(|(_, url)| url.to_string()).collect()
+            } else {
+                vec![]
+            };
+            Some(serde_json::json!({
+                "repo_remotes": remotes,
+                "local_path": x.to_string_lossy().to_string()
+            }))
+        })
+        .unwrap_or(None);
+    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id={}&limit={}", active_workspace_id, 10);
+
+    let body = serde_json::json!({
+        "project_information": project_info,
+        "q": ""
+    });
+    let response = client.post(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await;
+
+    match response {
+        Ok(resp) => {
+            if resp.status().is_success() {
+                let response_body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
+                let results: Vec<MemoRecord> = serde_json::from_str(&response_body)
+                    .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+                Ok(results)
             } else {
                 let status = resp.status();
                 let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
