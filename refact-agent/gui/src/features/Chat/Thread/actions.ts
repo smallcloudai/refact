@@ -402,7 +402,6 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
   "chatThread/sendCurrentChatToLspAfterToolCallUpdate",
   async ({ chatId, toolCallId }, thunkApi) => {
     const state = thunkApi.getState();
-    // const toolUse = state.chat.thread.tool_use;
     if (state.chat.thread.id !== chatId) return;
     if (
       state.chat.streaming ||
@@ -423,25 +422,10 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
 
     if (!toolUseInThisSet) return;
     thunkApi.dispatch(setIsWaitingForResponse(true));
-    // duplicate in sendChat
-    // let tools = await thunkApi
-    //   .dispatch(toolsApi.endpoints.getTools.initiate(undefined))
-    //   .unwrap();
-
-    // if (toolUse === "quick") {
-    //   tools = [];
-    // } else if (toolUse === "explore") {
-    //   tools = tools.filter((t) => !t.function.agentic);
-    // }
-    // tools = tools.map((t) => {
-    //   const { agentic: _, ...remaining } = t.function;
-    //   return { ...t, function: { ...remaining } };
-    // });
 
     return thunkApi.dispatch(
       chatAskQuestionThunk({
         messages: state.chat.thread.messages,
-        // tools,
         chatId,
         mode: state.chat.thread.mode,
         checkpointsEnabled: state.chat.checkpoints_enabled,
