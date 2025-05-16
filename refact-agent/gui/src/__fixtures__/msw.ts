@@ -3,7 +3,7 @@ import { EMPTY_CAPS_RESPONSE, STUB_CAPS_RESPONSE } from "./caps";
 import { SYSTEM_PROMPTS } from "./prompts";
 import { STUB_LINKS_FOR_CHAT_RESPONSE } from "./chat_links_response";
 import {
-  AT_TOOLS_AVAILABLE_URL,
+  TOOLS,
   CHAT_LINKS_URL,
   KNOWLEDGE_CREATE_URL,
   KNOWLEDGE_SUB_URL,
@@ -121,7 +121,7 @@ export const noChatLinks: HttpHandler = http.post(
 );
 
 export const goodTools: HttpHandler = http.get(
-  `http://127.0.0.1:8001${AT_TOOLS_AVAILABLE_URL}`,
+  `http://127.0.0.1:8001${TOOLS}`,
   () => {
     return HttpResponse.json(STUB_TOOL_RESPONSE);
   },

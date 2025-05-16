@@ -40,6 +40,7 @@ import {
   upsertToolCall,
   setIncreaseMaxTokens,
   setAreFollowUpsEnabled,
+  setIsTitleGenerationEnabled,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -149,6 +150,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.follow_ups_enabled = action.payload;
   });
 
+  builder.addCase(setIsTitleGenerationEnabled, (state, action) => {
+    state.title_generation_enabled = action.payload;
+  });
+
   builder.addCase(clearChatError, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.error = null;
@@ -175,6 +180,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.system_prompt = state.system_prompt;
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.follow_ups_enabled = state.follow_ups_enabled;
+    next.title_generation_enabled = state.title_generation_enabled;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
     // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {

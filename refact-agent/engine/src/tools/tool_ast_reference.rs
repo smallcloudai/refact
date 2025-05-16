@@ -6,11 +6,13 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
 
-pub struct ToolAstReference;
+pub struct ToolAstReference {
+    pub config_path: String,
+}
 
 #[async_trait]
 impl Tool for ToolAstReference {
@@ -112,6 +114,28 @@ impl Tool for ToolAstReference {
             Ok((corrections, result_messages))
         } else {
             Err("attempt to use @reference with no ast turned on".to_string())
+        }
+    }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "references".to_string(),
+            display_name: "References".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: false,
+            experimental: false,
+            description: "Find usages of a symbol within a project using AST".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "symbol".to_string(),
+                    description: "The exact name of a function, method, class, type alias. No spaces allowed.".to_string(),
+                    param_type: "string".to_string(),
+                }
+            ],
+            parameters_required: vec!["symbol".to_string()],
         }
     }
 

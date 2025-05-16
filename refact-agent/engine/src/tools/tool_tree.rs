@@ -8,13 +8,15 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
 use crate::at_commands::at_tree::{construct_tree_out_of_flat_list_of_paths, print_files_tree_with_budget};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, correct_to_nearest_filename, get_project_dirs, paths_from_anywhere};
 use crate::files_in_workspace::ls_files;
 
 
-pub struct ToolTree;
+pub struct ToolTree {
+    pub config_path: String,
+}
 
 fn preformat_path(path: &String) -> String {
     path.trim_end_matches(&['/', '\\'][..]).to_string()
@@ -23,6 +25,33 @@ fn preformat_path(path: &String) -> String {
 #[async_trait]
 impl Tool for ToolTree {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "tree".to_string(),
+            display_name: "Tree".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: false,
+            experimental: false,
+            description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "path".to_string(),
+                    description: "An absolute path to get files tree for. Do not pass it if you need a full project tree.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "use_ast".to_string(),
+                    description: "If true, for each file an array of AST symbols will appear as well as its filename".to_string(),
+                    param_type: "boolean".to_string(),
+                },
+            ],
+            parameters_required: vec![],
+        }
+    }
 
     async fn tool_execute(
         &mut self,

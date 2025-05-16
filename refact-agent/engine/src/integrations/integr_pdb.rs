@@ -20,7 +20,7 @@ use crate::files_correction::{get_active_project_path, CommandSimplifiedDirExt};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, blocking_read_until_token_or_timeout};
 
 
@@ -168,6 +168,11 @@ impl Tool for ToolPdb {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "pdb".to_string(),
+            display_name: "Python Debugger".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Python debugger for inspecting variables and exploring what the program really does. This tool executes only one command at a time. Start with python -m pdb ...".to_string(),
