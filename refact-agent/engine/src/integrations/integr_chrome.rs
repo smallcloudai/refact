@@ -364,6 +364,7 @@ async fn setup_chrome_session(
             path,
             window_size,
             idle_browser_timeout,
+            sandbox: false,
             headless: args.headless.parse::<bool>().unwrap_or(true),
             ..Default::default()
         };
@@ -883,7 +884,7 @@ async fn chrome_command_exec(
             };
             // let filter = CmdlineOutputFilter::default();
             let filter = CmdlineOutputFilter {
-                limit_lines: 100,
+                limit_lines: 1000,
                 limit_chars: 10000,
                 valuable_top_or_bottom: "top".to_string(),
                 grep: "".to_string(),
