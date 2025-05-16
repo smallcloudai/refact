@@ -235,12 +235,9 @@ pub async fn memories_get_core(
             }))
         })
         .unwrap_or(None);
-    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id={}&limit={}", active_workspace_id, 10);
+    let url = format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/get_cores?workspace_id={}", active_workspace_id);
 
-    let body = serde_json::json!({
-        "project_information": project_info,
-        "q": ""
-    });
+    let body = serde_json::json!(project_info);
     let response = client.post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
