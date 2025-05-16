@@ -79,32 +79,73 @@ async fn get_builtin_tools(
     let config_dir = gcx.read().await.config_dir.clone();
     let config_path = config_dir.join("builtin_tools.yaml").to_string_lossy().to_string();
 
-    let tools = vec![
-        Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_tree::ToolTree{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc {config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex {config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_web::ToolWeb{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_rm::ToolRm{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_search::ToolSearch{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
-        Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}) as Box<dyn Tool + Send>,
+    let mut codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_tree::ToolTree{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_search::ToolSearch{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}),
+    ];
+
+    let codebase_change_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{config_path: config_path.clone()}),
+        Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc{config_path: config_path.clone()}),
+        Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_rm::ToolRm{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}),
+    ];
+
+    let web_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::tool_web::ToolWeb{config_path: config_path.clone()}),
+    ];
+
+    let deep_analysis_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}),
+    ];
+
+    let knowledge_tools: Vec<Box<dyn Tool + Send>> = vec![
+        Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{config_path: config_path.clone()}),
+        Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{config_path: config_path.clone()}),
     ];
 
     let mut tool_groups = vec![
         ToolGroup {
-            name: "builtin".to_string(),
-            description: "Builtin tools".to_string(),
+            name: "codebase_search".to_string(),
+            description: "Codebase search tools".to_string(),
             category: ToolGroupCategory::Builtin,
-            tools,
+            tools: codebase_search_tools,
+            allow_per_tool_toggle: false
+        },
+        ToolGroup {
+            name: "codebase_change".to_string(),
+            description: "Codebase modification tools".to_string(),
+            category: ToolGroupCategory::Builtin,
+            tools: codebase_change_tools,
+            allow_per_tool_toggle: false
+        },
+        ToolGroup {
+            name: "web".to_string(),
+            description: "Web tools".to_string(),
+            category: ToolGroupCategory::Builtin,
+            tools: web_tools,
+            allow_per_tool_toggle: false
+        },
+        ToolGroup {
+            name: "strategic_planning".to_string(),
+            description: "Strategic planning tools".to_string(),
+            category: ToolGroupCategory::Builtin,
+            tools: deep_analysis_tools,
+            allow_per_tool_toggle: false
+        },
+        ToolGroup {
+            name: "knowledge".to_string(),
+            description: "Knowledge tools".to_string(),
+            category: ToolGroupCategory::Builtin,
+            tools: knowledge_tools,
+            allow_per_tool_toggle: false
         },
     ];
 
@@ -124,12 +165,14 @@ async fn get_integration_tools(
             description: "Integration tools".to_string(),
             category: ToolGroupCategory::Integration,
             tools: vec![],
+            allow_per_tool_toggle: true
         },
         ToolGroup { 
             name: "mcp".to_string(), 
             description: "MCP tools".to_string(), 
             category: ToolGroupCategory::MCP, 
             tools: vec![],
+            allow_per_tool_toggle: true
         },
     ];
     let (integrations_map, _yaml_errors) = load_integrations(gcx.clone(), &["**/*".to_string()]).await;

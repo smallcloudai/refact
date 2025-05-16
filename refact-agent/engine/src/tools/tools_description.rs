@@ -39,6 +39,7 @@ pub struct ToolGroup {
     pub description: String,
     pub category: ToolGroupCategory,
     pub tools: Vec<Box<dyn Tool + Send>>,
+    pub allow_per_tool_toggle: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
