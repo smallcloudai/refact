@@ -11,13 +11,14 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatPost, ReasoningEffort, SamplingParameters};
 use crate::caps::resolve_chat_model;
 use crate::http::http_get_json;
+use crate::http::routers::v1::at_tools::ToolGroupResponse;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::chat_utils_limit_history::fix_and_limit_messages_history;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::passthrough_convert_messages::convert_messages_to_openai_format;
-use crate::tools::tools_description::tool_description_list_from_yaml;
+use crate::tools::tools_description::ToolDesc;
 use crate::tools::tools_list::get_available_tools;
 use crate::tools::tools_execute::{run_tools_locally, run_tools_remotely};
 
@@ -58,6 +59,7 @@ impl DeltaSender {
 pub struct ChatPassthrough {
     pub t: HasTokenizerAndEot,
     pub post: ChatPost,
+    pub tools: Vec<ToolDesc>,
     pub messages: Vec<ChatMessage>,
     pub prepend_system_prompt: bool,
     pub has_rag_results: HasRagResults,
@@ -71,6 +73,7 @@ impl ChatPassthrough {
     pub fn new(
         tokenizer: Option<Arc<Tokenizer>>,
         post: &ChatPost,
+        tools: Vec<ToolDesc>,
         messages: &Vec<ChatMessage>,
         prepend_system_prompt: bool,
         allow_at: bool,
@@ -80,6 +83,7 @@ impl ChatPassthrough {
         ChatPassthrough {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
+            tools,
             messages: messages.clone(),
             prepend_system_prompt,
             has_rag_results: HasRagResults::new(),
@@ -141,48 +145,28 @@ impl ScratchpadAbstract for ChatPassthrough {
         let mut big_json = serde_json::json!({});
 
         if self.supports_tools {
-            let post_tools = self.post.tools.as_ref().and_then(|tools| {
-                if tools.is_empty() {
-                    None
-                } else {
-                    Some(tools.clone())
-                }
-            });
-
-            let mut tools = if let Some(t) = post_tools {
-                // here we only use names from the tools in `post`
-                let turned_on = t.iter().filter_map(|x| {
-                    if let Value::Object(map) = x {
-                        map.get("function").and_then(|f| f.get("name")).and_then(|name| name.as_str().map(|s| s.to_string()))
-                    } else {
-                        None
-                    }
-                }).collect::<Vec<String>>();
-                // and take descriptions of tools from the official source
-                if should_execute_remotely {
-                    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &self.post.meta.chat_id).await?;
-                    tracing::info!("Calling tools on port: {}", port);
-                    let tool_desclist: Vec<Value> = http_get_json(&format!("http://localhost:{port}/v1/tools")).await?;
-                    Some(tool_desclist.into_iter().filter(|tool_desc| {
-                        tool_desc.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).map_or(false, |n| turned_on.contains(&n.to_string()))
-                    }).collect::<Vec<_>>())
-                } else {
-                    let allow_experimental = gcx.read().await.cmdline.experimental;
-                    let tool_descriptions = tool_description_list_from_yaml(at_tools, Some(&turned_on), allow_experimental).await?;
-                    Some(tool_descriptions.into_iter().filter(|x| x.is_supported_by(&self.post.model)).map(|x| x.into_openai_style()).collect::<Vec<_>>())
-                }
+            let tools: Vec<ToolDesc> = if should_execute_remotely {
+                let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &self.post.meta.chat_id).await?;
+                tracing::info!("Calling tools on port: {}", port);
+                let tool_desclist: Vec<ToolGroupResponse> = http_get_json(&format!("http://localhost:{port}/v1/tools")).await?;
+                tool_desclist.into_iter()
+                    .flat_map(|tool_group| tool_group.tools)
+                    .map(|tool| tool.spec)
+                    .collect()
             } else {
-                None
+                self.tools.iter()
+                    .filter(|x| x.is_supported_by(&self.post.model))
+                    .cloned()
+                    .collect()
             };
 
-            // remove "agentic"
-            if let Some(tools) = &mut tools {
-                for tool in tools {
-                    if let Some(function) = tool.get_mut("function") {
-                        function.as_object_mut().unwrap().remove("agentic");
-                    }
-                }
-            }
+            let tools = tools.into_iter().map(|tool| tool.into_openai_style()).collect::<Vec<_>>();
+
+            let tools = if tools.is_empty() {
+                None
+            } else {
+                Some(tools)
+            };
 
             big_json["tools"] = json!(tools);
             big_json["tool_choice"] = json!(self.post.tool_choice);
