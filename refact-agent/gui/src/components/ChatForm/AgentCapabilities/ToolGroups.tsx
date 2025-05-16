@@ -29,11 +29,16 @@ export const ToolGroups: React.FC = () => {
       </Heading>
       <AnimatePresence mode="wait" initial={false}>
         {!selectedToolGroup ? (
-          <ToolGroupList groups={toolGroups} onSelect={selectToolGroup} />
+          <ToolGroupList
+            key="group-list"
+            groups={toolGroups}
+            onSelect={selectToolGroup}
+          />
         ) : (
           <>
             {selectedToolGroupTools && (
               <ToolsList
+                key="tools-list"
                 group={selectedToolGroup}
                 tools={selectedToolGroupTools}
                 onToggle={toggleTool}
