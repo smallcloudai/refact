@@ -65,7 +65,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
         };
         
         let tool_limit = match tool.function.name.as_str() {
-            "search" | "regex_search" | "definition" | "references" | "cat" if is_cat_with_lines => {
+            "search_semantic" | "search_pattern" | "search_symbol_definition" | "search_symbol_usages" | "cat" if is_cat_with_lines => {
                 (4096 * context_files_len).min(base_limit / 2).max(4096)
             },
             "cat" | "locate" => (8192 * context_files_len).min(base_limit / 2).max(8192),

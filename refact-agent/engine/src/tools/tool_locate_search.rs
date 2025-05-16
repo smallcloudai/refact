@@ -38,10 +38,7 @@ Do not stop until you have exhausted the project for new, useful artefacts!
 **Available tools**
 - `tree()`                     — view the project directory tree
 - `cat()`                      — view files
-- `search_symbol_definition()` — locate symbol definitions
-- `search_symbol_usages()`     — locate call sites
-- `search_pattern()`           — regex search
-- `search_semantic()`          — broader semantic search
+c
 
 **Workflow**
 1. **Plan** – Sketch a quick strategy: which tool you’ll start with and why.  
@@ -204,6 +201,16 @@ async fn _make_prompt(
 }
 
 
+pub fn check_for_inspected_files(inspected_files: &mut HashSet<String>, messages: &[ChatMessage]) {
+    for context_file_msg in messages.iter().filter(|msg| msg.role == "context_file").cloned().collect::<Vec<ChatMessage>>() {
+        if let Ok(context_files) = serde_json::from_str::<Vec<ContextFile>>(&context_file_msg.content.content_text_only()) {
+            for context_file in context_files {
+                inspected_files.insert(context_file.file_name.clone());
+            }
+        }
+    }
+}
+
 #[async_trait]
 impl Tool for ToolLocateSearch {
     fn as_any(&self) -> &dyn std::any::Any { self }
@@ -247,7 +254,7 @@ impl Tool for ToolLocateSearch {
             let mut t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
-                1,
+                8,
                 false,
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
@@ -354,10 +361,10 @@ async fn find_relevant_files_with_search(
         Some(false),  
     ).await?[0].clone();
 
-    crate::tools::tool_relevant_files::check_for_inspected_files(&mut inspected_files, &result);
+    check_for_inspected_files(&mut inspected_files, &result);
 
     let last_message = result.last().unwrap();
-    crate::tools::tool_relevant_files::update_usage_from_message(&mut usage, &last_message);
+    crate::tools::tools_execute::update_usage_from_message(&mut usage, &last_message);
     assert!(last_message.role == "assistant");
 
     let assistant_output1 = crate::json_utils::extract_json_object::<IndexMap<String, serde_json::Value>>(last_message.content.content_text_only().as_str()).map_err(|e| {

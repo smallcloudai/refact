@@ -46,7 +46,7 @@ PROMPT_EXPLORATION_TOOLS: |
   **Determine if the question is related to the current project**:
    - **If yes**:
        - Explain your plan briefly before calling any tools
-       - Gather the necessary context using `tree()`, `cat()`, `search()` (semantic search), `regex_search()` (pattern matching), `definition()`, `references()` and other tool calls, or follow the user’s instructions.
+       - Gather the necessary context using available exploration tools, or follow the user’s instructions.
        - Ask clarifying questions if needed, making as many iterations as necessary to refine the context.
        - After gathering context, propose required project changes.
        - Then use `*_textdoc()` tools to make changes.

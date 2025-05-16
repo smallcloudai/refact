@@ -155,7 +155,7 @@ async fn smart_compress_results(
         content.push_str(&format!("... and {} more files with matches (not shown due to size limit)\n", remaining_files));
     }
     if estimated_size > MAX_OUTPUT_SIZE {
-        info!("Compressing regex_search output: estimated {} bytes (exceeds 4KB limit)", estimated_size);
+        info!("Compressing `search_pattern` output: estimated {} bytes (exceeds 4KB limit)", estimated_size);
         content.push_str("\nNote: Output has been compressed. Use more specific patterns or scopes for detailed results.");
     }
     content
@@ -171,10 +171,10 @@ impl Tool for ToolRegexSearch {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let pattern_str = match args.get("patterns") {
+        let pattern = match args.get("pattern") {
             Some(Value::String(s)) => s.clone(),
-            Some(v) => return Err(format!("argument `patterns` is not a string: {:?}", v)),
-            None => return Err("Missing argument `patterns` in the search_pattern() call.".to_string())
+            Some(v) => return Err(format!("argument `pattern` is not a string: {:?}", v)),
+            None => return Err("Missing argument `pattern` in the `search_pattern()` call.".to_string())
         };
         
         let scope = match args.get("scope") {
@@ -183,16 +183,6 @@ impl Tool for ToolRegexSearch {
             None => return Err("Missing argument `scope` in the search_pattern() call.".to_string())
         };
         
-        let patterns: Vec<String> = pattern_str
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if patterns.is_empty() {
-            return Err("No valid patterns provided".to_string());
-        }
-
         let ccx_lock = ccx.lock().await;
         let gcx = ccx_lock.global_context.clone();
         drop(ccx_lock);
@@ -203,72 +193,65 @@ impl Tool for ToolRegexSearch {
 
         let mut all_content = String::new();
         let mut all_search_results = Vec::new();
+        
+        // 1. Path matches
+        let regex = match Regex::new(&pattern) {
+            Ok(r) => r,
+            Err(e) => return Err(format!("Invalid regex pattern '{}': {}. Please check your syntax.", pattern, e)),
+        };
+        let mut path_matches: Vec<String> = files_in_scope
+            .iter()
+            .filter(|path| regex.is_match(path))
+            .cloned()
+            .collect();
+        path_matches.sort();
 
-        for (i, pattern) in patterns.iter().enumerate() {
-            if i > 0 {
-                all_content.push_str("\n\n");
-            }
-            all_content.push_str(&format!("Results for pattern: '{}'\n", pattern));
-            // 1. Path matches
-            let regex = match Regex::new(pattern) {
-                Ok(r) => r,
-                Err(e) => return Err(format!("Invalid regex pattern '{}': {}. Please check your syntax.", pattern, e)),
-            };
-            let mut path_matches: Vec<String> = files_in_scope
-                .iter()
-                .filter(|path| regex.is_match(path))
-                .cloned()
-                .collect();
-            path_matches.sort();
-
-            all_content.push_str("Path matches (file/folder names):\n");
-            if path_matches.is_empty() {
-                all_content.push_str("  No files or folders matched by name.\n");
-            } else {
-                for path in &path_matches {
-                    all_content.push_str(&format!("  {}\n", path));
-                }
-            }
-
-            // --- Add ContextFiles for path matches (files only) ---
+        all_content.push_str("Path matches (file/folder names):\n");
+        if path_matches.is_empty() {
+            all_content.push_str("  No files or folders matched by name.\n");
+        } else {
             for path in &path_matches {
-                match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(path)).await {
-                    Ok(text) => {
-                        let total_lines = text.lines().count();
-                        let cf = ContextFile {
-                            file_name: path.clone(),
-                            file_content: "".to_string(),
-                            line1: 1,
-                            line2: total_lines.max(1),
-                            symbols: vec![],
-                            gradient_type: 4,
-                            usefulness: 80.0,
-                        };
-                        all_search_results.push(cf);
-                    },
-                    Err(_) => {
-                        tracing::warn!("Failed to read file '{}'. Skipping...", path);
-                    }
-                }
-            }
-
-            // 2. Text matches
-            let search_results = search_files_with_regex(
-                gcx.clone(), pattern, &scope, 
-            ).await?;
-            all_content.push_str("\nText matches inside files:\n");
-            if search_results.is_empty() {
-                all_content.push_str("  No text matches found in any file.\n");
-            } else {
-                let mut file_results: HashMap<String, Vec<&ContextFile>> = HashMap::new();
-                search_results.iter().for_each(|rec| {
-                    file_results.entry(rec.file_name.clone()).or_insert(vec![]).push(rec)
-                });
-                let pattern_content = smart_compress_results(&search_results, &file_results, gcx.clone(), pattern).await;
-                all_content.push_str(&pattern_content);
-                all_search_results.extend(search_results);
+                all_content.push_str(&format!("  {}\n", path));
             }
         }
+
+        // --- Add ContextFiles for path matches (files only) ---
+        for path in &path_matches {
+            match get_file_text_from_memory_or_disk(gcx.clone(), &PathBuf::from(path)).await {
+                Ok(text) => {
+                    let total_lines = text.lines().count();
+                    let cf = ContextFile {
+                        file_name: path.clone(),
+                        file_content: "".to_string(),
+                        line1: 1,
+                        line2: total_lines.max(1),
+                        symbols: vec![],
+                        gradient_type: 4,
+                        usefulness: 80.0,
+                    };
+                    all_search_results.push(cf);
+                },
+                Err(_) => {
+                    tracing::warn!("Failed to read file '{}'. Skipping...", path);
+                }
+            }
+        }
+
+        // 2. Text matches
+        let search_results = search_files_with_regex(gcx.clone(), &pattern, &scope).await?;
+        all_content.push_str("\nText matches inside files:\n");
+        if search_results.is_empty() {
+            all_content.push_str("  No text matches found in any file.\n");
+        } else {
+            let mut file_results: HashMap<String, Vec<&ContextFile>> = HashMap::new();
+            search_results.iter().for_each(|rec| {
+                file_results.entry(rec.file_name.clone()).or_insert(vec![]).push(rec)
+            });
+            let pattern_content = smart_compress_results(&search_results, &file_results, gcx.clone(), &pattern).await;
+            all_content.push_str(&pattern_content);
+            all_search_results.extend(search_results);
+        }
+        
         if all_search_results.is_empty() {
             return Err("All pattern searches produced no results. Try adjusting your patterns or scope.".to_string());
         }

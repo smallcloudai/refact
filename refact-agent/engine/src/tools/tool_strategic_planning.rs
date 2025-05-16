@@ -154,7 +154,8 @@ async fn _execute_subchat_iteration(
 
     let session = choices.into_iter().next().unwrap();
     let reply = session.last().unwrap().clone();
-    
+    crate::tools::tools_execute::update_usage_from_message(usage_collector, &reply);
+
     Ok((session, reply))
 }
 
