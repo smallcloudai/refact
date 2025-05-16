@@ -29,7 +29,7 @@ pub async fn create_chat_post_and_scratchpad(
     n: usize,
     reasoning_effort: Option<ReasoningEffort>,
     prepend_system_prompt: bool,
-    tools: Option<Vec<Value>>,
+    tools: Vec<ToolDesc>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
     _should_execute_remotely: bool,
@@ -61,7 +61,6 @@ pub async fn create_chat_post_and_scratchpad(
         stream: Some(false),
         temperature,
         n: Some(n),
-        tools,
         tool_choice,
         only_deterministic_messages,
         subchat_tool_parameters: tconfig.subchat_tool_parameters.clone(),
@@ -85,6 +84,7 @@ pub async fn create_chat_post_and_scratchpad(
     let scratchpad = crate::scratchpads::create_chat_scratchpad(
         global_context.clone(),
         &mut chat_post,
+        tools,
         &messages.into_iter().cloned().collect::<Vec<_>>(),
         prepend_system_prompt,
         &model_rec,
@@ -294,7 +294,7 @@ pub async fn subchat_single(
         &tool.name
     }).collect::<Vec<_>>());
 
-    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
+    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).collect::<Vec<_>>();
 
     let max_new_tokens = max_new_tokens.unwrap_or(MAX_NEW_TOKENS);
     let (mut chat_post, spad, model_rec) = create_chat_post_and_scratchpad(
@@ -307,7 +307,7 @@ pub async fn subchat_single(
         n,
         reasoning_effort,
         prepend_system_prompt,
-        Some(tools),
+        tools,
         tool_choice.clone(),
         only_deterministic_messages,
         should_execute_remotely,

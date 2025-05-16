@@ -66,13 +66,13 @@ pub struct ToolExecuteResponse {
     pub tools_ran: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ToolResponse {
     pub spec: ToolDesc,
     pub enabled: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ToolGroupResponse {
     pub name: String,
     pub description: String,

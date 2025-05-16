@@ -26,7 +26,7 @@ pub struct MatchConfirmDeny {
     pub rule: String,
 }
 
-#[derive(Clone, Copy, Serialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum ToolGroupCategory {
     Builtin,
@@ -258,7 +258,6 @@ pub fn model_supports_array_param_type(model_id: &str) -> bool {
 
 pub fn make_openai_tool_value(
     name: String,
-    agentic: bool,
     description: String,
     parameters_required: Vec<String>,
     parameters: Vec<ToolParam>,
@@ -277,7 +276,6 @@ pub fn make_openai_tool_value(
         "type": "function",
         "function": {
             "name": name,
-            "agentic": agentic, // this field is not OpenAI's
             "description": description,
             "parameters": {
                 "type": "object",
@@ -293,7 +291,6 @@ impl ToolDesc {
     pub fn into_openai_style(self) -> Value {
         make_openai_tool_value(
             self.name,
-            self.agentic,
             self.description,
             self.parameters_required,
             self.parameters,
@@ -311,28 +308,6 @@ impl ToolDesc {
         }
         true
     }
-}
-
-pub async fn tool_description_list_from_yaml(
-    tools: IndexMap<String, Box<dyn Tool + Send>>,
-    turned_on: Option<&Vec<String>>,
-    allow_experimental: bool,
-) -> Result<Vec<ToolDesc>, String> {
-    let mut tool_desc_vec: Vec<ToolDesc> = vec![];
-
-    for (tool_name, tool) in tools {
-        if !tool_desc_vec.iter().any(|desc| desc.name == tool_name) {
-            tool_desc_vec.push(tool.tool_description());
-        }
-    }
-
-    Ok(tool_desc_vec.iter()
-        .filter(|x| {
-            turned_on.map_or(true, |turned_on_vec| turned_on_vec.contains(&x.name)) &&
-            (allow_experimental || !x.experimental)
-        })
-        .cloned()
-        .collect::<Vec<_>>())
 }
 
 #[allow(dead_code)]
