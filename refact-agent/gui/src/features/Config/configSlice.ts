@@ -43,6 +43,7 @@ const initialState: Config = {
 };
 
 export const updateConfig = createAction<Partial<Config>>("config/update");
+
 export const setThemeMode = createAction<"light" | "dark" | "inherit">(
   "config/setThemeMode",
 );

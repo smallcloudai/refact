@@ -113,3 +113,6 @@ export const selectLastSentCompression = createSelector(
     return lastCompression;
   },
 );
+
+export const selectActiveWorkspace = (state: RootState) =>
+  state.chat.active_workspace;

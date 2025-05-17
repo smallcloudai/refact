@@ -49,7 +49,6 @@ import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
 import { integrationsSlice } from "../features/Integrations";
 import { currentProjectInfoReducer } from "../features/Chat/currentProject";
-import { knowledgeSlice } from "../features/Knowledge/knowledgeSlice";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
@@ -104,7 +103,6 @@ const rootReducer = combineSlices(
   attachedImagesSlice,
   userSurveySlice,
   integrationsSlice,
-  knowledgeSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
   coinBallanceSlice,

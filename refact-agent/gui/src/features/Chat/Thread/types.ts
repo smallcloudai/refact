@@ -1,3 +1,4 @@
+import { Workspace } from "../../../services/smallcloud";
 import { Usage } from "../../../services/refact";
 import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
@@ -51,6 +52,7 @@ export type Chat = {
   tool_use: ToolUse;
   send_immediately: boolean;
   follow_ups_enabled?: boolean;
+  active_workspace?: Workspace;
 };
 
 export type PayloadWithId = { id: string };

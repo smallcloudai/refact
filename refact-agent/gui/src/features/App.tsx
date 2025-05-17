@@ -31,7 +31,6 @@ import { Integrations } from "./Integrations";
 import { Providers } from "./Providers";
 import { UserSurvey } from "./UserSurvey";
 import { integrationsApi } from "../services/refact";
-import { KnowledgeList } from "./Knowledge";
 import { LoginPage } from "./Login";
 
 import styles from "./App.module.css";
@@ -219,7 +218,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             chatId={page.chatId}
           />
         )}
-        {page.name === "knowledge list" && <KnowledgeList />}
       </PageWrapper>
       {page.name !== "welcome" && <Tour page={pages[pages.length - 1].name} />}
     </Flex>
