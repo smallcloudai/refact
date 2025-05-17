@@ -151,9 +151,6 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       } else if (to === "chat") {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
-      } else if (to === "knowledge list") {
-        // TODO: send telemetry
-        dispatch(push({ name: "knowledge list" }));
       }
     },
     [dispatch, sendTelemetryEvent, openSettings, openHotKeys],

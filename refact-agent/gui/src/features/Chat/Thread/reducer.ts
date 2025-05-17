@@ -40,6 +40,7 @@ import {
   upsertToolCall,
   setIncreaseMaxTokens,
   setAreFollowUpsEnabled,
+  chatSetActiveWorkspace,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -161,6 +162,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.system_prompt = action.payload;
   });
 
+  builder.addCase(chatSetActiveWorkspace, (state, action) => {
+    state.active_workspace = action.payload;
+  });
+
   builder.addCase(newChatAction, (state, action) => {
     const next = createInitialState({
       tool_use: state.tool_use,
@@ -176,6 +181,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.follow_ups_enabled = state.follow_ups_enabled;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
     // next.thread.automatic_patch = state.thread.automatic_patch;
+    next.active_workspace = state.active_workspace;
     if (action.payload?.messages) {
       next.thread.messages = action.payload.messages;
     }

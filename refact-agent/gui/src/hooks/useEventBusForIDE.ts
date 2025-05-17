@@ -12,6 +12,9 @@ import { pathApi } from "../services/refact/path";
 import { telemetryApi } from "../services/refact/telemetry";
 import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
+import { Workspace } from "../services/smallcloud";
+import { useAppDispatch } from "./useAppDispatch";
+import { chatSetActiveWorkspace } from "../features/Chat";
 
 export const ideDiffPasteBackAction = createAction<{
   content: string;
@@ -75,7 +78,12 @@ export const ideForceReloadProjectTreeFiles = createAction(
   "ide/forceReloadProjectTreeFiles",
 );
 
+export const ideSetActiveWorkspace = createAction<Workspace>(
+  "ide/setActiveWorkspace",
+);
+
 export const useEventsBusForIDE = () => {
+  const dispatch = useAppDispatch();
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
   const postMessage = usePostMessage();
@@ -273,6 +281,15 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setActiveWorkspace = useCallback(
+    (workspace: Workspace) => {
+      const action = ideSetActiveWorkspace(workspace);
+      postMessage(action);
+      dispatch(chatSetActiveWorkspace(workspace));
+    },
+    [postMessage, dispatch],
+  );
+
   return {
     diffPasteBack,
     openSettings,
@@ -295,5 +312,6 @@ export const useEventsBusForIDE = () => {
     sendToolCallToIde,
     setCodeCompletionModel,
     setLoginMessage,
+    setActiveWorkspace,
   };
 };
