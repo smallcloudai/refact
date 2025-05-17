@@ -40,6 +40,7 @@ import {
   DetailMessageWithErrorType,
   isDetailMessage,
 } from "../../../services/refact";
+import { Workspace } from "../../../services/smallcloud";
 
 export const newChatAction = createAction<Partial<ChatThread> | undefined>(
   "chatThread/new",
@@ -65,6 +66,10 @@ export const chatAskedQuestion = createAction<PayloadWithId>(
 
 export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
   "chatThread/setLastUserMessageId",
+);
+
+export const chatSetActiveWorkspace = createAction<Workspace>(
+  "chat/setActiveWorkspace",
 );
 
 // TBD: only used when `/links` suggests a new chat.

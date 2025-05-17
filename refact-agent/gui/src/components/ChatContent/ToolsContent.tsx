@@ -12,7 +12,7 @@ import {
 } from "@radix-ui/themes";
 import {
   isMultiModalToolResult,
-  knowledgeApi,
+  // knowledgeApi,
   MultiModalToolResult,
   ToolCall,
   ToolResult,
@@ -621,16 +621,20 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
 };
 
 const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
-  const [updateUsage, status] = knowledgeApi.useUpdateMemoryUsageMutation();
+  // const [updateUsage, status] = knowledgeApi.useUpdateMemoryUsageMutation();
   // correct and relevant,
   const handleGood = useCallback(() => {
-    void updateUsage({ memid: id, correct: 1, relevant: 1 });
-  }, [id, updateUsage]);
+    // void updateUsage({ memid: id, correct: 1, relevant: 1 });
+    // eslint-disable-next-line no-console
+    console.warn("This feature is now not available. Stay tuned for updates.");
+  }, []);
 
   // TODO: not correct but relevant, and incorrect but relevant
   const handleBad = useCallback(() => {
-    void updateUsage({ memid: id, correct: -1, relevant: -1 });
-  }, [id, updateUsage]);
+    // void updateUsage({ memid: id, correct: -1, relevant: -1 });
+    // eslint-disable-next-line no-console
+    console.warn("This feature is now not available. Stay tuned for updates.");
+  }, []);
 
   return (
     <Card>
@@ -644,7 +648,7 @@ const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
               size="1"
               title="Down vote"
               onClick={handleBad}
-              disabled={status.isLoading}
+              // disabled={status.isLoading}
               variant="outline"
               color="tomato"
             >
@@ -654,7 +658,7 @@ const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
               size="1"
               title="Up vote"
               onClick={handleGood}
-              disabled={status.isLoading}
+              // disabled={status.isLoading}
               variant="outline"
               color="grass"
             >

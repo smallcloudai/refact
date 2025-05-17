@@ -1,12 +1,18 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../../app/store";
 
+export type Workspace = {
+  workspace_id: number;
+  workspace_name: string;
+};
+
 export type User = {
   retcode: string;
   account: string;
   inference_url: string;
   inference: string;
   metering_balance: number;
+  workspaces: Workspace[];
   questionnaire: false | Record<string, string>;
 };
 
@@ -23,7 +29,9 @@ function isUser(json: unknown): json is User {
     "inference" in json &&
     typeof json.inference === "string" &&
     "metering_balance" in json &&
-    typeof json.metering_balance === "number"
+    typeof json.metering_balance === "number" &&
+    "workspaces" in json &&
+    Array.isArray(json.workspaces)
   );
 }
 

@@ -20,6 +20,7 @@ import {
   Flex,
   HoverCard,
   IconButton,
+  Select,
   Text,
 } from "@radix-ui/themes";
 import {
@@ -29,11 +30,12 @@ import {
   GearIcon,
 } from "@radix-ui/react-icons";
 import { clearHistory } from "../../features/History/historySlice";
-import { KnowledgeListPage } from "../../features/Pages/pagesSlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
-import { isUserWithLoginMessage } from "../../services/smallcloud";
+import { isUserWithLoginMessage, Workspace } from "../../services/smallcloud";
+import { knowledgeApi } from "../../services/refact";
+import { selectActiveWorkspace } from "../../features/Chat";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -44,7 +46,6 @@ export type DropdownNavigationOptions =
   | "login page"
   | "integrations"
   | "providers"
-  | KnowledgeListPage["name"]
   | "";
 
 type DropdownProps = {
@@ -79,6 +80,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
+  const activeWorkspace = useAppSelector(selectActiveWorkspace);
   const dispatch = useAppDispatch();
   // TODO: check how much of this is still used.
   // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
@@ -86,13 +88,19 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const logout = useLogout();
   const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
   const { startPollingForUser } = useStartPollingForUser();
+  const [setActiveWorkspaceTrigger] =
+    knowledgeApi.useSetActiveWorkspaceIdMutation();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openCustomizationFile, openPrivacyFile, setLoginMessage } =
-    useEventsBusForIDE();
+  const {
+    openCustomizationFile,
+    openPrivacyFile,
+    setLoginMessage,
+    setActiveWorkspace,
+  } = useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
@@ -113,6 +121,19 @@ export const Dropdown: React.FC<DropdownProps> = ({
     if (host === "jetbrains") return "Plugin";
     return "Extension";
   }, [host]);
+
+  const handleSetActiveWorkspace = useCallback(
+    (workspace: Workspace) => {
+      void setActiveWorkspaceTrigger({
+        workspace_id: workspace.workspace_id,
+      }).then((result) => {
+        if (result.data) {
+          setActiveWorkspace(workspace);
+        }
+      });
+    },
+    [setActiveWorkspaceTrigger, setActiveWorkspace],
+  );
 
   return (
     <DropdownMenu.Root>
@@ -161,7 +182,57 @@ export const Dropdown: React.FC<DropdownProps> = ({
             </Flex>
           </DropdownMenu.Label>
         )}
-        <Flex direction="column" gap="2" mt="1" mx="2">
+        {user.data && user.data.workspaces.length > 0 && (
+          <DropdownMenu.Label style={{ height: "unset" }}>
+            <Flex
+              align="stretch"
+              mt="1"
+              gap="1"
+              direction="column"
+              width="100%"
+            >
+              <Flex align="center" gap="1">
+                <Text as="span" size="2">
+                  Active workspace:
+                </Text>
+                <HoverCard.Root>
+                  <HoverCard.Trigger>
+                    <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+                  </HoverCard.Trigger>
+                  <HoverCard.Content size="2" maxWidth="280px">
+                    <Flex direction="column" gap="2">
+                      <Text as="p" size="2">
+                        Selected workspace in Team Server
+                      </Text>
+                    </Flex>
+                  </HoverCard.Content>
+                </HoverCard.Root>
+              </Flex>
+              <Select.Root
+                size="1"
+                value={activeWorkspace?.workspace_name}
+                onValueChange={(value) => {
+                  const workspace = user.data?.workspaces.find(
+                    (w) => w.workspace_name === value,
+                  );
+                  if (workspace) {
+                    handleSetActiveWorkspace(workspace);
+                  }
+                }}
+              >
+                <Select.Trigger placeholder="Choose a workspace" />
+                <Select.Content position="popper">
+                  {user.data.workspaces.map((w) => (
+                    <Select.Item value={w.workspace_name} key={w.workspace_id}>
+                      {w.workspace_name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+          </DropdownMenu.Label>
+        )}
+        <Flex direction="column" gap="2" mt="2" mx="2">
           {user.data && user.data.inference === "FREE" && (
             <Button
               color="red"
@@ -202,7 +273,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         {knowledgeEnabled && (
           <DropdownMenu.Item
-            onSelect={() => handleNavigation("knowledge list")}
+            // TODO: get real URL from cloud inference
+            onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
           >
             Manage Knowledge
           </DropdownMenu.Item>
