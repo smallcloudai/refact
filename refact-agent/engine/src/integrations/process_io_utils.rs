@@ -74,7 +74,7 @@ pub async fn blocking_read_until_token_or_timeout<
         if have_the_token && output_bytes_read == 0 && error_bytes_read == 0 { break; }
     }
 
-    Ok((String::from_utf8_lossy(&output).to_string(), String::from_utf8_lossy(&error).to_string(), have_the_token))
+    Ok((output.to_string_lossy_and_strip_ansi(), error.to_string_lossy_and_strip_ansi(), have_the_token))
 }
 
 pub async fn is_someone_listening_on_that_tcp_port(port: u16, timeout: tokio::time::Duration) -> bool {
@@ -177,4 +177,14 @@ pub async fn execute_command(mut cmd: Command, timeout_secs: u64, cmd_str: &str)
     ).await
         .map_err(|_| format!("command '{cmd_str}' timed out after {timeout_secs} seconds"))?
         .map_err(|e| format!("command '{cmd_str}' failed to execute: {e}"))
+}
+
+pub trait AnsiStrippable {
+    fn to_string_lossy_and_strip_ansi(&self) -> String;
+}
+
+impl AnsiStrippable for [u8] {
+    fn to_string_lossy_and_strip_ansi(&self) -> String {
+        String::from_utf8_lossy(&strip_ansi_escapes::strip(self)).to_string()
+    }
 }

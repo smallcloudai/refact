@@ -10,6 +10,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
+use crate::integrations::process_io_utils::AnsiStrippable;
 use crate::tools::tools_description::Tool;
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
@@ -105,8 +106,8 @@ impl ToolDocker {
             .output()
             .await
             .map_err(|e| e.to_string())?;
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = output.stdout.to_string_lossy_and_strip_ansi();
+        let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
         if fail_if_stderr_is_not_empty && !stderr.is_empty() {
             let error_message = if verbose_error {

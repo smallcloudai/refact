@@ -15,6 +15,8 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 
+use super::process_io_utils::AnsiStrippable;
+
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct SettingsPostgres {
@@ -93,10 +95,10 @@ impl ToolPostgres {
             }
             let output = output.unwrap();
             if output.status.success() {
-                Ok(String::from_utf8_lossy(&output.stdout).to_string())
+                Ok(output.stdout.to_string_lossy_and_strip_ansi())
             } else {
                 // XXX: limit stderr, can be infinite
-                let stderr_string = String::from_utf8_lossy(&output.stderr);
+                let stderr_string = output.stderr.to_string_lossy_and_strip_ansi();
                 tracing::error!("psql didn't work:\n{}\n{}", query, stderr_string);
                 Err(format!("{}, psql failed:\n{}", go_to_configuration_message("postgres"), stderr_string))
             }

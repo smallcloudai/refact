@@ -15,6 +15,7 @@ use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 use serde_json::Value;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
+use crate::integrations::process_io_utils::AnsiStrippable;
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -93,8 +94,8 @@ impl Tool for ToolGithub {
             .map_err(|e| format!("!{}, {} failed:\n{}",
                 go_to_configuration_message("github"), gh_binary_path, e.to_string()))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = output.stdout.to_string_lossy_and_strip_ansi();
+        let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
         let stdout_content = if stdout.starts_with("[") {
             match serde_json::from_str::<Value>(&stdout) {

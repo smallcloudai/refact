@@ -16,7 +16,7 @@ use shell_escape::escape;
 use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::integrations::process_io_utils::execute_command;
+use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
 use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
@@ -222,8 +222,8 @@ pub async fn execute_blocking_command(
     let duration = t0.elapsed();
     info!("EXEC: /finished in {:?}", duration);
 
-    let stdout = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stdout).to_string());
-    let stderr = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stderr).to_string());
+    let stdout = output_mini_postprocessing(&cfg.output_filter, &output.stdout.to_string_lossy_and_strip_ansi());
+    let stderr = output_mini_postprocessing(&cfg.output_filter, &output.stderr.to_string_lossy_and_strip_ansi());
 
     let mut out = format_output(&stdout, &stderr);
     let exit_code = output.status.code().unwrap_or_default();
