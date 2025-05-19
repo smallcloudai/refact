@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Dialog, Flex, Button, Checkbox, Text } from "@radix-ui/themes";
-import { useAppDispatch, useAppSelector } from "../../hooks";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useEventsBusForIDE,
+} from "../../hooks";
 import { selectFeatures, changeFeature } from "./configSlice";
 import { Link } from "../../components/Link";
 

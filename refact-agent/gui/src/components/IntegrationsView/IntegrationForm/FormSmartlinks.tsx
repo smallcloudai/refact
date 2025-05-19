@@ -2,8 +2,7 @@ import { Button, Flex, Heading } from "@radix-ui/themes";
 import { SmartLink } from "../../SmartLink";
 import { FC } from "react";
 import { Integration, SmartLink as TSmartLink } from "../../../services/refact";
-import { useAppSelector } from "../../../hooks";
-import { useEventsBusForIDE } from "../../../hooks/useEventBusForIDE";
+import { useAppSelector, useEventsBusForIDE } from "../../../hooks";
 import { selectConfig } from "../../../features/Config/configSlice";
 
 type FormSmartlinksProps = {

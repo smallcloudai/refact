@@ -6,7 +6,6 @@ import {
   Text,
   Box,
   Spinner,
-  IconButton,
   Card,
   Separator,
 } from "@radix-ui/themes";
@@ -31,7 +30,6 @@ import {
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
-import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 import { RootState } from "../../app/store";
 import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
@@ -621,21 +619,6 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
 };
 
 const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
-  // const [updateUsage, status] = knowledgeApi.useUpdateMemoryUsageMutation();
-  // correct and relevant,
-  const handleGood = useCallback(() => {
-    // void updateUsage({ memid: id, correct: 1, relevant: 1 });
-    // eslint-disable-next-line no-console
-    console.warn("This feature is now not available. Stay tuned for updates.");
-  }, []);
-
-  // TODO: not correct but relevant, and incorrect but relevant
-  const handleBad = useCallback(() => {
-    // void updateUsage({ memid: id, correct: -1, relevant: -1 });
-    // eslint-disable-next-line no-console
-    console.warn("This feature is now not available. Stay tuned for updates.");
-  }, []);
-
   return (
     <Card>
       <Flex direction="column" gap="2">
@@ -643,28 +626,6 @@ const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
           <Text size="1" weight="light">
             Memory: {id}
           </Text>
-          <Flex gap="2" align="center">
-            <IconButton
-              size="1"
-              title="Down vote"
-              onClick={handleBad}
-              // disabled={status.isLoading}
-              variant="outline"
-              color="tomato"
-            >
-              <ArrowDownIcon />
-            </IconButton>
-            <IconButton
-              size="1"
-              title="Up vote"
-              onClick={handleGood}
-              // disabled={status.isLoading}
-              variant="outline"
-              color="grass"
-            >
-              <ArrowUpIcon />
-            </IconButton>
-          </Flex>
         </Flex>
         <Separator size="4" />
         <Text size="2">{content}</Text>

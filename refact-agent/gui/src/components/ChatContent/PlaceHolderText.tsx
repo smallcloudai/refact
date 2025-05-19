@@ -2,8 +2,7 @@ import React, { useCallback } from "react";
 
 import { Flex, Text, Link } from "@radix-ui/themes";
 
-import { useConfig, useAppSelector } from "../../hooks";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
+import { useConfig, useAppSelector, useEventsBusForIDE } from "../../hooks";
 
 import { currentTipOfTheDay } from "../../features/TipOfTheDay";
 

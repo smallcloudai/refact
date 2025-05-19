@@ -34,8 +34,11 @@ import {
 } from "../../features/History/historySlice";
 import { restoreChat, saveTitle, selectThread } from "../../features/Chat";
 import { TruncateLeft } from "../Text";
-import { useAppDispatch, useAppSelector } from "../../hooks";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useEventsBusForIDE,
+} from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { telemetryApi } from "../../services/refact/telemetry";

@@ -8,8 +8,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useHideScroll } from "../../hooks";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
+import { useHideScroll, useEventsBusForIDE } from "../../hooks";
 import { FadedButton } from "../Buttons";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
