@@ -1,3 +1,4 @@
+use axum::extract::DefaultBodyLimit;
 use axum::Router;
 use axum::routing::get;
 
@@ -13,4 +14,5 @@ pub fn make_refact_http_server() -> Router {
         .nest("/v1", v1::make_v1_router())
         .nest("/db_v1", v1::make_db_v1_router())
         .route("/build_info", get(info::handle_info))
+        .layer(DefaultBodyLimit::max(2usize.pow(20) * 15)) // new limit of payload 15MB(default: 2MB)
 }
