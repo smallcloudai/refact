@@ -8,7 +8,7 @@ import {
   KNOWLEDGE_CREATE_URL,
 } from "../services/refact/consts";
 import { STUB_TOOL_RESPONSE } from "./tools_response";
-import { GoodPollingResponse } from "../services/smallcloud";
+import { GoodPollingResponse } from "../services/smallcloud/types";
 import type { LinksForChatResponse } from "../services/refact/links";
 import { SaveTrajectoryResponse } from "../services/refact/knowledge";
 import { ToolConfirmationResponse } from "../services/refact";

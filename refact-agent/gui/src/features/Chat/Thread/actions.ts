@@ -32,7 +32,6 @@ import {
 } from "../../../services/refact/chat";
 import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
-import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import {
@@ -40,7 +39,6 @@ import {
   DetailMessageWithErrorType,
   isDetailMessage,
 } from "../../../services/refact";
-import { Workspace } from "../../../services/smallcloud";
 
 export const newChatAction = createAction<Partial<ChatThread> | undefined>(
   "chatThread/new",
@@ -66,10 +64,6 @@ export const chatAskedQuestion = createAction<PayloadWithId>(
 
 export const setLastUserMessageId = createAction<PayloadWithChatAndMessageId>(
   "chatThread/setLastUserMessageId",
-);
-
-export const chatSetActiveWorkspace = createAction<Workspace>(
-  "chat/setActiveWorkspace",
 );
 
 // TBD: only used when `/links` suggests a new chat.
@@ -203,7 +197,6 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   //   }
   //   return msg;
   // });
-  debugApp(`[DEBUG TITLE]: messagesToSend: `, messagesToSend);
 
   const caps = await thunkAPI
     .dispatch(capsApi.endpoints.getCaps.initiate(undefined))

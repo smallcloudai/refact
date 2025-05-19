@@ -45,6 +45,7 @@ import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
 import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
+import { activeWorkspaceSlice } from "../features/ActiveWorkspace";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
 import { integrationsSlice } from "../features/Integrations";
@@ -60,9 +61,19 @@ const tipOfTheDayPersistConfig = {
   stateReconciler: mergeInitialState,
 };
 
+const activeWorkspacePersistConfig = {
+  key: "acws",
+  storage: storage(),
+  stateReconciler: mergeInitialState,
+};
+
 const persistedTipOfTheDayReducer = persistReducer<
   ReturnType<typeof tipOfTheDaySlice.reducer>
 >(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
+
+const persistedActiveWorkspaceReducer = persistReducer<
+  ReturnType<typeof activeWorkspaceSlice.reducer>
+>(activeWorkspacePersistConfig, activeWorkspaceSlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -73,6 +84,7 @@ const rootReducer = combineSlices(
     tour: tourReducer,
     // tipOfTheDay: persistedTipOfTheDayReducer,
     [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
+    [activeWorkspaceSlice.reducerPath]: persistedActiveWorkspaceReducer,
     config: configReducer,
     active_file: activeFileReducer,
     current_project: currentProjectInfoReducer,
