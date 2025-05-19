@@ -8,7 +8,7 @@ use super::session_mcp::SessionMCP;
 
 pub async fn read_resource(
     session_arc: Arc<AMutex<Box<dyn IntegrationSession>>>,
-    uri: String
+    uri: String,
 ) -> Result<Vec<ResourceContents>, String> {
     let (mcp_client_arc, resource) = {
         let mut session_locked = session_arc.lock().await;
@@ -50,7 +50,10 @@ pub async fn read_resource(
     Ok(resource_content.contents)
 }
 
-pub fn convert_resource_contents_to_multimodal_elements(resource_contents: Vec<ResourceContents>) -> Vec<MultimodalElement> {
+pub fn convert_resource_contents_to_multimodal_elements(
+    resource_contents: Vec<ResourceContents>,
+    model_supports_multimodality: bool,
+) -> Vec<MultimodalElement> {
     let mut elements = Vec::new();
     for resource_content in resource_contents {
         match resource_content {
@@ -62,17 +65,18 @@ pub fn convert_resource_contents_to_multimodal_elements(resource_contents: Vec<R
             },
             ResourceContents::BlobResourceContents { blob, mime_type, .. } => {
                 match mime_type {
-                    Some(mime) if mime.starts_with("image/") => {
-                        elements.push(MultimodalElement {
-                            m_type: mime.clone(),
-                            m_content: blob,
-                        });
-                    },
-                    Some(mime) if MULTIMODALITY_IMAGE_EXTENSIONS.contains(&mime.as_str()) => {
-                        elements.push(MultimodalElement {
-                            m_type: format!("image/{}", mime),
-                            m_content: blob,
-                        });
+                    Some(mime) if mime.starts_with("image/") || MULTIMODALITY_IMAGE_EXTENSIONS.contains(&mime.as_str()) => {
+                        if model_supports_multimodality {
+                            elements.push(MultimodalElement {
+                                m_type: if mime.starts_with("image/") { mime } else { format!("image/{}", mime) },
+                                m_content: blob,
+                            });
+                        } else {
+                            elements.push(MultimodalElement {
+                                m_type: "text".to_string(),
+                                m_content: "Server returned an image, but model does not support multimodality".to_string(),
+                            });
+                        }
                     },
                     Some(mime) => {
                         elements.push(MultimodalElement {
@@ -81,7 +85,6 @@ pub fn convert_resource_contents_to_multimodal_elements(resource_contents: Vec<R
                         });
                     },
                     None => {
-                        tracing::info!("blob:: {:?}", crate::nicer_logs::first_n_chars(&blob, 300));
                         elements.push(MultimodalElement {
                             m_type: "text".to_string(),
                             m_content: "Resource has no MIME type specified. Content cannot be displayed.".to_string(),

@@ -5,8 +5,9 @@ use hyper::Body;
 use serde::{Serialize, Deserialize};
 use tokio::sync::RwLock as ARwLock;
 
+use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
-use crate::global_context::GlobalContext;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::integrations::mcp;
 use crate::integrations::mcp::session_mcp::{fetch_and_update_mcp_resources, SessionMCP};
 use crate::integrations::sessions::get_session_hashmap_key;
@@ -29,6 +30,7 @@ pub struct McpResourceQuery {
 pub struct McpResourceContentQuery {
     pub config_path: String,
     pub uri: String,
+    pub model: String,
 }
 
 #[derive(Serialize)]
@@ -108,11 +110,15 @@ pub async fn handle_mcp_resource_content(
             .clone()
     };
 
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    let model_supports_multimodality = resolve_chat_model(caps, &query.model)
+        .is_ok_and(|m| m.supports_multimodality);
+
     let resource_contents = mcp::mcp_resources::read_resource(session_arc, query.uri.clone())
         .await
         .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    let elements = mcp::mcp_resources::convert_resource_contents_to_multimodal_elements(resource_contents);
+    let elements = mcp::mcp_resources::convert_resource_contents_to_multimodal_elements(resource_contents, model_supports_multimodality);
     let message = ChatMessage::from_multimodal_elements("user".to_string(), elements);
 
     let response = ResourceContentResponse { messages: vec![message] };
