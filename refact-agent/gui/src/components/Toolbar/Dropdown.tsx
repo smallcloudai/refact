@@ -6,13 +6,13 @@ import {
 } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
-  useEventsBusForIDE,
   useGetUser,
   useLogout,
   useAppSelector,
   useAppDispatch,
   useStartPollingForUser,
 } from "../../hooks";
+import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
   Button,
