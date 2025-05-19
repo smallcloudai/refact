@@ -7,7 +7,7 @@ import {
   SET_ACTIVE_WORKSPACE_ID,
 } from "./consts";
 import { isDetailMessage, type ChatMessages } from ".";
-import { Workspace } from "../smallcloud";
+import { type Workspace } from "../smallcloud/types";
 
 export type SubscribeArgs =
   | {

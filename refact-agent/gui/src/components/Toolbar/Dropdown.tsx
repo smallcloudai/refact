@@ -33,9 +33,16 @@ import { clearHistory } from "../../features/History/historySlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
-import { isUserWithLoginMessage, Workspace } from "../../services/smallcloud";
+import {
+  isUserWithLoginMessage,
+  Workspace,
+} from "../../services/smallcloud/types";
 import { knowledgeApi } from "../../services/refact";
-import { selectActiveWorkspace } from "../../features/Chat";
+import {
+  resetActiveWorkspace,
+  selectActiveWorkspace,
+  setActiveWorkspace,
+} from "../../features/ActiveWorkspace";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -99,7 +106,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     openCustomizationFile,
     openPrivacyFile,
     setLoginMessage,
-    setActiveWorkspace,
+    setActiveWorkspaceInIDE,
   } = useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
@@ -126,13 +133,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
     (workspace: Workspace) => {
       void setActiveWorkspaceTrigger({
         workspace_id: workspace.workspace_id,
-      }).then((result) => {
-        if (result.data) {
-          setActiveWorkspace(workspace);
-        }
-      });
+      })
+        .then((result) => {
+          if (result.data) {
+            setActiveWorkspaceInIDE(workspace);
+            dispatch(setActiveWorkspace(workspace));
+          }
+        })
+        .catch(() => {
+          dispatch(resetActiveWorkspace());
+        });
     },
-    [setActiveWorkspaceTrigger, setActiveWorkspace],
+    [dispatch, setActiveWorkspaceTrigger, setActiveWorkspaceInIDE],
   );
 
   return (

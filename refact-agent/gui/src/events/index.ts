@@ -115,7 +115,7 @@ export {
   isUserMessage,
 } from "../services/refact";
 
-export { type Workspace } from "../services/smallcloud";
+export { type Workspace } from "../services/smallcloud/types";
 
 // export type * from "../services/refact";
 
