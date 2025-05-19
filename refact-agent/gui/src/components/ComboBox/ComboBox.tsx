@@ -8,8 +8,7 @@ import { Popover } from "./Popover";
 import { TruncateLeft } from "../Text";
 import { type DebouncedState } from "usehooks-ts";
 import { CommandCompletionResponse } from "../../services/refact";
-import { useAppSelector } from "../../hooks";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
+import { useAppSelector, useEventsBusForIDE } from "../../hooks";
 import { selectSubmitOption } from "../../features/Config/configSlice";
 
 export type ComboBoxProps = {

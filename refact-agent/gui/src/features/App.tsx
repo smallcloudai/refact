@@ -7,8 +7,8 @@ import {
   useAppDispatch,
   useConfig,
   useEffectOnce,
+  useEventsBusForIDE,
 } from "../hooks";
-import { useEventsBusForIDE } from "../hooks/useEventBusForIDE";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";

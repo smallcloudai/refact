@@ -7,8 +7,8 @@ import {
   useAppSelector,
   useAppDispatch,
   useStartPollingForUser,
+  useEventsBusForIDE,
 } from "../../hooks";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
   Button,

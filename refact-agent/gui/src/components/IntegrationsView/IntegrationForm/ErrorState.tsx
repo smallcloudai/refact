@@ -2,8 +2,7 @@ import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Badge, Button, Flex, Text } from "@radix-ui/themes";
 import { FC } from "react";
 import { Integration } from "../../../services/refact";
-import { useAppSelector } from "../../../hooks";
-import { useEventsBusForIDE } from "../../../hooks/useEventBusForIDE";
+import { useAppSelector, useEventsBusForIDE } from "../../../hooks";
 import { selectConfig } from "../../../features/Config/configSlice";
 import { DeletePopover } from "../../DeletePopover";
 

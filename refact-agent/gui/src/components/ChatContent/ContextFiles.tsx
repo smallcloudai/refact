@@ -13,7 +13,7 @@ import ReactMarkDown from "react-markdown";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import { Chevron } from "../Collapsible";
 import { filename } from "../../utils";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
+import { useEventsBusForIDE } from "../../hooks";
 
 export const Markdown: React.FC<{
   children: string;
