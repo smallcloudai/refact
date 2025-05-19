@@ -71,6 +71,7 @@ select = "0.6.0"
 similar = "2.3.0"
 sled = { version = "0.34", default-features = false, features = [] }
 sqlite-vec = { version = "0.1.6", optional = true }
+strip-ansi-escapes = "0.2.1"
 strsim = "0.11.1"
 structopt = "0.3"
 tempfile = "3.8.1"
