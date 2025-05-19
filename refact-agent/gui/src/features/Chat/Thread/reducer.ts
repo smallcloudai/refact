@@ -46,7 +46,6 @@ import {
   ChatMessages,
   commandsApi,
   isAssistantMessage,
-  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
