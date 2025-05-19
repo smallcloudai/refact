@@ -1,9 +1,5 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import {
-  selectHost,
-  selectKnowledgeFeature,
-  type Config,
-} from "../../features/Config/configSlice";
+import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
   useGetUser,
@@ -93,7 +89,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
   // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
   const coinBalance = useCoinBallance();
   const logout = useLogout();
-  const knowledgeEnabled = useAppSelector(selectKnowledgeFeature);
   const { startPollingForUser } = useStartPollingForUser();
   const [setActiveWorkspaceTrigger] =
     knowledgeApi.useSetActiveWorkspaceIdMutation();
@@ -283,14 +278,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <GearIcon /> Configure Providers
         </DropdownMenu.Item>
 
-        {knowledgeEnabled && (
-          <DropdownMenu.Item
-            // TODO: get real URL from cloud inference
-            onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
-          >
-            Manage Knowledge
-          </DropdownMenu.Item>
-        )}
+        <DropdownMenu.Item
+          // TODO: get real URL from cloud inference
+          onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
+        >
+          Manage Knowledge
+        </DropdownMenu.Item>
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           {refactProductType} Settings
