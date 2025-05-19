@@ -18,7 +18,7 @@ pub struct McpServerDesc {
     pub name: String,
     pub config_path: String,
     pub num_tools: usize,
-    pub num_resources: usize,
+    pub num_resources: Option<usize>,
 }
 
 #[derive(Deserialize)]
@@ -61,7 +61,7 @@ pub async fn handle_mcp_servers(
             name: name.to_string(),
             config_path: session_mcp.config_path.clone(),
             num_tools: session_mcp.mcp_tools.len(),
-            num_resources: session_mcp.mcp_resources.as_ref().map_or(0, |r| r.len()),
+            num_resources: session_mcp.mcp_resources.as_ref().map(|r| r.len()),
         });
     }
     let body = serde_json::to_string_pretty(&servers).expect("Failed to serialize servers");
