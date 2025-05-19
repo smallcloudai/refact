@@ -25,10 +25,11 @@ const userMock = http.get(
       account: "party@refact.ai",
       inference_url: "https://www.smallcloud.ai/v1",
       inference: "PRO",
-      metering_balance: -100000,
+      metering_balance: 100000,
       questionnaire: false,
       refact_agent_max_request_num: 20,
       refact_agent_request_available: null,
+      workspaces: [],
     });
   },
   // TODO: if once if true, it still runs twice without refact_agent_max_request_num & refact_agent_request_available

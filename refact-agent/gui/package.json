@@ -35,6 +35,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
+    "test:no-watch": "vitest run",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
     "format:check": "prettier . --check",

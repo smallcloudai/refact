@@ -16,7 +16,7 @@ import { useModelDialogState } from "./hooks/useModelDialogState";
 import type { ModelType, SimplifiedModel } from "../../../../services/refact";
 
 import styles from "./ModelCard.module.css";
-import { useEventsBusForIDE } from "../../../../hooks";
+import { useEventsBusForIDE } from "../../../../hooks/useEventBusForIDE";
 
 export type ModelCardProps = {
   model: SimplifiedModel;

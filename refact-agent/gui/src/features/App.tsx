@@ -2,8 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
 import { Chat, newChatAction, selectChatId, selectIsStreaming } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import { useEventsBusForIDE, useConfig, useEffectOnce } from "../hooks";
-import { useAppSelector, useAppDispatch } from "../hooks";
+import {
+  useAppSelector,
+  useAppDispatch,
+  useConfig,
+  useEffectOnce,
+} from "../hooks";
+import { useEventsBusForIDE } from "../hooks/useEventBusForIDE";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
