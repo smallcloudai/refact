@@ -7,8 +7,8 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::timeout;
 use tokio::time::Duration;
-use rmcp::transport::sse::ReqwestSseClient;
-use rmcp::transport::SseTransport;
+use rmcp::transport::common::client_side_sse::ExponentialBackoff;
+use rmcp::transport::sse_client::{SseClientTransport, SseClientConfig};
 use rmcp::serve_client;
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
@@ -151,21 +151,22 @@ pub async fn _session_apply_settings(
                             _ => log(tracing::Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
                         }
                     }
-                    let reqwest_client = match reqwest::Client::builder().default_headers(header_map).build() {
+                    let client = match reqwest::Client::builder().default_headers(header_map).build() {
                         Ok(reqwest_client) => reqwest_client,
                         Err(e) => {
                             log(tracing::Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
                             return;
                         }
                     };
-                    let sse_client = match ReqwestSseClient::new_with_client(url, reqwest_client).await {
-                        Ok(sse_client) => sse_client,
-                        Err(e) => {
-                            log(tracing::Level::ERROR, format!("Failed to init SSE client: {}", e)).await;
-                            return;
-                        },
+                    let client_config = SseClientConfig {
+                        sse_endpoint: Arc::<str>::from(url),
+                        retry_policy: Arc::new(ExponentialBackoff {
+                            max_times: Some(3),
+                            base_duration: Duration::from_millis(500),
+                        }),
+                        ..Default::default()
                     };
-                    let transport = match SseTransport::start_with_client(sse_client).await {
+                    let transport = match SseClientTransport::start_with_client(client, client_config).await {
                         Ok(t) => t,
                         Err(e) => {
                             log(tracing::Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
