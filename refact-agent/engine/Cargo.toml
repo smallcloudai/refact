@@ -75,6 +75,7 @@ tokenizers = "0.21.0"
 tokio = { version = "1.43.0", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
 tokio-rusqlite = "0.5.0"
 tokio-util = { version = "0.7.12", features = ["compat"] }
+tokio-tungstenite = "0.21.0"
 tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["cors"] }
 tower-lsp = "0.20"
