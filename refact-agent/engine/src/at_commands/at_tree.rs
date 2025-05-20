@@ -128,7 +128,7 @@ fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
 
 async fn _print_files_tree(
     tree: &Vec<PathsHolderNodeArc>,
-    ast_db: Option<Arc<AMutex<AstDB>>>,
+    ast_db: Option<Arc<AstDB>>,
     maxdepth: usize,
 ) -> String {
     fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, db_mb: Option<Arc<Db>>) -> Option<String> {
@@ -169,7 +169,7 @@ async fn _print_files_tree(
     let mut result = String::new();
     for node in tree {
         let db_mb = if let Some(ast) = ast_db.clone() {
-            Some(ast.lock().await.sleddb.clone())
+            Some(ast.sleddb.clone())
         } else {
             None
         };
@@ -185,7 +185,7 @@ async fn _print_files_tree(
 async fn _print_files_tree_with_budget(
     tree: Vec<PathsHolderNodeArc>,
     char_limit: usize,
-    ast_db: Option<Arc<AMutex<AstDB>>>,
+    ast_db: Option<Arc<AstDB>>,
 ) -> String {
     let mut good_enough = String::new();
     for maxdepth in 1..20 {
@@ -217,7 +217,7 @@ pub async fn print_files_tree_with_budget(
     match ast_module_option {
         Some(ast_module) => {
             crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_module.clone(), 20_000, true).await;
-            let ast_db: Option<Arc<AMutex<AstDB>>> = Some(ast_module.lock().await.ast_index.clone());
+            let ast_db: Option<Arc<AstDB>> = Some(ast_module.lock().await.ast_index.clone());
             Ok(_print_files_tree_with_budget(tree, char_limit, ast_db.clone()).await)
         }
         None => Ok(_print_files_tree_with_budget(tree, char_limit, None).await),
