@@ -10,14 +10,14 @@ use crate::at_commands::at_ast_definition::AtParamSymbolPathQuery;
 
 
 pub struct AtAstReference {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtAstReference {
     pub fn new() -> Self {
         AtAstReference {
             params: vec![
-                Arc::new(AMutex::new(AtParamSymbolPathQuery::new()))
+                Box::new(AtParamSymbolPathQuery::new())
             ],
         }
     }
@@ -26,7 +26,7 @@ impl AtAstReference {
 
 #[async_trait]
 impl AtCommand for AtAstReference {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 
@@ -46,7 +46,7 @@ impl AtCommand for AtAstReference {
             },
         };
 
-        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut arg_symbol).await;
+        correct_at_arg(ccx.clone(), &self.params[0], &mut arg_symbol).await;
         args.clear();
         args.push(arg_symbol.clone());
 

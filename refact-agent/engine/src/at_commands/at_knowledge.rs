@@ -11,7 +11,7 @@ use crate::memories::memories_search;
 
 /// @knowledge-load command - loads knowledge entries by search key or memory ID
 pub struct AtLoadKnowledge {
-    params: Vec<Arc<AMutex<dyn AtParam>>>,
+    params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtLoadKnowledge {
@@ -24,7 +24,7 @@ impl AtLoadKnowledge {
 
 #[async_trait]
 impl AtCommand for AtLoadKnowledge {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 

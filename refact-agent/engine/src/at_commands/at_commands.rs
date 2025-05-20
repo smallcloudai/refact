@@ -32,7 +32,7 @@ pub struct AtCommandsContext {
     pub current_model: String,
     pub should_execute_remotely: bool,
 
-    pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
+    pub at_commands: HashMap<String, Arc<dyn AtCommand + Send>>,  // a copy from static constant
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
 
@@ -77,7 +77,7 @@ impl AtCommandsContext {
 
 #[async_trait]
 pub trait AtCommand: Send + Sync {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
+    fn params(&self) -> &Vec<Box<dyn AtParam>>;
     // returns (messages_for_postprocessing, text_on_clip)
     async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
@@ -90,7 +90,7 @@ pub trait AtParam: Send + Sync {
     fn param_completion_valid(&self) -> bool {false}
 }
 
-pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
+pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<dyn AtCommand + Send>> {
     let at_commands_dict = HashMap::from([
         ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
         // ("@file-search".to_string(), Arc::new(AMutex::new(Box::new(AtFileSearch::new()) as Box<dyn AtCommand + Send>))),
@@ -116,8 +116,7 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
     };
     let mut result = HashMap::new();
     for (key, value) in at_commands_dict {
-        let command = value.lock().await;
-        let depends_on = command.depends_on();
+        let depends_on = value.depends_on();
         if depends_on.contains(&"ast".to_string()) && !ast_on {
             continue;
         }
@@ -127,7 +126,7 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         if depends_on.contains(&"knowledge".to_string()) && !allow_knowledge {
             continue;
         }
-        result.insert(key, value.clone());
+        result.insert(key, value);
     }
 
     result
