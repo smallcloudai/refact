@@ -195,15 +195,6 @@ tools:
       - "queries"
       - "scope"
 
-  - name: "search_symbol_usages"
-    description: "Find usages of a symbol within a project using AST"
-    parameters:
-      - name: "symbols"
-        type: "string"
-        description: "Comma-separated list of symbols to search for (functions, methods, classes, type aliases). No spaces allowed in symbol names."
-    parameters_required:
-      - "symbols"
-
   - name: "tree"
     description: "Get a files tree with symbols for the project. Use it to get familiar with the project, file names and symbols"
     parameters:
