@@ -12,7 +12,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use serde_json::Value;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 use crate::integrations::process_io_utils::AnsiStrippable;
@@ -65,6 +65,28 @@ impl IntegrationTrait for ToolGithub {
 #[async_trait]
 impl Tool for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "github".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Access to gh command line command, to fetch issues, review PRs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "project_dir".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Look at system prompt for location of version control (.git folder) of the active file.".to_string(),
+                },
+                ToolParam {
+                    name: "command".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Examples:\ngh issue create --body \"hello world\" --title \"Testing gh integration\"\ngh issue list --author @me --json number,title,updatedAt,url\n".to_string(),
+                }
+            ],
+            parameters_required: vec!["project_dir".to_string(), "command".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
