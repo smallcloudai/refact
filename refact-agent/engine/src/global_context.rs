@@ -103,8 +103,8 @@ pub struct CommandLine {
     #[structopt(long, default_value="", help="Specify the privacy.yaml, replacing the global one")]
     pub privacy_yaml: String,
 
-    #[structopt(long, help="An pre-setup active workspace id")]
-    pub active_workspace_id: Option<usize>,
+    #[structopt(long, help="An pre-setup active group id")]
+    pub active_group_id: Option<usize>,
 }
 
 impl CommandLine {
@@ -171,7 +171,7 @@ pub struct GlobalContext {
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
-    pub active_workspace_id: Option<usize>
+    pub active_group_id: Option<usize>
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -379,7 +379,7 @@ pub async fn create_global_context(
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
-        active_workspace_id: cmdline.active_workspace_id
+        active_group_id: cmdline.active_group_id
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;

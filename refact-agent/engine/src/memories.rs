@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::RwLock as ARwLock;
 use crate::global_context::GlobalContext;
 use tokio::fs;
@@ -24,8 +25,8 @@ pub async fn memories_migration(
     gcx: Arc<ARwLock<GlobalContext>>,
     config_dir: PathBuf
 ) {
-    if let None = gcx.read().await.active_workspace_id.clone() {
-        info!("No active workspace, skipping memory migration");
+    if let None = gcx.read().await.active_group_id.clone() {
+        info!("No active group set up, skipping memory migration");
         return;
     }
     
@@ -116,31 +117,18 @@ pub async fn memories_add(
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
-    let active_workspace_id = gcx.read().await.active_workspace_id.clone()
-        .ok_or("active_workspace_id must be set")?;
-    let project_info = if !unknown_project {
-        crate::files_correction::get_active_project_path(gcx.clone()).await
-            .map(|x| {
-                let remotes = if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
-                    remotes.into_iter().map(|(_, url)| url.to_string()).collect()
-                } else {
-                    vec![]
-                };
-                Some(serde_json::json!({
-                "repo_remotes": remotes,
-                "local_path": x.to_string_lossy().to_string()
-            }))
-            })
-            .unwrap_or(None)
-    } else { None };
-    let body = serde_json::json!({
-        "project_information": project_info,
+    let active_group_id = gcx.read().await.active_group_id.clone()
+        .ok_or("active_group_id must be set")?;
+    let mut body = serde_json::json!({
         "knowledge_type": m_type,
         "knowledge_origin": m_origin.unwrap_or_else(|| "user-created".to_string()),
         "knowledge_memory": m_memory
     });
+    if !unknown_project {
+        body["group_id"] = Value::from(active_group_id);
+    }
     let response = client.post(
-        format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?workspace_id={}", active_workspace_id)
+        format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?group_id={}", active_group_id)
     )
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
@@ -170,25 +158,12 @@ pub async fn memories_search(
 ) -> Result<Vec<MemoRecord>, String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
-    let active_workspace_id = gcx.read().await.active_workspace_id.clone()
-        .ok_or("active_workspace_id must be set")?;
-    let project_info = crate::files_correction::get_active_project_path(gcx.clone()).await
-        .map(|x| {
-            let remotes = if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
-                remotes.into_iter().map(|(_, url)| url.to_string()).collect()
-            } else {
-                vec![]
-            };
-            Some(serde_json::json!({
-                "repo_remotes": remotes,
-                "local_path": x.to_string_lossy().to_string()
-            }))
-        })
-        .unwrap_or(None);
-    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?workspace_id={}&limit={}", active_workspace_id, top_n);
-
+    let active_group_id = gcx.read().await.active_group_id.clone()
+        .ok_or("active_group_id must be set")?;
+    
+    let url = format!("https://test-teams-v1.smallcloud.ai/v1/vecdb-search?limit={}", top_n);
     let body = serde_json::json!({
-        "project_information": project_info,
+        "group_id": active_group_id,
         "q": query
     });
     let response = client.post(&url)
@@ -197,7 +172,6 @@ pub async fn memories_search(
         .json(&body)
         .send()
         .await;
-
     match response {
         Ok(resp) => {
             if resp.status().is_success() {
@@ -220,24 +194,10 @@ pub async fn memories_get_core(
 ) -> Result<Vec<MemoRecord>, String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
-    let active_workspace_id = gcx.read().await.active_workspace_id.clone()
-        .ok_or("active_workspace_id must be set")?;
-    let project_info = crate::files_correction::get_active_project_path(gcx.clone()).await
-        .map(|x| {
-            let remotes = if let Some(remotes) = crate::git::operations::get_git_remotes(&x).ok() {
-                remotes.into_iter().map(|(_, url)| url.to_string()).collect()
-            } else {
-                vec![]
-            };
-            Some(serde_json::json!({
-                "repo_remotes": remotes,
-                "local_path": x.to_string_lossy().to_string()
-            }))
-        })
-        .unwrap_or(None);
-    let url = format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/get_cores?workspace_id={}", active_workspace_id);
-
-    let body = serde_json::json!(project_info);
+    let active_group_id = gcx.read().await.active_group_id.clone()
+        .ok_or("active_group_id must be set")?;
+    let url = "https://test-teams-v1.smallcloud.ai/v1/knowledge/get_cores".to_string();
+    let body = serde_json::json!({"group_id": active_group_id});
     let response = client.post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
