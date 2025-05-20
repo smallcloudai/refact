@@ -18,7 +18,7 @@ use crate::files_correction::shortify_paths;
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::global_context::GlobalContext;
 use crate::tools::scope_utils::{resolve_scope, validate_scope_files};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 
 pub struct ToolRegexSearch;
 
@@ -164,6 +164,28 @@ async fn smart_compress_results(
 #[async_trait]
 impl Tool for ToolRegexSearch {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "search_pattern".to_string(),
+            agentic: false,
+            experimental: false,
+            description: "Search for files and folders whose names or paths match the given regular expression patterns, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "patterns".to_string(),
+                    description: "Comma-separated list of regular expression patterns. Each pattern is used to search for matching file/folder names/paths, and also for matching text inside files. Use (?i) at the start for case-insensitive search.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "scope".to_string(),
+                    description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file.".to_string(),
+                    param_type: "string".to_string(),
+                }
+            ],
+            parameters_required: vec!["patterns".to_string(), "scope".to_string()],
+        }
+    }
     
     async fn tool_execute(
         &mut self,
