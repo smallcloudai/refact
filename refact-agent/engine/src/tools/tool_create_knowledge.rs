@@ -7,13 +7,32 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 
 pub struct ToolCreateKnowledge;
 
 #[async_trait]
 impl Tool for ToolCreateKnowledge {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "create_knowledge".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Creates a new knowledge entry in the vector database to help with future tasks.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "knowledge_entry".to_string(),
+                    param_type: "string".to_string(),
+                    description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve.".to_string(),
+                }
+            ],
+            parameters_required: vec![
+                "knowledge_entry".to_string(),
+            ],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
