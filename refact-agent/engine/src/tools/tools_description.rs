@@ -321,6 +321,7 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
+<<<<<<< HEAD
   - name: "search_semantic"
     description: "Find semantically similar pieces of code or text using vector database (semantic search)"
     parameters:
