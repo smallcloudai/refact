@@ -45,7 +45,8 @@ export const TELEMETRY_NET_PATH = "/v1/telemetry-network";
 export const KNOWLEDGE_CREATE_URL = "/v1/trajectory-save";
 export const COMPRESS_MESSAGES_URL = "/v1/trajectory-compress";
 
-export const SET_ACTIVE_WORKSPACE_ID = "/v1/set_active_workspace_id";
+export const SET_ACTIVE_GROUP_ID = "/v1/set-active-group-id";
+export const GET_ACTIVE_GROUP_CANDIDATES = "/v1/get-active-group-candidates";
 
 // Providers & Models
 export const CONFIGURED_PROVIDERS_URL = "/v1/providers";
