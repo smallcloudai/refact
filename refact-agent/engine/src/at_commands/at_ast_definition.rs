@@ -36,14 +36,14 @@ impl AtParamSymbolPathQuery {
 // }
 
 pub struct AtAstDefinition {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtAstDefinition {
     pub fn new() -> Self {
         AtAstDefinition {
             params: vec![
-                Arc::new(AMutex::new(AtParamSymbolPathQuery::new()))
+                Box::new(AtParamSymbolPathQuery::new())
             ],
         }
     }
@@ -88,7 +88,7 @@ impl AtParam for AtParamSymbolPathQuery {
 
 #[async_trait]
 impl AtCommand for AtAstDefinition {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 
@@ -108,7 +108,7 @@ impl AtCommand for AtAstDefinition {
             },
         };
 
-        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut arg_symbol).await;
+        correct_at_arg(ccx.clone(), &self.params[0], &mut arg_symbol).await;
         args.clear();
         args.push(arg_symbol.clone());
 

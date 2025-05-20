@@ -16,7 +16,7 @@ use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, pat
 
 
 pub struct AtTree {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtTree {
@@ -227,7 +227,7 @@ pub async fn print_files_tree_with_budget(
 
 #[async_trait]
 impl AtCommand for AtTree {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> { &self.params }
+    fn params(&self) -> &Vec<Box<dyn AtParam>> { &self.params }
 
     async fn at_execute(
         &self,

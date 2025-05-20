@@ -20,7 +20,7 @@ pub fn text_on_clip(query: &String, from_tool_call: bool) -> String {
 
 
 pub struct AtSearch {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtSearch {
@@ -84,7 +84,7 @@ pub async fn execute_at_search(
 
 #[async_trait]
 impl AtCommand for AtSearch {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 

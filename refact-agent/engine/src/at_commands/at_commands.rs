@@ -32,7 +32,7 @@ pub struct AtCommandsContext {
     pub current_model: String,
     pub should_execute_remotely: bool,
 
-    pub at_commands: HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>>,  // a copy from static constant
+    pub at_commands: HashMap<String, Arc<dyn AtCommand + Send>>,  // a copy from static constant
     pub subchat_tool_parameters: IndexMap<String, SubchatParameters>,
     pub postprocess_parameters: PostprocessSettings,
 
@@ -77,7 +77,7 @@ impl AtCommandsContext {
 
 #[async_trait]
 pub trait AtCommand: Send + Sync {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>>;
+    fn params(&self) -> &Vec<Box<dyn AtParam>>;
     // returns (messages_for_postprocessing, text_on_clip)
     async fn at_execute(&self, ccx: Arc<AMutex<AtCommandsContext>>, cmd: &mut AtCommandMember, args: &mut Vec<AtCommandMember>) -> Result<(Vec<ContextEnum>, String), String>;
     fn depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
@@ -90,21 +90,21 @@ pub trait AtParam: Send + Sync {
     fn param_completion_valid(&self) -> bool {false}
 }
 
-pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<AMutex<Box<dyn AtCommand + Send>>>> {
+pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<dyn AtCommand + Send>> {
     let at_commands_dict = HashMap::from([
-        ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
-        // ("@file-search".to_string(), Arc::new(AMutex::new(Box::new(AtFileSearch::new()) as Box<dyn AtCommand + Send>))),
-        ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
-        ("@references".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
-        // ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
-        ("@tree".to_string(), Arc::new(AMutex::new(Box::new(AtTree::new()) as Box<dyn AtCommand + Send>))),
-        // ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
-        // ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
-        ("@web".to_string(), Arc::new(AMutex::new(Box::new(AtWeb::new()) as Box<dyn AtCommand + Send>))),
+        ("@file".to_string(), Arc::new(AtFile::new()) as Arc<dyn AtCommand + Send>),
+        // ("@file-search".to_string(), Arc::new(AtFileSearch::new()) as Arc<dyn AtCommand + Send>),
+        ("@definition".to_string(), Arc::new(AtAstDefinition::new()) as Arc<dyn AtCommand + Send>),
+        ("@references".to_string(), Arc::new(AtAstReference::new()) as Arc<dyn AtCommand + Send>),
+        // ("@local-notes-to-self".to_string(), Arc::new(AtLocalNotesToSelf::new()) as Arc<dyn AtCommand + Send>),
+        ("@tree".to_string(), Arc::new(AtTree::new()) as Arc<dyn AtCommand + Send>),
+        // ("@diff".to_string(), Arc::new(AtDiff::new()) as Arc<dyn AtCommand + Send>),
+        // ("@diff-rev".to_string(), Arc::new(AtDiffRev::new()) as Arc<dyn AtCommand + Send>),
+        ("@web".to_string(), Arc::new(AtWeb::new()) as Arc<dyn AtCommand + Send>),
         #[cfg(feature="vecdb")]
-        ("@search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_search::AtSearch::new()) as Box<dyn AtCommand + Send>))),
+        ("@search".to_string(), Arc::new(crate::at_commands::at_search::AtSearch::new()) as Arc<dyn AtCommand + Send>),
         #[cfg(feature="vecdb")]
-        ("@knowledge-load".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Box<dyn AtCommand + Send>))),
+        ("@knowledge-load".to_string(), Arc::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Arc<dyn AtCommand + Send>),
     ]);
 
     let (ast_on, vecdb_on) = {
@@ -118,15 +118,14 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
 
     let mut result = HashMap::new();
     for (key, value) in at_commands_dict {
-        let command = value.lock().await;
-        let depends_on = command.depends_on();
+        let depends_on = value.depends_on();
         if depends_on.contains(&"ast".to_string()) && !ast_on {
             continue;
         }
         if depends_on.contains(&"vecdb".to_string()) && !vecdb_on {
             continue;
         }
-        result.insert(key, value.clone());
+        result.insert(key, value);
     }
 
     result
