@@ -24,6 +24,7 @@ import {
   knowledgeApi,
   providersApi,
   modelsApi,
+  teamsApi,
 } from "../services/refact";
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
@@ -45,7 +46,7 @@ import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
 import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
-import { activeWorkspaceSlice } from "../features/ActiveWorkspace";
+import { teamsSlice } from "../features/Teams";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
 import { integrationsSlice } from "../features/Integrations";
@@ -61,8 +62,8 @@ const tipOfTheDayPersistConfig = {
   stateReconciler: mergeInitialState,
 };
 
-const activeWorkspacePersistConfig = {
-  key: "acws",
+const teamsPersistConfig = {
+  key: "teams",
   storage: storage(),
   stateReconciler: mergeInitialState,
 };
@@ -71,9 +72,9 @@ const persistedTipOfTheDayReducer = persistReducer<
   ReturnType<typeof tipOfTheDaySlice.reducer>
 >(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
 
-const persistedActiveWorkspaceReducer = persistReducer<
-  ReturnType<typeof activeWorkspaceSlice.reducer>
->(activeWorkspacePersistConfig, activeWorkspaceSlice.reducer);
+const persistedTeamsReducer = persistReducer<
+  ReturnType<typeof teamsSlice.reducer>
+>(teamsPersistConfig, teamsSlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -84,7 +85,7 @@ const rootReducer = combineSlices(
     tour: tourReducer,
     // tipOfTheDay: persistedTipOfTheDayReducer,
     [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
-    [activeWorkspaceSlice.reducerPath]: persistedActiveWorkspaceReducer,
+    [teamsSlice.reducerPath]: persistedTeamsReducer,
     config: configReducer,
     active_file: activeFileReducer,
     current_project: currentProjectInfoReducer,
@@ -102,6 +103,7 @@ const rootReducer = combineSlices(
     [checkpointsApi.reducerPath]: checkpointsApi.reducer,
     [telemetryApi.reducerPath]: telemetryApi.reducer,
     [knowledgeApi.reducerPath]: knowledgeApi.reducer,
+    [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
   },
@@ -186,6 +188,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             knowledgeApi.middleware,
             providersApi.middleware,
             modelsApi.middleware,
+            teamsApi.middleware,
           )
           .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)

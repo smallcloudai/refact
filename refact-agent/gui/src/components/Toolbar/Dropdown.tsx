@@ -16,7 +16,7 @@ import {
   Flex,
   HoverCard,
   IconButton,
-  Select,
+  // Select,
   Text,
 } from "@radix-ui/themes";
 import {
@@ -29,16 +29,7 @@ import { clearHistory } from "../../features/History/historySlice";
 import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
-import {
-  isUserWithLoginMessage,
-  Workspace,
-} from "../../services/smallcloud/types";
-import { knowledgeApi } from "../../services/refact";
-import {
-  resetActiveWorkspace,
-  selectActiveWorkspace,
-  setActiveWorkspace,
-} from "../../features/ActiveWorkspace";
+import { isUserWithLoginMessage } from "../../services/smallcloud/types";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -83,26 +74,20 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
-  const activeWorkspace = useAppSelector(selectActiveWorkspace);
+  // const _activeWorkspace = useAppSelector(selectActiveWorkspace);
   const dispatch = useAppDispatch();
   // TODO: check how much of this is still used.
   // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
   const coinBalance = useCoinBallance();
   const logout = useLogout();
   const { startPollingForUser } = useStartPollingForUser();
-  const [setActiveWorkspaceTrigger] =
-    knowledgeApi.useSetActiveWorkspaceIdMutation();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const {
-    openCustomizationFile,
-    openPrivacyFile,
-    setLoginMessage,
-    setActiveWorkspaceInIDE,
-  } = useEventsBusForIDE();
+  const { openCustomizationFile, openPrivacyFile, setLoginMessage } =
+    useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
@@ -123,24 +108,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
     if (host === "jetbrains") return "Plugin";
     return "Extension";
   }, [host]);
-
-  const handleSetActiveWorkspace = useCallback(
-    (workspace: Workspace) => {
-      void setActiveWorkspaceTrigger({
-        workspace_id: workspace.workspace_id,
-      })
-        .then((result) => {
-          if (result.data) {
-            setActiveWorkspaceInIDE(workspace);
-            dispatch(setActiveWorkspace(workspace));
-          }
-        })
-        .catch(() => {
-          dispatch(resetActiveWorkspace());
-        });
-    },
-    [dispatch, setActiveWorkspaceTrigger, setActiveWorkspaceInIDE],
-  );
 
   return (
     <DropdownMenu.Root>
@@ -189,7 +156,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
             </Flex>
           </DropdownMenu.Label>
         )}
-        {user.data && user.data.workspaces.length > 0 && (
+        {/* {user.data && user.data.workspaces.length > 0 && (
           <DropdownMenu.Label style={{ height: "unset" }}>
             <Flex
               align="stretch"
@@ -223,7 +190,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     (w) => w.workspace_name === value,
                   );
                   if (workspace) {
-                    handleSetActiveWorkspace(workspace);
+                    handleSetActiveGroup(workspace);
                   }
                 }}
               >
@@ -238,7 +205,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               </Select.Root>
             </Flex>
           </DropdownMenu.Label>
-        )}
+        )} */}
         <Flex direction="column" gap="2" mt="2" mx="2">
           {user.data && user.data.inference === "FREE" && (
             <Button
