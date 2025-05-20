@@ -321,8 +321,6 @@ pub async fn tool_description_list_from_yaml(
 
 const BUILT_IN_TOOLS: &str = r####"
 tools:
-<<<<<<< HEAD
-<<<<<<< HEAD
   - name: "search_semantic"
     description: "Find semantically similar pieces of code or text using vector database (semantic search)"
     parameters:
@@ -337,20 +335,6 @@ tools:
       - "scope"
 
   # -- agentic tools below --
-
-  - name: "github"
-    agentic: true
-    description: "Access to gh command line command, to fetch issues, review PRs."
-    parameters:
-      - name: "project_dir"
-        type: "string"
-        description: "Look at system prompt for location of version control (.git folder) of the active file."
-      - name: "command"
-        type: "string"
-        description: 'Examples:\ngh issue create --body "hello world" --title "Testing gh integration"\ngh issue list --author @me --json number,title,updatedAt,url\n'
-    parameters_required:
-      - "project_dir"
-      - "command"
 
   - name: "gitlab"
     agentic: true
