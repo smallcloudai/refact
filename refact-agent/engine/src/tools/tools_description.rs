@@ -348,14 +348,7 @@ tools:
 
 
 
-  - name: "cat"
-    description: "Like cat in console, but better: it can read multiple files and images. Prefer to open full files."
-    parameters:
-      - name: "paths"
-        type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext,dir3/dir4."
-    parameters_required:
-      - "paths"
+
 
   - name: "rm"
     description: "Deletes a file or directory. Use recursive=true for directories. Set dry_run=true to preview without deletion."
