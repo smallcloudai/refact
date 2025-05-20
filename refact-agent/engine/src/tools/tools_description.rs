@@ -335,21 +335,6 @@ tools:
       - "scope"
 
   # -- agentic tools below --
-  - name: "locate"
-    agentic: true
-    description: "Get a list of files that are relevant to solve a particular task."
-    parameters:
-      - name: "what_to_find"
-        type: "string"
-        description: "A short narrative that includes (1) the problem you’re trying to solve, (2) which files or symbols have already been examined, and (3) exactly what additional files, code symbols, or text patterns the agent should locate next"
-      - name: "important_paths"
-        type: "string"
-        description: "Comma-separated list of all filenames which are already explored."
-    parameters_required:
-      - "what_to_find"
-
-
-
 
   - name: "github"
     agentic: true
