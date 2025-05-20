@@ -135,10 +135,6 @@ async fn complete_path_with_project_dir(
         if path_exists(&candidate_path, is_dir) && candidate_path.starts_with(&p) {
             return Some(candidate_path);
         }
-        let j_path = p.join(&candidate_path);
-        if path_exists(&j_path, is_dir) {
-            return Some(j_path);
-        }
 
         // This might save a roundtrip:
         // .../project1/project1/1.cpp
@@ -454,6 +450,17 @@ pub fn canonical_path<T: Into<String>>(p: T) -> PathBuf {
 /// If you did not call preprocess_path_for_normalization() before, use crate::files_correction::canonical_path() instead
 pub fn canonicalize_normalized_path(p: PathBuf) -> PathBuf {
     p.canonicalize().unwrap_or_else(|_| absolute(&p).unwrap_or(p))
+}
+
+pub async fn check_if_its_inside_a_workspace_or_config(gcx: Arc<ARwLock<GlobalContext>>, path: &Path) -> Result<(), String> {
+    let workspace_folders = get_project_dirs(gcx.clone()).await;
+    let config_dir = gcx.read().await.config_dir.clone();
+
+    if workspace_folders.iter().any(|d| path.starts_with(d)) || path.starts_with(&config_dir) {
+        Ok(())
+    } else {
+        Err(format!("Path '{path:?}' is outside of project directories:\n{workspace_folders:?}"))
+    }
 }
 
 pub fn any_glob_matches_path(globs: &[String], path: &Path) -> bool {

@@ -81,7 +81,7 @@ export const Checkpoints = () => {
                           title="Open file"
                           onClick={(event) => {
                             event.preventDefault();
-                            openFile({ file_name: file.absolute_path });
+                            openFile({ file_path: file.absolute_path });
                           }}
                           style={{
                             textDecoration:

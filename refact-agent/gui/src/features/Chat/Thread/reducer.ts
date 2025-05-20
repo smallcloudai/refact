@@ -46,7 +46,6 @@ import {
   ChatMessages,
   commandsApi,
   isAssistantMessage,
-  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -202,14 +201,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const messages = formatChatResponse(state.thread.messages, action.payload);
 
     state.thread.messages = messages;
-    if (state.waiting_for_response && isChatResponseChoice(action.payload)) {
-      state.streaming = true;
-      state.waiting_for_response = false;
-    }
-    // // maybe update thread usage here.
-    // if (isChatResponseChoice(action.payload) && action.payload.usage) {
-    //   state.thread.usage = action.payload.usage;
-    // }
+    state.streaming = true;
+    state.waiting_for_response = false;
+
     if (
       isUserResponse(action.payload) &&
       action.payload.compression_strength &&
@@ -516,6 +510,8 @@ export function maybeAppendToolCallResultFromIdeToMessages(
     content: {
       content: message,
       tool_call_id: toolCallId,
+      // assuming, that tool_failed is always false at this point
+      tool_failed: false,
     },
   };
 

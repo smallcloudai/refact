@@ -534,8 +534,9 @@ impl Tool for ToolMCP {
         sanitized_yaml_name
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, serde_json::Value>,
     ) -> Result<String, String> {
         let command = self.mcp_tool.name.clone();

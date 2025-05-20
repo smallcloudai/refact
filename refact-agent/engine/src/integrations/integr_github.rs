@@ -131,8 +131,9 @@ impl Tool for ToolGithub {
         Ok((false, results))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let mut command_args = parse_command_args(args)?;

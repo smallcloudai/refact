@@ -102,7 +102,7 @@ export const ContextFile: React.FC<{
 
 const ContextFilesContent: React.FC<{
   files: ChatContextFile[];
-  onOpenFile: (file: { file_name: string; line?: number }) => Promise<void>;
+  onOpenFile: (file: { file_path: string; line?: number }) => Promise<void>;
 }> = ({ files, onOpenFile }) => {
   if (files.length === 0) return null;
 
@@ -120,7 +120,12 @@ const ContextFilesContent: React.FC<{
               <ContextFile
                 onClick={(event) => {
                   event.preventDefault();
-                  void onOpenFile(file);
+                  // TODO: this maybe will need to be reworked in the future
+                  // but VSCode handles well file_path to be relative to the actual file_name as file_path
+                  void onOpenFile({
+                    ...file,
+                    file_path: file.file_name,
+                  });
                 }}
                 key={key}
                 name={file.file_name + lineText}
