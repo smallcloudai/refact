@@ -332,16 +332,6 @@ tools:
 
   # -- agentic tools below --
 
-  - name: "create_knowledge"
-    agentic: true
-    description: "Creates a new knowledge entry in the vector database to help with future tasks."
-    parameters:
-      - name: "knowledge_entry"
-        type: "string"
-        description: "The detailed knowledge content to store. Include comprehensive information about implementation details, code patterns, architectural decisions, troubleshooting steps, or solution approaches. Document what you did, how you did it, why you made certain choices, and any important observations or lessons learned. This field should contain the rich, detailed content that future searches will retrieve."
-    parameters_required:
-      - "knowledge_entry"
-
   - name: "create_memory_bank"
     agentic: true
     description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
