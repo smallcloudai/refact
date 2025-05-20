@@ -11,6 +11,8 @@ use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 use crate::files_in_workspace;
 
+use tracing::info;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LspLikeInit {
     pub project_roots: Vec<Url>,
@@ -39,6 +41,8 @@ pub async fn handle_v1_lsp_initialize(
     let post = serde_json::from_slice::<LspLikeInit>(&body_bytes).map_err(|e| {
         ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
     })?;
+
+    info!("JHBAJHBKJDHBKJAHBDJA {:?}", post.project_roots.clone());
 
     let mut workspace_dirs: Vec<PathBuf> = vec![];
     for x in post.project_roots {
