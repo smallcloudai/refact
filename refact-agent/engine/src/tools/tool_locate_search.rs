@@ -10,7 +10,7 @@ use axum::http::StatusCode;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::subchat::subchat;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -214,6 +214,28 @@ pub fn check_for_inspected_files(inspected_files: &mut HashSet<String>, messages
 #[async_trait]
 impl Tool for ToolLocateSearch {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "locate".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Get a list of files that are relevant to solve a particular task.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "what_to_find".to_string(),
+                    param_type: "string".to_string(),
+                    description: "A short narrative that includes (1) the problem you’re trying to solve, (2) which files or symbols have already been examined, and (3) exactly what additional files, code symbols, or text patterns the agent should locate next".to_string(),
+                },
+                ToolParam {
+                    name: "important_paths".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated list of all filenames which are already explored.".to_string(),
+                },
+            ],
+            parameters_required: vec!["what_to_find".to_string()],
+        }
+    }
     
     async fn tool_execute(
         &mut self,
