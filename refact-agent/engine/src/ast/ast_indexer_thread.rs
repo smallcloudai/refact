@@ -13,7 +13,7 @@ use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, fl
 
 
 pub struct AstIndexService {
-    pub ast_index: Arc<AMutex<AstDB>>,
+    pub ast_index: Arc<AstDB>,
     pub ast_status: Arc<AMutex<AstStatus>>,
     pub ast_sleeping_point: Arc<ANotify>,
     pub ast_todo: IndexSet<String>,
@@ -41,7 +41,7 @@ async fn ast_indexer_thread(
             ast_service_locked.ast_sleeping_point.clone(),
         )
     };
-    let ast_max_files = ast_index.lock().await.ast_max_files;  // cannot change
+    let ast_max_files = ast_index.ast_max_files;  // cannot change
 
     loop {
         let (cpath, left_todo_count) = {

@@ -135,7 +135,7 @@ impl Tool for ToolAstDefinition {
 }
 
 pub async fn there_are_definitions_with_similar_names_though(
-    ast_index: Arc<AMutex<AstDB>>,
+    ast_index: Arc<AstDB>,
     symbol: &str,
 ) -> String {
     let fuzzy_matches: Vec<String> = crate::ast::ast_db::definition_paths_fuzzy(ast_index.clone(), symbol, 20, 5000)
