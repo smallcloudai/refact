@@ -195,15 +195,6 @@ tools:
       - "queries"
       - "scope"
 
-  - name: "search_symbol_definition"
-    description: "Find definition of a symbol in the project using AST"
-    parameters:
-      - name: "symbols"
-        type: "string"
-        description: "Comma-separated list of symbols to search for (functions, methods, classes, type aliases). No spaces allowed in symbol names."
-    parameters_required:
-      - "symbols"
-
   - name: "search_symbol_usages"
     description: "Find usages of a symbol within a project using AST"
     parameters:
