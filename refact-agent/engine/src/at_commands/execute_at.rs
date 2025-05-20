@@ -205,14 +205,13 @@ pub async fn run_at_commands_remotely(
 
 pub async fn correct_at_arg(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    param: Arc<AMutex<dyn AtParam>>,
+    param: &Box<dyn AtParam>,
     arg: &mut AtCommandMember,
 ) {
-    let param_lock = param.lock().await;
-    if param_lock.is_value_valid(ccx.clone(), &arg.text).await {
+    if param.is_value_valid(ccx.clone(), &arg.text).await {
         return;
     }
-    let completion = match param_lock.param_completion(ccx.clone(), &arg.text).await.get(0) {
+    let completion = match param.param_completion(ccx.clone(), &arg.text).await.get(0) {
         Some(x) => x.clone(),
         None => {
             arg.ok = false;
@@ -220,7 +219,7 @@ pub async fn correct_at_arg(
             return;
         }
     };
-    if !param_lock.is_value_valid(ccx.clone(), &completion).await {
+    if !param.is_value_valid(ccx.clone(), &completion).await {
         arg.ok = false; arg.reason = Some("incorrect argument; completion did not help".to_string());
         return;
     }
@@ -231,21 +230,19 @@ pub async fn execute_at_commands_in_query(
     ccx: Arc<AMutex<AtCommandsContext>>,
     query: &mut String,
 ) -> (Vec<ContextEnum>, Vec<AtCommandMember>) {
-    let at_commands = {
-        ccx.lock().await.at_commands.clone()
-    };
+    let context = ccx.lock().await;
+    let at_commands = &context.at_commands;
     let at_command_names = at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let mut context_enums = vec![];
     let mut highlight_members = vec![];
-    let mut clips = vec![];
+    let mut clips: Vec<(String, usize, usize)> = vec![];
 
     let words = parse_words_from_line(query);
     for (w_idx, (word, pos1, pos2)) in words.iter().enumerate() {
         let cmd = match at_commands.get(word) {
-            Some(c) => c.clone(),
+            Some(c) => c,
             None => { continue; }
         };
-        let cmd_lock = cmd.lock().await;
         let args = words.iter().skip(w_idx + 1).map(|x|x.clone()).collect::<Vec<_>>();
 
         let mut cmd_member = AtCommandMember::new("cmd".to_string(), word.clone(), *pos1, *pos2);
@@ -256,7 +253,7 @@ pub async fn execute_at_commands_in_query(
             arg_members.push(AtCommandMember::new("arg".to_string(), text.clone(), pos1, pos2));
         }
 
-        match cmd_lock.at_execute(ccx.clone(), &mut cmd_member, &mut arg_members).await {
+        match cmd.at_execute(ccx.clone(), &mut cmd_member, &mut arg_members).await {
             Ok((res, text_on_clip)) => {
                 context_enums.extend(res);
                 clips.push((text_on_clip, cmd_member.pos1, arg_members.last().map(|x|x.pos2).unwrap_or(cmd_member.pos2)));
