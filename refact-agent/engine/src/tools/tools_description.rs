@@ -348,15 +348,8 @@ tools:
     parameters_required:
       - "what_to_find"
 
-  - name: "strategic_planning"
-    agentic: true
-    description: "Strategically plan a solution for a complex problem or create a comprehensive approach."
-    parameters:
-      - name: "important_paths"
-        type: "string"
-        description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure."
-    parameters_required:
-      - "important_paths"
+
+
 
   - name: "github"
     agentic: true

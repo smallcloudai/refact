@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 use axum::http::StatusCode;
 use crate::subchat::subchat_single;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
@@ -163,6 +163,23 @@ async fn _execute_subchat_iteration(
 #[async_trait]
 impl Tool for ToolStrategicPlanning {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "strategic_planning".to_string(),
+            agentic: true,
+            experimental: false,
+            description: "Strategically plan a solution for a complex problem or create a comprehensive approach.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "important_paths".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure.".to_string(),
+                }
+            ],
+            parameters_required: vec!["important_paths".to_string()],
+        }
+    }
     
     async fn tool_execute(
         &mut self,
