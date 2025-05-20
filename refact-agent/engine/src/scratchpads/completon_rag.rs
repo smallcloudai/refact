@@ -77,7 +77,7 @@ async fn _render_context_files(
 }
 
 async fn _cursor_position_to_context_file(
-    ast_index: Arc<AMutex<AstDB>>,
+    ast_index: Arc<AstDB>,
     cpath: String,
     cursor_line: i32,
     context_used: &mut Value,

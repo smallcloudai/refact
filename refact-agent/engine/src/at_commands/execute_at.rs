@@ -230,8 +230,7 @@ pub async fn execute_at_commands_in_query(
     ccx: Arc<AMutex<AtCommandsContext>>,
     query: &mut String,
 ) -> (Vec<ContextEnum>, Vec<AtCommandMember>) {
-    let context = ccx.lock().await;
-    let at_commands = &context.at_commands;
+    let at_commands = ccx.lock().await.at_commands.clone();
     let at_command_names = at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     let mut context_enums = vec![];
     let mut highlight_members = vec![];

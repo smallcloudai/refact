@@ -60,8 +60,8 @@ impl AstDefinition {
 pub struct AstDB {
     pub sleddb: Arc<sled::Db>,
     pub sledbatch: Arc<AMutex<sled::Batch>>,
-    pub batch_counter: usize,
-    pub counters_increase: HashMap<String, i32>,
+    pub batch_counter: AMutex<usize>,
+    pub counters_increase: AMutex<HashMap<String, i32>>,
     pub ast_max_files: usize,
 }
 
