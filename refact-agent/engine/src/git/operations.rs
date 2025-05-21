@@ -23,6 +23,7 @@ fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::Sta
     options
 }
 
+#[allow(dead_code)]
 pub fn get_git_remotes(repository_path: &Path) -> Result<Vec<(String, String)>, String> {
     let repository = Repository::discover(repository_path)
         .map_err(|e| format!("Failed to open repository: {}", e))?;
