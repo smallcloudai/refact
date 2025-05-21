@@ -526,7 +526,7 @@ impl Tool for ToolMCP {
 
         ToolDesc {
             name: tool_name.clone(),
-            display_name: tool_name,
+            display_name: self.mcp_tool.name.clone(),
             source: ToolSource {
                 source_type: ToolSourceType::Integration,
                 config_path: self.config_path.clone(),
