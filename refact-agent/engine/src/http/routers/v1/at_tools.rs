@@ -77,7 +77,6 @@ pub struct ToolGroupResponse {
     pub name: String,
     pub description: String,
     pub category: ToolGroupCategory,
-    pub allow_per_tool_toggle: bool,
     pub tools: Vec<ToolResponse>,
 }
 
@@ -103,7 +102,6 @@ pub async fn handle_v1_get_tools(
             name: tool_group.name,
             description: tool_group.description,
             category: tool_group.category,
-            allow_per_tool_toggle: tool_group.allow_per_tool_toggle,
             tools,
         })
     }).collect();
