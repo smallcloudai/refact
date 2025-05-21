@@ -70,8 +70,8 @@ export const ToolGroup: React.FC<ToolGroupProps> = ({
               <HoverCard.Trigger>
                 <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
               </HoverCard.Trigger>
-              <HoverCard.Content size="1">
-                <Text as="p" size="2">
+              <HoverCard.Content side="top" align="center" size="1">
+                <Text as="p" size="1">
                   {group.description}
                 </Text>
               </HoverCard.Content>
