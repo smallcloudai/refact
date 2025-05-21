@@ -4,7 +4,6 @@ use serde_json::{Value, json};
 use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
-use indexmap::IndexMap;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatUsage, ContextEnum};
@@ -39,7 +38,6 @@ pub struct ToolGroup {
     pub description: String,
     pub category: ToolGroupCategory,
     pub tools: Vec<Box<dyn Tool + Send>>,
-    pub allow_per_tool_toggle: bool,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
