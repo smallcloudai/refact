@@ -3,14 +3,14 @@ import { type Workspace } from "../../services/smallcloud/types";
 
 // TODO: shouldn't be unknown
 
-type Group = {
+export type TeamsGroup = {
   id: number;
   name: string;
 };
 
 type TeamsSliceState = {
   workspace: Workspace | null;
-  group: Group | null;
+  group: TeamsGroup | null;
 };
 
 const initialState: TeamsSliceState = {
@@ -19,7 +19,7 @@ const initialState: TeamsSliceState = {
 };
 
 export const teamsSlice = createSlice({
-  name: "teamsSlice",
+  name: "teams",
   initialState: initialState,
   reducers: {
     setActiveWorkspace: (state, action: PayloadAction<Workspace>) => {
@@ -28,7 +28,7 @@ export const teamsSlice = createSlice({
     resetActiveWorkspace: (state) => {
       state.workspace = null;
     },
-    setActiveGroup: (state, action: PayloadAction<Group>) => {
+    setActiveGroup: (state, action: PayloadAction<TeamsGroup>) => {
       state.group = action.payload;
     },
     resetActiveGroup: (state) => {

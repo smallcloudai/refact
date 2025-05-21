@@ -71,6 +71,14 @@ describe("Start a new chat", () => {
     const { user, ...app } = render(<InnerApp />, {
       preloadedState: {
         pages: [{ name: "history" }],
+        teams: {
+          group: { id: 123, name: "test" },
+          workspace: null,
+          _persist: {
+            version: 1,
+            rehydrated: true,
+          },
+        },
         config: {
           apiKey: "test",
           lspPort: 8001,

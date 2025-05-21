@@ -30,6 +30,8 @@ import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
 import { isUserWithLoginMessage } from "../../services/smallcloud/types";
+import { resetActiveGroup, selectActiveGroup } from "../../features/Teams";
+import { popBackTo } from "../../features/Pages/pagesSlice";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -74,7 +76,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const refs = useTourRefs();
   const user = useGetUser();
   const host = useAppSelector(selectHost);
-  // const _activeWorkspace = useAppSelector(selectActiveWorkspace);
+  const activeGroup = useAppSelector(selectActiveGroup);
   const dispatch = useAppDispatch();
   // TODO: check how much of this is still used.
   // const { maxAgentUsageAmount, currentAgentUsage } = useAgentUsage();
@@ -91,6 +93,11 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
+  };
+
+  const handleActiveGroupCleanUp = () => {
+    const actions = [resetActiveGroup(), popBackTo({ name: "history" })];
+    actions.forEach((action) => dispatch(action));
   };
 
   const handleProUpgradeClick = useCallback(() => {
@@ -301,6 +308,13 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item onSelect={handleChatHistoryCleanUp}>
           Clear Chat History
+        </DropdownMenu.Item>
+
+        <DropdownMenu.Item
+          onSelect={handleActiveGroupCleanUp}
+          disabled={activeGroup === null}
+        >
+          Unselect Active Group
         </DropdownMenu.Item>
 
         <DropdownMenu.Item
