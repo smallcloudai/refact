@@ -82,16 +82,18 @@ export const ApplyPatchSwitch: React.FC = () => {
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
           </HoverCard.Trigger>
-          <HoverCard.Content size="2" maxWidth="280px">
-            <Text weight="bold">Enabled</Text>
-            <Text as="p" size="2">
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+            <Text weight="bold" size="2">
+              Enabled
+            </Text>
+            <Text as="p" size="1">
               When enabled, Refact Agent will automatically apply changes to
               files without asking for your confirmation.
             </Text>
-            <Text as="div" mt="2" weight="bold">
+            <Text as="div" mt="2" size="2" weight="bold">
               Disabled
             </Text>
-            <Text as="p" size="2">
+            <Text as="p" size="1">
               When disabled, Refact Agent will ask for your confirmation before
               applying any unsaved changes.
             </Text>
@@ -133,13 +135,13 @@ export const AgentRollbackSwitch: React.FC = () => {
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
           </HoverCard.Trigger>
-          <HoverCard.Content size="2" maxWidth="280px">
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
             <Flex direction="column" gap="2">
-              <Text as="p" size="2">
+              <Text as="p" size="1">
                 When enabled, Refact Agent will automatically make snapshots of
                 files between your messages
               </Text>
-              <Text as="p" size="2">
+              <Text as="p" size="1">
                 You can rollback file changes to checkpoints taken when you sent
                 messages to Agent
               </Text>
@@ -150,7 +152,7 @@ export const AgentRollbackSwitch: React.FC = () => {
                   whiteSpace: "pre-wrap",
                 }}
               >
-                <Flex gap="2" p="2" align="center">
+                <Flex gap="2" py="1" px="2" align="center">
                   <ExclamationTriangleIcon
                     width={16}
                     height={16}
@@ -201,9 +203,9 @@ export const FollowUpsSwitch: React.FC = () => {
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
           </HoverCard.Trigger>
-          <HoverCard.Content size="2" maxWidth="280px">
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
             <Flex direction="column" gap="2">
-              <Text as="p" size="2">
+              <Text as="p" size="1">
                 When enabled, Refact Agent will automatically generate related
                 follow-ups to the conversation
               </Text>
@@ -267,9 +269,9 @@ export const TitleGenerationSwitch: React.FC = () => {
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
           </HoverCard.Trigger>
-          <HoverCard.Content size="2" maxWidth="280px">
+          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
             <Flex direction="column" gap="2">
-              <Text as="p" size="2">
+              <Text as="p" size="1">
                 When enabled, Refact Agent will automatically generate
                 summarized chat title for the conversation
               </Text>
