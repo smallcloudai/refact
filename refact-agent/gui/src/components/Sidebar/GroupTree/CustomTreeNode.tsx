@@ -5,6 +5,7 @@ import type { NodeRendererProps } from "react-arborist";
 import { FolderIcon } from "./FolderIcon";
 
 import styles from "./CustomTreeNode.module.css";
+import { CreateNewGroup } from "./CreateNewGroup";
 
 // Define the shape of our tree node data
 export type TreeNodeData = {
@@ -16,8 +17,10 @@ export type TreeNodeData = {
 export const CustomTreeNode = <T extends TreeNodeData>({
   node,
   style,
+  tree,
   dragHandle,
-}: NodeRendererProps<T>) => {
+  updateTree,
+}: NodeRendererProps<T> & { updateTree: (newTree: T[]) => void }) => {
   // Determine if this is a folder (has children)
   const isContainingChildren = !!node.data.children;
 
@@ -75,6 +78,7 @@ export const CustomTreeNode = <T extends TreeNodeData>({
         ...style,
         backgroundColor: node.isSelected ? "var(--accent-3)" : "transparent",
       }}
+      pr="2"
       onClick={handleNodeClick}
       ref={dragHandle}
       className={styles.treeNode}
@@ -114,6 +118,11 @@ export const CustomTreeNode = <T extends TreeNodeData>({
       >
         {node.data.name}
       </Text>
+      <CreateNewGroup
+        currentGroup={node.data}
+        updateTree={updateTree}
+        tree={tree}
+      />
     </Flex>
   );
 };
