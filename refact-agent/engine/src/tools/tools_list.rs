@@ -114,39 +114,34 @@ async fn get_builtin_tools(
 
     let mut tool_groups = vec![
         ToolGroup {
-            name: "codebase_search".to_string(),
+            name: "Codebase Search".to_string(),
             description: "Codebase search tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: codebase_search_tools,
-            allow_per_tool_toggle: false
         },
         ToolGroup {
-            name: "codebase_change".to_string(),
+            name: "Codebase Change".to_string(),
             description: "Codebase modification tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: codebase_change_tools,
-            allow_per_tool_toggle: false
         },
         ToolGroup {
-            name: "web".to_string(),
+            name: "Web".to_string(),
             description: "Web tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: web_tools,
-            allow_per_tool_toggle: false
         },
         ToolGroup {
-            name: "strategic_planning".to_string(),
+            name: "Strategic Planning".to_string(),
             description: "Strategic planning tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: deep_analysis_tools,
-            allow_per_tool_toggle: false
         },
         ToolGroup {
-            name: "knowledge".to_string(),
+            name: "Knowledge".to_string(),
             description: "Knowledge tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: knowledge_tools,
-            allow_per_tool_toggle: false
         },
     ];
 
@@ -166,14 +161,12 @@ async fn get_integration_tools(
             description: "Integration tools".to_string(),
             category: ToolGroupCategory::Integration,
             tools: vec![],
-            allow_per_tool_toggle: true
         },
         ToolGroup { 
             name: "mcp".to_string(), 
             description: "MCP tools".to_string(), 
             category: ToolGroupCategory::MCP, 
             tools: vec![],
-            allow_per_tool_toggle: true
         },
     ];
     let (integrations_map, _yaml_errors) = load_integrations(gcx.clone(), &["**/*".to_string()]).await;
