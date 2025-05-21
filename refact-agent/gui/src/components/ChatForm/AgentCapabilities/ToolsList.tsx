@@ -91,8 +91,13 @@ export const ToolsList: React.FC<ToolsListProps> = ({
                       <HoverCard.Trigger>
                         <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
                       </HoverCard.Trigger>
-                      <HoverCard.Content size="1">
-                        <Text as="p" size="2">
+                      <HoverCard.Content
+                        side="top"
+                        align="center"
+                        size="1"
+                        avoidCollisions
+                      >
+                        <Text as="p" size="1">
                           {tool.spec.description}
                         </Text>
                       </HoverCard.Content>
