@@ -146,20 +146,18 @@ impl CacheCorrection {
     }
 
     pub fn build(paths: &Vec<PathBuf>, workspace_folders: &Vec<PathBuf>) -> CacheCorrection {
-        let filenames = PathTrie::build(&paths);
+        let filenames = PathTrie::build(&paths, &workspace_folders);
+        // TODO: I'm not sure how directories should be collected
         let directories: Vec<PathBuf> = {
             let mut unique_directories = HashSet::new();
-            for d in workspace_folders {
-                unique_directories.insert(Path::new(d));
-            }
-            for p in paths {
+            for p in paths.iter() {
                 if let Some(parent) = p.parent() {
-                    unique_directories.insert(&parent);
+                    unique_directories.insert(parent);
                 }
             }
             unique_directories.iter().map(|p| PathBuf::from(p)).collect()
         };
-        let directories = PathTrie::build(&directories);
+        let directories = PathTrie::build(&directories, &workspace_folders);
         CacheCorrection {
             filenames,
             directories,
