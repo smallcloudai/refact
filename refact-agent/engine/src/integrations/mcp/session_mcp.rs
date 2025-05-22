@@ -10,12 +10,10 @@ use tokio::time::{timeout, Duration};
 
 use crate::integrations::sessions::IntegrationSession;
 use crate::integrations::process_io_utils::read_file_with_cursor;
-use super::integr_mcp::SettingsMCP;
-
 pub struct SessionMCP {
     pub debug_name: String,
     pub config_path: String,        // to check if expired or not
-    pub launched_cfg: SettingsMCP,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
+    pub launched_cfg: serde_json::Value,  // a copy to compare against IntegrationMCP::cfg, to see if anything has changed
     pub mcp_client: Option<Arc<AMutex<Option<RunningService<RoleClient, ()>>>>>,
     pub mcp_tools: Vec<McpTool>,
     pub startup_task_handles: Option<(Arc<AMutex<Option<JoinHandle<()>>>>, AbortHandle)>,

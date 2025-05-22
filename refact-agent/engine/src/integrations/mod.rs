@@ -51,8 +51,12 @@ pub fn integration_from_name(n: &str) -> Result<Box<dyn IntegrationTrait + Send 
         service if service.starts_with("service_") => {
             Ok(Box::new(integr_cmdline_service::ToolService {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
-        mcp if mcp.starts_with("mcp_") => {
-            Ok(Box::new(mcp::IntegrationMCP {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
+        mcp_sse if mcp_sse.starts_with("mcp_sse_") => {
+            Ok(Box::new(mcp::integr_mcp_sse::IntegrationMCPSse {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
+        },
+        // We support also mcp_* as mcp_stdio_* for backwards compatibility, some users already have it configured.
+        mcp_stdio if mcp_stdio.starts_with("mcp_stdio_") || mcp_stdio.starts_with("mcp_") => {
+            Ok(Box::new(mcp::integr_mcp_stdio::IntegrationMCPStdio {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>)
         },
         "isolation" => Ok(Box::new(docker::integr_isolation::IntegrationIsolation {..Default::default()}) as Box<dyn IntegrationTrait + Send + Sync>),
         _ => Err(format!("Unknown integration name: {}", n)),
@@ -69,7 +73,8 @@ pub fn integrations_list(allow_experimental: bool) -> Vec<&'static str> {
         "mysql",
         "cmdline_TEMPLATE",
         "service_TEMPLATE",
-        "mcp_TEMPLATE",
+        "mcp_stdio_TEMPLATE",
+        "mcp_sse_TEMPLATE",
         "docker",
         "shell",
     ];

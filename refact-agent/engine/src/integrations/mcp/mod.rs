@@ -1,7 +1,5 @@
-pub mod integr_mcp;
+pub mod integr_mcp_sse;
+pub mod integr_mcp_stdio;
 pub mod tool_mcp;
 pub mod session_mcp;
-
-pub use integr_mcp::IntegrationMCP;
-
-pub const MCP_INTEGRATION_SCHEMA: &str = include_str!("mcp_schema.yaml");
+pub mod integr_common_mcp;

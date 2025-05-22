@@ -1,16 +1,10 @@
 fields:
-  command:
-    f_type: string
-    f_desc: "The MCP command to execute (for stdio transport), like `npx -y <some-mcp-server>`, `/my/path/venv/python -m <some-mcp-server>`, or `docker run -i --rm <some-mcp-image>`. On Windows, use `npx.cmd` or `npm.cmd` instead of `npx` or `npm`."
-  env:
-    f_type: string_to_string_map
-    f_desc: "Environment variables to pass to the MCP command (for stdio transport)."
   url:
     f_type: string
-    f_desc: "The URL of the MCP server (for sse transport), e.g., 'https://api.example.com/mcp/sse'."
+    f_desc: "The URL of the MCP server, e.g., 'https://api.example.com/mcp/sse'."
   headers:
     f_type: string_to_string_map
-    f_desc: "HTTP headers to include in requests to the MCP server (for sse transport)."
+    f_desc: "HTTP headers to include in requests to the MCP server."
     f_default:
       User-Agent: "Refact.ai (+https://github.com/smallcloudai/refact)"
       Accept: text/event-stream
@@ -26,11 +20,8 @@ fields:
     f_default: "30"
     f_extra: true
 description: |
-  You can add almost any MCP (Model Context Protocol) server here! This supports both local MCP servers (stdio)
-  and remote MCP servers (sse). You can read more about MCP here: https://www.anthropic.com/news/model-context-protocol
-
-  For servers using stdio protocol, provide the command to execute, and optionally, set the environment variables.
-  For remote using sse protocol, provide the URL of the server, and optionally, add more headers.
+  You can add here an MCP (Model Context Protocol) server, connecting to an SSE endpoint.
+  Read more about MCP here: https://www.anthropic.com/news/model-context-protocol
 available:
   on_your_laptop_possible: true
   when_isolated_possible: true
