@@ -11,6 +11,7 @@ use crate::global_context::GlobalContext;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::tools::tools_list::get_available_tools_by_chat_mode;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PrependSystemPromptPost {
@@ -35,7 +36,16 @@ pub async fn handle_v1_prepend_system_prompt_and_maybe_more_initial_messages(
     let mut has_rag_results = HasRagResults::new();
 
     let messages = prepend_the_right_system_prompt_and_maybe_more_initial_messages(
-        gcx.clone(), post.messages, &post.chat_meta, &mut has_rag_results).await;
+        gcx.clone(), 
+        post.messages, 
+        &post.chat_meta, 
+        &mut has_rag_results,
+        get_available_tools_by_chat_mode(gcx.clone(), post.chat_meta.chat_mode)
+            .await
+            .into_iter()
+            .map(|t| t.tool_description().name)
+            .collect(),
+    ).await;
     let messages_to_stream_back = has_rag_results.in_json;
 
     Ok(Response::builder()
