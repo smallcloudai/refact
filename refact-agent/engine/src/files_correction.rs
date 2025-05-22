@@ -130,7 +130,7 @@ async fn _correct_to_nearest(
 
     if fuzzy {
         info!("fuzzy search {:?} is_dir={}, cache_fuzzy_arc.len={}", correction_candidate, is_dir, correction_cache.len());
-        return fuzzy_search(correction_candidate, correction_cache.shortest_paths_iter(), top_n, &['/', '\\']);
+        return fuzzy_search(correction_candidate, correction_cache.short_paths_iter(), top_n, &['/', '\\']);
     }
 
     vec![]
@@ -215,10 +215,10 @@ pub async fn get_active_workspace_folder(gcx: Arc<ARwLock<GlobalContext>>) -> Op
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {
     let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
     paths.into_iter().map(|path| {
-        if let Some(shortened) = cache_correction_arc.filenames.shortest_path(&PathBuf::from(path)) {
+        if let Some(shortened) = cache_correction_arc.filenames.short_path(&PathBuf::from(path)) {
             return shortened.to_string_lossy().to_string();
         }
-        if let Some(shortened) = cache_correction_arc.directories.shortest_path(&PathBuf::from(path)) {
+        if let Some(shortened) = cache_correction_arc.directories.short_path(&PathBuf::from(path)) {
             return shortened.to_string_lossy().to_string();
         }
         path.clone()

@@ -32,7 +32,7 @@ fn shortest_root_path(path: &PathBuf, root_paths: &Vec<PathBuf>) -> PathBuf {
     PathBuf::new()
 }
 
-pub struct ShortestPathsIter<'a> {
+pub struct ShortPathsIter<'a> {
     trie: &'a PathTrie,
     stack: Vec<(
         &'a TrieNode,
@@ -41,7 +41,7 @@ pub struct ShortestPathsIter<'a> {
     )>,
 }
 
-impl<'a> Iterator for ShortestPathsIter<'a> {
+impl<'a> Iterator for ShortPathsIter<'a> {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -239,6 +239,8 @@ impl PathTrie {
         result
     }
 
+    // Unique shortest possible postfix of the path
+    #[allow(dead_code)]
     pub fn shortest_path(&self, path: &PathBuf) -> Option<PathBuf> {
         let components: Vec<String> = path
             .components()
@@ -258,16 +260,33 @@ impl PathTrie {
         None
     }
 
-    pub fn len(&self) -> usize {
-        let mut count = 0;
-        for (_, child) in &self.root.children {
-            count += child.count;
+    // Short path postfix (relative to shortest root_path)
+    pub fn short_path(&self, path: &PathBuf) -> Option<PathBuf> {
+        let nodes = self._search_for_nodes(path);
+        if nodes.len() == 1 && nodes[0].0.count == 1 {
+            let mut node;
+            let mut relative_path;
+            (node, relative_path) = nodes[0].clone();
+            while !node.is_root && !node.children.is_empty() {
+                let index;
+                (index, node) = node.children.iter().last().unwrap();
+                let mut child_relative_path = if node.is_root {
+                    PathBuf::new()
+                } else {
+                    PathBuf::from(self.index_to_component.get(index).unwrap().clone())
+                };
+                child_relative_path.push(relative_path.clone());
+                relative_path = child_relative_path;
+            }
+            Some(relative_path)
+        } else {
+            None
         }
-        count
     }
 
-    pub fn shortest_paths_iter(&self) -> ShortestPathsIter<'_> {
-        ShortestPathsIter {
+    // Iterate over all paths, returns short version (relative to shortest root_path)
+    pub fn short_paths_iter(&self) -> ShortPathsIter<'_> {
+        ShortPathsIter {
             trie: self,
             stack: vec![(
                 &self.root,
@@ -275,5 +294,13 @@ impl PathTrie {
                 String::new(),
             )],
         }
+    }
+
+    pub fn len(&self) -> usize {
+        let mut count = 0;
+        for (_, child) in &self.root.children {
+            count += child.count;
+        }
+        count
     }
 }
