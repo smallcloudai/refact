@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use tokio::sync::RwLock as ARwLock;
@@ -155,30 +156,47 @@ async fn get_builtin_tools(
 async fn get_integration_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Vec<ToolGroup> {
-    let mut tool_groups = vec![
-        ToolGroup {
-            name: "integrations".to_string(),
-            description: "Integration tools".to_string(),
-            category: ToolGroupCategory::Integration,
-            tools: vec![],
-        },
-        ToolGroup { 
-            name: "mcp".to_string(), 
-            description: "MCP tools".to_string(), 
-            category: ToolGroupCategory::MCP, 
-            tools: vec![],
-        },
-    ];
+    let mut integrations_group = ToolGroup {
+        name: "Integrations".to_string(),
+        description: "Integration tools".to_string(),
+        category: ToolGroupCategory::Integration,
+        tools: vec![],
+    };
+
+    let mut mcp_groups = HashMap::new();
+
     let (integrations_map, _yaml_errors) = load_integrations(gcx.clone(), &["**/*".to_string()]).await;
     for (name, integr) in integrations_map {
         for tool in integr.integr_tools(&name).await {
-            if tool.tool_description().name.starts_with("mcp") {
-                tool_groups[1].tools.push(tool);
+            let tool_desc = tool.tool_description();
+            if tool_desc.name.starts_with("mcp") {
+                let mcp_server_name = std::path::Path::new(&tool_desc.source.config_path)
+                    .file_stem()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("unknown");
+
+                if !mcp_groups.contains_key(mcp_server_name) {
+                    mcp_groups.insert(
+                        mcp_server_name.to_string(),
+                        ToolGroup {
+                            name: format!("MCP {}", mcp_server_name),
+                            description: format!("MCP tools for {}", mcp_server_name),
+                            category: ToolGroupCategory::Integration,
+                            tools: vec![],
+                        },
+                    );
+                }
+                mcp_groups.entry(mcp_server_name.to_string())
+                    .and_modify(|group| group.tools.push(tool));
             } else {
-                tool_groups[0].tools.push(tool);
+                integrations_group.tools.push(tool);
             }
         }
     }
+
+    let mut tool_groups = vec![integrations_group];
+    tool_groups.extend(mcp_groups.into_values());
+
     for tool_group in tool_groups.iter_mut() {
         tool_group.retain_available_tools(gcx.clone()).await;
     }
