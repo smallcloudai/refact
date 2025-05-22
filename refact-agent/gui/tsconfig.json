@@ -21,6 +21,12 @@
     "noFallthroughCasesInSwitch": true,
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "codegen.ts", "urqlClient.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }],
+  "plugins": [
+    {
+      "name": "@0no-co/graphqlsp",
+      "schema": "./generated/schema.graphql"
+    }
+  ]
 }

@@ -1,34 +1,44 @@
 import { Box, Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { NodeApi, Tree } from "react-arborist";
-import { CustomTreeNode, TreeNodeData } from "./CustomTreeNode";
+import { CustomTreeNode, type TeamsGroupTree } from "./CustomTreeNode";
+import { setActiveGroup, resetActiveGroup } from "../../../features/Teams";
+import { isDetailMessage, teamsApi } from "../../../services/refact";
 import {
-  setActiveGroup,
-  resetActiveGroup,
-  TeamsGroup,
-} from "../../../features/Teams";
-import { teamsApi } from "../../../services/refact";
-import { useAppDispatch, useResizeObserver } from "../../../hooks";
+  useAppDispatch,
+  useEventsBusForIDE,
+  useResizeObserver,
+} from "../../../hooks";
 
 import styles from "./TreeStyles.module.css";
+import { TeamsGroup } from "../../../services/smallcloud/types";
+import { setError } from "../../../features/Errors/errorsSlice";
+import { useSmartSubscription } from "../../../hooks/useSmartSubscription";
+
+import {
+  NavTreeSubsDocument,
+  type NavTreeSubsSubscription,
+} from "../../../../generated/documents";
 
 const TEST_TREE_DATA = [
   { id: "1", name: "My Workspace 1" },
-  {
-    id: "2",
-    name: "My Workspace 2",
-    children: [
-      { id: "3", name: "refact" },
-      { id: "4", name: "refact-vscode" },
-      { id: "5", name: "refact-scenarios" },
-    ],
-  },
+  { id: "2", name: "My Workspace 2" },
 ];
+const ws_id = "filmstudio"; // TODO: how do we get proper ws_id?
 
 export const GroupTree: React.FC = () => {
+  const { data: subsTreeData } = useSmartSubscription<
+    NavTreeSubsSubscription,
+    { ws_id: string }
+  >({
+    query: NavTreeSubsDocument,
+    variables: { ws_id },
+  });
+
   const dispatch = useAppDispatch();
+  const { setActiveTeamsGroupInIDE } = useEventsBusForIDE();
   const [groupTreeData, setGroupTreeData] =
-    useState<TreeNodeData[]>(TEST_TREE_DATA);
+    useState<TeamsGroupTree[]>(TEST_TREE_DATA);
   const [setActiveGroupIdTrigger] = teamsApi.useSetActiveGroupIdMutation();
   const [currentSelectedTeamsGroup, setCurrentSelectedTeamsGroup] =
     useState<TeamsGroup | null>(null);
@@ -56,38 +66,54 @@ export const GroupTree: React.FC = () => {
     calculateAndSetSpace();
   }, [calculateAndSetSpace]);
 
-  const onGroupSelect = useCallback((nodes: NodeApi<TreeNodeData>[]) => {
+  const onGroupSelect = useCallback((nodes: NodeApi<TeamsGroupTree>[]) => {
     if (nodes.length === 0) return;
     const group = nodes[0].data;
     setCurrentSelectedTeamsGroup({
-      id: parseInt(group.id),
+      id: group.id,
       name: group.name,
     });
   }, []);
 
   const onGroupSelectionConfirm = useCallback(
-    (group: TreeNodeData) => {
+    (group: TeamsGroupTree) => {
+      const newGroup = {
+        id: group.id,
+        name: group.name,
+      };
+
+      setActiveTeamsGroupInIDE(newGroup);
       void setActiveGroupIdTrigger({
-        group_id: parseInt(group.id),
+        group_id: group.id,
       })
         .then((result) => {
           if (result.data) {
-            // TODO: implement
-            // setActiveWorkspaceInIDE(workspace);
-            dispatch(
-              setActiveGroup({
-                id: parseInt(group.id),
-                name: group.name,
-              }),
-            );
+            dispatch(setActiveGroup(newGroup));
+            return;
+          } else {
+            // TODO: rework error handling
+            let errorMessage: string;
+            if ("data" in result.error && isDetailMessage(result.error.data)) {
+              errorMessage = result.error.data.detail;
+            } else {
+              errorMessage =
+                "Error: Something went wrong while selecting a group. Try again.";
+            }
+            dispatch(setError(errorMessage));
           }
         })
         .catch(() => {
           dispatch(resetActiveGroup());
         });
     },
-    [dispatch, setActiveGroupIdTrigger],
+    [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
   );
+
+  useEffect(() => {
+    // TODO: debug actual tree data when graphql gets repaired
+    // eslint-disable-next-line no-console
+    console.log(`[DEBUG]: flexus subs tree data: `, subsTreeData);
+  }, [subsTreeData]);
 
   return (
     <Flex direction="column" gap="4" mt="4" width="100%">
@@ -151,7 +177,7 @@ export const GroupTree: React.FC = () => {
                     setCurrentSelectedTeamsGroup(null);
                     onGroupSelectionConfirm({
                       ...currentSelectedTeamsGroup,
-                      id: currentSelectedTeamsGroup.id.toString(),
+                      id: currentSelectedTeamsGroup.id,
                     });
                   }}
                   // disabled={currentSelectedTeamsGroup === null}

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import type { NodeRendererProps } from "react-arborist";
@@ -6,21 +6,20 @@ import { FolderIcon } from "./FolderIcon";
 
 import styles from "./CustomTreeNode.module.css";
 import { CreateNewGroup } from "./CreateNewGroup";
+import { TeamsGroup } from "../../../services/smallcloud/types";
 
-// Define the shape of our tree node data
-export type TreeNodeData = {
-  id: string;
-  name: string;
-  children?: TreeNodeData[];
+export type TeamsGroupTree = TeamsGroup & {
+  children?: TeamsGroup[];
 };
 
-export const CustomTreeNode = <T extends TreeNodeData>({
+export const CustomTreeNode = <T extends TeamsGroupTree>({
   node,
   style,
   tree,
   dragHandle,
   updateTree,
 }: NodeRendererProps<T> & { updateTree: (newTree: T[]) => void }) => {
+  const [isHovered, setIsHovered] = useState(false);
   // Determine if this is a folder (has children)
   const isContainingChildren = !!node.data.children;
 
@@ -82,6 +81,8 @@ export const CustomTreeNode = <T extends TreeNodeData>({
       onClick={handleNodeClick}
       ref={dragHandle}
       className={styles.treeNode}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Icon container */}
       <Box
@@ -118,11 +119,13 @@ export const CustomTreeNode = <T extends TreeNodeData>({
       >
         {node.data.name}
       </Text>
-      <CreateNewGroup
-        currentGroup={node.data}
-        updateTree={updateTree}
-        tree={tree}
-      />
+      {isHovered && (
+        <CreateNewGroup
+          currentGroup={node.data}
+          updateTree={updateTree}
+          tree={tree}
+        />
+      )}
     </Flex>
   );
 };

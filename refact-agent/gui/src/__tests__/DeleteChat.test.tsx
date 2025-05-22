@@ -43,8 +43,8 @@ describe("Delete a Chat form history", () => {
       preloadedState: {
         history,
         teams: {
-          group: { id: 123, name: "test" },
-          workspace: null,
+          group: { id: "123", name: "test" },
+          // workspace: null,
           _persist: {
             version: 1,
             rehydrated: true,

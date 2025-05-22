@@ -15,7 +15,7 @@ export const teamsApi = createApi({
     },
   }),
   endpoints: (builder) => ({
-    setActiveGroupId: builder.mutation<SuccessResponse, { group_id: number }>({
+    setActiveGroupId: builder.mutation<SuccessResponse, { group_id: string }>({
       async queryFn(arg, api, extraOptions, baseQuery) {
         const state = api.getState() as RootState;
         const port = state.config.lspPort as unknown as number;
