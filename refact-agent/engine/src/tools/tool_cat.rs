@@ -11,7 +11,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
+use crate::files_correction::{canonical_path, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
 use crate::scratchpads::multimodality::MultimodalElement;
 
@@ -254,29 +254,35 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
     let mut corrected_path_to_original = HashMap::new();
 
     for p in paths {
+        let path = if PathBuf::from(&p).is_absolute() {
+            canonical_path(p).to_string_lossy().to_string()
+        } else {
+            preprocess_path_for_normalization(p)
+        };
+
         // both not fuzzy
-        let candidates_file = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
-        let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &p, false, top_n).await;
+        let candidates_file = file_repair_candidates(gcx.clone(), &path, top_n, false).await;
+        let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &path, false, top_n).await;
 
         if !candidates_file.is_empty() || candidates_dir.is_empty() {
-            let file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+            let file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
                 Ok(f) => f,
                 Err(e) => { not_found_messages.push(e); continue;}
             };
             corrected_paths.push(file_path.clone());
-            corrected_path_to_original.insert(file_path, p.clone());
+            corrected_path_to_original.insert(file_path, path.clone());
         } else {
-            let candidate = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
+            let candidate = match return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
                 Ok(f) => f,
                 Err(e) => { not_found_messages.push(e); continue;}
             };
-            let path = PathBuf::from(candidate);
+            let path_buf = PathBuf::from(candidate);
             let indexing_everywhere = crate::files_blocklist::reload_indexing_everywhere_if_needed(gcx.clone()).await;
-            let files_in_dir = ls_files(&indexing_everywhere, &path, false).unwrap_or(vec![]);
+            let files_in_dir = ls_files(&indexing_everywhere, &path_buf, false).unwrap_or(vec![]);
             for file in files_in_dir {
                 let file_str = file.to_string_lossy().to_string();
                 corrected_paths.push(file_str.clone());
-                corrected_path_to_original.insert(file_str, p.clone());
+                corrected_path_to_original.insert(file_str, path.clone());
             }
         }
     }
