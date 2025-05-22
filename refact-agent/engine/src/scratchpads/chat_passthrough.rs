@@ -114,13 +114,6 @@ impl ScratchpadAbstract for ChatPassthrough {
             (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
         };
         let style = self.post.style.clone();
-        let mut at_tools = if !should_execute_remotely {
-            get_available_tools(gcx.clone()).await.into_iter().map(|x| {
-                (x.tool_description().name, x)
-            }).collect()
-        } else {
-            IndexMap::new()
-        };
 
         let messages = if self.prepend_system_prompt && self.allow_at {
             prepend_the_right_system_prompt_and_maybe_more_initial_messages(
@@ -144,7 +137,9 @@ impl ScratchpadAbstract for ChatPassthrough {
             (messages, _) = if should_execute_remotely {
                 run_tools_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             } else {
-                run_tools_locally(ccx.clone(), &mut at_tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
+                let mut tools = get_available_tools(gcx.clone()).await.into_iter()
+                    .map(|x| (x.tool_description().name, x)).collect();
+                run_tools_locally(ccx.clone(), &mut tools, self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results, &style).await?
             }
         };
 
