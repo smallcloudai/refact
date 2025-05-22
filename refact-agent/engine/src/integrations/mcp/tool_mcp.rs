@@ -227,11 +227,18 @@ impl Tool for ToolMCP {
             .file_stem()
             .and_then(|name| name.to_str())
             .unwrap_or("unknown");
-        let sanitized_yaml_name = format!("{}_{}", yaml_name, self.mcp_tool.name)
+        let shortened_yaml_name = if let Some(stripped) = yaml_name.strip_prefix("mcp_stdio_") {
+            format!("mcp_{}", stripped)
+        } else if let Some(stripped) = yaml_name.strip_prefix("mcp_sse_") {
+            format!("mcp_{}", stripped)
+        } else {
+            yaml_name.to_string()
+        };
+        let sanitized_tool_name = format!("{}_{}", shortened_yaml_name, self.mcp_tool.name)
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
             .collect::<String>();
-        sanitized_yaml_name
+        sanitized_tool_name
     }
 
     async fn command_to_match_against_confirm_deny(
