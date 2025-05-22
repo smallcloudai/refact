@@ -1,6 +1,6 @@
 /* eslint-disable */
-import * as types from './graphql';
-import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+import * as types from "./graphql";
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core";
 
 /**
  * Map of all GraphQL operations in the project.
@@ -14,10 +14,11 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
-    "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}": typeof types.NavTreeSubsDocument,
+  "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}": typeof types.NavTreeSubsDocument;
 };
 const documents: Documents = {
-    "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}": types.NavTreeSubsDocument,
+  "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}":
+    types.NavTreeSubsDocument,
 };
 
 /**
@@ -37,10 +38,13 @@ export function graphql(source: string): unknown;
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}"): (typeof documents)["subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}"];
+export function graphql(
+  source: "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}",
+): (typeof documents)["subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};
 }
 
-export type DocumentType<TDocumentNode extends DocumentNode<any, any>> = TDocumentNode extends DocumentNode<  infer TType,  any>  ? TType  : never;
+export type DocumentType<TDocumentNode extends DocumentNode<any, any>> =
+  TDocumentNode extends DocumentNode<infer TType, any> ? TType : never;

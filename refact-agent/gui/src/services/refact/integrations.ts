@@ -290,7 +290,7 @@ function isIntegration(json: unknown): json is Integration {
     if (isPrimitive(value)) {
       return true;
     }
-    if (typeof value === "object" && value !== null) {
+    if (typeof value === "object") {
       return Object.values(value).every(isValidNestedObject);
     }
     return false;

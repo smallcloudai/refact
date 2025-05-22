@@ -6,6 +6,7 @@ import {
   subscriptionExchange,
 } from "urql";
 import { createClient as createWSClient } from "graphql-ws";
+import { WebSocket } from "ws";
 
 const baseUrl = "localhost:8008/v1/graphql";
 const apiKey = "sk_alice_123456";
@@ -15,6 +16,7 @@ const wsClient = createWSClient({
   connectionParams: {
     apikey: apiKey,
   },
+  webSocketImpl: WebSocket,
   retryAttempts: 5,
 });
 

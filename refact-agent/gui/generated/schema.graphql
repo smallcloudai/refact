@@ -151,7 +151,9 @@ input FlexusGroupPatch {
   fgroup_parent_id: String = null
 }
 
-"""The JSON scalar type represents JSON values as Python objects"""
+"""
+The JSON scalar type represents JSON values as Python objects
+"""
 scalar JSON
 
 type Mutation {
@@ -160,7 +162,10 @@ type Mutation {
   group_patch(fgroup_id: String!, patch: FlexusGroupPatch!): FlexusGroup!
   knowledge_item_create(input: FKnowledgeItemInput!): FKnowledgeItem!
   knowledge_item_delete(id: String!): Boolean!
-  knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItem!
+  knowledge_item_patch(
+    id: String!
+    patch: FKnowledgeItemPatch!
+  ): FKnowledgeItem!
   thread_create(input: FThreadInput!): FThread!
   thread_delete(id: String!): Boolean!
   thread_message_create(input: FThreadMessageInput!): FThreadMessage!
@@ -168,14 +173,35 @@ type Mutation {
 }
 
 type Query {
-  knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItem!]!
-  thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThread!]!
+  knowledge_item_list(
+    limit: Int!
+    located_fgroup_id: String!
+    skip: Int!
+    sort_by: String! = ""
+  ): [FKnowledgeItem!]!
+  thread_list(
+    limit: Int!
+    located_fgroup_id: String!
+    skip: Int!
+    sort_by: String! = ""
+  ): [FThread!]!
 }
 
 type Subscription {
-  comprehensive_thread_subs(ft_id: String!, want_deltas: Boolean!): FThreadMessageSubs!
-  knowledge_items_in_group(limit: Int!, located_fgroup_id: String!, sort_by: String! = ""): FKnowledgeItemSubs!
-  threads_in_group(limit: Int!, located_fgroup_id: String!, sort_by: String! = ""): FThreadSubs!
+  comprehensive_thread_subs(
+    ft_id: String!
+    want_deltas: Boolean!
+  ): FThreadMessageSubs!
+  knowledge_items_in_group(
+    limit: Int!
+    located_fgroup_id: String!
+    sort_by: String! = ""
+  ): FKnowledgeItemSubs!
+  threads_in_group(
+    limit: Int!
+    located_fgroup_id: String!
+    sort_by: String! = ""
+  ): FThreadSubs!
   tree_subscription(ws_id: String!): TreeUpdateSubs!
 }
 

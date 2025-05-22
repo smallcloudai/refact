@@ -43,9 +43,7 @@ export const toolsApi = createApi({
             },
           };
         }
-        const tools = result.data.filter((d) =>
-          isToolCommand(d),
-        ) as ToolCommand[];
+        const tools = result.data.filter((d) => isToolCommand(d));
         return { data: tools };
       },
     }),
