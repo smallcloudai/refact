@@ -153,6 +153,10 @@ impl PathTrie {
             .map(|comp| comp.as_os_str().to_string_lossy().to_string())
             .collect();
 
+        if components.is_empty() {
+            return nodes;
+        }
+
         let mut current = &self.root;
         loop {
             // 1. collect root_component_postfix and pop next component
