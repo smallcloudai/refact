@@ -123,7 +123,13 @@ impl ScratchpadAbstract for ChatPassthrough {
         };
 
         let messages = if self.prepend_system_prompt && self.allow_at {
-            prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
+            prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+                gcx.clone(), 
+                self.messages.clone(), 
+                &self.post.meta, 
+                &mut self.has_rag_results,
+                self.tools.iter().map(|x| x.name.clone()).collect(),
+            ).await
         } else {
             self.messages.clone()
         };

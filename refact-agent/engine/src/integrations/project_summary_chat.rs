@@ -5,11 +5,12 @@ use crate::call_validation::{ChatContent, ChatMessage, ChatMeta};
 use crate::integrations::setting_up_integrations::integrations_all;
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::tools::tools_list::get_available_tools_by_chat_mode;
 
 
 pub async fn mix_project_summary_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
-    _chat_meta: &ChatMeta,
+    chat_meta: &ChatMeta,
     messages: &mut Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
 ) {
@@ -37,7 +38,15 @@ pub async fn mix_project_summary_messages(
         sp_text = sp_text.replace("%AVAILABLE_INTEGRATIONS%", &integrations.iter().map(|x|x.integr_name.clone()).collect::<Vec<_>>().join(", "));
     }
 
-    sp_text = system_prompt_add_extra_instructions(gcx.clone(), &sp_text).await;    // print inside
+    sp_text = system_prompt_add_extra_instructions(
+        gcx.clone(), 
+        sp_text, 
+        get_available_tools_by_chat_mode(gcx.clone(), chat_meta.chat_mode)
+            .await
+            .into_iter()
+            .map(|t| t.tool_description().name)
+            .collect(),
+    ).await;    // print inside
 
     let system_message = ChatMessage {
         role: "system".to_string(),

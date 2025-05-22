@@ -8,6 +8,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile, ChatMeta};
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::integrations::yaml_schema::ISchema;
+use crate::tools::tools_list::get_available_tools_by_chat_mode;
 
 
 pub async fn mix_config_messages(
@@ -148,7 +149,15 @@ pub async fn mix_config_messages(
     let system_message = ChatMessage {
         role: "system".to_string(),
         content: ChatContent::SimpleText(
-            crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(gcx.clone(), &sp.text).await
+            crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
+                gcx.clone(), 
+                sp.text.clone(),
+                get_available_tools_by_chat_mode(gcx.clone(), chat_meta.chat_mode)
+                    .await
+                    .into_iter()
+                    .map(|t| t.tool_description().name)
+                    .collect(),
+            ).await
         ),
         ..Default::default()
     };
