@@ -15,6 +15,7 @@ use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
+use crate::integrations::process_io_utils::AnsiStrippable;
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[allow(non_snake_case)]
@@ -91,8 +92,8 @@ impl Tool for ToolGitlab {
             .map_err(|e| format!("!{}, {} failed:\n{}",
                 go_to_configuration_message("gitlab"), glab_binary_path, e.to_string()))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = output.stdout.to_string_lossy_and_strip_ansi();
+        let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
         let stdout_content = if stdout.starts_with("[") {
             match serde_json::from_str::<Value>(&stdout) {

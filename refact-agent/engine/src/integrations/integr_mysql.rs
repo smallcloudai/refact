@@ -15,6 +15,8 @@ use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::Tool;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
 
+use super::process_io_utils::AnsiStrippable;
+
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct SettingsMysql {
@@ -94,10 +96,10 @@ impl ToolMysql {
           }
           let output = output.unwrap();
           if output.status.success() {
-              Ok(String::from_utf8_lossy(&output.stdout).to_string())
+              Ok(output.stdout.to_string_lossy_and_strip_ansi())
           } else {
               // XXX: limit stderr, can be infinite
-              let stderr_string = String::from_utf8_lossy(&output.stderr);
+              let stderr_string = output.stderr.to_string_lossy_and_strip_ansi();
               tracing::error!("mysql didn't work:\n{}\n{}", query, stderr_string);
               Err(format!("{}, mysql failed:\n{}", go_to_configuration_message("mysql"), stderr_string))
           }
