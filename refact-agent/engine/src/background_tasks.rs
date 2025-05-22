@@ -6,7 +6,6 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 
 use crate::global_context::GlobalContext;
-use crate::gql_subscription;
 
 
 pub struct BackgroundTasksHolder {
