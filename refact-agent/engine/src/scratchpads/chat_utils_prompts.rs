@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 use std::sync::Arc;
 use std::path::PathBuf;
@@ -117,7 +118,8 @@ async fn _read_project_summary(
 
 pub async fn system_prompt_add_extra_instructions(
     gcx: Arc<ARwLock<GlobalContext>>,
-    system_prompt: &String,
+    system_prompt: String,
+    tool_names: HashSet<String>,
 ) -> String {
     async fn workspace_files_info(gcx: &Arc<ARwLock<GlobalContext>>) -> (Vec<String>, Option<PathBuf>) {
         let gcx_locked = gcx.read().await;
@@ -174,6 +176,56 @@ pub async fn system_prompt_add_extra_instructions(
         }
     }
 
+    if system_prompt.contains("%EXPLORE_FILE_EDIT_INSTRUCTIONS%") {
+        let replacement = if tool_names.contains("create_textdoc") || tool_names.contains("update_textdoc") {
+            "- Then use `*_textdoc()` tools to make changes.\n"
+        } else {
+            ""
+        };
+
+        system_prompt = system_prompt.replace("%EXPLORE_FILE_EDIT_INSTRUCTIONS%", replacement);
+    }
+
+    if system_prompt.contains("%AGENT_EXPLORATION_INSTRUCTIONS%") {
+        let replacement = if tool_names.contains("locate") {
+            "- Call `locate()` tool to find relevant files.\n"
+        } else {
+            "- Call available tools to find relevant files.\n"
+        };
+
+        system_prompt = system_prompt.replace("%AGENT_EXPLORATION_INSTRUCTIONS%", replacement);
+    }
+
+    if system_prompt.contains("%AGENT_EXECUTION_INSTRUCTIONS%") {
+        let replacement = if tool_names.contains("create_textdoc") || tool_names.contains("update_textdoc") {
+"3. Confirm the Plan with the User — No Coding Until Approved
+  - Post a concise, bullet-point summary that includes
+    • the suspected root cause
+    • the exact files/functions you will modify or create
+    • the new or updated tests you will add
+    • the expected outcome and success criteria
+  - Explicitly ask “Does this align with your vision?
+  - Wait for the user’s approval or revisions before proceeding.
+4. Implement the Fix
+  - Apply the approved changes directly to project files using `update_textdoc()` and `create_textdoc()` tools.
+5. Validate and Improve
+  - Run all available tooling to ensure the project compiles and your fix works.
+  - Add or update tests that reproduce the original bug and verify they pass.
+  - Execute the full test suite to guard against regressions.
+  - Iterate until everything is green.
+"
+        } else {
+"  - Propose the changes to the user
+    • the suspected root cause
+    • the exact files/functions to modify or create
+    • the new or updated tests to add
+    • the expected outcome and success criteria
+"
+        };
+
+        system_prompt = system_prompt.replace("%AGENT_EXECUTION_INSTRUCTIONS%", replacement);
+    }
+
     system_prompt
 }
 
@@ -182,6 +234,7 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
     mut messages: Vec<call_validation::ChatMessage>,
     chat_meta: &call_validation::ChatMeta,
     stream_back_to_user: &mut HasRagResults,
+    tool_names: HashSet<String>,
 ) -> Vec<call_validation::ChatMessage> {
     let have_system = !messages.is_empty() && messages[0].role == "system";
     if have_system {
@@ -206,8 +259,10 @@ pub async fn prepend_the_right_system_prompt_and_maybe_more_initial_messages(
 
     match chat_meta.chat_mode {
         ChatMode::EXPLORE | ChatMode::AGENT | ChatMode::NO_TOOLS => {
-            let system_message_content = system_prompt_add_extra_instructions(gcx.clone(),
-                                                                              &get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await
+            let system_message_content = system_prompt_add_extra_instructions(
+                gcx.clone(),
+                get_default_system_prompt(gcx.clone(), chat_meta.chat_mode.clone()).await,
+                tool_names,
             ).await;
             let msg = ChatMessage {
                 role: "system".to_string(),
