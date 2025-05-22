@@ -35,6 +35,7 @@ pub struct CommandLine {
     #[structopt(long, default_value="", help="Send logs to a file.")]
     pub logs_to_file: String,
     #[structopt(long, short="u", default_value="", help="URL to use: \"Refact\" for Cloud, or your Self-Hosted Server URL. To bring your own keys, use \"Refact\" and set up providers.")]
+    /// URL to use: "Refact" for Cloud, or your Self-Hosted Server URL. To bring your own keys, use "Refact" and set up providers.
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
