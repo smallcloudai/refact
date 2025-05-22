@@ -11,6 +11,11 @@ import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
 import { selectActiveGroup } from "../../features/Teams";
 import { GroupTree } from "./GroupTree/";
+import { ErrorCallout } from "../Callout";
+import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
+import classNames from "classnames";
+import { selectHost } from "../../features/Config/configSlice";
+import styles from "./Sidebar.module.css";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -28,7 +33,9 @@ export type SidebarProps = {
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
+  const globalError = useAppSelector(getErrorMessage);
   const maybeSelectedTeamsGroup = useAppSelector(selectActiveGroup);
+  const currentHost = useAppSelector(selectHost);
   const history = useAppSelector((app) => app.history, {
     // TODO: selector issue here
     devModeChecks: { stabilityCheck: "never" },
@@ -64,6 +71,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         />
       ) : (
         <GroupTree />
+      )}
+      {/* TODO: duplicated */}
+      {globalError && (
+        <ErrorCallout
+          mx="0"
+          timeout={3000}
+          onClick={() => dispatch(clearError())}
+          className={classNames(styles.popup, {
+            [styles.popup_ide]: currentHost !== "web",
+          })}
+          preventRetry
+        >
+          {globalError}
+        </ErrorCallout>
       )}
     </Flex>
   );

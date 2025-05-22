@@ -8,7 +8,7 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import React, { useState } from "react";
-import { TreeNodeData } from "./CustomTreeNode";
+import { type TeamsGroupTree } from "./CustomTreeNode";
 import { TreeApi } from "react-arborist";
 import { v4 as uuidv4 } from "uuid";
 
@@ -18,7 +18,7 @@ export type CreateNewGroupProps<T> = {
   updateTree: (newTree: T[]) => void;
 };
 
-export const CreateNewGroup = <T extends TreeNodeData>({
+export const CreateNewGroup = <T extends TeamsGroupTree>({
   currentGroup,
   tree,
   updateTree,
@@ -31,7 +31,8 @@ export const CreateNewGroup = <T extends TreeNodeData>({
     setIsClicked((prev) => !prev);
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     const updatedGroup = {
       ...currentGroup,
       children: currentGroup.children
@@ -86,7 +87,7 @@ export const CreateNewGroup = <T extends TreeNodeData>({
   );
 };
 
-function updateNodeById<T extends TreeNodeData>(
+function updateNodeById<T extends TeamsGroupTree>(
   nodes: readonly T[] | undefined,
   id: string,
   updater: (node: T) => T,

@@ -12,7 +12,7 @@ import { pathApi } from "../services/refact/path";
 import { telemetryApi } from "../services/refact/telemetry";
 import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
-import { type Workspace } from "../services/smallcloud/types";
+import type { TeamsGroup } from "../services/smallcloud/types";
 
 export const ideDiffPasteBackAction = createAction<{
   content: string;
@@ -76,8 +76,8 @@ export const ideForceReloadProjectTreeFiles = createAction(
   "ide/forceReloadProjectTreeFiles",
 );
 
-export const ideSetActiveWorkspace = createAction<Workspace>(
-  "ide/setActiveWorkspace",
+export const ideSetActiveTeamsGroup = createAction<TeamsGroup>(
+  "ide/setActiveTeamsGroup",
 );
 
 export const useEventsBusForIDE = () => {
@@ -278,9 +278,9 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
-  const setActiveWorkspaceInIDE = useCallback(
-    (workspace: Workspace) => {
-      const action = ideSetActiveWorkspace(workspace);
+  const setActiveTeamsGroupInIDE = useCallback(
+    (group: TeamsGroup) => {
+      const action = ideSetActiveTeamsGroup(group);
       postMessage(action);
     },
     [postMessage],
@@ -308,6 +308,6 @@ export const useEventsBusForIDE = () => {
     sendToolCallToIde,
     setCodeCompletionModel,
     setLoginMessage,
-    setActiveWorkspaceInIDE,
+    setActiveTeamsGroupInIDE,
   };
 };

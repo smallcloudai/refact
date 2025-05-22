@@ -78,7 +78,7 @@ export {
   ideToolCallResponse,
   ideSetCodeCompletionModel,
   ideSetLoginMessage,
-  ideSetActiveWorkspace,
+  ideSetActiveTeamsGroup,
 } from "../hooks/useEventBusForIDE";
 
 export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
@@ -115,7 +115,7 @@ export {
   isUserMessage,
 } from "../services/refact";
 
-export { type Workspace } from "../services/smallcloud/types";
+export { type TeamsGroup } from "../services/smallcloud/types";
 
 // export type * from "../services/refact";
 

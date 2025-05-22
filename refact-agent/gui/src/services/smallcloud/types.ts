@@ -1,6 +1,6 @@
-export type Workspace = {
-  workspace_id: number;
-  workspace_name: string;
+export type TeamsGroup = {
+  id: string;
+  name: string;
 };
 
 export type User = {
@@ -9,7 +9,7 @@ export type User = {
   inference_url: string;
   inference: string;
   metering_balance: number;
-  workspaces: Workspace[];
+  // workspaces: Workspace[];
   questionnaire: false | Record<string, string>;
 };
 

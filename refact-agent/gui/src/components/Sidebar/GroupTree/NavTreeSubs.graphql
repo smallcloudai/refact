@@ -1,0 +1,8 @@
+subscription NavTreeSubs($ws_id: String!) {
+  tree_subscription(ws_id: $ws_id) {
+    treeupd_action
+    treeupd_path
+    treeupd_type
+    treeupd_title
+  }
+}
