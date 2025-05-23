@@ -209,6 +209,7 @@
                 "anthropic/claude-3-7-sonnet",
                 "anthropic/claude-3-7-sonnet-20250219",
                 "claude-sonnet-4",
+                "claude-sonnet-4-20250514",
                 "anthropic/claude-sonnet-4-20250514"
             ]
         },
@@ -580,6 +581,7 @@
                 "anthropic/claude-3.7-sonnet-latest",
                 "anthropic/claude-3-7-sonnet-latest",
                 "claude-sonnet-4",
+                "claude-sonnet-4-20250514",
                 "anthropic/claude-sonnet-4-20250514"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
