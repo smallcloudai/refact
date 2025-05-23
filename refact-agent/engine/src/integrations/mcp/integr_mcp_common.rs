@@ -28,6 +28,7 @@ pub fn default_init_timeout() -> u64 { 60 }
 
 pub fn default_request_timeout() -> u64 { 30 }
 
+#[async_trait]
 pub trait MCPTransportInitializer: Send + Sync {
     async fn init_mcp_transport(
         &self,
@@ -112,6 +113,7 @@ pub async fn mcp_session_setup<T: MCPTransportInitializer + 'static>(
                 launched_cfg: new_cfg_value.clone(),
                 mcp_client: None,
                 mcp_tools: Vec::new(),
+                mcp_resources: None,
                 startup_task_handles: None,
                 logs: Arc::new(AMutex::new(Vec::new())),
                 stderr_file_path: None,
