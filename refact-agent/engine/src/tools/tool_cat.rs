@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use serde_json::Value;
-use itertools::Itertools; 
+use itertools::Itertools;
 
 use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
@@ -27,12 +27,12 @@ const CAT_MAX_IMAGES_CNT: usize = 1;
 fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap<String, Option<(usize, usize)>>, Vec<String>), String> {
     fn try_parse_line_range(s: &str) -> Result<Option<(usize, usize)>, String> {
         let s = s.trim();
-        
+
         // Try parsing as a single number (like "10")
         if let Ok(n) = s.parse::<usize>() {
             return Ok(Some((n, n)));
         }
-        
+
         // Try parsing as a range (like "10-20")
         if s.contains('-') {
             let parts = s.split('-').collect::<Vec<_>>();
@@ -47,10 +47,10 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
                 }
             }
         }
-        
+
         Ok(None) // Not a line range - likely a Windows path
     }
-    
+
     let raw_paths = match args.get("paths") {
         Some(Value::String(s)) => {
             s.split(",").map(|x|x.trim().to_string()).collect::<Vec<_>>()
@@ -58,10 +58,10 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
         Some(v) => return Err(format!("argument `paths` is not a string: {:?}", v)),
         None => return Err("Missing argument `paths`".to_string())
     };
-    
+
     let mut paths = Vec::new();
     let mut path_line_ranges = HashMap::new();
-    
+
     for path_str in raw_paths {
         let (file_path, range) = if let Some(colon_pos) = path_str.rfind(':') {
             match try_parse_line_range(&path_str[colon_pos+1..])? {
@@ -76,7 +76,7 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
         path_line_ranges.insert(file_path.clone(), range);
         paths.push(file_path);
     }
-    
+
     let symbols = match args.get("symbols") {
         Some(Value::String(s)) => {
             if s == "*" {
@@ -91,7 +91,7 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
         Some(v) => return Err(format!("argument `symbols` is not a string: {:?}", v)),
         None => vec![],
     };
-    
+
     Ok((paths, path_line_ranges, symbols))
 }
 
@@ -107,7 +107,7 @@ impl Tool for ToolCat {
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let mut corrections = false;
         let (paths, path_line_ranges, symbols) = parse_cat_args(args)?;
-        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) = 
+        let (filenames_present, symbols_not_found, not_found_messages, context_enums, multimodal) =
             paths_and_symbols_to_cat_with_path_ranges(ccx.clone(), paths, path_line_ranges, symbols).await;
 
         let mut content = "".to_string();
@@ -270,8 +270,8 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
         for p in unique_paths.iter() {
             let original_path = corrected_path_to_original.get(p).unwrap_or(p);
             let line_range = path_line_ranges.get(original_path).cloned().flatten();
-            
-            let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p).await;
+
+            let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p, false).await;
             // s.name() means the last part of the path
             // symbols.contains means exact match in comma-separated list
             let mut syms_def_in_this_file = vec![];
@@ -302,7 +302,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                     },
                     None => (sym_start, sym_end)
                 };
-                
+
                 let cf = ContextFile {
                     file_name: p.clone(),
                     file_content: "".to_string(),
@@ -331,7 +331,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
     for p in unique_paths.iter().filter(|x|!filenames_got_symbols_for.contains(x)) {
         let original_path = corrected_path_to_original.get(p).unwrap_or(p);
         let line_range = path_line_ranges.get(original_path).cloned().flatten();
-        
+
         // don't have symbols for these, so we need to mention them as files, without a symbol, analog of @file
         let f_type = get_file_type(&PathBuf::from(p));
 
@@ -360,7 +360,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                             let end = end.min(total_lines);
                             if start > end {
                                 not_found_messages.push(format!(
-                                    "Requested line range {}-{} is outside file bounds (file has {} lines)", 
+                                    "Requested line range {}-{} is outside file bounds (file has {} lines)",
                                     start, end, total_lines
                                 ));
                                 (1, total_lines)
@@ -370,7 +370,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
                         },
                         None => (1, total_lines)
                     };
-                    
+
                     let cf = ContextFile {
                         file_name: p.clone(),
                         file_content: "".to_string(),

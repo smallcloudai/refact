@@ -147,6 +147,7 @@ pub async fn handle_v1_command_preview(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
+    let t0 = tokio::time::Instant::now();
     let post = serde_json::from_slice::<CommandPreviewPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut messages = deserialize_messages_from_post(&post.messages)?;
@@ -214,6 +215,7 @@ pub async fn handle_v1_command_preview(
         pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
     }
 
+    tracing::info!("gato1, {}s", t0.elapsed().as_secs_f32());
     let cf = postprocess_context_files(
         global_context.clone(),
         &mut filter_only_context_file_from_context_tool(&messages_for_postprocessing),
@@ -222,6 +224,7 @@ pub async fn handle_v1_command_preview(
         false,
         &pp_settings,
     ).await;
+    tracing::info!("gato2, {}s", t0.elapsed().as_secs_f32());
 
     if !cf.is_empty() {
         let message = ChatMessage {

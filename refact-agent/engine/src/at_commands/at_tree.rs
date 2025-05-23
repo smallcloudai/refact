@@ -14,7 +14,6 @@ use crate::at_commands::execute_at::AtCommandMember;
 use crate::call_validation::{ChatMessage, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, paths_from_anywhere};
 
-
 pub struct AtTree {
     pub params: Vec<Box<dyn AtParam>>,
 }
@@ -111,15 +110,12 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     root_nodes
 }
 
-fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
+async fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
     let cpath = entry.path.to_string_lossy().to_string();
-    let defs = crate::ast::ast_db::doc_def_internal(db.clone(), &cpath);
+    let defs = crate::ast::ast_db::doc_def_internal(db.clone(), &cpath, false).await;
     let symbols_list = defs
         .iter()
-        .filter(|x| match x.symbol_type {
-            SymbolType::StructDeclaration | SymbolType::TypeAlias | SymbolType::FunctionDeclaration => true,
-            _ => false
-        })
+        .filter(|x| matches!(x.symbol_type, SymbolType::StructDeclaration | SymbolType::TypeAlias | SymbolType::FunctionDeclaration))
         .map(|x| x.name())
         .collect::<Vec<String>>()
         .join(", ");
@@ -131,31 +127,61 @@ async fn _print_files_tree(
     ast_db: Option<Arc<AstDB>>,
     maxdepth: usize,
 ) -> String {
-    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, db_mb: Option<Arc<Db>>) -> Option<String> {
+    async fn traverse(
+        node: PathsHolderNodeArc,
+        depth: usize,
+        maxdepth: usize,
+        db_mb: Option<Arc<Db>>
+    ) -> Option<String> {
         if depth > maxdepth {
             return None;
         }
-        let node: std::sync::RwLockReadGuard<PathsHolderNode> = node.0.read().unwrap();
+
+        // Extract all needed data from the node before any await
+        let (is_dir, file_name, child_paths, node_path) = {
+            let node_guard = node.read();
+            (
+                node_guard.is_dir,
+                node_guard.file_name(),
+                node_guard.child_paths.clone(),
+                node_guard.path.clone(),
+            )
+        };
         let mut output = String::new();
         let indent = "  ".repeat(depth);
-        let name = if node.is_dir { format!("{}/", node.file_name()) } else { node.file_name() };
-        if !node.is_dir {
+        let name = if is_dir {
+            format!("{}/", file_name)
+        } else {
+            file_name.clone()
+        };
+
+        if !is_dir {
             if let Some(db) = &db_mb {
-                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db.clone(), &node)));
+                let symbols = _print_symbols(db.clone(), &PathsHolderNode {
+                    path: node_path,
+                    is_dir: false,
+                    child_paths: vec![],
+                    depth,
+                }).await;
+                output.push_str(&format!("{}{}{}\n", indent, name, symbols));
             } else {
                 output.push_str(&format!("{}{}\n", indent, name));
             }
             return Some(output);
         }
+
         output.push_str(&format!("{}{}\n", indent, name));
         let (mut dirs, mut files) = (0, 0);
         let mut child_output = String::new();
-        for child in &node.child_paths {
-            if let Some(child_str) = traverse(child, depth + 1, maxdepth, db_mb.clone()) {
+        for child in child_paths {
+            let future = Box::pin(traverse(child.clone(), depth + 1, maxdepth, db_mb.clone()));
+            if let Some(child_str) = future.await {
                 child_output.push_str(&child_str);
             } else {
-                dirs += child.0.read().unwrap().is_dir as usize;
-                files += !child.0.read().unwrap().is_dir as usize;
+                // Re-acquire the lock for each child count
+                let child_guard = child.read();
+                dirs += child_guard.is_dir as usize;
+                files += !child_guard.is_dir as usize;
             }
         }
         if dirs > 0 || files > 0 {
@@ -173,7 +199,7 @@ async fn _print_files_tree(
         } else {
             None
         };
-        if let Some(output) = traverse(&node, 0, maxdepth, db_mb.clone()) {
+        if let Some(output) = traverse(node.clone(), 0, maxdepth, db_mb.clone()).await {
             result.push_str(&output);
         } else {
             break;
@@ -223,7 +249,6 @@ pub async fn print_files_tree_with_budget(
         None => Ok(_print_files_tree_with_budget(tree, char_limit, None).await),
     }
 }
-
 
 #[async_trait]
 impl AtCommand for AtTree {

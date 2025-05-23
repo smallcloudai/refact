@@ -79,7 +79,9 @@ pub async fn pp_ast_markup_files(
     gcx: Arc<ARwLock<GlobalContext>>,
     context_file_vec: &mut Vec<ContextFile>,
 ) -> Vec<Arc<PPFile>> {
+    let t0 = tokio::time::Instant::now();
     let mut unique_cpaths = IndexSet::<String>::new();
+    tracing::info!("puerco0, {}s", t0.elapsed().as_secs_f32());
     for context_file in context_file_vec.iter_mut() {
         // Here we assume data came from outside, we can't trust it too much
         let path_as_presented = context_file.file_name.clone();
@@ -94,13 +96,18 @@ pub async fn pp_ast_markup_files(
         }
         unique_cpaths.insert(context_file.file_name.clone());
     }
+    tracing::info!("puerco1, {}s", t0.elapsed().as_secs_f32());
 
     let unique_cpaths_vec: Vec<String> = unique_cpaths.into_iter().collect();
     let shortified_vec: Vec<String> = shortify_paths(gcx.clone(), &unique_cpaths_vec).await;
 
+    tracing::info!("puerco2, {}s", t0.elapsed().as_secs_f32());
+
     let mut result: Vec<Arc<PPFile>> = vec![];
     let ast_service = gcx.read().await.ast_service.clone();
     for (cpath, short) in unique_cpaths_vec.iter().zip(shortified_vec.iter()) {
+
+        tracing::info!("puerco3, {}s", t0.elapsed().as_secs_f32());
         let cpath_pathbuf = PathBuf::from(cpath);
         let cpath_symmetry_breaker: f32 = (calculate_hash(&cpath_pathbuf) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&cpath_pathbuf);
@@ -111,10 +118,13 @@ pub async fn pp_ast_markup_files(
                 continue;
             }
         };
+        tracing::info!("puerco4, {}s", t0.elapsed().as_secs_f32());
         doc.update_text(&text);
         let defs = if let Some(ast) = &ast_service {
+            tracing::info!("GETTING AST INDEX LOCK");
             let ast_index = ast.lock().await.ast_index.clone();
-            crate::ast::ast_db::doc_defs(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
+            tracing::info!("GOT AST INDEX LOCK");
+            crate::ast::ast_db::doc_defs(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string(), true).await
         } else {
             vec![]
         };
@@ -127,7 +137,9 @@ pub async fn pp_ast_markup_files(
             cpath_symmetry_breaker,
             shorter_path: short.clone(),
         }));
+        tracing::info!("puerco5, {}s", t0.elapsed().as_secs_f32());
     }
+    tracing::info!("puerco6, {}s", t0.elapsed().as_secs_f32());
 
     result
 }

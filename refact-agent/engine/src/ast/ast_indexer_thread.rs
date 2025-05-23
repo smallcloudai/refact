@@ -280,8 +280,8 @@ pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexSe
             wake_up_indexer = false;
         }
         {
-            let ast_service_locked = ast_service.lock().await;
-            let ast_status_locked = ast_service_locked.ast_status.lock().await;
+            let ast_status = ast_service.lock().await.ast_status.clone();
+            let ast_status_locked = ast_status.lock().await;
             if ast_status_locked.astate == "done" || start_time.elapsed() >= max_blocking_duration {
                 return ast_status_locked.astate == "done";
             }

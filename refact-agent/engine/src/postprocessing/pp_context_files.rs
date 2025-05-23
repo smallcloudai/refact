@@ -355,19 +355,23 @@ pub async fn postprocess_context_files(
     settings: &PostprocessSettings,
 ) -> Vec<ContextFile> {
     assert!(settings.max_files_n > 0);
+    let t0 = tokio::time::Instant::now();
+    tracing::info!("perro0, {}s", t0.elapsed().as_secs_f32());
     let files_marked_up = pp_ast_markup_files(gcx.clone(), context_file_vec).await;  // this modifies context_file.file_name to make it cpath
-
+    tracing::info!("perro1, {}s", t0.elapsed().as_secs_f32());
     let mut lines_in_files = pp_color_lines(
         context_file_vec,
         files_marked_up,
         settings,
     ).await;
-
-    pp_limit_and_merge(
+    tracing::info!("perro2, {}s", t0.elapsed().as_secs_f32());
+    let x = pp_limit_and_merge(
         &mut lines_in_files,
         tokenizer,
         tokens_limit,
         single_file_mode,
         settings
-    ).await
+    ).await;
+    tracing::info!("perro3, {}s", t0.elapsed().as_secs_f32());
+    x
 }

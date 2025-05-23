@@ -9,6 +9,19 @@ use sled::Db;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+// Macro to measure database operation time and log warnings if it exceeds 1 second
+macro_rules! measure_db_op {
+    ($op_name:expr, $code:expr) => {{
+        let start = Instant::now();
+        let result = $code;
+        let elapsed = start.elapsed();
+        if elapsed.as_secs_f64() > 1.0 {
+            tracing::warn!("DB operation '{}' took {:.3}s", $op_name, elapsed.as_secs_f64());
+        }
+        result
+    }};
+}
+
 use crate::ast::ast_structs::{AstDB, AstDefinition, AstCounters, AstErrorStats};
 use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
 use crate::fuzzy_search::fuzzy_search;
@@ -141,38 +154,44 @@ pub async fn flush_sled_batch(
     ast_db: Arc<AstDB>,
     threshold: usize,   // if zero, flush everything including counters
 ) -> Arc<AMutex<sled::Batch>> {
-    let mut batch_counter = ast_db.batch_counter.lock().await;
+    measure_db_op!("flush_sled_batch", {
+        let mut batch_counter = ast_db.batch_counter.lock().await;
 
-    if *batch_counter >= threshold {
-        let sleddb = ast_db.sleddb.clone();
-        let mut batch = ast_db.sledbatch.lock().await;
-        let batch_to_apply = std::mem::replace(&mut *batch, sled::Batch::default());
-        drop(batch);
+        if *batch_counter >= threshold {
+            let sleddb = ast_db.sleddb.clone();
+            let mut batch = ast_db.sledbatch.lock().await;
+            let batch_to_apply = std::mem::replace(&mut *batch, sled::Batch::default());
+            drop(batch);
 
-        let was_counter = *batch_counter;
-        *batch_counter = 0;
+            let was_counter = *batch_counter;
+            *batch_counter = 0;
 
-        let mut counters_increase = ast_db.counters_increase.lock().await;
-        let counters_to_process = if threshold == 0 {
-            std::mem::replace(&mut *counters_increase, HashMap::new())
-        } else {
-            HashMap::new()
-        };
-        drop(counters_increase);
+            let mut counters_increase = ast_db.counters_increase.lock().await;
+            let counters_to_process = if threshold == 0 {
+                std::mem::replace(&mut *counters_increase, HashMap::new())
+            } else {
+                HashMap::new()
+            };
+            drop(counters_increase);
 
-        if was_counter > 0 {
-            // tracing::info!("flushing {} sled batches", was_counter);
-            if let Err(e) = sleddb.apply_batch(batch_to_apply) {
-                tracing::error!("failed to apply batch: {:?}", e);
+            if was_counter > 0 {
+                // tracing::info!("flushing {} sled batches", was_counter);
+                measure_db_op!("flush_sled_batch.apply_batch", {
+                    if let Err(e) = sleddb.apply_batch(batch_to_apply) {
+                        tracing::error!("failed to apply batch: {:?}", e);
+                    }
+                });
             }
+            for (counter_key, adjustment) in counters_to_process {
+                measure_db_op!("flush_sled_batch.increase_counter_commit", {
+                    _increase_counter_commit(&sleddb, counter_key.as_bytes(), adjustment);
+                });
+            }
+            return ast_db.sledbatch.clone();
         }
-        for (counter_key, adjustment) in counters_to_process {
-            _increase_counter_commit(&sleddb, counter_key.as_bytes(), adjustment);
-        }
-        return ast_db.sledbatch.clone();
-    }
-    *batch_counter += 1;
-    ast_db.sledbatch.clone()
+        *batch_counter += 1;
+        ast_db.sledbatch.clone()
+    })
 }
 
 pub async fn doc_add(
@@ -182,11 +201,12 @@ pub async fn doc_add(
     errors: &mut AstErrorStats,
 ) -> Result<(Vec<Arc<AstDefinition>>, String), String>
 {
-    let file_global_path = filesystem_path_to_double_colon_path(cpath);
-    let (defs, language) = parse_anything_and_add_file_path(&cpath, text, errors)?;   // errors mostly "no such parser" here
-    let db = ast_index.sleddb.clone();
-    let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
-    let mut batch = batch_arc.lock().await;
+    measure_db_op!("doc_add", {
+        let file_global_path = filesystem_path_to_double_colon_path(cpath);
+        let (defs, language) = parse_anything_and_add_file_path(&cpath, text, errors)?;   // errors mostly "no such parser" here
+        let db = ast_index.sleddb.clone();
+        let batch_arc = flush_sled_batch(ast_index.clone(), 100).await;
+        let mut batch = batch_arc.lock().await;
     let mut added_defs: i32 = 0;
     let mut added_usages: i32 = 0;
     let mut unresolved_usages: i32 = 0;
@@ -237,16 +257,20 @@ pub async fn doc_add(
     _increase_counter(ast_index.clone(), "counters|usages", added_usages).await;
 
     Ok((defs.into_iter().map(Arc::new).collect(), language))
+    })
 }
 
 pub async fn doc_remove(ast_index: Arc<AstDB>, cpath: &String)
 {
-    let file_global_path = filesystem_path_to_double_colon_path(cpath);
-    let d_prefix = format!("d|{}::", file_global_path.join("::"));
-    let db = ast_index.sleddb.clone();
-    let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
-    let mut batch = batch_arc.lock().await;
-    let mut iter = db.scan_prefix(d_prefix);
+    measure_db_op!("doc_remove", {
+        let file_global_path = filesystem_path_to_double_colon_path(cpath);
+        let d_prefix = format!("d|{}::", file_global_path.join("::"));
+        let db = ast_index.sleddb.clone();
+        let batch_arc = flush_sled_batch(ast_index.clone(), 100).await;
+        let mut batch = batch_arc.lock().await;
+        let mut iter = measure_db_op!("doc_remove.scan_prefix", {
+            db.scan_prefix(d_prefix)
+        });
     let mut deleted_defs: i32 = 0;
     let mut deleted_usages: i32 = 0;
     while let Some(Ok((key, value))) = iter.next() {
@@ -300,31 +324,66 @@ pub async fn doc_remove(ast_index: Arc<AstDB>, cpath: &String)
     }
     _increase_counter(ast_index.clone(), "counters|defs", -deleted_defs).await;
     _increase_counter(ast_index.clone(), "counters|usages", -deleted_usages).await;
+    })
 }
 
-pub async fn doc_defs(ast_index: Arc<AstDB>, cpath: &String) -> Vec<Arc<AstDefinition>>
+pub async fn doc_defs(ast_index: Arc<AstDB>, cpath: &String, info: bool) -> Vec<Arc<AstDefinition>>
 {
     let db = ast_index.sleddb.clone();
-    doc_def_internal(db, cpath)
+    doc_def_internal(db, cpath, info).await
 }
 
-pub fn doc_def_internal(db: Arc<Db>, cpath: &String) -> Vec<Arc<AstDefinition>>
+pub async fn doc_def_internal(db: Arc<Db>, cpath: &String, info: bool) -> Vec<Arc<AstDefinition>>
 {
-    let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
-    let d_prefix = format!("d|{}::", to_search_prefix.join("::"));
-    let mut defs = Vec::new();
-    let mut iter = db.scan_prefix(d_prefix);
-    while let Some(Ok((_, value))) = iter.next() {
-        if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
-            defs.push(Arc::new(definition));
+    measure_db_op!("doc_def_internal", {
+        let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
+        let d_prefix = format!("d|{}::", to_search_prefix.join("::"));
+        let mut defs = Vec::new();
+        let t0 = tokio::time::Instant::now();
+        let mut iter = measure_db_op!("doc_def_internal.scan_prefix", {
+            db.scan_prefix(d_prefix)
+        });
+        if info { tracing::info!("scan_prefix took {}s", t0.elapsed().as_secs_f64()); }
+
+        let info_clone = info.clone();
+
+        // Manually collect items with logging/tracing for each segment
+        let values = measure_db_op!("doc_def_internal.spawn_blocking", {
+            tokio::task::spawn_blocking(move || {
+                let mut collected = Vec::new();
+                let mut seg_count = 0;
+                while let Some(res) = iter.next() {
+                    if let Ok((_, value)) = res {
+                        seg_count += 1;
+                        if info_clone { tracing::info!("segment {} took {}s", seg_count, t0.elapsed().as_secs_f64()); }
+                        // We can't access `info` here, so just collect; logging will be outside
+                        collected.push(value);
+                    }
+                }
+                (collected, seg_count)
+            }).await.unwrap()
+        });
+
+        let (values, seg_count) = values;
+        if info {
+            tracing::info!("got {} segments", seg_count);
         }
-    }
-    defs
+
+        // Process the collected values
+        for value in values {
+            if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
+                defs.push(Arc::new(definition));
+            }
+        }
+
+        if info { tracing::info!("db look took {}s", t0.elapsed().as_secs_f64()); }
+        defs
+    })
 }
 
 pub async fn doc_usages(ast_index: Arc<AstDB>, cpath: &String) -> Vec<(usize, String)>
 {
-    let definitions = doc_defs(ast_index.clone(), cpath).await;
+    let definitions = doc_defs(ast_index.clone(), cpath, false).await;
     let db = ast_index.sleddb.clone();
     let mut usages = Vec::new();
 
@@ -360,8 +419,11 @@ pub struct ConnectUsageContext {
 
 pub async fn connect_usages(ast_index: Arc<AstDB>, ucx: &mut ConnectUsageContext) -> bool
 {
-    let db = ast_index.sleddb.clone();
-    let mut iter = db.scan_prefix("resolve-todo|").take(1);
+    measure_db_op!("connect_usages", {
+        let db = ast_index.sleddb.clone();
+        let mut iter = measure_db_op!("connect_usages.scan_prefix", {
+            db.scan_prefix("resolve-todo|").take(1)
+        });
 
     if let Some(Ok((todo_key, todo_value))) = iter.next() {
         let todo_key_string = String::from_utf8(todo_key.to_vec()).unwrap();
@@ -374,8 +436,8 @@ pub async fn connect_usages(ast_index: Arc<AstDB>, ucx: &mut ConnectUsageContext
             tracing::error!("connect_usages() failed to remove resolve-todo key: {:?}", e);
         }
 
-        let definitions = doc_defs(ast_index.clone(), &cpath.to_string()).await;
-        let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
+        let definitions = doc_defs(ast_index.clone(), &cpath.to_string(), false).await;
+        let batch_arc = flush_sled_batch(ast_index.clone(), 100).await;
         let mut batch = batch_arc.lock().await;
 
         let mut resolved_usages: Vec<(usize, String)> = vec![];
@@ -391,17 +453,21 @@ pub async fn connect_usages(ast_index: Arc<AstDB>, ucx: &mut ConnectUsageContext
     }
 
     false
+    })
 }
 
 pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AstDB>) -> ConnectUsageContext
 {
-    flush_sled_batch(ast_index.clone(), 0).await;
-    let db = ast_index.sleddb.clone();
-    let class_hierarchy_key = b"class-hierarchy|";
-    let existing_hierarchy: IndexMap<String, Vec<String>> = match db.get(class_hierarchy_key) {
-        Ok(Some(value)) => serde_cbor::from_slice(&value).unwrap_or_default(),
-        _ => IndexMap::new(),
-    };
+    measure_db_op!("connect_usages_look_if_full_reset_needed", {
+        flush_sled_batch(ast_index.clone(), 0).await;
+        let db = ast_index.sleddb.clone();
+        let class_hierarchy_key = b"class-hierarchy|";
+        let existing_hierarchy: IndexMap<String, Vec<String>> = measure_db_op!("connect_usages_look_if_full_reset_needed.get", {
+            match db.get(class_hierarchy_key) {
+                Ok(Some(value)) => serde_cbor::from_slice(&value).unwrap_or_default(),
+                _ => IndexMap::new(),
+            }
+        });
 
     let new_derived_from_map = _derived_from(&db).await;
     let mut batch = sled::Batch::default();
@@ -444,6 +510,7 @@ pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AstDB>) -> 
         usages_ambiguous: 0,
         t0: Instant::now(),
     }
+    })
 }
 
 lazy_static! {
@@ -456,6 +523,7 @@ async fn _connect_usages_helper(
     definition: &AstDefinition,
     batch: &mut sled::Batch
 ) -> Vec<(usize, String)> {
+    measure_db_op!("_connect_usages_helper", {
     // Data example:
     // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (2) c/cpp_goat_library::Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
@@ -595,15 +663,19 @@ async fn _connect_usages_helper(
     let cleanup_value = serde_cbor::to_vec(&all_saved_ulinks).unwrap();
     batch.insert(cleanup_key.as_bytes(), cleanup_value.as_slice());
     result
+    })
 }
 
 async fn _derived_from(db: &sled::Db) -> IndexMap<String, Vec<String>>
 {
-    // Data example:
-    // classes/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
-    let mut derived_map: IndexMap<String, Vec<String>> = IndexMap::new();
-    let t_prefix = "classes|";
-    let mut iter = db.scan_prefix(t_prefix);
+    measure_db_op!("_derived_from", {
+        // Data example:
+        // classes/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+        let mut derived_map: IndexMap<String, Vec<String>> = IndexMap::new();
+        let t_prefix = "classes|";
+        let mut iter = measure_db_op!("_derived_from.scan_prefix", {
+            db.scan_prefix(t_prefix)
+        });
     while let Some(Ok((key, value))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
         let value_string = String::from_utf8(value.to_vec()).unwrap();
@@ -654,16 +726,20 @@ async fn _derived_from(db: &sled::Db) -> IndexMap<String, Vec<String>>
     }
     // now have all_derived_from {"cpp🔎CosmicGoat": ["cpp🔎CosmicJustice", "cpp🔎Goat", "cpp🔎Animal"], "cpp🔎CosmicJustice": [], "cpp🔎Goat": ["cpp🔎Animal"], "cpp🔎Animal": []}
     all_derived_from
+    })
 }
 
 pub async fn usages(ast_index: Arc<AstDB>, full_official_path: String, limit_n: usize) -> Vec<(Arc<AstDefinition>, usize)>
 {
-    // The best way to get full_official_path is to call definitions() first
-    let db = ast_index.sleddb.clone();
-    let mut usages = Vec::new();
-    let u_prefix1 = format!("u|{} ", full_official_path); // this one has space
-    let u_prefix2 = format!("u|{}", full_official_path);
-    let mut iter = db.scan_prefix(&u_prefix1);
+    measure_db_op!("usages", {
+        // The best way to get full_official_path is to call definitions() first
+        let db = ast_index.sleddb.clone();
+        let mut usages = Vec::new();
+        let u_prefix1 = format!("u|{} ", full_official_path); // this one has space
+        let u_prefix2 = format!("u|{}", full_official_path);
+        let mut iter = measure_db_op!("usages.scan_prefix", {
+            db.scan_prefix(&u_prefix1)
+        });
     while let Some(Ok((u_key, u_value))) = iter.next() {
         if usages.len() >= limit_n {
             break;
@@ -687,16 +763,20 @@ pub async fn usages(ast_index: Arc<AstDB>, full_official_path: String, limit_n: 
         }
     }
     usages
+    })
 }
 
 pub async fn definitions(ast_index: Arc<AstDB>, double_colon_path: &str) -> Vec<Arc<AstDefinition>>
 {
-    let db = ast_index.sleddb.clone();
-    let c_prefix1 = format!("c|{} ", double_colon_path); // has space
-    let c_prefix2 = format!("c|{}", double_colon_path);
-    let mut path_groups: HashMap<usize, Vec<String>> = HashMap::new();
-    // println!("definitions(c_prefix={:?})", c_prefix);
-    let mut iter = db.scan_prefix(&c_prefix1);
+    measure_db_op!("definitions", {
+        let db = ast_index.sleddb.clone();
+        let c_prefix1 = format!("c|{} ", double_colon_path); // has space
+        let c_prefix2 = format!("c|{}", double_colon_path);
+        let mut path_groups: HashMap<usize, Vec<String>> = HashMap::new();
+        // println!("definitions(c_prefix={:?})", c_prefix);
+        let mut iter = measure_db_op!("definitions.scan_prefix", {
+            db.scan_prefix(&c_prefix1)
+        });
     while let Some(Ok((key, _))) = iter.next() {
         let key_string = String::from_utf8(key.to_vec()).unwrap();
         if key_string.contains(" ⚡ ") {
@@ -726,15 +806,17 @@ pub async fn definitions(ast_index: Arc<AstDB>, double_colon_path: &str) -> Vec<
         }
     }
     defs
+    })
 }
 
 #[allow(dead_code)]
 pub async fn type_hierarchy(ast_index: Arc<AstDB>, language: String, subtree_of: String) -> String
 {
-    // Data example:
-    // classes/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
-    // classes/cpp🔎CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
-    // classes/cpp🔎Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
+    measure_db_op!("type_hierarchy", {
+        // Data example:
+        // classes/cpp🔎Animal ⚡ alt_testsuite::cpp_goat_library::Goat 👉 "cpp🔎Goat"
+        // classes/cpp🔎CosmicJustice ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
+        // classes/cpp🔎Goat ⚡ alt_testsuite::cpp_goat_main::CosmicGoat 👉 "cpp🔎CosmicGoat"
     //
     // Output for that data:
     // type_hierarchy("cpp", "")
@@ -791,12 +873,14 @@ pub async fn type_hierarchy(ast_index: Arc<AstDB>, language: String, subtree_of:
     }
 
     result
+    })
 }
 
 pub async fn definition_paths_fuzzy(ast_index: Arc<AstDB>, pattern: &str, top_n: usize, max_candidates_to_consider: usize) -> Vec<String> {
-    let db = ast_index.sleddb.clone();
-    let mut candidates = HashSet::new();
-    let mut patterns_to_try = Vec::new();
+    measure_db_op!("definition_paths_fuzzy", {
+        let db = ast_index.sleddb.clone();
+        let mut candidates = HashSet::new();
+        let mut patterns_to_try = Vec::new();
 
     let parts: Vec<&str> = pattern.split("::").collect();
     for i in 0..parts.len() {
@@ -839,14 +923,18 @@ pub async fn definition_paths_fuzzy(ast_index: Arc<AstDB>, pattern: &str, top_n:
             }
         })
         .collect()
+    })
 }
 
 #[allow(dead_code)]
 pub async fn dump_database(ast_index: Arc<AstDB>) -> usize
 {
-    let db = ast_index.sleddb.clone();
-    println!("\nsled has {} records", db.len());
-    let iter = db.iter();
+    measure_db_op!("dump_database", {
+        let db = ast_index.sleddb.clone();
+        println!("\nsled has {} records", db.len());
+        let iter = measure_db_op!("dump_database.iter", {
+            db.iter()
+        });
     for item in iter {
         let (key, value) = item.unwrap();
         let key_string = String::from_utf8(key.to_vec()).unwrap();
@@ -869,6 +957,7 @@ pub async fn dump_database(ast_index: Arc<AstDB>) -> usize
     }
     println!("dump_database over");
     db.len()
+    })
 }
 
 
