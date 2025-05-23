@@ -328,3 +328,62 @@ impl PathTrie {
         count
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_match() {
+        let paths = vec![
+            PathBuf::from("/home/user/project1/file1.ext"),
+            PathBuf::from("/home/user/project1/file2.ext"),
+            PathBuf::from("/home/user/project2/file1.ext"),
+            PathBuf::from("/home/user/project2/project3/file1.ext"),
+            PathBuf::from("/home/user/project5/file1.ext"),
+        ];
+
+        let workspace_folders = vec![
+            PathBuf::from("/home/user/project1"),
+            PathBuf::from("/home/user/project2"),
+            PathBuf::from("/home/user/project2/project3"),
+            PathBuf::from("/home/user/project4"),
+        ];
+
+        let trie = PathTrie::build(&paths, &workspace_folders);
+
+        assert_eq!(trie.find_matches(&PathBuf::from("project4")).len(), 0, "Invalid number of matches (none)");
+        assert_eq!(trie.find_matches(&PathBuf::from("roject2/file1.ext")).len(), 0, "Invalid number of matches (truncated path)");
+        assert_eq!(trie.find_matches(&PathBuf::from("file2.ext")).len(), 1, "Invalid number of matches (single filename)");
+        assert_eq!(trie.find_matches(&PathBuf::from("user/project2/file1.ext")).len(), 1, "Invalid number of matches (single path)");
+        assert_eq!(trie.find_matches(&PathBuf::from("file1.ext")).len(), 4, "Invalid number of matches (multiple)");
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_match() {
+        let paths = vec![
+            PathBuf::from(r#"C:\\Documents\User 1\project1\file1.ext"#),
+            PathBuf::from(r#"C:\\Documents\User 1\project1\file2.ext"#),
+            PathBuf::from(r#"C:\\Documents\User 1\project2\file1.ext"#),
+            PathBuf::from(r#"C:\\Documents\User 1\project2\project 3\file1.ext"#),
+            PathBuf::from(r#"D:\\project 5\file1.ext"#),
+        ];
+
+        let workspace_folders = vec![
+            PathBuf::from(r#"C:\\Documents\User 1\project1"#),
+            PathBuf::from(r#"C:\\Documents\User 1\project2"#),
+            PathBuf::from(r#"C:\\Documents\User 1\project2\project 3"#),
+            PathBuf::from(r#"C:\\Documents\User 1\project4"#),
+        ];
+
+        let trie = PathTrie::build(&paths, &workspace_folders);
+
+        assert_eq!(trie.find_matches(&PathBuf::from("project4")).len(), 0, "Invalid number of matches (none)");
+        assert_eq!(trie.find_matches(&PathBuf::from(r#"roject2\file1.ext"#)).len(), 0, "Invalid number of matches (truncated path)");
+        assert_eq!(trie.find_matches(&PathBuf::from("file2.ext")).len(), 1, "Invalid number of matches (single filename)");
+        assert_eq!(trie.find_matches(&PathBuf::from(r#"User 1\project2\file1.ext"#)).len(), 1, "Invalid number of matches (single path)");
+        assert_eq!(trie.find_matches(&PathBuf::from("file1.ext")).len(), 4, "Invalid number of matches (multiple)");
+    }
+}
