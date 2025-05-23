@@ -34,7 +34,7 @@ export const MCPLogs: React.FC<MCPLogsProps> = ({
         Runtime logs of {integrationName} server
       </Heading>
       <Text color="gray" size="2">
-        Real-time diagnostic information from the MCP server process. These logs
+        Real-time diagnostic information from the MCP server. These logs
         help troubleshoot connection issues, monitor tool execution status, and
         verify proper server initialization. Critical for debugging when tools
         aren&apos;t appearing or functioning as expected.
