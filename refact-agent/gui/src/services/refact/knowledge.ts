@@ -1,13 +1,8 @@
 import { RootState } from "../../app/store";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
-import {
-  COMPRESS_MESSAGES_URL,
-  KNOWLEDGE_CREATE_URL,
-  SET_ACTIVE_WORKSPACE_ID,
-} from "./consts";
-import { isDetailMessage, type ChatMessages } from ".";
-import { type Workspace } from "../smallcloud/types";
+import { COMPRESS_MESSAGES_URL, KNOWLEDGE_CREATE_URL } from "./consts";
+import { type ChatMessages } from ".";
 
 export type SubscribeArgs =
   | {
@@ -169,49 +164,6 @@ export const knowledgeApi = createApi({
         return { data: response.data };
       },
     }),
-
-    setActiveWorkspaceId: builder.mutation<
-      unknown,
-      { workspace_id: Workspace["workspace_id"] }
-    >({
-      async queryFn(arg, api, extraOptions, baseQuery) {
-        const state = api.getState() as RootState;
-        const port = state.config.lspPort as unknown as number;
-        const url = `http://127.0.0.1:${port}${SET_ACTIVE_WORKSPACE_ID}`;
-        const response = await baseQuery({
-          ...extraOptions,
-          url,
-          method: "POST",
-          body: JSON.stringify(arg),
-        });
-
-        if (response.error) {
-          return { error: response.error };
-        }
-
-        if (isDetailMessage(response.data)) {
-          return {
-            error: {
-              status: "CUSTOM_ERROR",
-              error: `Error: ${response.data.detail}`,
-              data: response.data,
-            },
-          };
-        }
-
-        if (!isSuccess(response.data)) {
-          return {
-            error: {
-              status: "CUSTOM_ERROR",
-              error: `Invalid response from ${url}`,
-              data: response.data,
-            },
-          };
-        }
-
-        return { data: response.data };
-      },
-    }),
   }),
 });
 
@@ -229,14 +181,4 @@ function isCompressMessagesResponse(
   if (!("trajectory" in data) || typeof data.trajectory !== "string")
     return false;
   return true;
-}
-
-function isSuccess(data: unknown): data is { success: true } {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "success" in data &&
-    typeof data.success === "boolean" &&
-    data.success
-  );
 }

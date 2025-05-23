@@ -146,7 +146,7 @@ export const loginPollingGood: HttpHandler = http.get(
       inference_url: "https://www.smallcloud.ai/v1",
       inference: "PRO",
       metering_balance: -100000,
-      workspaces: [],
+      // workspaces: [],
       questionnaire: {},
       secret_key: "shhhhhhhhh",
       tooltip_message: "",

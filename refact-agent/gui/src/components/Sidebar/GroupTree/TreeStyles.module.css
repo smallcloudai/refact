@@ -1,0 +1,43 @@
+/* Custom styles for the Tree component */
+.sidebarTree {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  width: 100%;
+  color: var(--gray-11);
+}
+
+.sidebarTree [role="treeitem"]:hover:not([aria-selected="true"]) {
+  background-color: var(--gray-4);
+}
+
+.sidebarTree [aria-selected="true"] {
+  background-color: var(--accent-3);
+  color: var(--accent-9);
+}
+
+/* Improve focus styles */
+.sidebarTree [data-focus="true"] {
+  outline: 2px solid var(--accent-7);
+  outline-offset: -2px;
+}
+
+/* TODO: still doesn't work properly for last item in the tree */
+/* Animation for collapse/expand - target all possible elements */
+.sidebarTree [role="treeitem"],
+.sidebarTree [aria-expanded="true"],
+.sidebarTree [aria-expanded="false"],
+.sidebarTree div,
+.sidebarTree svg {
+  transition: all 0.2s ease;
+}
+
+/* Give folder rows a slightly different appearance */
+.sidebarTree [aria-expanded="true"],
+.sidebarTree [aria-expanded="false"] {
+  font-weight: 500;
+  color: var(--gray-12);
+}
+
+/* Animation for icons during expand/collapse */
+.sidebarTree svg {
+  transition: transform 0.2s ease;
+}
