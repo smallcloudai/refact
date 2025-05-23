@@ -21,9 +21,9 @@ pub struct ThreadPayload {
     pub owner_fuser_id: String,
     pub owner_shared: bool,
     pub ft_id: String,
-    pub ft_fexp_name: String,
-    pub ft_fexp_ver_major: i64,
-    pub ft_fexp_ver_minor: i64,
+    pub ft_fexp_name: Option<String>,
+    pub ft_fexp_ver_major: Option<i64>,
+    pub ft_fexp_ver_minor: Option<i64>,
     pub ft_title: String,
     pub ft_error: String,
     pub ft_updated_ts: f64,
@@ -335,6 +335,15 @@ async fn events_loop(
                                         match crate::cloud::threads_req::get_thread_messages(gcx.clone(), &payload.ft_id, 100).await {
                                             Ok(messages) => {
                                                 warn!("Thread messages:\n{:?}", messages);
+                                            },
+                                            Err(err) => {
+                                                error!("{}", err);
+                                            }
+                                        }
+                                        
+                                        match crate::cloud::experts_req::get_expert(gcx.clone(), "agent").await {
+                                            Ok(messages) => {
+                                                warn!("Expert:\n{:?}", messages);
                                             },
                                             Err(err) => {
                                                 error!("{}", err);

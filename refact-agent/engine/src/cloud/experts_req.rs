@@ -48,14 +48,14 @@ pub struct ExpertResponse {
 
 pub async fn get_expert(
     gcx: Arc<ARwLock<GlobalContext>>,
-    expert_id: &str,
+    expert_name: &str,
 ) -> Result<Expert, String> {
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
 
     let query = r#"
-    query GetExpert($id: String!) {
-        expert(id: $id) {
+    query GetExpert($located_fgroup_id: String!, $skip: Int!, $limit: Int!) {
+        expert_list(located_fgroup_id: $located_fgroup_id, skip: $skip, limit: $limit) {
             owner_fuser_id
             owner_shared
             located_fgroup_id
@@ -71,7 +71,9 @@ pub async fn get_expert(
     "#;
 
     let variables = json!({
-        "id": expert_id
+        "located_fgroup_id": "solar_root".to_string(),
+        "skip": 0,
+        "limit": 100
     });
 
     let response = client
@@ -102,18 +104,27 @@ pub async fn get_expert(
         }
 
         if let Some(data) = response_json.get("data") {
-            if let Some(expert_value) = data.get("expert") {
-                let expert: Expert = serde_json::from_value(expert_value.clone())
-                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
+            if let Some(expert_list) = data.get("expert_list") {
+                if let Some(experts) = expert_list.as_array() {
+                    // Find the expert with the matching name
+                    for expert_value in experts {
+                        if let Some(name) = expert_value.get("fexp_name") {
+                            if name.as_str() == Some(expert_name) {
+                                let expert: Expert = serde_json::from_value(expert_value.clone())
+                                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
 
-                info!("Successfully retrieved expert {}", expert_id);
-                return Ok(expert);
+                                info!("Successfully retrieved expert {}", expert_name);
+                                return Ok(expert);
+                            }
+                        }
+                    }
+                }
             }
         }
 
         Err(format!(
-            "Expert not found or unexpected response format: {}",
-            response_body
+            "Expert with name '{}' not found or unexpected response format: {}",
+            expert_name, response_body
         ))
     } else {
         let status = response.status();
@@ -122,8 +133,8 @@ pub async fn get_expert(
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
         Err(format!(
-            "Failed to get expert: HTTP status {}, error: {}",
-            status, error_text
+            "Failed to get expert with name {}: HTTP status {}, error: {}",
+            expert_name, status, error_text
         ))
     }
 }
