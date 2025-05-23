@@ -40,7 +40,7 @@ export const CreateNewGroup = <T extends FlexusTreeNode>({
         : [{ id: uuidv4(), name: groupName }],
     };
 
-    const updatedTree = updateNodeByPath(
+    const updatedTree = updateNodeById(
       tree.props.data,
       currentGroup.treenodePath,
       () => updatedGroup,
@@ -87,22 +87,22 @@ export const CreateNewGroup = <T extends FlexusTreeNode>({
   );
 };
 
-function updateNodeByPath<T extends FlexusTreeNode>(
+function updateNodeById<T extends FlexusTreeNode>(
   nodes: readonly T[] | undefined,
-  path: string,
+  id: string,
   updater: (node: T) => T,
 ): T[] {
   if (!nodes) return [];
   return nodes.map((node) => {
-    if (node.treenodePath === path) {
+    if (node.treenodeId === id) {
       return updater(node);
     }
     if (node.treenodeChildren) {
       return {
         ...node,
-        treenodeChildren: updateNodeByPath(
+        treenodeChildren: updateNodeById(
           node.treenodeChildren as T[],
-          path,
+          id,
           updater,
         ),
       };
