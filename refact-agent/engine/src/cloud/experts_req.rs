@@ -21,29 +21,16 @@ pub struct Expert {
     pub fexp_allow_tools: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExpertInput {
-    pub owner_fuser_id: String,
-    pub owner_shared: bool,
-    pub located_fgroup_id: String,
-    pub fexp_name: String,
-    pub fexp_ver_major: i32,
-    pub fexp_ver_minor: i32,
-    pub fexp_system_prompt: String,
-    pub fexp_python_kernel: String,
-    pub fexp_block_tools: String,
-    pub fexp_allow_tools: String,
-}
+impl Expert {
+    pub fn get_blocked_tools(&self) -> Result<Vec<String>, String> {
+        serde_json::from_str(&self.fexp_block_tools)
+            .map_err(|e| format!("Failed to decode block tools: {}", e))
+    }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExpertPatch {
-    pub owner_shared: Option<bool>,
-    pub located_fgroup_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExpertResponse {
-    pub expert: Expert,
+    pub fn get_allowed_tools(&self) -> Result<Vec<String>, String> {
+        serde_json::from_str(&self.fexp_allow_tools)
+            .map_err(|e| format!("Failed to decode allow tools: {}", e))
+    }
 }
 
 pub async fn get_expert(
