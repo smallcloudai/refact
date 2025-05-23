@@ -62,19 +62,9 @@ const tipOfTheDayPersistConfig = {
   stateReconciler: mergeInitialState,
 };
 
-const teamsPersistConfig = {
-  key: "teams",
-  storage: storage(),
-  stateReconciler: mergeInitialState,
-};
-
 const persistedTipOfTheDayReducer = persistReducer<
   ReturnType<typeof tipOfTheDaySlice.reducer>
 >(tipOfTheDayPersistConfig, tipOfTheDaySlice.reducer);
-
-const persistedTeamsReducer = persistReducer<
-  ReturnType<typeof teamsSlice.reducer>
->(teamsPersistConfig, teamsSlice.reducer);
 
 // https://redux-toolkit.js.org/api/combineSlices
 // `combineSlices` automatically combines the reducers using
@@ -85,7 +75,6 @@ const rootReducer = combineSlices(
     tour: tourReducer,
     // tipOfTheDay: persistedTipOfTheDayReducer,
     [tipOfTheDaySlice.reducerPath]: persistedTipOfTheDayReducer,
-    [teamsSlice.reducerPath]: persistedTeamsReducer,
     config: configReducer,
     active_file: activeFileReducer,
     current_project: currentProjectInfoReducer,
@@ -116,6 +105,7 @@ const rootReducer = combineSlices(
   confirmationSlice,
   attachedImagesSlice,
   userSurveySlice,
+  teamsSlice,
   integrationsSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,

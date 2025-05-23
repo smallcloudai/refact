@@ -79,6 +79,9 @@ export const ideForceReloadProjectTreeFiles = createAction(
 export const ideSetActiveTeamsGroup = createAction<TeamsGroup>(
   "ide/setActiveTeamsGroup",
 );
+export const ideClearActiveTeamsGroup = createAction<undefined>(
+  "ide/clearActiveTeamsGroup",
+);
 
 export const useEventsBusForIDE = () => {
   const [sendTelemetryEvent] =
@@ -286,6 +289,11 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const clearActiveTeamsGroupInIDE = useCallback(() => {
+    const action = ideClearActiveTeamsGroup();
+    postMessage(action);
+  }, [postMessage]);
+
   return {
     diffPasteBack,
     openSettings,
@@ -309,5 +317,6 @@ export const useEventsBusForIDE = () => {
     setCodeCompletionModel,
     setLoginMessage,
     setActiveTeamsGroupInIDE,
+    clearActiveTeamsGroupInIDE,
   };
 };

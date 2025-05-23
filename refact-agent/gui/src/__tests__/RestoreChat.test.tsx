@@ -35,11 +35,6 @@ describe("Restore Chat from history", () => {
         pages: [{ name: "login page" }, { name: "history" }],
         teams: {
           group: { id: "123", name: "test" },
-          // workspace: null,
-          _persist: {
-            version: 1,
-            rehydrated: true,
-          },
         },
         history: {
           id: {
