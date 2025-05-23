@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use futures::{SinkExt, StreamExt};
 use tokio_tungstenite::{
     connect_async, 
@@ -13,21 +13,24 @@ use serde_json::{json, Value};
 use url::Url;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use serde::{Deserialize, Serialize};
-
+use crate::cloud::threads_req::{Thread, ThreadMessage};
 use crate::global_context::GlobalContext;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadPayload {
-    pub owner_fuser_id: Option<String>,
-    pub owner_shared: Option<bool>,
-    pub ft_id: Option<String>,
-    pub ft_title: Option<String>,
-    pub ft_error: Option<String>,
-    pub ft_updated_ts: Option<f64>,
-    pub ft_locked_by: Option<String>,
-    pub ft_need_assistant: Option<i64>,
-    pub ft_anything_new: Option<bool>,
-    pub ft_archived_ts: Option<f64>,
+    pub owner_fuser_id: String,
+    pub owner_shared: bool,
+    pub ft_id: String,
+    pub ft_fexp_name: String,
+    pub ft_fexp_ver_major: i64,
+    pub ft_fexp_ver_minor: i64,
+    pub ft_title: String,
+    pub ft_error: String,
+    pub ft_updated_ts: f64,
+    pub ft_locked_by: String,
+    pub ft_need_assistant: i64,
+    pub ft_anything_new: bool,
+    pub ft_archived_ts: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -158,7 +161,6 @@ mod response_type_string {
     }
 }
 
-const GRAPHQL_WS_URL: &str = "ws://localhost:8008/v1/graphql";
 const THREADS_SUBSCRIPTION_QUERY : &str = r#"
     subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {
       threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {
@@ -180,15 +182,12 @@ const THREADS_SUBSCRIPTION_QUERY : &str = r#"
     }
 "#;
 
-const API_KEY: &str = "sk_alice_123456";
-const DEFAULT_FGROUP_ID: &str = "absurdsci-fi";
-const DEFAULT_LIMIT: i32 = 100;
 
 pub async fn watch_threads_subscription(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
-    let located_fgroup_id = DEFAULT_FGROUP_ID;
-    let thread_limit = DEFAULT_LIMIT;
+    let located_fgroup_id = crate::cloud::constants::DEFAULT_FGROUP_ID;
+    let thread_limit = crate::cloud::constants::DEFAULT_LIMIT;
     
     info!("Starting GraphQL subscription for threads_in_group with fgroup_id=\"{}\" and limit={}", 
           located_fgroup_id, thread_limit);
@@ -213,7 +212,7 @@ pub async fn watch_threads_subscription(
 
 async fn initialize_connection() -> Result<futures::stream::SplitStream<tokio_tungstenite::WebSocketStream<
     tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>>, String> {
-    let url = Url::parse(GRAPHQL_WS_URL)
+    let url = Url::parse(crate::cloud::constants::GRAPHQL_WS_URL)
         .map_err(|e| format!("Failed to parse WebSocket URL: {}", e))?;
     let mut request = url.into_client_request()
         .map_err(|e| format!("Failed to create request: {}", e))?;
@@ -225,7 +224,7 @@ async fn initialize_connection() -> Result<futures::stream::SplitStream<tokio_tu
     let init_message = json!({
         "type": "connection_init",
         "payload": {
-            "apikey": API_KEY
+            "apikey": crate::cloud::constants::API_KEY
         }
     });
     
@@ -277,8 +276,8 @@ async fn initialize_connection() -> Result<futures::stream::SplitStream<tokio_tu
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,
             "variables": {
-                "located_fgroup_id": DEFAULT_FGROUP_ID,
-                "limit": DEFAULT_LIMIT
+                "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
+                "limit": crate::cloud::constants::DEFAULT_LIMIT
             }
         }
     });
@@ -321,24 +320,25 @@ async fn events_loop(
                             match &thread_event.news_action {
                                 NewsAction::Insert | NewsAction::Update => {
                                     info!("Thread was {}: id={}", thread_event.news_action.to_lowercase(), payload_id);
+                                    
 
                                     if let Some(payload) = &thread_event.news_payload {
-                                        let title = payload.ft_title.as_deref().unwrap_or("Untitled");
-                                        let owner = payload.owner_fuser_id.as_deref().unwrap_or("unknown");
-                                        let need_assistant = payload.ft_need_assistant.unwrap_or(-1);
-                                        let anything_new = payload.ft_anything_new.unwrap_or(false);
-                                        let archived_ts = payload.ft_archived_ts.unwrap_or(0.0);
-                                        let error = payload.ft_error.as_deref().unwrap_or("");
-
-                                        info!("Thread: title=\"{}\" owner=\"{}\" need_assistant={} anything_new={} archived={}",
-                                                      title, owner, need_assistant, anything_new, archived_ts > 0.0);
-
-                                        if !error.is_empty() {
-                                            info!("Thread has error: {}", error);
-                                        }
-
-                                        if need_assistant >= 0 {
-                                            info!("Thread {} needs assistance, alt={}", payload_id, need_assistant);
+                                        match crate::cloud::threads_req::get_thread(gcx.clone(), &payload.ft_id).await {
+                                            Ok(t) => {
+                                                warn!("Thread:\n{:?}", t);
+                                            },
+                                            Err(err) => {
+                                                error!("{}", err);
+                                            }
+                                        };
+                                        
+                                        match crate::cloud::threads_req::get_thread_messages(gcx.clone(), &payload.ft_id, 100).await {
+                                            Ok(messages) => {
+                                                warn!("Thread messages:\n{:?}", messages);
+                                            },
+                                            Err(err) => {
+                                                error!("{}", err);
+                                            }
                                         }
                                     }
                                 },
