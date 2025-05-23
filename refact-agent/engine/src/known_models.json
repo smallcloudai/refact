@@ -207,7 +207,9 @@
                 "anthropic/claude-3-5-sonnet",
                 "anthropic/claude-3-5-sonnet-20241022",
                 "anthropic/claude-3-7-sonnet",
-                "anthropic/claude-3-7-sonnet-20250219"
+                "anthropic/claude-3-7-sonnet-20250219",
+                "claude-sonnet-4",
+                "anthropic/claude-sonnet-4-20250514"
             ]
         },
         "groq-llama-3.1-8b": {
@@ -576,7 +578,9 @@
                 "anthropic/claude-3.7-sonnet",
                 "anthropic/claude-3-7-sonnet",
                 "anthropic/claude-3.7-sonnet-latest",
-                "anthropic/claude-3-7-sonnet-latest"
+                "anthropic/claude-3-7-sonnet-latest",
+                "claude-sonnet-4",
+                "anthropic/claude-sonnet-4-20250514"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },
