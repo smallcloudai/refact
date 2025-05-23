@@ -14,7 +14,7 @@ use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation};
-use super::session_mcp::{_add_log_entry, _session_wait_startup_task};
+use super::session_mcp::{add_log_entry, mcp_session_wait_startup};
 
 pub struct ToolMCP {
     pub common: IntegrationCommon,
@@ -53,7 +53,7 @@ impl Tool for ToolMCP {
         let model_supports_multimodality = caps_maybe.is_some_and(|caps| {
             resolve_chat_model(caps, &current_model).is_ok_and(|m| m.supports_multimodality)
         });
-        _session_wait_startup_task(session.clone()).await;
+        mcp_session_wait_startup(session.clone()).await;
 
         let json_args = serde_json::json!(args);
         tracing::info!("\n\nMCP CALL tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args);
@@ -64,7 +64,7 @@ impl Tool for ToolMCP {
             session_downcasted.logs.clone()
         };
 
-        _add_log_entry(session_logs.clone(), format!("Executing tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args)).await;
+        add_log_entry(session_logs.clone(), format!("Executing tool '{}' with arguments: {:?}", self.mcp_tool.name, json_args)).await;
 
         let result_probably = {
             let mcp_client_locked = self.mcp_client.lock().await;
@@ -92,7 +92,7 @@ impl Tool for ToolMCP {
             Ok(result) => {
                 if result.is_error.unwrap_or(false) {
                     let error_msg = format!("Tool execution error: {:?}", result.content);
-                    _add_log_entry(session_logs.clone(), error_msg.clone()).await;
+                    add_log_entry(session_logs.clone(), error_msg.clone()).await;
                     return Err(error_msg);
                 }
 
@@ -157,7 +157,7 @@ impl Tool for ToolMCP {
             Err(e) => {
                 let error_msg = format!("Failed to call tool: {:?}", e);
                 tracing::error!("{}", error_msg);
-                _add_log_entry(session_logs.clone(), error_msg).await;
+                add_log_entry(session_logs.clone(), error_msg).await;
                 return Err(e.to_string());
             }
         };

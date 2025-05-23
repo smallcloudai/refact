@@ -46,12 +46,12 @@ impl IntegrationSession for SessionMCP {
             };
 
             if let Some((_, abort_handle)) = startup_task_handles {
-                _add_log_entry(logs.clone(), "Aborted startup task".to_string()).await;
+                add_log_entry(logs.clone(), "Aborted startup task".to_string()).await;
                 abort_handle.abort();
             }
 
             if let Some(client) = client {
-                _session_kill_process(&debug_name, client, logs).await;
+                cancel_mcp_client(&debug_name, client, logs).await;
             }
             if let Some(stderr_file) = &stderr_file {
                 if let Err(e) = tokio::fs::remove_file(stderr_file).await {
@@ -64,7 +64,7 @@ impl IntegrationSession for SessionMCP {
     }
 }
 
-pub async fn _add_log_entry(session_logs: Arc<AMutex<Vec<String>>>, entry: String) {
+pub async fn add_log_entry(session_logs: Arc<AMutex<Vec<String>>>, entry: String) {
     let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
     let log_entry = format!("[{}] {}", timestamp, entry);
 
@@ -85,18 +85,18 @@ pub async fn update_logs_from_stderr(
     let (buffer, bytes_read) = read_file_with_cursor(stderr_file_path, stderr_cursor.clone()).await
         .map_err(|e| format!("Failed to read file: {}", e))?;
     if bytes_read > 0 && !buffer.trim().is_empty() {
-        _add_log_entry(session_logs, buffer.trim().to_string()).await;
+        add_log_entry(session_logs, buffer.trim().to_string()).await;
     }
     Ok(())
 }
 
-pub async fn _session_kill_process(
+pub async fn cancel_mcp_client(
     debug_name: &str,
     mcp_client: Arc<AMutex<Option<RunningService<RoleClient, ()>>>>,
     session_logs: Arc<AMutex<Vec<String>>>,
 ) {
     tracing::info!("Stopping MCP Server for {}", debug_name);
-    _add_log_entry(session_logs.clone(), "Stopping MCP Server".to_string()).await;
+    add_log_entry(session_logs.clone(), "Stopping MCP Server".to_string()).await;
 
     let client_to_cancel = {
         let mut mcp_client_locked = mcp_client.lock().await;
@@ -108,23 +108,23 @@ pub async fn _session_kill_process(
             Ok(Ok(reason)) => {
                 let success_msg = format!("MCP server stopped: {:?}", reason);
                 tracing::info!("{} for {}", success_msg, debug_name);
-                _add_log_entry(session_logs, success_msg).await;
+                add_log_entry(session_logs, success_msg).await;
             },
             Ok(Err(e)) => {
                 let error_msg = format!("Failed to stop MCP: {:?}", e);
                 tracing::error!("{} for {}", error_msg, debug_name);
-                _add_log_entry(session_logs, error_msg).await;
+                add_log_entry(session_logs, error_msg).await;
             },
             Err(_) => {
                 let error_msg = "MCP server stop operation timed out after 3 seconds".to_string();
                 tracing::error!("{} for {}", error_msg, debug_name);
-                _add_log_entry(session_logs, error_msg).await;
+                add_log_entry(session_logs, error_msg).await;
             }
         }
     }
 }
 
-pub async fn _session_wait_startup_task(
+pub async fn mcp_session_wait_startup(
     session_arc: Arc<AMutex<Box<dyn IntegrationSession>>>,
 ) {
     let startup_task_handles = {

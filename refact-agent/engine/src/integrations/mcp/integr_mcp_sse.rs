@@ -3,18 +3,19 @@ use std::sync::Arc;
 use std::sync::Weak;
 use async_trait::async_trait;
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tokio::time::timeout;
 use tokio::time::Duration;
 use rmcp::transport::common::client_side_sse::ExponentialBackoff;
 use rmcp::transport::sse_client::{SseClientTransport, SseClientConfig};
 use rmcp::serve_client;
+use rmcp::{RoleClient, service::RunningService};
 use serde::{Deserialize, Serialize};
 
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
-use super::session_mcp::{SessionMCP, _add_log_entry, _session_kill_process};
-use super::tool_mcp::ToolMCP;
-use super::integr_common_mcp::CommonMCPSettings;
+use super::session_mcp::add_log_entry;
+use super::integr_mcp_common::{CommonMCPSettings, MCPTransportInitializer, mcp_integr_tools, mcp_session_setup};
 
 #[derive(Deserialize, Serialize, Clone, PartialEq, Default, Debug)]
 pub struct SettingsMCPSse {
@@ -34,7 +35,7 @@ pub fn default_headers() -> HashMap<String, String> {
     ])
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct IntegrationMCPSse {
     pub gcx_option: Option<Weak<ARwLock<GlobalContext>>>,
     pub cfg: SettingsMCPSse,
@@ -42,174 +43,79 @@ pub struct IntegrationMCPSse {
     pub config_path: String,
 }
 
-pub async fn _session_apply_settings(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    config_path: String,
-    new_cfg: SettingsMCPSse,
-) {
-    let session_key = format!("{}", config_path);
+#[async_trait]
+impl MCPTransportInitializer for IntegrationMCPSse {
+    async fn init_mcp_transport(
+        &self,
+        logs: Arc<AMutex<Vec<String>>>,
+        debug_name: String,
+        init_timeout: u64,
+        _request_timeout: u64,
+        _session: Arc<AMutex<Box<dyn crate::integrations::sessions::IntegrationSession>>>
+    ) -> Option<RunningService<RoleClient, ()>> {
+        let log = async |level: tracing::Level, msg: String| {
+            match level {
+                tracing::Level::ERROR => tracing::error!("{msg} for {debug_name}"),
+                tracing::Level::WARN => tracing::warn!("{msg} for {debug_name}"),
+                _ => tracing::info!("{msg} for {debug_name}"),
+            }
+            add_log_entry(logs.clone(), msg).await;
+        };
 
-    let session_arc = {
-        let mut gcx_write = gcx.write().await;
-        let session = gcx_write.integration_sessions.get(&session_key).cloned();
-        if session.is_none() {
-            let new_session: Arc<tokio::sync::Mutex<Box<dyn crate::integrations::sessions::IntegrationSession>>> = Arc::new(tokio::sync::Mutex::new(Box::new(SessionMCP {
-                debug_name: session_key.clone(),
-                config_path: config_path.clone(),
-                launched_cfg: serde_json::to_value(&new_cfg).unwrap_or_default(),
-                mcp_client: None,
-                mcp_tools: Vec::new(),
-                startup_task_handles: None,
-                logs: Arc::new(tokio::sync::Mutex::new(Vec::new())),
-                stderr_file_path: None,
-                stderr_cursor: Arc::new(tokio::sync::Mutex::new(0)),
-            })));
-            tracing::info!("MCP SSE START SESSION {:?}", session_key);
-            gcx_write.integration_sessions.insert(session_key.clone(), new_session.clone());
-            new_session
-        } else {
-            session.unwrap()
+        let url = self.cfg.mcp_url.trim();
+        if url.is_empty() {
+            log(tracing::Level::ERROR, "URL is empty for SSE transport".to_string()).await;
+            return None;
         }
-    };
 
-    let new_cfg_clone = new_cfg.clone();
-    let session_arc_clone = session_arc.clone();
-
-    {
-        let mut session_locked = session_arc.lock().await;
-        let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-
-        // If it's same config, and there is an mcp client, or startup task is running, skip
-        let current_cfg_value = serde_json::to_value(&new_cfg).unwrap_or_default();
-        if current_cfg_value == session_downcasted.launched_cfg {
-            if session_downcasted.mcp_client.is_some() || session_downcasted.startup_task_handles.as_ref().map_or(
-                false, |h| !h.1.is_finished()
+        let mut header_map = reqwest::header::HeaderMap::new();
+        for (k, v) in &self.cfg.mcp_headers {
+            match (reqwest::header::HeaderName::from_bytes(k.as_bytes()),
+                reqwest::header::HeaderValue::from_str(v),
             ) {
-                return;
+                (Ok(name), Ok(value)) => {
+                    header_map.insert(name, value);
+                }
+                _ => log(tracing::Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
             }
         }
 
-        let startup_task_join_handle = tokio::spawn(async move {
-            let (mcp_client, logs, debug_name, stderr_file) = {
-                let mut session_locked = session_arc_clone.lock().await;
-                let mcp_session = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-                mcp_session.stderr_cursor = Arc::new(tokio::sync::Mutex::new(0));
-                mcp_session.launched_cfg = serde_json::to_value(&new_cfg_clone).unwrap_or_default();
-                (
-                    std::mem::take(&mut mcp_session.mcp_client),
-                    mcp_session.logs.clone(),
-                    mcp_session.debug_name.clone(),
-                    std::mem::take(&mut mcp_session.stderr_file_path),
-                )
-            };
-
-            let log = async |level: tracing::Level, msg: String| {
-                match level {
-                    tracing::Level::ERROR => tracing::error!("{msg} for {debug_name}"),
-                    tracing::Level::WARN => tracing::warn!("{msg} for {debug_name}"),
-                    _ => tracing::info!("{msg} for {debug_name}"),
-                }
-                _add_log_entry(logs.clone(), msg).await;
-            };
-
-            log(tracing::Level::INFO, "Applying new settings".to_string()).await;
-
-            if let Some(mcp_client) = mcp_client {
-                _session_kill_process(&debug_name, mcp_client, logs.clone()).await;
+        let client = match reqwest::Client::builder().default_headers(header_map).build() {
+            Ok(reqwest_client) => reqwest_client,
+            Err(e) => {
+                log(tracing::Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
+                return None;
             }
-            if let Some(stderr_file) = &stderr_file {
-                if let Err(e) = tokio::fs::remove_file(stderr_file).await {
-                    log(tracing::Level::ERROR, format!("Failed to remove {}: {}", stderr_file.to_string_lossy(), e)).await;
-                }
+        };
+
+        let client_config = SseClientConfig {
+            sse_endpoint: Arc::<str>::from(url),
+            retry_policy: Arc::new(ExponentialBackoff {
+                max_times: Some(3),
+                base_duration: Duration::from_millis(500),
+            }),
+            ..Default::default()
+        };
+
+        let transport = match SseClientTransport::start_with_client(client, client_config).await {
+            Ok(t) => t,
+            Err(e) => {
+                log(tracing::Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
+                return None;
             }
+        };
 
-            let url = new_cfg_clone.mcp_url.trim();
-            if url.is_empty() {
-                log(tracing::Level::ERROR, "URL is empty for SSE transport".to_string()).await;
-                return;
+        match timeout(Duration::from_secs(init_timeout), serve_client((), transport)).await {
+            Ok(Ok(client)) => Some(client),
+            Ok(Err(e)) => {
+                log(tracing::Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
+                None
+            },
+            Err(_) => {
+                log(tracing::Level::ERROR, format!("Request timed out after {} seconds", init_timeout)).await;
+                None
             }
-
-            let mut header_map = reqwest::header::HeaderMap::new();
-            for (k, v) in &new_cfg_clone.mcp_headers {
-                match (reqwest::header::HeaderName::from_bytes(k.as_bytes()),
-                    reqwest::header::HeaderValue::from_str(v),
-                ) {
-                    (Ok(name), Ok(value)) => {
-                        header_map.insert(name, value);
-                    }
-                    _ => log(tracing::Level::WARN, format!("Invalid header: {}: {}", k, v)).await,
-                }
-            }
-
-            let client = match reqwest::Client::builder().default_headers(header_map).build() {
-                Ok(reqwest_client) => reqwest_client,
-                Err(e) => {
-                    log(tracing::Level::ERROR, format!("Failed to build reqwest client: {}", e)).await;
-                    return;
-                }
-            };
-
-            let client_config = SseClientConfig {
-                sse_endpoint: Arc::<str>::from(url),
-                retry_policy: Arc::new(ExponentialBackoff {
-                    max_times: Some(3),
-                    base_duration: Duration::from_millis(500),
-                }),
-                ..Default::default()
-            };
-
-            let transport = match SseClientTransport::start_with_client(client, client_config).await {
-                Ok(t) => t,
-                Err(e) => {
-                    log(tracing::Level::ERROR, format!("Failed to init SSE transport: {}", e)).await;
-                    return;
-                }
-            };
-
-            let client = match timeout(Duration::from_secs(new_cfg_clone.common.init_timeout), serve_client((), transport)).await {
-                Ok(Ok(client)) => client,
-                Ok(Err(e)) => {
-                    log(tracing::Level::ERROR, format!("Failed to init SSE server: {}", e)).await;
-                    return;
-                },
-                Err(_) => {
-                    log(tracing::Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.common.init_timeout)).await;
-                    return;
-                }
-            };
-
-            log(tracing::Level::INFO, "Listing tools".to_string()).await;
-
-            let tools = match timeout(Duration::from_secs(new_cfg_clone.common.request_timeout), client.list_all_tools()).await {
-                Ok(Ok(result)) => result,
-                Ok(Err(tools_error)) => {
-                    log(tracing::Level::ERROR, format!("Failed to list tools: {:?}", tools_error)).await;
-                    return;
-                },
-                Err(_) => {
-                    log(tracing::Level::ERROR, format!("Request timed out after {} seconds", new_cfg_clone.common.request_timeout)).await;
-                    return;
-                }
-            };
-            let tools_len = tools.len();
-
-            {
-                let mut session_locked = session_arc_clone.lock().await;
-                let session_downcasted = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-
-                session_downcasted.mcp_client = Some(Arc::new(tokio::sync::Mutex::new(Some(client))));
-                session_downcasted.mcp_tools = tools;
-
-                session_downcasted.mcp_tools.len()
-            };
-
-            log(tracing::Level::INFO, format!("MCP SSE session setup complete with {tools_len} tools")).await;
-        });
-
-        let startup_task_abort_handle = startup_task_join_handle.abort_handle();
-        session_downcasted.startup_task_handles = Some(
-            (Arc::new(tokio::sync::Mutex::new(Some(startup_task_join_handle))), startup_task_abort_handle)
-        );
+        }
     }
 }
 
@@ -223,8 +129,17 @@ impl IntegrationTrait for IntegrationMCPSse {
         self.gcx_option = Some(Arc::downgrade(&gcx));
         self.cfg = serde_json::from_value(value.clone())?;
         self.common = serde_json::from_value(value.clone())?;
-        self.config_path = config_path;
-        _session_apply_settings(gcx.clone(), self.config_path.clone(), self.cfg.clone()).await;
+        self.config_path = config_path.clone();
+
+        mcp_session_setup(
+            gcx,
+            config_path,
+            serde_json::to_value(&self.cfg).unwrap_or_default(),
+            self.clone(),
+            self.cfg.common.init_timeout,
+            self.cfg.common.request_timeout
+        ).await;
+
         Ok(())
     }
 
@@ -237,51 +152,12 @@ impl IntegrationTrait for IntegrationMCPSse {
     }
 
     async fn integr_tools(&self, _integr_name: &str) -> Vec<Box<dyn crate::tools::tools_description::Tool + Send>> {
-        let session_key = format!("{}", self.config_path);
-
-        let gcx = match self.gcx_option.clone() {
-            Some(gcx_weak) => match gcx_weak.upgrade() {
-                Some(gcx) => gcx,
-                None => {
-                    tracing::error!("Error: System is shutting down");
-                    return vec![];
-                }
-            },
-            None => {
-                tracing::error!("Error: MCP SSE is not set up yet");
-                return vec![];
-            }
-        };
-
-        let session_maybe = gcx.read().await.integration_sessions.get(&session_key).cloned();
-        let session = match session_maybe {
-            Some(session) => session,
-            None => {
-                tracing::error!("No session for {:?}, strange (1)", session_key);
-                return vec![];
-            }
-        };
-
-        let mut result: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> = vec![];
-        {
-            let mut session_locked = session.lock().await;
-            let session_downcasted: &mut SessionMCP = session_locked.as_any_mut().downcast_mut::<SessionMCP>().unwrap();
-            if session_downcasted.mcp_client.is_none() {
-                tracing::error!("No mcp_client for {:?}, strange (2)", session_key);
-                return vec![];
-            }
-            for tool in session_downcasted.mcp_tools.iter() {
-                result.push(Box::new(ToolMCP {
-                    common: self.common.clone(),
-                    config_path: self.config_path.clone(),
-                    mcp_client: session_downcasted.mcp_client.clone().unwrap(),
-                    mcp_tool: tool.clone(),
-                    request_timeout: self.cfg.common.request_timeout,
-                }));
-            }
-        }
-
-        result
+        mcp_integr_tools(
+            self.gcx_option.clone(),
+            &self.config_path,
+            &self.common,
+            self.cfg.common.request_timeout
+        ).await
     }
 
     fn integr_schema(&self) -> &str {
