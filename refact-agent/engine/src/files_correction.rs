@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn test_make_cache_speed() {
         // Arrange
-        let workspace_paths = vec![
+        let workspace_folders = vec![
             PathBuf::from("home").join("user").join("repo1"),
             PathBuf::from("home").join("user").join("repo2"),
             PathBuf::from("home").join("user").join("repo3"),
@@ -635,24 +635,25 @@ mod tests {
 
         let mut paths = Vec::new();
         for i in 0..100000 {
-            let path = workspace_paths[i % workspace_paths.len()]
+            let path = workspace_folders[i % workspace_folders.len()]
                 .join(format!("dir{}", i % 1000))
                 .join(format!("dir{}", i / 1000))
                 .join(format!("file{}.ext", i));
             paths.push(path);
         }
-        let start_time = std::time::Instant::now();
+        let start_time = Instant::now();
 
         // Act
-        let (_, cache_shortened_result, cnt) = make_cache(&paths, &workspace_paths);
+        let cache_correction = CacheCorrection::build(&paths, &workspace_folders);
+        let cache_shortened_result_vec = cache_correction.filenames.short_paths_iter().collect::<Vec<_>>();
 
         // Assert
         let time_spent = start_time.elapsed();
         println!("make_cache took {} ms", time_spent.as_millis());
         assert!(time_spent.as_millis() < 2500, "make_cache took {} ms", time_spent.as_millis());
 
-        assert_eq!(cnt, 100000, "The cache should contain 100000 paths");
-        assert_eq!(cache_shortened_result.len(), cnt);
+        assert_eq!(cache_correction.filenames.len(), paths.len(), "The cache should contain 100000 paths");
+        assert_eq!(cache_shortened_result_vec.len(), paths.len(), "The cache shortened should contain 100000 paths");
     }
 
     // cicd works with virtual machine, this test is slow
