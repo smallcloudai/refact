@@ -11,7 +11,7 @@ use crate::global_context::GlobalContext;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SetActiveGroupIdPost {
-    pub group_id: usize,
+    pub group_id: String,
 }
 
 

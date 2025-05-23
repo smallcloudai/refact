@@ -125,7 +125,7 @@ pub async fn memories_add(
         "knowledge_memory": m_memory
     });
     if !unknown_project {
-        body["group_id"] = Value::from(active_group_id);
+        body["group_id"] = Value::from(active_group_id.clone());
     }
     let response = client.post(
         format!("https://test-teams-v1.smallcloud.ai/v1/knowledge/upload?group_id={}", active_group_id)
