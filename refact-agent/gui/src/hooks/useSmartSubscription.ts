@@ -13,6 +13,7 @@ interface UseSmartSubscriptionArgs<
   query: string | DocumentNode | TypedDocumentNode<TData, TVariables>;
   variables?: TVariables;
   pauseAfterMs?: number;
+  onUpdate?: (data: TData) => void;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,6 +52,7 @@ export function useSmartSubscription<
   query,
   variables,
   pauseAfterMs = THREE_MINUTES,
+  onUpdate,
 }: UseSmartSubscriptionArgs<
   TData,
   TVariables
@@ -58,7 +60,10 @@ export function useSmartSubscription<
   const [paused, setPaused] = useState(false);
   const [res, executeSubscription] = useSubscription(
     { query, variables: (variables ?? {}) as TVariables, pause: paused },
-    (_, data) => data,
+    (_, data) => {
+      if (onUpdate) onUpdate(data);
+      return data;
+    },
   );
   const { data, error } = res;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

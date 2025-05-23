@@ -30,13 +30,53 @@ export type Scalars = {
   JSON: { input: any; output: any };
 };
 
+export type FExpertInput = {
+  fexp_allow_tools: Scalars["String"]["input"];
+  fexp_block_tools: Scalars["String"]["input"];
+  fexp_name: Scalars["String"]["input"];
+  fexp_python_kernel: Scalars["String"]["input"];
+  fexp_system_prompt: Scalars["String"]["input"];
+  fexp_ver_major: Scalars["Int"]["input"];
+  fexp_ver_minor: Scalars["Int"]["input"];
+  located_fgroup_id: Scalars["String"]["input"];
+  owner_fuser_id: Scalars["String"]["input"];
+  owner_shared: Scalars["Boolean"]["input"];
+};
+
+export type FExpertOutput = {
+  __typename?: "FExpertOutput";
+  fexp_allow_tools: Scalars["String"]["output"];
+  fexp_block_tools: Scalars["String"]["output"];
+  fexp_name: Scalars["String"]["output"];
+  fexp_python_kernel: Scalars["String"]["output"];
+  fexp_system_prompt: Scalars["String"]["output"];
+  fexp_ver_major: Scalars["Int"]["output"];
+  fexp_ver_minor: Scalars["Int"]["output"];
+  located_fgroup_id: Scalars["String"]["output"];
+  owner_fuser_id: Scalars["String"]["output"];
+  owner_shared: Scalars["Boolean"]["output"];
+};
+
+export type FExpertPatch = {
+  located_fgroup_id?: InputMaybe<Scalars["String"]["input"]>;
+  owner_shared?: InputMaybe<Scalars["Boolean"]["input"]>;
+};
+
+export type FExpertSubs = {
+  __typename?: "FExpertSubs";
+  news_action: Scalars["String"]["output"];
+  news_payload: FExpertOutput;
+  news_payload_id: Scalars["String"]["output"];
+};
+
 export type FKnowledgeItem = {
   __typename?: "FKnowledgeItem";
   iknow_created_ts: Scalars["Float"]["output"];
   iknow_goal: Scalars["String"]["output"];
   iknow_id: Scalars["String"]["output"];
+  iknow_memory: Scalars["String"]["output"];
   iknow_modified_ts: Scalars["Float"]["output"];
-  iknow_payload: Scalars["String"]["output"];
+  iknow_origin: Scalars["String"]["output"];
   iknow_stat_correct: Scalars["Int"]["output"];
   iknow_stat_relevant: Scalars["Int"]["output"];
   iknow_stat_times_used: Scalars["Int"]["output"];
@@ -49,7 +89,7 @@ export type FKnowledgeItem = {
 
 export type FKnowledgeItemInput = {
   iknow_goal: Scalars["String"]["input"];
-  iknow_payload: Scalars["String"]["input"];
+  iknow_memory: Scalars["String"]["input"];
   iknow_title: Scalars["String"]["input"];
   iknow_type: Scalars["String"]["input"];
   located_fgroup_id: Scalars["String"]["input"];
@@ -58,7 +98,8 @@ export type FKnowledgeItemInput = {
 
 export type FKnowledgeItemPatch = {
   iknow_goal?: InputMaybe<Scalars["String"]["input"]>;
-  iknow_payload?: InputMaybe<Scalars["String"]["input"]>;
+  iknow_memory?: InputMaybe<Scalars["String"]["input"]>;
+  iknow_origin?: InputMaybe<Scalars["String"]["input"]>;
   iknow_title?: InputMaybe<Scalars["String"]["input"]>;
   iknow_type?: InputMaybe<Scalars["String"]["input"]>;
   located_fgroup_id?: InputMaybe<Scalars["String"]["input"]>;
@@ -79,6 +120,9 @@ export type FThread = {
   ft_belongs_to_fce_id?: Maybe<Scalars["String"]["output"]>;
   ft_created_ts: Scalars["Float"]["output"];
   ft_error: Scalars["String"]["output"];
+  ft_fexp_name: Scalars["String"]["output"];
+  ft_fexp_ver_major: Scalars["Int"]["output"];
+  ft_fexp_ver_minor: Scalars["Int"]["output"];
   ft_id: Scalars["String"]["output"];
   ft_locked_by: Scalars["String"]["output"];
   ft_max_new_tokens: Scalars["Int"]["output"];
@@ -88,6 +132,7 @@ export type FThread = {
   ft_need_tool_calls: Scalars["Int"]["output"];
   ft_temperature: Scalars["Float"]["output"];
   ft_title: Scalars["String"]["output"];
+  ft_toolset: Scalars["String"]["output"];
   ft_updated_ts: Scalars["Float"]["output"];
   located_fgroup_id: Scalars["String"]["output"];
   owner_fuser_id: Scalars["String"]["output"];
@@ -102,6 +147,9 @@ export type FThreadDelta = {
 
 export type FThreadInput = {
   ft_belongs_to_fce_id?: InputMaybe<Scalars["String"]["input"]>;
+  ft_fexp_name: Scalars["String"]["input"];
+  ft_fexp_ver_major: Scalars["Int"]["input"];
+  ft_fexp_ver_minor: Scalars["Int"]["input"];
   ft_max_new_tokens?: Scalars["Int"]["input"];
   ft_model?: Scalars["String"]["input"];
   ft_n?: Scalars["Int"]["input"];
@@ -132,6 +180,7 @@ export type FThreadMessageInput = {
   ftm_content: Scalars["String"]["input"];
   ftm_num: Scalars["Int"]["input"];
   ftm_prev_alt: Scalars["Int"]["input"];
+  ftm_provenance: Scalars["String"]["input"];
   ftm_role: Scalars["String"]["input"];
   ftm_tool_calls: Scalars["String"]["input"];
   ftm_usage: Scalars["String"]["input"];
@@ -145,6 +194,17 @@ export type FThreadMessageSubs = {
   stream_delta?: Maybe<FThreadDelta>;
 };
 
+export type FThreadMessagesCreateResult = {
+  __typename?: "FThreadMessagesCreateResult";
+  count: Scalars["Int"]["output"];
+  messages: Array<FThreadMessage>;
+};
+
+export type FThreadMultipleMessagesInput = {
+  ftm_belongs_to_ft_id: Scalars["String"]["input"];
+  messages: Array<FThreadMessageInput>;
+};
+
 export type FThreadPatch = {
   ft_anything_new?: InputMaybe<Scalars["Boolean"]["input"]>;
   ft_archived_ts?: InputMaybe<Scalars["Float"]["input"]>;
@@ -155,6 +215,7 @@ export type FThreadPatch = {
   ft_n?: InputMaybe<Scalars["Int"]["input"]>;
   ft_temperature?: InputMaybe<Scalars["Float"]["input"]>;
   ft_title?: InputMaybe<Scalars["String"]["input"]>;
+  ft_toolset?: InputMaybe<Scalars["String"]["input"]>;
   located_fgroup_id?: InputMaybe<Scalars["String"]["input"]>;
   owner_shared?: InputMaybe<Scalars["Boolean"]["input"]>;
 };
@@ -187,6 +248,9 @@ export type FlexusGroupPatch = {
 
 export type Mutation = {
   __typename?: "Mutation";
+  expert_create: FExpertOutput;
+  expert_delete: Scalars["Boolean"]["output"];
+  expert_patch: FExpertOutput;
   group_create: FlexusGroup;
   group_delete: Scalars["String"]["output"];
   group_patch: FlexusGroup;
@@ -196,7 +260,21 @@ export type Mutation = {
   thread_create: FThread;
   thread_delete: Scalars["Boolean"]["output"];
   thread_message_create: FThreadMessage;
+  thread_messages_create_multiple: FThreadMessagesCreateResult;
   thread_patch: FThread;
+};
+
+export type MutationExpert_CreateArgs = {
+  input: FExpertInput;
+};
+
+export type MutationExpert_DeleteArgs = {
+  id: Scalars["String"]["input"];
+};
+
+export type MutationExpert_PatchArgs = {
+  id: Scalars["String"]["input"];
+  patch: FExpertPatch;
 };
 
 export type MutationGroup_CreateArgs = {
@@ -237,6 +315,10 @@ export type MutationThread_Message_CreateArgs = {
   input: FThreadMessageInput;
 };
 
+export type MutationThread_Messages_Create_MultipleArgs = {
+  input: FThreadMultipleMessagesInput;
+};
+
 export type MutationThread_PatchArgs = {
   id: Scalars["String"]["input"];
   patch: FThreadPatch;
@@ -244,8 +326,18 @@ export type MutationThread_PatchArgs = {
 
 export type Query = {
   __typename?: "Query";
+  expert_list: Array<FExpertOutput>;
   knowledge_item_list: Array<FKnowledgeItem>;
   thread_list: Array<FThread>;
+  thread_messages: Array<FThreadMessage>;
+  thread_messages_by_alt: Array<FThreadMessage>;
+};
+
+export type QueryExpert_ListArgs = {
+  limit: Scalars["Int"]["input"];
+  located_fgroup_id: Scalars["String"]["input"];
+  skip: Scalars["Int"]["input"];
+  sort_by?: Scalars["String"]["input"];
 };
 
 export type QueryKnowledge_Item_ListArgs = {
@@ -262,9 +354,23 @@ export type QueryThread_ListArgs = {
   sort_by?: Scalars["String"]["input"];
 };
 
+export type QueryThread_MessagesArgs = {
+  alt?: InputMaybe<Scalars["Int"]["input"]>;
+  ft_id: Scalars["String"]["input"];
+  limit?: InputMaybe<Scalars["Int"]["input"]>;
+  num?: InputMaybe<Scalars["Int"]["input"]>;
+  role?: InputMaybe<Scalars["String"]["input"]>;
+};
+
+export type QueryThread_Messages_By_AltArgs = {
+  alt: Scalars["Int"]["input"];
+  ft_id: Scalars["String"]["input"];
+};
+
 export type Subscription = {
   __typename?: "Subscription";
   comprehensive_thread_subs: FThreadMessageSubs;
+  experts_in_group: FExpertSubs;
   knowledge_items_in_group: FKnowledgeItemSubs;
   threads_in_group: FThreadSubs;
   tree_subscription: TreeUpdateSubs;
@@ -273,6 +379,12 @@ export type Subscription = {
 export type SubscriptionComprehensive_Thread_SubsArgs = {
   ft_id: Scalars["String"]["input"];
   want_deltas: Scalars["Boolean"]["input"];
+};
+
+export type SubscriptionExperts_In_GroupArgs = {
+  limit: Scalars["Int"]["input"];
+  located_fgroup_id: Scalars["String"]["input"];
+  sort_by?: Scalars["String"]["input"];
 };
 
 export type SubscriptionKnowledge_Items_In_GroupArgs = {
@@ -294,6 +406,7 @@ export type SubscriptionTree_SubscriptionArgs = {
 export type TreeUpdateSubs = {
   __typename?: "TreeUpdateSubs";
   treeupd_action: Scalars["String"]["output"];
+  treeupd_id: Scalars["String"]["output"];
   treeupd_path: Scalars["String"]["output"];
   treeupd_title: Scalars["String"]["output"];
   treeupd_type: Scalars["String"]["output"];
@@ -308,6 +421,7 @@ export type NavTreeSubsSubscription = {
   tree_subscription: {
     __typename?: "TreeUpdateSubs";
     treeupd_action: string;
+    treeupd_id: string;
     treeupd_path: string;
     treeupd_type: string;
     treeupd_title: string;
@@ -360,6 +474,7 @@ export const NavTreeSubsDocument = {
                   kind: "Field",
                   name: { kind: "Name", value: "treeupd_action" },
                 },
+                { kind: "Field", name: { kind: "Name", value: "treeupd_id" } },
                 {
                   kind: "Field",
                   name: { kind: "Name", value: "treeupd_path" },
@@ -397,12 +512,34 @@ export const definedNonNullAnySchema = z
   .any()
   .refine((v) => isDefinedNonNullAny(v));
 
+export function FExpertInputSchema(): z.ZodObject<Properties<FExpertInput>> {
+  return z.object({
+    fexp_allow_tools: z.string(),
+    fexp_block_tools: z.string(),
+    fexp_name: z.string(),
+    fexp_python_kernel: z.string(),
+    fexp_system_prompt: z.string(),
+    fexp_ver_major: z.number(),
+    fexp_ver_minor: z.number(),
+    located_fgroup_id: z.string(),
+    owner_fuser_id: z.string(),
+    owner_shared: z.boolean(),
+  });
+}
+
+export function FExpertPatchSchema(): z.ZodObject<Properties<FExpertPatch>> {
+  return z.object({
+    located_fgroup_id: z.string().nullish(),
+    owner_shared: z.boolean().nullish(),
+  });
+}
+
 export function FKnowledgeItemInputSchema(): z.ZodObject<
   Properties<FKnowledgeItemInput>
 > {
   return z.object({
     iknow_goal: z.string(),
-    iknow_payload: z.string(),
+    iknow_memory: z.string(),
     iknow_title: z.string(),
     iknow_type: z.string(),
     located_fgroup_id: z.string(),
@@ -415,7 +552,8 @@ export function FKnowledgeItemPatchSchema(): z.ZodObject<
 > {
   return z.object({
     iknow_goal: z.string().nullish(),
-    iknow_payload: z.string().nullish(),
+    iknow_memory: z.string().nullish(),
+    iknow_origin: z.string().nullish(),
     iknow_title: z.string().nullish(),
     iknow_type: z.string().nullish(),
     located_fgroup_id: z.string().nullish(),
@@ -426,6 +564,9 @@ export function FKnowledgeItemPatchSchema(): z.ZodObject<
 export function FThreadInputSchema(): z.ZodObject<Properties<FThreadInput>> {
   return z.object({
     ft_belongs_to_fce_id: z.string().nullish(),
+    ft_fexp_name: z.string(),
+    ft_fexp_ver_major: z.number(),
+    ft_fexp_ver_minor: z.number(),
     ft_max_new_tokens: z.number().default(8192),
     ft_model: z.string().default(""),
     ft_n: z.number().default(1),
@@ -446,9 +587,19 @@ export function FThreadMessageInputSchema(): z.ZodObject<
     ftm_content: z.string(),
     ftm_num: z.number(),
     ftm_prev_alt: z.number(),
+    ftm_provenance: z.string(),
     ftm_role: z.string(),
     ftm_tool_calls: z.string(),
     ftm_usage: z.string(),
+  });
+}
+
+export function FThreadMultipleMessagesInputSchema(): z.ZodObject<
+  Properties<FThreadMultipleMessagesInput>
+> {
+  return z.object({
+    ftm_belongs_to_ft_id: z.string(),
+    messages: z.array(z.lazy(() => FThreadMessageInputSchema())),
   });
 }
 
@@ -463,6 +614,7 @@ export function FThreadPatchSchema(): z.ZodObject<Properties<FThreadPatch>> {
     ft_n: z.number().nullish(),
     ft_temperature: z.number().nullish(),
     ft_title: z.string().nullish(),
+    ft_toolset: z.string().nullish(),
     located_fgroup_id: z.string().nullish(),
     owner_shared: z.boolean().nullish(),
   });

@@ -7,12 +7,13 @@ import { FolderIcon } from "./FolderIcon";
 import styles from "./CustomTreeNode.module.css";
 import { CreateNewGroup } from "./CreateNewGroup";
 import { TeamsGroup } from "../../../services/smallcloud/types";
+import { FlexusTreeNode } from "./GroupTree";
 
 export type TeamsGroupTree = TeamsGroup & {
   children?: TeamsGroup[];
 };
 
-export const CustomTreeNode = <T extends TeamsGroupTree>({
+export const CustomTreeNode = <T extends FlexusTreeNode>({
   node,
   style,
   tree,
@@ -21,7 +22,7 @@ export const CustomTreeNode = <T extends TeamsGroupTree>({
 }: NodeRendererProps<T> & { updateTree: (newTree: T[]) => void }) => {
   const [isHovered, setIsHovered] = useState(false);
   // Determine if this is a folder (has children)
-  const isContainingChildren = !!node.data.children;
+  const isContainingChildren = node.data.treenodeChildren?.length !== 0;
 
   // Handle node click (for selection)
   const handleNodeClick = useCallback(() => {
@@ -115,9 +116,9 @@ export const CustomTreeNode = <T extends TeamsGroupTree>({
           marginLeft: isContainingChildren ? 8 : 4,
           minWidth: 0, // This helps text truncation work properly
         }}
-        title={node.data.name}
+        title={node.data.treenodeTitle}
       >
-        {node.data.name}
+        {node.data.treenodeTitle}
       </Text>
       {isHovered && (
         <CreateNewGroup

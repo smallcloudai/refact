@@ -1,5 +1,11 @@
 import { Box, Button, Card, Flex, Heading, Text } from "@radix-ui/themes";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { NodeApi, Tree } from "react-arborist";
 import { CustomTreeNode, type TeamsGroupTree } from "./CustomTreeNode";
 import { setActiveGroup, resetActiveGroup } from "../../../features/Teams";
@@ -20,25 +26,160 @@ import {
   type NavTreeSubsSubscription,
 } from "../../../../generated/documents";
 
-const TEST_TREE_DATA = [
-  { id: "1", name: "My Workspace 1" },
-  { id: "2", name: "My Workspace 2" },
-];
-const ws_id = "filmstudio"; // TODO: how do we get proper ws_id?
+export interface FlexusTreeNode {
+  treenodePath: string;
+  treenodeId: string;
+  treenodeTitle: string;
+  treenodeType: string;
+  treenode__DeleteMe: boolean;
+  treenode__InsertedLater: boolean;
+  treenodeChildren?: FlexusTreeNode[];
+  treenodeExpanded: boolean;
+}
+
+const ws_id = "solarsystem"; // TODO: how do we get proper ws_id?
 
 export const GroupTree: React.FC = () => {
-  const { data: subsTreeData } = useSmartSubscription<
-    NavTreeSubsSubscription,
-    { ws_id: string }
-  >({
+  const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
+
+  const filterNodesByNodeType = useCallback(
+    (nodes: FlexusTreeNode[], type: string): FlexusTreeNode[] => {
+      return nodes
+        .filter((node) => node.treenodeType === type)
+        .map((node) => {
+          const children = node.treenodeChildren
+            ? filterNodesByNodeType(node.treenodeChildren, type)
+            : [];
+          return {
+            ...node,
+            treenodeChildren: children,
+          };
+        });
+    },
+    [],
+  );
+
+  const filteredGroupTreeData = useMemo(() => {
+    return filterNodesByNodeType(groupTreeData, "group");
+  }, [groupTreeData, filterNodesByNodeType]);
+
+  const touchNode = useCallback(
+    (path: string, title: string, type: string, id: string) => {
+      if (!path) return;
+      setGroupTreeData((prevTree) => {
+        // Helper to recursively update the tree
+        const updateTree = (
+          list: FlexusTreeNode[],
+          parts: string[],
+          curPath: string,
+        ): FlexusTreeNode[] => {
+          if (parts.length === 0) return list;
+
+          const [part, ...restParts] = parts;
+          const nextPath = curPath ? `${curPath}/${part}` : part;
+
+          let node = list.find((n) => n.treenodePath === nextPath);
+
+          if (!node) {
+            node = {
+              treenodeId: id,
+              treenodePath: nextPath,
+              treenodeTitle: part,
+              treenodeType: part.split(":")[0],
+              treenode__DeleteMe: false,
+              treenode__InsertedLater: false,
+              treenodeChildren: [],
+              treenodeExpanded: true,
+            };
+            // Insert new node immutably
+            list = [...list, node];
+          } else {
+            // Copy node for immutability
+            node = { ...node };
+            list = list.map((n) => {
+              if (n.treenodePath === nextPath) {
+                // Update the node immutably
+                const updatedNode = { ...n, treenode__DeleteMe: false };
+                if (nextPath === path) {
+                  updatedNode.treenodeTitle = title;
+                  updatedNode.treenodeType = type;
+                }
+                updatedNode.treenodeChildren = updateTree(
+                  n.treenodeChildren ? n.treenodeChildren : [],
+                  restParts,
+                  nextPath,
+                );
+                return updatedNode;
+              }
+              return n;
+            });
+          }
+
+          node.treenode__DeleteMe = false;
+          if (nextPath === path) {
+            node.treenodeTitle = title;
+            node.treenodeType = type;
+          }
+
+          node.treenodeChildren = updateTree(
+            node.treenodeChildren ? node.treenodeChildren : [],
+            restParts,
+            nextPath,
+          );
+
+          return list;
+        };
+
+        const parts = path.split("/");
+        return updateTree(prevTree, parts, "");
+      });
+    },
+    [setGroupTreeData],
+  );
+
+  const handleEveryTreeUpdate = useCallback(
+    (data: NavTreeSubsSubscription | undefined) => {
+      const u = data?.tree_subscription;
+      if (!u) return;
+
+      switch (u.treeupd_action) {
+        // case 'TREE_REBUILD_START':
+        //   markForDelete(theNavTreeRoot.value);
+        //   break;
+        case "TREE_UPDATE":
+          touchNode(
+            u.treeupd_path,
+            u.treeupd_title,
+            u.treeupd_type,
+            u.treeupd_id,
+          );
+          break;
+        // case 'TREE_REBUILD_FINISHED':
+        //   setTimeout(() => {
+        //     pruneInPlace(theNavTreeRoot.value);
+        //     initialLoad.value = false;
+        //   }, 500);
+        //   setTimeout(() => {
+        //     cleanupInsertedLater(theNavTreeRoot.value);
+        //   }, 3000);
+        //   break;
+        default:
+          // eslint-disable-next-line no-console
+          console.warn("TREE SUBS:", u.treeupd_action);
+      }
+    },
+    [touchNode],
+  );
+
+  useSmartSubscription<NavTreeSubsSubscription, { ws_id: string }>({
     query: NavTreeSubsDocument,
     variables: { ws_id },
+    onUpdate: handleEveryTreeUpdate,
   });
 
   const dispatch = useAppDispatch();
   const { setActiveTeamsGroupInIDE } = useEventsBusForIDE();
-  const [groupTreeData, setGroupTreeData] =
-    useState<TeamsGroupTree[]>(TEST_TREE_DATA);
+
   const [setActiveGroupIdTrigger] = teamsApi.useSetActiveGroupIdMutation();
   const [currentSelectedTeamsGroup, setCurrentSelectedTeamsGroup] =
     useState<TeamsGroup | null>(null);
@@ -66,12 +207,12 @@ export const GroupTree: React.FC = () => {
     calculateAndSetSpace();
   }, [calculateAndSetSpace]);
 
-  const onGroupSelect = useCallback((nodes: NodeApi<TeamsGroupTree>[]) => {
+  const onGroupSelect = useCallback((nodes: NodeApi<FlexusTreeNode>[]) => {
     if (nodes.length === 0) return;
-    const group = nodes[0].data;
+    const groupNode = nodes[0].data;
     setCurrentSelectedTeamsGroup({
-      id: group.id,
-      name: group.name,
+      id: groupNode.treenodeId, // INCORRECT LOGIC!
+      name: groupNode.treenodeTitle,
     });
   }, []);
 
@@ -109,12 +250,6 @@ export const GroupTree: React.FC = () => {
     [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
   );
 
-  useEffect(() => {
-    // TODO: debug actual tree data when graphql gets repaired
-    // eslint-disable-next-line no-console
-    console.log(`[DEBUG]: flexus subs tree data: `, subsTreeData);
-  }, [subsTreeData]);
-
   return (
     <Flex direction="column" gap="4" mt="4" width="100%">
       <Flex direction="column" gap="1">
@@ -127,7 +262,7 @@ export const GroupTree: React.FC = () => {
       </Flex>
       <Box ref={treeParentRef} height="240px" width="100%">
         <Tree
-          data={groupTreeData}
+          data={filteredGroupTreeData}
           rowHeight={40}
           height={treeHeight}
           width={treeWidth}
@@ -140,6 +275,8 @@ export const GroupTree: React.FC = () => {
           disableMultiSelection
           disableEdit
           disableDrop
+          idAccessor={"treenodeId"}
+          childrenAccessor={"treenodeChildren"}
         >
           {(nodeProps) => (
             <CustomTreeNode updateTree={setGroupTreeData} {...nodeProps} />
