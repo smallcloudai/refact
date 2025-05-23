@@ -1,34 +1,41 @@
+use crate::at_commands::at_commands::AtCommandsContext;
+use crate::caps::resolve_chat_model;
+use crate::cloud::threads_req::{Thread, ThreadMessage, ThreadPatchInput};
+use crate::custom_error::ScratchError;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions;
+use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::tokens;
+use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, Tool};
+use crate::tools::tools_execute::run_tools_locally;
+use axum::http::StatusCode;
+use futures::{SinkExt, StreamExt};
+use indexmap::IndexMap;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
-use tracing::{error, info, warn};
-use futures::{SinkExt, StreamExt};
-use tokio_tungstenite::{
-    connect_async, 
-    tungstenite::{
-        protocol::Message,
-    }
-};
-use serde_json::{json, Value};
-use url::Url;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use serde::{Deserialize, Serialize};
-use crate::cloud::threads_req::{Thread, ThreadMessage};
-use crate::global_context::GlobalContext;
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::protocol::Message
+};
+use tracing::{error, info};
+use url::Url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadPayload {
     pub owner_fuser_id: String,
     pub owner_shared: bool,
     pub ft_id: String,
-    pub ft_fexp_name: Option<String>,
-    pub ft_fexp_ver_major: Option<i64>,
-    pub ft_fexp_ver_minor: Option<i64>,
     pub ft_title: String,
     pub ft_error: String,
     pub ft_updated_ts: f64,
     pub ft_locked_by: String,
     pub ft_need_assistant: i64,
+    pub ft_need_tool_calls: i64,
     pub ft_anything_new: bool,
     pub ft_archived_ts: f64,
 }
@@ -210,6 +217,7 @@ pub async fn watch_threads_subscription(
     }
 }
 
+
 async fn initialize_connection() -> Result<futures::stream::SplitStream<tokio_tungstenite::WebSocketStream<
     tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>>, String> {
     let url = Url::parse(crate::cloud::constants::GRAPHQL_WS_URL)
@@ -289,6 +297,112 @@ async fn initialize_connection() -> Result<futures::stream::SplitStream<tokio_tu
     Ok(read)
 }
 
+
+async fn process_thread_event(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    thread_payload: &ThreadPayload)-> Result<(), String> {
+    let messages = crate::cloud::threads_req::get_thread_messages(
+        gcx.clone(), &thread_payload.ft_id, thread_payload.ft_need_tool_calls
+    ).await?;
+    let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
+    if messages.iter().any(|x| x.ftm_role != "system") {
+        initialize_thread(gcx.clone(), &thread.ft_fexp_name).await?;
+    } else {
+        call_tools(gcx.clone(), &thread, &messages).await?;
+    }
+    
+    Ok(())
+}
+
+async fn initialize_thread(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    expert_name: &str,
+    thread: &Thread,
+    thread_messages: &Vec<ThreadMessage>
+) -> Result<(), String> {
+    let expert = crate::cloud::experts_req::get_expert(gcx.clone(), expert_name).await?;
+    let blocked_tools = expert.get_blocked_tools()?;
+    let tools: IndexMap<String, Box<dyn Tool + Send>> = tools_merged_and_filtered(gcx.clone(), true).await?
+        .into_iter()
+        .filter(|(name, tool)| !blocked_tools.contains(name))
+        .collect();
+    let tool_descriptions = tool_description_list_from_yaml(tools, None, true).await?
+        .into_iter()
+        .map(|x| x.into_openai_style())
+        .collect::<Vec<_>>();
+    let updated_system_prompt = system_prompt_add_extra_instructions(
+        gcx.clone(),
+        &expert.fexp_system_prompt
+    ).await;
+
+    let last_message = thread_messages.last().unwrap();
+    crate::cloud::threads_req::update_thread(gcx.clone(), &thread.ft_id, ThreadPatchInput {
+        ft_toolset: Some(serde_json::to_value(&tool_descriptions).unwrap().as_str().unwrap().to_string()),
+        ..ThreadPatchInput::default()
+    }).await?;
+    
+    let output_thread_messages = vec![ThreadMessage {
+        ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
+        ftm_alt: last_message.ftm_alt.clone(),
+        ftm_num: 0,
+        ftm_prev_alt: last_message.ftm_prev_alt.clone(),
+        ftm_role: "system".to_string(),
+        ftm_content: updated_system_prompt.clone(),
+        ftm_tool_calls: None,
+        ftm_call_id: "".to_string(),
+        ftm_usage: None,
+        ftm_created_ts: std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_secs_f64(),
+    }];
+    crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages)?;
+
+    Ok(())
+}
+
+async fn call_tools(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    thread: &Thread,
+    thread_messages: &Vec<ThreadMessage>
+) -> Result<(), String> {
+    let max_new_tokens = 8192;
+    let last_message_num = thread_messages.iter().map(|x| x.ftm_num).max().unwrap_or(0);
+    let messages = convert_thread_messages_to_messages(thread_messages);
+    let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
+        gcx.clone(), 
+        32000,
+        12,
+        false,
+        messages.clone(),
+        thread.ft_id.to_string(),
+        false,
+        thread.ft_model.to_string(),
+    ).await));
+    let allowed_tools = get_tool_names_from_openai_format(&thread.ft_toolset).await?;
+    let mut all_tools: IndexMap<String, Box<dyn Tool + Send>> = tools_merged_and_filtered(gcx.clone(), true).await?
+        .into_iter()
+        .filter(|(name, _)| allowed_tools.contains(name))
+        .collect();
+
+    let mut has_rag_results = HasRagResults::new();
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    let model_rec = resolve_chat_model(caps, &thread.ft_model)
+        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let tokenizer_arc = tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
+    let (messages, _) = run_tools_locally(
+        ccx.clone(),
+        &mut all_tools,
+        tokenizer_arc,
+        max_new_tokens,
+        &messages,
+        &mut has_rag_results, 
+        &None
+    ).await?;
+    let output_thread_messages = convert_messages_to_thread_messages(messages, start_num=last_message_num);
+    crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages)?;
+
+    Ok(())
+}
+
+
 async fn events_loop(
     gcx: Arc<ARwLock<GlobalContext>>,
     connection: &mut futures::stream::SplitStream<tokio_tungstenite::WebSocketStream<
@@ -314,47 +428,18 @@ async fn events_loop(
                 };
                 match response.response_type {
                     ResponseType::Data => {
-                        if let Some(payload) = response.payload {
-                            let thread_event = &payload.data.threads_in_group;
-                            let payload_id = &thread_event.news_payload_id;
-                            match &thread_event.news_action {
-                                NewsAction::Insert | NewsAction::Update => {
-                                    info!("Thread was {}: id={}", thread_event.news_action.to_lowercase(), payload_id);
-                                    
-
-                                    if let Some(payload) = &thread_event.news_payload {
-                                        match crate::cloud::threads_req::get_thread(gcx.clone(), &payload.ft_id).await {
-                                            Ok(t) => {
-                                                warn!("Thread:\n{:?}", t);
-                                            },
-                                            Err(err) => {
-                                                error!("{}", err);
-                                            }
-                                        };
-                                        
-                                        match crate::cloud::threads_req::get_thread_messages(gcx.clone(), &payload.ft_id, 100).await {
-                                            Ok(messages) => {
-                                                warn!("Thread messages:\n{:?}", messages);
-                                            },
-                                            Err(err) => {
-                                                error!("{}", err);
-                                            }
-                                        }
-                                        
-                                        match crate::cloud::experts_req::get_expert(gcx.clone(), "agent").await {
-                                            Ok(messages) => {
-                                                warn!("Expert:\n{:?}", messages);
-                                            },
-                                            Err(err) => {
-                                                error!("{}", err);
-                                            }
-                                        }
+                        if let Some(input) = response.payload {
+                            if input.data.threads_in_group.news_action != NewsAction::Insert &&
+                                input.data.threads_in_group.news_action != NewsAction::Update {
+                                continue;
+                            }
+                            if let Some(payload) = input.data.threads_in_group.news_payload {
+                                match process_thread_event(gcx.clone(), &payload).await {
+                                    Ok(_) => {}
+                                    Err(err) => {
+                                        error!("Failed to process thread event: {}", err);
                                     }
-                                },
-                                NewsAction::InitialUpdatesOver => {
-                                    info!("Initial thread updates completed - subscription is now live");
-                                },
-                                _ => {}
+                                }
                             }
                         } else {
                             info!("Received data message but couldn't find payload");

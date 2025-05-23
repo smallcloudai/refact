@@ -13,7 +13,11 @@ pub struct Thread {
     pub owner_shared: bool,
     pub located_fgroup_id: String,
     pub ft_id: String,
+    pub ft_fexp_name: String,
+    pub ft_fexp_ver_major: i64,
+    pub ft_fexp_ver_minor: i64,
     pub ft_title: String,
+    pub ft_toolset: String,
     pub ft_belongs_to_fce_id: Option<String>,
     pub ft_model: String,
     pub ft_temperature: f64,
@@ -41,11 +45,12 @@ pub struct ThreadCreateInput {
     pub ft_n: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ThreadPatchInput {
     pub owner_shared: Option<bool>,
     pub located_fgroup_id: Option<String>,
     pub ft_title: Option<String>,
+    pub ft_toolset: Option<String>,
     pub ft_belongs_to_fce_id: Option<String>,
     pub ft_model: Option<String>,
     pub ft_temperature: Option<f64>,
@@ -66,7 +71,6 @@ pub struct ThreadResponse {
     pub thread: Thread,
 }
 
-/// ThreadMessage represents a message in a thread
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ThreadMessage {
     pub ftm_belongs_to_ft_id: String,
@@ -81,7 +85,6 @@ pub struct ThreadMessage {
     pub ftm_created_ts: f64,
 }
 
-/// ThreadMessagesResponse represents the response from the server when fetching thread messages
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ThreadMessagesResponse {
     pub messages: Vec<ThreadMessage>,
@@ -94,9 +97,6 @@ pub async fn get_thread(
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
 
-    // First, we need to get the group ID for this thread
-    // We'll use a workaround by querying all threads and filtering client-side
-    // This is not efficient but will work until a better API is available
     let query = r#"
     query GetAllThreads($group_id: String!, $limit: Int!) {
         thread_list(
@@ -209,7 +209,6 @@ pub async fn update_thread(
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
 
-    // Construct the GraphQL mutation
     let mutation = r#"
     mutation UpdateThread($thread_id: String!, $patch: FThreadPatch!) {
         thread_update(id: $thread_id, patch: $patch) {
@@ -235,7 +234,6 @@ pub async fn update_thread(
     }
     "#;
 
-    // Create a patch object with only the fields that are set
     let mut patch_obj = json!({});
 
     if let Some(owner_shared) = patch.owner_shared {
@@ -298,14 +296,12 @@ pub async fn update_thread(
         let response_json: Value = serde_json::from_str(&response_body)
             .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
 
-        // Check for GraphQL errors
         if let Some(errors) = response_json.get("errors") {
             let error_msg = errors.to_string();
             error!("GraphQL error: {}", error_msg);
             return Err(format!("GraphQL error: {}", error_msg));
         }
 
-        // Extract the updated thread
         if let Some(data) = response_json.get("data") {
             if let Some(thread) = data.get("thread_update") {
                 let thread: Thread = serde_json::from_value(thread.clone())
@@ -333,12 +329,11 @@ pub async fn update_thread(
 pub async fn get_thread_messages(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_id: &str,
-    alt: i32,
+    alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
 
-    // Construct the GraphQL query
     let query = r#"
     query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
         thread_messages_by_alt(
