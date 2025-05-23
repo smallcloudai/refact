@@ -1,4 +1,3 @@
-use std::collections::{HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 use std::path::{PathBuf, Component, Path};
@@ -214,11 +213,15 @@ pub async fn get_active_workspace_folder(gcx: Arc<ARwLock<GlobalContext>>) -> Op
 
 pub async fn shortify_paths(gcx: Arc<ARwLock<GlobalContext>>, paths: &Vec<String>) -> Vec<String> {
     let cache_correction_arc = files_cache_rebuild_as_needed(gcx.clone()).await;
+    _shortify_paths_from_indexed(&cache_correction_arc, paths)
+}
+
+fn _shortify_paths_from_indexed(cache_correction: &CacheCorrection, paths: &Vec<String>) -> Vec<String> {
     paths.into_iter().map(|path| {
-        if let Some(shortened) = cache_correction_arc.filenames.short_path(&PathBuf::from(path)) {
+        if let Some(shortened) = cache_correction.filenames.short_path(&PathBuf::from(path)) {
             return shortened.to_string_lossy().to_string();
         }
-        if let Some(shortened) = cache_correction_arc.directories.short_path(&PathBuf::from(path)) {
+        if let Some(shortened) = cache_correction.directories.short_path(&PathBuf::from(path)) {
             return shortened.to_string_lossy().to_string();
         }
         path.clone()
@@ -407,10 +410,10 @@ mod tests {
         ];
 
         // Act
-        let (_, cache_shortened_result, cnt) = make_cache(&paths, &workspace_folders);
+        let cache_correction = CacheCorrection::build(&paths, &workspace_folders);
 
         // Assert
-        let mut cache_shortened_result_vec = cache_shortened_result.into_iter().collect::<Vec<_>>();
+        let mut cache_shortened_result_vec = cache_correction.filenames.short_paths_iter().collect::<Vec<_>>();
         let mut expected_result = vec![
             PathBuf::from("repo1").join("dir").join("file.ext").to_string_lossy().to_string(),
             PathBuf::from("repo2").join("dir").join("file.ext").to_string_lossy().to_string(),
@@ -422,42 +425,50 @@ mod tests {
         expected_result.sort();
         cache_shortened_result_vec.sort();
 
-        assert_eq!(cnt, 5, "The cache should contain 5 paths");
+        assert_eq!(cache_correction.filenames.len(), 5, "The cache should contain 5 paths");
         assert_eq!(cache_shortened_result_vec, expected_result, "The result should contain the expected paths, instead it found");
     }
 
     #[test]
     fn test_shortify_paths_from_indexed() {
         let workspace_folders = vec![
-            PathBuf::from("home").join("user").join("repo1").to_string_lossy().to_string(),
-            PathBuf::from("home").join("user").join("repo1").join("nested").join("repo2").to_string_lossy().to_string(),
-            PathBuf::from("home").join("user").join("repo3").to_string_lossy().to_string(),
+            PathBuf::from("home").join("user").join("repo1"),
+            PathBuf::from("home").join("user").join("repo1").join("nested").join("repo2"),
+            PathBuf::from("home").join("user").join("repo3"),
         ];
 
-        let indexed_paths = Arc::new(HashSet::from([
-            PathBuf::from("repo1").join("dir").join("file.ext").to_string_lossy().to_string(),
-            PathBuf::from("repo2").join("dir").join("file.ext").to_string_lossy().to_string(),
-            PathBuf::from("repo1").join("this_file.ext").to_string_lossy().to_string(),
-            PathBuf::from("custom_dir").join("file.ext").to_string_lossy().to_string(),
-            PathBuf::from("dir2").join("another_file.ext").to_string_lossy().to_string(),
-        ]));
+        let indexed_paths = vec![
+            PathBuf::from("home").join("user").join("repo1").join("dir").join("file.ext"),
+            PathBuf::from("home").join("user").join("repo1").join("nested").join("repo2").join("dir").join("file.ext"),
+            PathBuf::from("home").join("user").join("repo3").join("dir").join("file.ext"),
+            PathBuf::from("home").join("user").join("repo1").join("this_file.ext"),
+            PathBuf::from("home").join("user").join("repo1").join(".hidden").join("custom_dir").join("file.ext"),
+            PathBuf::from("home").join("user").join("repo3").join("dir2").join("another_file.ext"),
+        ];
 
         let paths = vec![
             PathBuf::from("home").join("user").join("repo1").join("dir").join("file.ext").to_string_lossy().to_string(),
             PathBuf::from("home").join("user").join("repo1").join("nested").join("repo2").join("dir").join("file.ext").to_string_lossy().to_string(),
-            PathBuf::from("home").join("user").join("repo1").join(".hidden").join("custom_dir").join("file.ext").to_string_lossy().to_string(),
-            // Hidden file; should not be shortened as it's not in the cache and may be confused with custom_dir/file.ext.
+            PathBuf::from("home").join("user").join("repo3").join("dir").join("file.ext").to_string_lossy().to_string(),
             PathBuf::from("home").join("user").join("repo3").join("dir2").join("another_file.ext").to_string_lossy().to_string(),
+            // Hidden file; should not be shortened as it's not in the cache and may be confused with custom_dir/file.ext.
+            PathBuf::from("home").join("user").join("repo4").join(".hidden").join("custom_dir").join("file.ext").to_string_lossy().to_string(),
         ];
 
-        let result = _shortify_paths_from_indexed(&paths, indexed_paths, workspace_folders);
+        // _shortify_paths_from_indexed
+        let cache_correction = CacheCorrection::build(&indexed_paths, &workspace_folders);
+        let mut result = _shortify_paths_from_indexed(&cache_correction, &paths);
 
-        let expected_result = vec![
+        let mut expected_result = vec![
             PathBuf::from("repo1").join("dir").join("file.ext").to_string_lossy().to_string(),
-            PathBuf::from("repo2").join("dir").join("file.ext").to_string_lossy().to_string(),
-            PathBuf::from("home").join("user").join("repo1").join(".hidden").join("custom_dir").join("file.ext").to_string_lossy().to_string(),
+            PathBuf::from("nested").join("repo2").join("dir").join("file.ext").to_string_lossy().to_string(),
+            PathBuf::from("repo3").join("dir").join("file.ext").to_string_lossy().to_string(),
             PathBuf::from("dir2").join("another_file.ext").to_string_lossy().to_string(),
+            PathBuf::from("home").join("user").join("repo4").join(".hidden").join("custom_dir").join("file.ext").to_string_lossy().to_string(),
         ];
+
+        result.sort();
+        expected_result.sort();
 
         assert_eq!(result, expected_result, "The result should contain the expected paths, instead it found");
     }

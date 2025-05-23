@@ -61,11 +61,17 @@ impl<'a> Iterator for ShortPathsIter<'a> {
             if let Some(index) = indices_to_process.iter().next().cloned() {
                 indices_to_process.remove(&index);
                 let child = node.children.get(&index).unwrap();
-                let component = if child.is_root {
-                    String::new()  // we don't want to add root_path component
-                } else {
-                    self.trie.index_to_component.get(&index).unwrap().clone()
-                };
+                let mut component = self.trie.index_to_component.get(&index).unwrap().clone();
+                if child.is_root {
+                    // we need only last component
+                    if let Some(last_component) = PathBuf::from(component.clone()).components().last() {
+                        component = last_component.as_os_str().to_string_lossy().to_string();
+                    }
+                    // The path is unique across all workspaces so we have no need specify workspace prefix
+                    if node.children.len() < 2 {
+                        component = String::new();
+                    }
+                }
                 self.stack.push((
                     child,
                     child.children.keys().cloned().collect::<HashSet<usize>>(),
@@ -175,6 +181,14 @@ impl PathTrie {
                         if !root_path.ends_with(&components_prefix) {
                             continue;
                         }
+                        // we need only last component
+                        if let Some(last_component) = root_path.components().last() {
+                            root_path = PathBuf::from(last_component.as_os_str().to_string_lossy().to_string());
+                        };
+                        // if the path is unique within all roots, not add root_path
+                        if current.children.len() < 2 {
+                            root_path = PathBuf::new();
+                        }
                         match path.strip_prefix(&components_prefix) {
                             Ok(root_relative_path) => {
                                 root_path.push(root_relative_path);
@@ -274,11 +288,17 @@ impl PathTrie {
             while !node.is_root && !node.children.is_empty() {
                 let index;
                 (index, node) = node.children.iter().last().unwrap();
-                let mut child_relative_path = if node.is_root {
-                    PathBuf::new()
-                } else {
-                    PathBuf::from(self.index_to_component.get(index).unwrap().clone())
-                };
+
+                let mut child_relative_path = PathBuf::from(self.index_to_component.get(index).unwrap().clone());
+                // we need only last component
+                if let Some(component) = child_relative_path.components().last() {
+                    child_relative_path = PathBuf::from(component.as_os_str().to_string_lossy().to_string());
+                }
+                // if the path is unique within all roots, not add root_path
+                if node.children.len() < 2 {
+                    child_relative_path = PathBuf::new();
+                }
+
                 child_relative_path.push(relative_path.clone());
                 relative_path = child_relative_path;
             }
