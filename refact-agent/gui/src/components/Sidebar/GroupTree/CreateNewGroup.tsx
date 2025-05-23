@@ -8,9 +8,9 @@ import {
   TextField,
 } from "@radix-ui/themes";
 import React, { useState } from "react";
-import { type TeamsGroupTree } from "./CustomTreeNode";
 import { TreeApi } from "react-arborist";
 import { v4 as uuidv4 } from "uuid";
+import { FlexusTreeNode } from "./GroupTree";
 
 export type CreateNewGroupProps<T> = {
   currentGroup: T;
@@ -18,7 +18,7 @@ export type CreateNewGroupProps<T> = {
   updateTree: (newTree: T[]) => void;
 };
 
-export const CreateNewGroup = <T extends TeamsGroupTree>({
+export const CreateNewGroup = <T extends FlexusTreeNode>({
   currentGroup,
   tree,
   updateTree,
@@ -35,14 +35,14 @@ export const CreateNewGroup = <T extends TeamsGroupTree>({
     e.stopPropagation();
     const updatedGroup = {
       ...currentGroup,
-      children: currentGroup.children
-        ? [...currentGroup.children, { id: uuidv4(), name: groupName }]
+      children: currentGroup.treenodeChildren
+        ? [...currentGroup.treenodeChildren, { id: uuidv4(), name: groupName }]
         : [{ id: uuidv4(), name: groupName }],
     };
 
-    const updatedTree = updateNodeById(
+    const updatedTree = updateNodeByPath(
       tree.props.data,
-      currentGroup.id,
+      currentGroup.treenodePath,
       () => updatedGroup,
     );
 
@@ -87,20 +87,24 @@ export const CreateNewGroup = <T extends TeamsGroupTree>({
   );
 };
 
-function updateNodeById<T extends TeamsGroupTree>(
+function updateNodeByPath<T extends FlexusTreeNode>(
   nodes: readonly T[] | undefined,
-  id: string,
+  path: string,
   updater: (node: T) => T,
 ): T[] {
   if (!nodes) return [];
   return nodes.map((node) => {
-    if (node.id === id) {
+    if (node.treenodePath === path) {
       return updater(node);
     }
-    if (node.children) {
+    if (node.treenodeChildren) {
       return {
         ...node,
-        children: updateNodeById(node.children as T[], id, updater),
+        treenodeChildren: updateNodeByPath(
+          node.treenodeChildren as T[],
+          path,
+          updater,
+        ),
       };
     }
     return node;
