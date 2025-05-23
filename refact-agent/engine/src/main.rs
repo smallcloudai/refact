@@ -62,7 +62,7 @@ mod http;
 mod integrations;
 mod privacy;
 mod git;
-mod gql_subscription;
+mod cloud;
 mod agentic;
 mod memories;
 // TODO: do we need this?
