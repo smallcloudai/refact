@@ -211,7 +211,7 @@ export const GroupTree: React.FC = () => {
     if (nodes.length === 0) return;
     const groupNode = nodes[0].data;
     setCurrentSelectedTeamsGroup({
-      id: groupNode.treenodeId, // INCORRECT LOGIC!
+      id: groupNode.treenodeId,
       name: groupNode.treenodeTitle,
     });
   }, []);
