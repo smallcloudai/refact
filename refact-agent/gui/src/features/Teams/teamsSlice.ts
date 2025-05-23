@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { type TeamsGroup } from "../../services/smallcloud/types";
 
-type TeamsSliceState = {
+export type TeamsSliceState = {
   group: TeamsGroup | null;
 };
 

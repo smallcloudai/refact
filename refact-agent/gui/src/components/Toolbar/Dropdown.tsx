@@ -88,14 +88,19 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const discordUrl = "https://www.smallcloud.ai/discord";
   const accountLink = linkForAccount(host);
   const openUrl = useOpenUrl();
-  const { openCustomizationFile, openPrivacyFile, setLoginMessage } =
-    useEventsBusForIDE();
+  const {
+    openCustomizationFile,
+    openPrivacyFile,
+    setLoginMessage,
+    clearActiveTeamsGroupInIDE,
+  } = useEventsBusForIDE();
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());
   };
 
   const handleActiveGroupCleanUp = () => {
+    clearActiveTeamsGroupInIDE();
     const actions = [resetActiveGroup(), popBackTo({ name: "history" })];
     actions.forEach((action) => dispatch(action));
   };

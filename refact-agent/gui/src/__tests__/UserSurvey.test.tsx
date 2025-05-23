@@ -73,11 +73,6 @@ describe("Start a new chat", () => {
         pages: [{ name: "history" }],
         teams: {
           group: { id: "123", name: "test" },
-          // workspace: null,
-          _persist: {
-            version: 1,
-            rehydrated: true,
-          },
         },
         config: {
           apiKey: "test",

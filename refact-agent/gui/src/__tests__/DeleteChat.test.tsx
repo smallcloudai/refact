@@ -44,11 +44,6 @@ describe("Delete a Chat form history", () => {
         history,
         teams: {
           group: { id: "123", name: "test" },
-          // workspace: null,
-          _persist: {
-            version: 1,
-            rehydrated: true,
-          },
         },
         pages: [{ name: "history" }],
         config: {
