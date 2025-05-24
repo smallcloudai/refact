@@ -210,6 +210,36 @@
                 "anthropic/claude-3-7-sonnet-20250219"
             ]
         },
+        "claude-opus-4-20250514": {
+            "n_ctx": 200000,
+            "scratchpad": "REPLACE_PASSTHROUGH",
+            "scratchpad_patch": {
+                "context_format": "chat",
+                "rag_ratio": 0.5
+            },
+            "experimental": true,
+            "tokenizer": "hf://Xenova/claude-tokenizer",
+            "similar_models": [
+                "claude-opus-4",
+                "anthropic/claude-opus-4-20250514",
+                "anthropic/claude-opus-4"
+            ]
+        },
+        "claude-sonnet-4-20250514": {
+            "n_ctx": 200000,
+            "scratchpad": "REPLACE_PASSTHROUGH",
+            "scratchpad_patch": {
+                "context_format": "chat",
+                "rag_ratio": 0.5
+            },
+            "experimental": true,
+            "tokenizer": "hf://Xenova/claude-tokenizer",
+            "similar_models": [
+                "claude-sonnet-4",
+                "anthropic/claude-sonnet-4-20250514",
+                "anthropic/claude-sonnet-4"
+            ]
+        },
         "groq-llama-3.1-8b": {
             "n_ctx": 128000,
             "scratchpad": "REPLACE_PASSTHROUGH",
@@ -434,7 +464,7 @@
             "similar_models": [
                 "openai/o3-mini"
             ]
-        },      
+        },
         "o4-mini": {
             "n_ctx": 200000,
             "supports_tools": true,
@@ -573,6 +603,38 @@
                 "anthropic/claude-3-7-sonnet",
                 "anthropic/claude-3.7-sonnet-latest",
                 "anthropic/claude-3-7-sonnet-latest"
+            ],
+            "tokenizer": "hf://Xenova/claude-tokenizer"
+        },
+        "claude-opus-4-20250514": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_clicks": true,
+            "supports_agent": true,
+            "supports_reasoning": "anthropic",
+            "supports_boost_reasoning": true,
+            "scratchpad": "PASSTHROUGH",
+            "similar_models": [
+                "claude-opus-4",
+                "anthropic/claude-opus-4-20250514",
+                "anthropic/claude-opus-4"
+            ],
+            "tokenizer": "hf://Xenova/claude-tokenizer"
+        },
+        "claude-sonnet-4-20250514": {
+            "n_ctx": 200000,
+            "supports_tools": true,
+            "supports_multimodality": true,
+            "supports_clicks": true,
+            "supports_agent": true,
+            "supports_reasoning": "anthropic",
+            "supports_boost_reasoning": true,
+            "scratchpad": "PASSTHROUGH",
+            "similar_models": [
+                "claude-sonnet-4",
+                "anthropic/claude-sonnet-4-20250514",
+                "anthropic/claude-sonnet-4"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },

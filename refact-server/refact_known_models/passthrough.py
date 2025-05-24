@@ -138,6 +138,30 @@ passthrough_mini_db = {
         "filter_caps": ["chat", "tools", "completion", "agent", "clicks", "reasoning"],
     },
 
+    # Claude 4 models
+    "claude-opus-4": {
+        "backend": "litellm",
+        "provider": "anthropic",
+        "tokenizer_path": "Xenova/claude-tokenizer",
+        "resolve_as": "claude-opus-4-20250514",
+        "T": 200_000,
+        "T_out": 128_000,
+        "pp1000t_prompt": 15_000,  # Estimated based on Claude 3 Opus pricing
+        "pp1000t_generated": 75_000,  # Estimated based on Claude 3 Opus pricing
+        "filter_caps": ["chat", "tools", "completion", "agent", "clicks", "reasoning"],
+    },
+    "claude-sonnet-4": {
+        "backend": "litellm",
+        "provider": "anthropic",
+        "tokenizer_path": "Xenova/claude-tokenizer",
+        "resolve_as": "claude-sonnet-4-20250514",
+        "T": 200_000,
+        "T_out": 128_000,
+        "pp1000t_prompt": 3_000,  # Estimated based on Claude 3.5 Sonnet pricing
+        "pp1000t_generated": 15_000,  # Estimated based on Claude 3.5 Sonnet pricing
+        "filter_caps": ["chat", "tools", "completion", "agent", "clicks", "reasoning"],
+    },
+
     # Groq models
     "groq-llama-3.1-8b": {
         "backend": "litellm",

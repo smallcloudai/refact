@@ -5,6 +5,8 @@ supports_completion: false
 api_key: "sk-or-..."
 
 running_models:
+  - anthropic/claude-opus-4-20250514
+  - anthropic/claude-sonnet-4-20250514
   - anthropic/claude-3.7-sonnet
   - openai/o3-mini
   - openai/gpt-4.1
