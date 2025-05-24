@@ -239,8 +239,6 @@ pub struct ChatPost {
     #[serde(default)]
     pub n: Option<usize>,
     #[serde(default)]
-    pub tools: Option<Vec<serde_json::Value>>,
-    #[serde(default)]
     pub tool_choice: Option<String>,
     #[serde(default)]
     pub checkpoints_enabled: bool,

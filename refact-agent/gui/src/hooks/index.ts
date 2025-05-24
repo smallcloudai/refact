@@ -15,7 +15,7 @@ export * from "./useGetCapsQuery";
 export * from "./useHasCaps";
 export * from "./useGetPromptsQuery";
 export * from "./useGetStatisticDataQuery";
-export * from "./useGetToolsQuery";
+export * from "./useGetToolGroupsQuery";
 export * from "./useAppearance";
 export * from "./useConfig";
 export * from "./useAppDispatch";

@@ -32,6 +32,7 @@ pub async fn yaml_configs_try_create_all(gcx: Arc<ARwLock<GlobalContext>>) -> St
         ("customization.yaml", include_str!("default_customization.yaml")),
         ("privacy.yaml", include_str!("default_privacy.yaml")),
         ("indexing.yaml", include_str!("default_indexing.yaml")),
+        ("builtin_tools.yaml", include_str!("default_builtin_tools.yaml")),
         ("integrations.d/shell.yaml", include_str!("default_shell.yaml")),
     ];
 

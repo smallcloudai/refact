@@ -14,7 +14,7 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::docker::docker_container_manager::get_container_name;
 
@@ -279,6 +279,11 @@ impl Tool for ToolChrome {
              Supported commands:\n{}", supported_commands.join("\n"));
         ToolDesc {
             name: "chrome".to_string(),
+            display_name: "Chrome".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "A real web browser with graphical interface.".to_string(),

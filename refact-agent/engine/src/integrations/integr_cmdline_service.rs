@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use process_wrap::tokio::*;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::{Tool, ToolParam, ToolDesc};
+use crate::tools::tools_description::{Tool, ToolParam, ToolDesc, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::postprocessing::pp_command_output::output_mini_postprocessing;
@@ -323,6 +323,11 @@ impl Tool for ToolService {
 
         ToolDesc {
             name: self.name.clone(),
+            display_name: self.name.clone(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: self.cfg.description.clone(),

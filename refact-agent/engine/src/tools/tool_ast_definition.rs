@@ -7,10 +7,12 @@ use tokio::sync::Mutex as AMutex;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::ast::ast_structs::AstDB;
 use crate::ast::ast_db::fetch_counters;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 
-pub struct ToolAstDefinition;
+pub struct ToolAstDefinition {
+    pub config_path: String,
+}
 
 #[async_trait]
 impl Tool for ToolAstDefinition {
@@ -102,6 +104,28 @@ impl Tool for ToolAstDefinition {
             Ok((corrections, all_context_files))
         } else {
             Err("attempt to use search_symbol_definition with no ast turned on".to_string())
+        }
+    }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "search_symbol_definition".to_string(),
+            display_name: "Definition".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: false,
+            experimental: false,
+            description: "Find definition of a symbol in the project using AST".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "symbols".to_string(),
+                    description: "Comma-separated list of symbols to search for (functions, methods, classes, type aliases). No spaces allowed in symbol names.".to_string(),
+                    param_type: "string".to_string(),
+                },
+            ],
+            parameters_required: vec!["symbols".to_string()],
         }
     }
 

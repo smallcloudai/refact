@@ -63,7 +63,7 @@ import {
 } from "../../features/Chat";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
-import { AgentCapabilities } from "./AgentCapabilities";
+import { AgentCapabilities } from "./AgentCapabilities/AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
 import classNames from "classnames";
 import { ArchiveIcon } from "@radix-ui/react-icons";
