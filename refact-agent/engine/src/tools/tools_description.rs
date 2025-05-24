@@ -436,16 +436,16 @@ tools:
       - "search_key"
 
   - name: "search_pattern"
-    description: "Search for files and folders whose names or paths match the given regular expression patterns, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections."
+    description: "Search for files and folders whose names or paths match the given regular expression pattern, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections."
     parameters:
-      - name: "patterns"
+      - name: "pattern"
         type: "string"
-        description: "Comma-separated list of regular expression patterns. Each pattern is used to search for matching file/folder names/paths, and also for matching text inside files. Use (?i) at the start for case-insensitive search."
+        description: "The pattern is used to search for matching file/folder names/paths, and also for matching text inside files. Use (?i) at the start for case-insensitive search."
       - name: "scope"
         type: "string"
         description: "'workspace' to search all files in workspace, 'dir/subdir/' to search in files within a directory, 'dir/file.ext' to search in a single file."
     parameters_required:
-      - "patterns"
+      - "pattern"
       - "scope"
 
   - name: "create_knowledge"
