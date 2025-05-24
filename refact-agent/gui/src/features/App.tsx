@@ -2,8 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
 import { Chat, newChatAction, selectChatId, selectIsStreaming } from "./Chat";
 import { Sidebar } from "../components/Sidebar/Sidebar";
-import { useEventsBusForIDE, useConfig, useEffectOnce } from "../hooks";
-import { useAppSelector, useAppDispatch } from "../hooks";
+import {
+  useAppSelector,
+  useAppDispatch,
+  useConfig,
+  useEffectOnce,
+  useEventsBusForIDE,
+} from "../hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
 import { Provider } from "react-redux";
@@ -31,7 +36,6 @@ import { Integrations } from "./Integrations";
 import { Providers } from "./Providers";
 import { UserSurvey } from "./UserSurvey";
 import { integrationsApi } from "../services/refact";
-import { KnowledgeList } from "./Knowledge";
 import { LoginPage } from "./Login";
 
 import styles from "./App.module.css";
@@ -219,7 +223,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
             chatId={page.chatId}
           />
         )}
-        {page.name === "knowledge list" && <KnowledgeList />}
       </PageWrapper>
       {page.name !== "welcome" && <Tour page={pages[pages.length - 1].name} />}
     </Flex>

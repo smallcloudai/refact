@@ -21,12 +21,11 @@ import {
 import { Box, Card, Flex, Button } from "@radix-ui/themes";
 import { TruncateLeft } from "../Text";
 import { Link } from "../Link";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
 import { filename } from "../../utils/filename";
 import styles from "./Texdoc.module.css";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { Reveal } from "../Reveal";
-import { useAppSelector, useHideScroll } from "../../hooks";
+import { useAppSelector, useHideScroll, useEventsBusForIDE } from "../../hooks";
 import { selectCanPaste, selectChatId } from "../../features/Chat";
 import { toolsApi } from "../../services/refact";
 import { ErrorCallout } from "../Callout";

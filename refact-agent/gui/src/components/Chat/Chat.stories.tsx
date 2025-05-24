@@ -134,7 +134,6 @@ export const Knowledge: Story = {
       themeProps: {},
       features: {
         vecdb: true,
-        knowledge: true,
       },
     },
   },

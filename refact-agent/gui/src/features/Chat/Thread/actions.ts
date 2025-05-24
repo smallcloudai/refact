@@ -32,7 +32,6 @@ import {
 } from "../../../services/refact/chat";
 import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
-import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import {
@@ -198,7 +197,6 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   //   }
   //   return msg;
   // });
-  debugApp(`[DEBUG TITLE]: messagesToSend: `, messagesToSend);
 
   const caps = await thunkAPI
     .dispatch(capsApi.endpoints.getCaps.initiate(undefined))

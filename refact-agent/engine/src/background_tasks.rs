@@ -1,4 +1,5 @@
 use std::iter::IntoIterator;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 use tokio::sync::RwLock as ARwLock;
@@ -38,13 +39,13 @@ impl BackgroundTasksHolder {
     }
 }
 
-pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> BackgroundTasksHolder {
+pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>, config_dir: &PathBuf) -> BackgroundTasksHolder {
     let mut bg = BackgroundTasksHolder::new(vec![
         tokio::spawn(crate::telemetry::basic_transmit::telemetry_background_task(gcx.clone())),
         tokio::spawn(crate::snippets_transmit::tele_snip_background_task(gcx.clone())),
-        #[cfg(feature="vecdb")]
         tokio::spawn(crate::vecdb::vdb_highlev::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
         tokio::spawn(crate::integrations::sessions::remove_expired_sessions_background_task(gcx.clone())),
+        tokio::spawn(crate::memories::memories_migration(gcx.clone(), config_dir.clone())),
     ]);
     let ast = gcx.clone().read().await.ast_service.clone();
     if let Some(ast_service) = ast {
@@ -56,6 +57,5 @@ pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> Backgro
             tokio::spawn(crate::files_in_jsonl::reload_if_jsonl_changes_background_task(gcx.clone()))
         ]);
     }
-    bg.extend(crate::autonomy::look_for_a_job_start_tasks(gcx.clone()).await);
     bg
 }

@@ -1,6 +1,5 @@
 import { Dialog, Flex, Text, Button } from "@radix-ui/themes";
-import { useCheckpoints } from "../../hooks/useCheckpoints";
-import { useEventsBusForIDE } from "../../hooks";
+import { useCheckpoints, useEventsBusForIDE } from "../../hooks";
 import { TruncateLeft } from "../../components/Text";
 import { Link } from "../../components/Link";
 import { ScrollArea } from "../../components/ScrollArea";

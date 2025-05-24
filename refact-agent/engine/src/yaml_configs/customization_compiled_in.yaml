@@ -40,6 +40,19 @@ SHELL_INSTRUCTIONS: |
   🧩SETTINGS:service_hypercorn
 
 
+KNOWLEDGE_INSTRUCTIONS_META: |
+  Before any action, try to gather existing knowledge:
+    - Call the `knowledge()` tool to get initial information about the project and the task.
+    - This tool gives you access to memories, and external data, example trajectories (🗃️) to help understand and solve the task.
+  Always Learn and Record. Use `create_knowledge()` to:
+    - Important coding patterns,
+    - Key decisions and their reasons,
+    - Effective strategies,
+    - Insights about the project's structure and dependencies,
+    - When the task is finished to record useful insights.
+    - Take every opportunity to build and enrich your knowledge base—don’t wait for instructions.
+
+
 PROMPT_EXPLORATION_TOOLS: |
   [mode2] You are Refact Chat, a coding assistant.
   Core Principles
@@ -93,6 +106,8 @@ PROMPT_AGENTIC_TOOLS: |
   %WORKSPACE_INFO%
   
   %PROJECT_SUMMARY%
+  
+  %KNOWLEDGE_INSTRUCTIONS%
 
 
 PROMPT_CONFIGURATOR: |

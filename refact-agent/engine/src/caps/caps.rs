@@ -172,6 +172,12 @@ impl EmbeddingModelRecord {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CapsMetadata {
+    pub pricing: serde_json::Value,
+    pub features: Vec<String>
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     #[serde(deserialize_with = "normalize_string")]
     pub cloud_name: String, // "refact" or "refact_self_hosted"
@@ -201,7 +207,7 @@ pub struct CodeAssistantCaps {
     pub hf_tokenizer_template: String,  // template for HuggingFace tokenizer URLs
 
     #[serde(default)]  // Need for metadata from cloud, e.g. pricing for models; used only in chat-js
-    pub metadata: serde_json::Value
+    pub metadata: CapsMetadata
 }
 
 fn default_telemetry_retrieve_my_own() -> String {

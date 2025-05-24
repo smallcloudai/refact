@@ -51,10 +51,6 @@ export interface IntegrationsSetupPage {
   wasOpenedThroughChat?: boolean;
 }
 
-export interface KnowledgeListPage {
-  name: "knowledge list";
-}
-
 export type Page =
   | ChatPage
   | Welcome
@@ -66,7 +62,6 @@ export type Page =
   | ChatThreadHistoryPage
   | IntegrationsSetupPage
   | ProvidersPage
-  | KnowledgeListPage
   | LoginPage;
 
 export function isIntegrationSetupPage(

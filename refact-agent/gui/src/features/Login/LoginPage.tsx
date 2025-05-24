@@ -12,7 +12,7 @@ import {
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { GoogleIcon } from "../../images/GoogleIcon";
 import { Accordion } from "../../components/Accordion";
-import { useEventsBusForIDE, useLogin, useEmailLogin } from "../../hooks";
+import { useLogin, useEmailLogin, useEventsBusForIDE } from "../../hooks";
 
 export const LoginPage: React.FC = () => {
   const { loginWithProvider, polling, cancelLogin } = useLogin();

@@ -453,6 +453,7 @@ pub async fn scratchpad_interaction_stream(
         .unwrap())
 }
 
+#[allow(dead_code)]
 pub fn try_insert_usage(msg_value: &mut serde_json::Value) -> bool {
     let map = match msg_value.as_object() {
         Some(map) => map,
