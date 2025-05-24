@@ -13,21 +13,25 @@ import styles from "./ConfirmationTable.module.css";
 import { debugIntegrations } from "../../../debugConfig";
 import { MCPEnvs } from "../../../services/refact";
 
-type EnvironmentVariablesTableProps = {
-  initialData: MCPEnvs;
-  onMCPEnvironmentVariables: (data: MCPEnvs) => void;
+type KeyValueTableProps = {
+  initialData: Record<string, string>;
+  onChange: (data: Record<string, string>) => void;
+  columnNames?: string[];
+  emptyMessage?: string;
 };
 
-type EnvVarRow = {
+type KeyValueRow = {
   key: string;
   value: string;
   originalKey: string;
   order: number;
 };
 
-export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
+export const KeyValueTable: FC<KeyValueTableProps> = ({
   initialData,
-  onMCPEnvironmentVariables,
+  onChange,
+  columnNames = ["Key", "Value"],
+  emptyMessage,
 }) => {
   const [nextOrder, setNextOrder] = useState(
     () => Object.keys(initialData).length,
@@ -106,14 +110,14 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
   };
 
   useEffect(() => {
-    onMCPEnvironmentVariables(data);
-  }, [data, onMCPEnvironmentVariables]);
+    onChange(data);
+  }, [data, onChange]);
 
   const tableData = useMemo(
     () =>
       Object.entries(data)
         .map(
-          ([key, value]): EnvVarRow => ({
+          ([key, value]): KeyValueRow => ({
             key,
             value,
             originalKey: key,
@@ -125,14 +129,14 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
   );
 
   useEffect(() => {
-    debugIntegrations(`[DEBUG MCP]: envs table data: `, tableData);
+    debugIntegrations(`[DEBUG]: KeyValueTable data changed: `, tableData);
   }, [tableData]);
 
-  const columns = useMemo<ColumnDef<EnvVarRow>[]>(
+  const columns = useMemo<ColumnDef<KeyValueRow>[]>(
     () => [
       {
         id: "key",
-        header: "Environment Variable",
+        header: columnNames[0],
         cell: ({ row }) => (
           <DefaultCell
             initialValue={row.original.key}
@@ -156,7 +160,7 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
       },
       {
         id: "value",
-        header: "Value",
+        header: columnNames[1],
         cell: ({ row }) => (
           <DefaultCell
             initialValue={row.original.value}
@@ -247,9 +251,7 @@ export const EnvironmentVariablesTable: FC<EnvironmentVariablesTableProps> = ({
               ))
             ) : (
               <Table.Row>
-                <Table.Cell colSpan={columns.length}>
-                  No environment variables set yet
-                </Table.Cell>
+                <Table.Cell colSpan={columns.length}>{emptyMessage}</Table.Cell>
               </Table.Row>
             )}
           </Table.Body>

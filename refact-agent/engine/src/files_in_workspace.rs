@@ -16,6 +16,7 @@ use tracing::info;
 use crate::files_correction::{canonical_path, CommandSimplifiedDirExt};
 use crate::git::operations::git_ls_files;
 use crate::global_context::GlobalContext;
+use crate::integrations::running_integrations::load_integrations;
 use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
@@ -626,6 +627,8 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
+    let allow_experimental = gcx.read().await.cmdline.experimental;
+
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 
@@ -633,6 +636,9 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     tokio::spawn(async move {
         crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
     });
+
+    // Start or connect to mcp servers
+    let _ = load_integrations(gcx.clone(), allow_experimental, &["**/mcp_*".to_string()]).await;
 
     files_enqueued
 }

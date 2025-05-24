@@ -65,6 +65,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     setToolParameters,
     setMCPArguments,
     setMCPEnvironmentVariables,
+    setHeaders,
     isDisabledIntegrationForm,
     isApplyingIntegrationForm,
     isDeletingIntegration,
@@ -126,6 +127,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           setConfirmationRules={setConfirmationRules}
           setMCPArguments={setMCPArguments}
           setMCPEnvironmentVariables={setMCPEnvironmentVariables}
+          setHeaders={setHeaders}
           setToolParameters={setToolParameters}
           handleSwitchIntegration={handleNavigateToIntegrationSetup}
         />
