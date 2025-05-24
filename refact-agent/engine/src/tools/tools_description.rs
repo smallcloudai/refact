@@ -139,7 +139,7 @@ pub async fn tools_merged_and_filtered(
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
-        ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
+        // ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
         ("search_pattern".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
@@ -149,8 +149,9 @@ pub async fn tools_merged_and_filtered(
         ("create_memory_bank".to_string(), Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("search_semantic".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
-        #[cfg(feature="vecdb")]
-        ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
+        // #[cfg(feature="vecdb")]
+        // ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
+        ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
     ]);
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
@@ -240,7 +241,7 @@ tools:
     parameters:
       - name: "paths"
         type: "string"
-        description: "Comma separated file names or directories: dir1/file1.ext,dir3/dir4."
+        description: "Comma separated file names or directories: dir1/file1.ext:12-100,dir3/dir4."
     parameters_required:
       - "paths"
 
@@ -479,6 +480,23 @@ tools:
     description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank."
     parameters: []
     parameters_required: []
+    
+  - name: "debug_script"
+    agentic: true
+    description: "Uses pdb to debug a Python script and investigate a problem, then summarizes the debugging session."
+    parameters:
+      - name: "path"
+        type: "string"
+        description: "Path to the file which needs to be debugged"
+      - name: "important_paths"
+        type: "string"
+        description: "Comma-separated list of filenames which are required to be considered for debugging the problem."
+      - name: "problem"
+        type: "string"
+        description: "Description of the problem to investigate"
+    parameters_required:
+      - "path"
+      - "problem"
 "####;
 
 

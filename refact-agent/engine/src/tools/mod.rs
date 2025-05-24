@@ -23,3 +23,4 @@ mod tool_create_knowledge;
 #[cfg(feature="vecdb")]
 mod tool_create_memory_bank;
 pub mod file_edit;
+mod tool_debug_script;
