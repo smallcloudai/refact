@@ -4,6 +4,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
+use heed::types::Bytes;
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -58,8 +59,8 @@ impl AstDefinition {
 }
 
 pub struct AstDB {
-    pub sleddb: Arc<sled::Db>,
-    pub sledbatch: Arc<AMutex<sled::Batch>>,
+    pub env: Arc<heed::Env>,
+    pub main_db: heed::Database<heed::types::Str, Bytes>,
     pub batch_counter: AMutex<usize>,
     pub counters_increase: AMutex<HashMap<String, i32>>,
     pub ast_max_files: usize,

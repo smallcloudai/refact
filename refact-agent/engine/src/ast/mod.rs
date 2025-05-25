@@ -12,6 +12,7 @@ pub mod ast_structs;
 pub mod ast_parse_anything;
 pub mod ast_indexer_thread;
 pub mod ast_db;
+pub mod ast_db_heed_helpers;
 
 #[cfg(feature="vecdb")]
 pub mod file_splitter;

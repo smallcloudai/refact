@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use tree_sitter::{Node, Parser};
-use tree_sitter_python::language;
+use tree_sitter_python::LANGUAGE;
 
 use crate::ast::ast_structs::{AstDefinition, AstUsage, AstErrorStats};
 use crate::ast::treesitter::structs::SymbolType;
@@ -822,7 +822,7 @@ fn py_body<'a>(cx: &mut ContextPy, node: &Node<'a>, path: &Vec<String>) -> Strin
 fn py_make_cx(code: &str) -> ContextPy
 {
     let mut sitter = Parser::new();
-    sitter.set_language(&language()).unwrap();
+    sitter.set_language(&LANGUAGE.into()).unwrap();
     let cx = ContextPy {
         ap: ContextAnyParser {
             sitter,

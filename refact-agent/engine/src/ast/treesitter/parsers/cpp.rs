@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
-use tree_sitter_cpp::language;
+use tree_sitter_cpp::LANGUAGE;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
@@ -100,7 +100,7 @@ impl CppParser {
     pub fn new() -> Result<CppParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(&language())
+            .set_language(&LANGUAGE.into())
             .map_err(internal_error)?;
         Ok(CppParser { parser })
     }

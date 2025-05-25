@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
-use tree_sitter_rust::language;
+use tree_sitter_rust::LANGUAGE;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolInstance, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeAlias, TypeDef, VariableDefinition, VariableUsage};
@@ -29,7 +29,7 @@ impl RustParser {
     pub fn new() -> Result<RustParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(&language())
+            .set_language(&LANGUAGE.into())
             .map_err(internal_error)?;
         Ok(RustParser { parser })
     }

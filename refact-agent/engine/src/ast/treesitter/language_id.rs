@@ -131,19 +131,27 @@ impl From<String> for LanguageId {
 
 impl From<Language> for LanguageId {
     fn from(value: Language) -> Self {
-        if value == tree_sitter_cpp::language() {
+        let cpp_lang: tree_sitter::Language = tree_sitter_cpp::LANGUAGE.into();
+        let python_lang: tree_sitter::Language = tree_sitter_python::LANGUAGE.into();
+        let java_lang: tree_sitter::Language = tree_sitter_java::LANGUAGE.into();
+        let javascript_lang: tree_sitter::Language = tree_sitter_javascript::LANGUAGE.into();
+        let rust_lang: tree_sitter::Language = tree_sitter_rust::LANGUAGE.into();
+        let typescript_lang: tree_sitter::Language = tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into();
+        let tsx_lang: tree_sitter::Language = tree_sitter_typescript::LANGUAGE_TSX.into();
+
+        if value == cpp_lang {
             Self::Cpp
-        } else if value == tree_sitter_python::language() {
+        } else if value == python_lang {
             Self::Python
-        } else if value == tree_sitter_java::language() {
+        } else if value == java_lang {
             Self::Java
-        } else if value == tree_sitter_javascript::language() {
+        } else if javascript_lang == value {
             Self::JavaScript
-        } else if value == tree_sitter_rust::language() {
+        } else if value == rust_lang {
             Self::Rust
-        } else if value == tree_sitter_typescript::language_typescript() {
+        } else if typescript_lang == value {
             Self::TypeScript
-        } else if value == tree_sitter_typescript::language_tsx() {
+        } else if tsx_lang == value {
             Self::TypeScriptReact
         } else {
             Self::Unknown

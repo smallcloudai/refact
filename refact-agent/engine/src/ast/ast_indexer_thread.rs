@@ -9,7 +9,7 @@ use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
 use crate::ast::ast_structs::{AstDB, AstStatus, AstCounters, AstErrorStats};
-use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, flush_sled_batch, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
+use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, flush_db_changes, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
 
 
 pub struct AstIndexService {
@@ -135,7 +135,7 @@ async fn ast_indexer_thread(
             continue;
         }
 
-        flush_sled_batch(ast_index.clone(), 0).await;  // otherwise bad stats
+        flush_db_changes(ast_index.clone(), 0).await;  // otherwise bad stats
 
         if !reported_parse_stats {
             if !stats_parsing_errors.errors.is_empty() {
@@ -212,7 +212,7 @@ async fn ast_indexer_thread(
             }
         }
 
-        flush_sled_batch(ast_index.clone(), 0).await;
+        flush_db_changes(ast_index.clone(), 0).await;
 
         if !usagecx.errstats.errors.is_empty() {
             let error_count = usagecx.errstats.errors_counter;
