@@ -95,7 +95,7 @@ async fn parse_args(
                     tracing::info!("cannot find a good file candidate for `{s_raw}`");
                 }
             }
-            paths
+            vec![]
         },
         Some(v) => return Err(format!("Error: The 'related_files' argument must be a string, but received: {:?}", v)),
         None => vec![], // Optional parameter
@@ -111,7 +111,7 @@ const DEBUG_SYSTEM_PROMPT: &str = r###"**Role**
 You are a Python debugger who uses `pdb` to track down elusive bugs.
 
 ### Mission  
-Find—and prove—the root cause of the error in the supplied Python script.
+Your goal is to investigate the given problem and find code which is responsible for it.
 
 ### Workflow  
 1. **Grasp the Context**  
@@ -395,7 +395,7 @@ impl Tool for ToolDebugScript {
         }),
             ContextEnum::ChatMessage(ChatMessage {
             role: "cd_instruction".to_string(),
-            content: ChatContent::SimpleText(format!("💿 Open all visited files using `cat(file1,file2,file3,...)`!")),
+            content: ChatContent::SimpleText(format!("💿 Solve the problem using the provided report")),
             ..Default::default()
         })];
         

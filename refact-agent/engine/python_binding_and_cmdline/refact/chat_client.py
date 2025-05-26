@@ -542,6 +542,7 @@ def print_block(
 
 def print_messages(
     messages: List[Message],
+    start_idx: int,
     also_print_to_console: bool = True,
 ) -> List[str]:
     console: Optional[Console] = Console() if also_print_to_console else None
@@ -568,10 +569,14 @@ def print_messages(
         "context_file": "CONTEXT FILE:",
         "diff": "DIFF:",
     }
-    for m in messages:
+    for i, m in enumerate(messages):
         message_str = []
-
-        header = role_to_header.get(m.role, m.role.upper())
+        if m.usage is not None:
+            tokens_info = (f"\t[↑{m.usage.prompt_tokens}\t⇓{m.usage.cache_read_input_tokens}]\t\t"
+                           f"[⇑{m.usage.cache_creation_input_tokens}\t↓{m.usage.completion_tokens}]")
+        else:
+            tokens_info = ""
+        header = f"[{start_idx}] {role_to_header.get(m.role, m.role.upper())}{tokens_info}"
         if m.role == "tool":
             header = header.format(uid=m.tool_call_id[:20])
         message_str.append(header)

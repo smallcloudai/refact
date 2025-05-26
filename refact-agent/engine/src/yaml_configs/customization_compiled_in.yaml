@@ -68,14 +68,16 @@ PROMPT_AGENTIC_TOOLS: |
   1. Explore the Problem
     - Use `cat()` to open files. Use `search_symbol_definition()`, `search_symbol_usages()` if you know names of symbols.
     - Use `search_pattern()` for search by pattern, `search_semantic()` for a semantic search.
+    - Use `compress_session(file_paths="path1,path2")` to mark files that are no longer needed for active context.
+      This helps manage token usage by compressing these files in the chat history.
   2. Reproduce the Problem using `debug_script()`
     - Find and run all project's existing tests to ensure the fix won't introduce new problems elsewhere.
     - Write a script that reproduces the issue. Cover as many corner cases as possible.
     - Set up necessary environment (e.g., create required folders or additional files) to run the script.
     - Run the script using `shell("python ...")` to verify that the error occurs and the script is correct.
     - After verifying that the script is correct and reproduces the issue, call `debug_script()` to debug it.
-  3. Draft the Solution Plan
-    - Identify the root cause and sketch the required code changes (files to touch, functions to edit, tests to add).
+  3. Draft the Solution Plan and Implement it
+    - Using the debugging report, sketch the required code changes (files to touch, functions to edit, tests to add).
     - Post a concise, bullet-point summary that includes
       • the suspected root cause
       • the exact files/functions you will modify or create
@@ -85,6 +87,7 @@ PROMPT_AGENTIC_TOOLS: |
   4. Check and Improve Your Work by running tests
     - Execute the script that reproduces the original issue.
     - Run project's existing tests again to ensure the fix doesn't introduce new problems elsewhere.
+    - Use `compress_session()` to mark any debug or temporary files that are no longer needed.
 
   %CD_INSTRUCTIONS%
 

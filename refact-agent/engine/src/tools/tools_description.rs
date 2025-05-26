@@ -135,12 +135,13 @@ pub async fn tools_merged_and_filtered(
         ("create_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_create_textdoc::ToolCreateTextDoc{}) as Box<dyn Tool + Send>),
         ("update_textdoc".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc::ToolUpdateTextDoc {}) as Box<dyn Tool + Send>),
         ("update_textdoc_regex".to_string(), Box::new(crate::tools::file_edit::tool_update_textdoc_regex::ToolUpdateTextDocRegex {}) as Box<dyn Tool + Send>),
-        ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
+        // ("web".to_string(), Box::new(crate::tools::tool_web::ToolWeb{}) as Box<dyn Tool + Send>),
         ("cat".to_string(), Box::new(crate::tools::tool_cat::ToolCat{}) as Box<dyn Tool + Send>),
         ("rm".to_string(), Box::new(crate::tools::tool_rm::ToolRm{}) as Box<dyn Tool + Send>),
         ("mv".to_string(), Box::new(crate::tools::tool_mv::ToolMv{}) as Box<dyn Tool + Send>),
         // ("strategic_planning".to_string(), Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{}) as Box<dyn Tool + Send>),
         ("search_pattern".to_string(), Box::new(crate::tools::tool_regex_search::ToolRegexSearch{}) as Box<dyn Tool + Send>),
+        ("compress_session".to_string(), Box::new(crate::tools::tool_compress_session::ToolCompressSession{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
         ("knowledge".to_string(), Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{}) as Box<dyn Tool + Send>),
         #[cfg(feature="vecdb")]
@@ -488,7 +489,7 @@ tools:
       - name: "path"
         type: "string"
         description: "Path to the file which needs to be debugged"
-      - name: "important_paths"
+      - name: "related_files"
         type: "string"
         description: "Comma-separated list of filenames which are required to be considered for debugging the problem."
       - name: "problem"
@@ -497,6 +498,15 @@ tools:
     parameters_required:
       - "path"
       - "problem"
+      
+  - name: "compress_session"
+    description: "Marks files for compression in the chat session. The chat compression logic will use this to compress the specified files."
+    parameters:
+      - name: "file_paths"
+        type: "string"
+        description: "Comma-separated list of file paths to compress in the session."
+    parameters_required:
+      - "file_paths"
 "####;
 
 

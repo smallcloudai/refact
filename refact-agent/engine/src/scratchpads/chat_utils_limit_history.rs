@@ -48,7 +48,7 @@ pub enum CompressionStrength {
 pub fn get_model_token_params(model_id: &str) -> (i32, f32) {
     match model_id {
         // Claude 3 Sonnet models need higher token overhead
-        m if m.contains("claude-3-7-sonnet") | m.contains("claude-3-5-sonnet") => (150, 0.2),
+        m if m.contains("claude-sonnet-4") | m.contains("claude-3-5-sonnet") | m.contains("claude-3-5-sonnet") => (170, 0.2),
         
         // Default values for all other models
         _ => (3, 0.0),
@@ -243,7 +243,72 @@ fn is_content_duplicate(
     min_count > 0 && intersect_count >= current_lines.len()
 }
 
-/// Stage 0: Compress duplicate ContextFiles based on content comparison - keeping the first occurrence
+/// Stage 0.5: Compress duplicate ContextFiles based on content comparison - keeping the first occurrence
+fn compress_marked_files(messages: &mut Vec<ChatMessage>) -> Result<usize, String> {
+    let mut files_to_compress: HashSet<String> = HashSet::new();
+    
+    for message in messages.iter() {
+        if message.role == "tool" && message.tool_call_id.contains("compress_session") {
+            let content = message.content.content_text_only();
+            if content.contains("files will be compressed in the session") {
+                for line in content.lines() {
+                    if line.starts_with("- ") {
+                        let file_path = line.trim_start_matches("- ").trim().to_string();
+                        tracing::info!("Stage 0.5: Marked file for compression via compress_session tool: {}", file_path);
+                        files_to_compress.insert(file_path);
+                    }
+                }
+            }
+        }
+    }
+    
+    if files_to_compress.is_empty() {
+        return Ok(0);
+    }
+    
+    let mut compressed_count = 0;
+    for (msg_idx, message) in messages.iter_mut().enumerate() {
+        if message.role == "context_file" {
+            let content_text = message.content.content_text_only();
+            let context_files: Result<Vec<ContextFile>, _> = serde_json::from_str(&content_text);
+            
+            if let Ok(context_files) = context_files {
+                let mut remaining_files = Vec::new();
+                let mut compressed_files = Vec::new();
+                
+                for cf in &context_files {
+                    if files_to_compress.contains(&cf.file_name) {
+                        compressed_files.push(cf.file_name.clone());
+                    } else {
+                        remaining_files.push(cf.clone());
+                    }
+                }
+                
+                if !compressed_files.is_empty() {
+                    let compressed_files_str = compressed_files.join(", ");
+                    if remaining_files.is_empty() {
+                        let summary = format!("💿 Files compressed: '{}' files were marked for compression in the session.", compressed_files_str);
+                        message.content = ChatContent::SimpleText(summary);
+                        message.role = "cd_instruction".to_string();
+                        tracing::info!("Stage 0.5: Fully compressed ContextFile at index {}: all {} files removed", 
+                                      msg_idx, compressed_files.len());
+                    } else {
+                        let new_content = serde_json::to_string(&remaining_files)
+                            .expect("serialization of filtered ContextFiles failed");
+                        message.content = ChatContent::SimpleText(new_content);
+                        tracing::info!("Stage 0.5: Partially compressed ContextFile at index {}: {} files removed, {} files kept", 
+                                      msg_idx, compressed_files.len(), remaining_files.len());
+                    }
+                    
+                    compressed_count += compressed_files.len();
+                }
+            }
+        }
+    }
+    
+    Ok(compressed_count)
+}
+
 fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(usize, Vec<bool>), String> {
     #[derive(Debug, Clone)]
     struct ContextFileInfo {
@@ -334,6 +399,7 @@ fn compress_duplicate_context_files(messages: &mut Vec<ChatMessage>) -> Result<(
             let mut compressed_files = Vec::new();
             
             for (cf_idx, cf) in context_files.iter().enumerate() {
+                // Check if this file should be compressed (either marked by our tool or by duplicate detection)
                 if all_files.iter().any(|f| 
                     f.msg_idx == file.msg_idx && 
                     f.cf_idx == cf_idx && 
@@ -508,6 +574,17 @@ pub fn fix_and_limit_messages_history(
     } else if let Ok((count, preservation_flags)) = stage0_result {
         tracing::info!("Stage 0: Compressed {} duplicate ContextFile messages", count);
         preserve_in_later_stages = preservation_flags;
+    }
+    
+    // STAGE 0.5: Compress files marked by compress_session tool
+    let stage05_result = compress_marked_files(&mut mutable_messages);
+    if let Err(e) = &stage05_result {
+        tracing::warn!("Stage 0.5 compression failed: {}", e);
+    } else if let Ok(count) = stage05_result {
+        tracing::info!("Stage 0.5: Compressed {} files marked by compress_session tool", count);
+        if count > 0 {
+            highest_compression_stage = 1;
+        }
     }
     
     replace_broken_tool_call_messages(
