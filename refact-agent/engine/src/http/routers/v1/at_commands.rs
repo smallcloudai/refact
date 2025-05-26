@@ -14,6 +14,7 @@ use tracing::info;
 
 use crate::at_commands::execute_at::run_at_commands_locally;
 use crate::indexing_utils::wait_for_indexing_if_needed;
+use crate::postprocessing::pp_utils::pp_resolve_ctx_file_paths;
 use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
@@ -25,8 +26,6 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 use crate::http::routers::v1::chat::deserialize_messages_from_post;
-use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -196,8 +195,6 @@ pub async fn handle_v1_command_preview(
         &mut query
     ).await;
 
-    let rag_n_ctx = max_tokens_for_rag_chat(model_rec.base.n_ctx, 512);  // real maxgen may be different -- comes from request
-
     let mut preview: Vec<ChatMessage> = vec![];
     for exec_result in messages_for_postprocessing.iter() {
         // at commands exec() can produce both role="user" and role="assistant" messages
@@ -214,19 +211,16 @@ pub async fn handle_v1_command_preview(
         pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
     }
 
-    let cf = postprocess_context_files(
-        global_context.clone(),
-        &mut filter_only_context_file_from_context_tool(&messages_for_postprocessing),
-        tokenizer_arc.clone(),
-        rag_n_ctx,
-        false,
-        &pp_settings,
-    ).await;
+    let mut context_files = filter_only_context_file_from_context_tool(&messages_for_postprocessing);
+    let ctx_file_paths = pp_resolve_ctx_file_paths(global_context.clone(), &mut context_files).await;
+    for (context_file, (_, short_path)) in context_files.iter_mut().zip(ctx_file_paths.into_iter()) {
+        context_file.file_name = short_path;
+    }
 
-    if !cf.is_empty() {
+    if !context_files.is_empty() {
         let message = ChatMessage {
             role: "context_file".to_string(),
-            content: ChatContent::SimpleText(serde_json::to_string(&cf).unwrap()),
+            content: ChatContent::SimpleText(serde_json::to_string(&context_files).unwrap()),
             tool_calls: None,
             tool_call_id: "".to_string(),
             ..Default::default()
