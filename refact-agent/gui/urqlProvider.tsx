@@ -18,22 +18,24 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   // const apiKey = useAppSelector(selectConfig).apiKey;
   const apiKey = "sk_alice_123456";
   const baseUrl = "localhost:8008/v1/graphql";
+  const protocol = window.location.protocol === "https:" ? "https" : "http";
+  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
 
   const wsClient = useMemo(
     () =>
       createWSClient({
-        url: `ws://${baseUrl}`,
+        url: `${wsProtocol}://${baseUrl}`,
         connectionParams: { apikey: apiKey },
         webSocketImpl: WebSocket,
         retryAttempts: 5,
       }),
-    [baseUrl, apiKey],
+    [baseUrl, apiKey, wsProtocol],
   );
 
   const urqlClient = useMemo(
     () =>
       createClient({
-        url: `http://${baseUrl}`,
+        url: `${protocol}://${baseUrl}`,
         exchanges: [
           debugExchange,
           cacheExchange,
@@ -65,7 +67,7 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         }),
       }),
-    [baseUrl, apiKey, wsClient],
+    [baseUrl, apiKey, wsClient, protocol],
   );
 
   return <Provider value={urqlClient}>{children}</Provider>;
