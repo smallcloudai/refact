@@ -1,7 +1,9 @@
 import { toPascalCase } from "./toPascalCase";
 
 export const getIntegrationInfo = (integrationName: string) => {
-  const isMCP = integrationName.startsWith("mcp");
+  const isMCPSse = integrationName.startsWith("mcp_sse");
+  const isMCPStdio =
+    !integrationName.startsWith("mcp_sse") && integrationName.includes("mcp");
   const isCmdline = integrationName.startsWith("cmdline");
   const isService = integrationName.startsWith("service");
 
@@ -11,12 +13,13 @@ export const getIntegrationInfo = (integrationName: string) => {
     }
     if (isCmdline) return "Command-line Tool";
     if (isService) return "Command-line Service";
-    if (isMCP) return "MCP Server";
+    if (isMCPSse) return "MCP (Connect to SSE)";
+    if (isMCPStdio) return "MCP (Run via stdio)";
     return "";
   };
 
   return {
-    isMCP,
+    isMCP: isMCPSse || isMCPStdio,
     isCmdline,
     isService,
     displayName: getDisplayName(),

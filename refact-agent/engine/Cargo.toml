@@ -95,8 +95,6 @@ walkdir = "2.3"
 which = "7.0.1"
 zerocopy = "0.8.14"
 
-# There you can use a local copy:
-mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
-#mcp_client_rs = { path = "../../../mcp_client_rust" }
-
-
+# There you can use a local copy
+# rmcp = { path = "../../../rust-sdk/crates/rmcp/", "features" = ["client", "transport-child-process", "transport-sse"] }
+rmcp = { git = "https://github.com/smallcloudai/rust-sdk", branch = "main", features = ["client", "transport-child-process", "transport-sse-client", "reqwest"] }
