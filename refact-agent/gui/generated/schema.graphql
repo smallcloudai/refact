@@ -80,37 +80,29 @@ type FExternalDataSourceSubs {
 }
 
 input FKnowledgeItemInput {
-  iknow_goal: String!
   iknow_memory: String!
-  iknow_title: String!
-  iknow_type: String!
+  iknow_tags: [String!]! = []
   located_fgroup_id: String!
   owner_shared: Boolean!
 }
 
 type FKnowledgeItemOutput {
   iknow_created_ts: Float!
-  iknow_goal: String!
   iknow_id: String!
   iknow_memory: String!
   iknow_modified_ts: Float!
-  iknow_origin: String!
   iknow_stat_correct: Int!
   iknow_stat_relevant: Int!
   iknow_stat_times_used: Int!
-  iknow_title: String!
-  iknow_type: String!
+  iknow_tags: [String!]!
   located_fgroup_id: String!
   owner_fuser_id: String!
   owner_shared: Boolean!
 }
 
 input FKnowledgeItemPatch {
-  iknow_goal: String = null
   iknow_memory: String = null
-  iknow_origin: String = null
-  iknow_title: String = null
-  iknow_type: String = null
+  iknow_tags: [String!] = null
   located_fgroup_id: String = null
   owner_shared: Boolean = null
 }
@@ -169,8 +161,9 @@ input FThreadMessageInput {
 
 type FThreadMessageSubs {
   news_action: String!
-  news_payload: FThreadMessage
   news_payload_id: String!
+  news_payload_thread: FThreadOutput
+  news_payload_thread_message: FThreadMessage
   stream_delta: FThreadDelta
 }
 

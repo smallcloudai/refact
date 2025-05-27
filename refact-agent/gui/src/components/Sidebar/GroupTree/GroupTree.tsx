@@ -1,38 +1,12 @@
-import { Box, Flex, Heading, Text } from "@radix-ui/themes";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { NodeApi, Tree } from "react-arborist";
+import { Box, Flex, Heading, Select, Text } from "@radix-ui/themes";
+import React from "react";
+import { Tree } from "react-arborist";
 import { CustomTreeNode } from "./CustomTreeNode";
-import { setActiveGroup, resetActiveGroup } from "../../../features/Teams";
-import { isDetailMessage, teamsApi } from "../../../services/refact";
-import {
-  useAppDispatch,
-  useEventsBusForIDE,
-  useResizeObserver,
-} from "../../../hooks";
-
-import { setError } from "../../../features/Errors/errorsSlice";
-import { useSmartSubscription } from "../../../hooks/useSmartSubscription";
-
-import {
-  NavTreeSubsDocument,
-  type NavTreeSubsSubscription,
-} from "../../../../generated/documents";
-
-import {
-  cleanupInsertedLater,
-  markForDelete,
-  pruneNodes,
-  updateTree,
-} from "./utils";
 
 import styles from "./GroupTree.module.css";
 import { ConfirmGroupSelection } from "./ConfirmGroupSelection";
+import { useGroupTree } from "./useGroupTree";
+import { ScrollArea } from "../../ScrollArea";
 
 export interface FlexusTreeNode {
   treenodePath: string;
@@ -45,194 +19,102 @@ export interface FlexusTreeNode {
   treenodeExpanded: boolean;
 }
 
-const ws_id = "31n8sWNX8Q"; // TODO: get proper ws_id from /v1/login workspaces
-// const ws_id = "solarsystem";
-
 export const GroupTree: React.FC = () => {
-  const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
-
-  const filterNodesByNodeType = useCallback(
-    (nodes: FlexusTreeNode[], type: string): FlexusTreeNode[] => {
-      return nodes
-        .filter((node) => node.treenodeType === type)
-        .map((node) => {
-          const children =
-            node.treenodeChildren.length > 0
-              ? filterNodesByNodeType(node.treenodeChildren, type)
-              : [];
-          return {
-            ...node,
-            treenodeChildren: children,
-          };
-        });
-    },
-    [],
-  );
-
-  const filteredGroupTreeData = useMemo(() => {
-    return filterNodesByNodeType(groupTreeData, "group");
-  }, [groupTreeData, filterNodesByNodeType]);
-
-  const touchNode = useCallback(
-    (path: string, title: string, type: string, id: string) => {
-      if (!path) return;
-      setGroupTreeData((prevTree) => {
-        const parts = path.split("/");
-        return updateTree(prevTree, parts, "", id, path, title, type);
-      });
-    },
-    [setGroupTreeData],
-  );
-
-  const handleEveryTreeUpdate = useCallback(
-    (data: NavTreeSubsSubscription | undefined) => {
-      const u = data?.tree_subscription;
-      if (!u) return;
-      switch (u.treeupd_action) {
-        case "TREE_REBUILD_START":
-          setGroupTreeData((prev) => markForDelete(prev));
-          break;
-        case "TREE_UPDATE":
-          touchNode(
-            u.treeupd_path,
-            u.treeupd_title,
-            u.treeupd_type,
-            u.treeupd_id,
-          );
-          break;
-        case "TREE_REBUILD_FINISHED":
-          setTimeout(() => {
-            setGroupTreeData((prev) => pruneNodes(prev));
-          }, 500);
-          setTimeout(() => {
-            setGroupTreeData((prev) => cleanupInsertedLater(prev));
-          }, 3000);
-          break;
-        default:
-          // eslint-disable-next-line no-console
-          console.warn("TREE SUBS:", u.treeupd_action);
-      }
-    },
-    [touchNode],
-  );
-
-  useSmartSubscription<NavTreeSubsSubscription, { ws_id: string }>({
-    query: NavTreeSubsDocument,
-    variables: { ws_id },
-    onUpdate: handleEveryTreeUpdate,
-  });
-
-  const dispatch = useAppDispatch();
-  const { setActiveTeamsGroupInIDE } = useEventsBusForIDE();
-
-  const [setActiveGroupIdTrigger] = teamsApi.useSetActiveGroupIdMutation();
-  const [currentSelectedTeamsGroupNode, setCurrentSelectedTeamsGroupNode] =
-    useState<FlexusTreeNode | null>(null);
-
-  const treeParentRef = useRef<HTMLDivElement | null>(null);
-  const [treeHeight, setTreeHeight] = useState<number>(
-    treeParentRef.current?.clientHeight ?? 0,
-  );
-  const [treeWidth, setTreeWidth] = useState<number>(
-    treeParentRef.current?.clientHeight ?? 0,
-  );
-
-  const calculateAndSetSpace = useCallback(() => {
-    if (!treeParentRef.current) {
-      return;
-    }
-
-    setTreeHeight(treeParentRef.current.clientHeight);
-    setTreeWidth(treeParentRef.current.clientWidth);
-  }, [treeParentRef]);
-
-  useResizeObserver(treeParentRef.current, calculateAndSetSpace);
-
-  useEffect(() => {
-    calculateAndSetSpace();
-  }, [calculateAndSetSpace]);
-
-  const onGroupSelect = useCallback((nodes: NodeApi<FlexusTreeNode>[]) => {
-    if (nodes.length === 0) return;
-    const groupNode = nodes[0].data;
-    setCurrentSelectedTeamsGroupNode(groupNode);
-  }, []);
-
-  const onGroupSelectionConfirm = useCallback(
-    (group: FlexusTreeNode) => {
-      const newGroup = {
-        id: group.treenodeId,
-        name: group.treenodeTitle,
-      };
-
-      setActiveTeamsGroupInIDE(newGroup);
-      void setActiveGroupIdTrigger({
-        group_id: group.treenodeId,
-      })
-        .then((result) => {
-          if (result.data) {
-            dispatch(setActiveGroup(newGroup));
-            return;
-          } else {
-            // TODO: rework error handling
-            let errorMessage: string;
-            if ("data" in result.error && isDetailMessage(result.error.data)) {
-              errorMessage = result.error.data.detail;
-            } else {
-              errorMessage =
-                "Error: Something went wrong while selecting a group. Try again.";
-            }
-            dispatch(setError(errorMessage));
-          }
-        })
-        .catch(() => {
-          dispatch(resetActiveGroup());
-        });
-    },
-    [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
-  );
+  const {
+    treeParentRef,
+    currentSelectedTeamsGroupNode,
+    currentTeamsWorkspace,
+    filteredGroupTreeData,
+    onGroupSelect,
+    onGroupSelectionConfirm,
+    setCurrentSelectedTeamsGroupNode,
+    setGroupTreeData,
+    onWorkspaceSelection,
+    availableWorkspaces,
+    treeWidth,
+    treeHeight,
+  } = useGroupTree();
 
   return (
-    <Flex direction="column" gap="4" mt="4" width="100%">
+    <Flex direction="column" gap="6" mt="4" width="100%">
       <Flex direction="column" gap="1">
         <Heading as="h2" size="4">
-          Choose desired group
+          Choose workspace
         </Heading>
         <Text size="3" color="gray">
-          Select a group to sync your knowledge with the cloud.
+          Select a workspace associated to your team to continue.
         </Text>
+        <Select.Root onValueChange={onWorkspaceSelection}>
+          <Select.Trigger placeholder="Choose workspace"></Select.Trigger>
+          <Select.Content position="popper">
+            {availableWorkspaces.map((workspace) => (
+              <Select.Item value={workspace.ws_id} key={workspace.ws_id}>
+                {workspace.root_group_name}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </Flex>
-      <Box ref={treeParentRef} height="240px" width="100%">
-        <Tree
-          data={filteredGroupTreeData}
-          rowHeight={40}
-          height={treeHeight}
-          width={treeWidth}
-          indent={28}
-          onSelect={onGroupSelect}
-          openByDefault={false}
-          className={styles.sidebarTree}
-          selection={currentSelectedTeamsGroupNode?.treenodePath}
-          disableDrag
-          disableMultiSelection
-          disableEdit
-          disableDrop
-          idAccessor={"treenodePath"} // treenodePath seems to be more convenient for temporary tree nodes which later get removed
-          childrenAccessor={"treenodeChildren"}
+      {currentTeamsWorkspace && filteredGroupTreeData.length > 0 && (
+        <Flex
+          direction="column"
+          gap="2"
+          width="100%"
+          height="100%"
+          justify="between"
         >
-          {(nodeProps) => (
-            <CustomTreeNode updateTree={setGroupTreeData} {...nodeProps} />
+          <Box width="100%">
+            <Flex direction="column" gap="1" mb="4">
+              <Heading as="h2" size="4">
+                Choose desired group
+              </Heading>
+              <Text size="3" color="gray">
+                Select a group to sync your knowledge with the cloud.
+              </Text>
+            </Flex>
+            <ScrollArea
+              ref={treeParentRef}
+              scrollbars="vertical"
+              style={{ maxHeight: 240 }}
+            >
+              <Tree
+                data={filteredGroupTreeData}
+                rowHeight={40}
+                height={treeHeight}
+                width={treeWidth}
+                indent={28}
+                onSelect={onGroupSelect}
+                openByDefault={false}
+                className={styles.sidebarTree}
+                selection={currentSelectedTeamsGroupNode?.treenodePath}
+                disableDrag
+                disableMultiSelection
+                disableEdit
+                disableDrop
+                idAccessor={"treenodePath"} // treenodePath seems to be more convenient for temporary tree nodes which later get removed
+                childrenAccessor={"treenodeChildren"}
+              >
+                {(nodeProps) => (
+                  <CustomTreeNode
+                    updateTree={setGroupTreeData}
+                    {...nodeProps}
+                  />
+                )}
+              </Tree>
+            </ScrollArea>
+          </Box>
+          {/* TODO: make it wrapped around AnimatePresence from motion */}
+          {currentSelectedTeamsGroupNode !== null && (
+            <ConfirmGroupSelection
+              currentSelectedTeamsGroupNode={currentSelectedTeamsGroupNode}
+              setCurrentSelectedTeamsGroupNode={
+                setCurrentSelectedTeamsGroupNode
+              }
+              onGroupSelectionConfirm={onGroupSelectionConfirm}
+            />
           )}
-        </Tree>
-        {/* TODO: make it wrapped around AnimatePresence from motion */}
-        {currentSelectedTeamsGroupNode !== null && (
-          <ConfirmGroupSelection
-            currentSelectedTeamsGroupNode={currentSelectedTeamsGroupNode}
-            setCurrentSelectedTeamsGroupNode={setCurrentSelectedTeamsGroupNode}
-            onGroupSelectionConfirm={onGroupSelectionConfirm}
-          />
-        )}
-      </Box>
+        </Flex>
+      )}
     </Flex>
   );
 };

@@ -51,7 +51,6 @@
     "generate:graphql:watch": "graphql-codegen --watch"
   },
   "dependencies": {
-    "@graphql-codegen/cli": "^5.0.6",
     "@parcel/watcher": "^2.5.1",
     "@reduxjs/toolkit": "^2.2.7",
     "@tanstack/react-table": "^8.20.6",
@@ -66,6 +65,7 @@
   "devDependencies": {
     "@0no-co/graphqlsp": "^1.12.16",
     "@ariakit/react": "^0.3.13",
+    "@graphql-codegen/cli": "^5.0.6",
     "@graphql-codegen/schema-ast": "^4.1.0",
     "@graphql-codegen/typed-document-node": "^5.1.1",
     "@graphql-codegen/typescript-operations": "^4.6.1",

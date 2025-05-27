@@ -98,10 +98,8 @@ export type FExternalDataSourceSubs = {
 };
 
 export type FKnowledgeItemInput = {
-  iknow_goal: Scalars['String']['input'];
   iknow_memory: Scalars['String']['input'];
-  iknow_title: Scalars['String']['input'];
-  iknow_type: Scalars['String']['input'];
+  iknow_tags?: Array<Scalars['String']['input']>;
   located_fgroup_id: Scalars['String']['input'];
   owner_shared: Scalars['Boolean']['input'];
 };
@@ -109,27 +107,21 @@ export type FKnowledgeItemInput = {
 export type FKnowledgeItemOutput = {
   __typename?: 'FKnowledgeItemOutput';
   iknow_created_ts: Scalars['Float']['output'];
-  iknow_goal: Scalars['String']['output'];
   iknow_id: Scalars['String']['output'];
   iknow_memory: Scalars['String']['output'];
   iknow_modified_ts: Scalars['Float']['output'];
-  iknow_origin: Scalars['String']['output'];
   iknow_stat_correct: Scalars['Int']['output'];
   iknow_stat_relevant: Scalars['Int']['output'];
   iknow_stat_times_used: Scalars['Int']['output'];
-  iknow_title: Scalars['String']['output'];
-  iknow_type: Scalars['String']['output'];
+  iknow_tags: Array<Scalars['String']['output']>;
   located_fgroup_id: Scalars['String']['output'];
   owner_fuser_id: Scalars['String']['output'];
   owner_shared: Scalars['Boolean']['output'];
 };
 
 export type FKnowledgeItemPatch = {
-  iknow_goal?: InputMaybe<Scalars['String']['input']>;
   iknow_memory?: InputMaybe<Scalars['String']['input']>;
-  iknow_origin?: InputMaybe<Scalars['String']['input']>;
-  iknow_title?: InputMaybe<Scalars['String']['input']>;
-  iknow_type?: InputMaybe<Scalars['String']['input']>;
+  iknow_tags?: InputMaybe<Array<Scalars['String']['input']>>;
   located_fgroup_id?: InputMaybe<Scalars['String']['input']>;
   owner_shared?: InputMaybe<Scalars['Boolean']['input']>;
 };
@@ -192,8 +184,9 @@ export type FThreadMessageInput = {
 export type FThreadMessageSubs = {
   __typename?: 'FThreadMessageSubs';
   news_action: Scalars['String']['output'];
-  news_payload?: Maybe<FThreadMessage>;
   news_payload_id: Scalars['String']['output'];
+  news_payload_thread?: Maybe<FThreadOutput>;
+  news_payload_thread_message?: Maybe<FThreadMessage>;
   stream_delta?: Maybe<FThreadDelta>;
 };
 
@@ -544,6 +537,12 @@ export type NavTreeSubsSubscriptionVariables = Exact<{
 
 export type NavTreeSubsSubscription = { __typename?: 'Subscription', tree_subscription: { __typename?: 'TreeUpdateSubs', treeupd_action: string, treeupd_id: string, treeupd_path: string, treeupd_type: string, treeupd_title: string } };
 
+export type NavTreeWantWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type NavTreeWantWorkspacesQuery = { __typename?: 'Query', login: Array<{ __typename?: 'FWorkspace', ws_id: string, ws_owner_fuser_id: string, ws_root_group_id: string, root_group_name: string }> };
+
 
 export const CreateGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"group_create"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_name"}}},{"kind":"ObjectField","name":{"kind":"Name","value":"fgroup_parent_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"fgroup_parent_id"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fgroup_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_name"}},{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_parent_id"}},{"kind":"Field","name":{"kind":"Name","value":"fgroup_created_ts"}}]}}]}}]} as unknown as DocumentNode<CreateGroupMutation, CreateGroupMutationVariables>;
 export const NavTreeSubsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"NavTreeSubs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tree_subscription"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ws_id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ws_id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"treeupd_action"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_id"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_path"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_type"}},{"kind":"Field","name":{"kind":"Name","value":"treeupd_title"}}]}}]}}]} as unknown as DocumentNode<NavTreeSubsSubscription, NavTreeSubsSubscriptionVariables>;
+export const NavTreeWantWorkspacesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"NavTreeWantWorkspaces"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"login"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ws_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_owner_fuser_id"}},{"kind":"Field","name":{"kind":"Name","value":"ws_root_group_id"}},{"kind":"Field","name":{"kind":"Name","value":"root_group_name"}}]}}]}}]} as unknown as DocumentNode<NavTreeWantWorkspacesQuery, NavTreeWantWorkspacesQueryVariables>;
