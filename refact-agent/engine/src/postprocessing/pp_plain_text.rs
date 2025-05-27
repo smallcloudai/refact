@@ -15,7 +15,7 @@ fn limit_text_content(
     let mut new_text_lines = vec![];
     for line in text.lines() {
         let line_tokens = count_text_tokens_with_fallback(tokenizer.clone(), &line);
-        if tok_used.clone() + line_tokens > tok_per_m {
+        if *tok_used + line_tokens > tok_per_m {
             if new_text_lines.is_empty() {
                 new_text_lines.push("No content: tokens limit reached");
             }
@@ -29,7 +29,7 @@ fn limit_text_content(
 }
 
 pub async fn postprocess_plain_text(
-    plain_text_messages: Vec<&ChatMessage>,
+    plain_text_messages: Vec<ChatMessage>,
     tokenizer: Option<Arc<Tokenizer>>,
     tokens_limit: usize,
     style: &Option<String>,
@@ -37,25 +37,25 @@ pub async fn postprocess_plain_text(
     if plain_text_messages.is_empty() {
         return (vec![], tokens_limit);
     }
-    let mut messages_sorted = plain_text_messages.clone();
+    let mut messages_sorted = plain_text_messages;
+    let messages_len = messages_sorted.len();
     messages_sorted.sort_by(|a, b| a.content.size_estimate(tokenizer.clone(), style).cmp(&b.content.size_estimate(tokenizer.clone(), style)));
 
     let mut tok_used_global = 0;
-    let mut tok_per_m = tokens_limit / messages_sorted.len();
+    let mut tok_per_m = tokens_limit / messages_len;
     let mut new_messages = vec![];
 
-    for (idx, msg) in messages_sorted.iter().cloned().enumerate() {
+    for (idx, mut msg) in messages_sorted.into_iter().enumerate() {
         let mut tok_used = 0;
-        let mut m_cloned = msg.clone();
-        
-        m_cloned.content = match &msg.content {
+
+        msg.content = match msg.content {
             ChatContent::SimpleText(text) => {
-                let new_content = limit_text_content(tokenizer.clone(), text, &mut tok_used, tok_per_m);
+                let new_content = limit_text_content(tokenizer.clone(), &text, &mut tok_used, tok_per_m);
                 ChatContent::SimpleText(new_content)
             },
             ChatContent::Multimodal(elements) => {
                 let mut new_content = vec![];
-                
+
                 for element in elements {
                     if element.is_text() {
                         let mut el_cloned = element.clone();
@@ -79,13 +79,13 @@ pub async fn postprocess_plain_text(
             }
         };
 
-        if idx != messages_sorted.len() - 1 {
+        if idx != messages_len - 1 {
             // distributing non-used rest of tokens among the others
-            tok_per_m += (tok_per_m - tok_used) / (messages_sorted.len() - idx - 1);
+            tok_per_m += (tok_per_m - tok_used) / (messages_len - idx - 1);
         }
         tok_used_global += tok_used;
 
-        new_messages.push(m_cloned);
+        new_messages.push(msg);
     }
 
     let tok_unused = tokens_limit.saturating_sub(tok_used_global);

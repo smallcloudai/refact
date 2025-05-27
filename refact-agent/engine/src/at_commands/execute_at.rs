@@ -22,7 +22,7 @@ pub async fn run_at_commands_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
-    original_messages: &Vec<ChatMessage>,
+    mut original_messages: Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
 ) -> (Vec<ChatMessage>, bool) {
     let (n_ctx, top_n, is_preview, gcx) = {
@@ -56,13 +56,13 @@ pub async fn run_at_commands_locally(
     // - if there's only 1 user message at the bottom, it receives reserve_for_context tokens for context
     // - if there are N user messages, they receive reserve_for_context/N tokens each (and there's no taking from one to give to the other)
     // This is useful to give prefix and suffix of the same file precisely the position necessary for FIM-like operation of a chat model
-    let mut rebuilt_messages: Vec<ChatMessage> = original_messages.iter().take(user_msg_starts).map(|m| m.clone()).collect();
-    for msg_idx in user_msg_starts..original_messages.len() {
-        let mut msg = original_messages[msg_idx].clone();
+    let messages_after_user_msg = original_messages.split_off(user_msg_starts);
+    let mut new_messages = original_messages;
+    for (idx, mut msg) in messages_after_user_msg.into_iter().enumerate() {
         // todo: make multimodal messages support @commands
         if let ChatContent::Multimodal(_) = &msg.content {
-            rebuilt_messages.push(msg.clone());
             stream_back_to_user.push_in_json(json!(msg));
+            new_messages.push(msg);
             continue;
         }
         let mut content = msg.content.content_text_only();
@@ -71,7 +71,7 @@ pub async fn run_at_commands_locally(
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         context_limit = context_limit.saturating_sub(content_n_tokens);
 
-        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", msg_idx, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens, context_limit);
+        info!("msg {} user_posted {:?} which is {} tokens, that leaves {} tokens for context of this message", idx + user_msg_starts, crate::nicer_logs::first_n_chars(&content, 50), content_n_tokens, context_limit);
 
         let mut messages_exec_output = vec![];
         if content.contains("@") {
@@ -79,13 +79,19 @@ pub async fn run_at_commands_locally(
             messages_exec_output.extend(res);
         }
 
+        let mut context_file_pp = if context_limit > MIN_RAG_CONTEXT_LIMIT {
+            filter_only_context_file_from_context_tool(&messages_exec_output)
+        } else {
+            Vec::new()
+        };
+
         let mut plain_text_messages = vec![];
-        for exec_result in messages_exec_output.iter() {
+        for exec_result in messages_exec_output.into_iter() {
             // at commands exec() can produce role "user" "assistant" "diff" "plain_text"
             if let ContextEnum::ChatMessage(raw_msg) = exec_result {  // means not context_file
                 if raw_msg.role != "plain_text" {
-                    rebuilt_messages.push(raw_msg.clone());
                     stream_back_to_user.push_in_json(json!(raw_msg));
+                    new_messages.push(raw_msg);
                 } else {
                     plain_text_messages.push(raw_msg);
                 }
@@ -95,7 +101,6 @@ pub async fn run_at_commands_locally(
         // TODO: reduce context_limit by tokens(messages_exec_output)
 
         if context_limit > MIN_RAG_CONTEXT_LIMIT {
-            let mut context_file_pp = filter_only_context_file_from_context_tool(&messages_exec_output);
             let (tokens_limit_plain, mut tokens_limit_files) = {
                 if context_file_pp.is_empty() {
                     (context_limit, 0)
@@ -115,8 +120,8 @@ pub async fn run_at_commands_locally(
             ).await;
             for m in pp_plain_text {
                 // OUTPUT: plain text after all custom messages
-                rebuilt_messages.push(m.clone());
                 stream_back_to_user.push_in_json(json!(m));
+                new_messages.push(m);
             }
             tokens_limit_files += non_used_plain;
             info!("tokens_limit_files {}", tokens_limit_files);
@@ -144,8 +149,8 @@ pub async fn run_at_commands_locally(
                         "context_file".to_string(),
                         serde_json::to_string(&json_vec).unwrap_or("".to_string()),
                     );
-                    rebuilt_messages.push(message.clone());
                     stream_back_to_user.push_in_json(json!(message));
+                    new_messages.push(message);
                 }
             }
             info!("postprocess_plain_text_messages + postprocess_context_files {:.3}s", t0.elapsed().as_secs_f32());
@@ -154,19 +159,19 @@ pub async fn run_at_commands_locally(
         if content.trim().len() > 0 {
             // stream back to the user, with at-commands replaced
             msg.content = ChatContent::SimpleText(content);
-            rebuilt_messages.push(msg.clone());
             stream_back_to_user.push_in_json(json!(msg));
+            new_messages.push(msg);
         }
     }
 
-    (rebuilt_messages, any_context_produced)
+    (new_messages, any_context_produced)
 }
 
 pub async fn run_at_commands_remotely(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_id: &str,
     maxgen: usize,
-    original_messages: &Vec<ChatMessage>,
+    original_messages: Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let (gcx, n_ctx, subchat_tool_parameters, postprocess_parameters, chat_id) = {
@@ -181,7 +186,7 @@ pub async fn run_at_commands_remotely(
     };
 
     let post = CommandExecutePost {
-        messages: original_messages.clone(),
+        messages: original_messages,
         n_ctx,
         maxgen,
         subchat_tool_parameters,

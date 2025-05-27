@@ -297,7 +297,7 @@ pub async fn handle_v1_at_command_execute(
 
     let mut has_rag_results = HasRagResults::new();
     let (messages, any_context_produced) = run_at_commands_locally(
-        ccx_arc.clone(), tokenizer.clone(), post.maxgen, &post.messages, &mut has_rag_results).await;
+        ccx_arc.clone(), tokenizer.clone(), post.maxgen, post.messages, &mut has_rag_results).await;
     let messages_to_stream_back = has_rag_results.in_json;
     let undroppable_msg_number = messages.iter().rposition(|msg| msg.role == "user").unwrap_or(0);
 
