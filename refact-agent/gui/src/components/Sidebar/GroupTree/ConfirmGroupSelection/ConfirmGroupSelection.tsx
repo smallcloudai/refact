@@ -9,6 +9,9 @@ import {
   CreateGroupMutation,
   CreateGroupMutationVariables,
 } from "../../../../../generated/documents";
+import { useAppDispatch, useAppSelector } from "../../../../hooks";
+import { selectConfig } from "../../../../features/Config/configSlice";
+import { setError } from "../../../../features/Errors/errorsSlice";
 
 export type ConfirmGroupSelectionProps = {
   currentSelectedTeamsGroupNode: FlexusTreeNode;
@@ -21,6 +24,10 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
   setCurrentSelectedTeamsGroupNode,
   onGroupSelectionConfirm,
 }) => {
+  const dispatch = useAppDispatch();
+  const currentWorkspaceName =
+    useAppSelector(selectConfig).currentWorkspaceName ?? "New Project";
+
   const [_, createGroup] = useMutation<
     CreateGroupMutation,
     CreateGroupMutationVariables
@@ -30,12 +37,12 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
   const handleConfirmClick = useCallback(async () => {
     if (createFolderChecked) {
       const result = await createGroup({
-        fgroup_name: "%WORKSPACE_NAME%",
+        fgroup_name: currentWorkspaceName,
         fgroup_parent_id: currentSelectedTeamsGroupNode.treenodeId,
       });
 
       if (result.error) {
-        console.error("[ERROR]: Failed to create group", result.error);
+        dispatch(setError(result.error.message));
         return;
       }
 
@@ -44,25 +51,28 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
         const newNode: FlexusTreeNode = {
           treenodeId: newGroup.fgroup_id,
           treenodeTitle: newGroup.fgroup_name,
-          // ...add any other fields your FlexusTreeNode requires
+          treenodeType: "group",
+          treenodePath: `${currentSelectedTeamsGroupNode.treenodePath}/group:${newGroup.fgroup_id}`,
+          treenode__DeleteMe: false,
+          treenode__InsertedLater: false,
+          treenodeChildren: [],
+          treenodeExpanded: false,
         };
         setCurrentSelectedTeamsGroupNode(newNode);
         onGroupSelectionConfirm(newNode);
-      } else {
-        console.warn("[WARN]: No group returned from mutation");
       }
     } else {
-      // Just select the existing group
       onGroupSelectionConfirm(currentSelectedTeamsGroupNode);
-      // Optionally close the modal or reset selection
       setCurrentSelectedTeamsGroupNode(null);
     }
   }, [
+    dispatch,
     createFolderChecked,
     createGroup,
     currentSelectedTeamsGroupNode,
     setCurrentSelectedTeamsGroupNode,
     onGroupSelectionConfirm,
+    currentWorkspaceName,
   ]);
 
   return (
@@ -91,7 +101,7 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
             htmlFor="create-folder-checkbox"
             className={styles.checkboxLabel}
           >
-            I want to create a folder <b>%WORKSPACE_NAME%</b> in current
+            I want to create a folder <b>{currentWorkspaceName}</b> in current
             selected group
           </label>
         </Flex>
