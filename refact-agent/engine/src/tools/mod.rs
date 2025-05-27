@@ -11,15 +11,9 @@ mod tool_rm;
 mod tool_mv;
 mod tool_regex_search;
 mod tool_strategic_planning;
-
-#[cfg(feature="vecdb")]
 mod tool_search;
-#[cfg(feature="vecdb")]
 mod tool_knowledge;
-#[cfg(feature="vecdb")]
 mod tool_locate_search;
-#[cfg(feature="vecdb")]
 mod tool_create_knowledge;
-#[cfg(feature="vecdb")]
 mod tool_create_memory_bank;
 pub mod file_edit;

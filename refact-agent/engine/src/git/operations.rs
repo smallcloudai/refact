@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, TimeZone, Utc};
 use git2::{Repository, Branch, DiffOptions, Oid};
 use tracing::error;
-
+use url::Url;
 use crate::custom_error::MapErrToString;
 use crate::files_correction::canonical_path;
 use crate::git::{FileChange, FileChangeStatus};
@@ -21,6 +21,29 @@ fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::Sta
         .update_index(true)
         .show(show);
     options
+}
+
+#[allow(dead_code)]
+pub fn get_git_remotes(repository_path: &Path) -> Result<Vec<(String, String)>, String> {
+    let repository = Repository::discover(repository_path)
+        .map_err(|e| format!("Failed to open repository: {}", e))?;
+    let remotes = repository.remotes()
+        .map_err(|e| format!("Failed to get remotes: {}", e))?;
+    let mut result = Vec::new();
+    for name in remotes.iter().flatten() {
+        if let Ok(remote) = repository.find_remote(name) {
+            if let Some(url) = remote.url() {
+                if let Ok(mut parsed_url) = Url::parse(url) {
+                    parsed_url.set_username("").ok();
+                    parsed_url.set_password(None).ok();
+                    result.push((name.to_string(), parsed_url.to_string()));
+                } else {
+                    result.push((name.to_string(), url.to_string()));
+                }                
+            }
+        }
+    }
+    Ok(result)
 }
 
 pub fn git_ls_files(repository_path: &PathBuf) -> Option<Vec<PathBuf>> {

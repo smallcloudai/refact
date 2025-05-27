@@ -12,6 +12,7 @@ import { pathApi } from "../services/refact/path";
 import { telemetryApi } from "../services/refact/telemetry";
 import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
+import type { TeamsGroup } from "../services/smallcloud/types";
 
 export const ideDiffPasteBackAction = createAction<{
   content: string;
@@ -73,6 +74,13 @@ export const ideToolCallResponse = createAction<{
 
 export const ideForceReloadProjectTreeFiles = createAction(
   "ide/forceReloadProjectTreeFiles",
+);
+
+export const ideSetActiveTeamsGroup = createAction<TeamsGroup>(
+  "ide/setActiveTeamsGroup",
+);
+export const ideClearActiveTeamsGroup = createAction<undefined>(
+  "ide/clearActiveTeamsGroup",
 );
 
 export const useEventsBusForIDE = () => {
@@ -273,6 +281,19 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setActiveTeamsGroupInIDE = useCallback(
+    (group: TeamsGroup) => {
+      const action = ideSetActiveTeamsGroup(group);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
+  const clearActiveTeamsGroupInIDE = useCallback(() => {
+    const action = ideClearActiveTeamsGroup();
+    postMessage(action);
+  }, [postMessage]);
+
   return {
     diffPasteBack,
     openSettings,
@@ -295,5 +316,7 @@ export const useEventsBusForIDE = () => {
     sendToolCallToIde,
     setCodeCompletionModel,
     setLoginMessage,
+    setActiveTeamsGroupInIDE,
+    clearActiveTeamsGroupInIDE,
   };
 };

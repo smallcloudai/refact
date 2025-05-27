@@ -44,6 +44,7 @@ import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfir
 import { telemetryApi } from "../../services/refact/telemetry";
 
 import styles from "./Toolbar.module.css";
+import { selectActiveGroup } from "../../features/Teams";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -85,6 +86,8 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const isStreaming = useAppSelector((app) => app.chat.streaming);
   const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
   const cache = useAppSelector((app) => app.chat.cache);
+  const activeGroup = useAppSelector(selectActiveGroup);
+
   const { openSettings, openHotKeys } = useEventsBusForIDE();
 
   const [isOnlyOneChatTab, setIsOnlyOneChatTab] = useState(false);
@@ -151,9 +154,6 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
       } else if (to === "chat") {
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
-      } else if (to === "knowledge list") {
-        // TODO: send telemetry
-        dispatch(push({ name: "knowledge list" }));
       }
     },
     [dispatch, sendTelemetryEvent, openSettings, openHotKeys],
@@ -381,6 +381,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           variant="outline"
           ref={(x) => refs.setNewChat(x)}
           onClick={onCreateNewChat}
+          disabled={activeGroup === null}
         >
           <PlusIcon />
           <Text>New chat</Text>

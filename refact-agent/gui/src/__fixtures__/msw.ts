@@ -6,12 +6,9 @@ import {
   AT_TOOLS_AVAILABLE_URL,
   CHAT_LINKS_URL,
   KNOWLEDGE_CREATE_URL,
-  KNOWLEDGE_SUB_URL,
-  KNOWLEDGE_UPDATE_USED_URL,
 } from "../services/refact/consts";
 import { STUB_TOOL_RESPONSE } from "./tools_response";
-import { STUB_SUB_RESPONSE, STUB_SUB_RESPONSE_WITH_STATUS } from "./knowledge";
-import { GoodPollingResponse } from "../services/smallcloud";
+import { GoodPollingResponse } from "../services/smallcloud/types";
 import type { LinksForChatResponse } from "../services/refact/links";
 import { SaveTrajectoryResponse } from "../services/refact/knowledge";
 import { ToolConfirmationResponse } from "../services/refact";
@@ -83,6 +80,7 @@ export const goodUser: HttpHandler = http.get(
       questionnaire: {},
       refact_agent_max_request_num: 20,
       refact_agent_request_available: 20,
+      workspaces: [],
     });
   },
 );
@@ -97,6 +95,7 @@ export const nonProUser: HttpHandler = http.get(
       inference: "FREE",
       metering_balance: -100000,
       questionnaire: {},
+      workspaces: [],
     });
   },
 );
@@ -127,57 +126,6 @@ export const goodTools: HttpHandler = http.get(
   },
 );
 
-export const knowLedgeLoading: HttpHandler = http.post(
-  `http://127.0.0.1:8001${KNOWLEDGE_SUB_URL}`,
-  async () => {
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(controller) {
-        // Encode the string chunks using "TextEncoder".
-        STUB_SUB_RESPONSE.forEach((item) => {
-          const str = `data: ${JSON.stringify(item)}\n\n`;
-          controller.enqueue(encoder.encode(str));
-        });
-
-        controller.close();
-      },
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-
-    return new HttpResponse(stream, {
-      headers: {
-        "Content-Type": "text/plain",
-      },
-    });
-  },
-);
-
-export const KnowledgeWithStatus: HttpHandler = http.post(
-  `http://127.0.0.1:8001${KNOWLEDGE_SUB_URL}`,
-  () => {
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Encode the string chunks using "TextEncoder".
-        for (const item of STUB_SUB_RESPONSE_WITH_STATUS) {
-          const str = `data: ${JSON.stringify(item)}\n\n`;
-          controller.enqueue(encoder.encode(str));
-          await new Promise((resolve) => setTimeout(resolve, 3000)); // 1-second delay
-        }
-
-        controller.close();
-      },
-    });
-
-    return new HttpResponse(stream, {
-      headers: {
-        "Content-Type": "text/plain",
-      },
-    });
-  },
-);
-
 export const makeKnowledgeFromChat: HttpHandler = http.post(
   `http://127.0.0.1:8001${KNOWLEDGE_CREATE_URL}`,
   () => {
@@ -189,26 +137,6 @@ export const makeKnowledgeFromChat: HttpHandler = http.post(
   },
 );
 
-export const updateKnowledgeUse: HttpHandler = http.post(
-  `http://127.0.0.1:8001${KNOWLEDGE_UPDATE_USED_URL}`,
-  async (ctx) => {
-    const body = await ctx.request.json();
-    const memid =
-      body &&
-      typeof body === "object" &&
-      "memid" in body &&
-      typeof body.memid === "string"
-        ? body.memid
-        : "foo";
-    const result: SaveTrajectoryResponse = {
-      memid,
-      trajectory: "something",
-    };
-
-    await new Promise((r) => setTimeout(r, 1000));
-    return HttpResponse.json(result);
-  },
-);
 export const loginPollingGood: HttpHandler = http.get(
   "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
   () => {
@@ -218,6 +146,7 @@ export const loginPollingGood: HttpHandler = http.get(
       inference_url: "https://www.smallcloud.ai/v1",
       inference: "PRO",
       metering_balance: -100000,
+      // workspaces: [],
       questionnaire: {},
       secret_key: "shhhhhhhhh",
       tooltip_message: "",
