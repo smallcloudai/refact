@@ -166,13 +166,16 @@ async fn main() {
 
     // Privacy before we do anything else, the default is to block everything
     let _ = crate::privacy::load_privacy_if_needed(gcx.clone()).await;
-
-    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
-    files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
-
+    
     let gcx_clone = gcx.clone();
     tokio::spawn(async move {
-        crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
+        files_in_workspace::enqueue_all_files_from_workspace_folders(gcx_clone.clone(), true, false).await;
+        files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx_clone.clone(), true, false).await;
+    
+        let gcx_clone = gcx_clone.clone();
+        tokio::spawn(async move {
+            crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
+        });
     });
 
     // Start or connect to mcp servers
