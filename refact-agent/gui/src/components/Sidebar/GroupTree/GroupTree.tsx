@@ -45,7 +45,8 @@ export interface FlexusTreeNode {
   treenodeExpanded: boolean;
 }
 
-const ws_id = "solarsystem"; // TODO: how do we get proper ws_id?
+const ws_id = "31n8sWNX8Q"; // TODO: get proper ws_id from /v1/login workspaces
+// const ws_id = "solarsystem";
 
 export const GroupTree: React.FC = () => {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);

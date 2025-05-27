@@ -22,6 +22,7 @@ export type Config = {
   apiKey?: string | null;
   addressURL?: string;
   shiftEnterToSubmit?: boolean;
+  currentWorkspaceName?: string;
 };
 
 const initialState: Config = {

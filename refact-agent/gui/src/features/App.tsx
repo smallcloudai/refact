@@ -42,6 +42,7 @@ import styles from "./App.module.css";
 import classNames from "classnames";
 import { usePatchesAndDiffsEventsForIDE } from "../hooks/usePatchesAndDiffEventsForIDE";
 import { UrqlProvider } from "../../urqlProvider";
+import { selectActiveGroup } from "./Teams";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -64,6 +65,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   const historyState = useAppSelector((state: RootState) => state.history);
+  const maybeCurrentActiveGroup = useAppSelector(selectActiveGroup);
   const chatId = useAppSelector(selectChatId);
   useEventBusForWeb();
   useEventBusForApp();
@@ -86,7 +88,11 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     if (config.apiKey && config.addressURL && !isLoggedIn) {
       if (tourState.type === "in_progress" && tourState.step === 1) {
         dispatch(push({ name: "welcome" }));
-      } else if (Object.keys(historyState).length === 0) {
+      } else if (
+        Object.keys(historyState).length === 0 &&
+        // TODO: rework when better router will be implemented
+        maybeCurrentActiveGroup
+      ) {
         dispatch(push({ name: "history" }));
         dispatch(newChatAction());
         dispatch(push({ name: "chat" }));
@@ -104,6 +110,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     dispatch,
     tourState,
     historyState,
+    maybeCurrentActiveGroup,
   ]);
 
   useEffect(() => {
