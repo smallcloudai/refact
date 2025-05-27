@@ -181,7 +181,7 @@ async fn get_integration_tools(
                         ToolGroup {
                             name: format!("MCP {}", mcp_server_name),
                             description: format!("MCP tools for {}", mcp_server_name),
-                            category: ToolGroupCategory::Integration,
+                            category: ToolGroupCategory::MCP,
                             tools: vec![],
                         },
                     );
