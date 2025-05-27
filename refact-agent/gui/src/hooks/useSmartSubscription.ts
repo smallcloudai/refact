@@ -12,6 +12,7 @@ interface UseSmartSubscriptionArgs<
   variables?: TVariables;
   pauseAfterMs?: number;
   onUpdate?: (data: TData) => void;
+  skip?: boolean;
 }
 
 interface UseSmartSubscriptionResult<TData = unknown> {
@@ -47,13 +48,14 @@ export function useSmartSubscription<
   variables,
   pauseAfterMs = THREE_MINUTES,
   onUpdate,
+  skip = false,
 }: UseSmartSubscriptionArgs<
   TData,
   TVariables
 >): UseSmartSubscriptionResult<TData> {
   const [paused, setPaused] = useState(false);
   const [res, executeSubscription] = useSubscription(
-    { query, variables: (variables ?? {}) as TVariables, pause: paused },
+    { query, variables: (variables ?? {}) as TVariables, pause: paused || skip },
     (_, data) => {
       if (onUpdate) onUpdate(data);
       return data;
