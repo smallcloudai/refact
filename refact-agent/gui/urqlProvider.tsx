@@ -18,8 +18,8 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   const apiKey = useAppSelector(selectConfig).apiKey;
   const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
 
-  const protocol = window.location.protocol === "https:" ? "https" : "https";
-  const wsProtocol = window.location.protocol === "https:" ? "wss" : "wss";
+  const protocol = "https";
+  const wsProtocol = "wss";
 
   const wsClient = useMemo(
     () =>
