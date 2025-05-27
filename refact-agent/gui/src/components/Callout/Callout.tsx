@@ -104,6 +104,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   onClick,
   children,
   preventRetry,
+  preventClose = false,
   className,
   ...props
 }) => {
@@ -117,7 +118,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
       onClick={onClick}
       timeout={timeout}
       itemType={props.itemType}
-      preventClose={isAuthError}
+      preventClose={preventClose || isAuthError}
       className={classNames(styles.callout_box_inner, className)}
       {...props}
     >
