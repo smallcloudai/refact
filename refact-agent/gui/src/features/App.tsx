@@ -11,7 +11,6 @@ import {
 } from "../hooks";
 import { FIMDebug } from "./FIM";
 import { store, persistor, RootState } from "../app/store";
-import { Provider as GraphQLProvider } from "urql";
 import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { Theme } from "../components/Theme";
@@ -42,7 +41,7 @@ import { LoginPage } from "./Login";
 import styles from "./App.module.css";
 import classNames from "classnames";
 import { usePatchesAndDiffsEventsForIDE } from "../hooks/usePatchesAndDiffEventsForIDE";
-import { urqlClient } from "../../urqlClient";
+import { UrqlProvider } from "../../urqlProvider";
 
 export interface AppProps {
   style?: React.CSSProperties;
@@ -234,8 +233,8 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
 // TODO: move this to the `app` directory.
 export const App = () => {
   return (
-    <GraphQLProvider value={urqlClient}>
-      <Provider store={store}>
+    <Provider store={store}>
+      <UrqlProvider>
         <PersistGate persistor={persistor}>
           <Theme>
             <TourProvider>
@@ -245,7 +244,7 @@ export const App = () => {
             </TourProvider>
           </Theme>
         </PersistGate>
-      </Provider>
-    </GraphQLProvider>
+      </UrqlProvider>
+    </Provider>
   );
 };

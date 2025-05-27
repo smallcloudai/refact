@@ -31,8 +31,8 @@ export const FolderIcon: React.FC<FolderIconProps> = ({
     <svg
       xmlns="http://www.w3.org/2000/svg"
       version="1.1"
-      width="30"
-      height="30"
+      width="16"
+      height="16"
       x="0"
       y="0"
       viewBox="0 0 32 32"

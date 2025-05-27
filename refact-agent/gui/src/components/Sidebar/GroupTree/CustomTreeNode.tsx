@@ -1,11 +1,10 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
 import type { NodeRendererProps } from "react-arborist";
 import { FolderIcon } from "./FolderIcon";
 
 import styles from "./CustomTreeNode.module.css";
-import { CreateNewGroup } from "./CreateNewGroup";
 import { TeamsGroup } from "../../../services/smallcloud/types";
 import { FlexusTreeNode } from "./GroupTree";
 
@@ -16,13 +15,10 @@ export type TeamsGroupTree = TeamsGroup & {
 export const CustomTreeNode = <T extends FlexusTreeNode>({
   node,
   style,
-  tree,
   dragHandle,
-  updateTree,
 }: NodeRendererProps<T> & { updateTree: (newTree: T[]) => void }) => {
-  const [isHovered, setIsHovered] = useState(false);
   // Determine if this is a folder (has children)
-  const isContainingChildren = node.data.treenodeChildren?.length !== 0;
+  const isContainingChildren = node.data.treenodeChildren.length > 0;
 
   // Handle node click (for selection)
   const handleNodeClick = useCallback(() => {
@@ -68,7 +64,7 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
         />
       );
     }
-    return <FolderIcon width={16} height={16} />;
+    return <FolderIcon />;
   };
 
   return (
@@ -82,8 +78,6 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
       onClick={handleNodeClick}
       ref={dragHandle}
       className={styles.treeNode}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Icon container */}
       <Box
@@ -120,13 +114,6 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
       >
         {node.data.treenodeTitle}
       </Text>
-      {isHovered && (
-        <CreateNewGroup
-          currentGroup={node.data}
-          updateTree={updateTree}
-          tree={tree}
-        />
-      )}
     </Flex>
   );
 };
