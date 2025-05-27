@@ -9,7 +9,6 @@ use itertools::Itertools;
 use parking_lot::RwLock;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
-use tree_sitter_java::language;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
@@ -220,7 +219,7 @@ impl JavaParser {
     pub fn new() -> Result<JavaParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(&language())
+            .set_language(&tree_sitter_java::LANGUAGE.into())
             .map_err(internal_error)?;
         Ok(JavaParser { parser })
     }

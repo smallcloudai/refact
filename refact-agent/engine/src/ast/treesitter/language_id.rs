@@ -131,22 +131,15 @@ impl From<String> for LanguageId {
 
 impl From<Language> for LanguageId {
     fn from(value: Language) -> Self {
-        if value == tree_sitter_cpp::language() {
-            Self::Cpp
-        } else if value == tree_sitter_python::language() {
-            Self::Python
-        } else if value == tree_sitter_java::language() {
-            Self::Java
-        } else if value == tree_sitter_javascript::language() {
-            Self::JavaScript
-        } else if value == tree_sitter_rust::language() {
-            Self::Rust
-        } else if value == tree_sitter_typescript::language_typescript() {
-            Self::TypeScript
-        } else if value == tree_sitter_typescript::language_tsx() {
-            Self::TypeScriptReact
-        } else {
-            Self::Unknown
+        match value {
+            lang if lang == tree_sitter_cpp::LANGUAGE.into() => Self::Cpp,
+            lang if lang == tree_sitter_python::LANGUAGE.into() => Self::Python,
+            lang if lang == tree_sitter_java::LANGUAGE.into() => Self::Java,
+            lang if lang == tree_sitter_javascript::LANGUAGE.into() => Self::JavaScript,
+            lang if lang == tree_sitter_rust::LANGUAGE.into() => Self::Rust,
+            lang if lang == tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into() => Self::TypeScript,
+            lang if lang == tree_sitter_typescript::LANGUAGE_TSX.into() => Self::TypeScriptReact,
+            _ => Self::Unknown,
         }
     }
 }
