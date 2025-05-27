@@ -1,4 +1,4 @@
-import { SurveyQuestions } from "../services/smallcloud";
+import { SurveyQuestions } from "../services/smallcloud/types";
 
 export const QUESTIONS_STUB: SurveyQuestions = [
   {

@@ -8,7 +8,7 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::call_validation::{ChatMessage, ContextFile, ContextEnum, SubchatParameters, PostprocessSettings};
-use crate::global_context::GlobalContext;
+use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 
 use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
@@ -101,21 +101,19 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         // ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
         // ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
         ("@web".to_string(), Arc::new(AMutex::new(Box::new(AtWeb::new()) as Box<dyn AtCommand + Send>))),
-        #[cfg(feature="vecdb")]
         ("@search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_search::AtSearch::new()) as Box<dyn AtCommand + Send>))),
-        #[cfg(feature="vecdb")]
         ("@knowledge-load".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Box<dyn AtCommand + Send>))),
     ]);
 
     let (ast_on, vecdb_on) = {
         let gcx_locked = gcx.read().await;
-        #[cfg(feature="vecdb")]
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        #[cfg(not(feature="vecdb"))]
-        let vecdb_on = false;
         (gcx_locked.ast_service.is_some(), vecdb_on)
     };
-
+    let allow_knowledge = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
+        Ok(caps) => caps.metadata.features.contains(&"knowledge".to_string()),
+        Err(_) => false,
+    };
     let mut result = HashMap::new();
     for (key, value) in at_commands_dict {
         let command = value.lock().await;
@@ -124,6 +122,9 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
             continue;
         }
         if depends_on.contains(&"vecdb".to_string()) && !vecdb_on {
+            continue;
+        }
+        if depends_on.contains(&"knowledge".to_string()) && !allow_knowledge {
             continue;
         }
         result.insert(key, value.clone());

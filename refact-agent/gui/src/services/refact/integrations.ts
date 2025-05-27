@@ -290,6 +290,7 @@ function isIntegration(json: unknown): json is Integration {
     if (isPrimitive(value)) {
       return true;
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof value === "object" && value !== null) {
       return Object.values(value).every(isValidNestedObject);
     }

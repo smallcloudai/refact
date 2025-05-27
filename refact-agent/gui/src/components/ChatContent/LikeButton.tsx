@@ -10,14 +10,12 @@ import {
 } from "../../features/Chat";
 import styles from "./LikeButton.module.css";
 import { useSelector } from "react-redux";
-import { selectKnowledgeFeature } from "../../features/Config/configSlice";
 import { selectThreadProjectOrCurrentProject } from "../../features/Chat/currentProject";
 
 function useCreateMemory() {
   const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const knowledgeEnabled = useSelector(selectKnowledgeFeature);
   const currentProjectName = useSelector(selectThreadProjectOrCurrentProject);
   const [onLike, likeResponse] =
     knowledgeApi.useCreateNewMemoryFromMessagesMutation();
@@ -28,12 +26,11 @@ function useCreateMemory() {
   }, [currentProjectName, messages, onLike]);
 
   const shouldShow = React.useMemo(() => {
-    if (!knowledgeEnabled) return false;
     if (messages.length === 0) return false;
     if (isStreaming) return false;
     if (isWaiting) return false;
     return true;
-  }, [knowledgeEnabled, messages.length, isStreaming, isWaiting]);
+  }, [messages.length, isStreaming, isWaiting]);
 
   return { submitLike, likeResponse, shouldShow };
 }

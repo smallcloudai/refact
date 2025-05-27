@@ -26,6 +26,7 @@ use crate::files_blocklist::{
     is_blocklisted,
     reload_indexing_everywhere_if_needed,
 };
+use crate::files_correction_cache::PathTrie;
 
 
 // How this works
@@ -77,7 +78,6 @@ impl Document {
         Self { doc_path: doc_path.clone(),  doc_text: None }
     }
 
-    #[cfg(feature="vecdb")]
     pub async fn update_text_from_disk(&mut self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
         match read_file_from_disk(load_privacy_if_needed(gcx.clone()).await, &self.doc_path).await {
             Ok(res) => {
@@ -101,7 +101,6 @@ impl Document {
         self.doc_text = Some(Rope::from_str(text));
     }
 
-    #[cfg(feature="vecdb")]
     pub fn text_as_string(&self) -> Result<String, String> {
         if let Some(r) = &self.doc_text {
             return Ok(r.to_string());
@@ -132,6 +131,39 @@ impl Document {
     }
 }
 
+pub struct CacheCorrection {
+    pub filenames: PathTrie,
+    pub directories: PathTrie,
+}
+
+impl CacheCorrection {
+    pub fn new() -> Self {
+        CacheCorrection {
+            filenames: PathTrie::new(),
+            directories: PathTrie::new(),
+        }
+    }
+
+    pub fn build(paths: &Vec<PathBuf>, workspace_folders: &Vec<PathBuf>) -> CacheCorrection {
+        let filenames = PathTrie::build(&paths, &workspace_folders);
+        // TODO: I'm not sure how directories should be collected
+        let directories: Vec<PathBuf> = {
+            let mut unique_directories = HashSet::new();
+            for p in paths.iter() {
+                if let Some(parent) = p.parent() {
+                    unique_directories.insert(parent);
+                }
+            }
+            unique_directories.iter().map(|p| PathBuf::from(p)).collect()
+        };
+        let directories = PathTrie::build(&directories, &workspace_folders);
+        CacheCorrection {
+            filenames,
+            directories,
+        }
+    }
+}
+
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
@@ -142,8 +174,7 @@ pub struct DocumentsState {
     // query on windows: C:/Users/user/Documents/file.ext
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<f64>>,
-    pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
-    pub cache_shortened: Arc<HashSet<String>>,
+    pub cache_correction: Arc<CacheCorrection>,
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
 }
 
@@ -177,8 +208,7 @@ impl DocumentsState {
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<f64>::new(0.0)),
-            cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
-            cache_shortened: Arc::new(HashSet::<String>::new()),
+            cache_correction: Arc::new(CacheCorrection::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
         }
     }
@@ -309,6 +339,7 @@ pub fn _ls_files(
     Ok(paths)
 }
 
+// NOTE: don't optimized for large workspaces
 pub fn ls_files(
     indexing_everywhere: &IndexingEverywhere,
     path: &PathBuf,
@@ -533,19 +564,16 @@ async fn enqueue_some_docs(
         let cx = gcx.read().await;
         (cx.vec_db.clone(), cx.ast_service.clone())
     };
-    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&paths, force).await;
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         ast_indexer_enqueue_files(ast.clone(), paths, force).await;
     }
-    let (cache_correction_arc, _) = crate::files_correction::files_cache_rebuild_as_needed(gcx.clone()).await;
+    let cache_correction_arc = crate::files_correction::files_cache_rebuild_as_needed(gcx.clone()).await;
     let mut moar_files: Vec<PathBuf> = Vec::new();
     for p in paths {
-        if !cache_correction_arc.contains_key(p) {
+        if cache_correction_arc.filenames.find_matches(&PathBuf::from(p)).len() == 0 {
             moar_files.push(PathBuf::from(p.clone()));
         }
     }
@@ -608,12 +636,9 @@ pub async fn enqueue_all_files_from_workspace_folders(
     updated_or_removed.extend(old_workspace_files.iter().map(|p| p.to_string_lossy().to_string()));
     let paths_nodups: Vec<String> = updated_or_removed.into_iter().collect();
 
-    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&paths_nodups, wake_up_indexers).await;
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
 
     if let Some(ast) = ast_service {
         if !vecdb_only {
@@ -729,7 +754,6 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
     (*dirty_arc.lock().await) = now;
 
-    #[cfg(feature="vecdb")]
     match *vec_db_module.lock().await {
         Some(ref mut db) => match db.remove_file(path).await {
             Ok(_) => {}
@@ -737,8 +761,6 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         },
         None => {}
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         let cpath = path.to_string_lossy().to_string();
         ast_indexer_enqueue_files(ast.clone(), &vec![cpath], false).await;

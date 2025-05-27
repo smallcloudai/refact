@@ -47,10 +47,13 @@ import {
 } from "../features/ToolConfirmation/confirmationSlice";
 import {
   chatModeToLspMode,
+  doneStreaming,
+  fixBrokenToolMessages,
   LspChatMode,
   setChatMode,
   setIsWaitingForResponse,
   setLastUserMessageId,
+  setPreventSend,
   upsertToolCall,
 } from "../features/Chat";
 
@@ -275,7 +278,11 @@ export const useSendChatRequest = () => {
 
   const abort = useCallback(() => {
     abortControllers.abort(chatId);
-  }, [abortControllers, chatId]);
+    dispatch(setPreventSend({ id: chatId }));
+    dispatch(fixBrokenToolMessages({ id: chatId }));
+    dispatch(setIsWaitingForResponse(false));
+    dispatch(doneStreaming({ id: chatId }));
+  }, [abortControllers, chatId, dispatch]);
 
   const retry = useCallback(
     (messages: ChatMessages) => {

@@ -1,0 +1,11 @@
+mutation CreateGroup($fgroup_name: String!, $fgroup_parent_id: String!) {
+  group_create(
+    input: { fgroup_name: $fgroup_name, fgroup_parent_id: $fgroup_parent_id }
+  ) {
+    fgroup_id
+    fgroup_name
+    ws_id
+    fgroup_parent_id
+    fgroup_created_ts
+  }
+}

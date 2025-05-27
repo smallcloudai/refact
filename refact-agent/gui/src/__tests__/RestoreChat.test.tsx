@@ -33,6 +33,9 @@ describe("Restore Chat from history", () => {
     const { user, ...app } = render(<InnerApp />, {
       preloadedState: {
         pages: [{ name: "login page" }, { name: "history" }],
+        teams: {
+          group: { id: "123", name: "test" },
+        },
         history: {
           id: {
             title: "test title",
