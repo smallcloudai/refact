@@ -15,8 +15,7 @@ const CLOUD_URL: &str = "https://test-teams-v1.smallcloud.ai/v1";
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MemoRecord {
     pub iknow_id: String,
-    pub iknow_type: String,
-    pub iknow_origin: String,
+    pub iknow_tags: Vec<String>,
     pub iknow_memory: String,
 }
 
@@ -25,6 +24,11 @@ pub async fn memories_migration(
     gcx: Arc<ARwLock<GlobalContext>>,
     config_dir: PathBuf
 ) {
+    // Disable migration for now
+    if true {
+        return;
+    }  
+    
     if let None = gcx.read().await.active_group_id.clone() {
         info!("No active group set up, skipping memory migration");
         return;
@@ -45,14 +49,13 @@ pub async fn memories_migration(
         }
     };
     
-    let memories: Vec<(String, String, String)> = match conn.call(|conn| {
+    let memories: Vec<(String, String)> = match conn.call(|conn| {
         // Query all memories
-        let mut stmt = conn.prepare("SELECT m_type, m_payload, m_origin FROM memories")?;
+        let mut stmt = conn.prepare("SELECT m_type, m_payload FROM memories")?;
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
             ))
         })?;
         
@@ -61,7 +64,7 @@ pub async fn memories_migration(
             memories.push(row?);
         }
         
-        Ok(memories.into_iter().unique_by(|(_, m_payload, _)| m_payload.clone()).collect())
+        Ok(memories.into_iter().unique_by(|(_, m_payload)| m_payload.clone()).collect())
     }).await {
         Ok(memories) => memories,
         Err(e) => {
@@ -80,12 +83,12 @@ pub async fn memories_migration(
     // Migrate each memory to the cloud
     let mut success_count = 0;
     let mut error_count = 0;
-    for (m_type,  m_payload, m_origin) in memories {
+    for (m_type, m_payload) in memories {
         if m_payload.is_empty() {
             warn!("Memory payload is empty, skipping");
             continue;
         }
-        match memories_add(gcx.clone(), &m_type, &m_payload, Some(m_origin), true).await {
+        match memories_add(gcx.clone(), &m_type, &m_payload, true).await {
             Ok(_) => {
                 success_count += 1;
                 if success_count % 10 == 0 {
@@ -112,7 +115,6 @@ pub async fn memories_add(
     gcx: Arc<ARwLock<GlobalContext>>,
     m_type: &str,
     m_memory: &str,
-    m_origin: Option<String>,
     unknown_project: bool
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
@@ -121,9 +123,7 @@ pub async fn memories_add(
         .ok_or("active_group_id must be set")?;
     let mut body = serde_json::json!({
         "group_id": active_group_id,
-        "knowledge_goal": "empty",
-        "knowledge_type": m_type,
-        "knowledge_origin": m_origin.unwrap_or_else(|| "user-created".to_string()),
+        "iknow_tags": vec![m_type.to_string()],
         "knowledge_memory": m_memory
     });
     if !unknown_project {

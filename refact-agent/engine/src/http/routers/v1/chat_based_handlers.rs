@@ -89,7 +89,6 @@ pub async fn handle_v1_trajectory_save(
         gcx.clone(),
         "trajectory",
         &trajectory.as_str(),
-        None,
         false,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))

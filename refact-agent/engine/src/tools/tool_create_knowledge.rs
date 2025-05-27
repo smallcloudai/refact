@@ -35,7 +35,6 @@ impl Tool for ToolCreateKnowledge {
             gcx.clone(),
             "knowledge-entry",
             &knowledge_entry,
-            None,
             false
         ).await.map_err(|e| format!("Failed to store knowledge: {e}"))?;
 
