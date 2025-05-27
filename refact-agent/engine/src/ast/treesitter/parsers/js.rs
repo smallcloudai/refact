@@ -6,7 +6,6 @@ use parking_lot::RwLock;
 
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Range};
-use tree_sitter_javascript::language;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, TypeDef, VariableDefinition, VariableUsage};
@@ -142,7 +141,7 @@ impl JSParser {
     pub fn new() -> Result<Self, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(&language())
+            .set_language(&tree_sitter_javascript::LANGUAGE.into())
             .map_err(internal_error)?;
         Ok(Self { parser })
     }
@@ -226,7 +225,7 @@ impl JSParser {
                 end_point: child.end_position(),
             };
         }
-        
+
         symbols.push(Arc::new(RwLock::new(Box::new(decl))));
         symbols
     }
@@ -651,7 +650,7 @@ impl JSParser {
                 if let Some(first) = def.path_components.first() {
                     if vec!["@", ".", ".."].contains(&first.as_str()) {
                         def.import_type = ImportType::UserModule;
-                    } 
+                    }
                 }
                 let mut imports: Vec<ImportDeclaration> = vec![];
                 for i in 0..info.node.child_count() {
@@ -748,7 +747,7 @@ impl JSParser {
         let mut ast_fields = AstSymbolFields::default();
         ast_fields.file_path = path.clone();
         ast_fields.is_error = false;
-        ast_fields.language = LanguageId::from(language());
+        ast_fields.language = LanguageId::TypeScript;
 
         let mut candidates = VecDeque::from(vec![CandidateInfo {
             ast_fields,
