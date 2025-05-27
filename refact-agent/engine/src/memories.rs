@@ -160,10 +160,11 @@ pub async fn memories_search(
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_group_id = gcx.read().await.active_group_id.clone()
         .ok_or("active_group_id must be set")?;
-    let url = format!("{CLOUD_URL}/knowledge/v1/vsearch?limit={top_n}");
+    let url = format!("{CLOUD_URL}/knowledge/vsearch");
     let body = serde_json::json!({
         "group_id": active_group_id,
-        "q": query
+        "q": query,
+        "top_n": top_n,
     });
     let response = client.post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
