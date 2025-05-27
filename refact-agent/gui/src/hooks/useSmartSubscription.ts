@@ -55,7 +55,11 @@ export function useSmartSubscription<
 >): UseSmartSubscriptionResult<TData> {
   const [paused, setPaused] = useState(false);
   const [res, executeSubscription] = useSubscription(
-    { query, variables: (variables ?? {}) as TVariables, pause: paused || skip },
+    {
+      query,
+      variables: (variables ?? {}) as TVariables,
+      pause: paused || skip,
+    },
     (_, data) => {
       if (onUpdate) onUpdate(data);
       return data;
