@@ -71,7 +71,7 @@ mod privacy;
 mod git;
 mod agentic;
 mod trajectories;
-
+mod files_correction_cache;
 
 #[tokio::main]
 async fn main() {
