@@ -5,10 +5,8 @@ import { DocumentNode } from "graphql";
 import { TypedDocumentNode } from "@urql/core"; // Optional, for better type safety
 
 interface UseSmartSubscriptionArgs<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TData = any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TVariables extends Record<string, any> = object,
+  TData = unknown,
+  TVariables extends Record<string, unknown> = Record<string, unknown>,
 > {
   query: string | DocumentNode | TypedDocumentNode<TData, TVariables>;
   variables?: TVariables;
@@ -16,11 +14,9 @@ interface UseSmartSubscriptionArgs<
   onUpdate?: (data: TData) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-interface UseSmartSubscriptionResult<TData = any> {
+interface UseSmartSubscriptionResult<TData = unknown> {
   data: TData | undefined;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error: any;
+  error: unknown;
   pause: () => void;
   resume: () => void;
   isSubscribed: () => boolean;
@@ -44,10 +40,8 @@ function useDocumentVisibility() {
 const THREE_MINUTES = 3 * 60 * 1000;
 
 export function useSmartSubscription<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TData = any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TVariables extends Record<string, any> = object,
+  TData = unknown,
+  TVariables extends Record<string, unknown> = Record<string, unknown>,
 >({
   query,
   variables,
