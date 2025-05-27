@@ -126,9 +126,9 @@ impl ScratchpadAbstract for ChatPassthrough {
             self.messages.clone()
         };
         let (mut messages, _any_context_produced) = if self.allow_at && !should_execute_remotely {
-            run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await
+            run_at_commands_locally(ccx.clone(), self.t.tokenizer.clone(), sampling_parameters_to_patch.max_new_tokens, messages, &mut self.has_rag_results).await
         } else if self.allow_at {
-            run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, &messages, &mut self.has_rag_results).await?
+            run_at_commands_remotely(ccx.clone(), &self.post.model, sampling_parameters_to_patch.max_new_tokens, messages, &mut self.has_rag_results).await?
         } else {
             (messages, false)
         };
