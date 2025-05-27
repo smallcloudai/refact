@@ -2,8 +2,7 @@
   border-radius: 14px;
   box-shadow: 0 4px 24px var(--shadow-2, rgba(0, 0, 0, 0.18));
   padding: 32px 28px;
-  min-width: 380px;
-  max-width: 480px;
+  /* max-width: 480px; */
   margin-left: auto;
   margin-right: auto;
   background: var(--color-panel, #181a20);
