@@ -299,16 +299,13 @@ async fn pp_run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     original_messages: &Vec<ChatMessage>,
     any_corrections: bool,
-    generated_tool: Vec<ChatMessage>,
-    generated_other: Vec<ChatMessage>,
+    mut generated_tool: Vec<ChatMessage>,
+    mut generated_other: Vec<ChatMessage>,
     context_files_for_pp: &mut Vec<ContextFile>,
     tokens_for_rag: usize,
     tokenizer: Option<Arc<Tokenizer>>,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
-    let mut generated_tool = generated_tool.to_vec();
-    let mut generated_other = generated_other.to_vec();
-
     let (top_n, correction_only_up_to_step) = {
         let ccx_locked = ccx.lock().await;
         (ccx_locked.top_n, ccx_locked.correction_only_up_to_step)
@@ -329,15 +326,15 @@ async fn pp_run_tools(
         info!("run_tools: tokens_for_rag={} tokens_limit_chat_msg={} tokens_limit_files={}", tokens_for_rag, tokens_limit_chat_msg, tokens_limit_files);
 
         let (pp_chat_msg, non_used_tokens_for_rag) = postprocess_plain_text(
-            generated_tool.iter().chain(generated_other.iter()).collect(),
+            generated_tool.into_iter().chain(generated_other.into_iter()).collect(),
             tokenizer.clone(),
             tokens_limit_chat_msg,
             style,
         ).await;
 
         // re-add potentially truncated messages, role="tool" will still go first
-        generated_tool.clear();
-        generated_other.clear();
+        generated_tool = Vec::new();
+        generated_other = Vec::new();
         for m in pp_chat_msg {
             if !m.tool_call_id.is_empty() {
                 generated_tool.push(m.clone());
@@ -371,7 +368,7 @@ async fn pp_run_tools(
         ).await;
 
         if !context_file_vec.is_empty() {
-            let json_vec: Vec<_> = context_file_vec.iter().map(|p| json!(p)).collect();
+            let json_vec: Vec<_> = context_file_vec.into_iter().map(|p| json!(p)).collect();
             let message = ChatMessage::new(
                 "context_file".to_string(),
                 serde_json::to_string(&json_vec).unwrap()
