@@ -6,6 +6,7 @@ use tracing::{info, warn};
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 
+use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
@@ -117,11 +118,12 @@ pub async fn pp_ast_markup_files(
             }
         };
         doc.update_text(&text);
-        let defs = if let Some(ast) = &ast_service {
-            let ast_index = ast.lock().await.ast_index.clone();
-            crate::ast::ast_db::doc_defs(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
-        } else {
-            vec![]
+        let defs = match &ast_service {
+            Some(ast) if get_ast_parser_by_filename(&doc.doc_path).is_ok() => {
+                let ast_index = ast.lock().await.ast_index.clone();
+                crate::ast::ast_db::doc_defs(ast_index, &doc.doc_path.to_string_lossy().to_string()).await
+            }
+            _ => vec![],
         };
         let mut symbols_sorted_by_path_len = defs.clone();
         symbols_sorted_by_path_len.sort_by_key(|s| s.official_path.len());
