@@ -25,11 +25,12 @@ import { NodeApi } from "react-arborist";
 import { resetActiveGroup, setActiveGroup } from "../../../features/Teams";
 import { setError } from "../../../features/Errors/errorsSlice";
 
+export type TeamsWorkspace = NavTreeWantWorkspacesQuery["login"][number];
+
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
-  const [currentTeamsWorkspace, setCurrentTeamsWorkspace] = useState<
-    NavTreeWantWorkspacesQuery["login"][number] | null
-  >(null);
+  const [currentTeamsWorkspace, setCurrentTeamsWorkspace] =
+    useState<TeamsWorkspace | null>(null);
 
   const [teamsWorkspaces] = useQuery<
     NavTreeWantWorkspacesQuery,
@@ -105,7 +106,10 @@ export function useGroupTree() {
 
   useSmartSubscription<NavTreeSubsSubscription, { ws_id: string }>({
     query: NavTreeSubsDocument,
-    variables: { ws_id: currentTeamsWorkspace?.ws_id ?? "" },
+    variables: {
+      ws_id: currentTeamsWorkspace?.ws_id ?? "",
+    },
+    skip: currentTeamsWorkspace === null,
     onUpdate: handleEveryTreeUpdate,
   });
 
