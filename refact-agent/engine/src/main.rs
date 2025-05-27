@@ -63,9 +63,8 @@ mod privacy;
 mod git;
 mod agentic;
 mod memories;
-// TODO: do we need those?
-//mod trajectories;
-//mod files_correction_cache;
+// TODO: do we need this?
+mod files_correction_cache;
 
 #[tokio::main]
 async fn main() {
