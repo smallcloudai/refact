@@ -7,7 +7,7 @@ use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
-use crate::at_commands::at_tree::{construct_tree_out_of_flat_list_of_paths, print_files_tree_with_budget};
+use crate::at_commands::at_tree::{print_files_tree_with_budget, TreeNode};
 use crate::tools::tools_description::Tool;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::files_correction::{correct_to_nearest_dir_path, correct_to_nearest_filename, get_project_dirs, paths_from_anywhere};
@@ -44,7 +44,6 @@ impl Tool for ToolTree {
             None => false,
         };
 
-
         let tree = match path_mb {
             Some(path) => {
                 let file_candidates = correct_to_nearest_filename(gcx.clone(), &path, false, 10).await;
@@ -66,12 +65,13 @@ impl Tool for ToolTree {
 
                 let indexing_everywhere = crate::files_blocklist::reload_indexing_everywhere_if_needed(gcx.clone()).await;
                 let paths_in_dir = ls_files(&indexing_everywhere, &true_path, true).unwrap_or(vec![]);
-                construct_tree_out_of_flat_list_of_paths(&paths_in_dir)
+
+                TreeNode::build(&paths_in_dir)
             },
-            None => construct_tree_out_of_flat_list_of_paths(&paths_from_anywhere)
+            None => TreeNode::build(&paths_from_anywhere)
         };
 
-        let content = print_files_tree_with_budget(ccx.clone(), tree, use_ast).await.map_err(|err| {
+        let content = print_files_tree_with_budget(ccx.clone(), &tree, use_ast).await.map_err(|err| {
             warn!("print_files_tree_with_budget err: {}", err);
             err
         })?;

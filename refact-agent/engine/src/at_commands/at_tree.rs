@@ -111,8 +111,37 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     root_nodes
 }
 
-fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
-    let cpath = entry.path.to_string_lossy().to_string();
+pub struct TreeNode {
+    children: HashMap<String, TreeNode>,
+    // NOTE: we can store here more info like depth, sub files count, etc.
+}
+
+impl TreeNode {
+    pub fn new() -> Self {
+        TreeNode {
+            children: HashMap::new(),
+        }
+    }
+
+    pub fn build(paths: &Vec<PathBuf>) -> Self {
+        let mut root = TreeNode::new();
+        for path in paths {
+            let mut node = &mut root;
+            for component in path.components() {
+                let key = component.as_os_str().to_string_lossy().to_string();
+                node = node.children.entry(key).or_insert_with(TreeNode::new);
+            }
+        }
+        root
+    }
+
+    pub fn is_dir(&self) -> bool {
+        !self.children.is_empty()
+    }
+}
+
+fn _print_symbols(db: Arc<Db>, path: &PathBuf) -> String {
+    let cpath = path.to_string_lossy().to_string();
     let defs = crate::ast::ast_db::doc_def_internal(db.clone(), &cpath);
     let symbols_list = defs
         .iter()
@@ -127,37 +156,47 @@ fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
 }
 
 async fn _print_files_tree(
-    tree: &Vec<PathsHolderNodeArc>,
+    tree: &TreeNode,
     ast_db: Option<Arc<AMutex<AstDB>>>,
     maxdepth: usize,
 ) -> String {
-    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, db_mb: Option<Arc<Db>>) -> Option<String> {
+    fn traverse(
+        node: &TreeNode,
+        path: PathBuf,
+        depth: usize,
+        maxdepth: usize,
+        db_mb: Option<Arc<Db>>,
+    ) -> Option<String> {
         if depth > maxdepth {
             return None;
         }
-        let node: std::sync::RwLockReadGuard<PathsHolderNode> = node.0.read().unwrap();
         let mut output = String::new();
         let indent = "  ".repeat(depth);
-        let name = if node.is_dir { format!("{}/", node.file_name()) } else { node.file_name() };
-        if !node.is_dir {
+        let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+        if !node.is_dir() {
             if let Some(db) = &db_mb {
-                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db.clone(), &node)));
+                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db.clone(), &path)));
             } else {
                 output.push_str(&format!("{}{}\n", indent, name));
             }
             return Some(output);
+        } else {
+            output.push_str(&format!("{}{}/\n", indent, name));
         }
-        output.push_str(&format!("{}{}\n", indent, name));
+
         let (mut dirs, mut files) = (0, 0);
         let mut child_output = String::new();
-        for child in &node.child_paths {
-            if let Some(child_str) = traverse(child, depth + 1, maxdepth, db_mb.clone()) {
+        for (name, child) in &node.children {
+            let mut child_path = path.clone();
+            child_path.push(name);
+            if let Some(child_str) = traverse(child, child_path, depth + 1, maxdepth, db_mb.clone()) {
                 child_output.push_str(&child_str);
             } else {
-                dirs += child.0.read().unwrap().is_dir as usize;
-                files += !child.0.read().unwrap().is_dir as usize;
+                dirs += child.is_dir() as usize;
+                files += !child.is_dir() as usize;
             }
         }
+
         if dirs > 0 || files > 0 {
             let summary = format!("{}  ...{} subdirs, {} files...\n", indent, dirs, files);
             child_output.push_str(&summary);
@@ -167,13 +206,13 @@ async fn _print_files_tree(
     }
 
     let mut result = String::new();
-    for node in tree {
+    for (name, node) in &tree.children {
         let db_mb = if let Some(ast) = ast_db.clone() {
             Some(ast.lock().await.sleddb.clone())
         } else {
             None
         };
-        if let Some(output) = traverse(&node, 0, maxdepth, db_mb.clone()) {
+        if let Some(output) = traverse(node, PathBuf::from(name), 0, maxdepth, db_mb.clone()) {
             result.push_str(&output);
         } else {
             break;
@@ -183,7 +222,7 @@ async fn _print_files_tree(
 }
 
 async fn _print_files_tree_with_budget(
-    tree: Vec<PathsHolderNodeArc>,
+    tree: &TreeNode,
     char_limit: usize,
     ast_db: Option<Arc<AMutex<AstDB>>>,
 ) -> String {
@@ -200,7 +239,7 @@ async fn _print_files_tree_with_budget(
 
 pub async fn print_files_tree_with_budget(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tree: Vec<PathsHolderNodeArc>,
+    tree: &TreeNode,
     use_ast: bool,
 ) -> Result<String, String> {
     let (gcx, tokens_for_rag) = {
@@ -248,7 +287,7 @@ impl AtCommand for AtTree {
         *args = args.iter().take_while(|arg| arg.text != "\n" || arg.text == "--ast").take(2).cloned().collect();
 
         let tree = match args.iter().find(|x| x.text != "--ast") {
-            None => construct_tree_out_of_flat_list_of_paths(&filtered_paths),
+            None => TreeNode::build(&filtered_paths),
             Some(arg) => {
                 let path = arg.text.clone();
                 let candidates = correct_to_nearest_dir_path(gcx.clone(), &path, false, 10).await;
@@ -261,12 +300,12 @@ impl AtCommand for AtTree {
                 let start_dir = PathBuf::from(candidate);
                 let paths_start_with_start_dir = filtered_paths.iter()
                     .filter(|f|f.starts_with(&start_dir)).cloned().collect::<Vec<_>>();
-                construct_tree_out_of_flat_list_of_paths(&paths_start_with_start_dir)
+                TreeNode::build(&paths_start_with_start_dir)
             }
         };
 
         let use_ast = args.iter().any(|x| x.text == "--ast");
-        let tree = print_files_tree_with_budget(ccx.clone(), tree, use_ast).await.map_err(|err| {
+        let tree = print_files_tree_with_budget(ccx.clone(), &tree, use_ast).await.map_err(|err| {
             warn!("{}", err);
             err
         })?;
