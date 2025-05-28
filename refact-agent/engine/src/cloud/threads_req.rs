@@ -78,7 +78,7 @@ pub struct ThreadMessage {
     pub ftm_num: i32,
     pub ftm_prev_alt: i32,
     pub ftm_role: String,
-    pub ftm_content: Value,
+    pub ftm_content: String,
     pub ftm_tool_calls: Option<Value>,
     pub ftm_call_id: String,
     pub ftm_usage: Option<Value>,
