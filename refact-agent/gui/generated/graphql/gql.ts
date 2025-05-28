@@ -17,11 +17,13 @@ type Documents = {
     "mutation CreateGroup($fgroup_name: String!, $fgroup_parent_id: String!) {\n  group_create(\n    input: {fgroup_name: $fgroup_name, fgroup_parent_id: $fgroup_parent_id}\n  ) {\n    fgroup_id\n    fgroup_name\n    ws_id\n    fgroup_parent_id\n    fgroup_created_ts\n  }\n}": typeof types.CreateGroupDocument,
     "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_id\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}": typeof types.NavTreeSubsDocument,
     "query NavTreeWantWorkspaces {\n  login {\n    ws_id\n    ws_owner_fuser_id\n    ws_root_group_id\n    root_group_name\n  }\n}": typeof types.NavTreeWantWorkspacesDocument,
+    "subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {\n  threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {\n    news_action\n    news_payload_id\n    news_payload {\n      owner_fuser_id\n      owner_shared\n      ft_id\n      ft_title\n      ft_error\n      ft_updated_ts\n      ft_locked_by\n      ft_need_assistant\n      ft_need_tool_calls\n      ft_anything_new\n      ft_archived_ts\n    }\n  }\n}": typeof types.ThreadsPageSubsDocument,
 };
 const documents: Documents = {
     "mutation CreateGroup($fgroup_name: String!, $fgroup_parent_id: String!) {\n  group_create(\n    input: {fgroup_name: $fgroup_name, fgroup_parent_id: $fgroup_parent_id}\n  ) {\n    fgroup_id\n    fgroup_name\n    ws_id\n    fgroup_parent_id\n    fgroup_created_ts\n  }\n}": types.CreateGroupDocument,
     "subscription NavTreeSubs($ws_id: String!) {\n  tree_subscription(ws_id: $ws_id) {\n    treeupd_action\n    treeupd_id\n    treeupd_path\n    treeupd_type\n    treeupd_title\n  }\n}": types.NavTreeSubsDocument,
     "query NavTreeWantWorkspaces {\n  login {\n    ws_id\n    ws_owner_fuser_id\n    ws_root_group_id\n    root_group_name\n  }\n}": types.NavTreeWantWorkspacesDocument,
+    "subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {\n  threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {\n    news_action\n    news_payload_id\n    news_payload {\n      owner_fuser_id\n      owner_shared\n      ft_id\n      ft_title\n      ft_error\n      ft_updated_ts\n      ft_locked_by\n      ft_need_assistant\n      ft_need_tool_calls\n      ft_anything_new\n      ft_archived_ts\n    }\n  }\n}": types.ThreadsPageSubsDocument,
 };
 
 /**
@@ -50,6 +52,10 @@ export function graphql(source: "subscription NavTreeSubs($ws_id: String!) {\n  
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query NavTreeWantWorkspaces {\n  login {\n    ws_id\n    ws_owner_fuser_id\n    ws_root_group_id\n    root_group_name\n  }\n}"): (typeof documents)["query NavTreeWantWorkspaces {\n  login {\n    ws_id\n    ws_owner_fuser_id\n    ws_root_group_id\n    root_group_name\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {\n  threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {\n    news_action\n    news_payload_id\n    news_payload {\n      owner_fuser_id\n      owner_shared\n      ft_id\n      ft_title\n      ft_error\n      ft_updated_ts\n      ft_locked_by\n      ft_need_assistant\n      ft_need_tool_calls\n      ft_anything_new\n      ft_archived_ts\n    }\n  }\n}"): (typeof documents)["subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {\n  threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {\n    news_action\n    news_payload_id\n    news_payload {\n      owner_fuser_id\n      owner_shared\n      ft_id\n      ft_title\n      ft_error\n      ft_updated_ts\n      ft_locked_by\n      ft_need_assistant\n      ft_need_tool_calls\n      ft_anything_new\n      ft_archived_ts\n    }\n  }\n}"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

@@ -1,0 +1,19 @@
+subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {
+  threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {
+    news_action
+    news_payload_id
+    news_payload {
+      owner_fuser_id
+      owner_shared
+      ft_id
+      ft_title
+      ft_error
+      ft_updated_ts
+      ft_locked_by
+      ft_need_assistant
+      ft_need_tool_calls
+      ft_anything_new
+      ft_archived_ts
+    }
+  }
+}
