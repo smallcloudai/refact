@@ -1,4 +1,5 @@
 use log::{error, info};
+use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -9,7 +10,7 @@ use crate::global_context::GlobalContext;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Expert {
-    pub owner_fuser_id: String,
+    pub owner_fuser_id: Option<String>,
     pub owner_shared: bool,
     pub located_fgroup_id: String,
     pub fexp_name: String,
@@ -22,14 +23,35 @@ pub struct Expert {
 }
 
 impl Expert {
-    pub fn get_blocked_tools(&self) -> Result<Vec<String>, String> {
-        serde_json::from_str(&self.fexp_block_tools)
-            .map_err(|e| format!("Failed to decode block tools: {}", e))
-    }
+    pub fn is_tool_allowed(&self, tool_name: &str) -> bool {
+        let mut blocked = false;
+        if !self.fexp_block_tools.trim().is_empty() {
+            match Regex::new(&self.fexp_block_tools) {
+                Ok(re) => {
+                    if re.is_match(tool_name) {
+                        blocked = true;
+                    }
+                },
+                Err(e) => {
+                    error!("Failed to compile fexp_block_tools regex: {}: {}", self.fexp_block_tools, e);
+                }
+            }
+        }
+        // Allow if matches allow regex, even if blocked
+        if !self.fexp_allow_tools.trim().is_empty() {
+            match Regex::new(&self.fexp_allow_tools) {
+                Ok(re) => {
+                    if re.is_match(tool_name) {
+                        return true;
+                    }
+                },
+                Err(e) => {
+                    error!("Failed to compile fexp_allow_tools regex: {}: {}", self.fexp_allow_tools, e);
+                }
+            }
+        }
 
-    pub fn get_allowed_tools(&self) -> Result<Vec<String>, String> {
-        serde_json::from_str(&self.fexp_allow_tools)
-            .map_err(|e| format!("Failed to decode allow tools: {}", e))
+        !blocked
     }
 }
 
@@ -58,7 +80,7 @@ pub async fn get_expert(
     "#;
 
     let variables = json!({
-        "located_fgroup_id": "solar_root".to_string(),
+        "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
         "skip": 0,
         "limit": 100
     });
