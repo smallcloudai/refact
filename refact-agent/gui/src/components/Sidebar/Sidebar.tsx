@@ -1,7 +1,7 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Box, Flex, Spinner } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { useAppSelector, useAppDispatch } from "../../hooks";
+import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import {
   ChatHistoryItem,
   deleteChatById,
@@ -41,6 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
     devModeChecks: { stabilityCheck: "never" },
   });
 
+  const { data: capsData } = useCapsForToolUse();
+
   const onDeleteHistoryItem = useCallback(
     (id: string) => dispatch(deleteChatById(id)),
     [dispatch],
@@ -54,6 +56,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
     [dispatch],
   );
 
+  const shouldGroupTreeBeVisible = useMemo(() => {
+    return (
+      capsData?.metadata?.features?.includes("knowledge") === true &&
+      !maybeSelectedTeamsGroup
+    );
+  }, [maybeSelectedTeamsGroup, capsData?.metadata?.features]);
+
   return (
     <Flex style={style}>
       <FeatureMenu />
@@ -63,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         </Box>
       </Flex>
 
-      {maybeSelectedTeamsGroup ? (
+      {!shouldGroupTreeBeVisible ? (
         <ChatHistory
           history={history}
           onHistoryItemClick={onHistoryItemClick}

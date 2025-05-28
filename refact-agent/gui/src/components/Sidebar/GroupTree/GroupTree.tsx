@@ -40,10 +40,13 @@ export const GroupTree: React.FC = () => {
         <Heading as="h2" size="4">
           Choose workspace
         </Heading>
-        <Text size="3" color="gray">
+        <Text size="3" color="gray" mb="1">
           Select a workspace associated to your team to continue.
         </Text>
-        <Select.Root onValueChange={onWorkspaceSelection}>
+        <Select.Root
+          onValueChange={onWorkspaceSelection}
+          disabled={availableWorkspaces.length === 0}
+        >
           <Select.Trigger placeholder="Choose workspace"></Select.Trigger>
           <Select.Content position="popper">
             {availableWorkspaces.map((workspace) => (
@@ -53,6 +56,14 @@ export const GroupTree: React.FC = () => {
             ))}
           </Select.Content>
         </Select.Root>
+        {availableWorkspaces.length === 0 && (
+          <Text size="2" mt="2">
+            No workspaces are currently associated with your account. Please
+            contact your Team Workspace administrator to request access. For
+            further assistance, please refer to the support or bug reporting
+            channels.
+          </Text>
+        )}
       </Flex>
       {currentTeamsWorkspace && filteredGroupTreeData.length > 0 && (
         <Flex
