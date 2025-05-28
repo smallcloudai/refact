@@ -6,6 +6,7 @@
   margin-left: auto;
   margin-right: auto;
   background: var(--color-panel, #181a20);
+  min-height: fit-content;
 }
 
 .groupName {
