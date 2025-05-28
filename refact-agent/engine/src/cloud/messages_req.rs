@@ -60,7 +60,8 @@ pub async fn create_thread_messages(
             "ftm_content": content_str,
             "ftm_tool_calls": tool_calls_str,
             "ftm_call_id": message.ftm_call_id,
-            "ftm_usage": usage_str
+            "ftm_usage": usage_str,
+            "ftm_provenance": message.ftm_provenance
         }));
     }
 
@@ -83,6 +84,7 @@ pub async fn create_thread_messages(
                 ftm_role
                 ftm_created_ts
                 ftm_call_id
+                ftm_provenance
             }
         }
     }

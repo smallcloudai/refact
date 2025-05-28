@@ -1,6 +1,6 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::caps::resolve_chat_model;
-use crate::cloud::threads_req::{Thread, ThreadMessage, ThreadPatchInput};
+use crate::cloud::threads_req::{Thread, ThreadMessage};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
@@ -23,6 +23,7 @@ use tokio_tungstenite::{
     tungstenite::protocol::Message
 };
 use tracing::{error, info};
+use tracing_subscriber::fmt::format::json;
 use url::Url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -321,10 +322,9 @@ async fn initialize_thread(
     thread_messages: &Vec<ThreadMessage>
 ) -> Result<(), String> {
     let expert = crate::cloud::experts_req::get_expert(gcx.clone(), expert_name).await?;
-    let blocked_tools = expert.get_blocked_tools()?;
     let tools: IndexMap<String, Box<dyn Tool + Send>> = tools_merged_and_filtered(gcx.clone(), true).await?
         .into_iter()
-        .filter(|(name, _tool)| !blocked_tools.contains(name))
+        .filter(|(name, _tool)| expert.is_tool_allowed(name))
         .collect();
     let tool_descriptions = tool_description_list_from_yaml(tools, None, true).await?
         .into_iter()
@@ -336,10 +336,7 @@ async fn initialize_thread(
     ).await;
 
     let last_message = thread_messages.last().unwrap();
-    crate::cloud::threads_req::update_thread(gcx.clone(), &thread.ft_id, ThreadPatchInput {
-        ft_toolset: Some(serde_json::to_value(&tool_descriptions).unwrap().as_str().unwrap().to_string()),
-        ..ThreadPatchInput::default()
-    }).await?;
+    crate::cloud::threads_req::update_thread(gcx.clone(), &thread.ft_id, tool_descriptions).await?;
     
     let output_thread_messages = vec![ThreadMessage {
         ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
@@ -347,11 +344,12 @@ async fn initialize_thread(
         ftm_num: 0,
         ftm_prev_alt: 100,
         ftm_role: "system".to_string(),
-        ftm_content: updated_system_prompt.clone(),
+        ftm_content: serde_json::to_value(ChatContent::SimpleText(updated_system_prompt)).unwrap(),
         ftm_tool_calls: None,
         ftm_call_id: "".to_string(),
         ftm_usage: None,
         ftm_created_ts: std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_secs_f64(),
+        ftm_provenance: json!({}),
     }];
     crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages).await?;
 
@@ -360,7 +358,7 @@ async fn initialize_thread(
 
 fn convert_thread_messages_to_messages(thread_messages: &Vec<ThreadMessage>) -> Vec<ChatMessage> {
     thread_messages.iter().map(|msg| {
-        let content = ChatContent::SimpleText(msg.ftm_content.clone());
+        let content: ChatContent = serde_json::from_value(msg.ftm_content.clone()).unwrap();
         let tool_calls = msg.ftm_tool_calls.clone().map(|tc| {
             match serde_json::from_value::<Vec<ChatToolCall>>(tc) {
                 Ok(calls) => calls,
@@ -397,6 +395,7 @@ fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, pre
         };
         
         let usage = msg.usage.map(|u| serde_json::to_value(u).unwrap_or(Value::Null));
+        let content = serde_json::to_value(msg.content).unwrap();
         
         ThreadMessage {
             ftm_belongs_to_ft_id: thread_id.to_string(),
@@ -404,21 +403,7 @@ fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, pre
             ftm_num: num,
             ftm_prev_alt: prev_alt,
             ftm_role: msg.role,
-            ftm_content: match msg.content {
-                ChatContent::SimpleText(text) => text,
-                ChatContent::Multimodal(elements) => {
-                    elements.iter()
-                        .filter_map(|e| {
-                            if e.m_type == "text" {
-                                Some(e.m_content.clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                }
-            },
+            ftm_content: content,
             ftm_tool_calls: tool_calls,
             ftm_call_id: msg.tool_call_id,
             ftm_usage: usage,
@@ -426,22 +411,14 @@ fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, pre
                 .duration_since(std::time::SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs_f64(),
+            ftm_provenance: json!({}),
         }
     }).collect()
 }
 
-async fn get_tool_names_from_openai_format(toolset_json: &str) -> Result<Vec<String>, String> {
-    if toolset_json.is_empty() {
-        return Ok(vec![]);
-    }
-    
-    let tools: Vec<Value> = match serde_json::from_str(toolset_json) {
-        Ok(t) => t,
-        Err(e) => return Err(format!("Failed to parse toolset JSON: {}", e)),
-    };
-    
+async fn get_tool_names_from_openai_format(toolset_json: &Vec<Value>) -> Result<Vec<String>, String> {
     let mut tool_names = Vec::new();
-    for tool in tools {
+    for tool in toolset_json {
         if let Some(function) = tool.get("function") {
             if let Some(name) = function.get("name") {
                 if let Some(name_str) = name.as_str() {
@@ -507,9 +484,8 @@ async fn events_loop(
 ) -> Result<(), String> {
     info!("Cloud threads subscription started, waiting for events...");
     
-    let shutdown_flag = &gcx.read().await.shutdown_flag;
     while let Some(msg) = connection.next().await {
-        if shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
+        if gcx.read().await.shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
             info!("Shutting down GraphQL subscription thread");
             break;
         }
