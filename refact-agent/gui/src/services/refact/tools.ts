@@ -51,9 +51,7 @@ export const toolsApi = createApi({
             },
           };
         }
-        const toolGroups = result.data.filter((d) =>
-          isToolGroup(d),
-        ) as ToolGroup[];
+        const toolGroups = result.data.filter((d) => isToolGroup(d));
         return { data: toolGroups };
       },
     }),
