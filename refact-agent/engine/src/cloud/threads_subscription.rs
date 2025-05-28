@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 use std::time::Duration;
+use similar::DiffableStr;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -303,11 +304,15 @@ async fn initialize_connection() -> Result<futures::stream::SplitStream<tokio_tu
 async fn process_thread_event(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_payload: &ThreadPayload)-> Result<(), String> {
+    if thread_payload.ft_need_tool_calls == -1 || !thread_payload.ft_error.is_empty() {
+        return Ok(());
+    }
+    
     let messages = crate::cloud::threads_req::get_thread_messages(
         gcx.clone(), &thread_payload.ft_id, thread_payload.ft_need_tool_calls
     ).await?;
     let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
-    if messages.iter().any(|x| x.ftm_role != "system") {
+    if messages.iter().all(|x| x.ftm_role != "system") {
         initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await?;
     } else {
         call_tools(gcx.clone(), &thread, &messages).await?;
@@ -349,7 +354,7 @@ async fn initialize_thread(
         ftm_call_id: "".to_string(),
         ftm_usage: None,
         ftm_created_ts: std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_secs_f64(),
-        ftm_provenance: json!({}),
+        ftm_provenance: json!({"important": "information"}),
     }];
     crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages).await?;
 
@@ -411,7 +416,7 @@ fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, pre
                 .duration_since(std::time::SystemTime::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs_f64(),
-            ftm_provenance: json!({}),
+            ftm_provenance: json!({"important": "information"}),
         }
     }).collect()
 }
