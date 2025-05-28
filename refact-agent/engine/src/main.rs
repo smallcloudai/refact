@@ -179,7 +179,7 @@ async fn main() {
     });
 
     // Start or connect to mcp servers
-    let _ = running_integrations::load_integrations(gcx.clone(), cmdline.experimental, &["**/mcp_*".to_string()]).await;
+    let _ = running_integrations::load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
 
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;

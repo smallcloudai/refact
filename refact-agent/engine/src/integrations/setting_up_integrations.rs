@@ -538,7 +538,6 @@ pub async fn integration_config_save(
     integr_config_path: &String,
     integr_values: &serde_json::Value,
 ) -> Result<(), String> {
-    let allow_experimental = gcx.read().await.cmdline.experimental;
     let config_path = crate::files_correction::canonical_path(integr_config_path);
     let (integr_name, _project_path) = crate::integrations::setting_up_integrations::split_path_into_project_and_integration(&config_path)
         .map_err(|e| format!("Failed to split path: {}", e))?;
@@ -574,7 +573,7 @@ pub async fn integration_config_save(
 
     // If it is an mcp integration, ensure we restart or reconnect to the server
     if config_path.file_name().and_then(|f| f.to_str()).is_some_and(|f| f.starts_with("mcp_")) {
-        let _ = load_integrations(gcx.clone(), allow_experimental, &["**/mcp_*".to_string()]).await;
+        let _ = load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
     }
 
     Ok(())

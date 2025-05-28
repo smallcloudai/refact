@@ -652,8 +652,6 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
-    let allow_experimental = gcx.read().await.cmdline.experimental;
-
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 
@@ -663,7 +661,7 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     });
 
     // Start or connect to mcp servers
-    let _ = load_integrations(gcx.clone(), allow_experimental, &["**/mcp_*".to_string()]).await;
+    let _ = load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
 
     files_enqueued
 }
