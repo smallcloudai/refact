@@ -304,7 +304,7 @@ pub async fn ast_indexer_block_until_finished(ast_service: Arc<AMutex<AstIndexSe
 
 pub async fn ast_service_init(ast_permanent: String, ast_max_files: usize) -> Arc<AMutex<AstIndexService>>
 {
-    let ast_index = ast_index_init(ast_permanent, ast_max_files, false).await;
+    let ast_index = ast_index_init(ast_permanent, ast_max_files).await;
     let ast_status = Arc::new(AMutex::new(AstStatus {
         astate_notify: Arc::new(ANotify::new()),
         astate: String::from("starting"),
