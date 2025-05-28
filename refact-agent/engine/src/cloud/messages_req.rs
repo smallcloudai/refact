@@ -39,7 +39,7 @@ pub async fn create_thread_messages(
         let content_str = serde_json::to_string(&message.ftm_content)
             .map_err(|e| format!("Failed to serialize content: {}", e))?;
 
-        let tool_calls_str = match &message.tool_calls {
+        let tool_calls_str = match &message.ftm_tool_calls {
             Some(tc) => serde_json::to_string(tc)
                 .map_err(|e| format!("Failed to serialize tool_calls: {}", e))?,
             None => "{}".to_string(),
@@ -53,9 +53,9 @@ pub async fn create_thread_messages(
 
         input_messages.push(json!({
             "ftm_belongs_to_ft_id": message.ftm_belongs_to_ft_id,
-            "ftm_alt": message.alt,
-            "ftm_num": message.num,
-            "ftm_prev_alt": message.prev_alt,
+            "ftm_alt": message.ftm_alt,
+            "ftm_num": message.ftm_num,
+            "ftm_prev_alt": message.ftm_prev_alt,
             "ftm_role": message.ftm_role,
             "ftm_content": content_str,
             "ftm_tool_calls": tool_calls_str,

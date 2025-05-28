@@ -1,14 +1,14 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::caps::resolve_chat_model;
 use crate::cloud::threads_req::{Thread, ThreadMessage, ThreadPatchInput};
-use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 use crate::tokens;
 use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, Tool};
 use crate::tools::tools_execute::run_tools_locally;
-use axum::http::StatusCode;
+use crate::call_validation::{ChatMessage, ChatContent, ChatToolCall, ChatUsage};
+use crate::custom_error::MapErrToString;
 use futures::{SinkExt, StreamExt};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -182,6 +182,7 @@ const THREADS_SUBSCRIPTION_QUERY : &str = r#"
           ft_updated_ts
           ft_locked_by
           ft_need_assistant
+          ft_need_tool_calls
           ft_anything_new
           ft_archived_ts
         }
@@ -306,11 +307,10 @@ async fn process_thread_event(
     ).await?;
     let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
     if messages.iter().any(|x| x.ftm_role != "system") {
-        initialize_thread(gcx.clone(), &thread.ft_fexp_name).await?;
+        initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await?;
     } else {
         call_tools(gcx.clone(), &thread, &messages).await?;
     }
-    
     Ok(())
 }
 
@@ -324,7 +324,7 @@ async fn initialize_thread(
     let blocked_tools = expert.get_blocked_tools()?;
     let tools: IndexMap<String, Box<dyn Tool + Send>> = tools_merged_and_filtered(gcx.clone(), true).await?
         .into_iter()
-        .filter(|(name, tool)| !blocked_tools.contains(name))
+        .filter(|(name, _tool)| !blocked_tools.contains(name))
         .collect();
     let tool_descriptions = tool_description_list_from_yaml(tools, None, true).await?
         .into_iter()
@@ -345,7 +345,7 @@ async fn initialize_thread(
         ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
         ftm_alt: last_message.ftm_alt.clone(),
         ftm_num: 0,
-        ftm_prev_alt: last_message.ftm_prev_alt.clone(),
+        ftm_prev_alt: 100,
         ftm_role: "system".to_string(),
         ftm_content: updated_system_prompt.clone(),
         ftm_tool_calls: None,
@@ -353,9 +353,105 @@ async fn initialize_thread(
         ftm_usage: None,
         ftm_created_ts: std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap().as_secs_f64(),
     }];
-    crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages)?;
+    crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages).await?;
 
     Ok(())
+}
+
+fn convert_thread_messages_to_messages(thread_messages: &Vec<ThreadMessage>) -> Vec<ChatMessage> {
+    thread_messages.iter().map(|msg| {
+        let content = ChatContent::SimpleText(msg.ftm_content.clone());
+        let tool_calls = msg.ftm_tool_calls.clone().map(|tc| {
+            match serde_json::from_value::<Vec<ChatToolCall>>(tc) {
+                Ok(calls) => calls,
+                Err(_) => vec![]
+            }
+        });
+        
+        ChatMessage {
+            role: msg.ftm_role.clone(),
+            content,
+            tool_calls,
+            tool_call_id: msg.ftm_call_id.clone(),
+            tool_failed: None,
+            usage: msg.ftm_usage.clone().map(|u| {
+                match serde_json::from_value::<ChatUsage>(u) {
+                    Ok(usage) => usage,
+                    Err(_) => ChatUsage::default()
+                }
+            }),
+            checkpoints: vec![],
+            thinking_blocks: None,
+            finish_reason: None,
+        }
+    }).collect()
+}
+
+fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, prev_alt: i32, start_num: i32, thread_id: &str) -> Vec<ThreadMessage> {
+    messages.into_iter().enumerate().map(|(i, msg)| {
+        let num = start_num + i as i32;
+        let tool_calls = if let Some(tc) = &msg.tool_calls {
+            Some(serde_json::to_value(tc).unwrap_or(Value::Null))
+        } else {
+            None
+        };
+        
+        let usage = msg.usage.map(|u| serde_json::to_value(u).unwrap_or(Value::Null));
+        
+        ThreadMessage {
+            ftm_belongs_to_ft_id: thread_id.to_string(),
+            ftm_alt: alt,
+            ftm_num: num,
+            ftm_prev_alt: prev_alt,
+            ftm_role: msg.role,
+            ftm_content: match msg.content {
+                ChatContent::SimpleText(text) => text,
+                ChatContent::Multimodal(elements) => {
+                    elements.iter()
+                        .filter_map(|e| {
+                            if e.m_type == "text" {
+                                Some(e.m_content.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                }
+            },
+            ftm_tool_calls: tool_calls,
+            ftm_call_id: msg.tool_call_id,
+            ftm_usage: usage,
+            ftm_created_ts: std::time::SystemTime::now()
+                .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs_f64(),
+        }
+    }).collect()
+}
+
+async fn get_tool_names_from_openai_format(toolset_json: &str) -> Result<Vec<String>, String> {
+    if toolset_json.is_empty() {
+        return Ok(vec![]);
+    }
+    
+    let tools: Vec<Value> = match serde_json::from_str(toolset_json) {
+        Ok(t) => t,
+        Err(e) => return Err(format!("Failed to parse toolset JSON: {}", e)),
+    };
+    
+    let mut tool_names = Vec::new();
+    for tool in tools {
+        if let Some(function) = tool.get("function") {
+            if let Some(name) = function.get("name") {
+                if let Some(name_str) = name.as_str() {
+                    tool_names.push(name_str.to_string());
+                }
+            }
+        }
+    }
+    
+    Ok(tool_names)
 }
 
 async fn call_tools(
@@ -365,6 +461,9 @@ async fn call_tools(
 ) -> Result<(), String> {
     let max_new_tokens = 8192;
     let last_message_num = thread_messages.iter().map(|x| x.ftm_num).max().unwrap_or(0);
+    let (alt, prev_alt) = thread_messages.last()
+        .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
+        .unwrap_or((0, 0));
     let messages = convert_thread_messages_to_messages(thread_messages);
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(), 
@@ -381,11 +480,10 @@ async fn call_tools(
         .into_iter()
         .filter(|(name, _)| allowed_tools.contains(name))
         .collect();
-
     let mut has_rag_results = HasRagResults::new();
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
+    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
     let model_rec = resolve_chat_model(caps, &thread.ft_model)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
+        .map_err(|e| format!("Failed to resolve chat model: {}", e))?;
     let tokenizer_arc = tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
     let (messages, _) = run_tools_locally(
         ccx.clone(),
@@ -396,9 +494,8 @@ async fn call_tools(
         &mut has_rag_results, 
         &None
     ).await?;
-    let output_thread_messages = convert_messages_to_thread_messages(messages, start_num=last_message_num);
-    crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages)?;
-
+    let output_thread_messages = convert_messages_to_thread_messages(messages, alt, prev_alt, last_message_num + 1, &thread.ft_id);
+    crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages).await?;
     Ok(())
 }
 
