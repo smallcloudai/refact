@@ -1,4 +1,4 @@
-import { Box, Flex, Heading, Select, Text } from "@radix-ui/themes";
+import { Flex, Heading, Select, Text } from "@radix-ui/themes";
 import React from "react";
 import { Tree } from "react-arborist";
 import { CustomTreeNode } from "./CustomTreeNode";
@@ -31,7 +31,6 @@ export const GroupTree: React.FC = () => {
     setGroupTreeData,
     onWorkspaceSelection,
     availableWorkspaces,
-    treeWidth,
     treeHeight,
   } = useGroupTree();
 
@@ -62,47 +61,43 @@ export const GroupTree: React.FC = () => {
           width="100%"
           height="100%"
           justify="between"
+          style={{ flex: 1, minHeight: 0 }} // <-- Add this line
         >
-          <Box width="100%">
-            <Flex direction="column" gap="1" mb="4">
-              <Heading as="h2" size="4">
-                Choose desired group
-              </Heading>
-              <Text size="3" color="gray">
-                Select a group to sync your knowledge with the cloud.
-              </Text>
-            </Flex>
-            <ScrollArea
-              ref={treeParentRef}
-              scrollbars="vertical"
-              style={{ maxHeight: 240 }}
+          <Flex direction="column" gap="1" mb="4">
+            <Heading as="h2" size="4">
+              Choose desired group
+            </Heading>
+            <Text size="3" color="gray">
+              Select a group to sync your knowledge with the cloud.
+            </Text>
+          </Flex>
+          <ScrollArea
+            ref={treeParentRef}
+            scrollbars="vertical"
+            style={{ flex: 1, minHeight: 0 }}
+          >
+            <Tree
+              data={filteredGroupTreeData}
+              rowHeight={40}
+              height={treeHeight}
+              width="100%"
+              indent={28}
+              onSelect={onGroupSelect}
+              openByDefault={false}
+              className={styles.sidebarTree}
+              selection={currentSelectedTeamsGroupNode?.treenodePath}
+              disableDrag
+              disableMultiSelection
+              disableEdit
+              disableDrop
+              idAccessor={"treenodePath"} // treenodePath seems to be more convenient for temporary tree nodes which later get removed
+              childrenAccessor={"treenodeChildren"}
             >
-              <Tree
-                data={filteredGroupTreeData}
-                rowHeight={40}
-                height={treeHeight}
-                width={treeWidth}
-                indent={28}
-                onSelect={onGroupSelect}
-                openByDefault={false}
-                className={styles.sidebarTree}
-                selection={currentSelectedTeamsGroupNode?.treenodePath}
-                disableDrag
-                disableMultiSelection
-                disableEdit
-                disableDrop
-                idAccessor={"treenodePath"} // treenodePath seems to be more convenient for temporary tree nodes which later get removed
-                childrenAccessor={"treenodeChildren"}
-              >
-                {(nodeProps) => (
-                  <CustomTreeNode
-                    updateTree={setGroupTreeData}
-                    {...nodeProps}
-                  />
-                )}
-              </Tree>
-            </ScrollArea>
-          </Box>
+              {(nodeProps) => (
+                <CustomTreeNode updateTree={setGroupTreeData} {...nodeProps} />
+              )}
+            </Tree>
+          </ScrollArea>
           {/* TODO: make it wrapped around AnimatePresence from motion */}
           {currentSelectedTeamsGroupNode !== null && (
             <ConfirmGroupSelection

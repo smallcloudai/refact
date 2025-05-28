@@ -124,18 +124,15 @@ export function useGroupTree() {
   const [treeHeight, setTreeHeight] = useState<number>(
     treeParentRef.current?.clientHeight ?? 0,
   );
-  const [treeWidth, setTreeWidth] = useState<number>(
-    treeParentRef.current?.clientHeight ?? 0,
-  );
 
   const calculateAndSetSpace = useCallback(() => {
     if (!treeParentRef.current) {
       return;
     }
-
     setTreeHeight(treeParentRef.current.clientHeight);
-    setTreeWidth(treeParentRef.current.clientWidth);
-  }, [treeParentRef]);
+    // NOTE: this is a hack to avoid the tree being with 0 width/height even when data appears
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [treeParentRef, filteredGroupTreeData]);
 
   useResizeObserver(treeParentRef.current, calculateAndSetSpace);
 
@@ -213,7 +210,6 @@ export function useGroupTree() {
     currentTeamsWorkspace,
     currentSelectedTeamsGroupNode,
     // Dimensions
-    treeWidth,
     treeHeight,
     // Actions
     onGroupSelect,
