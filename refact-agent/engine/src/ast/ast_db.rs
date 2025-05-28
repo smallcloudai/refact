@@ -1,16 +1,19 @@
+use std::path::PathBuf;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use futures::io::Cursor;
+use heed::{RoTxn, RwTxn};
 use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use tokio::task;
 use serde_cbor;
-use sled::Db;
 use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::ast::ast_structs::{AstDB, AstDefinition, AstCounters, AstErrorStats};
 use crate::ast::ast_parse_anything::{parse_anything_and_add_file_path, filesystem_path_to_double_colon_path};
+use crate::custom_error::MapErrToString;
 use crate::fuzzy_search::fuzzy_search;
 
 // ## How the database works ##
@@ -69,32 +72,37 @@ macro_rules! debug_print {
     };
 }
 
-const CACHE_CAPACITY_BYTES: u64 = 256 * 1024 * 1024;  // 256M cache
-
-pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize, want_perf_report: bool) -> Arc<AstDB>
+pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize) -> Arc<AstDB>
 {
-    let mut config = sled::Config::default()
-        .cache_capacity(CACHE_CAPACITY_BYTES)
-        .use_compression(false)
-        .print_profile_on_drop(want_perf_report)
-        .mode(sled::Mode::HighThroughput)
-        .flush_every_ms(Some(5000));
-
-    if ast_permanent.is_empty() {
-        config = config.temporary(true).create_new(true);
+    let db_temp_dir = if ast_permanent.is_empty() {
+        Some(tempfile::TempDir::new().expect("Failed to create tempdir"))
     } else {
-        config = config.path(ast_permanent.clone());
-    }
+        None
+    };
+    let db_path = if let Some(tempdir) = &db_temp_dir {
+        tempdir.path().to_path_buf()
+    } else {
+        PathBuf::from(&ast_permanent)
+    };
 
     tracing::info!("starting AST db, ast_permanent={:?}", ast_permanent);
-    let db: Arc<Db> = Arc::new(task::spawn_blocking(
-        move || config.open().unwrap()
-    ).await.unwrap());
-    db.clear().unwrap();
+    let db_env: Arc<heed::Env> = Arc::new(task::spawn_blocking(move || {
+        let options = heed::EnvOpenOptions::new();
+        unsafe { options.open(db_path).unwrap() }
+    }).await.unwrap());
+
+    let db: Arc<heed::Database<heed::types::Str, heed::types::Bytes>> = Arc::new(db_env.write_txn().map(|mut txn| {
+        let db = db_env.create_database(&mut txn, Some("ast")).expect("Failed to create ast db");
+        let _ = db.clear(&mut txn);
+        txn.commit().expect("Failed to commit to lmdb env");
+        db
+    }).expect("Failed to start transaction to create ast db"));
+
     tracing::info!("/starting AST");
     let ast_index = AstDB {
-        sleddb: db,
-        sledbatch: Arc::new(AMutex::new(sled::Batch::default())),
+        db_env,
+        db,
+        db_temp_dir,
         batch_counter: AMutex::new(0),
         counters_increase: AMutex::new(HashMap::new()),
         ast_max_files,
@@ -104,10 +112,19 @@ pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize, want_pe
 
 pub async fn fetch_counters(ast_index: Arc<AstDB>) -> AstCounters
 {
-    let db = ast_index.sleddb.clone();
-    let counter_defs = db.get(b"counters|defs").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
-    let counter_usages = db.get(b"counters|usages").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
-    let counter_docs = db.get(b"counters|docs").unwrap().map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0);
+    let txn = ast_index.db_env.read_txn().unwrap();
+    let counter_defs = ast_index.db.get(&txn, "counters|defs")
+        .expect("Failed to get counters|defs")
+        .map(|v| serde_cbor::from_slice::<i32>(&v).unwrap())
+        .unwrap_or(0);
+    let counter_usages = ast_index.db.get(&txn, "counters|usages")
+        .expect("Failed to get counters|usages")
+        .map(|v| serde_cbor::from_slice::<i32>(&v).unwrap())
+        .unwrap_or(0);
+    let counter_docs = ast_index.db.get(&txn, "counters|docs")
+        .expect("Failed to get counters|docs")
+        .map(|v| serde_cbor::from_slice::<i32>(&v).unwrap())
+        .unwrap_or(0);
     AstCounters {
         counter_defs,
         counter_usages,
@@ -115,64 +132,17 @@ pub async fn fetch_counters(ast_index: Arc<AstDB>) -> AstCounters
     }
 }
 
-fn _increase_counter_commit(db: &sled::Db, counter_key: &[u8], adjustment: i32) {
+fn increase_counter<'a>(ast_index: Arc<AstDB>, txn: &mut heed::RwTxn<'a>, counter_key: &str, adjustment: i32) {
     if adjustment == 0 {
         return;
     }
-    match db.update_and_fetch(counter_key, |counter| {
-        let counter = counter.map(|v| serde_cbor::from_slice::<i32>(&v).unwrap()).unwrap_or(0) + adjustment;
-        Some(serde_cbor::to_vec(&counter).unwrap())
-    }) {
-        Ok(_) => {},
-        Err(e) => tracing::error!("failed to update and fetch counter: {:?}", e),
+    let new_value = ast_index.db.get(txn, counter_key)
+        .unwrap_or(None)
+        .map(|v| serde_cbor::from_slice::<i32>(v).unwrap())
+        .unwrap_or(0) + adjustment;
+    if let Err(e) = ast_index.db.put(txn, counter_key, &serde_cbor::to_vec(&new_value).unwrap()) {
+        tracing::error!("failed to update counter: {:?}", e);
     }
-}
-
-async fn _increase_counter(ast_index: Arc<AstDB>, counter_key: &str, adjustment: i32) {
-    if adjustment == 0 {
-        return;
-    }
-    let mut counters_increase = ast_index.counters_increase.lock().await;
-    let counter = counters_increase.entry(counter_key.to_string()).or_insert(0);
-    *counter += adjustment;
-}
-
-pub async fn flush_sled_batch(
-    ast_db: Arc<AstDB>,
-    threshold: usize,   // if zero, flush everything including counters
-) -> Arc<AMutex<sled::Batch>> {
-    let mut batch_counter = ast_db.batch_counter.lock().await;
-
-    if *batch_counter >= threshold {
-        let sleddb = ast_db.sleddb.clone();
-        let mut batch = ast_db.sledbatch.lock().await;
-        let batch_to_apply = std::mem::replace(&mut *batch, sled::Batch::default());
-        drop(batch);
-
-        let was_counter = *batch_counter;
-        *batch_counter = 0;
-
-        let mut counters_increase = ast_db.counters_increase.lock().await;
-        let counters_to_process = if threshold == 0 {
-            std::mem::replace(&mut *counters_increase, HashMap::new())
-        } else {
-            HashMap::new()
-        };
-        drop(counters_increase);
-
-        if was_counter > 0 {
-            // tracing::info!("flushing {} sled batches", was_counter);
-            if let Err(e) = sleddb.apply_batch(batch_to_apply) {
-                tracing::error!("failed to apply batch: {:?}", e);
-            }
-        }
-        for (counter_key, adjustment) in counters_to_process {
-            _increase_counter_commit(&sleddb, counter_key.as_bytes(), adjustment);
-        }
-        return ast_db.sledbatch.clone();
-    }
-    *batch_counter += 1;
-    ast_db.sledbatch.clone()
 }
 
 pub async fn doc_add(
@@ -184,57 +154,63 @@ pub async fn doc_add(
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let (defs, language) = parse_anything_and_add_file_path(&cpath, text, errors)?;   // errors mostly "no such parser" here
-    let db = ast_index.sleddb.clone();
-    let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
-    let mut batch = batch_arc.lock().await;
-    let mut added_defs: i32 = 0;
-    let mut added_usages: i32 = 0;
-    let mut unresolved_usages: i32 = 0;
-    for definition in defs.iter() {
-        assert!(definition.cpath == *cpath);
-        let serialized = serde_cbor::to_vec(&definition).unwrap();
-        let official_path = definition.official_path.join("::");
-        let d_key = format!("d|{}", official_path);
-        debug_print!("writing {}", d_key);
-        batch.insert(d_key.as_bytes(), serialized);
-        let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
-        while !path_parts.is_empty() {
-            let c_key = format!("c|{} ⚡ {}", path_parts.join("::"), official_path);
-            batch.insert(c_key.as_bytes(), b"");
-            path_parts.remove(0);
-        }
-        for usage in &definition.usages {
-            if !usage.resolved_as.is_empty() {
-                let u_key = format!("u|{} ⚡ {}", usage.resolved_as, official_path);
-                batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
-            } else if usage.targets_for_guesswork.len() == 1 && !usage.targets_for_guesswork[0].starts_with("?::") {
-                let homeless_key = format!("homeless|{} ⚡ {}", usage.targets_for_guesswork[0], official_path);
-                batch.insert(homeless_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
-                debug_print!("        homeless {}", homeless_key);
-                continue;
-            } else {
-                unresolved_usages += 1;
+
+    let result = ast_index.db_env.write_txn().and_then(|mut txn| {
+        let mut added_defs: i32 = 0;
+        let mut added_usages: i32 = 0;
+        let mut unresolved_usages: i32 = 0;
+        for definition in defs.iter() {
+            assert!(definition.cpath == *cpath);
+            let serialized = serde_cbor::to_vec(&definition).unwrap();
+            let official_path = definition.official_path.join("::");
+            let d_key = format!("d|{}", official_path);
+            debug_print!("writing {}", d_key);
+            ast_index.db.put(&mut txn, &d_key, &serialized)?;
+            let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
+            while !path_parts.is_empty() {
+                let c_key = format!("c|{} ⚡ {}", path_parts.join("::"), official_path);
+                ast_index.db.put(&mut txn, &c_key, b"")?;
+                path_parts.remove(0);
             }
-            added_usages += 1;
+            for usage in &definition.usages {
+                if !usage.resolved_as.is_empty() {
+                    let u_key = format!("u|{} ⚡ {}", usage.resolved_as, official_path);
+                    ast_index.db.put(&mut txn, &u_key, &serde_cbor::to_vec(&usage.uline).unwrap())?;
+                } else if usage.targets_for_guesswork.len() == 1 && !usage.targets_for_guesswork[0].starts_with("?::") {
+                    let homeless_key = format!("homeless|{} ⚡ {}", usage.targets_for_guesswork[0], official_path);
+                    ast_index.db.put(&mut txn, &homeless_key, &serde_cbor::to_vec(&usage.uline).unwrap())?;
+                    debug_print!("        homeless {}", homeless_key);
+                    continue;
+                } else {
+                    unresolved_usages += 1;
+                }
+                added_usages += 1;
+            }
+            // this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice"
+            for from in &definition.this_class_derived_from {
+                let t_key = format!("classes|{} ⚡ {}", from, official_path);
+                ast_index.db.put(&mut txn, &t_key, &definition.this_is_a_class.as_bytes())?;
+            }
+            added_defs += 1;
         }
-        // this_is_a_class: cpp🔎CosmicGoat, derived_from: "cpp🔎Goat" "cpp🔎CosmicJustice"
-        for from in &definition.this_class_derived_from {
-            let t_key = format!("classes|{} ⚡ {}", from, official_path);
-            batch.insert(t_key.as_bytes(), definition.this_is_a_class.as_bytes());
+        if unresolved_usages > 0 {
+            let resolve_todo_key = format!("resolve-todo|{}", file_global_path.join("::"));
+            ast_index.db.put(&mut txn, &resolve_todo_key, &cpath.as_bytes())?;
         }
-        added_defs += 1;
+        let doc_key = format!("doc-cpath|{}", file_global_path.join("::"));
+        if ast_index.db.get(&txn, &doc_key)?.is_none() {
+            increase_counter(ast_index.clone(), &mut txn, "counters|docs", 1);
+            ast_index.db.put(&mut txn, &doc_key, &cpath.as_bytes())?;
+        }
+        increase_counter(ast_index.clone(), &mut txn, "counters|defs", added_defs);
+        increase_counter(ast_index.clone(), &mut txn, "counters|usages", added_usages);
+
+        txn.commit()
+    });
+
+    if let Err(e) = result {
+        tracing::error!("Failed to add document: {:?}", e);
     }
-    if unresolved_usages > 0 {
-        let resolve_todo_key = format!("resolve-todo|{}", file_global_path.join("::"));
-        batch.insert(resolve_todo_key.as_bytes(), cpath.as_bytes());
-    }
-    let doc_key = format!("doc-cpath|{}", file_global_path.join("::"));
-    if db.get(doc_key.as_bytes()).unwrap().is_none() {
-        _increase_counter(ast_index.clone(), "counters|docs", 1).await;
-        db.insert(doc_key.as_bytes(), cpath.as_bytes()).unwrap();
-    }
-    _increase_counter(ast_index.clone(), "counters|defs", added_defs).await;
-    _increase_counter(ast_index.clone(), "counters|usages", added_usages).await;
 
     Ok((defs.into_iter().map(Arc::new).collect(), language))
 }
@@ -243,78 +219,102 @@ pub async fn doc_remove(ast_index: Arc<AstDB>, cpath: &String)
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d|{}::", file_global_path.join("::"));
-    let db = ast_index.sleddb.clone();
-    let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
-    let mut batch = batch_arc.lock().await;
-    let mut iter = db.scan_prefix(d_prefix);
-    let mut deleted_defs: i32 = 0;
-    let mut deleted_usages: i32 = 0;
-    while let Some(Ok((key, value))) = iter.next() {
-        let d_key = key.clone();
-        if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
-            let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
-            let official_path = definition.official_path.join("::");
-            while !path_parts.is_empty() {
-                let c_key = format!("c|{} ⚡ {}", path_parts.join("::"), official_path);
-                batch.remove(c_key.as_bytes());
-                path_parts.remove(0);
-            }
-            for usage in &definition.usages {
-                if !usage.resolved_as.is_empty() {
-                    let u_key = format!("u|{} ⚡ {}", usage.resolved_as, official_path);
-                    batch.remove(u_key.as_bytes());
-                } else if usage.targets_for_guesswork.len() == 1 && !usage.targets_for_guesswork[0].starts_with("?::") {
-                    let homeless_key = format!("homeless|{} ⚡ {}", usage.targets_for_guesswork[0], official_path);
-                    batch.remove(homeless_key.as_bytes());
-                    debug_print!("        homeless {}", homeless_key);
-                    continue;
-                }
-                deleted_usages += 1;
-            }
-            for from in &definition.this_class_derived_from {
-                let t_key = format!("classes|{} ⚡ {}", from, official_path);
-                batch.remove(t_key.as_bytes());
-            }
-            let cleanup_key = format!("resolve-cleanup|{}", definition.official_path.join("::"));
-            if let Ok(Some(cleanup_value)) = db.get(cleanup_key.as_bytes()) {
-                if let Ok(all_saved_ulinks) = serde_cbor::from_slice::<Vec<String>>(&cleanup_value) {
-                    for ulink in all_saved_ulinks {
-                        batch.remove(ulink.as_bytes());
+
+    let result = ast_index.db_env.write_txn().and_then(|mut txn| {
+        let mut keys_to_remove = Vec::new();
+        let mut deleted_defs = 0;
+        let mut deleted_usages = 0;
+
+        {
+            let mut cursor = ast_index.db.prefix_iter(&txn, &d_prefix)?;
+            while let Some(Ok((key, value))) = cursor.next() {
+                let d_key = key.clone();
+                if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
+                    let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
+                    let official_path = definition.official_path.join("::");
+                    while !path_parts.is_empty() {
+                        let c_key = format!("c|{} ⚡ {}", path_parts.join("::"), official_path);
+                        keys_to_remove.push(c_key);
+                        path_parts.remove(0);
                     }
-                } else {
-                    tracing::error!("failed to deserialize cleanup_value for key: {}", cleanup_key);
+                    for usage in &definition.usages {
+                        if !usage.resolved_as.is_empty() {
+                            let u_key = format!("u|{} ⚡ {}", usage.resolved_as, official_path);
+                            keys_to_remove.push(u_key);
+                        } else if usage.targets_for_guesswork.len() == 1 && !usage.targets_for_guesswork[0].starts_with("?::") {
+                            let homeless_key = format!("homeless|{} ⚡ {}", usage.targets_for_guesswork[0], official_path);
+                            debug_print!("        homeless {}", homeless_key);
+                            keys_to_remove.push(homeless_key);
+                            continue;
+                        }
+                        deleted_usages += 1;
+                    }
+                    for from in &definition.this_class_derived_from {
+                        let t_key = format!("classes|{} ⚡ {}", from, official_path);
+                        keys_to_remove.push(t_key);
+                    }
+                    let cleanup_key = format!("resolve-cleanup|{}", definition.official_path.join("::"));
+                    if let Ok(Some(cleanup_value)) = ast_index.db.get(&txn, &cleanup_key) {
+                        if let Ok(all_saved_ulinks) = serde_cbor::from_slice::<Vec<String>>(&cleanup_value) {
+                            for ulink in all_saved_ulinks {
+                                keys_to_remove.push(ulink);
+                            }
+                        } else {
+                            tracing::error!("failed to deserialize cleanup_value for key: {}", cleanup_key);
+                        }
+                        keys_to_remove.push(cleanup_key);
+                    }
+                    deleted_defs += 1;
                 }
-                batch.remove(cleanup_key.as_bytes());
+                debug_print!("removing {d_key}");
+                keys_to_remove.push(d_key.to_string());
             }
-            deleted_defs += 1;
         }
-        debug_print!("removing {}", String::from_utf8_lossy(&d_key));
-        batch.remove(&d_key);
+        let doc_resolved_key = format!("doc-resolved|{}", file_global_path.join("::"));
+        keys_to_remove.push(doc_resolved_key);
+
+        for key in keys_to_remove {
+            ast_index.db.delete(&mut txn, &key)?;
+        }
+
+        let doc_key = format!("doc-cpath|{}", file_global_path.join("::"));
+        if ast_index.db.get(&txn, &doc_key)?.is_some() {
+            increase_counter(ast_index.clone(), &mut txn, "counters|docs", -1);
+             ast_index.db.delete(&mut txn, &doc_key)?;
+        }
+        increase_counter(ast_index.clone(), &mut txn, "counters|defs", -deleted_defs);
+        increase_counter(ast_index.clone(), &mut txn, "counters|usages", -deleted_usages);
+
+        txn.commit()
+    });
+
+    if let Err(e) = result {
+        tracing::error!("Failed to remove document: {:?}", e);
     }
-    let doc_resolved_key = format!("doc-resolved|{}", file_global_path.join("::"));
-    batch.remove(doc_resolved_key.as_bytes());
-    let doc_key = format!("doc-cpath|{}", file_global_path.join("::"));
-    if db.get(doc_key.as_bytes()).unwrap().is_some() {
-        _increase_counter(ast_index.clone(), "counters|docs", -1).await;
-        db.remove(doc_key.as_bytes()).unwrap();
-    }
-    _increase_counter(ast_index.clone(), "counters|defs", -deleted_defs).await;
-    _increase_counter(ast_index.clone(), "counters|usages", -deleted_usages).await;
 }
 
-pub async fn doc_defs(ast_index: Arc<AstDB>, cpath: &String) -> Vec<Arc<AstDefinition>>
+pub fn doc_defs(ast_index: Arc<AstDB>, cpath: &String) -> Vec<Arc<AstDefinition>>
 {
-    let db = ast_index.sleddb.clone();
-    doc_def_internal(db, cpath)
+    match ast_index.db_env.read_txn() {
+        Ok(txn) => doc_defs_internal(ast_index.clone(), &txn, cpath),
+        Err(e) => {
+            tracing::error!("Failed to open transaction: {:?}", e);
+            Vec::new()
+        }
+    }
 }
 
-pub fn doc_def_internal(db: Arc<Db>, cpath: &String) -> Vec<Arc<AstDefinition>>
-{
-    let to_search_prefix = filesystem_path_to_double_colon_path(cpath);
-    let d_prefix = format!("d|{}::", to_search_prefix.join("::"));
+pub fn doc_defs_internal<'a>(ast_index: Arc<AstDB>, txn: &RoTxn<'a>, cpath: &String) -> Vec<Arc<AstDefinition>> {
+    let d_prefix = format!("d|{}::", filesystem_path_to_double_colon_path(cpath).join("::"));
     let mut defs = Vec::new();
-    let mut iter = db.scan_prefix(d_prefix);
-    while let Some(Ok((_, value))) = iter.next() {
+    let mut cursor = match ast_index.db.prefix_iter(txn, &d_prefix) {
+        Ok(cursor) => cursor,
+        Err(e) => {
+            tracing::error!("Failed to open prefix iterator: {:?}", e);
+            return Vec::new();
+        },
+    };
+    while let Some(Ok((_, value))) = cursor.next() {
         if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
             defs.push(Arc::new(definition));
         }
@@ -322,13 +322,10 @@ pub fn doc_def_internal(db: Arc<Db>, cpath: &String) -> Vec<Arc<AstDefinition>>
     defs
 }
 
-pub async fn doc_usages(ast_index: Arc<AstDB>, cpath: &String) -> Vec<(usize, String)>
-{
-    let definitions = doc_defs(ast_index.clone(), cpath).await;
-    let db = ast_index.sleddb.clone();
+pub async fn doc_usages(ast_index: Arc<AstDB>, cpath: &String) -> Vec<(usize, String)> {
+    let definitions = doc_defs(ast_index.clone(), cpath);
     let mut usages = Vec::new();
 
-    // Simple usages
     for def in definitions {
         for usage in &def.usages {
             if !usage.resolved_as.is_empty() {
@@ -337,16 +334,19 @@ pub async fn doc_usages(ast_index: Arc<AstDB>, cpath: &String) -> Vec<(usize, St
         }
     }
 
-    // Scan for usages that needed resolving
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let doc_resolved_key = format!("doc-resolved|{}", file_global_path.join("::"));
-    if let Ok(Some(resolved_usages)) = db.get(doc_resolved_key.as_bytes()) {
-        let resolved_usages_vec = serde_cbor::from_slice::<Vec<(usize, String)>>(&resolved_usages).unwrap();
-        usages.extend(resolved_usages_vec);
+    if let Ok(txn) = ast_index.db_env.read_txn() {
+        if let Ok(Some(resolved_usages)) = ast_index.db.get(&txn, &doc_resolved_key) {
+            if let Ok(resolved_usages_vec) = serde_cbor::from_slice::<Vec<(usize, String)>>(&resolved_usages) {
+                usages.extend(resolved_usages_vec);
+            }
+        }
     }
 
     usages
 }
+
 
 pub struct ConnectUsageContext {
     pub derived_from_map: IndexMap<String, Vec<String>>,
@@ -358,45 +358,48 @@ pub struct ConnectUsageContext {
     pub t0: Instant,
 }
 
-pub async fn connect_usages(ast_index: Arc<AstDB>, ucx: &mut ConnectUsageContext) -> bool
+pub fn connect_usages(ast_index: Arc<AstDB>, ucx: &mut ConnectUsageContext) -> Result<bool, String>
 {
-    let db = ast_index.sleddb.clone();
-    let mut iter = db.scan_prefix("resolve-todo|").take(1);
+    let mut txn = ast_index.db_env.write_txn()
+        .map_err_with_prefix("Failed to open transaction:")?;
 
-    if let Some(Ok((todo_key, todo_value))) = iter.next() {
-        let todo_key_string = String::from_utf8(todo_key.to_vec()).unwrap();
-        let global_file_path = todo_key_string.strip_prefix("resolve-todo|").unwrap();
-        let cpath = String::from_utf8(todo_value.to_vec()).unwrap();
-        debug_print!("resolving {}", cpath);
-
-        // delete immediately, to make sure connect_usages() does not continue forever, even if there are errors and stuff
-        if let Err(e) = db.remove(&todo_key) {
-            tracing::error!("connect_usages() failed to remove resolve-todo key: {:?}", e);
+    let (todo_key, todo_value) = {
+        let mut cursor = ast_index.db.prefix_iter(&txn, "resolve-todo|")
+            .map_err_with_prefix("Failed to open db prefix iterator:")?;
+        if let Some(Ok((todo_key, todo_value))) = cursor.next() {
+            (todo_key.to_string(), todo_value.to_vec())
+        } else {
+            return Ok(false);
         }
+    };
 
-        let definitions = doc_defs(ast_index.clone(), &cpath.to_string()).await;
-        let batch_arc = flush_sled_batch(ast_index.clone(), 1000).await;
-        let mut batch = batch_arc.lock().await;
+    let global_file_path = todo_key.strip_prefix("resolve-todo|").unwrap();
+    let cpath = String::from_utf8(todo_value.to_vec()).unwrap();
+    debug_print!("resolving {}", cpath);
 
-        let mut resolved_usages: Vec<(usize, String)> = vec![];
-        for def in definitions {
-            let tmp = _connect_usages_helper(&db, ucx, &def, &mut batch).await;
-            resolved_usages.extend(tmp);
-        }
-        batch.insert(
-            format!("doc-resolved|{}", global_file_path).as_bytes(),
-            serde_cbor::to_vec(&resolved_usages).unwrap().as_slice(),
-        );
-        return true;
+    ast_index.db.delete(&mut txn, &todo_key).map_err_with_prefix("Failed to delete resolve-todo| key")?;
+
+    let definitions = doc_defs_internal(ast_index.clone(), &txn, &cpath);
+
+    let mut resolved_usages: Vec<(usize, String)> = vec![];
+    for def in definitions {
+        let tmp = _connect_usages_helper(ast_index.clone(), ucx, def, &mut txn)?;
+        resolved_usages.extend(tmp);
     }
 
-    false
+    ast_index.db.put(
+        &mut txn,
+        &format!("doc-resolved|{}", global_file_path),
+        &serde_cbor::to_vec(&resolved_usages).unwrap(),
+    ).map_err_with_prefix("Failed to insert doc-resolved:")?;
+
+    txn.commit().map_err_with_prefix("Failed to commit transaction:")?;
+
+    Ok(true)
 }
 
 pub async fn connect_usages_look_if_full_reset_needed(ast_index: Arc<AstDB>) -> ConnectUsageContext
 {
-    flush_sled_batch(ast_index.clone(), 0).await;
-    let db = ast_index.sleddb.clone();
     let class_hierarchy_key = b"class-hierarchy|";
     let existing_hierarchy: IndexMap<String, Vec<String>> = match db.get(class_hierarchy_key) {
         Ok(Some(value)) => serde_cbor::from_slice(&value).unwrap_or_default(),
@@ -450,12 +453,12 @@ lazy_static! {
     static ref MAGNIFYING_GLASS_RE: Regex = Regex::new(r"(\w+)🔎(\w+)").unwrap();
 }
 
-async fn _connect_usages_helper(
-    db: &sled::Db,
+fn _connect_usages_helper<'a>(
+    ast_index: Arc<AstDB>,
     ucx: &mut ConnectUsageContext,
-    definition: &AstDefinition,
-    batch: &mut sled::Batch
-) -> Vec<(usize, String)> {
+    definition: Arc<AstDefinition>,
+    txn: &mut RwTxn<'a>,
+) -> Result<Vec<(usize, String)>, String> {
     // Data example:
     // (1) c/Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
     // (2) c/cpp_goat_library::Animal::self_review ⚡ alt_testsuite::cpp_goat_library::Animal::self_review
@@ -555,10 +558,10 @@ async fn _connect_usages_helper(
                 let c_prefix = format!("c|{}", v);
                 debug_print!("        scanning {}", c_prefix);
                 // println!("    c_prefix {:?} because v={:?}", c_prefix, v);
-                let mut c_iter = db.scan_prefix(&c_prefix);
+                let mut c_iter = ast_index.db.prefix_iter(txn, &c_prefix)
+                    .map_err_with_prefix("Failed to open db range iter:")?;
                 while let Some(Ok((c_key, _))) = c_iter.next() {
-                    let c_key_string = String::from_utf8(c_key.to_vec()).unwrap();
-                    let parts: Vec<&str> = c_key_string.split(" ⚡ ").collect();
+                    let parts: Vec<&str> = c_key.split(" ⚡ ").collect();
                     if parts.len() == 2 {
                         if parts[0] == c_prefix {
                             let resolved_target = parts[1].trim();
@@ -583,7 +586,8 @@ async fn _connect_usages_helper(
             }
             let single_thing_found = found.into_iter().next().unwrap();
             let u_key = format!("u|{} ⚡ {}", single_thing_found, official_path);
-            batch.insert(u_key.as_bytes(), serde_cbor::to_vec(&usage.uline).unwrap());
+            ast_index.db.put(txn, &u_key, &serde_cbor::to_vec(&usage.uline).unwrap())
+                .map_err_with_prefix("Failed to insert key in db:")?;
             debug_print!("        add {:?} <= {}", u_key, usage.uline);
             all_saved_ulinks.push(u_key);
             result.push((usage.uline, single_thing_found));
@@ -593,8 +597,9 @@ async fn _connect_usages_helper(
     } // for usages
     let cleanup_key = format!("resolve-cleanup|{}", definition.official_path.join("::"));
     let cleanup_value = serde_cbor::to_vec(&all_saved_ulinks).unwrap();
-    batch.insert(cleanup_key.as_bytes(), cleanup_value.as_slice());
-    result
+    ast_index.db.put(txn, &cleanup_key, cleanup_value.as_slice())
+        .map_err_with_prefix("Failed to insert key in db:")?;
+    Ok(result)
 }
 
 async fn _derived_from(db: &sled::Db) -> IndexMap<String, Vec<String>>
@@ -987,7 +992,7 @@ mod tests {
     #[tokio::test]
     async fn test_ast_db_cpp() {
         init_tracing();
-        let ast_index = ast_index_init("".to_string(), 10, false).await;
+        let ast_index = ast_index_init("".to_string(), 10).await;
         run_ast_db_test(
             ast_index,
             "src/ast/alt_testsuite/cpp_goat_library.h",
@@ -1001,7 +1006,7 @@ mod tests {
     #[tokio::test]
     async fn test_ast_db_py() {
         init_tracing();
-        let ast_index = ast_index_init("".to_string(), 10, false).await;
+        let ast_index = ast_index_init("".to_string(), 10).await;
         run_ast_db_test(
             ast_index,
             "src/ast/alt_testsuite/py_goat_library.py",

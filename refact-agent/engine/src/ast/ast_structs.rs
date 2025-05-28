@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt;
 use serde::{Deserialize, Serialize};
+use tempfile::TempDir;
 use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
 
@@ -58,8 +59,9 @@ impl AstDefinition {
 }
 
 pub struct AstDB {
-    pub sleddb: Arc<sled::Db>,
-    pub sledbatch: Arc<AMutex<sled::Batch>>,
+    pub db_env: Arc<heed::Env>,
+    pub db: Arc<heed::Database<heed::types::Str, heed::types::Bytes>>,
+    pub db_temp_dir: Option<TempDir>,
     pub batch_counter: AMutex<usize>,
     pub counters_increase: AMutex<HashMap<String, i32>>,
     pub ast_max_files: usize,
