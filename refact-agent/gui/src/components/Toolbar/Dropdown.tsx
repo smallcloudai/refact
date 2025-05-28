@@ -8,6 +8,7 @@ import {
   useAppDispatch,
   useStartPollingForUser,
   useEventsBusForIDE,
+  useCapsForToolUse,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
@@ -83,6 +84,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const coinBalance = useCoinBallance();
   const logout = useLogout();
   const { startPollingForUser } = useStartPollingForUser();
+  const { data: capsData } = useCapsForToolUse();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
@@ -257,12 +259,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <GearIcon /> Configure Providers
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item
-          // TODO: get real URL from cloud inference
-          onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
-        >
-          Manage Knowledge
-        </DropdownMenu.Item>
+        {capsData?.metadata?.features?.includes("knowledge") && (
+          <DropdownMenu.Item
+            // TODO: get real URL from cloud inference
+            onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
+          >
+            Manage Knowledge
+          </DropdownMenu.Item>
+        )}
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           {refactProductType} Settings
