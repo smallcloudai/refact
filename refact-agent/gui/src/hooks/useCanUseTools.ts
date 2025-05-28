@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { useAppSelector } from "./useAppSelector";
-import { useGetToolsQuery } from "./useGetToolsQuery";
+import { useGetToolGroupsQuery } from "./useGetToolGroupsQuery";
 import { useGetCapsQuery } from "./useGetCapsQuery";
 import { selectModel } from "../features/Chat/Thread/selectors";
 import { CodeChatModel } from "../services/refact/models";
 
 export const useCanUseTools = () => {
   const capsRequest = useGetCapsQuery();
-  const toolsRequest = useGetToolsQuery();
+  const toolsRequest = useGetToolGroupsQuery();
   const chatModel = useAppSelector(selectModel);
 
   const loading = useMemo(() => {
