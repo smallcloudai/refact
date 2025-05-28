@@ -23,6 +23,7 @@ async fn ast_indexer_thread(
     gcx_weak: Weak<ARwLock<GlobalContext>>,
     ast_service: Arc<AMutex<AstIndexService>>,
 ) {
+    let t0 = tokio::time::Instant::now();
     let mut reported_parse_stats = true;
     let mut reported_connect_stats = true;
     let mut stats_parsed_cnt = 0;
@@ -254,8 +255,9 @@ async fn ast_indexer_thread(
                 status_locked.astate = "done".to_string();
             }
             ast_sleeping_point.notify_waiters();
-            let _ = write!(std::io::stderr(), "AST COMPLETE\n");
-            info!("AST COMPLETE"); // you can see stderr sometimes faster vs logs
+            let msg = format!("AST COMPLETE in {:.2}s", t0.elapsed().as_secs_f32());
+            let _ = write!(std::io::stderr(), "{msg}");
+            info!("{msg}"); // you can see stderr sometimes faster vs logs
             reported_connect_stats = true;
         }
 
