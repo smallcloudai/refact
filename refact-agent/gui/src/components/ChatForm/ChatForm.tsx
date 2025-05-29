@@ -50,14 +50,11 @@ import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/
 import { AttachImagesButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
-  enableSend,
   selectChatError,
-  selectChatId,
   selectIsStreaming,
   selectIsWaiting,
   selectLastSentCompression,
   selectMessages,
-  selectPreventSend,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
@@ -96,10 +93,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const isOnline = useIsOnline();
   const { retry } = useSendChatRequest();
 
-  const chatId = useAppSelector(selectChatId);
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messages = useAppSelector(selectMessages);
-  const preventSend = useAppSelector(selectPreventSend);
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
@@ -136,15 +131,8 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     //   return false;
     // if (arePromptTokensBiggerThanContext) return true;
     if (messages.length === 0) return false;
-    return isWaiting || isStreaming || !isOnline || preventSend;
-  }, [
-    allDisabled,
-    messages.length,
-    isWaiting,
-    isStreaming,
-    isOnline,
-    preventSend,
-  ]);
+    return isWaiting || isStreaming || !isOnline;
+  }, [allDisabled, messages.length, isWaiting, isStreaming, isOnline]);
 
   const isModelSelectVisible = useMemo(() => messages.length < 1, [messages]);
 
@@ -278,27 +266,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
       error_message: "",
     });
   }, [dispatch, sendTelemetryEvent]);
-
-  useEffect(() => {
-    // this use effect is required to reset preventSend when chat was restored
-    if (
-      preventSend &&
-      !unCalledTools &&
-      !isStreaming &&
-      !isWaiting &&
-      isOnline
-    ) {
-      dispatch(enableSend({ id: chatId }));
-    }
-  }, [
-    dispatch,
-    isOnline,
-    isWaiting,
-    isStreaming,
-    preventSend,
-    chatId,
-    unCalledTools,
-  ]);
 
   useEffect(() => {
     if (isSendImmediately && !isWaiting && !isStreaming) {
