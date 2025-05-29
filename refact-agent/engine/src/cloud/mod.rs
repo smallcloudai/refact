@@ -1,4 +1,4 @@
-pub mod threads_subscription;
+pub mod threads_sub;
 mod threads_req;
 mod messages_req;
 pub mod constants;

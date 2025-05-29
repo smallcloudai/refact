@@ -31,9 +31,12 @@ impl Expert {
                     if re.is_match(tool_name) {
                         blocked = true;
                     }
-                },
+                }
                 Err(e) => {
-                    error!("Failed to compile fexp_block_tools regex: {}: {}", self.fexp_block_tools, e);
+                    error!(
+                        "Failed to compile fexp_block_tools regex: {}: {}",
+                        self.fexp_block_tools, e
+                    );
                 }
             }
         }
@@ -44,9 +47,12 @@ impl Expert {
                     if re.is_match(tool_name) {
                         return true;
                     }
-                },
+                }
                 Err(e) => {
-                    error!("Failed to compile fexp_allow_tools regex: {}: {}", self.fexp_allow_tools, e);
+                    error!(
+                        "Failed to compile fexp_allow_tools regex: {}: {}",
+                        self.fexp_allow_tools, e
+                    );
                 }
             }
         }
@@ -61,7 +67,6 @@ pub async fn get_expert(
 ) -> Result<Expert, String> {
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
-
     let query = r#"
     query GetExpert($located_fgroup_id: String!, $skip: Int!, $limit: Int!) {
         expert_list(located_fgroup_id: $located_fgroup_id, skip: $skip, limit: $limit) {
@@ -78,13 +83,11 @@ pub async fn get_expert(
         }
     }
     "#;
-
     let variables = json!({
         "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
         "skip": 0,
         "limit": 100
     });
-
     let response = client
         .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
@@ -102,35 +105,32 @@ pub async fn get_expert(
             .text()
             .await
             .map_err(|e| format!("Failed to read response body: {}", e))?;
-
         let response_json: Value = serde_json::from_str(&response_body)
             .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-
         if let Some(errors) = response_json.get("errors") {
             let error_msg = errors.to_string();
             error!("GraphQL error: {}", error_msg);
             return Err(format!("GraphQL error: {}", error_msg));
         }
-
         if let Some(data) = response_json.get("data") {
             if let Some(expert_list) = data.get("expert_list") {
                 if let Some(experts) = expert_list.as_array() {
-                    // Find the expert with the matching name
+                    if experts.len() > 1 {
+                        return Err(format!(
+                            "Multiple experts found for group ID {} with expert_name {}",
+                            crate::cloud::constants::DEFAULT_FGROUP_ID,
+                            expert_name
+                        ));
+                    }
                     for expert_value in experts {
-                        if let Some(name) = expert_value.get("fexp_name") {
-                            if name.as_str() == Some(expert_name) {
-                                let expert: Expert = serde_json::from_value(expert_value.clone())
-                                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
-
-                                info!("Successfully retrieved expert {}", expert_name);
-                                return Ok(expert);
-                            }
-                        }
+                        let expert: Expert = serde_json::from_value(expert_value.clone())
+                            .map_err(|e| format!("Failed to parse expert: {}", e))?;
+                        info!("Successfully retrieved expert {}", expert_name);
+                        return Ok(expert);
                     }
                 }
             }
         }
-
         Err(format!(
             "Expert with name '{}' not found or unexpected response format: {}",
             expert_name, response_body

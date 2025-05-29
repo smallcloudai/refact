@@ -107,7 +107,6 @@ pub struct CommandLine {
 
     #[structopt(long, help="An pre-setup active group id")]
     pub active_group_id: Option<String>,
-
     #[structopt(long, help="Enable remote tool calls server")]
     pub remote_tool_calls: bool,
 }
