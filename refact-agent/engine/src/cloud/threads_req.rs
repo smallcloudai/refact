@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::error;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -33,55 +33,12 @@ pub struct Thread {
     pub ft_locked_by: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ThreadCreateInput {
-    pub owner_shared: bool,
-    pub located_fgroup_id: String,
-    pub ft_title: String,
-    pub ft_belongs_to_fce_id: Option<String>,
-    pub ft_model: String,
-    pub ft_temperature: f64,
-    pub ft_max_new_tokens: i32,
-    pub ft_n: i32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ThreadsResponse {
-    pub threads: Vec<Thread>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ThreadResponse {
-    pub thread: Thread,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ThreadMessage {
-    pub ftm_belongs_to_ft_id: String,
-    pub ftm_alt: i32,
-    pub ftm_num: i32,
-    pub ftm_prev_alt: i32,
-    pub ftm_role: String,
-    pub ftm_content: Option<Value>,
-    pub ftm_tool_calls: Option<Value>,
-    pub ftm_call_id: String,
-    pub ftm_usage: Option<Value>,
-    pub ftm_created_ts: f64,
-    pub ftm_provenance: Value
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ThreadMessagesResponse {
-    pub messages: Vec<ThreadMessage>,
-}
-
 pub async fn get_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_id: &str,
 ) -> Result<Thread, String> {
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
-
     let query = r#"
     query GetAllThreads($group_id: String!, $limit: Int!) {
         thread_list(
@@ -115,7 +72,6 @@ pub async fn get_thread(
         }
     }
     "#;
-
     let variables = json!({
         "group_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
         "limit": crate::cloud::constants::DEFAULT_LIMIT
@@ -137,42 +93,27 @@ pub async fn get_thread(
             .text()
             .await
             .map_err(|e| format!("Failed to read response body: {}", e))?;
-
         let response_json: Value = serde_json::from_str(&response_body)
             .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-
-        // Check for GraphQL errors
         if let Some(errors) = response_json.get("errors") {
             let error_msg = errors.to_string();
             error!("GraphQL error: {}", error_msg);
             return Err(format!("GraphQL error: {}", error_msg));
         }
-
-        // Extract the thread
         if let Some(data) = response_json.get("data") {
             if let Some(threads) = data.get("thread_list") {
                 if let Some(threads_array) = threads.as_array() {
-                    // Find the thread with the matching ID
                     for thread_value in threads_array {
-                        if let Some(id) = thread_value.get("ft_id") {
-                            if let Some(id_str) = id.as_str() {
-                                if id_str == thread_id {
-                                    let thread: Thread = serde_json::from_value(
-                                        thread_value.clone(),
-                                    )
-                                    .map_err(|e| format!("Failed to parse thread: {}", e))?;
-
-                                    info!("Successfully retrieved thread {}", thread_id);
-                                    return Ok(thread);
-                                }
-                            }
+                        if thread_value["ft_id"] == thread_id {
+                            let thread: Thread = serde_json::from_value(thread_value.clone())
+                                .map_err(|e| format!("Failed to parse thread: {}", e))?;
+                            return Ok(thread);
                         }
                     }
                     return Err(format!("Thread with ID {} not found", thread_id));
                 }
             }
         }
-
         Err(format!(
             "Thread not found or unexpected response format: {}",
             response_body
@@ -190,7 +131,7 @@ pub async fn get_thread(
     }
 }
 
-pub async fn update_thread(
+pub async fn set_thread_toolset(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_id: &str,
     ft_toolset: Vec<Value>,
@@ -227,24 +168,21 @@ pub async fn update_thread(
             .text()
             .await
             .map_err(|e| format!("Failed to read response body: {}", e))?;
-
         let response_json: Value = serde_json::from_str(&response_body)
             .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-
         if let Some(errors) = response_json.get("errors") {
             let error_msg = errors.to_string();
             error!("GraphQL error: {}", error_msg);
             return Err(format!("GraphQL error: {}", error_msg));
         }
-
         if let Some(data) = response_json.get("data") {
             if let Some(ft_toolset_json) = data.get("thread_patch") {
-                let ft_toolset: Vec<Value> = serde_json::from_value(ft_toolset_json["ft_toolset"].clone())
-                    .map_err(|e| format!("Failed to parse updated thread: {}", e))?;
+                let ft_toolset: Vec<Value> =
+                    serde_json::from_value(ft_toolset_json["ft_toolset"].clone())
+                        .map_err(|e| format!("Failed to parse updated thread: {}", e))?;
                 return Ok(ft_toolset);
             }
         }
-
         Err(format!("Unexpected response format: {}", response_body))
     } else {
         let status = response.status();
@@ -258,95 +196,3 @@ pub async fn update_thread(
         ))
     }
 }
-
-pub async fn get_thread_messages(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    thread_id: &str,
-    alt: i64,
-) -> Result<Vec<ThreadMessage>, String> {
-    let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
-
-    let query = r#"
-    query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
-        thread_messages_list(
-            ft_id: $thread_id,
-            ftm_alt: $alt
-        ) {
-            ftm_belongs_to_ft_id
-            ftm_alt
-            ftm_num
-            ftm_prev_alt
-            ftm_role
-            ftm_content
-            ftm_tool_calls
-            ftm_call_id
-            ftm_usage
-            ftm_created_ts
-            ftm_provenance
-        }
-    }
-    "#;
-
-    let variables = json!({
-        "thread_id": thread_id,
-        "alt": alt
-    });
-
-    let response = client
-        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "query": query,
-            "variables": variables
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
-
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-
-        // Check for GraphQL errors
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
-        }
-
-        // Extract the messages
-        if let Some(data) = response_json.get("data") {
-            if let Some(messages) = data.get("thread_messages_list") {
-                if let Some(messages_array) = messages.as_array() {
-                    let messages: Vec<ThreadMessage> = serde_json::from_value(messages.clone())
-                        .map_err(|e| format!("Failed to parse thread messages: {}", e))?;
-                    
-                    info!("Successfully retrieved {} messages for thread {} with alt={}", 
-                          messages.len(), thread_id, alt);
-                    return Ok(messages);
-                }
-            }
-        }
-
-        Err(format!("Unexpected response format: {}", response_body))
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to get thread messages: HTTP status {}, error: {}",
-            status, error_text
-        ))
-    }
-}
-
-
