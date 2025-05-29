@@ -2,7 +2,7 @@ import React from "react";
 import type { Config } from "../Config/configSlice";
 import { Chat as ChatComponent } from "../../components/Chat";
 import { useAppSelector } from "../../hooks";
-import { selectHasUncalledTools, selectMessages } from "./Thread";
+import { selectHasUncalledTools } from "./Thread";
 
 export type ChatProps = {
   host: Config["host"];
