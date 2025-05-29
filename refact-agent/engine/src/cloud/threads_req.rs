@@ -62,7 +62,7 @@ pub struct ThreadMessage {
     pub ftm_num: i32,
     pub ftm_prev_alt: i32,
     pub ftm_role: String,
-    pub ftm_content: Value,
+    pub ftm_content: Option<Value>,
     pub ftm_tool_calls: Option<Value>,
     pub ftm_call_id: String,
     pub ftm_usage: Option<Value>,
@@ -194,10 +194,9 @@ pub async fn update_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_id: &str,
     ft_toolset: Vec<Value>,
-) -> Result<(), String> {
+) -> Result<Vec<Value>, String> {
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
-
     let mutation = r#"
     mutation UpdateThread($thread_id: String!, $patch: FThreadPatch!) {
         thread_patch(id: $thread_id, patch: $patch) {
@@ -208,11 +207,9 @@ pub async fn update_thread(
     let variables = json!({
         "thread_id": thread_id,
         "patch": {
-            "ft_toolset": ft_toolset
+            "ft_toolset": serde_json::to_string(&ft_toolset).unwrap()
         }
     });
-    info!("Updating the thread, new tools: {:?}", ft_toolset);
-
     let response = client
         .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
@@ -244,8 +241,7 @@ pub async fn update_thread(
             if let Some(ft_toolset_json) = data.get("thread_patch") {
                 let ft_toolset: Vec<Value> = serde_json::from_value(ft_toolset_json["ft_toolset"].clone())
                     .map_err(|e| format!("Failed to parse updated thread: {}", e))?;
-                info!("Successfully updated thread, new tools: {:?}", ft_toolset);
-                return Ok(());
+                return Ok(ft_toolset);
             }
         }
 

@@ -4,6 +4,7 @@ use crate::cloud::threads_req::{Thread, ThreadMessage};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::scratchpads::passthrough_convert_messages;
 use crate::tokens;
 use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, Tool};
 use crate::tools::tools_execute::run_tools_locally;
@@ -307,6 +308,10 @@ async fn process_thread_event(
     if thread_payload.ft_need_tool_calls == -1 || !thread_payload.ft_error.is_empty() {
         return Ok(());
     }
+    // todo: remove it
+    if thread_payload.owner_fuser_id != "alice@example.com" {
+        return Ok(());
+    }
     
     let messages = crate::cloud::threads_req::get_thread_messages(
         gcx.clone(), &thread_payload.ft_id, thread_payload.ft_need_tool_calls
@@ -331,8 +336,10 @@ async fn initialize_thread(
         .into_iter()
         .filter(|(name, _tool)| expert.is_tool_allowed(name))
         .collect();
+    let available_tool_names = tools.keys().map(|x| x.to_string()).collect::<Vec<_>>();
     let tool_descriptions = tool_description_list_from_yaml(tools, None, true).await?
         .into_iter()
+        .filter(|x| available_tool_names.contains(&x.name))
         .map(|x| x.into_openai_style())
         .collect::<Vec<_>>();
     let updated_system_prompt = system_prompt_add_extra_instructions(
@@ -349,7 +356,7 @@ async fn initialize_thread(
         ftm_num: 0,
         ftm_prev_alt: 100,
         ftm_role: "system".to_string(),
-        ftm_content: serde_json::to_value(ChatContent::SimpleText(updated_system_prompt)).unwrap(),
+        ftm_content: Some(serde_json::to_value(ChatContent::SimpleText(updated_system_prompt)).unwrap()),
         ftm_tool_calls: None,
         ftm_call_id: "".to_string(),
         ftm_usage: None,
@@ -363,7 +370,12 @@ async fn initialize_thread(
 
 fn convert_thread_messages_to_messages(thread_messages: &Vec<ThreadMessage>) -> Vec<ChatMessage> {
     thread_messages.iter().map(|msg| {
-        let content: ChatContent = serde_json::from_value(msg.ftm_content.clone()).unwrap();
+        let content: ChatContent = if let Some(content) = &msg.ftm_content {
+            serde_json::from_value(content.clone()).unwrap_or_default()
+        } else {
+            ChatContent::default()
+        };
+        tracing::warn!("{:?}", msg.ftm_tool_calls);
         let tool_calls = msg.ftm_tool_calls.clone().map(|tc| {
             match serde_json::from_value::<Vec<ChatToolCall>>(tc) {
                 Ok(calls) => calls,
@@ -390,25 +402,29 @@ fn convert_thread_messages_to_messages(thread_messages: &Vec<ThreadMessage>) -> 
     }).collect()
 }
 
-fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, prev_alt: i32, start_num: i32, thread_id: &str) -> Vec<ThreadMessage> {
-    messages.into_iter().enumerate().map(|(i, msg)| {
+fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, prev_alt: i32, start_num: i32, thread_id: &str) -> Result<Vec<ThreadMessage>, String> {
+    let openai_messages = passthrough_convert_messages::convert_messages_to_openai_format(
+        messages.clone(), &None, ""
+    );
+    let mut output_messages = vec![];
+    for (i, msg) in messages.into_iter().enumerate() {
         let num = start_num + i as i32;
+        let openai_msg = &openai_messages[i];
         let tool_calls = if let Some(tc) = &msg.tool_calls {
             Some(serde_json::to_value(tc).unwrap_or(Value::Null))
         } else {
             None
         };
-        
         let usage = msg.usage.map(|u| serde_json::to_value(u).unwrap_or(Value::Null));
-        let content = serde_json::to_value(msg.content).unwrap();
-        
-        ThreadMessage {
+        let role = openai_msg.get("role").map(|x| x.as_str().unwrap().to_string()).ok_or("cannot find role in the message".to_string())?;
+        let content = openai_msg.get("content").cloned().ok_or("cannot find role in the message".to_string())?;
+        output_messages.push(ThreadMessage {
             ftm_belongs_to_ft_id: thread_id.to_string(),
             ftm_alt: alt,
             ftm_num: num,
             ftm_prev_alt: prev_alt,
-            ftm_role: msg.role,
-            ftm_content: content,
+            ftm_role: role,
+            ftm_content: Some(content),
             ftm_tool_calls: tool_calls,
             ftm_call_id: msg.tool_call_id,
             ftm_usage: usage,
@@ -417,8 +433,9 @@ fn convert_messages_to_thread_messages(messages: Vec<ChatMessage>, alt: i32, pre
                 .unwrap_or_default()
                 .as_secs_f64(),
             ftm_provenance: json!({"important": "information"}),
-        }
-    }).collect()
+        })
+    }
+    Ok(output_messages)
 }
 
 async fn get_tool_names_from_openai_format(toolset_json: &Vec<Value>) -> Result<Vec<String>, String> {
@@ -464,10 +481,11 @@ async fn call_tools(
         .collect();
     let mut has_rag_results = HasRagResults::new();
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
-    let model_rec = resolve_chat_model(caps, &thread.ft_model)
+    let model_rec = resolve_chat_model(caps, &format!("refact/{}", thread.ft_model))
         .map_err(|e| format!("Failed to resolve chat model: {}", e))?;
     let tokenizer_arc = tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
-    let (messages, _) = run_tools_locally(
+    let messages_count = messages.len();
+    let (output_messages, _) = run_tools_locally(
         ccx.clone(),
         &mut all_tools,
         tokenizer_arc,
@@ -476,7 +494,14 @@ async fn call_tools(
         &mut has_rag_results, 
         &None
     ).await?;
-    let output_thread_messages = convert_messages_to_thread_messages(messages, alt, prev_alt, last_message_num + 1, &thread.ft_id);
+    if messages.len() == output_messages.len() {
+        tracing::warn!("Thread has no active tool call awaiting but still has need_tool_call turned on");
+        return Ok(());
+    }
+    let output_thread_messages = convert_messages_to_thread_messages(
+        output_messages.into_iter().skip(messages_count).collect(),
+        alt, prev_alt, last_message_num + 1, &thread.ft_id
+    )?;
     crate::cloud::messages_req::create_thread_messages(gcx.clone(), &thread.ft_id, output_thread_messages).await?;
     Ok(())
 }
