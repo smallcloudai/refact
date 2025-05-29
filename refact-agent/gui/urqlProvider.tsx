@@ -15,11 +15,13 @@ import { selectConfig } from "./src/features/Config/configSlice";
 export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const apiKey = useAppSelector(selectConfig).apiKey;
-  const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+  // const apiKey = useAppSelector(selectConfig).apiKey;
+  // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+  const baseUrl = "localhost:8008/v1/graphql";
+  const apiKey = "sk_alice_123456";
 
-  const protocol = "https";
-  const wsProtocol = "wss";
+  const protocol = "http";
+  const wsProtocol = "ws";
 
   const wsClient = useMemo(
     () =>

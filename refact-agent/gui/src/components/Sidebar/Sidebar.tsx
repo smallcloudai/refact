@@ -16,6 +16,7 @@ import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import classNames from "classnames";
 import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
+import { useThreadPageSub } from "../../hooks";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -36,6 +37,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   const globalError = useAppSelector(getErrorMessage);
   const maybeSelectedTeamsGroup = useAppSelector(selectActiveGroup);
   const currentHost = useAppSelector(selectHost);
+
+  // TODO: checking graphql works;
+  useThreadPageSub();
   const history = useAppSelector((app) => app.history, {
     // TODO: selector issue here
     devModeChecks: { stabilityCheck: "never" },

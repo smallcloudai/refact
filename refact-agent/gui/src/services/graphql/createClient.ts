@@ -12,11 +12,11 @@ export { type Client } from "@urql/core";
 
 const THREE_MINUTES = 3 * 60 * 1000;
 
-export const createGraphqlClient = (apiKey: string, signal: AbortSignal) => {
-  // const apiKey = "sk_alice_123456";
-  // const baseUrl = "localhost:8008/v1/graphql";
-  console.log("creating client");
-  const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
+  const apiKey = "sk_alice_123456";
+  const baseUrl = "localhost:8008/v1/graphql";
+  // console.log("creating client");
+  // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
 
   // TODO: should be secure by default
   const protocol = window.location.protocol === "https:" ? "https" : "http";
@@ -30,7 +30,7 @@ export const createGraphqlClient = (apiKey: string, signal: AbortSignal) => {
   });
 
   signal.addEventListener("abort", () => {
-    console.log("aborting wsClient");
+    // console.log("aborting wsClient");
     void wsClient.dispose();
   });
 
@@ -38,7 +38,7 @@ export const createGraphqlClient = (apiKey: string, signal: AbortSignal) => {
     url: `${protocol}://${baseUrl}`,
     exchanges: [
       // TODO: only enable this during development
-      debugExchange,
+      // debugExchange,
       // cacheExchange,
       subscriptionExchange({
         forwardSubscription: (operation) => ({
