@@ -36,9 +36,6 @@ pub async fn create_thread_messages(
             return Err("Message role is required".to_string());
         }
 
-        let content_str = serde_json::to_string(&message.ftm_content)
-            .map_err(|e| format!("Failed to serialize content: {}", e))?;
-
         let tool_calls_str = match &message.ftm_tool_calls {
             Some(tc) => serde_json::to_string(tc)
                 .map_err(|e| format!("Failed to serialize tool_calls: {}", e))?,
@@ -57,11 +54,11 @@ pub async fn create_thread_messages(
             "ftm_num": message.ftm_num,
             "ftm_prev_alt": message.ftm_prev_alt,
             "ftm_role": message.ftm_role,
-            "ftm_content": content_str,
+            "ftm_content": serde_json::to_string(&message.ftm_content).unwrap(),
             "ftm_tool_calls": tool_calls_str,
             "ftm_call_id": message.ftm_call_id,
             "ftm_usage": usage_str,
-            "ftm_provenance": message.ftm_provenance
+            "ftm_provenance": serde_json::to_string(&message.ftm_provenance).unwrap()
         }));
     }
 
