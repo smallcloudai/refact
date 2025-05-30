@@ -25,7 +25,7 @@ describe("createProjectLabelsWithConflictMarkers", () => {
       "/workspace/projectC/backend",
     ];
 
-    const result = createProjectLabelsWithConflictMarkers(paths, 1); // Use indexOfLastFolder=1 to get last segment
+    const result = createProjectLabelsWithConflictMarkers(paths); // Use indexOfLastFolder=1 to get last segment
 
     expect(result).toHaveLength(3);
 
@@ -49,7 +49,7 @@ describe("createProjectLabelsWithConflictMarkers", () => {
       "/short/frontend",
     ];
 
-    const result = createProjectLabelsWithConflictMarkers(paths, 1); // Use indexOfLastFolder=1 to get last segment
+    const result = createProjectLabelsWithConflictMarkers(paths);
 
     expect(result).toHaveLength(3);
 
@@ -102,7 +102,7 @@ describe("createProjectLabelsWithConflictMarkers", () => {
       "C:\\Users\\user\\projectB\\frontend",
     ];
 
-    const result = createProjectLabelsWithConflictMarkers(paths, 1); // Use indexOfLastFolder=1 to get last segment
+    const result = createProjectLabelsWithConflictMarkers(paths);
 
     expect(result).toHaveLength(2);
     expect(result.every((item) => item.hasConflict)).toBe(true);
@@ -114,7 +114,7 @@ describe("createProjectLabelsWithConflictMarkers", () => {
       "\\\\?\\C:\\Users\\andre\\Desktop\\work\\frontend\\my-app\\engine",
     ];
 
-    const result = createProjectLabelsWithConflictMarkers(paths, 1); // Get last folder
+    const result = createProjectLabelsWithConflictMarkers(paths);
 
     expect(result).toHaveLength(2);
     // Both end with "engine", so should have conflicts

@@ -40,7 +40,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
     const validProjectPaths = integration.project_path.filter(
       (path) => path !== "",
     );
-    return createProjectLabelsWithConflictMarkers(validProjectPaths, 1); // Start with just the last folder name
+    return createProjectLabelsWithConflictMarkers(validProjectPaths); // Start with just the last folder name
   }, [integration.project_path]);
 
   const handleCommandNameChange: ChangeEventHandler<HTMLInputElement> = (
