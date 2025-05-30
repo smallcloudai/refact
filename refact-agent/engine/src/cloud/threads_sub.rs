@@ -409,10 +409,15 @@ async fn call_tools(
         .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
         .unwrap_or((0, 0));
     let messages = crate::cloud::messages_req::convert_thread_messages_to_messages(thread_messages);
+    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0)
+        .await
+        .map_err_to_string()?;
+    let model_rec = crate::caps::resolve_chat_model(caps, &format!("refact/{}", thread.ft_model))
+        .map_err(|e| format!("Failed to resolve chat model: {}", e))?;
     let ccx = Arc::new(AMutex::new(
         AtCommandsContext::new(
             gcx.clone(),
-            32000,
+            model_rec.base.n_ctx,
             12,
             false,
             messages.clone(),
@@ -431,11 +436,6 @@ async fn call_tools(
             .filter(|(name, _)| allowed_tools.contains(name))
             .collect();
     let mut has_rag_results = crate::scratchpads::scratchpad_utils::HasRagResults::new();
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0)
-        .await
-        .map_err_to_string()?;
-    let model_rec = crate::caps::resolve_chat_model(caps, &format!("refact/{}", thread.ft_model))
-        .map_err(|e| format!("Failed to resolve chat model: {}", e))?;
     let tokenizer_arc = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
     let messages_count = messages.len();
     let (output_messages, _) = crate::tools::tools_execute::run_tools_locally(
