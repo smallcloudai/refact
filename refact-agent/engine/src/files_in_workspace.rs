@@ -27,6 +27,7 @@ use crate::files_blocklist::{
     reload_indexing_everywhere_if_needed,
 };
 use crate::files_correction_cache::PathTrie;
+use crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first;
 
 
 // How this works
@@ -655,10 +656,8 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 
-    let gcx_clone = gcx.clone();
-    tokio::spawn(async move {
-        crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
-    });
+    // enqueue shadow repos initialization
+    crate::git::checkpoints::enqueue_init_shadow_repos(gcx.clone()).await;
 
     // Start or connect to mcp servers
     let _ = load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
@@ -885,4 +884,10 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
         EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
+}
+
+pub async fn files_in_workspace_init_task(gcx: Arc<ARwLock<GlobalContext>>) {
+    enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
+    enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
+    crate::git::checkpoints::enqueue_init_shadow_repos(gcx.clone()).await;
 }

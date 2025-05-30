@@ -6,6 +6,8 @@ use url::Url;
 use crate::custom_error::MapErrToString;
 use crate::files_correction::canonical_path;
 use crate::git::{FileChange, FileChangeStatus};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 fn status_options(include_unmodified: bool, show: git2::StatusShow) -> git2::StatusOptions {
     let mut options = git2::StatusOptions::new();
@@ -179,10 +181,14 @@ pub fn get_diff_statuses_index_to_commit(repository: &Repository, commit_oid: &g
     result.map(|(staged_changes, _unstaged_changes)| staged_changes)
 }
 
-pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>) -> Result<(), String> {
+pub fn stage_changes(repository: &Repository, file_changes: &Vec<FileChange>, abort_flag: &Arc<AtomicBool>) -> Result<(), String> {
     let mut index = repository.index().map_err_with_prefix("Failed to get index:")?;
 
     for file_change in file_changes {
+        // NOTE: this loop can take a lot of time (25s for linux) when we just init the repo
+        if abort_flag.load(Ordering::SeqCst) {
+            return Err("stage_changes aborted".to_string());
+        }
         match file_change.status {
             FileChangeStatus::ADDED | FileChangeStatus::MODIFIED => {
                 index.add_path(&file_change.relative_path)

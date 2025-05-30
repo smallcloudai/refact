@@ -37,10 +37,15 @@ impl BackgroundTasksHolder {
         }
         self.tasks.clear();
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.tasks.is_empty()
+    }
 }
 
 pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>, config_dir: &PathBuf) -> BackgroundTasksHolder {
     let mut bg = BackgroundTasksHolder::new(vec![
+        tokio::spawn(crate::files_in_workspace::files_in_workspace_init_task(gcx.clone())),
         tokio::spawn(crate::telemetry::basic_transmit::telemetry_background_task(gcx.clone())),
         tokio::spawn(crate::snippets_transmit::tele_snip_background_task(gcx.clone())),
         tokio::spawn(crate::vecdb::vdb_highlev::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
