@@ -5,11 +5,12 @@ use tokio::sync::{Mutex as AMutex, Notify as ANotify};
 use tokio::sync::RwLock as ARwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
+use crate::custom_error::trace_and_default;
 use crate::files_in_workspace::Document;
 use crate::global_context::GlobalContext;
 
 use crate::ast::ast_structs::{AstDB, AstStatus, AstCounters, AstErrorStats};
-use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, flush_sled_batch, ConnectUsageContext, connect_usages, connect_usages_look_if_full_reset_needed};
+use crate::ast::ast_db::{ast_index_init, fetch_counters, doc_add, doc_remove, connect_usages, connect_usages_look_if_full_reset_needed};
 
 
 pub struct AstIndexService {
@@ -75,7 +76,7 @@ async fn ast_indexer_thread(
             };
             let mut doc = Document { doc_path: cpath.clone().into(), doc_text: None };
 
-            doc_remove(ast_index.clone(), &cpath).await;
+            doc_remove(ast_index.clone(), &cpath);
 
             match crate::files_in_workspace::get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
                 Ok(file_text) => {
@@ -114,7 +115,7 @@ async fn ast_indexer_thread(
             }
 
             if stats_update_ts.elapsed() >= std::time::Duration::from_millis(1000) { // can't be lower, because flush_sled_batch() happens not very often at all
-                let counters: AstCounters = fetch_counters(ast_index.clone()).await;
+                let counters = fetch_counters(ast_index.clone()).unwrap_or_else(trace_and_default);
                 {
                     let mut status_locked = ast_status.lock().await;
                     status_locked.files_unparsed = left_todo_count;
@@ -135,8 +136,6 @@ async fn ast_indexer_thread(
         if todo_count > 0 {
             continue;
         }
-
-        flush_sled_batch(ast_index.clone(), 0).await;  // otherwise bad stats
 
         if !reported_parse_stats {
             if !stats_parsing_errors.errors.is_empty() {
@@ -188,7 +187,7 @@ async fn ast_indexer_thread(
             stats_parsed_cnt = 0;
             stats_symbols_cnt = 0;
             reported_parse_stats = true;
-            let counters: AstCounters = fetch_counters(ast_index.clone()).await;
+            let counters: AstCounters = fetch_counters(ast_index.clone()).unwrap_or_else(trace_and_default);
             {
                 let mut status_locked = ast_status.lock().await;
                 status_locked.files_unparsed = 0;
@@ -201,19 +200,17 @@ async fn ast_indexer_thread(
         }
 
         // Connect usages, unless we have files in the todo
-        let mut usagecx: ConnectUsageContext = connect_usages_look_if_full_reset_needed(ast_index.clone()).await;
+        let mut usagecx = connect_usages_look_if_full_reset_needed(ast_index.clone()).unwrap_or_else(trace_and_default);
         loop {
             todo_count = ast_service.lock().await.ast_todo.len();
             if todo_count > 0 {
                 break;
             }
-            let did_anything = connect_usages(ast_index.clone(), &mut usagecx).await;
+            let did_anything = connect_usages(ast_index.clone(), &mut usagecx).unwrap_or_else(trace_and_default);
             if !did_anything {
                 break;
             }
         }
-
-        flush_sled_batch(ast_index.clone(), 0).await;
 
         if !usagecx.errstats.errors.is_empty() {
             let error_count = usagecx.errstats.errors_counter;
@@ -243,7 +240,7 @@ async fn ast_indexer_thread(
         }
 
         if !reported_connect_stats {
-            let counters: AstCounters = fetch_counters(ast_index.clone()).await;
+            let counters: AstCounters = fetch_counters(ast_index.clone()).unwrap_or_else(trace_and_default);
             {
                 let mut status_locked = ast_status.lock().await;
                 status_locked.files_unparsed = 0;

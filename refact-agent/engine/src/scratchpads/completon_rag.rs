@@ -1,6 +1,7 @@
 use crate::ast::ast_indexer_thread::AstIndexService;
 use crate::ast::ast_structs::{AstDB, AstDefinition};
 use crate::call_validation::{ContextFile, CursorPosition, PostprocessSettings};
+use crate::custom_error::trace_and_default;
 use crate::global_context::GlobalContext;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::scratchpad_abstract::HasTokenizerAndEot;
@@ -120,7 +121,7 @@ async fn _cursor_position_to_context_file(
             info!("adding {} to context", double_colon_path);
         }
         let defs: Vec<Arc<AstDefinition>> =
-            crate::ast::ast_db::definitions(ast_index.clone(), double_colon_path.as_str()).await;
+            crate::ast::ast_db::definitions(ast_index.clone(), double_colon_path.as_str()).unwrap_or_else(trace_and_default);
         if defs.len() != 1 {
             tracing::warn!(
                 "hmm, number of definitions for {} is {} which is not one",
