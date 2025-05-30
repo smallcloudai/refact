@@ -1,6 +1,7 @@
 use chrono::{Utc, DateTime};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use git2::Repository;
@@ -62,11 +63,13 @@ pub struct WorkspaceChanges {
 }
 
 pub async fn handle_v1_git_commit(
-    Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<GitCommitPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
+
+    let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
 
     let mut error_log = Vec::new();
     let mut commits_applied = Vec::new();
@@ -92,7 +95,7 @@ pub async fn handle_v1_git_commit(
             Err(e) => { error_log.push(git_error(format!("Failed to open repo: {}", e))); continue; }
         };
 
-        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes) {
+        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes, &shutdown_flag) {
             error_log.push(git_error(stage_err));
             continue;
         }

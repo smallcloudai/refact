@@ -4,6 +4,7 @@ use git2::{IndexAddOption, Oid, Repository};
 use tokio::sync::RwLock as ARwLock;
 use tokio::time::Instant;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 use serde::{Serialize, Deserialize};
 
 use crate::ast::chunk_utils::official_text_hashing_function;
@@ -113,6 +114,7 @@ pub async fn create_workspace_checkpoint(
 ) -> Result<(Checkpoint, Repository), String> {
     let t0 = Instant::now();
 
+    let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
     let (repo, nested_repos, workspace_folder_hash) = 
@@ -138,11 +140,11 @@ pub async fn create_workspace_checkpoint(
             get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
         file_changes.extend(flatened_nested_file_changes);
 
-        stage_changes(&repo, &file_changes)?;
+        stage_changes(&repo, &file_changes, &shutdown_flag)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
         
         for (nested_repo, changes) in nested_file_changes {
-            stage_changes(&nested_repo, &changes)?;
+            stage_changes(&nested_repo, &changes, &shutdown_flag)?;
         }
 
         Checkpoint {workspace_folder, commit_hash: commit_oid.to_string()}
@@ -213,6 +215,7 @@ pub async fn restore_workspace_checkpoint(
 
 pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> () {
     let workspace_folders = get_project_dirs(gcx.clone()).await;
+    let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
 
     for workspace_folder in workspace_folders {
         let workspace_folder_str = workspace_folder.to_string_lossy().to_string();
@@ -239,7 +242,7 @@ pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> ()
                 get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
             file_changes.extend(all_nested_changes);
 
-            stage_changes(&repo, &file_changes)?;
+            stage_changes(&repo, &file_changes, &shutdown_flag)?;
             
             let mut index = repo.index().map_err_to_string()?;
             let tree_id = index.write_tree().map_err_to_string()?;
@@ -248,7 +251,7 @@ pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> ()
             let commit = repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[]).map_err_to_string()?;
             
             for (nested_repo, changes) in nested_file_changes {
-                stage_changes(&nested_repo, &changes)?;
+                stage_changes(&nested_repo, &changes, &shutdown_flag)?;
             }
             Ok(commit)
         })();
