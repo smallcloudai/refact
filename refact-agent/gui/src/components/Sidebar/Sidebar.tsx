@@ -17,6 +17,7 @@ import classNames from "classnames";
 import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
 import { useThreadPageSub } from "../../hooks";
+import { ThreadList } from "../../features/ThreadList/ThreadList";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -68,12 +69,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
       </Flex>
 
       {maybeSelectedTeamsGroup ? (
-        <ChatHistory
-          history={history}
-          onHistoryItemClick={onHistoryItemClick}
-          onDeleteHistoryItem={onDeleteHistoryItem}
-        />
+        <ThreadList />
       ) : (
+        // <ChatHistory
+        //   history={history}
+        //   onHistoryItemClick={onHistoryItemClick}
+        //   onDeleteHistoryItem={onDeleteHistoryItem}
+        // />
         <GroupTree />
       )}
       {/* TODO: duplicated */}

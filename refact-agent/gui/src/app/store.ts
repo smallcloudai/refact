@@ -55,6 +55,7 @@ import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
 import { coinBallanceSlice } from "../features/CoinBalance";
+import { threadListSlice } from "../features/ThreadList";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -110,6 +111,7 @@ const rootReducer = combineSlices(
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
   coinBallanceSlice,
+  threadListSlice,
 );
 
 const rootPersistConfig = {

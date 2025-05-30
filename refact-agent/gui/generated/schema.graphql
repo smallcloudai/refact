@@ -4,6 +4,11 @@ schema {
   subscription: Subscription
 }
 
+type BasicStuffResult {
+  fuser_id: String!
+  workspaces: [FWorkspace!]!
+}
+
 input FExpertInput {
   fexp_allow_tools: String!
   fexp_block_tools: String!
@@ -13,7 +18,7 @@ input FExpertInput {
   fexp_ver_major: Int!
   fexp_ver_minor: Int!
   located_fgroup_id: String!
-  owner_fuser_id: String!
+  owner_fuser_id: String
   owner_shared: Boolean!
 }
 
@@ -26,7 +31,7 @@ type FExpertOutput {
   fexp_ver_major: Int!
   fexp_ver_minor: Int!
   located_fgroup_id: String!
-  owner_fuser_id: String!
+  owner_fuser_id: String
   owner_shared: Boolean!
 }
 
@@ -43,7 +48,7 @@ type FExpertSubs {
 }
 
 input FExternalDataSourceInput {
-  eds_json: JSON!
+  eds_json: String!
   eds_name: String!
   eds_type: String!
   located_fgroup_id: String!
@@ -64,7 +69,7 @@ type FExternalDataSourceOutput {
 }
 
 input FExternalDataSourcePatch {
-  eds_json: JSON = null
+  eds_json: String!
   eds_last_successful_scan_ts: Float = null
   eds_name: String = null
   eds_scan_status: String = null
@@ -80,6 +85,7 @@ type FExternalDataSourceSubs {
 }
 
 input FKnowledgeItemInput {
+  iknow_is_core: Boolean! = false
   iknow_memory: String!
   iknow_tags: [String!]! = []
   located_fgroup_id: String!
@@ -89,6 +95,7 @@ input FKnowledgeItemInput {
 type FKnowledgeItemOutput {
   iknow_created_ts: Float!
   iknow_id: String!
+  iknow_is_core: Boolean!
   iknow_memory: String!
   iknow_modified_ts: Float!
   iknow_stat_correct: Int!
@@ -101,6 +108,7 @@ type FKnowledgeItemOutput {
 }
 
 input FKnowledgeItemPatch {
+  iknow_is_core: Boolean = null
   iknow_memory: String = null
   iknow_tags: [String!] = null
   located_fgroup_id: String = null
@@ -114,13 +122,20 @@ type FKnowledgeItemSubs {
   news_ws_id: String!
 }
 
+type FPluginOutput {
+  plugin_name: String!
+  plugin_setup_page: String!
+  plugin_version: String!
+}
+
 type FThreadDelta {
   ftm_content: JSON!
   ftm_role: String!
 }
 
 input FThreadInput {
-  ft_belongs_to_fce_id: String
+  ft_belongs_to_fce_id: String = null
+  ft_error: String = null
   ft_fexp_name: String!
   ft_fexp_ver_major: Int!
   ft_fexp_ver_minor: Int!
@@ -129,18 +144,21 @@ input FThreadInput {
   ft_n: Int! = 1
   ft_temperature: Float! = 0
   ft_title: String!
+  ft_toolset: String = null
   located_fgroup_id: String!
   owner_shared: Boolean!
 }
 
 type FThreadMessage {
   ftm_alt: Int!
+  ftm_app_specific: JSON
   ftm_belongs_to_ft_id: String!
   ftm_call_id: String!
-  ftm_content: JSON!
+  ftm_content: JSON
   ftm_created_ts: Float!
   ftm_num: Int!
   ftm_prev_alt: Int!
+  ftm_provenance: JSON!
   ftm_role: String!
   ftm_tool_calls: JSON
   ftm_usage: JSON
@@ -148,15 +166,16 @@ type FThreadMessage {
 
 input FThreadMessageInput {
   ftm_alt: Int!
+  ftm_app_specific: String = "null"
   ftm_belongs_to_ft_id: String!
   ftm_call_id: String!
-  ftm_content: String!
+  ftm_content: String = "null"
   ftm_num: Int!
   ftm_prev_alt: Int!
   ftm_provenance: String!
   ftm_role: String!
-  ftm_tool_calls: String!
-  ftm_usage: String!
+  ftm_tool_calls: String = "null"
+  ftm_usage: String = "null"
 }
 
 type FThreadMessageSubs {
@@ -179,6 +198,8 @@ input FThreadMultipleMessagesInput {
 
 type FThreadOutput {
   ft_anything_new: Boolean!
+  ft_app_capture: String!
+  ft_app_specific: JSON
   ft_archived_ts: Float!
   ft_belongs_to_fce_id: String
   ft_created_ts: Float!
@@ -195,7 +216,7 @@ type FThreadOutput {
   ft_need_tool_calls: Int!
   ft_temperature: Float!
   ft_title: String!
-  ft_toolset: String!
+  ft_toolset: JSON!
   ft_updated_ts: Float!
   located_fgroup_id: String!
   owner_fuser_id: String!
@@ -204,6 +225,8 @@ type FThreadOutput {
 
 input FThreadPatch {
   ft_anything_new: Boolean = null
+  ft_app_capture: String = null
+  ft_app_specific: String = null
   ft_archived_ts: Float = null
   ft_belongs_to_fce_id: String = null
   ft_error: String = null
@@ -281,9 +304,11 @@ type Query {
   expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
   external_data_source_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExternalDataSourceOutput!]!
   knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItemOutput!]!
-  login: [FWorkspace!]!
+  plugins_installed: [FPluginOutput!]!
+  query_basic_stuff: BasicStuffResult!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
   thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessage!]!
+  threads_list_by_ft_app_capture(ft_app_capture: String!, ws_id: String!): [FThreadOutput!]!
 }
 
 type Subscription {

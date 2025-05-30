@@ -6,6 +6,11 @@ import {
   ThreadsPageSubsSubscription,
   ThreadsPageSubsSubscriptionVariables,
 } from "../../../generated/documents";
+import {
+  handleThreadListSubscriptionData,
+  setThreadListLoading,
+} from "../../features/ThreadList";
+import { setError } from "../../features/Errors/errorsSlice";
 
 const THREE_MINUTES = 3 * 60 * 1000;
 export const threadsPageSub = createAppAsyncThunk<
@@ -23,14 +28,14 @@ export const threadsPageSub = createAppAsyncThunk<
   >(ThreadsPageSubsDocument, args);
 
   const handleResult: Parameters<typeof query.subscribe>[0] = (result) => {
-    console.log(result);
     if (result.data) {
-      // ...update history slice
+      thunkAPI.dispatch(handleThreadListSubscriptionData(result.data));
     } else if (result.error) {
-      // ... handle error
+      thunkAPI.dispatch(setError(result.error.message));
     }
   };
 
+  thunkAPI.dispatch(setThreadListLoading(true));
   let subscription = query.subscribe(handleResult);
 
   let paused = false;
@@ -53,6 +58,7 @@ export const threadsPageSub = createAppAsyncThunk<
     } else if (!document.hidden && paused) {
       paused = false;
       maybeClearTimeout();
+      thunkAPI.dispatch(setThreadListLoading(true));
       subscription = query.subscribe(handleResult);
     }
   };
