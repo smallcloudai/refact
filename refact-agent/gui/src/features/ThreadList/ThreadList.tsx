@@ -7,17 +7,22 @@ import {
 } from "@radix-ui/themes";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 import {
+  selectThreadIsDeleting,
   selectThreadList,
   selectThreadListError,
   selectThreadListLoading,
   ThreadListItem,
 } from "./threadListSlice";
-import { threadsPageSub } from "../../services/graphql/graphqlThunks";
+import {
+  deleteThreadThunk,
+  threadsPageSub,
+} from "../../services/graphql/graphqlThunks";
 import { selectActiveGroup } from "../../features/Teams/teamsSlice";
 import { ScrollArea } from "../../components/ScrollArea";
 import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../../components/Buttons/Buttons";
 import { CardButton } from "../../components/Buttons";
+import { RootState } from "../../app/store";
 
 function useThreadPageSub() {
   const dispatch = useAppDispatch();
@@ -31,9 +36,12 @@ function useThreadPageSub() {
     // open the chat some how.
   }, []);
 
-  const onDelete = useCallback((_id: string) => {
-    // delete the chat some how.
-  }, []);
+  const onDelete = useCallback(
+    (id: string) => {
+      void dispatch(deleteThreadThunk({ id }));
+    },
+    [dispatch],
+  );
 
   useEffect(() => {
     if (activeProject === null) return;
@@ -124,8 +132,14 @@ const ThreadLustItem: React.FC<ThreadItemProps> = ({
   // TODO: handel updating state
   // TODO: handle read state
   // TODO: change this to created at
+
   const dateCreated = new Date(thread.ft_created_ts);
   const dateTimeString = dateCreated.toLocaleString();
+  const checkIfDeleting = useCallback(
+    (state: RootState) => selectThreadIsDeleting(state, thread.ft_id),
+    [thread.ft_id],
+  );
+  const deleting = useAppSelector(checkIfDeleting);
   return (
     <Box style={{ position: "relative", width: "100%" }}>
       <CardButton
@@ -189,6 +203,7 @@ const ThreadLustItem: React.FC<ThreadItemProps> = ({
           align="center"
         >
           <CloseButton
+            loading={deleting}
             size="1"
             onClick={(event) => {
               event.preventDefault();

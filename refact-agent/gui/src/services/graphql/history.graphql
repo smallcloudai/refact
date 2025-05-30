@@ -21,3 +21,7 @@ subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {
     }
   }
 }
+
+mutation DeleteThread($id: String!) {
+  thread_delete(id: $id)
+}

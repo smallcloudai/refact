@@ -1,6 +1,15 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  createSelector,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
 import { ThreadsPageSubsSubscription } from "../../../generated/documents";
 import { errorSlice } from "../Errors/errorsSlice";
+import { act } from "react-dom/test-utils";
+import {
+  deleteThreadThunk,
+  threadsPageSub,
+} from "../../services/graphql/graphqlThunks";
 
 export type ThreadListItem = Exclude<
   ThreadsPageSubsSubscription["threads_in_group"]["news_payload"],
@@ -11,12 +20,14 @@ export type InitialState = {
   threads: Record<string, ThreadListItem>;
   loading: boolean;
   error: string | null;
+  deleting: string[];
 };
 
 const initialState: InitialState = {
   threads: {},
   loading: false,
   error: null,
+  deleting: [],
 };
 
 // type NewsAction = "UPDATE" | "DELETE" | "INITIAL_UPDATES_OVER";
@@ -77,12 +88,26 @@ export const threadListSlice = createSlice({
     selectThreadListState: (state) => state,
 
     selectThreadListLoading: (state) => state.loading,
+
+    selectThreadIsDeleting: (state, id: string) => state.deleting.includes(id),
   },
 
   extraReducers(builder) {
     // TODO: add this for error slice?
     builder.addCase(errorSlice.actions.clearError, (state) => {
       state.error = null;
+    });
+
+    builder.addCase(deleteThreadThunk.pending, (state, action) => {
+      state.deleting.push(action.meta.arg.id);
+    });
+
+    builder.addCase(deleteThreadThunk.fulfilled, (state, action) => {
+      state.deleting = state.deleting.filter((id) => id !== action.payload.id);
+    });
+
+    builder.addCase(threadsPageSub.pending, (state) => {
+      state.loading = true;
     });
   },
 });
@@ -92,11 +117,11 @@ export const {
   selectThreadListError,
   selectThreadListState,
   selectThreadListLoading,
+  selectThreadIsDeleting,
 } = threadListSlice.selectors;
 
 export const {
   handleThreadListSubscriptionData,
   clearThreadListError,
   setThreadListError,
-  setThreadListLoading,
 } = threadListSlice.actions;

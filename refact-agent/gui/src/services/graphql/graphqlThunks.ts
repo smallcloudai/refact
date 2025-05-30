@@ -1,16 +1,19 @@
 import { createGraphqlClient } from "./createClient";
 import { createAppAsyncThunk } from "./createAppAsyncThunk";
+import { createAsyncThunk } from "@reduxjs/toolkit";
 
 import {
   ThreadsPageSubsDocument,
   ThreadsPageSubsSubscription,
   ThreadsPageSubsSubscriptionVariables,
+  DeleteThreadDocument,
+  DeleteThreadMutationVariables,
+  DeleteThreadMutation,
 } from "../../../generated/documents";
-import {
-  handleThreadListSubscriptionData,
-  setThreadListLoading,
-} from "../../features/ThreadList";
+import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
+import { AppDispatch, RootState } from "../../app/store";
+// import { CombinedError } from "urql";
 
 const THREE_MINUTES = 3 * 60 * 1000;
 export const threadsPageSub = createAppAsyncThunk<
@@ -35,7 +38,6 @@ export const threadsPageSub = createAppAsyncThunk<
     }
   };
 
-  thunkAPI.dispatch(setThreadListLoading(true));
   let subscription = query.subscribe(handleResult);
 
   let paused = false;
@@ -58,9 +60,34 @@ export const threadsPageSub = createAppAsyncThunk<
     } else if (!document.hidden && paused) {
       paused = false;
       maybeClearTimeout();
-      thunkAPI.dispatch(setThreadListLoading(true));
       subscription = query.subscribe(handleResult);
     }
   };
   document.addEventListener("visibilitychange", handleVisibilityChange);
+});
+
+export const deleteThreadThunk = createAsyncThunk<
+  { id: string },
+  DeleteThreadMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string; id: string };
+  }
+>("graphql/deleteThread", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const result = await client.mutation<
+    DeleteThreadMutation,
+    DeleteThreadMutationVariables
+  >(DeleteThreadDocument, args);
+  if (result.error) {
+    return thunkAPI.rejectWithValue({
+      message: result.error.message,
+      id: args.id,
+    });
+  }
+  return thunkAPI.fulfillWithValue({ id: args.id });
 });
