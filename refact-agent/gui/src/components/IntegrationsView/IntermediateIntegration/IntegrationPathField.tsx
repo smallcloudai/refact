@@ -1,8 +1,10 @@
+import React from "react";
 import { Flex, RadioGroup, Text, HoverCard } from "@radix-ui/themes";
 import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+
 import { type ProjectLabelInfo } from "../../../utils/createProjectLabelsWithConflictMarkers";
 
-type IntegrationPathFieldProps = {
+export type IntegrationPathFieldProps = {
   configPath: string;
   projectPath: string;
   projectLabels: ProjectLabelInfo[];
@@ -10,13 +12,13 @@ type IntegrationPathFieldProps = {
   globalLabel?: string;
 };
 
-export const IntegrationPathField = ({
+export const IntegrationPathField: React.FC<IntegrationPathFieldProps> = ({
   configPath,
   projectPath,
   projectLabels,
   shouldBeFormatted,
   globalLabel = "Global, available for all projects",
-}: IntegrationPathFieldProps) => {
+}) => {
   if (!shouldBeFormatted) {
     return (
       <Flex gap="2">
@@ -25,7 +27,6 @@ export const IntegrationPathField = ({
     );
   }
 
-  // Find the corresponding project label info
   const projectInfo = projectLabels.find((info) => info.path === projectPath);
 
   if (!projectInfo) {
@@ -43,7 +44,6 @@ export const IntegrationPathField = ({
     </Flex>
   );
 
-  // Show tooltip for paths with conflicts
   if (projectInfo.hasConflict) {
     return (
       <Flex align="center" gap="2">
