@@ -238,7 +238,7 @@ async fn docker_container_create(
         shell_words::quote(lsp_port),
         shell_words::quote(address_url),
         shell_words::quote(&cmdline.api_key),
-        if cmdline.vecdb {"--vecdb --reset-memory"} else {""},
+        if cmdline.vecdb {"--vecdb"} else {""},
         if cmdline.ast {"--ast"} else {""},
         if cmdline.wait_ast {"--wait-ast"} else {""},
         if cmdline.wait_vecdb {"--wait-vecdb"} else {""},
