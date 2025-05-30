@@ -270,10 +270,7 @@ pub fn convert_messages_to_thread_messages(
         let usage = msg
             .usage
             .map(|u| serde_json::to_value(u).unwrap_or(Value::Null));
-        let role = openai_msg
-            .get("role")
-            .map(|x| x.as_str().unwrap().to_string())
-            .ok_or("cannot find role in the message".to_string())?;
+        let role = msg.role.clone();
         let content = openai_msg
             .get("content")
             .cloned()
