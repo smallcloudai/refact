@@ -7,12 +7,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex as StdMutex;
 use std::sync::RwLock as StdRwLock;
-use parking_lot::Mutex as ParkMutex;
 use hyper::StatusCode;
 use structopt::StructOpt;
 use tokenizers::Tokenizer;
 use tokio::signal;
-use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Semaphore, Notify as ANotify};
+use tokio::sync::{Mutex as AMutex, RwLock as ARwLock, Semaphore};
 use tracing::{error, info};
 
 use crate::ast::ast_indexer_thread::AstIndexService;
@@ -36,6 +35,7 @@ pub struct CommandLine {
     #[structopt(long, default_value="", help="Send logs to a file.")]
     pub logs_to_file: String,
     #[structopt(long, short="u", default_value="", help="URL to use: \"Refact\" for Cloud, or your Self-Hosted Server URL. To bring your own keys, use \"Refact\" and set up providers.")]
+    /// Inference server URL, or "Refact" for cloud
     pub address_url: String,
     #[structopt(long, short="k", default_value="", help="The API key to authenticate your requests, will appear in HTTP requests this binary makes.")]
     pub api_key: String,
@@ -67,19 +67,12 @@ pub struct CommandLine {
     #[structopt(long, help="Wait until AST is ready before responding requests.")]
     pub wait_ast: bool,
 
-    #[cfg(feature="vecdb")]
     #[structopt(long, help="Use vector database. Give it LSP workspace folders or a jsonl, it also needs an embedding model.")]
     pub vecdb: bool,
-    #[cfg(feature="vecdb")]
-    #[structopt(long, help="Delete all memories, start with empty memory.")]
-    pub reset_memory: bool,
-    #[cfg(feature="vecdb")]
     #[structopt(long, default_value="15000", help="Maximum files count for VecDB index, to avoid OOM.")]
     pub vecdb_max_files: usize,
-    #[cfg(feature="vecdb")]
     #[structopt(long, default_value="", help="Set VecDB storage path manually.")]
     pub vecdb_force_path: String,
-    #[cfg(feature="vecdb")]
     #[structopt(long, help="Wait until VecDB is ready before responding requests.")]
     pub wait_vecdb: bool,
 
@@ -110,6 +103,9 @@ pub struct CommandLine {
     pub indexing_yaml: String,
     #[structopt(long, default_value="", help="Specify the privacy.yaml, replacing the global one")]
     pub privacy_yaml: String,
+
+    #[structopt(long, help="An pre-setup active group id")]
+    pub active_group_id: Option<String>,
 }
 
 impl CommandLine {
@@ -165,10 +161,7 @@ pub struct GlobalContext {
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
     pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
-    #[cfg(feature="vecdb")]
     pub vec_db: Arc<AMutex<Option<crate::vecdb::vdb_highlev::VecDb>>>,
-    #[cfg(not(feature="vecdb"))]
-    pub vec_db: bool,
     pub vec_db_error: String,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub ask_shutdown_sender: Arc<StdMutex<std::sync::mpsc::Sender<String>>>,
@@ -179,7 +172,7 @@ pub struct GlobalContext {
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
-    pub chore_db: Arc<ParkMutex<crate::agent_db::db_structs::ChoreDB>>,
+    pub active_group_id: Option<String>
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -295,8 +288,6 @@ pub async fn look_for_piggyback_fields(
 pub async fn block_until_signal(
     ask_shutdown_receiver: std::sync::mpsc::Receiver<String>,
     shutdown_flag: Arc<AtomicBool>,
-    chore_sleeping_point: Arc<ANotify>,
-    memdb_sleeping_point_mb: Option<Arc<ANotify>>,
 ) {
     let ctrl_c = async {
         signal::ctrl_c()
@@ -344,10 +335,6 @@ pub async fn block_until_signal(
             info!("graceful shutdown to store telemetry");
         }
     }
-    chore_sleeping_point.notify_waiters();
-    if let Some(memdb_sleeping_point) = memdb_sleeping_point_mb {
-        memdb_sleeping_point.notify_waiters();
-    }
 }
 
 pub async fn create_global_context(
@@ -382,10 +369,7 @@ pub async fn create_global_context(
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
         telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
-        #[cfg(feature="vecdb")]
         vec_db: Arc::new(AMutex::new(None)),
-        #[cfg(not(feature="vecdb"))]
-        vec_db: false,
         vec_db_error: String::new(),
         ast_service: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
@@ -396,7 +380,7 @@ pub async fn create_global_context(
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
-        chore_db: crate::agent_db::db_init::chore_db_init(&config_dir, cmdline.reset_memory).await,
+        active_group_id: cmdline.active_group_id.clone()
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;

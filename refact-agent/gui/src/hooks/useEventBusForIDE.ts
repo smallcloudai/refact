@@ -12,6 +12,7 @@ import { pathApi } from "../services/refact/path";
 import { telemetryApi } from "../services/refact/telemetry";
 import { ToolEditResult } from "../services/refact";
 import { TextDocToolCall } from "../components/Tools/types";
+import type { TeamsGroup } from "../services/smallcloud/types";
 
 export const ideDiffPasteBackAction = createAction<{
   content: string;
@@ -26,7 +27,7 @@ export const ideNewFileAction = createAction<string>("ide/newFile");
 export const ideOpenHotKeys = createAction("ide/openHotKeys");
 
 export type OpenFilePayload = {
-  file_name: string;
+  file_path: string;
   line?: number;
 };
 export const ideOpenFile = createAction<OpenFilePayload>("ide/openFile");
@@ -73,6 +74,13 @@ export const ideToolCallResponse = createAction<{
 
 export const ideForceReloadProjectTreeFiles = createAction(
   "ide/forceReloadProjectTreeFiles",
+);
+
+export const ideSetActiveTeamsGroup = createAction<TeamsGroup>(
+  "ide/setActiveTeamsGroup",
+);
+export const ideClearActiveTeamsGroup = createAction<undefined>(
+  "ide/clearActiveTeamsGroup",
 );
 
 export const useEventsBusForIDE = () => {
@@ -154,9 +162,9 @@ export const useEventsBusForIDE = () => {
 
   const queryPathThenOpenFile = useCallback(
     async (file: OpenFilePayload) => {
-      const res = await getFullPath(file.file_name).unwrap();
-      const file_name = res ?? file.file_name;
-      const action = ideOpenFile({ file_name, line: file.line });
+      const res = await getFullPath(file.file_path).unwrap();
+      const file_name = res ?? file.file_path;
+      const action = ideOpenFile({ file_path: file_name, line: file.line });
       postMessage(action);
     },
     [getFullPath, postMessage],
@@ -240,7 +248,7 @@ export const useEventsBusForIDE = () => {
       const res = await getPathQuery(undefined).unwrap();
 
       if (res) {
-        const action = ideOpenFile({ file_name: res });
+        const action = ideOpenFile({ file_path: res });
         postMessage(action);
         const res_split = res.split("/");
         void sendTelemetryEvent({
@@ -273,6 +281,19 @@ export const useEventsBusForIDE = () => {
     [postMessage],
   );
 
+  const setActiveTeamsGroupInIDE = useCallback(
+    (group: TeamsGroup) => {
+      const action = ideSetActiveTeamsGroup(group);
+      postMessage(action);
+    },
+    [postMessage],
+  );
+
+  const clearActiveTeamsGroupInIDE = useCallback(() => {
+    const action = ideClearActiveTeamsGroup();
+    postMessage(action);
+  }, [postMessage]);
+
   return {
     diffPasteBack,
     openSettings,
@@ -295,5 +316,7 @@ export const useEventsBusForIDE = () => {
     sendToolCallToIde,
     setCodeCompletionModel,
     setLoginMessage,
+    setActiveTeamsGroupInIDE,
+    clearActiveTeamsGroupInIDE,
   };
 };

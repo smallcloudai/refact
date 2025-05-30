@@ -3,7 +3,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel, PrivacySettings};
 use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace, sync_documents_ast};
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -22,7 +22,9 @@ struct ToolUpdateTextDocArgs {
     multiple: bool,
 }
 
-pub struct ToolUpdateTextDoc;
+pub struct ToolUpdateTextDoc {
+    pub config_path: String,
+}
 
 async fn parse_args(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -31,10 +33,11 @@ async fn parse_args(
 ) -> Result<ToolUpdateTextDocArgs, String> {
     let path = match args.get("path") {
         Some(Value::String(s)) => {
-            let candidates_file = file_repair_candidates(gcx.clone(), &s, 3, false).await;
-            let path = match return_one_candidate_or_a_good_error(gcx.clone(), &s, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
-                Ok(f) => canonicalize_normalized_path(PathBuf::from(preprocess_path_for_normalization(f.trim().to_string()))),
-                Err(e) => return Err(e)
+            let raw_path = preprocess_path_for_normalization(s.trim().to_string());
+            let candidates_file = file_repair_candidates(gcx.clone(), &raw_path, 3, false).await;
+            let path = match return_one_candidate_or_a_good_error(gcx.clone(), &raw_path, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+                Ok(f) => canonicalize_normalized_path(PathBuf::from(f)),
+                Err(e) => return Err(e),
             };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(
@@ -133,7 +136,7 @@ impl Tool for ToolUpdateTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
+
         async fn can_execute_tool_edit(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
             let _ = parse_args(gcx.clone(), args, privacy_settings).await?;
             Ok(())
@@ -159,8 +162,9 @@ impl Tool for ToolUpdateTextDoc {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("update_textdoc".to_string())
@@ -171,5 +175,42 @@ impl Tool for ToolUpdateTextDoc {
             ask_user: vec!["update_textdoc*".to_string()],
             deny: vec![],
         })
+    }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "update_textdoc".to_string(),
+            display_name: "Update Text Document".to_string(),
+            source: ToolSource { 
+                source_type: ToolSourceType::Builtin, 
+                config_path: self.config_path.clone(), 
+            },
+            agentic: false,
+            experimental: false,
+            description: "Updates an existing document by replacing specific text, use this if file already exists. Optimized for large files or small changes where simple string replacement is sufficient. Avoid trailing spaces and tabs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "path".to_string(),
+                    description: "Absolute path to the file to change.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "old_str".to_string(),
+                    description: "The exact text that needs to be updated. Use update_textdoc_regex if you need pattern matching.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "replacement".to_string(),
+                    description: "The new text that will replace the old text.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "multiple".to_string(),
+                    description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced.".to_string(),
+                    param_type: "boolean".to_string(),
+                }
+            ],
+            parameters_required: vec!["path".to_string(), "old_str".to_string(), "replacement".to_string(), "multiple".to_string()],
+        }
     }
 }

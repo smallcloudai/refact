@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
-import { isGoodResponse, smallCloudApi } from "../services/smallcloud";
+import { smallCloudApi } from "../services/smallcloud";
+import { isGoodResponse } from "../services/smallcloud/types";
 import {
   selectHost,
   setAddressURL,

@@ -1,6 +1,5 @@
 import { Dialog, Flex, Text, Button } from "@radix-ui/themes";
-import { useCheckpoints } from "../../hooks/useCheckpoints";
-import { useEventsBusForIDE } from "../../hooks";
+import { useCheckpoints, useEventsBusForIDE } from "../../hooks";
 import { TruncateLeft } from "../../components/Text";
 import { Link } from "../../components/Link";
 import { ScrollArea } from "../../components/ScrollArea";
@@ -81,7 +80,7 @@ export const Checkpoints = () => {
                           title="Open file"
                           onClick={(event) => {
                             event.preventDefault();
-                            openFile({ file_name: file.absolute_path });
+                            openFile({ file_path: file.absolute_path });
                           }}
                           style={{
                             textDecoration:

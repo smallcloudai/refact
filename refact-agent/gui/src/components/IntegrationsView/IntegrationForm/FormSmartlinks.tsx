@@ -60,7 +60,7 @@ export const FormSmartlinks: FC<FormSmartlinksProps> = ({
             title={`Open ${integr_name}.yaml configuration file in your IDE`}
             onClick={() =>
               openFile({
-                file_name: integr_config_path,
+                file_path: integr_config_path,
                 line: 1,
               })
             }

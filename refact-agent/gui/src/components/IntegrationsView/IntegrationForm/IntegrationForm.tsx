@@ -48,6 +48,7 @@ type IntegrationFormProps = {
   setMCPEnvironmentVariables: React.Dispatch<
     React.SetStateAction<Record<string, string>>
   >;
+  setHeaders: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setToolParameters: React.Dispatch<
     React.SetStateAction<ToolParameterEntity[] | null>
   >;
@@ -76,6 +77,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   setConfirmationRules,
   setMCPArguments,
   setMCPEnvironmentVariables,
+  setHeaders,
   setToolParameters,
   handleSwitchIntegration,
 }) => {
@@ -93,12 +95,14 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     handleToolParameters,
     handleMCPArguments,
     handleMCPEnvironmentVariables,
+    handleHeaders,
   } = useFormAvailability({
     setAvailabilityValues,
     setConfirmationRules,
     setToolParameters,
     setMCPArguments,
     setMCPEnvironmentVariables,
+    setHeaders,
   });
 
   // Set initial values from integration data
@@ -199,6 +203,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
               onToolParameters={handleToolParameters}
               onArguments={handleMCPArguments}
               onEnvs={handleMCPEnvironmentVariables}
+              onHeaders={handleHeaders}
             />
           </Grid>
 

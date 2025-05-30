@@ -290,6 +290,7 @@ function isIntegration(json: unknown): json is Integration {
     if (isPrimitive(value)) {
       return true;
     }
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (typeof value === "object" && value !== null) {
       return Object.values(value).every(isValidNestedObject);
     }
@@ -500,7 +501,7 @@ export type IntegrationField<T extends IntegrationPrimitive> = {
   f_type: T;
   f_desc?: string;
   f_placeholder?: T; // should match f_type
-  f_default?: T;
+  f_default?: T | Record<string, IntegrationPrimitive>;
   f_label?: string;
   f_extra?: boolean; // rather the field is hidden by default or not
   smartlinks?: SmartLink[];
@@ -535,7 +536,15 @@ function isIntegrationField<T extends IntegrationPrimitive>(
   if ("f_placeholder" in json && !isPrimitive(json.f_placeholder)) {
     return false;
   }
-  if ("f_default" in json && !isPrimitive(json.f_default)) {
+  if (
+    "f_default" in json &&
+    json.f_default !== undefined &&
+    !(
+      isPrimitive(json.f_default) ||
+      (typeof json.f_default === "object" &&
+        Object.values(json.f_default).every(isPrimitive))
+    )
+  ) {
     return false;
   }
   if ("smartlinks" in json && !Array.isArray(json.smartlinks)) {

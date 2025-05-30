@@ -32,7 +32,8 @@ export type CalloutProps = Omit<RadixCalloutProps, "onClick"> & {
   type: "info" | "error" | "warning";
   onClick?: () => void;
   timeout?: number | null;
-  preventRetry?: boolean;
+  preventRetry?: boolean; // just to change descriptor to "Click to close"
+  preventClose?: boolean; // for auth error messages blocks (not appearing since LSP didn't fix statuses sending process)
   hex?: string;
   message?: string | string[];
 };
@@ -42,7 +43,7 @@ export const Callout: React.FC<CalloutProps> = ({
   type = "info",
   timeout = null,
   onClick = () => void 0,
-  preventRetry = false,
+  preventClose = false,
   ...props
 }) => {
   const [isOpened, setIsOpened] = useState(false);
@@ -59,7 +60,7 @@ export const Callout: React.FC<CalloutProps> = ({
 
   const handleRetryClick = () => {
     // TBD: why was this added, it won't close on click :/?
-    if (preventRetry) return;
+    if (preventClose) return;
     setIsOpened(false);
     const timeoutId = setTimeout(() => {
       onClick();
@@ -103,6 +104,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
   onClick,
   children,
   preventRetry,
+  preventClose = false,
   className,
   ...props
 }) => {
@@ -116,7 +118,7 @@ export const ErrorCallout: React.FC<Omit<CalloutProps, "type">> = ({
       onClick={onClick}
       timeout={timeout}
       itemType={props.itemType}
-      preventRetry={isAuthError ?? preventRetry}
+      preventClose={preventClose || isAuthError}
       className={classNames(styles.callout_box_inner, className)}
       {...props}
     >

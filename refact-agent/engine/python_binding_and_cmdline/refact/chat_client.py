@@ -159,6 +159,15 @@ async def tools_fetch_and_filter(base_url: str, tools_turn_on: Optional[Set[str]
                 return json.loads(text)
     tools = None
     tools = await get_tools()
+    tools = [
+        {
+            "function": {"name": tool_entry["spec"]["name"]},
+            "type": "function",
+        }
+        for group in tools
+        for tool_entry in group["tools"]
+        if tool_entry["enabled"]
+    ]
     if tools_turn_on is not None:
         tools = [x for x in tools if x["type"] == "function" and x["function"]["name"] in tools_turn_on]
     return tools
@@ -548,7 +557,10 @@ def print_messages(
 
     def con(x):
         if console:
-            console.print(x)
+            try:
+                console.print(x)
+            except:
+                print(x)
 
     def _is_tool_call(m: Message) -> bool:
         return m.tool_calls is not None and len(m.tool_calls) > 0

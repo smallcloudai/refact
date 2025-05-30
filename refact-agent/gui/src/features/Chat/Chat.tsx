@@ -2,7 +2,7 @@ import React from "react";
 import type { Config } from "../Config/configSlice";
 import { Chat as ChatComponent } from "../../components/Chat";
 import { useAppSelector } from "../../hooks";
-import { selectMessages } from "./Thread";
+import { selectHasUncalledTools } from "./Thread";
 
 export type ChatProps = {
   host: Config["host"];
@@ -17,8 +17,6 @@ export const Chat: React.FC<ChatProps> = ({
   host,
   tabbed,
 }) => {
-  const messages = useAppSelector(selectMessages);
-
   const sendToSideBar = () => {
     // TODO:
   };
@@ -26,16 +24,7 @@ export const Chat: React.FC<ChatProps> = ({
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
-  // can be a selector
-  const unCalledTools = React.useMemo(() => {
-    if (messages.length === 0) return false;
-    const last = messages[messages.length - 1];
-    if (last.role !== "assistant") return false;
-    const maybeTools = last.tool_calls;
-    if (maybeTools && maybeTools.length > 0) return true;
-    return false;
-  }, [messages]);
-
+  const unCalledTools = useAppSelector(selectHasUncalledTools);
   return (
     <ChatComponent
       style={style}

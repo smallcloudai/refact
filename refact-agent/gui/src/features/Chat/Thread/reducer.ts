@@ -40,13 +40,13 @@ import {
   upsertToolCall,
   setIncreaseMaxTokens,
   setAreFollowUpsEnabled,
+  setIsTitleGenerationEnabled,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
   commandsApi,
   isAssistantMessage,
-  isChatResponseChoice,
   isDiffMessage,
   isMultiModalToolResult,
   isToolCallMessage,
@@ -149,6 +149,10 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.follow_ups_enabled = action.payload;
   });
 
+  builder.addCase(setIsTitleGenerationEnabled, (state, action) => {
+    state.title_generation_enabled = action.payload;
+  });
+
   builder.addCase(clearChatError, (state, action) => {
     if (state.thread.id !== action.payload.id) return state;
     state.error = null;
@@ -175,6 +179,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.system_prompt = state.system_prompt;
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.follow_ups_enabled = state.follow_ups_enabled;
+    next.title_generation_enabled = state.title_generation_enabled;
     next.thread.boost_reasoning = state.thread.boost_reasoning;
     // next.thread.automatic_patch = state.thread.automatic_patch;
     if (action.payload?.messages) {
@@ -202,14 +207,9 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const messages = formatChatResponse(state.thread.messages, action.payload);
 
     state.thread.messages = messages;
-    if (state.waiting_for_response && isChatResponseChoice(action.payload)) {
-      state.streaming = true;
-      state.waiting_for_response = false;
-    }
-    // // maybe update thread usage here.
-    // if (isChatResponseChoice(action.payload) && action.payload.usage) {
-    //   state.thread.usage = action.payload.usage;
-    // }
+    state.streaming = true;
+    state.waiting_for_response = false;
+
     if (
       isUserResponse(action.payload) &&
       action.payload.compression_strength &&
@@ -241,7 +241,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = false;
     state.waiting_for_response = false;
     state.thread.read = true;
-    state.prevent_send = false;
   });
 
   builder.addCase(setAutomaticPatch, (state, action) => {
@@ -516,6 +515,8 @@ export function maybeAppendToolCallResultFromIdeToMessages(
     content: {
       content: message,
       tool_call_id: toolCallId,
+      // assuming, that tool_failed is always false at this point
+      tool_failed: false,
     },
   };
 

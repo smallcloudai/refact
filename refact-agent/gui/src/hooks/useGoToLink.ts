@@ -22,7 +22,7 @@ export function useGoToLink() {
       const payload = payloadParts.join(":");
       switch (action.toLowerCase()) {
         case "editor": {
-          void queryPathThenOpenFile({ file_name: payload });
+          void queryPathThenOpenFile({ file_path: payload });
           return;
         }
         case "settings": {

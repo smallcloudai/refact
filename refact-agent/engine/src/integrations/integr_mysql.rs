@@ -12,8 +12,10 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
+
+use super::process_io_utils::AnsiStrippable;
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -94,10 +96,10 @@ impl ToolMysql {
           }
           let output = output.unwrap();
           if output.status.success() {
-              Ok(String::from_utf8_lossy(&output.stdout).to_string())
+              Ok(output.stdout.to_string_lossy_and_strip_ansi())
           } else {
               // XXX: limit stderr, can be infinite
-              let stderr_string = String::from_utf8_lossy(&output.stderr);
+              let stderr_string = output.stderr.to_string_lossy_and_strip_ansi();
               tracing::error!("mysql didn't work:\n{}\n{}", query, stderr_string);
               Err(format!("{}, mysql failed:\n{}", go_to_configuration_message("mysql"), stderr_string))
           }
@@ -111,6 +113,28 @@ impl ToolMysql {
 #[async_trait]
 impl Tool for ToolMysql {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "mysql".to_string(),
+            display_name: "MySQL".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "MySQL integration, can run a single query per call.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "query".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Don't forget semicolon at the end, examples:\nSELECT * FROM table_name;\nCREATE INDEX my_index_users_email ON my_users (email);".to_string(),
+                },
+            ],
+            parameters_required: vec!["query".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
@@ -137,8 +161,9 @@ impl Tool for ToolMysql {
         Ok((true, results))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let query = match args.get("query") {

@@ -16,11 +16,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
-use crate::files_correction::get_active_project_path;
+use crate::files_correction::{get_active_project_path, CommandSimplifiedDirExt};
 use crate::integrations::sessions::{IntegrationSession, get_session_hashmap_key};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
-use crate::tools::tools_description::{Tool, ToolDesc, ToolParam};
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::process_io_utils::{first_n_chars, last_n_chars, last_n_lines, write_to_stdin_and_flush, blocking_read_until_token_or_timeout};
 
 
@@ -122,7 +122,12 @@ impl Tool for ToolPdb {
         if python_command.is_empty() {
             python_command = "python3".to_string();
         }
-        if command_args.windows(2).any(|w| w == ["-m", "pdb"]) {
+        if command_args.iter().any(|x| x.starts_with("python")) {
+            if !command_args.windows(2).any(|w| w == ["-m", "pdb"]) {
+                let python_index = command_args.iter().position(|x| x.starts_with("python")).ok_or("Open a new session by running pdb(\"python -m pdb my_script.py\")")?;
+                command_args.insert(python_index + 1, "pdb".to_string());
+                command_args.insert(python_index + 1, "-m".to_string());
+            }
             let output = start_pdb_session(&python_command, &mut command_args, &session_hashmap_key, &workdir_maybe, gcx.clone(), 10).await?;
             return Ok(tool_answer(output, tool_call_id));
         }
@@ -130,7 +135,7 @@ impl Tool for ToolPdb {
         let command_session = {
             let gcx_locked = gcx.read().await;
             gcx_locked.integration_sessions.get(&session_hashmap_key)
-                .ok_or("There is no active pdb session in this chat, you can open it by running pdb(\"python -m pdb my_script.py\")")?
+                .ok_or("There is no active pdb session in this chat. Open a new session by running pdb(\"python -m pdb my_script.py\")")?
                 .clone()
         };
 
@@ -139,7 +144,7 @@ impl Tool for ToolPdb {
             .ok_or("Failed to downcast to PdbSession")?;
 
         let output = match command_args[0].as_str() {
-            "kill" => {
+            "kill" | "q" | "quit" => {
                 let mut gcx_locked = gcx.write().await;
                 gcx_locked.integration_sessions.remove(&session_hashmap_key);
                 "Pdb session has been killed".to_string()
@@ -156,8 +161,9 @@ impl Tool for ToolPdb {
         Ok(tool_answer(output, tool_call_id))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let (command, _) = parse_args(args)?;
@@ -168,6 +174,11 @@ impl Tool for ToolPdb {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "pdb".to_string(),
+            display_name: "Python Debugger".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Python debugger for inspecting variables and exploring what the program really does. This tool executes only one command at a time. Start with python -m pdb ...".to_string(),
@@ -261,9 +272,9 @@ async fn start_pdb_session(
         .stderr(std::process::Stdio::piped());
 
     if let Some(workdir) = workdir_maybe {
-        process_command.current_dir(workdir);
+        process_command.current_dir_simplified(workdir);
     } else if let Some(project_path) = get_active_project_path(gcx.clone()).await {
-        process_command.current_dir(project_path);
+        process_command.current_dir_simplified(&project_path);
     } else {
         tracing::warn!("no working directory, using whatever directory this binary is run :/");
     }

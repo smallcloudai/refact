@@ -14,8 +14,8 @@ import styles from "./IntegrationFormField.module.css";
 
 import {
   areToolParameters,
+  isDictionary,
   isMCPArgumentsArray,
-  isMCPEnvironmentsDict,
   type Integration,
   type IntegrationField,
   type IntegrationPrimitive,
@@ -23,40 +23,57 @@ import {
   type ToolParameterEntity,
 } from "../../services/refact";
 import { ArgumentsTable } from "../../components/IntegrationsView/IntegrationsTable/ArgumentsTable";
-import { EnvironmentVariablesTable } from "../../components/IntegrationsView/IntegrationsTable/EnvironmentVariablesTable";
+import { KeyValueTable } from "../../components/IntegrationsView/IntegrationsTable/KeyValueTable";
 
-type FieldType = "string" | "bool" | "int" | "tool" | "output";
+type FieldType =
+  | "string"
+  | "string_to_string_map"
+  | "bool"
+  | "int"
+  | "tool"
+  | "output";
 
 // Helper functions
 const isFieldType = (value: string): value is FieldType => {
-  return ["string", "bool", "int", "tool", "output"].includes(value);
+  return [
+    "string_to_string_map",
+    "string",
+    "bool",
+    "int",
+    "tool",
+    "output",
+  ].includes(value);
 };
 
 const getDefaultValue = ({
   field,
   values,
   fieldKey,
-  f_type,
+  // f_type,
+  f_type_raw,
 }: {
   field: IntegrationField<NonNullable<IntegrationPrimitive>>;
   values: Integration["integr_values"];
   fieldKey: string;
   f_type: FieldType;
-}): string | number | boolean | undefined => {
+  f_type_raw: string;
+}): string | number | boolean | Record<string, string> | undefined => {
   // First check if we have a value in the current values
   if (values && fieldKey in values) {
     return values[fieldKey]?.toString();
   }
 
   // Otherwise use the default value based on type
-  switch (f_type) {
+  switch (f_type_raw) {
     case "int":
       return Number(field.f_default);
     case "bool":
       return Boolean(field.f_default);
-    case "tool":
-    case "output":
+    case "tool_parameters":
+    case "output_filter":
       return JSON.stringify(field.f_default);
+    case "string_to_string_map":
+      return field.f_default as Record<string, string>;
     default:
       return field.f_default?.toString();
   }
@@ -74,12 +91,13 @@ type IntegrationFormFieldProps = {
   onToolParameters: (data: ToolParameterEntity[]) => void;
   onArguments: (updatedArgs: string[]) => void;
   onEnvs: (updatedEnvs: Record<string, string>) => void;
+  onHeaders: (updatedHeaders: Record<string, string>) => void;
 };
 
 type CommonFieldProps = {
   id: string;
   name: string;
-  defaultValue?: string | number | boolean;
+  defaultValue?: string | number | boolean | Record<string, string>;
   placeholder?: string;
 };
 
@@ -93,6 +111,7 @@ const FieldContent: FC<{
   onToolParameters: (data: ToolParameterEntity[]) => void;
   onArguments: (updatedArgs: string[]) => void;
   onEnvs: (updatedEnvs: Record<string, string>) => void;
+  onHeaders: (updatedHeaders: Record<string, string>) => void;
 }> = ({
   f_type,
   commonProps,
@@ -102,6 +121,7 @@ const FieldContent: FC<{
   onToolParameters,
   onArguments,
   onEnvs,
+  onHeaders,
 }) => {
   switch (f_type) {
     case "bool": {
@@ -152,15 +172,32 @@ const FieldContent: FC<{
         );
       }
       if (f_size === "to_string_map") {
-        const valuesForTable = values?.[fieldKey];
-        const tableData = isMCPEnvironmentsDict(valuesForTable)
-          ? valuesForTable
-          : {};
+        const valuesForTable = values?.[fieldKey] ?? commonProps.defaultValue;
+        const tableData = isDictionary(valuesForTable) ? valuesForTable : {};
+
+        const columnsMapToArray: Record<string, string[]> = {
+          env: ["Environment Variable", "Value"],
+          headers: ["Header Name", "Value"],
+        };
+        const emptyMessageMap: Record<string, string> = {
+          env: "No environment variables specified yet",
+          headers: "No headers specified yet",
+        };
+
+        const changeHandlersMap: Record<
+          string,
+          (updatedField: Record<string, string>) => void
+        > = {
+          env: onEnvs,
+          headers: onHeaders,
+        };
 
         return (
-          <EnvironmentVariablesTable
+          <KeyValueTable
             initialData={tableData}
-            onMCPEnvironmentVariables={onEnvs}
+            onChange={changeHandlersMap[fieldKey]}
+            columnNames={columnsMapToArray[fieldKey]}
+            emptyMessage={emptyMessageMap[fieldKey]}
           />
         );
       }
@@ -226,13 +263,20 @@ export const IntegrationFormField: FC<IntegrationFormFieldProps> = ({
   onToolParameters,
   onArguments,
   onEnvs,
+  onHeaders,
 }) => {
   const splittedType = field.f_type.toString().split("_");
   const [f_type_raw, ...rest] = splittedType;
   const f_size = rest.join("_");
   const f_type = isFieldType(f_type_raw) ? f_type_raw : "string";
 
-  const defaultValue = getDefaultValue({ field, values, fieldKey, f_type });
+  const defaultValue = getDefaultValue({
+    field,
+    values,
+    fieldKey,
+    f_type,
+    f_type_raw: field.f_type as string,
+  });
 
   const commonProps = {
     id: fieldKey,
@@ -273,6 +317,7 @@ export const IntegrationFormField: FC<IntegrationFormFieldProps> = ({
           onToolParameters={onToolParameters}
           onArguments={onArguments}
           onEnvs={onEnvs}
+          onHeaders={onHeaders}
         />
 
         {field.f_desc && (

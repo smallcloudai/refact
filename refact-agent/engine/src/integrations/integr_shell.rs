@@ -9,10 +9,18 @@ use async_trait::async_trait;
 use tokio::process::Command;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
+use crate::files_correction::canonical_path;
+use crate::files_correction::canonicalize_normalized_path;
+use crate::files_correction::check_if_its_inside_a_workspace_or_config;
+use crate::files_correction::correct_to_nearest_dir_path;
 use crate::files_correction::get_active_project_path;
+use crate::files_correction::get_project_dirs;
+use crate::files_correction::preprocess_path_for_normalization;
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
-use crate::integrations::process_io_utils::execute_command;
-use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, MatchConfirmDeny, MatchConfirmDenyResult};
+use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType, MatchConfirmDeny, MatchConfirmDenyResult};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::CmdlineOutputFilter;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationTrait};
@@ -78,10 +86,10 @@ impl Tool for ToolShell {
         tool_call_id: &String,
         args: &HashMap<String, Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
-        let (command, workdir_maybe) = parse_args(args)?;
+        let gcx = ccx.lock().await.global_context.clone();
+        let (command, workdir_maybe) = parse_args(gcx.clone(), args).await?;
         let timeout = self.cfg.timeout.parse::<u64>().unwrap_or(10);
 
-        let gcx = ccx.lock().await.global_context.clone();
         let mut error_log = Vec::<YamlError>::new();
         let env_variables = crate::integrations::setting_up_integrations::get_vars_for_replacements(gcx.clone(), &mut error_log).await;
 
@@ -112,6 +120,11 @@ impl Tool for ToolShell {
     fn tool_description(&self) -> ToolDesc {
         ToolDesc {
             name: "shell".to_string(),
+            display_name: "Shell".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: "Execute a single command, using the \"sh\" on unix-like systems and \"powershell.exe\" on windows. Use it for one-time tasks like dependencies installation. Don't call this unless you have to. Not suitable for regular work because it requires a confirmation at each step.".to_string(),
@@ -136,10 +149,10 @@ impl Tool for ToolShell {
 
     async fn match_against_confirm_deny(
         &self,
-        _ccx: Arc<AMutex<AtCommandsContext>>,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>
     ) -> Result<MatchConfirmDeny, String> {
-        let command_to_match = self.command_to_match_against_confirm_deny(&args).map_err(|e| {
+        let command_to_match = self.command_to_match_against_confirm_deny(ccx.clone(), &args).await.map_err(|e| {
             format!("Error getting tool command to match: {}", e)
         })?;
         if command_to_match.is_empty() {
@@ -163,11 +176,13 @@ impl Tool for ToolShell {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
-        let (command, _) = parse_args(args)?;
+        let gcx = ccx.lock().await.global_context.clone();
+        let (command, _) = parse_args(gcx, args).await?;
         Ok(command)
     }
 
@@ -189,9 +204,9 @@ pub async fn execute_shell_command(
     let mut cmd = Command::new(shell);
 
     if let Some(workdir) = workdir_maybe {
-        cmd.current_dir(workdir);
+        cmd.current_dir_simplified(workdir);
     } else if let Some(project_path) = get_active_project_path(gcx.clone()).await {
-        cmd.current_dir(project_path);
+        cmd.current_dir_simplified(&project_path);
     } else {
         tracing::warn!("no working directory, using whatever directory this binary is run :/");
     }
@@ -201,15 +216,15 @@ pub async fn execute_shell_command(
     }
 
     cmd.arg(shell_arg).arg(command);
-    
+
     tracing::info!("SHELL: running command directory {:?}\n{:?}", workdir_maybe, command);
     let t0 = tokio::time::Instant::now();
     let output = execute_command(cmd, timeout, command).await?;
     let duration = t0.elapsed();
     tracing::info!("SHELL: /finished in {:.3}s", duration.as_secs_f64());
 
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let stdout = output.stdout.to_string_lossy_and_strip_ansi();
+    let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
     let filtered_stdout = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stdout);
     let filtered_stderr = crate::postprocessing::pp_command_output::output_mini_postprocessing(output_filter, &stderr);
@@ -220,7 +235,7 @@ pub async fn execute_shell_command(
     Ok(out)
 }
 
-fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
+async fn parse_args(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>), String> {
     let command = match args.get("command") {
         Some(Value::String(s)) => {
             if s.is_empty() {
@@ -238,12 +253,7 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>)
             if s.is_empty() {
                 None
             } else {
-                let workdir = crate::files_correction::canonical_path(s);
-                if !workdir.exists() {
-                    return Err("Workdir doesn't exist".to_string());
-                } else {
-                    Some(workdir)
-                }
+                Some(resolve_shell_workdir(gcx.clone(), s).await?)
             }
         },
         Some(v) => return Err(format!("argument `workdir` is not a string: {:?}", v)),
@@ -251,6 +261,28 @@ fn parse_args(args: &HashMap<String, Value>) -> Result<(String, Option<PathBuf>)
     };
 
     Ok((command, workdir))
+}
+
+async fn resolve_shell_workdir(gcx: Arc<ARwLock<GlobalContext>>, raw_path: &str) -> Result<PathBuf, String> {
+    let path_str = preprocess_path_for_normalization(raw_path.to_string());
+    let path = PathBuf::from(&path_str);
+
+    let workdir = if path.is_absolute() {
+        let path = canonicalize_normalized_path(path);
+        check_if_its_inside_a_workspace_or_config(gcx.clone(), &path).await?;
+        path
+    } else {
+        let project_dirs = get_project_dirs(gcx.clone()).await;
+        let candidates = correct_to_nearest_dir_path(gcx.clone(), &path_str, false, 3).await;
+        canonical_path(
+            return_one_candidate_or_a_good_error(gcx.clone(), &path_str, &candidates, &project_dirs, true).await?
+        )
+    };
+    if !workdir.exists() {
+        Err("Workdir doesn't exist".to_string())
+    } else {
+        Ok(workdir)
+    }
 }
 
 pub const SHELL_INTEGRATION_SCHEMA: &str = r#"

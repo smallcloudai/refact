@@ -6,14 +6,16 @@ use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use tokio::process::Command;
 
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use serde_json::Value;
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
+use crate::integrations::process_io_utils::AnsiStrippable;
 
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -26,8 +28,7 @@ pub struct SettingsGitHub {
 #[derive(Default)]
 pub struct ToolGithub {
     pub common: IntegrationCommon,
-    pub settings_github: SettingsGitHub,
-    pub config_path: String,
+    pub settings_github: SettingsGitHub, pub config_path: String,
 }
 
 #[async_trait]
@@ -64,6 +65,33 @@ impl IntegrationTrait for ToolGithub {
 impl Tool for ToolGithub {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "github".to_string(),
+            display_name: "GitHub CLI".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "Access to gh command line command, to fetch issues, review PRs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "project_dir".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Look at system prompt for location of version control (.git folder) of the active file.".to_string(),
+                },
+                ToolParam {
+                    name: "command".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Examples:\ngh issue create --body \"hello world\" --title \"Testing gh integration\"\ngh issue list --author @me --json number,title,updatedAt,url\n".to_string(),
+                }
+            ],
+            parameters_required: vec!["project_dir".to_string(), "command".to_string()],
+        }
+    }
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
@@ -83,7 +111,7 @@ impl Tool for ToolGithub {
         }
         let output = Command::new(&gh_binary_path)
             .args(&command_args)
-            .current_dir(canonical_path(project_dir))
+            .current_dir_simplified(&canonical_path(project_dir))
             .env("GH_TOKEN", &self.settings_github.gh_token)
             .env("GITHUB_TOKEN", &self.settings_github.gh_token)
             .stdin(std::process::Stdio::null())
@@ -92,8 +120,8 @@ impl Tool for ToolGithub {
             .map_err(|e| format!("!{}, {} failed:\n{}",
                 go_to_configuration_message("github"), gh_binary_path, e.to_string()))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = output.stdout.to_string_lossy_and_strip_ansi();
+        let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
         let stdout_content = if stdout.starts_with("[") {
             match serde_json::from_str::<Value>(&stdout) {
@@ -130,8 +158,9 @@ impl Tool for ToolGithub {
         Ok((false, results))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let mut command_args = parse_command_args(args)?;

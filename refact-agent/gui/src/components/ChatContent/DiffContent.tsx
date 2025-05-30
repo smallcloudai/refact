@@ -8,7 +8,7 @@ import * as Collapsible from "@radix-ui/react-collapsible";
 import { Chevron } from "../Collapsible";
 import groupBy from "lodash.groupby";
 import { TruncateLeft } from "../Text";
-import { useEventsBusForIDE, useHideScroll } from "../../hooks";
+import { useHideScroll, useEventsBusForIDE } from "../../hooks";
 import { FadedButton } from "../Buttons";
 
 type DiffType = "apply" | "unapply" | "error" | "can not apply";
@@ -282,8 +282,8 @@ export const DiffForm: React.FC<{
   const { openFile } = useEventsBusForIDE();
   return (
     <Flex direction="column" maxWidth="100%" py="2" gap="2">
-      {Object.entries(diffs).map(([fullFileName, diffsForFile], index) => {
-        const key = fullFileName + "-" + index;
+      {Object.entries(diffs).map(([fullFilePath, diffsForFile], index) => {
+        const key = fullFilePath + "-" + index;
 
         // Check if this is a rename action
         const renameAction = diffsForFile.find(
@@ -303,7 +303,7 @@ export const DiffForm: React.FC<{
                       ...diffsForFile.map((diff) => diff.line1),
                     );
                     openFile({
-                      file_name: fullFileName,
+                      file_path: fullFilePath,
                       line: startLine,
                     });
                   }}
@@ -316,7 +316,7 @@ export const DiffForm: React.FC<{
                   >
                     {renameAction?.file_name_rename
                       ? renameAction.file_name_rename
-                      : fullFileName}
+                      : fullFilePath}
                   </Text>
                 </Link>
               </TruncateLeft>
@@ -330,7 +330,7 @@ export const DiffForm: React.FC<{
                   }}
                 >
                   {diffsForFile.map((diff, i) => (
-                    <Diff key={`${fullFileName}-${index}-${i}`} diff={diff} />
+                    <Diff key={`${fullFilePath}-${index}-${i}`} diff={diff} />
                   ))}
                 </Box>
               </Box>

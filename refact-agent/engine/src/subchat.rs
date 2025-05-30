@@ -1,13 +1,13 @@
 use std::sync::Arc;
-use std::collections::HashSet;
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::caps::resolve_chat_model;
 use crate::caps::ChatModelRecord;
-use crate::tools::tools_description::{tools_merged_and_filtered, tool_description_list_from_yaml};
+use crate::tools::tools_description::ToolDesc;
+use crate::tools::tools_list::get_available_tools;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{SamplingParameters, PostprocessSettings, ChatPost, ChatMessage, ChatUsage, ChatToolCall, ReasoningEffort};
 use crate::global_context::{GlobalContext, try_load_caps_quickly_if_not_present};
@@ -29,7 +29,7 @@ pub async fn create_chat_post_and_scratchpad(
     n: usize,
     reasoning_effort: Option<ReasoningEffort>,
     prepend_system_prompt: bool,
-    tools: Option<Vec<Value>>,
+    tools: Vec<ToolDesc>,
     tool_choice: Option<String>,
     only_deterministic_messages: bool,
     _should_execute_remotely: bool,
@@ -61,7 +61,6 @@ pub async fn create_chat_post_and_scratchpad(
         stream: Some(false),
         temperature,
         n: Some(n),
-        tools,
         tool_choice,
         only_deterministic_messages,
         subchat_tool_parameters: tconfig.subchat_tool_parameters.clone(),
@@ -85,6 +84,7 @@ pub async fn create_chat_post_and_scratchpad(
     let scratchpad = crate::scratchpads::create_chat_scratchpad(
         global_context.clone(),
         &mut chat_post,
+        tools,
         &messages.into_iter().cloned().collect::<Vec<_>>(),
         prepend_system_prompt,
         &model_rec,
@@ -268,23 +268,33 @@ pub async fn subchat_single(
         let ccx_locked = ccx.lock().await;
         (ccx_locked.global_context.clone(), ccx_locked.should_execute_remotely)
     };
-    let tools_turned_on_by_cmdline = tools_merged_and_filtered(gcx.clone(), false).await?;
-    let tools_turned_on_by_cmdline_set: HashSet<String> = tools_turned_on_by_cmdline.keys().cloned().collect();
-    let tools_on_intersection: Vec<String> = if let Some(tools_s) = &tools_subset {
-        let tools_turn_on_set: HashSet<String> = tools_s.iter().cloned().collect();
-        tools_turn_on_set.intersection(&tools_turned_on_by_cmdline_set).cloned().collect()
-    } else {
-        tools_turned_on_by_cmdline_set.iter().cloned().collect()
-    };
-    let allow_experimental = gcx.read().await.cmdline.experimental;
-    let tools_desclist = tool_description_list_from_yaml(tools_turned_on_by_cmdline, Some(&tools_on_intersection), allow_experimental).await.unwrap_or_else(|e|{
-        error!("Error loading compiled_in_tools: {:?}", e);
-        vec![]
-    });
-    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).map(|x|x.into_openai_style()).collect::<Vec<_>>();
+
     info!("tools_subset {:?}", tools_subset);
-    info!("tools_turned_on_by_cmdline_set {:?}", tools_turned_on_by_cmdline_set);
-    info!("tools_on_intersection {:?}", tools_on_intersection);
+
+    let tools_desclist: Vec<ToolDesc> = {
+        let tools_turned_on_by_cmdline = get_available_tools(gcx.clone()).await.iter().map(|tool| {
+            tool.tool_description()
+        }).collect::<Vec<_>>();
+
+        info!("tools_turned_on_by_cmdline {:?}", tools_turned_on_by_cmdline.iter().map(|tool| {
+            &tool.name
+        }).collect::<Vec<_>>());
+
+        match tools_subset {
+            Some(tools_subset) => {
+                tools_turned_on_by_cmdline.into_iter().filter(|tool| {
+                    tools_subset.contains(&tool.name)
+                }).collect()
+            }
+            None => tools_turned_on_by_cmdline,
+        }
+    };
+
+    info!("tools_on_intersection {:?}", tools_desclist.iter().map(|tool| {
+        &tool.name
+    }).collect::<Vec<_>>());
+
+    let tools = tools_desclist.into_iter().filter(|x| x.is_supported_by(model_id)).collect::<Vec<_>>();
 
     let max_new_tokens = max_new_tokens.unwrap_or(MAX_NEW_TOKENS);
     let (mut chat_post, spad, model_rec) = create_chat_post_and_scratchpad(
@@ -297,7 +307,7 @@ pub async fn subchat_single(
         n,
         reasoning_effort,
         prepend_system_prompt,
-        Some(tools),
+        tools,
         tool_choice.clone(),
         only_deterministic_messages,
         should_execute_remotely,
@@ -356,6 +366,7 @@ pub async fn subchat(
 ) -> Result<Vec<Vec<ChatMessage>>, String> {
     let mut messages = messages.clone();
     let mut usage_collector = ChatUsage { ..Default::default() };
+    let mut tx_chatid_mb = tx_chatid_mb.clone();
     // for attempt in attempt_n
     {
         // keep session
@@ -393,6 +404,14 @@ pub async fn subchat(
                 tx_toolid_mb.clone(),
                 tx_chatid_mb.clone(),
             ).await?[0].clone();
+            let last_message = messages.last().unwrap();
+            let tool_call_mb = last_message.tool_calls.clone().map(|x|{
+                let tool_call = x.get(0).unwrap();
+                format!("{}({})", tool_call.function.name, tool_call.function.arguments).to_string()
+            }).unwrap_or_default();
+            let content = format!("🤖:\n{}\n{}\n", &last_message.content.content_text_only(), tool_call_mb);
+            tx_chatid_mb = Some(format!("{step_n}/{wrap_up_depth}: {content}"));
+            info!("subchat request {step_n}/{wrap_up_depth}: {content}");
             step_n += 1;
         }
         // result => session

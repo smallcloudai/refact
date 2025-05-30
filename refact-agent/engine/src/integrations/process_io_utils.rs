@@ -1,10 +1,13 @@
 use futures::future::try_join3;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::process::{Child, ChildStdin, Command};
+use tokio::sync::Mutex as AMutex;
 use tokio::time::Duration;
+use std::path::Path;
 use std::pin::Pin;
 use std::process::Output;
+use std::sync::Arc;
 use std::time::Instant;
 use std::process::Stdio;
 use tracing::error;
@@ -74,7 +77,26 @@ pub async fn blocking_read_until_token_or_timeout<
         if have_the_token && output_bytes_read == 0 && error_bytes_read == 0 { break; }
     }
 
-    Ok((String::from_utf8_lossy(&output).to_string(), String::from_utf8_lossy(&error).to_string(), have_the_token))
+    Ok((output.to_string_lossy_and_strip_ansi(), error.to_string_lossy_and_strip_ansi(), have_the_token))
+}
+
+pub async fn read_file_with_cursor(
+    file_path: &Path,
+    cursor: Arc<AMutex<u64>>,
+) -> Result<(String, usize), String> {
+    let file = tokio::fs::OpenOptions::new().read(true).open(file_path).await
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+    let mut cursor_locked = cursor.lock().await;
+    let mut file = tokio::io::BufReader::new(file);
+    file.seek(tokio::io::SeekFrom::Start(*cursor_locked)).await
+        .map_err(|e| format!("Failed to seek: {}", e))?;
+    let mut buffer = String::new();
+    let bytes_read = file.read_to_string(&mut buffer).await
+        .map_err(|e| format!("Failed to read to buffer: {}", e))?;
+    if bytes_read > 0 {
+        *cursor_locked += bytes_read as u64;
+    }
+    Ok((buffer, bytes_read))
 }
 
 pub async fn is_someone_listening_on_that_tcp_port(port: u16, timeout: tokio::time::Duration) -> bool {
@@ -177,4 +199,14 @@ pub async fn execute_command(mut cmd: Command, timeout_secs: u64, cmd_str: &str)
     ).await
         .map_err(|_| format!("command '{cmd_str}' timed out after {timeout_secs} seconds"))?
         .map_err(|e| format!("command '{cmd_str}' failed to execute: {e}"))
+}
+
+pub trait AnsiStrippable {
+    fn to_string_lossy_and_strip_ansi(&self) -> String;
+}
+
+impl AnsiStrippable for [u8] {
+    fn to_string_lossy_and_strip_ansi(&self) -> String {
+        String::from_utf8_lossy(&strip_ansi_escapes::strip(self)).to_string()
+    }
 }

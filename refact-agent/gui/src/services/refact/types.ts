@@ -71,6 +71,7 @@ export interface BaseToolResult {
   finish_reason?: string; // "call_failed" | "call_worked";
   content: ToolContent;
   compression_strength?: CompressionStrength;
+  tool_failed?: boolean;
 }
 
 export interface SingleModelToolResult extends BaseToolResult {
@@ -438,6 +439,7 @@ export type ChatUserMessageResponse =
 export type ToolResponse = {
   id: string;
   role: "tool";
+  tool_failed?: boolean;
 } & ToolResult;
 
 export function isChatUserMessageResponse(
@@ -538,6 +540,7 @@ export function isToolResponse(json: unknown): json is ToolResponse {
   if (!("content" in json)) return false;
   if (!("role" in json)) return false;
   if (!("tool_call_id" in json)) return false;
+  if (!("tool_failed" in json)) return false;
   return json.role === "tool";
 }
 
@@ -749,4 +752,24 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
   if (Array.isArray(json)) return false;
 
   return Object.values(json).every((value) => typeof value === "string");
+}
+
+export function isDictionary(json: unknown): json is Record<string, string> {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (Array.isArray(json)) return false;
+
+  return Object.values(json).every((value) => typeof value === "string");
+}
+
+export type SuccessResponse = { success: true };
+
+export function isSuccess(data: unknown): data is SuccessResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "success" in data &&
+    typeof data.success === "boolean" &&
+    data.success
+  );
 }

@@ -377,7 +377,7 @@ export default defineConfig({
         './src/styles/index.css',
       ],
       editLink: {
-        baseUrl: 'https://github.com/smallcloudai/web_docs_refact_ai/edit/main/',
+        baseUrl: 'https://github.com/smallcloudai/refact/edit/main/docs/',
       },
       lastUpdated: true,
     }),

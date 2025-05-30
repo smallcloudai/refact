@@ -6,13 +6,12 @@ import {
   Text,
   Box,
   Spinner,
-  IconButton,
   Card,
   Separator,
 } from "@radix-ui/themes";
 import {
   isMultiModalToolResult,
-  knowledgeApi,
+  // knowledgeApi,
   MultiModalToolResult,
   ToolCall,
   ToolResult,
@@ -24,6 +23,8 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll } from "../../hooks";
 import {
+  selectIsStreaming,
+  selectIsWaiting,
   selectManyDiffMessageByIds,
   selectManyToolResultsByIds,
   selectToolResultById,
@@ -31,7 +32,6 @@ import {
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";
-import { ArrowDownIcon, ArrowUpIcon } from "@radix-ui/react-icons";
 import { RootState } from "../../app/store";
 import { selectFeatures } from "../../features/Config/configSlice";
 import { isRawTextDocToolCall } from "../Tools/types";
@@ -133,6 +133,8 @@ export const SingleModelToolContent: React.FC<{
   const [open, setOpen] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
 
   const toolCallsId = useMemo(() => {
     const ids = toolCalls.reduce<string[]>((acc, toolCall) => {
@@ -148,6 +150,11 @@ export const SingleModelToolContent: React.FC<{
   const allResolved = useMemo(() => {
     return results.length + diffs.length === toolCallsId.length;
   }, [diffs.length, results.length, toolCallsId.length]);
+
+  const busy = useMemo(() => {
+    if (allResolved) return false;
+    return isStreaming || isWaiting;
+  }, [allResolved, isStreaming, isWaiting]);
 
   const handleClose = useCallback(() => {
     handleHide();
@@ -204,7 +211,7 @@ export const SingleModelToolContent: React.FC<{
             subchat={subchat}
             open={open}
             onClick={() => setOpen((prev) => !prev)}
-            waiting={!allResolved}
+            waiting={busy}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -257,7 +264,7 @@ function processToolCalls(
   // TODO: handle knowledge differently.
   // memories are split in content with 🗃️019957b6ff
 
-  if (features.knowledge && result && head.function.name === "knowledge") {
+  if (result && head.function.name === "knowledge") {
     const elem = (
       <Knowledge key={`knowledge-tool-${processed.length}`} toolCall={head} />
     );
@@ -269,6 +276,7 @@ function processToolCalls(
       <TextDocTool
         key={`textdoc-tool-${head.function.name}-${processed.length}`}
         toolCall={head}
+        toolFailed={result?.tool_failed}
       />
     );
     return processToolCalls(tail, toolResults, features, [...processed, elem]);
@@ -329,6 +337,8 @@ const MultiModalToolContent: React.FC<{
   const [open, setOpen] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
   const ids = useMemo(() => {
     return toolCalls.reduce<string[]>((acc, cur) => {
       if (typeof cur === "string") return [...acc, cur];
@@ -380,6 +390,11 @@ const MultiModalToolContent: React.FC<{
     );
   }, [toolCalls, toolResults, diffs]);
 
+  const busy = useMemo(() => {
+    if (hasResults) return false;
+    return isStreaming || isWaiting;
+  }, [hasResults, isStreaming, isWaiting]);
+
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -389,7 +404,7 @@ const MultiModalToolContent: React.FC<{
             open={open}
             onClick={() => setOpen((prev) => !prev)}
             ref={ref}
-            waiting={!hasResults}
+            waiting={busy}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -526,7 +541,7 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
             })}
             {subchat && (
               <Flex ml="4">
-                <Spinner />
+                {waiting && <Spinner />}
                 <Text weight="light" size="1" ml="4px">
                   {subchat}
                 </Text>
@@ -621,17 +636,6 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
 };
 
 const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
-  const [updateUsage, status] = knowledgeApi.useUpdateMemoryUsageMutation();
-  // correct and relevant,
-  const handleGood = useCallback(() => {
-    void updateUsage({ memid: id, correct: 1, relevant: 1 });
-  }, [id, updateUsage]);
-
-  // TODO: not correct but relevant, and incorrect but relevant
-  const handleBad = useCallback(() => {
-    void updateUsage({ memid: id, correct: -1, relevant: -1 });
-  }, [id, updateUsage]);
-
   return (
     <Card>
       <Flex direction="column" gap="2">
@@ -639,28 +643,6 @@ const Memory: React.FC<{ id: string; content: string }> = ({ id, content }) => {
           <Text size="1" weight="light">
             Memory: {id}
           </Text>
-          <Flex gap="2" align="center">
-            <IconButton
-              size="1"
-              title="Down vote"
-              onClick={handleBad}
-              disabled={status.isLoading}
-              variant="outline"
-              color="tomato"
-            >
-              <ArrowDownIcon />
-            </IconButton>
-            <IconButton
-              size="1"
-              title="Up vote"
-              onClick={handleGood}
-              disabled={status.isLoading}
-              variant="outline"
-              color="grass"
-            >
-              <ArrowUpIcon />
-            </IconButton>
-          </Flex>
         </Flex>
         <Separator size="4" />
         <Text size="2">{content}</Text>

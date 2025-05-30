@@ -24,6 +24,7 @@ import {
   knowledgeApi,
   providersApi,
   modelsApi,
+  teamsApi,
 } from "../services/refact";
 import { smallCloudApi } from "../services/smallcloud";
 import { reducer as fimReducer } from "../features/FIM/reducer";
@@ -45,11 +46,11 @@ import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
 import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
+import { teamsSlice } from "../features/Teams";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
 import { linksApi } from "../services/refact/links";
 import { integrationsSlice } from "../features/Integrations";
 import { currentProjectInfoReducer } from "../features/Chat/currentProject";
-import { knowledgeSlice } from "../features/Knowledge/knowledgeSlice";
 import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
@@ -91,6 +92,7 @@ const rootReducer = combineSlices(
     [checkpointsApi.reducerPath]: checkpointsApi.reducer,
     [telemetryApi.reducerPath]: telemetryApi.reducer,
     [knowledgeApi.reducerPath]: knowledgeApi.reducer,
+    [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
   },
@@ -103,8 +105,8 @@ const rootReducer = combineSlices(
   confirmationSlice,
   attachedImagesSlice,
   userSurveySlice,
+  teamsSlice,
   integrationsSlice,
-  knowledgeSlice,
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
   coinBallanceSlice,
@@ -176,6 +178,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             knowledgeApi.middleware,
             providersApi.middleware,
             modelsApi.middleware,
+            teamsApi.middleware,
           )
           .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)

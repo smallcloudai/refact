@@ -5,7 +5,6 @@ use reqwest::header::HeaderMap;
 use reqwest::header::HeaderValue;
 use reqwest_eventsource::EventSource;
 use serde_json::json;
-#[cfg(feature="vecdb")]
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
@@ -29,7 +28,7 @@ pub async fn forward_to_openai_style_endpoint(
         headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", model_rec.api_key)).unwrap());
     }
     if model_rec.support_metadata {
-        headers.insert(USER_AGENT, HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build_info::PKG_VERSION)).unwrap());
+        headers.insert(USER_AGENT, HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build::PKG_VERSION)).unwrap());
     }
     let mut data = json!({
         "model": model_rec.name.clone(),
@@ -49,9 +48,12 @@ pub async fn forward_to_openai_style_endpoint(
         data["temperature"] = serde_json::Value::from(temperature);
     }
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
-    info!("NOT STREAMING TEMP {}", sampling_parameters.temperature
-        .map(|x| x.to_string())
-        .unwrap_or("None".to_string()));
+    info!("Request: model={}, reasoning_effort={}, T={}, n={}, stream=false", 
+        model_rec.name,
+        sampling_parameters.reasoning_effort.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.temperature.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.n.clone().map(|x| x.to_string()).unwrap_or("none".to_string())
+    );
     if is_passthrough {
         passthrough_messages_to_json(&mut data, prompt, &model_rec.name);
     } else {
@@ -61,7 +63,7 @@ pub async fn forward_to_openai_style_endpoint(
     if let Some(meta) = meta {
         data["meta"] = json!(meta);
     }
-    
+
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&model_rec.endpoint)
         .headers(headers)
@@ -102,7 +104,7 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", model_rec.api_key)).unwrap());
     }
     if model_rec.support_metadata {
-        headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build_info::PKG_VERSION).as_str()).unwrap());
+        headers.insert(USER_AGENT, HeaderValue::from_str(format!("refact-lsp {}", crate::version::build::PKG_VERSION).as_str()).unwrap());
     }
 
     let mut data = json!({
@@ -133,14 +135,17 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     }
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
 
-    info!("STREAMING TEMP {}", sampling_parameters.temperature
-        .map(|x| x.to_string())
-        .unwrap_or("None".to_string()));
+    info!("Request: model={}, reasoning_effort={}, T={}, n={}, stream=true", 
+        model_rec.name,
+        sampling_parameters.reasoning_effort.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.temperature.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
+        sampling_parameters.n.clone().map(|x| x.to_string()).unwrap_or("none".to_string())
+    );
 
     if let Some(meta) = meta {
         data["meta"] = json!(meta);
     }
-    
+
     if model_rec.endpoint.is_empty() {
         return Err(format!("No endpoint configured for {}", model_rec.id));
     }
@@ -186,27 +191,23 @@ pub fn try_get_compression_from_prompt(
     }
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Serialize)]
 struct EmbeddingsPayloadOpenAI {
     pub input: Vec<String>,
     pub model: String,
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Deserialize)]
 struct EmbeddingsResultOpenAI {
     pub embedding: Vec<f32>,
     pub index: usize,
 }
 
-#[cfg(feature="vecdb")]
 #[derive(serde::Deserialize)]
 struct EmbeddingsResultOpenAINoIndex {
     pub embedding: Vec<f32>,
 }
 
-#[cfg(feature="vecdb")]
 pub async fn get_embedding_openai_style(
     client: std::sync::Arc<AMutex<reqwest::Client>>,
     text: Vec<String>,
@@ -246,7 +247,7 @@ pub async fn get_embedding_openai_style(
     // info!("get_embedding_openai_style: {:?}", json);
     // {"data":[{"embedding":[0.0121664945...],"index":0,"object":"embedding"}, {}, {}]}
     // or {"data":[{"embedding":[0.0121664945...]}, {}, {}]} without index
-    
+
     let mut result: Vec<Vec<f32>> = vec![vec![]; B];
     match serde_json::from_value::<Vec<EmbeddingsResultOpenAI>>(json["data"].clone()) {
         Ok(unordered) => {
@@ -262,7 +263,7 @@ pub async fn get_embedding_openai_style(
             match serde_json::from_value::<Vec<EmbeddingsResultOpenAINoIndex>>(json["data"].clone()) {
                 Ok(ordered) => {
                     if ordered.len() != B {
-                        return Err(format!("get_embedding_openai_style: response length mismatch: expected {}, got {}", 
+                        return Err(format!("get_embedding_openai_style: response length mismatch: expected {}, got {}",
                                           B, ordered.len()));
                     }
                     for (i, res) in ordered.into_iter().enumerate() {

@@ -24,6 +24,7 @@ type FormFieldsProps = {
   onToolParameters: (data: ToolParameterEntity[]) => void;
   onArguments: (updatedArgs: string[]) => void;
   onEnvs: (updatedEnvs: Record<string, string>) => void;
+  onHeaders: (updatedHeaders: Record<string, string>) => void;
 };
 
 export const FormFields: FC<FormFieldsProps> = ({
@@ -34,6 +35,7 @@ export const FormFields: FC<FormFieldsProps> = ({
   onToolParameters,
   onArguments,
   onEnvs,
+  onHeaders,
 }) => {
   const {
     integr_config_path,
@@ -56,6 +58,7 @@ export const FormFields: FC<FormFieldsProps> = ({
           onToolParameters={onToolParameters}
           onArguments={onArguments}
           onEnvs={onEnvs}
+          onHeaders={onHeaders}
         />
       ))}
       {Object.keys(extraFields).map((fieldKey) => (
@@ -71,6 +74,7 @@ export const FormFields: FC<FormFieldsProps> = ({
           onToolParameters={onToolParameters}
           onArguments={onArguments}
           onEnvs={onEnvs}
+          onHeaders={onHeaders}
         />
       ))}
     </Grid>

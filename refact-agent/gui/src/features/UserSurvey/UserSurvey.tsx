@@ -12,7 +12,7 @@ import {
   isRadioQuestion,
   RadioQuestion,
   SurveyQuestions,
-} from "../../services/smallcloud";
+} from "../../services/smallcloud/types";
 import { useGetUserSurvey } from "../../hooks";
 
 type RadioInputProps = Pick<RadioQuestion, "name" | "options" | "question"> & {

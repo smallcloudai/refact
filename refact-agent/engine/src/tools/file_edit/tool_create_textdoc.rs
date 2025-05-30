@@ -5,14 +5,14 @@ use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLeve
 use crate::tools::file_edit::auxiliary::{
     await_ast_indexing, convert_edit_to_diffchunks, sync_documents_ast, write_file,
 };
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use crate::files_correction::{canonicalize_normalized_path, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
+use crate::files_correction::{canonicalize_normalized_path, check_if_its_inside_a_workspace_or_config, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::global_context::GlobalContext;
 use tokio::sync::RwLock as ARwLock;
 use crate::at_commands::at_file::return_one_candidate_or_a_good_error;
@@ -22,7 +22,9 @@ struct ToolCreateTextDocArgs {
     content: String,
 }
 
-pub struct ToolCreateTextDoc;
+pub struct ToolCreateTextDoc {
+    pub config_path: String,
+}
 
 async fn parse_args(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -41,7 +43,7 @@ async fn parse_args(
                 ));
             };
             let path = if !raw_path.is_absolute() {
-                if let Some(parent) = raw_path.parent() {
+                if let Some(parent) = raw_path.parent().filter(|p| !p.as_os_str().is_empty()) {
                     let parent_str = parent.to_string_lossy().to_string();
                     let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &parent_str, false, 3).await;
                     let candidate_parent_dir = match return_one_candidate_or_a_good_error(gcx.clone(), &parent_str, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
@@ -56,7 +58,9 @@ async fn parse_args(
                     ));
                 }
             } else {
-                raw_path
+                let path = canonicalize_normalized_path(raw_path);
+                check_if_its_inside_a_workspace_or_config(gcx.clone(), &path).await?;
+                path
             };
             if check_file_privacy(privacy_settings, &path, &FilePrivacyLevel::AllowToSendAnywhere).is_err() {
                 return Err(format!(
@@ -139,7 +143,7 @@ impl Tool for ToolCreateTextDoc {
     ) -> Result<MatchConfirmDeny, String> {
         let gcx = ccx.lock().await.global_context.clone();
         let privacy_settings = load_privacy_if_needed(gcx.clone()).await;
-        
+
         async fn can_execute_tool_edit(gcx: Arc<ARwLock<GlobalContext>>, args: &HashMap<String, Value>, privacy_settings: Arc<PrivacySettings>) -> Result<(), String> {
             let _ = parse_args(gcx.clone(), args, privacy_settings).await?;
             Ok(())
@@ -165,8 +169,9 @@ impl Tool for ToolCreateTextDoc {
         })
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         _args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         Ok("create_textdoc".to_string())
@@ -177,5 +182,32 @@ impl Tool for ToolCreateTextDoc {
             ask_user: vec!["create_textdoc*".to_string()],
             deny: vec![],
         })
+    }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "create_textdoc".to_string(),
+            display_name: "Create Text Document".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: false,
+            experimental: false,
+            description: "Creates a new text document or code or completely replaces the content of an existing document. Avoid trailing spaces and tabs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "path".to_string(),
+                    description: "Absolute path to new file.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "content".to_string(),
+                    description: "The initial text or code.".to_string(),
+                    param_type: "string".to_string(),
+                }
+            ],
+            parameters_required: vec!["path".to_string(), "content".to_string()],
+        }
     }
 }

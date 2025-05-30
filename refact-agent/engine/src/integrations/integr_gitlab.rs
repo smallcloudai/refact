@@ -7,13 +7,15 @@ use tokio::process::Command;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
 use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::integr_abstract::{IntegrationCommon, IntegrationConfirmation, IntegrationTrait};
+use crate::integrations::process_io_utils::AnsiStrippable;
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[allow(non_snake_case)]
@@ -63,6 +65,33 @@ impl IntegrationTrait for ToolGitlab {
 impl Tool for ToolGitlab {
     fn as_any(&self) -> &dyn std::any::Any { self }
 
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "gitlab".to_string(),
+            display_name: "GitLab".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "Access to glab command line command, to fetch issues, review PRs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "project_dir".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Look at system prompt for location of version control (.git folder) of the active file.".to_string(),
+                },
+                ToolParam {
+                    name: "command".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Examples:\nglab issue create --description \"hello world\" --title \"Testing glab integration\"\nglab issue list --author @me\n".to_string(),
+                },
+            ],
+            parameters_required: vec!["project_dir".to_string(), "command".to_string()],
+        }
+    }
+
     async fn tool_execute(
         &mut self,
         _ccx: Arc<AMutex<AtCommandsContext>>,
@@ -82,7 +111,7 @@ impl Tool for ToolGitlab {
         }
         let output = Command::new(&glab_binary_path)
             .args(&command_args)
-            .current_dir(canonical_path(project_dir))
+            .current_dir_simplified(&canonical_path(project_dir))
             .env("GITLAB_TOKEN", &self.settings_gitlab.glab_token)
             .stdin(std::process::Stdio::null())
             .output()
@@ -90,8 +119,8 @@ impl Tool for ToolGitlab {
             .map_err(|e| format!("!{}, {} failed:\n{}",
                 go_to_configuration_message("gitlab"), glab_binary_path, e.to_string()))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = output.stdout.to_string_lossy_and_strip_ansi();
+        let stderr = output.stderr.to_string_lossy_and_strip_ansi();
 
         let stdout_content = if stdout.starts_with("[") {
             match serde_json::from_str::<Value>(&stdout) {
@@ -128,8 +157,9 @@ impl Tool for ToolGitlab {
         Ok((false, results))
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, Value>,
     ) -> Result<String, String> {
         let mut command_args = parse_command_args(args)?;
