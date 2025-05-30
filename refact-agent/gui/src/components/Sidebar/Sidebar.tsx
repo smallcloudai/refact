@@ -1,7 +1,7 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { Box, Flex, Spinner } from "@radix-ui/themes";
 import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
-import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import {
   ChatHistoryItem,
   deleteChatById,
@@ -9,13 +9,13 @@ import {
 import { push } from "../../features/Pages/pagesSlice";
 import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
-import { selectActiveGroup } from "../../features/Teams";
 import { GroupTree } from "./GroupTree/";
 import { ErrorCallout } from "../Callout";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import classNames from "classnames";
 import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
+import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -34,14 +34,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
   const globalError = useAppSelector(getErrorMessage);
-  const maybeSelectedTeamsGroup = useAppSelector(selectActiveGroup);
   const currentHost = useAppSelector(selectHost);
   const history = useAppSelector((app) => app.history, {
     // TODO: selector issue here
     devModeChecks: { stabilityCheck: "never" },
   });
 
-  const { data: capsData } = useCapsForToolUse();
+  const { groupSelectionEnabled } = useActiveTeamsGroup();
 
   const onDeleteHistoryItem = useCallback(
     (id: string) => dispatch(deleteChatById(id)),
@@ -56,13 +55,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
     [dispatch],
   );
 
-  const shouldGroupTreeBeVisible = useMemo(() => {
-    return (
-      capsData?.metadata?.features?.includes("knowledge") === true &&
-      !maybeSelectedTeamsGroup
-    );
-  }, [maybeSelectedTeamsGroup, capsData?.metadata?.features]);
-
   return (
     <Flex style={style}>
       <FeatureMenu />
@@ -72,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         </Box>
       </Flex>
 
-      {!shouldGroupTreeBeVisible ? (
+      {!groupSelectionEnabled ? (
         <ChatHistory
           history={history}
           onHistoryItemClick={onHistoryItemClick}
