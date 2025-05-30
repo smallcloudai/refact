@@ -241,7 +241,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.streaming = false;
     state.waiting_for_response = false;
     state.thread.read = true;
-    state.prevent_send = false;
   });
 
   builder.addCase(setAutomaticPatch, (state, action) => {

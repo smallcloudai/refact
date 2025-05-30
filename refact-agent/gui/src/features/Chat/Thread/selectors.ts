@@ -2,10 +2,12 @@ import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import {
   CompressionStrength,
+  isAssistantMessage,
   isDiffMessage,
   isToolMessage,
   isUserMessage,
 } from "../../../services/refact/types";
+import { takeFromLast } from "../../../utils/takeFromLast";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
@@ -113,5 +115,35 @@ export const selectLastSentCompression = createSelector(
     );
 
     return lastCompression;
+  },
+);
+
+export const selectHasUncalledTools = createSelector(
+  selectMessages,
+  (messages) => {
+    if (messages.length === 0) return false;
+    const tailMessages = takeFromLast(messages, isUserMessage);
+
+    const toolCalls = tailMessages.reduce<string[]>((acc, cur) => {
+      if (!isAssistantMessage(cur)) return acc;
+      if (!cur.tool_calls || cur.tool_calls.length === 0) return acc;
+      const curToolCallIds = cur.tool_calls
+        .map((toolCall) => toolCall.id)
+        .filter((id) => id !== undefined);
+
+      return [...acc, ...curToolCallIds];
+    }, []);
+
+    if (toolCalls.length === 0) return false;
+
+    const toolMessages = tailMessages
+      .filter(isToolMessage)
+      .map((toolMessage) => toolMessage.content.tool_call_id);
+
+    const hasUnsentTools = toolCalls.some(
+      (toolCallId) => !toolMessages.includes(toolCallId),
+    );
+
+    return hasUnsentTools;
   },
 );
