@@ -69,11 +69,10 @@ pub async fn handle_v1_git_commit(
     let post = serde_json::from_slice::<GitCommitPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
-    let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
-
     let mut error_log = Vec::new();
     let mut commits_applied = Vec::new();
 
+    let abort_flag: Arc<AtomicBool> = gcx.read().await.git_operations_abort_flag.clone();
     for commit in post.commits {
         let repo_path = crate::files_correction::canonical_path(
             &commit.project_path.to_file_path().unwrap_or_default().display().to_string());
@@ -95,7 +94,7 @@ pub async fn handle_v1_git_commit(
             Err(e) => { error_log.push(git_error(format!("Failed to open repo: {}", e))); continue; }
         };
 
-        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes, &shutdown_flag) {
+        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes, &abort_flag) {
             error_log.push(git_error(stage_err));
             continue;
         }
