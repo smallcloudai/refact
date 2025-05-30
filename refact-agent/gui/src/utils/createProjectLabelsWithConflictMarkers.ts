@@ -45,7 +45,7 @@ export const createProjectLabelsWithConflictMarkers = (
     }
   });
 
-  // Process duplicates to create unique labels
+  // Process duplicates to mark conflicting labels
   const result: ProjectLabelInfo[] = [];
 
   for (const [, items] of labelCounts) {
