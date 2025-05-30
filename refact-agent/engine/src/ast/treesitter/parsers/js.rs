@@ -477,7 +477,7 @@ impl JSParser {
             "identifier" /*| "field_identifier"*/ => {
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.language = LanguageId::TypeScript;
+                usage.ast_fields.language = LanguageId::JavaScript;
                 usage.ast_fields.is_error = true;
                 usage.ast_fields.name = code.slice(parent.byte_range()).to_string();
                 usage.ast_fields.full_range = parent.range();
@@ -491,7 +491,7 @@ impl JSParser {
             "member_expression" => {
                 let mut usage = VariableUsage::default();
                 usage.ast_fields.file_path = path.clone();
-                usage.ast_fields.language = LanguageId::TypeScript;
+                usage.ast_fields.language = LanguageId::JavaScript;
                 usage.ast_fields.is_error = true;
                 if let Some(property) = parent.child_by_field_name("property") {
                     usage.ast_fields.name = code.slice(property.byte_range()).to_string();
@@ -747,7 +747,7 @@ impl JSParser {
         let mut ast_fields = AstSymbolFields::default();
         ast_fields.file_path = path.clone();
         ast_fields.is_error = false;
-        ast_fields.language = LanguageId::TypeScript;
+        ast_fields.language = LanguageId::JavaScript;
 
         let mut candidates = VecDeque::from(vec![CandidateInfo {
             ast_fields,
