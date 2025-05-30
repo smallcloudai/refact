@@ -44,7 +44,7 @@ import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfir
 import { telemetryApi } from "../../services/refact/telemetry";
 
 import styles from "./Toolbar.module.css";
-import { selectActiveGroup } from "../../features/Teams";
+import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -86,7 +86,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const isStreaming = useAppSelector((app) => app.chat.streaming);
   const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
   const cache = useAppSelector((app) => app.chat.cache);
-  const activeGroup = useAppSelector(selectActiveGroup);
+  const { newChatEnabled } = useActiveTeamsGroup();
 
   const { openSettings, openHotKeys } = useEventsBusForIDE();
 
@@ -381,7 +381,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           variant="outline"
           ref={(x) => refs.setNewChat(x)}
           onClick={onCreateNewChat}
-          disabled={activeGroup === null}
+          disabled={!newChatEnabled}
         >
           <PlusIcon />
           <Text>New chat</Text>
