@@ -3,43 +3,20 @@ import {
   type FC,
   useState,
   ChangeEventHandler,
-  useEffect,
+  useMemo,
 } from "react";
 import { NotConfiguredIntegrationWithIconRecord } from "../../../services/refact";
 import { Button, Card, Flex, RadioGroup, Text } from "@radix-ui/themes";
-import { formatProjectName } from "../../../utils/formatProjectName";
 import { CustomInputField } from "../CustomFieldsAndWidgets";
 import { Link } from "../../Link";
 import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
-import { debugIntegrations } from "../../../debugConfig";
 import { validateSnakeCase } from "../../../utils/validateSnakeCase";
+import { createProjectLabelsWithConflictMarkers } from "../../../utils/createProjectLabelsWithConflictMarkers";
+import { IntegrationPathField } from "./IntegrationPathField";
 
 type IntegrationCmdlineProps = {
   integration: NotConfiguredIntegrationWithIconRecord;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
-};
-
-const renderIntegrationCmdlineField = ({
-  path,
-  label,
-  shouldBeFormatted,
-}: {
-  path: string;
-  label?: string;
-  shouldBeFormatted: boolean;
-}) => {
-  const formattedLabel = shouldBeFormatted
-    ? formatProjectName({
-        projectPath: path,
-        isMarkdown: false,
-        indexOfLastFolder: 4,
-      })
-    : label;
-  return (
-    <Flex gap="2">
-      <RadioGroup.Item value={path} /> {formattedLabel}
-    </Flex>
-  );
 };
 
 export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
@@ -59,6 +36,13 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
     integration.integr_config_path[0],
   );
 
+  const projectLabels = useMemo(() => {
+    const validProjectPaths = integration.project_path.filter(
+      (path) => path !== "",
+    );
+    return createProjectLabelsWithConflictMarkers(validProjectPaths, 1); // Start with just the last folder name
+  }, [integration.project_path]);
+
   const handleCommandNameChange: ChangeEventHandler<HTMLInputElement> = (
     event,
   ) => {
@@ -70,10 +54,6 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
       setErrorMessage("");
     }
   };
-
-  useEffect(() => {
-    debugIntegrations(`[DEBUG]: integration (not configured): `, integration);
-  }, [integration]);
 
   return (
     <Flex direction="column" gap="4" width="100%">
@@ -93,18 +73,18 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
               name="integr_config_path"
               defaultValue={integration.integr_config_path[0]}
             >
-              {integration.integr_config_path.map((path, index) => {
+              {integration.integr_config_path.map((configPath, index) => {
                 const shouldPathBeFormatted =
                   integration.project_path[index] !== "";
+
                 return (
-                  <Text as="label" size="2" key={path}>
-                    {renderIntegrationCmdlineField({
-                      path,
-                      label: !shouldPathBeFormatted
-                        ? "Global, available for all projects"
-                        : path,
-                      shouldBeFormatted: shouldPathBeFormatted,
-                    })}
+                  <Text as="label" size="2" key={configPath}>
+                    <IntegrationPathField
+                      configPath={configPath}
+                      projectPath={integration.project_path[index]}
+                      projectLabels={projectLabels}
+                      shouldBeFormatted={shouldPathBeFormatted}
+                    />
                   </Text>
                 );
               })}
