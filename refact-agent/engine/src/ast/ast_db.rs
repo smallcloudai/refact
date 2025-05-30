@@ -85,7 +85,9 @@ pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize) -> Arc<
 
     tracing::info!("starting AST db, ast_permanent={:?}", ast_permanent);
     let db_env: Arc<heed::Env> = Arc::new(task::spawn_blocking(move || {
-        let options = heed::EnvOpenOptions::new();
+        let mut options = heed::EnvOpenOptions::new();
+        options.map_size(10 * 1024 * 1024 * 1024); // 10GB, max DB size
+        options.max_dbs(10);
         unsafe { options.open(db_path).unwrap() }
     }).await.unwrap());
 
