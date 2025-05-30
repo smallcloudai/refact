@@ -541,7 +541,7 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
             })}
             {subchat && (
               <Flex ml="4">
-                <Spinner />
+                {waiting && <Spinner />}
                 <Text weight="light" size="1" ml="4px">
                   {subchat}
                 </Text>
