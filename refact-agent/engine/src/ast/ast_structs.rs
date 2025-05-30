@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::fmt;
 use serde::{Deserialize, Serialize};
 use tempfile::TempDir;
-use tokio::sync::{Mutex as AMutex, Notify as ANotify};
+use tokio::sync::{Notify as ANotify};
 pub use crate::ast::treesitter::structs::SymbolType;
 
 
@@ -79,6 +78,7 @@ pub struct AstStatus {
     pub ast_max_files_hit: bool,
 }
 
+#[derive(Default, Debug)]
 pub struct AstCounters {
     pub counter_defs: i32,
     pub counter_usages: i32,

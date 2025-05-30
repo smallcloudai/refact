@@ -66,7 +66,7 @@ pub async fn handle_v1_code_lens(
     let defs: Vec<Arc<AstDefinition>> = if let Some(ast_service) = ast_service_opt {
         let indexing_finished = crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 300, true).await;
         let ast_index = ast_service.lock().await.ast_index.clone();
-        let defs = crate::ast::ast_db::doc_defs(ast_index, &cpath_str).await;
+        let defs = crate::ast::ast_db::doc_defs(ast_index, &cpath_str);
         if !indexing_finished || defs.len() <= 1 {
             tracing::info!("indexing_finished={} defs.len()=={}", indexing_finished, defs.len());
             if let Some(cache_entry) = codelens_cache.lock().await.store.get(&cpath_str) {

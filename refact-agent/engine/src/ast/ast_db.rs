@@ -2,10 +2,8 @@ use std::path::PathBuf;
 use std::time::Instant;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
-use futures::io::Cursor;
 use heed::{RoTxn, RwTxn};
 use indexmap::IndexMap;
-use tokio::sync::Mutex as AMutex;
 use tokio::task;
 use serde_cbor;
 use lazy_static::lazy_static;
@@ -225,8 +223,7 @@ pub fn doc_remove(ast_index: Arc<AstDB>, cpath: &String)
 
         {
             let mut cursor = ast_index.db.prefix_iter(&txn, &d_prefix)?;
-            while let Some(Ok((key, value))) = cursor.next() {
-                let d_key = key.clone();
+            while let Some(Ok((d_key, value))) = cursor.next() {
                 if let Ok(definition) = serde_cbor::from_slice::<AstDefinition>(&value) {
                     let mut path_parts: Vec<&str> = definition.official_path.iter().map(|s| s.as_str()).collect();
                     let official_path = definition.official_path.join("::");
@@ -345,7 +342,6 @@ pub async fn doc_usages(ast_index: Arc<AstDB>, cpath: &String) -> Vec<(usize, St
     usages
 }
 
-
 pub struct ConnectUsageContext {
     pub derived_from_map: IndexMap<String, Vec<String>>,
     pub errstats: AstErrorStats,
@@ -354,6 +350,20 @@ pub struct ConnectUsageContext {
     pub usages_not_found: usize,
     pub usages_ambiguous: usize,
     pub t0: Instant,
+}
+
+impl Default for ConnectUsageContext {
+    fn default() -> Self {
+        ConnectUsageContext {
+            derived_from_map: IndexMap::default(),
+            errstats: AstErrorStats::default(),
+            usages_homeless: 0,
+            usages_connected: 0,
+            usages_not_found: 0,
+            usages_ambiguous: 0,
+            t0: Instant::now(),
+        }
+    }
 }
 
 pub fn connect_usages(ast_index: Arc<AstDB>, ucx: &mut ConnectUsageContext) -> Result<bool, String>
@@ -992,9 +1002,9 @@ mod tests {
         println!("animalage_usage_str:\n{}", animalage_usage_str);
         assert!(animalage_usage.len() == 5);
 
-        let goat_defs = definitions(ast_index.clone(), format!("{}_goat_library::Goat", language).as_str()).await;
+        let goat_defs = definitions(ast_index.clone(), format!("{}_goat_library::Goat", language).as_str()).unwrap();
         let goat_def0 = goat_defs.first().unwrap();
-        let goat_usage = usages(ast_index.clone(), goat_def0.path(), 100).await;
+        let goat_usage = usages(ast_index.clone(), goat_def0.path(), 100).unwrap();
         let mut goat_usage_str = String::new();
         for (used_at_def, used_at_uline) in goat_usage.iter() {
             goat_usage_str.push_str(&format!("{:}:{}\n", used_at_def.cpath, used_at_uline));
@@ -1014,9 +1024,11 @@ mod tests {
 
         // assert!(Arc::strong_count(&db) == 1);
         println!("db.clear");
-        let mut txn = ast_index.db_env.write_txn().unwrap();
-        ast_index.db.clear(&mut txn).unwrap();
-        drop(ast_index);
+        {
+            let mut txn = ast_index.db_env.write_txn().unwrap();
+            ast_index.db.clear(&mut txn).unwrap();
+        }
+        assert!(Arc::try_unwrap(ast_index).is_ok());
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
 

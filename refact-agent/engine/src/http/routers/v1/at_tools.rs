@@ -114,8 +114,8 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             .body(Body::from(body))
             .unwrap()
     }
-    
-    
+
+
     let post = serde_json::from_slice::<ToolsPermissionCheckPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
@@ -215,7 +215,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             _ => {},
         }
     }
-    
+
     Ok(reply(!result_messages.is_empty(), &result_messages))
 }
 

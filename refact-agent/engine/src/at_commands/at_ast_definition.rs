@@ -2,9 +2,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
+use crate::ast::ast_db::definition_paths_fuzzy;
 use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
+use crate::custom_error::trace_and_default;
 // use strsim::jaro_winkler;
 
 
@@ -78,7 +80,7 @@ impl AtParam for AtParamSymbolPathQuery {
         }
         let ast_index = ast_service_opt.unwrap().lock().await.ast_index.clone();
 
-        crate::ast::ast_db::definition_paths_fuzzy(ast_index, value, top_n, 1000).await
+        definition_paths_fuzzy(ast_index, value, top_n, 1000).await.unwrap_or_else(trace_and_default)
     }
 
     fn param_completion_valid(&self) -> bool {
@@ -116,7 +118,7 @@ impl AtCommand for AtAstDefinition {
         let ast_service_opt = gcx.read().await.ast_service.clone();
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            let defs: Vec<Arc<crate::ast::ast_structs::AstDefinition>> = crate::ast::ast_db::definitions(ast_index, arg_symbol.text.as_str()).await;
+            let defs: Vec<Arc<crate::ast::ast_structs::AstDefinition>> = crate::ast::ast_db::definitions(ast_index, arg_symbol.text.as_str())?;
             let file_paths = defs.iter().map(|x| x.cpath.clone()).collect::<Vec<_>>();
             let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), &file_paths).await;
 

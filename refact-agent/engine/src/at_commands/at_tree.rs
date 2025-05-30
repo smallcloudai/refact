@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
-use sled::Db;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
@@ -111,9 +110,9 @@ pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBu
     root_nodes
 }
 
-fn _print_symbols(db: Arc<Db>, entry: &PathsHolderNode) -> String {
+fn _print_symbols(db: Arc<AstDB>, entry: &PathsHolderNode) -> String {
     let cpath = entry.path.to_string_lossy().to_string();
-    let defs = crate::ast::ast_db::doc_def_internal(db.clone(), &cpath);
+    let defs = crate::ast::ast_db::doc_defs(db.clone(), &cpath);
     let symbols_list = defs
         .iter()
         .filter(|x| match x.symbol_type {
@@ -131,7 +130,7 @@ async fn _print_files_tree(
     ast_db: Option<Arc<AstDB>>,
     maxdepth: usize,
 ) -> String {
-    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, db_mb: Option<Arc<Db>>) -> Option<String> {
+    fn traverse(node: &PathsHolderNodeArc, depth: usize, maxdepth: usize, ast_db: Option<Arc<AstDB>>) -> Option<String> {
         if depth > maxdepth {
             return None;
         }
@@ -140,8 +139,8 @@ async fn _print_files_tree(
         let indent = "  ".repeat(depth);
         let name = if node.is_dir { format!("{}/", node.file_name()) } else { node.file_name() };
         if !node.is_dir {
-            if let Some(db) = &db_mb {
-                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db.clone(), &node)));
+            if let Some(db) = ast_db.clone() {
+                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db, &node)));
             } else {
                 output.push_str(&format!("{}{}\n", indent, name));
             }
@@ -151,7 +150,7 @@ async fn _print_files_tree(
         let (mut dirs, mut files) = (0, 0);
         let mut child_output = String::new();
         for child in &node.child_paths {
-            if let Some(child_str) = traverse(child, depth + 1, maxdepth, db_mb.clone()) {
+            if let Some(child_str) = traverse(child, depth + 1, maxdepth, ast_db.clone()) {
                 child_output.push_str(&child_str);
             } else {
                 dirs += child.0.read().unwrap().is_dir as usize;
@@ -169,7 +168,7 @@ async fn _print_files_tree(
     let mut result = String::new();
     for node in tree {
         let db_mb = if let Some(ast) = ast_db.clone() {
-            Some(ast.sleddb.clone())
+            Some(ast)
         } else {
             None
         };

@@ -121,12 +121,12 @@ pub async fn pp_ast_markup_files(
         let defs = match &ast_service {
             Some(ast) if get_ast_parser_by_filename(&doc.doc_path).is_ok() => {
                 let ast_index = ast.lock().await.ast_index.clone();
-                crate::ast::ast_db::doc_defs(ast_index, &doc.doc_path.to_string_lossy().to_string()).await
+                crate::ast::ast_db::doc_defs(ast_index, &doc.doc_path.to_string_lossy().to_string())
             }
             _ => vec![],
         };
         let mut symbols_sorted_by_path_len = defs.clone();
-        symbols_sorted_by_path_len.sort_by_key(|s| s.official_path.len());
+        symbols_sorted_by_path_len.sort_by_key(|s| s.path().len());
         result.push(Arc::new(PPFile {  // doesn't matter what size the output vector is
             symbols_sorted_by_path_len,
             file_content: text,
