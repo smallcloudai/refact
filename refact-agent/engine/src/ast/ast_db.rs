@@ -102,9 +102,7 @@ pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize) -> Arc<
     let ast_index = AstDB {
         db_env,
         db,
-        db_temp_dir,
-        batch_counter: AMutex::new(0),
-        counters_increase: AMutex::new(HashMap::new()),
+        _db_temp_dir: db_temp_dir,
         ast_max_files,
     };
     Arc::new(ast_index)
