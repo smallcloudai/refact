@@ -61,9 +61,7 @@ impl AstDefinition {
 pub struct AstDB {
     pub db_env: Arc<heed::Env>,
     pub db: Arc<heed::Database<heed::types::Str, heed::types::Bytes>>,
-    pub db_temp_dir: Option<TempDir>,
-    pub batch_counter: AMutex<usize>,
-    pub counters_increase: AMutex<HashMap<String, i32>>,
+    pub _db_temp_dir: Option<TempDir>, // Kept for cleanup
     pub ast_max_files: usize,
 }
 
