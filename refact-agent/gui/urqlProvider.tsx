@@ -37,7 +37,7 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
       createClient({
         url: `${protocol}://${baseUrl}`,
         exchanges: [
-          debugExchange,
+          // debugExchange,
           cacheExchange,
           subscriptionExchange({
             forwardSubscription: (operation) => ({
