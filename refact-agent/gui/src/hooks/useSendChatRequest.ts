@@ -78,8 +78,6 @@ type SubmitHandlerParams =
       maybeDropLastMessage?: boolean;
     };
 
-let recallCounter = 0;
-
 export const PATCH_LIKE_FUNCTIONS = [
   "patch",
   "text_edit",
@@ -280,7 +278,6 @@ export const useSendChatRequest = () => {
   );
 
   const confirmToolUsage = useCallback(() => {
-    abort();
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
         wasInteracted: true,
@@ -289,12 +286,10 @@ export const useSendChatRequest = () => {
     );
 
     dispatch(setIsWaitingForResponse(false));
-  }, [abort, dispatch]);
+  }, [dispatch]);
 
   const rejectToolUsage = useCallback(
     (toolCallIds: string[]) => {
-      abort();
-
       toolCallIds.forEach((toolCallId) => {
         dispatch(
           upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }),
@@ -305,7 +300,7 @@ export const useSendChatRequest = () => {
       dispatch(resetConfirmationInteractedState());
       dispatch(setIsWaitingForResponse(false));
     },
-    [abort, chatId, dispatch],
+    [chatId, dispatch],
   );
 
   const retryFromIndex = useCallback(
@@ -344,8 +339,7 @@ export function useAutoSend() {
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
   const hasUnsentTools = useAppSelector(selectHasUncalledTools);
-  const { sendMessages, abort, messagesWithSystemPrompt } =
-    useSendChatRequest();
+  const { sendMessages, messagesWithSystemPrompt } = useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
   const thread = useAppSelector(selectThread);
   const isIntegration = thread.integration ?? false;
@@ -366,18 +360,13 @@ export function useAutoSend() {
   }, [errored, hasUnsentTools, isWaiting, preventSend, streaming]);
 
   const stopForToolConfirmation = useMemo(() => {
-    return !isIntegration && !wasInteracted && !areToolsConfirmed;
+    if (isIntegration) return false;
+    return !wasInteracted && !areToolsConfirmed;
   }, [isIntegration, wasInteracted, areToolsConfirmed]);
 
   useEffect(() => {
     if (stop) return;
-    if (stopForToolConfirmation) {
-      abort();
-      if (recallCounter < 1) {
-        recallCounter++;
-        return;
-      }
-    }
+    if (stopForToolConfirmation) return;
 
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
@@ -387,9 +376,7 @@ export function useAutoSend() {
     );
 
     void sendMessages(currentMessages, thread.mode);
-    recallCounter = 0;
   }, [
-    abort,
     areToolsConfirmed,
     currentMessages,
     dispatch,
