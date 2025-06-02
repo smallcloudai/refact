@@ -1,4 +1,4 @@
-use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage};
+use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, ContextFile, DiffChunk};
 use crate::global_context::GlobalContext;
 use crate::scratchpads::passthrough_convert_messages;
 use log::error;
@@ -6,7 +6,9 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use itertools::Itertools;
 use tokio::sync::RwLock as ARwLock;
+use tracing::warn;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ThreadMessage {
@@ -253,44 +255,99 @@ pub fn convert_messages_to_thread_messages(
     start_num: i32,
     thread_id: &str,
 ) -> Result<Vec<ThreadMessage>, String> {
-    let openai_messages = passthrough_convert_messages::convert_messages_to_openai_format(
-        messages.clone(),
-        &None,
-        "",
-    );
-    let mut output_messages = vec![];
+    let mut output_messages = Vec::new();
+    let flush_delayed_images = |results: &mut Vec<Value>, delay_images: &mut Vec<Value>| {
+        results.extend(delay_images.clone());
+        delay_images.clear();
+    };
     for (i, msg) in messages.into_iter().enumerate() {
         let num = start_num + i as i32;
-        let openai_msg = &openai_messages[i];
-        let tool_calls = if let Some(tc) = &msg.tool_calls {
-            Some(serde_json::to_value(tc).unwrap_or(Value::Null))
+        let mut delay_images = vec![];
+        let mut messages = if msg.role == "tool" {
+            let mut results = vec![];
+            match &msg.content {
+                ChatContent::Multimodal(multimodal_content) => {
+                    let texts = multimodal_content.iter().filter(|x|x.is_text()).collect::<Vec<_>>();
+                    let images = multimodal_content.iter().filter(|x|x.is_image()).collect::<Vec<_>>();
+                    let text = if texts.is_empty() {
+                        "attached images below".to_string()
+                    } else {
+                        texts.iter().map(|x|x.m_content.clone()).collect::<Vec<_>>().join("\n")
+                    };
+                    let mut msg_cloned = msg.clone();
+                    msg_cloned.content = ChatContent::SimpleText(text);
+                    results.push(msg_cloned.into_value(&None, ""));
+                    if !images.is_empty() {
+                        let msg_img = ChatMessage {
+                            role: "user".to_string(),
+                            content: ChatContent::Multimodal(images.into_iter().cloned().collect()),
+                            ..Default::default()
+                        };
+                        delay_images.push(msg_img.into_value(&None, ""));
+                    }
+                },
+                ChatContent::SimpleText(_) => {
+                    results.push(msg.into_value(&None, ""));
+                }
+            }
+            results
+        } else if msg.role == "assistant" || msg.role == "system" {
+            vec![msg.into_value(&None, "")]
+        } else if msg.role == "user" {
+            vec![msg.into_value(&None, "")]
+        } else if msg.role == "diff" {
+            let extra_message = match serde_json::from_str::<Vec<DiffChunk>>(&msg.content.content_text_only()) {
+                Ok(chunks) => {
+                    chunks.iter()
+                        .filter(|x| !x.application_details.is_empty())
+                        .map(|x| x.application_details.clone())
+                        .join("\n")
+                },
+                Err(_) => "".to_string()
+            };
+            vec![ChatMessage {
+                role: "diff".to_string(),
+                content: ChatContent::SimpleText(format!("The operation has succeeded.\n{extra_message}")),
+                tool_calls: None,
+                tool_call_id: msg.tool_call_id.clone(),
+                ..Default::default()
+            }.into_value(&None, "")]
+        } else if msg.role == "plain_text" || msg.role == "cd_instruction" || msg.role == "context_file" {
+            vec![ChatMessage::new(
+                msg.role.to_string(),
+                msg.content.content_text_only(),
+            ).into_value(&None, "")]
         } else {
-            None
+            warn!("unknown role: {}", msg.role);
+            vec![]
         };
-        let usage = msg
-            .usage
-            .map(|u| serde_json::to_value(u).unwrap_or(Value::Null));
-        let role = msg.role.clone();
-        let content = openai_msg
-            .get("content")
-            .cloned()
-            .ok_or("cannot find role in the message".to_string())?;
-        output_messages.push(ThreadMessage {
-            ftm_belongs_to_ft_id: thread_id.to_string(),
-            ftm_alt: alt,
-            ftm_num: num,
-            ftm_prev_alt: prev_alt,
-            ftm_role: role,
-            ftm_content: Some(content),
-            ftm_tool_calls: tool_calls,
-            ftm_call_id: msg.tool_call_id,
-            ftm_usage: usage,
-            ftm_created_ts: std::time::SystemTime::now()
-                .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs_f64(),
-            ftm_provenance: json!({"important": "information"}),
-        })
+        flush_delayed_images(&mut messages, &mut delay_images);
+        for pp_msg in messages {
+            let tool_calls = pp_msg.get("tool_calls")
+                .map(|x| Some(x.clone())).unwrap_or(None);
+            let usage = pp_msg.get("usage")
+                .map(|x| Some(x.clone())).unwrap_or(None);
+            let content = pp_msg
+                .get("content")
+                .cloned()
+                .ok_or("cannot find role in the message".to_string())?;
+            output_messages.push(ThreadMessage {
+                ftm_belongs_to_ft_id: thread_id.to_string(),
+                ftm_alt: alt,
+                ftm_num: num,
+                ftm_prev_alt: prev_alt,
+                ftm_role: msg.role.clone(),
+                ftm_content: Some(content),
+                ftm_tool_calls: tool_calls,
+                ftm_call_id: msg.tool_call_id.clone(),
+                ftm_usage: usage,
+                ftm_created_ts: std::time::SystemTime::now()
+                    .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs_f64(),
+                ftm_provenance: json!({"system_type": "refact_lsp", "version": env!("CARGO_PKG_VERSION") }),
+            })
+        }
     }
     Ok(output_messages)
 }
