@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex, Button, Text, Card } from "@radix-ui/themes";
@@ -20,11 +20,13 @@ import {
   selectThreadNewChatSuggested,
 } from "../../features/Chat/Thread";
 import { ThreadHistoryButton } from "../Buttons";
-import { push } from "../../features/Pages/pagesSlice";
+import { push, selectCurrentPage } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+import { v4 as uuid } from "uuid";
+import { useMessageSubscription } from "./useMessageSubscription";
 
 export type ChatProps = {
   host: Config["host"];
@@ -44,6 +46,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
+  useMessageSubscription();
 
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retryFromIndex } = useSendChatRequest();

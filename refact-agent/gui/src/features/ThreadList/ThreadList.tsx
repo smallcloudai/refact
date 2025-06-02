@@ -23,6 +23,7 @@ import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../../components/Buttons/Buttons";
 import { CardButton } from "../../components/Buttons";
 import { RootState } from "../../app/store";
+import { pagesSlice } from "../Pages/pagesSlice";
 
 function useThreadPageSub() {
   const dispatch = useAppDispatch();
@@ -32,9 +33,12 @@ function useThreadPageSub() {
   const error = useAppSelector(selectThreadListError);
   const threads = useAppSelector(selectThreadList);
 
-  const onOpen = useCallback((_id: string) => {
-    // open the chat some how.
-  }, []);
+  const onOpen = useCallback(
+    (ft_id: string) => {
+      dispatch(pagesSlice.actions.push({ name: "chat", ft_id }));
+    },
+    [dispatch],
+  );
 
   const onDelete = useCallback(
     (id: string) => {
