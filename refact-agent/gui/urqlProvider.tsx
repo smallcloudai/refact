@@ -1,7 +1,6 @@
 import {
   Provider,
   createClient,
-  debugExchange,
   cacheExchange,
   fetchExchange,
   subscriptionExchange,
