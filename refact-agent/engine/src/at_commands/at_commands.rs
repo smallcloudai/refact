@@ -92,17 +92,17 @@ pub trait AtParam: Send + Sync {
 
 pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<String, Arc<dyn AtCommand + Send>> {
     let at_commands_dict = HashMap::from([
-        ("@file".to_string(), Arc::new(AMutex::new(Box::new(AtFile::new()) as Box<dyn AtCommand + Send>))),
-        // ("@file-search".to_string(), Arc::new(AMutex::new(Box::new(AtFileSearch::new()) as Box<dyn AtCommand + Send>))),
-        ("@definition".to_string(), Arc::new(AMutex::new(Box::new(AtAstDefinition::new()) as Box<dyn AtCommand + Send>))),
-        ("@references".to_string(), Arc::new(AMutex::new(Box::new(AtAstReference::new()) as Box<dyn AtCommand + Send>))),
-        // ("@local-notes-to-self".to_string(), Arc::new(AMutex::new(Box::new(AtLocalNotesToSelf::new()) as Box<dyn AtCommand + Send>))),
-        ("@tree".to_string(), Arc::new(AMutex::new(Box::new(AtTree::new()) as Box<dyn AtCommand + Send>))),
-        // ("@diff".to_string(), Arc::new(AMutex::new(Box::new(AtDiff::new()) as Box<dyn AtCommand + Send>))),
-        // ("@diff-rev".to_string(), Arc::new(AMutex::new(Box::new(AtDiffRev::new()) as Box<dyn AtCommand + Send>))),
-        ("@web".to_string(), Arc::new(AMutex::new(Box::new(AtWeb::new()) as Box<dyn AtCommand + Send>))),
-        ("@search".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_search::AtSearch::new()) as Box<dyn AtCommand + Send>))),
-        ("@knowledge-load".to_string(), Arc::new(AMutex::new(Box::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Box<dyn AtCommand + Send>))),
+        ("@file".to_string(), Arc::new(AtFile::new()) as Arc<dyn AtCommand + Send>),
+        // ("@file-search".to_string(), Arc::new(AtFileSearch::new()) as Arc<dyn AtCommand + Send>),
+        ("@definition".to_string(), Arc::new(AtAstDefinition::new()) as Arc<dyn AtCommand + Send>),
+        ("@references".to_string(), Arc::new(AtAstReference::new()) as Arc<dyn AtCommand + Send>),
+        // ("@local-notes-to-self".to_string(), Arc::new(AtLocalNotesToSelf::new()) as Arc<dyn AtCommand + Send>),
+        ("@tree".to_string(), Arc::new(AtTree::new()) as Arc<dyn AtCommand + Send>),
+        // ("@diff".to_string(), Arc::new(AtDiff::new()) as Arc<dyn AtCommand + Send>),
+        // ("@diff-rev".to_string(), Arc::new(AtDiffRev::new()) as Arc<dyn AtCommand + Send>),
+        ("@web".to_string(), Arc::new(AtWeb::new()) as Arc<dyn AtCommand + Send>),
+        ("@search".to_string(), Arc::new(crate::at_commands::at_search::AtSearch::new()) as Arc<dyn AtCommand + Send>),
+        ("@knowledge-load".to_string(), Arc::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Arc<dyn AtCommand + Send>),
     ]);
 
     let (ast_on, vecdb_on) = {
