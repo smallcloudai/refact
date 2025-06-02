@@ -166,17 +166,6 @@ async fn main() {
 
     // Privacy before we do anything else, the default is to block everything
     let _ = crate::privacy::load_privacy_if_needed(gcx.clone()).await;
-    
-    let gcx_clone = gcx.clone();
-    tokio::spawn(async move {
-        files_in_workspace::enqueue_all_files_from_workspace_folders(gcx_clone.clone(), true, false).await;
-        files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx_clone.clone(), true, false).await;
-    
-        let gcx_clone = gcx_clone.clone();
-        tokio::spawn(async move {
-            crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
-        });
-    });
 
     // Start or connect to mcp servers
     let _ = running_integrations::load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
@@ -208,6 +197,7 @@ async fn main() {
     }
 
     background_tasks.abort().await;
+    git::checkpoints::abort_init_shadow_repos(gcx.clone()).await;
     integrations::sessions::stop_sessions(gcx.clone()).await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;

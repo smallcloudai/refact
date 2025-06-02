@@ -24,6 +24,7 @@ use crate::integrations::docker::docker_ssh_tunnel_utils::SshTunnel;
 use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
 use crate::telemetry::telemetry_structs;
+use crate::background_tasks::BackgroundTasksHolder;
 
 
 #[derive(Debug, StructOpt, Clone)]
@@ -172,7 +173,10 @@ pub struct GlobalContext {
     pub integration_sessions: HashMap<String, Arc<AMutex<Box<dyn IntegrationSession>>>>,
     pub codelens_cache: Arc<AMutex<crate::http::routers::v1::code_lens::CodeLensCache>>,
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
-    pub active_group_id: Option<String>
+    pub active_group_id: Option<String>,
+    pub init_shadow_repos_background_task_holder: BackgroundTasksHolder,
+    pub init_shadow_repos_lock: Arc<AMutex<bool>>,
+    pub git_operations_abort_flag: Arc<AtomicBool>,
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -380,7 +384,10 @@ pub async fn create_global_context(
         integration_sessions: HashMap::new(),
         codelens_cache: Arc::new(AMutex::new(crate::http::routers::v1::code_lens::CodeLensCache::default())),
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
-        active_group_id: cmdline.active_group_id.clone()
+        active_group_id: cmdline.active_group_id.clone(),
+        init_shadow_repos_background_task_holder: BackgroundTasksHolder::new(vec![]),
+        init_shadow_repos_lock: Arc::new(AMutex::new(false)),
+        git_operations_abort_flag: Arc::new(AtomicBool::new(false)),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
