@@ -14,8 +14,6 @@ pub struct Thread {
     pub located_fgroup_id: String,
     pub ft_id: String,
     pub ft_fexp_name: String,
-    pub ft_fexp_ver_major: i64,
-    pub ft_fexp_ver_minor: i64,
     pub ft_title: String,
     pub ft_toolset: Vec<Value>,
     pub ft_belongs_to_fce_id: Option<String>,
@@ -23,7 +21,7 @@ pub struct Thread {
     pub ft_temperature: f64,
     pub ft_max_new_tokens: i32,
     pub ft_n: i32,
-    pub ft_error: String,
+    pub ft_error: Option<String>,
     pub ft_need_assistant: i32,
     pub ft_need_tool_calls: i32,
     pub ft_anything_new: bool,
@@ -52,8 +50,6 @@ pub async fn get_thread(
             located_fgroup_id
             ft_id
             ft_fexp_name,
-            ft_fexp_ver_major,
-            ft_fexp_ver_minor,
             ft_title
             ft_belongs_to_fce_id
             ft_model

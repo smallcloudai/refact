@@ -12,10 +12,8 @@ use crate::global_context::GlobalContext;
 pub struct Expert {
     pub owner_fuser_id: Option<String>,
     pub owner_shared: bool,
-    pub located_fgroup_id: String,
+    pub located_fgroup_id: Option<String>,
     pub fexp_name: String,
-    pub fexp_ver_major: i32,
-    pub fexp_ver_minor: i32,
     pub fexp_system_prompt: String,
     pub fexp_python_kernel: String,
     pub fexp_block_tools: String,
@@ -63,19 +61,17 @@ impl Expert {
 
 pub async fn get_expert(
     gcx: Arc<ARwLock<GlobalContext>>,
-    expert_name: &str,
+    expert_name: &str
 ) -> Result<Expert, String> {
     let client = Client::new();
     let api_key = crate::cloud::constants::API_KEY;
     let query = r#"
-    query GetExpert($located_fgroup_id: String!, $skip: Int!, $limit: Int!) {
-        expert_list(located_fgroup_id: $located_fgroup_id, skip: $skip, limit: $limit) {
+    query GetExpert($located_fgroup_id: String!) {
+        experts_effective_list(located_fgroup_id: $located_fgroup_id) {
             owner_fuser_id
             owner_shared
             located_fgroup_id
             fexp_name
-            fexp_ver_major
-            fexp_ver_minor
             fexp_system_prompt
             fexp_python_kernel
             fexp_block_tools
@@ -83,10 +79,8 @@ pub async fn get_expert(
         }
     }
     "#;
-    let variables = json!({
-        "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
-        "skip": 0,
-        "limit": 100
+    let mut variables = json!({
+        "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID
     });
     let response = client
         .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
@@ -113,14 +107,14 @@ pub async fn get_expert(
             return Err(format!("GraphQL error: {}", error_msg));
         }
         if let Some(data) = response_json.get("data") {
-            if let Some(expert_list) = data.get("expert_list") {
+            if let Some(expert_list) = data.get("experts_effective_list") {
                 if let Some(experts) = expert_list.as_array() {
                     if experts.len() > 1 {
-                        return Err(format!(
-                            "Multiple experts found for group ID {} with expert_name {}",
+                        tracing::warn!(
+                            "Multiple experts found for group ID {} with expert_name {}, this might cause inconsistent behavior",
                             crate::cloud::constants::DEFAULT_FGROUP_ID,
                             expert_name
-                        ));
+                        )
                     }
                     for expert_value in experts {
                         let expert: Expert = serde_json::from_value(expert_value.clone())

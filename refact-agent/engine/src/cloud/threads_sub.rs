@@ -14,6 +14,7 @@ use tracing::{error, info};
 use url::Url;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatContent;
+use crate::cloud::experts_req::Expert;
 use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::Thread;
 use crate::custom_error::MapErrToString;
@@ -25,7 +26,7 @@ pub struct ThreadPayload {
     pub owner_shared: bool,
     pub ft_id: String,
     pub ft_title: String,
-    pub ft_error: String,
+    pub ft_error: Option<String>,
     pub ft_updated_ts: f64,
     pub ft_locked_by: String,
     pub ft_need_assistant: i64,
@@ -320,7 +321,7 @@ async fn process_thread_event(
     thread_payload: &ThreadPayload,
     basic_info: &BasicStuff
 ) -> Result<(), String> {
-    if thread_payload.ft_need_tool_calls == -1 || !thread_payload.ft_error.is_empty() {
+    if thread_payload.ft_need_tool_calls == -1 || thread_payload.ft_error.is_some() {
         return Ok(());
     }
     if thread_payload.owner_fuser_id != basic_info.fuser_id {
