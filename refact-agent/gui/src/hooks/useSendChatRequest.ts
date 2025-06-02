@@ -299,6 +299,8 @@ export const useSendChatRequest = () => {
 
       dispatch(resetConfirmationInteractedState());
       dispatch(setIsWaitingForResponse(false));
+      dispatch(doneStreaming({ id: chatId }));
+      dispatch(setPreventSend({ id: chatId }));
     },
     [chatId, dispatch],
   );
