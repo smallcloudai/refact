@@ -1,11 +1,6 @@
-import {
-  createSelector,
-  createSlice,
-  type PayloadAction,
-} from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { ThreadsPageSubsSubscription } from "../../../generated/documents";
 import { errorSlice } from "../Errors/errorsSlice";
-import { act } from "react-dom/test-utils";
 import {
   deleteThreadThunk,
   threadsPageSub,

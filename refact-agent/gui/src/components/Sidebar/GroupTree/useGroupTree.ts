@@ -25,7 +25,8 @@ import { NodeApi } from "react-arborist";
 import { resetActiveGroup, setActiveGroup } from "../../../features/Teams";
 import { setError } from "../../../features/Errors/errorsSlice";
 
-export type TeamsWorkspace = NavTreeWantWorkspacesQuery["login"][number];
+export type TeamsWorkspace =
+  NavTreeWantWorkspacesQuery["query_basic_stuff"]["workspaces"][number];
 
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
@@ -186,20 +187,21 @@ export function useGroupTree() {
   const onWorkspaceSelection = useCallback(
     (workspaceId: string) => {
       setCurrentTeamsWorkspace(
-        teamsWorkspaces.data?.login.find((w) => w.ws_id === workspaceId) ??
-          null,
+        teamsWorkspaces.data?.query_basic_stuff.workspaces.find(
+          (w) => w.ws_id === workspaceId,
+        ) ?? null,
       );
       setCurrentSelectedTeamsGroupNode(null);
     },
-    [teamsWorkspaces.data?.login],
+    [teamsWorkspaces.data?.query_basic_stuff.workspaces],
   );
 
   const availableWorkspaces = useMemo(() => {
-    if (teamsWorkspaces.data?.login) {
-      return teamsWorkspaces.data.login;
+    if (teamsWorkspaces.data?.query_basic_stuff.workspaces) {
+      return teamsWorkspaces.data.query_basic_stuff.workspaces;
     }
     return [];
-  }, [teamsWorkspaces.data?.login]);
+  }, [teamsWorkspaces.data?.query_basic_stuff.workspaces]);
 
   return {
     // Refs

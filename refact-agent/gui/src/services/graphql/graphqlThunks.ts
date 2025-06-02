@@ -1,4 +1,8 @@
-import { createGraphqlClient } from "./createClient";
+import {
+  Client,
+  createGraphqlClient,
+  createSubscription,
+} from "./createClient";
 import { createAppAsyncThunk } from "./createAppAsyncThunk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
@@ -9,6 +13,14 @@ import {
   DeleteThreadDocument,
   DeleteThreadMutationVariables,
   DeleteThreadMutation,
+  CreateThreadMutation,
+  CreateThreadDocument,
+  CreateThreadMutationVariables,
+  MessagesSubscriptionSubscriptionVariables,
+  MessagesSubscriptionDocument,
+  MessageCreateMutationVariables,
+  MessageCreateMutation,
+  MessageCreateDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -16,6 +28,7 @@ import { AppDispatch, RootState } from "../../app/store";
 // import { CombinedError } from "urql";
 
 const THREE_MINUTES = 3 * 60 * 1000;
+
 export const threadsPageSub = createAppAsyncThunk<
   unknown,
   ThreadsPageSubsSubscriptionVariables
@@ -90,4 +103,75 @@ export const deleteThreadThunk = createAsyncThunk<
     });
   }
   return thunkAPI.fulfillWithValue({ id: args.id });
+});
+
+export const createThreadThunk = createAsyncThunk<
+  unknown,
+  CreateThreadMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("graphql/createThread", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
+  const result = await client.mutation<
+    CreateThreadMutation,
+    CreateThreadMutationVariables
+  >(CreateThreadDocument, args);
+  if (result.error) {
+    return thunkAPI.rejectWithValue({
+      message: result.error.message,
+    });
+  }
+  return thunkAPI.fulfillWithValue(result.data ?? args);
+});
+
+export const messagesSub = createAsyncThunk<
+  unknown,
+  MessagesSubscriptionSubscriptionVariables,
+  { dispatch: AppDispatch; state: RootState }
+>("graphql/messageSubscription", (args, thunkApi) => {
+  const state = thunkApi.getState();
+  const apiKey = state.config.apiKey ?? "";
+  createSubscription(
+    apiKey,
+    MessagesSubscriptionDocument,
+    args,
+    thunkApi.signal,
+    (result) => {
+      console.log(result.data);
+    },
+  );
+});
+
+export const createMessage = createAppAsyncThunk<
+  unknown,
+  MessageCreateMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string; args: MessageCreateMutationVariables };
+  }
+>("graphql/createMessage", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const result = await client.mutation<
+    MessageCreateMutation,
+    MessageCreateMutationVariables
+  >(MessageCreateDocument, args);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({
+      message: result.error.message,
+      args,
+    });
+  }
+  return thunkAPI.fulfillWithValue(result.data);
 });

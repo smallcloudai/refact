@@ -15,8 +15,6 @@ input FExpertInput {
   fexp_name: String!
   fexp_python_kernel: String!
   fexp_system_prompt: String!
-  fexp_ver_major: Int!
-  fexp_ver_minor: Int!
   located_fgroup_id: String!
   owner_fuser_id: String
   owner_shared: Boolean!
@@ -28,8 +26,6 @@ type FExpertOutput {
   fexp_name: String!
   fexp_python_kernel: String!
   fexp_system_prompt: String!
-  fexp_ver_major: Int!
-  fexp_ver_minor: Int!
   located_fgroup_id: String!
   owner_fuser_id: String
   owner_shared: Boolean!
@@ -44,7 +40,7 @@ type FExpertSubs {
   news_action: String!
   news_payload: FExpertOutput!
   news_payload_id: String!
-  news_ws_id: String!
+  news_pubsub: String!
 }
 
 input FExternalDataSourceInput {
@@ -119,7 +115,7 @@ type FKnowledgeItemSubs {
   news_action: String!
   news_payload: FKnowledgeItemOutput
   news_payload_id: String!
-  news_ws_id: String!
+  news_pubsub: String!
 }
 
 type FPluginOutput {
@@ -134,34 +130,20 @@ type FThreadDelta {
 }
 
 input FThreadInput {
+  ft_app_capture: String! = ""
+  ft_app_searchable: String! = ""
+  ft_app_specific: String! = "null"
   ft_belongs_to_fce_id: String = null
-  ft_error: String = null
+  ft_error: String! = "null"
   ft_fexp_name: String!
-  ft_fexp_ver_major: Int!
-  ft_fexp_ver_minor: Int!
   ft_max_new_tokens: Int! = 8192
   ft_model: String! = ""
   ft_n: Int! = 1
   ft_temperature: Float! = 0
   ft_title: String!
-  ft_toolset: String = null
+  ft_toolset: String! = "null"
   located_fgroup_id: String!
   owner_shared: Boolean!
-}
-
-type FThreadMessage {
-  ftm_alt: Int!
-  ftm_app_specific: JSON
-  ftm_belongs_to_ft_id: String!
-  ftm_call_id: String!
-  ftm_content: JSON
-  ftm_created_ts: Float!
-  ftm_num: Int!
-  ftm_prev_alt: Int!
-  ftm_provenance: JSON!
-  ftm_role: String!
-  ftm_tool_calls: JSON
-  ftm_usage: JSON
 }
 
 input FThreadMessageInput {
@@ -178,17 +160,35 @@ input FThreadMessageInput {
   ftm_usage: String = "null"
 }
 
+type FThreadMessageOutput {
+  ft_app_capture: String
+  ft_app_searchable: String
+  ft_app_specific: JSON
+  ftm_alt: Int!
+  ftm_app_specific: JSON
+  ftm_belongs_to_ft_id: String!
+  ftm_call_id: String!
+  ftm_content: JSON
+  ftm_created_ts: Float!
+  ftm_num: Int!
+  ftm_prev_alt: Int!
+  ftm_provenance: JSON!
+  ftm_role: String!
+  ftm_tool_calls: JSON
+  ftm_usage: JSON
+}
+
 type FThreadMessageSubs {
   news_action: String!
   news_payload_id: String!
   news_payload_thread: FThreadOutput
-  news_payload_thread_message: FThreadMessage
+  news_payload_thread_message: FThreadMessageOutput
   stream_delta: FThreadDelta
 }
 
 type FThreadMessagesCreateResult {
   count: Int!
-  messages: [FThreadMessage!]!
+  messages: [FThreadMessageOutput!]!
 }
 
 input FThreadMultipleMessagesInput {
@@ -199,14 +199,13 @@ input FThreadMultipleMessagesInput {
 type FThreadOutput {
   ft_anything_new: Boolean!
   ft_app_capture: String!
+  ft_app_searchable: String!
   ft_app_specific: JSON
   ft_archived_ts: Float!
   ft_belongs_to_fce_id: String
   ft_created_ts: Float!
-  ft_error: String!
+  ft_error: JSON
   ft_fexp_name: String!
-  ft_fexp_ver_major: Int!
-  ft_fexp_ver_minor: Int!
   ft_id: String!
   ft_locked_by: String!
   ft_max_new_tokens: Int!
@@ -216,7 +215,7 @@ type FThreadOutput {
   ft_need_tool_calls: Int!
   ft_temperature: Float!
   ft_title: String!
-  ft_toolset: JSON!
+  ft_toolset: JSON
   ft_updated_ts: Float!
   located_fgroup_id: String!
   owner_fuser_id: String!
@@ -225,7 +224,7 @@ type FThreadOutput {
 
 input FThreadPatch {
   ft_anything_new: Boolean = null
-  ft_app_capture: String = null
+  ft_app_searchable: String = null
   ft_app_specific: String = null
   ft_archived_ts: Float = null
   ft_belongs_to_fce_id: String = null
@@ -244,7 +243,7 @@ type FThreadSubs {
   news_action: String!
   news_payload: FThreadOutput
   news_payload_id: String!
-  news_ws_id: String!
+  news_pubsub: String!
 }
 
 type FWorkspace {
@@ -292,23 +291,34 @@ type Mutation {
   knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
   knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItemOutput!
   stats_add(st_how_many: Int!, st_involved_expert: String! = "", st_involved_fuser_id: String! = "", st_involved_model: String! = "", st_thing: String!, ts: Float!, ws_id: String!): Boolean!
+  tech_support_activate(ws_id: String!): Boolean!
+  tech_support_set_config(config: TechSupportSettingsInput!, ws_id: String!): Boolean!
   thread_create(input: FThreadInput!): FThreadOutput!
   thread_delete(id: String!): Boolean!
+  thread_lock(ft_id: String!, worker_name: String!): Boolean!
   thread_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
-  thread_message_create(input: FThreadMessageInput!): FThreadMessage!
+  thread_message_create(input: FThreadMessageInput!): FThreadMessageOutput!
   thread_messages_create_multiple(input: FThreadMultipleMessagesInput!): FThreadMessagesCreateResult!
   thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
+  thread_provide_toolset(ft_id: String!, toolset: String!): Boolean!
+  thread_unlock(ft_id: String!, worker_name: String!): Boolean!
 }
 
 type Query {
+  expert_get(id: String!): FExpertOutput!
   expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
+  experts_effective_list(located_fgroup_id: String!): [FExpertOutput!]!
+  external_data_source_get(id: String!): FExternalDataSourceOutput!
   external_data_source_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExternalDataSourceOutput!]!
+  knowledge_item_get(id: String!): FKnowledgeItemOutput!
   knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItemOutput!]!
   plugins_installed: [FPluginOutput!]!
   query_basic_stuff: BasicStuffResult!
+  tech_support_get_config(ws_id: String!): TechSupportSettingsOutput
+  thread_get(id: String!): FThreadOutput!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
-  thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessage!]!
-  threads_list_by_ft_app_capture(ft_app_capture: String!, ws_id: String!): [FThreadOutput!]!
+  thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessageOutput!]!
+  threads_app_captured(ft_app_capture: String!, ft_app_searchable: String!, located_fgroup_id: String!): [FThreadOutput!]!
 }
 
 type Subscription {
@@ -318,6 +328,22 @@ type Subscription {
   knowledge_items_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FKnowledgeItemSubs!
   threads_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FThreadSubs!
   tree_subscription(ws_id: String!): TreeUpdateSubs!
+}
+
+input TechSupportSettingsInput {
+  support_api_key: String!
+  support_channel_list: [String!]!
+  support_discord_key: String!
+  support_fgroup_id: String!
+  support_fuser_id: String!
+}
+
+type TechSupportSettingsOutput {
+  support_api_key: String!
+  support_channel_list: [String!]!
+  support_discord_key: String!
+  support_fgroup_id: String!
+  support_fuser_id: String!
 }
 
 type TreeUpdateSubs {

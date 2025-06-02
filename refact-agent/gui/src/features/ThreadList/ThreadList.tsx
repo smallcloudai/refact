@@ -193,28 +193,27 @@ const ThreadLustItem: React.FC<ThreadItemProps> = ({
 
           <Text size="1">{dateTimeString}</Text>
         </Flex>
-
-        <Flex
-          position="absolute"
-          top="6px"
-          right="6px"
-          gap="1"
-          justify="end"
-          align="center"
-        >
-          <CloseButton
-            loading={deleting}
-            size="1"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onDelete(thread.ft_id);
-            }}
-            iconSize={10}
-            title="delete thread"
-          />
-        </Flex>
       </CardButton>
+      <Flex
+        position="absolute"
+        top="6px"
+        right="6px"
+        gap="1"
+        justify="end"
+        align="center"
+      >
+        <CloseButton
+          loading={deleting}
+          size="1"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onDelete(thread.ft_id);
+          }}
+          iconSize={10}
+          title="delete thread"
+        />
+      </Flex>
     </Box>
   );
 };

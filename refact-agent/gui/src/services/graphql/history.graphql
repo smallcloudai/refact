@@ -25,3 +25,49 @@ subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {
 mutation DeleteThread($id: String!) {
   thread_delete(id: $id)
 }
+
+mutation CreateThread($input: FThreadInput!) {
+  thread_create(input: $input) {
+    ft_id
+  }
+}
+
+subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
+  comprehensive_thread_subs(ft_id: $ft_id, want_deltas: $want_deltas) {
+    news_action
+    news_payload_id
+    news_payload_thread_message {
+      ftm_belongs_to_ft_id
+      ftm_alt
+      ftm_num
+      ftm_prev_alt
+      ftm_role
+      ftm_content
+      ftm_tool_calls
+      ftm_call_id
+      ftm_usage
+      ftm_created_ts
+    }
+    stream_delta {
+      ftm_role
+      ftm_content
+    }
+    news_payload_thread {
+      located_fgroup_id
+      ft_id
+    }
+  }
+}
+
+mutation MessageCreate($input: FThreadMessageInput!) {
+  thread_message_create(input: $input) {
+    ftm_belongs_to_ft_id
+    ftm_alt
+    ftm_num
+    ftm_prev_alt
+    ftm_role
+    ftm_content
+    ftm_tool_calls
+    ftm_call_id
+  }
+}

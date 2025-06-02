@@ -1,14 +1,20 @@
 import {
   createClient,
-  debugExchange,
+  // debugExchange,
   cacheExchange,
   fetchExchange,
   subscriptionExchange,
 } from "@urql/core";
 import { createClient as createWSClient } from "graphql-ws";
-import { query } from "happy-dom/lib/PropertySymbol.js";
 import { WebSocket } from "ws";
 export { type Client } from "@urql/core";
+import {
+  AnyVariables,
+  DocumentInput,
+  OperationContext,
+  OperationResult,
+  OperationResultSource,
+} from "urql";
 
 const THREE_MINUTES = 3 * 60 * 1000;
 
@@ -39,7 +45,7 @@ export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
     exchanges: [
       // TODO: only enable this during development
       // debugExchange,
-      // cacheExchange,
+      cacheExchange,
       subscriptionExchange({
         forwardSubscription: (operation) => ({
           subscribe: (sink) => {
@@ -77,3 +83,55 @@ export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
 
   return urqlClient;
 };
+
+export function createSubscription<
+  T = unknown,
+  Variables extends AnyVariables = AnyVariables,
+  Document extends DocumentInput<T, AnyVariables> = DocumentInput<
+    T,
+    AnyVariables
+  >,
+>(
+  apiKey: string,
+  query: DocumentInput<T, Variables>,
+  variables: Variables,
+  signal: AbortSignal,
+  handleResult: Parameters<
+    OperationResultSource<OperationResult<Document, Variables>>["subscribe"]
+  >[0],
+  context?: Partial<OperationContext> | undefined,
+) {
+  const client = createGraphqlClient(apiKey, signal);
+  const operation = client.subscription<Document, Variables>(
+    query,
+    variables,
+    context,
+  );
+
+  let subscription = operation.subscribe(handleResult);
+
+  let paused = false;
+  let timeout: number | null | NodeJS.Timeout = null;
+
+  function maybeClearTimeout() {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+      timeout = null;
+    }
+  }
+
+  const handleVisibilityChange = () => {
+    if (document.hidden && !paused) {
+      maybeClearTimeout();
+      timeout = setTimeout(() => {
+        paused = true;
+        subscription.unsubscribe();
+      }, THREE_MINUTES);
+    } else if (!document.hidden && paused) {
+      paused = false;
+      maybeClearTimeout();
+      subscription = operation.subscribe(handleResult);
+    }
+  };
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+}
