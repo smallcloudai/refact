@@ -175,6 +175,7 @@ pub struct GlobalContext {
     pub docker_ssh_tunnel: Arc<AMutex<Option<SshTunnel>>>,
     pub active_group_id: Option<String>,
     pub init_shadow_repos_background_task_holder: BackgroundTasksHolder,
+    pub init_shadow_repos_lock: Arc<AMutex<bool>>,
     pub git_operations_abort_flag: Arc<AtomicBool>,
 }
 
@@ -385,6 +386,7 @@ pub async fn create_global_context(
         docker_ssh_tunnel: Arc::new(AMutex::new(None)),
         active_group_id: cmdline.active_group_id.clone(),
         init_shadow_repos_background_task_holder: BackgroundTasksHolder::new(vec![]),
+        init_shadow_repos_lock: Arc::new(AMutex::new(false)),
         git_operations_abort_flag: Arc::new(AtomicBool::new(false)),
     };
     let gcx = Arc::new(ARwLock::new(cx));

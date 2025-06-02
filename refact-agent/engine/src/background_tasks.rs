@@ -37,10 +37,6 @@ impl BackgroundTasksHolder {
         }
         self.tasks.clear();
     }
-
-    pub fn is_empty(&self) -> bool {
-        self.tasks.is_empty()
-    }
 }
 
 pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>, config_dir: &PathBuf) -> BackgroundTasksHolder {

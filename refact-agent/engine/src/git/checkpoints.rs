@@ -2,6 +2,7 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use git2::{IndexAddOption, Oid, Repository};
 use tokio::sync::RwLock as ARwLock;
+use tokio::sync::Mutex as AMutex;
 use tokio::time::Instant;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -214,6 +215,9 @@ pub async fn restore_workspace_checkpoint(
 }
 
 pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> () {
+    let init_shadow_repos_lock: Arc<AMutex<bool>> = gcx.read().await.init_shadow_repos_lock.clone();
+    let _init_shadow_repos_lock = init_shadow_repos_lock.lock().await;  // wait for previous init
+
     let workspace_folders = get_project_dirs(gcx.clone()).await;
     let abort_flag: Arc<AtomicBool> = gcx.read().await.git_operations_abort_flag.clone();
 
@@ -271,13 +275,11 @@ pub async fn enqueue_init_shadow_repos(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) {
     let mut gcx_locked = gcx.write().await;
-    // NOTE: we only need once init per run
-    if gcx_locked.init_shadow_repos_background_task_holder.is_empty() {
-        let gcx_cloned = gcx.clone();
-        gcx_locked.init_shadow_repos_background_task_holder.push_back(tokio::spawn(async move {
-            init_shadow_repos_if_needed(gcx_cloned).await;
-        }));
-    }
+    // NOTE: potentially we can run init multiple times
+    let gcx_cloned = gcx.clone();
+    gcx_locked.init_shadow_repos_background_task_holder.push_back(tokio::spawn(async move {
+        init_shadow_repos_if_needed(gcx_cloned).await;
+    }));
 }
 
 pub async fn abort_init_shadow_repos(
