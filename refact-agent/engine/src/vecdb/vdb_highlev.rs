@@ -8,6 +8,7 @@ use tracing::{error, info};
 use crate::background_tasks::BackgroundTasksHolder;
 use crate::fetch_embedding;
 use crate::global_context::{CommandLine, GlobalContext};
+use crate::tokens::cached_tokenizer;
 use crate::vecdb::vdb_sqlite::VecDBSqlite;
 use crate::vecdb::vdb_structs::{SearchResult, VecDbStatus, VecdbConstants, VecdbSearch};
 use crate::vecdb::vdb_thread::{vecdb_start_background_tasks, vectorizer_enqueue_files, FileVectorizerService};
@@ -33,11 +34,19 @@ async fn do_i_need_to_reload_vecdb(
         }
     };
 
+    let tokenizer = match cached_tokenizer(gcx.clone(), &caps.embedding_model.base).await {
+        Ok(tokenizer) => Some(tokenizer),
+        Err(err) => {
+            tracing::warn!("vecdb: couldn't load tokenizer for embedding model: {}, using token estimation fallback", err);
+            None
+        }
+    }.flatten();
+
     let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
     let mut consts = {
         VecdbConstants {
             embedding_model: caps.embedding_model.clone(),
-            tokenizer: None,
+            tokenizer: tokenizer,
             splitter_window_size: caps.embedding_model.base.n_ctx / 2,
             vecdb_max_files: vecdb_max_files,
         }
@@ -64,7 +73,7 @@ async fn do_i_need_to_reload_vecdb(
     let tokenizer_result = crate::tokens::cached_tokenizer(
         gcx.clone(), &consts.embedding_model.base,
     ).await;
-    
+
     consts.tokenizer = match tokenizer_result {
         Ok(tokenizer) => tokenizer,
         Err(err) => {
@@ -91,7 +100,7 @@ pub async fn vecdb_background_reload(
         }
         if need_reload && consts.is_some() {
             background_tasks = BackgroundTasksHolder::new(vec![]);
-            
+
             // Use the fail-safe initialization with retries
             let init_config = crate::vecdb::vdb_init::VecDbInitConfig {
                 max_attempts: 5,

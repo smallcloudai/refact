@@ -314,7 +314,7 @@ async fn vectorize_thread(
             match vecdb_handler_arc.lock().await.vecdb_records_remove(vec![doc.doc_path.to_string_lossy().to_string()]).await {
                 Ok(_) => {}
                 Err(err) => {
-                    info!("VECDB Error removing: {}", err);                    
+                    info!("VECDB Error removing: {}", err);
                 }
             };
             continue;
@@ -326,7 +326,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
+        let mut splits = file_splitter.vectorization_split(&doc, constants.tokenizer.clone(), gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });
@@ -378,7 +378,7 @@ async fn _send_to_vecdb(
         match vecdb_handler_arc.lock().await.vecdb_records_remove(unique_file_paths_vec).await {
             Ok(_) => {}
             Err(err) => {
-                info!("VECDB Error removing: {}", err);                                    
+                info!("VECDB Error removing: {}", err);
             }
         };
         let batch: Vec<VecdbRecord> = ready_to_vecdb.drain(..).collect();
@@ -386,7 +386,7 @@ async fn _send_to_vecdb(
             match vecdb_handler_arc.lock().await.vecdb_records_add(&batch).await {
                 Ok(_) => {}
                 Err(err) => {
-                    info!("VECDB Error adding: {}", err);                                                        
+                    info!("VECDB Error adding: {}", err);
                 }
             }
         }
