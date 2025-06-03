@@ -213,6 +213,7 @@ pub async fn migrate_to_config_folder(
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
     let mac = pnet_datalink::interfaces()
         .into_iter()
@@ -230,6 +231,22 @@ pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
         .join(";");
 
     format!("{}-{}", mac, folders)
+}
+
+#[cfg(target_os = "windows")]
+pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
+    use winreg::enums::*;
+    use winreg::RegKey;
+    let machine_guid = RegKey::predef(HKEY_LOCAL_MACHINE)
+        .open_subkey("SOFTWARE\\Microsoft\\Cryptography")
+        .and_then(|key| key.get_value::<String, _>("MachineGuid"))
+        .unwrap_or_else(|_| "no-machine-guid".to_string());
+    let folders = workspace_folders
+        .iter()
+        .map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join(";");
+    format!("{}-{}", machine_guid, folders)
 }
 
 pub async fn try_load_caps_quickly_if_not_present(

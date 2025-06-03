@@ -14,6 +14,9 @@ build = "build.rs"
 [build-dependencies]
 shadow-rs = "1.1.0"
 
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
+
 [dependencies]
 astral-tokio-tar = "0.5.2"
 axum = { version = "0.6.20", features = ["default", "http2"] }
