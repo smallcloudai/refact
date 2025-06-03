@@ -21,13 +21,12 @@ import {
   MessageCreateMutationVariables,
   MessageCreateMutation,
   MessageCreateDocument,
+  MessagesSubscriptionSubscription,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
 import { AppDispatch, RootState } from "../../app/store";
-// import { CombinedError } from "urql";
-
-const THREE_MINUTES = 3 * 60 * 1000;
+import { receiveThreadMessages } from "../../features/ThreadMessages";
 
 export const threadsPageSub = createAppAsyncThunk<
   unknown,
@@ -36,47 +35,16 @@ export const threadsPageSub = createAppAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  // TODO: make this reusable in other subscriptions
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
-  const query = client.subscription<
+  createSubscription<
     ThreadsPageSubsSubscription,
     ThreadsPageSubsSubscriptionVariables
-  >(ThreadsPageSubsDocument, args);
-
-  const handleResult: Parameters<typeof query.subscribe>[0] = (result) => {
+  >(apiKey, ThreadsPageSubsDocument, args, thunkAPI.signal, (result) => {
     if (result.data) {
       thunkAPI.dispatch(handleThreadListSubscriptionData(result.data));
     } else if (result.error) {
       thunkAPI.dispatch(setError(result.error.message));
     }
-  };
-
-  let subscription = query.subscribe(handleResult);
-
-  let paused = false;
-  let timeout: number | null | NodeJS.Timeout = null;
-
-  function maybeClearTimeout() {
-    if (timeout !== null) {
-      clearTimeout(timeout);
-      timeout = null;
-    }
-  }
-
-  const handleVisibilityChange = () => {
-    if (document.hidden && !paused) {
-      maybeClearTimeout();
-      timeout = setTimeout(() => {
-        paused = true;
-        subscription.unsubscribe();
-      }, THREE_MINUTES);
-    } else if (!document.hidden && paused) {
-      paused = false;
-      maybeClearTimeout();
-      subscription = query.subscribe(handleResult);
-    }
-  };
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+  });
 });
 
 export const deleteThreadThunk = createAsyncThunk<
@@ -138,15 +106,18 @@ export const messagesSub = createAsyncThunk<
 >("graphql/messageSubscription", (args, thunkApi) => {
   const state = thunkApi.getState();
   const apiKey = state.config.apiKey ?? "";
-  createSubscription(
-    apiKey,
-    MessagesSubscriptionDocument,
-    args,
-    thunkApi.signal,
-    (result) => {
-      console.log(result.data);
-    },
-  );
+  createSubscription<
+    MessagesSubscriptionSubscription,
+    MessagesSubscriptionSubscriptionVariables
+  >(apiKey, MessagesSubscriptionDocument, args, thunkApi.signal, (result) => {
+    if (result.error) {
+      // TBD: do we hang up on errors?
+      thunkApi.dispatch(setError(result.error.message));
+    }
+    if (result.data) {
+      thunkApi.dispatch(receiveThreadMessages(result.data));
+    }
+  });
 });
 
 export const createMessage = createAppAsyncThunk<

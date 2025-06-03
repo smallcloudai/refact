@@ -87,22 +87,16 @@ export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
 export function createSubscription<
   T = unknown,
   Variables extends AnyVariables = AnyVariables,
-  Document extends DocumentInput<T, AnyVariables> = DocumentInput<
-    T,
-    AnyVariables
-  >,
 >(
   apiKey: string,
   query: DocumentInput<T, Variables>,
   variables: Variables,
   signal: AbortSignal,
-  handleResult: Parameters<
-    OperationResultSource<OperationResult<Document, Variables>>["subscribe"]
-  >[0],
+  handleResult: (v: OperationResult<T, Variables>) => void,
   context?: Partial<OperationContext> | undefined,
 ) {
   const client = createGraphqlClient(apiKey, signal);
-  const operation = client.subscription<Document, Variables>(
+  const operation = client.subscription<T, Variables>(
     query,
     variables,
     context,
