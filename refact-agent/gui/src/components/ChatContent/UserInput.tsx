@@ -1,68 +1,61 @@
-import { Pencil2Icon } from "@radix-ui/react-icons";
-import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
-import React, { useCallback, useMemo, useState } from "react";
-import { selectMessages } from "../../features/Chat";
-import { CheckpointButton } from "../../features/Checkpoints";
-import { useAppSelector } from "../../hooks";
+import { Button, Container, Flex, Text } from "@radix-ui/themes";
+import React, { useMemo, useState } from "react";
 import {
-  isUserMessage,
   ProcessedUserMessageContentWithImages,
   UserMessageContentWithImage,
   type UserMessage,
 } from "../../services/refact";
 import { takeWhile } from "../../utils";
-import { RetryForm } from "../ChatForm";
+// import { RetryForm } from "../ChatForm";
 import { DialogImage } from "../DialogImage";
 import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
 import { Reveal } from "../Reveal";
 
 export type UserInputProps = {
-  children: UserMessage["content"];
-  messageIndex: number;
+  children: UserMessage["ftm_content"];
+  // messageIndex: number;
   // maybe add images argument ?
-  onRetry: (index: number, question: UserMessage["content"]) => void;
+  // onRetry: (index: number, question: UserMessage["content"]) => void;
   // disableRetry?: boolean;
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
-  messageIndex,
+  // messageIndex,
   children,
-  onRetry,
+  // onRetry,
 }) => {
-  const messages = useAppSelector(selectMessages);
-
-  const [showTextArea, setShowTextArea] = useState(false);
+  // const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
 
-  const handleSubmit = useCallback(
-    (value: UserMessage["content"]) => {
-      onRetry(messageIndex, value);
-      setShowTextArea(false);
-    },
-    [messageIndex, onRetry],
-  );
+  // const handleSubmit = useCallback(
+  //   (value: UserMessage["content"]) => {
+  //     onRetry(messageIndex, value);
+  //     setShowTextArea(false);
+  //   },
+  //   [messageIndex, onRetry],
+  // );
 
-  const handleShowTextArea = useCallback(
-    (value: boolean) => {
-      setShowTextArea(value);
-      if (isEditButtonVisible) {
-        setIsEditButtonVisible(false);
-      }
-    },
-    [isEditButtonVisible],
-  );
+  // const handleShowTextArea = useCallback(
+  //   (value: boolean) => {
+  //     setShowTextArea(value);
+  //     if (isEditButtonVisible) {
+  //       setIsEditButtonVisible(false);
+  //     }
+  //   },
+  //   [isEditButtonVisible],
+  // );
 
   // const lines = children.split("\n"); // won't work if it's an array
   const elements = process(children);
   const isString = typeof children === "string";
   const linesLength = isString ? children.split("\n").length : Infinity;
 
-  const checkpointsFromMessage = useMemo(() => {
-    const maybeUserMessage = messages[messageIndex];
-    if (!isUserMessage(maybeUserMessage)) return null;
-    return maybeUserMessage.checkpoints;
-  }, [messageIndex, messages]);
+  // const checkpointsFromMessage = useMemo(() => {
+  //   const maybeUserMessage = messages[messageIndex];
+  //   if (!isUserMessage(maybeUserMessage)) return null;
+  //   return maybeUserMessage.checkpoints;
+  // }, [messageIndex, messages]);
 
   const isCompressed = useMemo(() => {
     if (typeof children !== "string") return false;
@@ -77,14 +70,6 @@ export const UserInput: React.FC<UserInputProps> = ({
             {elements}
           </Flex>
         </Reveal>
-      ) : showTextArea ? (
-        <RetryForm
-          onSubmit={handleSubmit}
-          // TODO
-          // value={children}
-          value={children}
-          onClose={() => handleShowTextArea(false)}
-        />
       ) : (
         <Flex
           direction="row"
@@ -116,20 +101,20 @@ export const UserInput: React.FC<UserInputProps> = ({
               transition: "opacity 0.15s, visibility 0.15s",
             }}
           >
-            {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
+            {/* {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
               <CheckpointButton
                 checkpoints={checkpointsFromMessage}
                 messageIndex={messageIndex}
               />
-            )}
-            <IconButton
+            )} */}
+            {/* <IconButton
               title="Edit message"
               variant="soft"
               size={"2"}
               onClick={() => handleShowTextArea(true)}
             >
               <Pencil2Icon width={15} height={15} />
-            </IconButton>
+            </IconButton> */}
           </Flex>
         </Flex>
       )}
