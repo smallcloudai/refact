@@ -43,6 +43,7 @@ log = "0.4.20"
 md5 = "0.7"
 notify = { version = "8.0.0", features = ["serde"] }
 parking_lot = { version = "0.12.1", features = ["serde"] }
+pnet_datalink = "0.35.0"
 process-wrap = { version = "8.0.2", features = ["tokio1"] }
 rand = "0.8.5"
 rayon = "1.8.0"

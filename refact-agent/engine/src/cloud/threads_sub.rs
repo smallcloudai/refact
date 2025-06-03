@@ -15,7 +15,6 @@ use tracing::{error, info};
 use url::Url;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatContent;
-use crate::cloud::experts_req::Expert;
 use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::Thread;
 use crate::custom_error::MapErrToString;
@@ -32,6 +31,7 @@ pub struct ThreadPayload {
     pub ft_locked_by: String,
     pub ft_need_assistant: i64,
     pub ft_need_tool_calls: i64,
+    pub ft_app_searchable: Option<String>,
     pub ft_anything_new: bool,
     pub ft_archived_ts: f64,
 }
@@ -58,6 +58,7 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
           ft_locked_by
           ft_need_assistant
           ft_need_tool_calls
+          ft_app_searchable
           ft_anything_new
           ft_archived_ts
         }
@@ -322,18 +323,27 @@ async fn process_thread_event(
     thread_payload: &ThreadPayload,
     basic_info: &BasicStuff
 ) -> Result<(), String> {
-    if thread_payload.ft_need_tool_calls == -1 || thread_payload.ft_error.is_some() {
+    if thread_payload.ft_need_tool_calls == -1 || thread_payload.owner_fuser_id != basic_info.fuser_id {
         return Ok(());
     }
-    if thread_payload.owner_fuser_id != basic_info.fuser_id {
+    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
+    if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
+        if ft_app_searchable != app_searchable_id {
+            info!("thread `{}` has different `app_searchable` id, skipping it", thread_payload.ft_id);
+        }
+    } else {
+        info!("thread `{}` doesn't have the `app_searchable` id, skipping it", thread_payload.ft_id);
+        return Ok(());
+    }
+    if let Some(error) = thread_payload.ft_error.as_ref() {
+        info!("thread `{}` has the error: `{}`. Skipping it", thread_payload.ft_id, error);
         return Ok(());
     }
     let messages = crate::cloud::messages_req::get_thread_messages(
         gcx.clone(),
         &thread_payload.ft_id,
         thread_payload.ft_need_tool_calls,
-    )
-    .await?;
+    ).await?;
     let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
     if messages.iter().all(|x| x.ftm_role != "system") {
         initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await?;

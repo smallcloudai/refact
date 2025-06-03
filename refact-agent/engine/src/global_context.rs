@@ -179,6 +179,7 @@ pub struct GlobalContext {
     pub init_shadow_repos_background_task_holder: BackgroundTasksHolder,
     pub init_shadow_repos_lock: Arc<AMutex<bool>>,
     pub git_operations_abort_flag: Arc<AtomicBool>,
+    pub app_searchable_id: String
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -209,6 +210,25 @@ pub async fn migrate_to_config_folder(
     }
 
     Ok(())
+}
+
+pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
+    let mac = pnet_datalink::interfaces()
+        .into_iter()
+        .find(|iface: &pnet_datalink::NetworkInterface| {
+            !iface.is_loopback() && iface.mac.is_some()
+        })
+        .and_then(|iface| iface.mac)
+        .map(|mac| mac.to_string().replace(":", ""))
+        .unwrap_or_else(|| "no-mac".to_string());
+
+    let folders = workspace_folders
+        .iter()
+        .map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join(";");
+
+    format!("{}-{}", mac, folders)
 }
 
 pub async fn try_load_caps_quickly_if_not_present(
@@ -379,7 +399,7 @@ pub async fn create_global_context(
         vec_db_error: String::new(),
         ast_service: None,
         ask_shutdown_sender: Arc::new(StdMutex::new(ask_shutdown_sender)),
-        documents_state: DocumentsState::new(workspace_dirs).await,
+        documents_state: DocumentsState::new(workspace_dirs.clone()).await,
         at_commands_preview_cache: Arc::new(AMutex::new(AtCommandsPreviewCache::new())),
         privacy_settings: Arc::new(PrivacySettings::default()),
         indexing_everywhere: Arc::new(crate::files_blocklist::IndexingEverywhere::default()),
@@ -390,6 +410,7 @@ pub async fn create_global_context(
         init_shadow_repos_background_task_holder: BackgroundTasksHolder::new(vec![]),
         init_shadow_repos_lock: Arc::new(AMutex::new(false)),
         git_operations_abort_flag: Arc::new(AtomicBool::new(false)),
+        app_searchable_id: get_app_searchable_id(&workspace_dirs),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;

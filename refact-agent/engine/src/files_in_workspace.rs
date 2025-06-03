@@ -15,7 +15,7 @@ use tracing::info;
 
 use crate::files_correction::{canonical_path, CommandSimplifiedDirExt};
 use crate::git::operations::git_ls_files;
-use crate::global_context::GlobalContext;
+use crate::global_context::{get_app_searchable_id, GlobalContext};
 use crate::integrations::running_integrations::load_integrations;
 use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
@@ -653,6 +653,8 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
+    let folders = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
+    gcx.write().await.app_searchable_id = get_app_searchable_id(&folders);
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 
