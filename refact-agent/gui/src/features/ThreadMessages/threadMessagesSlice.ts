@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
-
+import { makeMessageTrie, type MessageNode } from "./makeMessageTrie";
 type InitialState = {
   loading: false;
   messages: Record<
@@ -10,11 +10,13 @@ type InitialState = {
     >
   >;
   ft_id: string | null;
+  messageTrie: MessageNode;
 };
 
 const initialState: InitialState = {
   loading: false,
   messages: {},
+  messageTrie: { value: null, children: null },
   ft_id: null,
 };
 
@@ -73,15 +75,22 @@ export const threadMessagesSlice = createSlice({
 
         state.messages = msgs;
       }
+
+      state.messageTrie = makeMessageTrie(Object.values(state.messages));
     },
   },
   selectors: {
     selectThreadMessages: (state) => state.messages,
     selectThreadLoading: (state) => state.loading,
     selectThreadId: (state) => state.ft_id,
+    selectThreadMessageTrie: (state) => state.messageTrie,
   },
 });
 
 export const { receiveThreadMessages } = threadMessagesSlice.actions;
-export const { selectThreadMessages, selectThreadLoading, selectThreadId } =
-  threadMessagesSlice.selectors;
+export const {
+  selectThreadMessages,
+  selectThreadLoading,
+  selectThreadId,
+  selectThreadMessageTrie,
+} = threadMessagesSlice.selectors;

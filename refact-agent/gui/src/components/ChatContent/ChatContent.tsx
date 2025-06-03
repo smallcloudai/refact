@@ -34,10 +34,14 @@ import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
-import { selectThreadMessages } from "../../features/ThreadMessages";
+import {
+  selectThreadMessages,
+  selectThreadMessageTrie,
+} from "../../features/ThreadMessages";
+import { MessageNode } from "../MessageNode/MessageNode.tsx";
 
 export type ChatContentProps = {
-  onRetry: (index: number, question: UserMessage["content"]) => void;
+  onRetry: (index: number, question: UserMessage["ftm_content"]) => void;
   onStopStreaming: () => void;
 };
 
@@ -48,7 +52,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const dispatch = useAppDispatch();
   // here
   const messages = useAppSelector(selectMessages);
-  const threadMessages = useAppSelector(selectThreadMessages);
+  const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
   const { shouldShow } = useUsageCounter();
@@ -59,9 +63,9 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const integrationMeta = useAppSelector(selectIntegration);
   const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
 
-  const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
-    onRetry(index, question);
-  };
+  // const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
+  //   onRetry(index, question);
+  // };
 
   const handleReturnToConfigurationClick = useCallback(() => {
     // console.log(`[DEBUG]: going back to configuration page`);
@@ -114,12 +118,14 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         p="2"
         gap="1"
       >
-        {messages.length === 0 && (
+        {/** TODO isEmpty check */}
+        {threadMessageTrie.value === null && (
           <Container>
             <PlaceHolderText />
           </Container>
         )}
-        {renderMessages(messages, onRetryWrapper, isWaiting)}
+        <MessageNode>{threadMessageTrie}</MessageNode>
+        {/* {renderMessages(messages, onRetryWrapper, isWaiting)} */}
         <Container>
           <UncommittedChangesWarning />
         </Container>
@@ -177,7 +183,7 @@ ChatContent.displayName = "ChatContent";
 
 function renderMessages(
   messages: ChatMessages,
-  onRetry: (index: number, question: UserMessage["content"]) => void,
+  onRetry: (index: number, question: UserMessage["ftm_content"]) => void,
   waiting: boolean,
   memo: React.ReactNode[] = [],
   index = 0,
@@ -190,7 +196,10 @@ function renderMessages(
 
   if (head.role === "plain_text") {
     const key = "plain-text-" + index;
-    const nextMemo = [...memo, <PlainText key={key}>{head.content}</PlainText>];
+    const nextMemo = [
+      ...memo,
+      <PlainText key={key}>{head.ftm_content}</PlainText>,
+    ];
     return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 
@@ -201,7 +210,7 @@ function renderMessages(
       ...memo,
       <AssistantInput
         key={key}
-        message={head.content}
+        message={head.ftm_content}
         reasoningContent={head.reasoning_content}
         toolCalls={head.tool_calls}
         isLast={isLast}
@@ -225,7 +234,7 @@ function renderMessages(
         />
       ),
       <UserInput onRetry={onRetry} key={key} messageIndex={index}>
-        {head.content}
+        {head.ftm_content}
       </UserInput>,
     ];
     return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
@@ -233,7 +242,10 @@ function renderMessages(
 
   if (isChatContextFileMessage(head)) {
     const key = "context-file-" + index;
-    const nextMemo = [...memo, <ContextFiles key={key} files={head.content} />];
+    const nextMemo = [
+      ...memo,
+      <ContextFiles key={key} files={head.ftm_content} />,
+    ];
     return renderMessages(tail, onRetry, waiting, nextMemo, index + 1);
   }
 

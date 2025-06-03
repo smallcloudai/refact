@@ -227,7 +227,6 @@ export interface DiffMessage extends BaseMessage {
 }
 
 export function isUserMessage(message: ChatMessage): message is UserMessage {
-  console.log({ message });
   return message.ftm_role === "user";
 }
 
@@ -252,7 +251,6 @@ export type ChatMessage =
   | CDInstructionMessage;
 
 export function isChatMessage(message: unknown): message is ChatMessage {
-  console.log({ message });
   if (!message) return false;
   if (typeof message !== "object") return false;
   const tmp = message as ChatMessage;

@@ -5,14 +5,16 @@ export type Message = NonNullable<
   MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
 >;
 
-// type EmptyNode = {
-//   value: null;
-//   children: null;
-// };
-export type MessageNode = {
-  value: Message;
-  children: MessageNode[];
+type EmptyNode = {
+  value: null;
+  children: null;
 };
+export type MessageNode =
+  | {
+      value: Message;
+      children: MessageNode[];
+    }
+  | EmptyNode;
 
 // const isRoot = (message: Message): boolean => {
 //   return message.ftm_prev_alt === -1;
@@ -27,7 +29,8 @@ export function sortMessageList(messages: Message[]): Message[] {
   });
 }
 
-export const makeMessageTrie = (messages: Message[]): MessageNode | null => {
+export const makeMessageTrie = (messages: Message[]): MessageNode => {
+  if (messages.length === 0) return { value: null, children: null };
   const sortedMessages = sortMessageList(messages);
 
   // const [nodes, roots] = partition(sortedMessages, isRoot);

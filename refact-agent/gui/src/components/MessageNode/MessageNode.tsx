@@ -86,7 +86,9 @@ export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   return (
     <>
       <ElementForNodeMessage message={children.value} />
-      <MessageNodeChildren>{children.children}</MessageNodeChildren>
+      {children.children && (
+        <MessageNodeChildren>{children.children}</MessageNodeChildren>
+      )}
     </>
   );
 };
