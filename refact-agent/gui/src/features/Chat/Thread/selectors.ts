@@ -136,9 +136,14 @@ export const selectHasUncalledTools = createSelector(
 
     if (toolCalls.length === 0) return false;
 
-    const toolMessages = tailMessages
-      .filter(isToolMessage)
-      .map((toolMessage) => toolMessage.content.tool_call_id);
+    const toolMessages = tailMessages.map((msg) => {
+      if (isToolMessage(msg)) {
+        return msg.content.tool_call_id;
+      }
+      if (isDiffMessage(msg)) {
+        return msg.tool_call_id;
+      }
+    });
 
     const hasUnsentTools = toolCalls.some(
       (toolCallId) => !toolMessages.includes(toolCallId),
