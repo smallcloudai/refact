@@ -1,6 +1,5 @@
-use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, ContextFile, DiffChunk};
+use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, DiffChunk};
 use crate::global_context::GlobalContext;
-use crate::scratchpads::passthrough_convert_messages;
 use log::error;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};

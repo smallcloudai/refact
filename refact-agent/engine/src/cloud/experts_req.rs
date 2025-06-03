@@ -79,7 +79,7 @@ pub async fn get_expert(
         }
     }
     "#;
-    let mut variables = json!({
+    let variables = json!({
         "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID
     });
     let response = client

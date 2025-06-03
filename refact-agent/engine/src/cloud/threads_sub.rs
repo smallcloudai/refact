@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::global_context::GlobalContext;
 use futures::{SinkExt, StreamExt};
 use reqwest::Client;
@@ -349,24 +350,21 @@ async fn initialize_thread(
     thread_messages: &Vec<ThreadMessage>,
 ) -> Result<(), String> {
     let expert = crate::cloud::experts_req::get_expert(gcx.clone(), expert_name).await?;
-    let tools: IndexMap<String, Box<dyn crate::tools::tools_description::Tool + Send>> =
-        crate::tools::tools_description::tools_merged_and_filtered(gcx.clone(), true)
-            .await?
+    let tools: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> =
+        crate::tools::tools_list::get_available_tools(gcx.clone())
+            .await
             .into_iter()
-            .filter(|(name, _tool)| expert.is_tool_allowed(name))
+            .filter(|tool| expert.is_tool_allowed(&tool.tool_description().name))
             .collect();
-    let available_tool_names = tools.keys().map(|x| x.to_string()).collect::<Vec<_>>();
-    let tool_descriptions = crate::tools::tools_description::tool_description_list_from_yaml(tools, None, true)
-        .await?
-        .into_iter()
-        .filter(|x| available_tool_names.contains(&x.name))
-        .map(|x| x.into_openai_style())
+    let tool_descriptions = tools
+        .iter()
+        .map(|x| x.tool_description().into_openai_style())
         .collect::<Vec<_>>();
-    let updated_system_prompt =
-        crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(gcx.clone(), &expert.fexp_system_prompt).await;
+    crate::cloud::threads_req::set_thread_toolset(gcx.clone(), &thread.ft_id, tool_descriptions).await?;
+    let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
+        gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
+    ).await;
     let last_message = thread_messages.last().unwrap();
-    crate::cloud::threads_req::set_thread_toolset(gcx.clone(), &thread.ft_id, tool_descriptions)
-        .await?;
     let output_thread_messages = vec![ThreadMessage {
         ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
         ftm_alt: last_message.ftm_alt.clone(),
@@ -389,9 +387,7 @@ async fn initialize_thread(
         gcx.clone(),
         &thread.ft_id,
         output_thread_messages,
-    )
-    .await?;
-
+    ).await?;
     Ok(())
 }
 
@@ -424,13 +420,12 @@ async fn call_tools(
             thread.ft_model.to_string(),
         ).await,
     ));
-    let allowed_tools =
-        crate::cloud::messages_req::get_tool_names_from_openai_format(&thread.ft_toolset).await?;
+    let allowed_tools = crate::cloud::messages_req::get_tool_names_from_openai_format(&thread.ft_toolset).await?;
     let mut all_tools: IndexMap<String, Box<dyn crate::tools::tools_description::Tool + Send>> =
-        crate::tools::tools_description::tools_merged_and_filtered(gcx.clone(), true)
-            .await?
+        crate::tools::tools_list::get_available_tools(gcx.clone()).await
             .into_iter()
-            .filter(|(name, _)| allowed_tools.contains(name))
+            .filter(|x| allowed_tools.contains(&x.tool_description().name))
+            .map(|x| (x.tool_description().name, x))
             .collect();
     let mut has_rag_results = crate::scratchpads::scratchpad_utils::HasRagResults::new();
     let tokenizer_arc = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
