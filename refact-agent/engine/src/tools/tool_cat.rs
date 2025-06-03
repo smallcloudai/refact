@@ -132,15 +132,26 @@ impl Tool for ToolCat {
                 multimodal
             ].concat())
         };
-
-        results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "tool".to_string(),
-            content,
-            tool_calls: None,
-            tool_call_id: tool_call_id.clone(),
-            ..Default::default()
-        }));
-
+        
+        if filenames_present.len() <= 5 {
+            results.push(ContextEnum::ChatMessage(ChatMessage {
+                role: "tool".to_string(),
+                content,
+                tool_calls: None,
+                tool_call_id: tool_call_id.clone(),
+                ..Default::default()
+            }));
+        } else {
+            results = vec![ContextEnum::ChatMessage(ChatMessage {
+                role: "tool".to_string(),
+                content: ChatContent::SimpleText(
+                    format!("{}\n\nToo many files were requested.\nPlease open files one by one", content.content_text_only())
+                ),
+                tool_calls: None,
+                tool_call_id: tool_call_id.clone(),
+                ..Default::default()
+            })];
+        }
         Ok((corrections, results))
     }
 }

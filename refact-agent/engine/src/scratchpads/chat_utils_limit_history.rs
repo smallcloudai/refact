@@ -48,7 +48,7 @@ pub enum CompressionStrength {
 pub fn get_model_token_params(model_id: &str) -> (i32, f32) {
     match model_id {
         // Claude 3 Sonnet models need higher token overhead
-        m if m.contains("claude-3-7-sonnet") | m.contains("claude-3-5-sonnet") => (150, 0.2),
+        m if m.contains("claude-sonnet-4") | m.contains("claude-3-5-sonnet") | m.contains("claude-3-5-sonnet") => (170, 0.2),
         
         // Default values for all other models
         _ => (3, 0.0),

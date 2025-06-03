@@ -44,8 +44,8 @@ async fn search_single_file(
             file_results.push(ContextFile {
                 file_name: file_path.clone(),
                 file_content: context_content,
-                line1: (line_num - 10).max(1) as usize,
-                line2: (line_num + 10).min(lines.len() as i64) as usize,
+                line1: (line_num - 20).max(1) as usize,
+                line2: (line_num + 20).min(lines.len() as i64) as usize,
                 symbols: vec![],
                 gradient_type: 5,
                 usefulness: 100.0,
