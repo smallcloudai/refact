@@ -17,7 +17,9 @@ use url::Url;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatContent;
 use crate::cloud::messages_req::ThreadMessage;
-use crate::cloud::threads_req::Thread;
+use crate::cloud::threads_req::{lock_thread, Thread};
+use rand::{Rng, thread_rng};
+use rand::distributions::Alphanumeric;
 use crate::custom_error::MapErrToString;
 
 
@@ -281,6 +283,14 @@ async fn events_loop(
     }
     Ok(())
 }
+fn generate_random_hash(length: usize) -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
 async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, String> {
     let client = Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
@@ -357,22 +367,27 @@ async fn process_thread_event(
         info!("thread `{}` has the error: `{}`. Skipping it", thread_payload.ft_id, error);
         return Ok(());
     }
-    if !thread_payload.ft_locked_by.is_empty() {
-        info!("thread `{}` is locked by: `{}`. Skipping it", thread_payload.ft_id, thread_payload.ft_locked_by);
-        return Ok(());
-    }
     let messages = crate::cloud::messages_req::get_thread_messages(
         gcx.clone(),
         &thread_payload.ft_id,
         thread_payload.ft_need_tool_calls,
     ).await?;
     let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
-    if messages.iter().all(|x| x.ftm_role != "system") {
-        initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await?;
-    } else {
-        call_tools(gcx.clone(), &thread, &messages).await?;
+    let hash = generate_random_hash(16);
+    match lock_thread(gcx.clone(), &thread.ft_id, &hash).await {
+        Ok(_) => {}
+        Err(err) => return Err(err)
     }
-    Ok(())
+    let result = if messages.iter().all(|x| x.ftm_role != "system") {
+        initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await
+    } else {
+        call_tools(gcx.clone(), &thread, &messages).await
+    };
+    match crate::cloud::threads_req::unlock_thread(gcx.clone(), thread.ft_id.clone(), hash).await {
+        Ok(_) => info!("thread `{}` unlocked successfully", thread.ft_id),
+        Err(err) => error!("failed to unlock thread `{}`: {}", thread.ft_id, err),
+    }
+    result
 }
 
 async fn initialize_thread(

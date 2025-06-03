@@ -187,3 +187,125 @@ pub async fn set_thread_toolset(
         ))
     }
 }
+
+pub async fn lock_thread(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    thread_id: &str,
+    hash: &str,
+) -> Result<(), String> {
+    let client = Client::new();
+    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let worker_name = format!("refact-lsp:{hash}");
+    let query = r#"
+        mutation AdvanceLock($ft_id: String!, $worker_name: String!) {
+            thread_lock(ft_id: $ft_id, worker_name: $worker_name)
+        } 
+    "#;
+    let response = client
+        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "query": query,
+            "variables": {"ft_id": thread_id, "worker_name": worker_name}
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if data.get("thread_lock").is_some() {
+                return Ok(());
+            } else {
+                return Err(format!("Thread {thread_id} is locked by another worker"));
+            }
+        }
+        Err(format!(
+            "Thread not found or unexpected response format: {}",
+            response_body
+        ))
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!(
+            "Failed to get thread: HTTP status {}, error: {}",
+            status, error_text
+        ))
+    }
+}
+
+pub async fn unlock_thread(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    thread_id: String,
+    hash: String,
+) -> Result<(), String> {
+    let client = Client::new();
+    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let worker_name = format!("refact-lsp:{hash}");
+    let query = r#"
+        mutation AdvanceUnlock($ft_id: String!, $worker_name: String!) {
+            thread_unlock(ft_id: $ft_id, worker_name: $worker_name)
+        }
+    "#;
+    let response = client
+        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "query": query,
+            "variables": {"ft_id": thread_id, "worker_name": worker_name}
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if data.get("thread_unlock").is_some() {
+                return Ok(());
+            } else {
+                return Err(format!("Cannot unlock thread {thread_id}"));
+            }
+        }
+        Err(format!(
+            "Thread not found or unexpected response format: {}",
+            response_body
+        ))
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!(
+            "Failed to get thread: HTTP status {}, error: {}",
+            status, error_text
+        ))
+    }
+}
