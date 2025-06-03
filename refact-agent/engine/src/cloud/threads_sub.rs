@@ -128,7 +128,7 @@ async fn initialize_connection(gcx: Arc<ARwLock<GlobalContext>>) -> Result<
         (gcx_read.cmdline.api_key.clone(), 
          gcx_read.active_group_id.clone().unwrap_or_default())
     };
-    let url = Url::parse(crate::cloud::constants::GRAPHQL_WS_URL)
+    let url = Url::parse(crate::constants::GRAPHQL_WS_URL)
         .map_err(|e| format!("Failed to parse WebSocket URL: {}", e))?;
     let mut request = url
         .into_client_request()
@@ -308,7 +308,7 @@ async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, 
     }
     "#;
     let response = client
-        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({"query": query}))

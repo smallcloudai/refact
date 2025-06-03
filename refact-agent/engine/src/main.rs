@@ -67,6 +67,7 @@ mod agentic;
 mod memories;
 // TODO: do we need this?
 mod files_correction_cache;
+pub mod constants;
 
 #[tokio::main]
 async fn main() {

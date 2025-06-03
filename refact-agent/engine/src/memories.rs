@@ -9,8 +9,6 @@ use tokio::fs;
 use tokio_rusqlite::Connection;
 use tracing::{info, warn};
 
-const CLOUD_URL: &str = "https://test-teams-v1.smallcloud.ai/v1";
-
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct MemoRecord {
@@ -129,7 +127,7 @@ pub async fn memories_add(
     if !unknown_project {
         body["group_id"] = Value::from(active_group_id.clone());
     }
-    let response = client.post(format!("{CLOUD_URL}/knowledge/upload"))
+    let response = client.post(format!("{}/knowledge/upload", crate::constants::CLOUD_URL))
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&body)
@@ -160,7 +158,7 @@ pub async fn memories_search(
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_group_id = gcx.read().await.active_group_id.clone()
         .ok_or("active_group_id must be set")?;
-    let url = format!("{CLOUD_URL}/knowledge/vsearch");
+    let url = format!("{}/knowledge/vsearch", crate::constants::CLOUD_URL);
     let body = serde_json::json!({
         "group_id": active_group_id,
         "q": query,
@@ -196,7 +194,7 @@ pub async fn memories_get_core(
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_group_id = gcx.read().await.active_group_id.clone()
         .ok_or("active_group_id must be set")?;
-    let url = format!("{CLOUD_URL}/knowledge/get_cores");
+    let url = format!("{}/knowledge/get_cores", crate::constants::CLOUD_URL);
     let body = serde_json::json!({"group_id": active_group_id});
     let response = client.post(&url)
         .header("Authorization", format!("Bearer {}", api_key))

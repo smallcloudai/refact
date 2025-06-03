@@ -68,7 +68,7 @@ pub async fn get_thread(
     }
     "#;
     let response = client
-        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
@@ -143,7 +143,7 @@ pub async fn set_thread_toolset(
         }
     });
     let response = client
-        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
@@ -202,7 +202,7 @@ pub async fn lock_thread(
         } 
     "#;
     let response = client
-        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
@@ -263,7 +263,7 @@ pub async fn unlock_thread(
         }
     "#;
     let response = client
-        .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
