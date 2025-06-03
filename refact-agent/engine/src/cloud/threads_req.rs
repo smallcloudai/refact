@@ -36,15 +36,14 @@ pub async fn get_thread(
     thread_id: &str,
 ) -> Result<Thread, String> {
     let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
+    let (api_key, located_fgroup_id) = {
+        let gcx_read = gcx.read().await;
+        (gcx_read.cmdline.api_key.clone(),
+         gcx_read.active_group_id.clone().unwrap_or_default())
+    };
     let query = r#"
-    query GetAllThreads($group_id: String!, $limit: Int!) {
-        thread_list(
-            located_fgroup_id: $group_id, 
-            skip: 0, 
-            limit: $limit,
-            sort_by: ""
-        ) {
+    query GetAllThreads($group_id: String!) {
+        thread_list(located_fgroup_id: $group_id) {
             owner_fuser_id
             owner_shared
             located_fgroup_id
@@ -68,17 +67,13 @@ pub async fn get_thread(
         }
     }
     "#;
-    let variables = json!({
-        "group_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
-        "limit": crate::cloud::constants::DEFAULT_LIMIT
-    });
     let response = client
         .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
             "query": query,
-            "variables": variables
+            "variables": {"group_id": located_fgroup_id}
         }))
         .send()
         .await
@@ -133,7 +128,7 @@ pub async fn set_thread_toolset(
     ft_toolset: Vec<Value>,
 ) -> Result<Vec<Value>, String> {
     let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     let mutation = r#"
     mutation UpdateThread($thread_id: String!, $patch: FThreadPatch!) {
         thread_patch(id: $thread_id, patch: $patch) {

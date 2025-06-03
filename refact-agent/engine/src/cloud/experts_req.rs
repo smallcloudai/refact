@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::error;
 use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -64,7 +64,11 @@ pub async fn get_expert(
     expert_name: &str
 ) -> Result<Expert, String> {
     let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
+    let (api_key, located_fgroup_id) = {
+        let gcx_read = gcx.read().await;
+        (gcx_read.cmdline.api_key.clone(),
+         gcx_read.active_group_id.clone().unwrap_or_default())
+    };
     let query = r#"
     query GetExpert($located_fgroup_id: String!) {
         experts_effective_list(located_fgroup_id: $located_fgroup_id) {
@@ -79,16 +83,15 @@ pub async fn get_expert(
         }
     }
     "#;
-    let variables = json!({
-        "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID
-    });
     let response = client
         .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&json!({
             "query": query,
-            "variables": variables
+            "variables": {
+                "located_fgroup_id": located_fgroup_id
+            }
         }))
         .send()
         .await
@@ -111,15 +114,13 @@ pub async fn get_expert(
                 if let Some(experts) = expert_list.as_array() {
                     if experts.len() > 1 {
                         tracing::warn!(
-                            "Multiple experts found for group ID {} with expert_name {}, this might cause inconsistent behavior",
-                            crate::cloud::constants::DEFAULT_FGROUP_ID,
-                            expert_name
+                            "multiple experts found for group ID {} with expert_name {}, this might cause inconsistent behavior",
+                            located_fgroup_id, expert_name
                         )
                     }
                     for expert_value in experts {
                         let expert: Expert = serde_json::from_value(expert_value.clone())
                             .map_err(|e| format!("Failed to parse expert: {}", e))?;
-                        info!("Successfully retrieved expert {}", expert_name);
                         return Ok(expert);
                     }
                 }

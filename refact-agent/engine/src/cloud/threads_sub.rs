@@ -23,17 +23,11 @@ use crate::custom_error::MapErrToString;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadPayload {
     pub owner_fuser_id: String,
-    pub owner_shared: bool,
     pub ft_id: String,
-    pub ft_title: String,
     pub ft_error: Option<String>,
-    pub ft_updated_ts: f64,
     pub ft_locked_by: String,
-    pub ft_need_assistant: i64,
     pub ft_need_tool_calls: i64,
     pub ft_app_searchable: Option<String>,
-    pub ft_anything_new: bool,
-    pub ft_archived_ts: f64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,65 +36,60 @@ pub struct BasicStuff {
     pub workspaces: Vec<Value>,
 }
 
-
 const THREADS_SUBSCRIPTION_QUERY: &str = r#"
-    subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {
-      threads_in_group(located_fgroup_id: $located_fgroup_id, limit: $limit) {
+    subscription ThreadsPageSubs($located_fgroup_id: String!) {
+      threads_in_group(located_fgroup_id: $located_fgroup_id) {
         news_action
         news_payload_id
         news_payload {
           owner_fuser_id
-          owner_shared
           ft_id
-          ft_title
           ft_error
-          ft_updated_ts
           ft_locked_by
-          ft_need_assistant
           ft_need_tool_calls
           ft_app_searchable
-          ft_anything_new
-          ft_archived_ts
         }
       }
     }
 "#;
 
 pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
-    let located_fgroup_id = crate::cloud::constants::DEFAULT_FGROUP_ID;
-    let thread_limit = crate::cloud::constants::DEFAULT_LIMIT;
-
+    let located_fgroup_id = gcx.read().await.active_group_id.clone().unwrap_or_default();
     info!(
-        "Starting GraphQL subscription for threads_in_group with fgroup_id=\"{}\" and limit={}",
-        located_fgroup_id, thread_limit
+        "starting GraphQL subscription for threads_in_group with fgroup_id=\"{}\"",
+        located_fgroup_id
     );
-
     loop {
-        let mut connection = match initialize_connection().await {
+        let mut connection = match initialize_connection(gcx.clone()).await {
             Ok(conn) => conn,
             Err(err) => {
-                error!("Failed to initialize connection: {}", err);
+                error!("failed to initialize connection: {}", err);
                 return;
             }
         };
         match events_loop(gcx.clone(), &mut connection).await {
             Ok(_) => {}
             Err(err) => {
-                error!("Failed to process events: {}", err);
+                error!("failed to process events: {}", err);
                 return;
             }
         }
     }
 }
 
-async fn initialize_connection() -> Result<
+async fn initialize_connection(gcx: Arc<ARwLock<GlobalContext>>) -> Result<
     futures::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<
-            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+            tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>
         >,
     >,
     String,
 > {
+    let (api_key, located_fgroup_id) = {
+        let gcx_read = gcx.read().await;
+        (gcx_read.cmdline.api_key.clone(), 
+         gcx_read.active_group_id.clone().unwrap_or_default())
+    };
     let url = Url::parse(crate::cloud::constants::GRAPHQL_WS_URL)
         .map_err(|e| format!("Failed to parse WebSocket URL: {}", e))?;
     let mut request = url
@@ -116,11 +105,9 @@ async fn initialize_connection() -> Result<
     let init_message = json!({
         "type": "connection_init",
         "payload": {
-            "apikey": crate::cloud::constants::API_KEY
+            "apikey": api_key
         }
     });
-
-    info!("Sending connection initialization message");
     write.send(Message::Text(init_message.to_string())).await
         .map_err(|e| format!("Failed to send connection init message: {}", e))?;
 
@@ -169,24 +156,20 @@ async fn initialize_connection() -> Result<
     } else {
         return Err("No response received for connection initialization".to_string());
     }
-
     let subscription_message = json!({
         "id": "42",
         "type": "start",
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,
             "variables": {
-                "located_fgroup_id": crate::cloud::constants::DEFAULT_FGROUP_ID,
-                "limit": crate::cloud::constants::DEFAULT_LIMIT
+                "located_fgroup_id": located_fgroup_id
             }
         }
     });
-
     write
         .send(Message::Text(subscription_message.to_string()))
         .await
         .map_err(|e| format!("Failed to send subscription message: {}", e))?;
-
     Ok(read)
 }
 
@@ -198,11 +181,11 @@ async fn events_loop(
         >,
     >,
 ) -> Result<(), String> {
-    info!("Cloud threads subscription started, waiting for events...");
+    info!("cloud threads subscription started, waiting for events...");
     let basic_info = get_basic_info(gcx.clone()).await?;
     while let Some(msg) = connection.next().await {
         if gcx.read().await.shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
-            info!("Shutting down GraphQL subscription thread");
+            info!("shutting down threads subscription");
             break;
         }
         match msg {
@@ -210,7 +193,7 @@ async fn events_loop(
                 let response: Value = match serde_json::from_str(&text) {
                     Ok(res) => res,
                     Err(err) => {
-                        error!("Failed to parse message: {}, error: {}", text, err);
+                        error!("failed to parse message: {}, error: {}", text, err);
                         continue;
                     }
                 };
@@ -228,33 +211,31 @@ async fn events_loop(
                                 match process_thread_event(gcx.clone(), &payload, &basic_info).await {
                                     Ok(_) => {}
                                     Err(err) => {
-                                        error!("Failed to process thread event: {}", err);
+                                        error!("failed to process thread event: {}", err);
                                     }
                                 }
+                            } else {
+                                info!("failed to parse thread payload: {}", text);
                             }
                         } else {
-                            info!("Received data message but couldn't find payload");
+                            info!("received data message but couldn't find payload");
                         }
                     }
                     "error" => {
-                        error!("Subscription error: {}", text);
-                    }
-                    "complete" => {
-                        info!("Subscription completed");
-                        break;
+                        error!("threads subscription error: {}", text);
                     }
                     _ => {
-                        info!("Received message with unknown type: {}", text);
+                        info!("received message with unknown type: {}", text);
                     }
                 }
             }
             Ok(Message::Close(_)) => {
-                info!("WebSocket connection closed");
+                info!("webSocket connection closed");
                 break;
             }
             Ok(_) => {}
             Err(e) => {
-                return Err(format!("WebSocket error: {}", e));
+                return Err(format!("webSocket error: {}", e));
             }
         }
     }
@@ -262,7 +243,7 @@ async fn events_loop(
 }
 async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, String> {
     let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetBasicInfo {
       query_basic_stuff {
@@ -280,9 +261,7 @@ async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, 
         .post(&crate::cloud::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .json(&json!({
-            "query": query,
-        }))
+        .json(&json!({"query": query}))
         .send()
         .await
         .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
@@ -296,8 +275,7 @@ async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, 
             .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
         if let Some(errors) = response_json.get("errors") {
             let error_msg = errors.to_string();
-            log::error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
+            return Err(format!("GraphQL request error: {}", error_msg));
         }
         if let Some(data) = response_json.get("data") {
             let basic_stuff_struct: BasicStuff = serde_json::from_value(data["query_basic_stuff"].clone())
@@ -337,6 +315,10 @@ async fn process_thread_event(
     }
     if let Some(error) = thread_payload.ft_error.as_ref() {
         info!("thread `{}` has the error: `{}`. Skipping it", thread_payload.ft_id, error);
+        return Ok(());
+    }
+    if !thread_payload.ft_locked_by.is_empty() {
+        info!("thread `{}` is locked by: `{}`. Skipping it", thread_payload.ft_id, thread_payload.ft_locked_by);
         return Ok(());
     }
     let messages = crate::cloud::messages_req::get_thread_messages(

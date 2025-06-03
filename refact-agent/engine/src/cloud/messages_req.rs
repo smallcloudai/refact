@@ -30,7 +30,7 @@ pub async fn get_thread_messages(
     alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
     let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
         thread_messages_list(
@@ -109,7 +109,7 @@ pub async fn create_thread_messages(
         return Err("No messages provided".to_string());
     }
     let client = Client::new();
-    let api_key = crate::cloud::constants::API_KEY;
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     let mut input_messages = Vec::with_capacity(messages.len());
     for message in messages {
         if message.ftm_belongs_to_ft_id != thread_id {
@@ -219,14 +219,9 @@ pub fn convert_thread_messages_to_messages(
             } else {
                 ChatContent::default()
             };
-            tracing::warn!("{:?}", msg.ftm_tool_calls);
             let tool_calls = msg.ftm_tool_calls.clone().map(|tc| {
-                match serde_json::from_value::<Vec<ChatToolCall>>(tc) {
-                    Ok(calls) => calls,
-                    Err(_) => vec![],
-                }
+                serde_json::from_value::<Vec<ChatToolCall>>(tc).unwrap_or_else(|_| vec![])
             });
-
             ChatMessage {
                 role: msg.ftm_role.clone(),
                 content,
@@ -234,10 +229,7 @@ pub fn convert_thread_messages_to_messages(
                 tool_call_id: msg.ftm_call_id.clone(),
                 tool_failed: None,
                 usage: msg.ftm_usage.clone().map(|u| {
-                    match serde_json::from_value::<ChatUsage>(u) {
-                        Ok(usage) => usage,
-                        Err(_) => ChatUsage::default(),
-                    }
+                    serde_json::from_value::<ChatUsage>(u).unwrap_or_else(|_| ChatUsage::default())
                 }),
                 checkpoints: vec![],
                 thinking_blocks: None,
