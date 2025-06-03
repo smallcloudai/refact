@@ -73,7 +73,8 @@ PROMPT_AGENTIC_TOOLS: |
       This helps manage token usage by compressing these files in the chat history.
   2. Reproduce and fix the problem using `chrome()` tool.
     - Create a simple HTML file to demonstrate the issue.
-    - Use chrome tool to take screenshots, watch logs, eval code, make other interactions with the page ...
+    - If you need, you can run a server using `background` argument in the `shell()` tool.
+    - Use `chrome()` to take screenshots, watch logs, eval code, make other interactions with the page ...
   3. Draft the Solution Plan and Implement it
     - Using the `chrome()` tool output, sketch the required code changes (files to touch, functions to edit, tests to add).
     - Post a concise, bullet-point summary that includes
