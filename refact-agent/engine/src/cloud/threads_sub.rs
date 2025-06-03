@@ -5,6 +5,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
@@ -19,6 +20,8 @@ use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::Thread;
 use crate::custom_error::MapErrToString;
 
+
+const RECONNECT_DELAY_SECONDS: u64 = 3;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreadPayload {
@@ -53,29 +56,59 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
     }
 "#;
 
+pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext>>) {
+    let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
+    restart_flag.store(true, Ordering::SeqCst);
+    info!("threads subscription restart triggered");
+}
+
 pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
-    let located_fgroup_id = if let Some(located_fgroup_id) = gcx.read().await.active_group_id.clone() {
-        located_fgroup_id
-    } else {
-        warn!("no active group, skipping threads subscription");
+    if !gcx.read().await.cmdline.cloud_threads {
         return;
-    };
-    info!(
-        "starting subscription for threads_in_group with fgroup_id=\"{}\"",
-        located_fgroup_id
-    );
-    let mut connection = match initialize_connection(gcx.clone()).await {
-        Ok(conn) => conn,
-        Err(err) => {
-            error!("failed to initialize connection: {}", err);
-            return;
+    }
+    
+    loop {
+        {
+            let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
+            restart_flag.store(false, Ordering::SeqCst);
         }
-    };
-    match events_loop(gcx.clone(), &mut connection).await {
-        Ok(_) => {}
-        Err(err) => {
+        let located_fgroup_id = if let Some(located_fgroup_id) = gcx.read().await.active_group_id.clone() {
+            located_fgroup_id
+        } else {
+            warn!("no active group is set, skipping threads subscription");
+            tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
+            continue;
+        };
+        
+        info!(
+            "starting subscription for threads_in_group with fgroup_id=\"{}\"",
+            located_fgroup_id
+        );
+        let connection_result = initialize_connection(gcx.clone()).await;
+        let mut connection = match connection_result {
+            Ok(conn) => conn,
+            Err(err) => {
+                error!("failed to initialize connection: {}", err);
+                info!("will attempt to reconnect in {} seconds", RECONNECT_DELAY_SECONDS);
+                tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
+                continue;
+            }
+        };
+        
+        let events_result = events_loop(gcx.clone(), &mut connection).await;
+        if let Err(err) = events_result {
             error!("failed to process events: {}", err);
-            return;
+            info!("will attempt to reconnect in {} seconds", RECONNECT_DELAY_SECONDS);
+        }
+        
+        if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
+            info!("shutting down threads subscription");
+            break;
+        }
+        
+        let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
+        if !restart_flag.load(Ordering::SeqCst) {
+            tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
         }
     }
 }
@@ -187,9 +220,13 @@ async fn events_loop(
     info!("cloud threads subscription started, waiting for events...");
     let basic_info = get_basic_info(gcx.clone()).await?;
     while let Some(msg) = connection.next().await {
-        if gcx.read().await.shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
+        if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
             info!("shutting down threads subscription");
             break;
+        }
+        if gcx.read().await.threads_subscription_restart_flag.load(Ordering::SeqCst) {
+            info!("restart flag detected, restarting threads subscription");
+            return Ok(());
         }
         match msg {
             Ok(Message::Text(text)) => {

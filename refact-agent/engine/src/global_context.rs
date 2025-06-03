@@ -107,8 +107,8 @@ pub struct CommandLine {
 
     #[structopt(long, help="An pre-setup active group id")]
     pub active_group_id: Option<String>,
-    #[structopt(long, help="Enable remote tool calls server")]
-    pub remote_tool_calls: bool,
+    #[structopt(long, help="Enable cloud threads support")]
+    pub cloud_threads: bool,
 }
 
 impl CommandLine {
@@ -179,7 +179,8 @@ pub struct GlobalContext {
     pub init_shadow_repos_background_task_holder: BackgroundTasksHolder,
     pub init_shadow_repos_lock: Arc<AMutex<bool>>,
     pub git_operations_abort_flag: Arc<AtomicBool>,
-    pub app_searchable_id: String
+    pub app_searchable_id: String,
+    pub threads_subscription_restart_flag: Arc<AtomicBool>
 }
 
 pub type SharedGlobalContext = Arc<ARwLock<GlobalContext>>;  // TODO: remove this type alias, confusing
@@ -411,6 +412,7 @@ pub async fn create_global_context(
         init_shadow_repos_lock: Arc::new(AMutex::new(false)),
         git_operations_abort_flag: Arc::new(AtomicBool::new(false)),
         app_searchable_id: get_app_searchable_id(&workspace_dirs),
+        threads_subscription_restart_flag: Arc::new(AtomicBool::new(false)),
     };
     let gcx = Arc::new(ARwLock::new(cx));
     crate::files_in_workspace::watcher_init(gcx.clone()).await;
