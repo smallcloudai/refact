@@ -11,7 +11,7 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use url::Url;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ChatContent;
@@ -54,25 +54,28 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
 "#;
 
 pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
-    let located_fgroup_id = gcx.read().await.active_group_id.clone().unwrap_or_default();
+    let located_fgroup_id = if let Some(located_fgroup_id) = gcx.read().await.active_group_id.clone() {
+        located_fgroup_id
+    } else {
+        warn!("no active group, skipping threads subscription");
+        return;
+    };
     info!(
-        "starting GraphQL subscription for threads_in_group with fgroup_id=\"{}\"",
+        "starting subscription for threads_in_group with fgroup_id=\"{}\"",
         located_fgroup_id
     );
-    loop {
-        let mut connection = match initialize_connection(gcx.clone()).await {
-            Ok(conn) => conn,
-            Err(err) => {
-                error!("failed to initialize connection: {}", err);
-                return;
-            }
-        };
-        match events_loop(gcx.clone(), &mut connection).await {
-            Ok(_) => {}
-            Err(err) => {
-                error!("failed to process events: {}", err);
-                return;
-            }
+    let mut connection = match initialize_connection(gcx.clone()).await {
+        Ok(conn) => conn,
+        Err(err) => {
+            error!("failed to initialize connection: {}", err);
+            return;
+        }
+    };
+    match events_loop(gcx.clone(), &mut connection).await {
+        Ok(_) => {}
+        Err(err) => {
+            error!("failed to process events: {}", err);
+            return;
         }
     }
 }
