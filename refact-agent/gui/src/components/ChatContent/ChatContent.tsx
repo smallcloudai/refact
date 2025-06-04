@@ -100,7 +100,6 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         p="2"
         gap="1"
       >
-        {/** TODO isEmpty check */}
         {isEmptyNode(threadMessageTrie) ? (
           <Container>
             <PlaceHolderText />

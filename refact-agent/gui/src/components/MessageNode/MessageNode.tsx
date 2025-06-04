@@ -23,6 +23,8 @@ import { ContextFiles } from "../ChatContent/ContextFiles";
 import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
+import { setThreadLeaf } from "../../features/ThreadMessages";
+import { useAppDispatch } from "../../hooks/useAppDispatch";
 
 const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
   message,
@@ -48,6 +50,7 @@ const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
   }
 
   if (isChatContextFileMessage(message)) {
+    // TODO: why is this a linter error?
     return <ContextFiles files={message.ftm_content} />;
   }
 
@@ -65,7 +68,7 @@ export type MessageNodeProps = { children?: FTMessageNode | null };
 
 // TODO: update tracking the end point
 export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
-  // const dispatch = useAppDispatch();
+  const dispatch = useAppDispatch();
 
   // useEffect(() => {
   //   if (children?.children.length === 0) {
@@ -82,13 +85,18 @@ export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   //   dispatch,
   // ]);
 
+  useEffect(() => {
+    if (children?.children.length === 0) {
+      const action = setThreadLeaf(children.value);
+      dispatch(action);
+    }
+  }, [children?.children.length, children?.value, dispatch]);
+
   if (!children) return null;
   return (
     <>
       <ElementForNodeMessage message={children.value} />
-      {children.children && (
-        <MessageNodeChildren>{children.children}</MessageNodeChildren>
-      )}
+      <MessageNodeChildren>{children.children}</MessageNodeChildren>
     </>
   );
 };

@@ -93,7 +93,7 @@ export const Chat: React.FC<ChatProps> = ({
       >
         <ChatContent
           key={`chat-content-${chatId}`}
-          onRetry={retryFromIndex}
+          // onRetry={retryFromIndex}
           onStopStreaming={abort}
         />
 

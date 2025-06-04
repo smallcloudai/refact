@@ -1,27 +1,19 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
-import {
-  EmptyNode,
-  makeMessageTrie,
-  type FTMMessageNode,
-} from "./makeMessageTrie";
+import { FTMMessage, makeMessageTrie } from "./makeMessageTrie";
+
 type InitialState = {
   loading: false;
-  messages: Record<
-    string,
-    NonNullable<
-      MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
-    >
-  >;
+  messages: Record<string, FTMMessage>;
   ft_id: string | null;
-  messageTrie: FTMMessageNode | EmptyNode;
+  leaf: FTMMessage | null;
 };
 
 const initialState: InitialState = {
   loading: false,
   messages: {},
-  messageTrie: { value: null, children: [] },
   ft_id: null,
+  leaf: null,
 };
 
 export const threadMessagesSlice = createSlice({
@@ -79,22 +71,28 @@ export const threadMessagesSlice = createSlice({
 
         state.messages = msgs;
       }
+    },
 
-      state.messageTrie = makeMessageTrie(Object.values(state.messages));
+    setThreadLeaf: (state, action: PayloadAction<InitialState["leaf"]>) => {
+      state.leaf = action.payload;
     },
   },
   selectors: {
     selectThreadMessages: (state) => state.messages,
     selectThreadLoading: (state) => state.loading,
     selectThreadId: (state) => state.ft_id,
-    selectThreadMessageTrie: (state) => state.messageTrie,
+    selectThreadMessageTrie: (state) =>
+      makeMessageTrie(Object.values(state.messages)),
+    selectThreadLeaf: (state) => state.leaf,
   },
 });
 
-export const { receiveThreadMessages } = threadMessagesSlice.actions;
+export const { receiveThreadMessages, setThreadLeaf } =
+  threadMessagesSlice.actions;
 export const {
   selectThreadMessages,
   selectThreadLoading,
   selectThreadId,
   selectThreadMessageTrie,
+  selectThreadLeaf,
 } = threadMessagesSlice.selectors;
