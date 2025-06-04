@@ -14,48 +14,25 @@ import styles from "./IntegrationFormField.module.css";
 
 import {
   areToolParameters,
+  IntegrationFieldValue,
   isDictionary,
   isMCPArgumentsArray,
   type Integration,
   type IntegrationField,
   type IntegrationPrimitive,
   type SmartLink as TSmartLink,
-  type ToolParameterEntity,
 } from "../../services/refact";
-import { ArgumentsTable } from "../../components/IntegrationsView/IntegrationsTable/ArgumentsTable";
 import { KeyValueTable } from "../../components/IntegrationsView/IntegrationsTable/KeyValueTable";
-
-type FieldType =
-  | "string"
-  | "string_to_string_map"
-  | "bool"
-  | "int"
-  | "tool"
-  | "output";
-
-// Helper functions
-const isFieldType = (value: string): value is FieldType => {
-  return [
-    "string_to_string_map",
-    "string",
-    "bool",
-    "int",
-    "tool",
-    "output",
-  ].includes(value);
-};
 
 const getDefaultValue = ({
   field,
   values,
   fieldKey,
-  // f_type,
   f_type_raw,
 }: {
   field: IntegrationField<NonNullable<IntegrationPrimitive>>;
   values: Integration["integr_values"];
   fieldKey: string;
-  f_type: FieldType;
   f_type_raw: string;
 }): string | number | boolean | Record<string, string> | undefined => {
   // First check if we have a value in the current values
@@ -63,7 +40,6 @@ const getDefaultValue = ({
     return values[fieldKey]?.toString();
   }
 
-  // Otherwise use the default value based on type
   switch (f_type_raw) {
     case "int":
       return Number(field.f_default);
@@ -74,6 +50,8 @@ const getDefaultValue = ({
       return JSON.stringify(field.f_default);
     case "string_to_string_map":
       return field.f_default as Record<string, string>;
+    case "string":
+      return field.f_default?.toString();
     default:
       return field.f_default?.toString();
   }
@@ -88,65 +66,47 @@ type IntegrationFormFieldProps = {
   integrationPath: string;
   integrationProject: string;
   isFieldVisible?: boolean;
-  onToolParameters: (data: ToolParameterEntity[]) => void;
-  onArguments: (updatedArgs: string[]) => void;
-  onEnvs: (updatedEnvs: Record<string, string>) => void;
-  onHeaders: (updatedHeaders: Record<string, string>) => void;
+  onChange: (fieldKey: string, fieldValue: IntegrationFieldValue) => void;
 };
 
 type CommonFieldProps = {
   id: string;
   name: string;
-  defaultValue?: string | number | boolean | Record<string, string>;
+  value?: string | number | boolean | Record<string, string>;
   placeholder?: string;
 };
 
 // Components
 const FieldContent: FC<{
-  f_type: FieldType;
+  f_type: string;
   commonProps: CommonFieldProps;
-  f_size?: string;
   values: Integration["integr_values"];
   fieldKey: string;
-  onToolParameters: (data: ToolParameterEntity[]) => void;
-  onArguments: (updatedArgs: string[]) => void;
-  onEnvs: (updatedEnvs: Record<string, string>) => void;
-  onHeaders: (updatedHeaders: Record<string, string>) => void;
-}> = ({
-  f_type,
-  commonProps,
-  f_size,
-  values,
-  fieldKey,
-  onToolParameters,
-  onArguments,
-  onEnvs,
-  onHeaders,
-}) => {
+  onChange: (fieldKey: string, fieldValue: IntegrationFieldValue) => void;
+}> = ({ f_type, commonProps, values, fieldKey, onChange }) => {
   switch (f_type) {
     case "bool": {
       return (
         <CustomBoolField
           {...commonProps}
-          defaultValue={Boolean(
-            commonProps.defaultValue ?? values?.[fieldKey] ?? false,
-          )}
+          value={Boolean(commonProps.value ?? values?.[fieldKey] ?? false)}
+          onChange={(value) => onChange(fieldKey, value)}
         />
       );
     }
-    case "tool": {
+    case "tool_parameters": {
       const valuesForTable = values?.[fieldKey] ?? [];
       if (areToolParameters(valuesForTable)) {
         return (
           <ParametersTable
             initialData={valuesForTable}
-            onToolParameters={onToolParameters}
+            onToolParameters={(data) => onChange(fieldKey, data)}
           />
         );
       }
       break;
     }
-    case "output": {
+    case "output_filter": {
       return (
         <Box>
           <Markdown>
@@ -157,56 +117,60 @@ const FieldContent: FC<{
         </Box>
       );
     }
-    case "string": {
-      if (f_size === "array") {
-        const valuesForTable = values?.[fieldKey];
-        const tableData = isMCPArgumentsArray(valuesForTable)
-          ? valuesForTable
-          : [];
+    case "string_array": {
+      const valuesForTable = values?.[fieldKey];
+      const tableData = isMCPArgumentsArray(valuesForTable)
+        ? valuesForTable
+        : [];
 
-        return (
-          <ArgumentsTable
-            initialData={tableData}
-            onMCPArguments={onArguments}
-          />
-        );
-      }
-      if (f_size === "to_string_map") {
-        const valuesForTable = values?.[fieldKey] ?? commonProps.defaultValue;
-        const tableData = isDictionary(valuesForTable) ? valuesForTable : {};
+      return (
+        <KeyValueTable
+          initialData={tableData as unknown as Record<string, string>}
+          onChange={(data) => onChange(fieldKey, data)}
+        />
+      );
+    }
+    case "string_to_string_map": {
+      const valuesForTable = values?.[fieldKey] ?? commonProps.value;
+      const tableData = isDictionary(valuesForTable) ? valuesForTable : {};
 
-        const columnsMapToArray: Record<string, string[]> = {
-          env: ["Environment Variable", "Value"],
-          headers: ["Header Name", "Value"],
-        };
-        const emptyMessageMap: Record<string, string> = {
-          env: "No environment variables specified yet",
-          headers: "No headers specified yet",
-        };
+      const columnsMapToArray: Record<string, string[]> = {
+        env: ["Environment Variable", "Value"],
+        headers: ["Header Name", "Value"],
+      };
+      const emptyMessageMap: Record<string, string> = {
+        env: "No environment variables specified yet",
+        headers: "No headers specified yet",
+      };
 
-        const changeHandlersMap: Record<
-          string,
-          (updatedField: Record<string, string>) => void
-        > = {
-          env: onEnvs,
-          headers: onHeaders,
-        };
-
-        return (
-          <KeyValueTable
-            initialData={tableData}
-            onChange={changeHandlersMap[fieldKey]}
-            columnNames={columnsMapToArray[fieldKey]}
-            emptyMessage={emptyMessageMap[fieldKey]}
-          />
-        );
-      }
+      return (
+        <KeyValueTable
+          initialData={tableData}
+          onChange={(data) => onChange(fieldKey, data)}
+          columnNames={columnsMapToArray[fieldKey]}
+          emptyMessage={emptyMessageMap[fieldKey]}
+        />
+      );
+    }
+    case "string_short": {
       return (
         <CustomInputField
           {...commonProps}
           type={"text"}
-          size={f_size}
-          defaultValue={commonProps.defaultValue?.toString()}
+          size={"short"}
+          value={commonProps.value?.toString()}
+          onChange={(value) => onChange(fieldKey, value)}
+        />
+      );
+    }
+    case "string_long": {
+      return (
+        <CustomInputField
+          {...commonProps}
+          type={"text"}
+          size={"long"}
+          value={commonProps.value?.toString()}
+          onChange={(value) => onChange(fieldKey, value)}
         />
       );
     }
@@ -214,9 +178,10 @@ const FieldContent: FC<{
       return (
         <CustomInputField
           {...commonProps}
-          type="number"
-          size={f_size}
-          defaultValue={commonProps.defaultValue?.toString()}
+          type="text"
+          size={"short"}
+          value={commonProps.value?.toString()}
+          onChange={(value) => onChange(fieldKey, value)}
         />
       );
     }
@@ -260,28 +225,20 @@ export const IntegrationFormField: FC<IntegrationFormFieldProps> = ({
   integrationPath,
   integrationProject,
   isFieldVisible = true,
-  onToolParameters,
-  onArguments,
-  onEnvs,
-  onHeaders,
+  onChange,
 }) => {
-  const splittedType = field.f_type.toString().split("_");
-  const [f_type_raw, ...rest] = splittedType;
-  const f_size = rest.join("_");
-  const f_type = isFieldType(f_type_raw) ? f_type_raw : "string";
-
-  const defaultValue = getDefaultValue({
-    field,
-    values,
-    fieldKey,
-    f_type,
-    f_type_raw: field.f_type as string,
-  });
+  const f_type_raw = field.f_type.toString();
 
   const commonProps = {
     id: fieldKey,
     name: fieldKey,
-    defaultValue,
+    value:
+      getDefaultValue({
+        f_type_raw,
+        field,
+        fieldKey,
+        values,
+      }) ?? "",
     placeholder: field.f_placeholder?.toString(),
   };
 
@@ -309,15 +266,11 @@ export const IntegrationFormField: FC<IntegrationFormFieldProps> = ({
 
       <Flex direction="column" gap="2" align="start" width="100%">
         <FieldContent
-          f_type={f_type}
+          f_type={f_type_raw}
           commonProps={commonProps}
-          f_size={f_size}
           values={values}
           fieldKey={fieldKey}
-          onToolParameters={onToolParameters}
-          onArguments={onArguments}
-          onEnvs={onEnvs}
-          onHeaders={onHeaders}
+          onChange={onChange}
         />
 
         {field.f_desc && (

@@ -13,7 +13,7 @@ type IntegrationsHeaderProps = {
   integrationName: string;
   leftRightPadding: LeftRightPadding;
   icon: string;
-  instantBackReturnment?: boolean;
+  instantBackReturn?: boolean;
   handleInstantReturn?: () => void;
 };
 
@@ -22,14 +22,14 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
   integrationName,
   leftRightPadding,
   icon,
-  instantBackReturnment = false,
+  instantBackReturn = false,
   handleInstantReturn,
 }) => {
   const { width } = useWindowDimensions();
   const config = useAppSelector(selectConfig);
 
   const handleButtonClick = () => {
-    if (instantBackReturnment && handleInstantReturn) {
+    if (instantBackReturn && handleInstantReturn) {
       handleInstantReturn();
     } else {
       handleFormReturn();
@@ -60,7 +60,7 @@ export const IntegrationsHeader: FC<IntegrationsHeaderProps> = ({
           {width > 500 ? (
             <Button size="2" variant="surface" onClick={handleButtonClick}>
               <ArrowLeftIcon width="16" height="16" />
-              {instantBackReturnment ? "Back to chat" : "Configurations"}
+              {instantBackReturn ? "Back to chat" : "Configurations"}
             </Button>
           ) : (
             <IconButton size="2" variant="surface" onClick={handleButtonClick}>

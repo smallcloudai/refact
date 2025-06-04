@@ -1,10 +1,4 @@
-import {
-  type FormEvent,
-  type FC,
-  useState,
-  ChangeEventHandler,
-  useMemo,
-} from "react";
+import { type FormEvent, type FC, useState, useMemo } from "react";
 import { NotConfiguredIntegrationWithIconRecord } from "../../../services/refact";
 import { Button, Card, Flex, RadioGroup, Text } from "@radix-ui/themes";
 import { CustomInputField } from "../CustomFieldsAndWidgets";
@@ -43,10 +37,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
     return createProjectLabelsWithConflictMarkers(validProjectPaths); // Start with just the last folder name
   }, [integration.project_path]);
 
-  const handleCommandNameChange: ChangeEventHandler<HTMLInputElement> = (
-    event,
-  ) => {
-    const value = event.target.value;
+  const handleCommandNameChange = (value: string) => {
     setCommandName(value);
     if (!validateSnakeCase(value)) {
       setErrorMessage("The command name must be in snake case!");
@@ -109,6 +100,7 @@ export const IntermediateIntegration: FC<IntegrationCmdlineProps> = ({
                     value={commandName}
                     onChange={handleCommandNameChange}
                     color={errorMessage ? "red" : undefined}
+                    wasInteracted
                   />
                   {errorMessage && (
                     <Text color="red" size="1">
