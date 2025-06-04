@@ -172,6 +172,12 @@ impl EmbeddingModelRecord {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct CapsMetadata {
+    pub pricing: serde_json::Value,
+    pub features: Vec<String>
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct CodeAssistantCaps {
     #[serde(deserialize_with = "normalize_string")]
     pub cloud_name: String, // "refact" or "refact_self_hosted"
@@ -201,7 +207,7 @@ pub struct CodeAssistantCaps {
     pub hf_tokenizer_template: String,  // template for HuggingFace tokenizer URLs
 
     #[serde(default)]  // Need for metadata from cloud, e.g. pricing for models; used only in chat-js
-    pub metadata: serde_json::Value
+    pub metadata: CapsMetadata
 }
 
 fn default_telemetry_retrieve_my_own() -> String {
@@ -283,7 +289,7 @@ pub async fn load_caps_value_from_url(
 
     if !cmdline.api_key.is_empty() {
         headers.insert(reqwest::header::AUTHORIZATION, reqwest::header::HeaderValue::from_str(&format!("Bearer {}", cmdline.api_key)).unwrap());
-        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build_info::PKG_VERSION)).unwrap());
+        headers.insert(reqwest::header::USER_AGENT, reqwest::header::HeaderValue::from_str(&format!("refact-lsp {}", crate::version::build::PKG_VERSION)).unwrap());
     }
 
     let mut last_status = 0;

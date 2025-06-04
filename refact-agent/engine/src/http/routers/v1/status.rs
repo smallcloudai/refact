@@ -1,20 +1,19 @@
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::ast::ast_structs::AstStatus;
 use crate::custom_error::ScratchError;
 use crate::global_context::SharedGlobalContext;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RagStatus {
     pub ast: Option<AstStatus>,
-    ast_alive: String,
-    #[cfg(feature="vecdb")]
+    pub ast_alive: String,
     pub vecdb: Option<crate::vecdb::vdb_structs::VecDbStatus>,
-    vecdb_alive: String,
-    vec_db_error: String,
+    pub vecdb_alive: String,
+    pub vec_db_error: String,
 }
 
 pub async fn get_rag_status(gcx: SharedGlobalContext) -> RagStatus {
@@ -23,15 +22,11 @@ pub async fn get_rag_status(gcx: SharedGlobalContext) -> RagStatus {
         (gcx_locked.vec_db.clone(), gcx_locked.vec_db_error.clone(), gcx_locked.ast_service.clone())
     };
 
-    #[cfg(feature="vecdb")]
     let (maybe_vecdb_status, vecdb_message) = match crate::vecdb::vdb_highlev::get_status(vec_db_module).await {
         Ok(Some(status)) => (Some(status), "working".to_string()),
         Ok(None) => (None, "turned_off".to_string()),
         Err(err) => (None, err.to_string()),
     };
-
-    #[cfg(not(feature="vecdb"))]
-    let (_, vecdb_message) = (vec_db_module, "not_configured".to_string());
 
     let (maybe_ast_status, ast_message) = match &ast_module {
         Some(ast_service) => {
@@ -45,7 +40,6 @@ pub async fn get_rag_status(gcx: SharedGlobalContext) -> RagStatus {
     RagStatus {
         ast: maybe_ast_status,
         ast_alive: ast_message,
-        #[cfg(feature="vecdb")]
         vecdb: maybe_vecdb_status,
         vecdb_alive: vecdb_message,
         vec_db_error,

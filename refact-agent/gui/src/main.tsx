@@ -9,7 +9,7 @@ const element = document.getElementById("refact-chat");
 if (element) {
   render(element, {
     host: "web",
-    features: { statistics: true, vecdb: true, ast: true, knowledge: true },
+    features: { statistics: true, vecdb: true, ast: true },
     themeProps: {},
     lspPort: 8001,
   });

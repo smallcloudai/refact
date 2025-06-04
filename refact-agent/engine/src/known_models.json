@@ -207,7 +207,13 @@
                 "anthropic/claude-3-5-sonnet",
                 "anthropic/claude-3-5-sonnet-20241022",
                 "anthropic/claude-3-7-sonnet",
-                "anthropic/claude-3-7-sonnet-20250219"
+                "anthropic/claude-3-7-sonnet-20250219",
+                "claude-sonnet-4",
+                "claude-sonnet-4-20250514",
+                "claude-opus-4",
+                "claude-opus-4-20250514",
+                "anthropic/claude-sonnet-4-20250514",
+                "anthropic/claude-opus-4-20250514"
             ]
         },
         "groq-llama-3.1-8b": {
@@ -432,7 +438,11 @@
             "scratchpad": "PASSTHROUGH",
             "tokenizer": "hf://Xenova/gpt-4o",
             "similar_models": [
-                "openai/o3-mini"
+                "openai/o3-mini",
+                "o3",
+                "openai/o3",
+                "o4-mini",
+                "openai/o4-mini"
             ]
         },      
         "o4-mini": {
@@ -572,7 +582,13 @@
                 "anthropic/claude-3.7-sonnet",
                 "anthropic/claude-3-7-sonnet",
                 "anthropic/claude-3.7-sonnet-latest",
-                "anthropic/claude-3-7-sonnet-latest"
+                "anthropic/claude-3-7-sonnet-latest",
+                "claude-sonnet-4",
+                "claude-sonnet-4-20250514",
+                "claude-opus-4",
+                "claude-opus-4-20250514",
+                "anthropic/claude-sonnet-4-20250514",
+                "anthropic/claude-opus-4-20250514"
             ],
             "tokenizer": "hf://Xenova/claude-tokenizer"
         },

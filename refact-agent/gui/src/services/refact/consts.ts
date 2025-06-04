@@ -4,7 +4,7 @@ export const STATISTIC_URL = `/v1/get-dashboard-plots`;
 export const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
 export const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
 export const CUSTOM_PROMPTS_URL = "/v1/customization";
-export const AT_TOOLS_AVAILABLE_URL = "/v1/tools";
+export const TOOLS = "/v1/tools";
 export const TOOLS_CHECK_CONFIRMATION =
   "/v1/tools-check-if-confirmation-needed";
 export const EDIT_TOOL_DRY_RUN_URL = "/v1/file_edit_tool_dry_run";
@@ -35,14 +35,10 @@ export const RESTORE_CHECKPOINTS = "/v1/checkpoints-restore";
 export const TELEMETRY_CHAT_PATH = "/v1/telemetry-chat";
 export const TELEMETRY_NET_PATH = "/v1/telemetry-network";
 
-export const KNOWLEDGE_SUB_URL = "/v1/mem-sub";
-export const KNOWLEDGE_ADD_URL = "/v1/mem-add";
-export const KNOWLEDGE_REMOVE_URL = "/v1/mem-erase";
-export const KNOWLEDGE_UPDATE_USED_URL = "/v1/mem-update-used";
-export const KNOWLEDGE_UPDATE_URL = "/v1/mem-upd";
 export const KNOWLEDGE_CREATE_URL = "/v1/trajectory-save";
-
 export const COMPRESS_MESSAGES_URL = "/v1/trajectory-compress";
+
+export const SET_ACTIVE_GROUP_ID = "/v1/set-active-group-id";
 
 // Providers & Models
 export const CONFIGURED_PROVIDERS_URL = "/v1/providers";

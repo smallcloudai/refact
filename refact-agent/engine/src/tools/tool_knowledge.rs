@@ -6,17 +6,41 @@ use tokio::sync::Mutex as AMutex;
 use async_trait::async_trait;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
-use crate::vecdb::vdb_highlev::memories_search;
+use crate::memories::memories_search;
 
 
-pub struct ToolGetKnowledge;
+pub struct ToolGetKnowledge {
+    pub config_path: String,
+}
 
 
 #[async_trait]
 impl Tool for ToolGetKnowledge {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "knowledge".to_string(),
+            display_name: "Knowledge".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "Fetches successful trajectories to help you accomplish your task. Call each time you have a new task to increase your chances of success.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "search_key".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Search keys for the knowledge database. Write combined elements from all fields (tools, project components, objectives, and language/framework). This field is used for vector similarity search.".to_string(),
+                }
+            ],
+            parameters_required: vec!["search_key".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
@@ -38,17 +62,17 @@ impl Tool for ToolGetKnowledge {
         };
 
         let mem_top_n = 5;
-        let memories: crate::vecdb::vdb_structs::MemoSearchResult = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
+        let memories = memories_search(gcx.clone(), &search_key, mem_top_n).await?;
         
         let mut seen_memids = HashSet::new();
-        let unique_memories: Vec<_> = memories.results.into_iter()
-            .filter(|m| seen_memids.insert(m.memid.clone()))
+        let unique_memories: Vec<_> = memories.into_iter()
+            .filter(|m| seen_memids.insert(m.iknow_id.clone()))
             .collect();
 
         let memories_str = unique_memories.iter().map(|m| {
-            let payload: String = m.m_payload.clone();
+            let payload: String = m.iknow_memory.clone();
             let mut combined = String::new();
-            combined.push_str(&format!("🗃️{}\n", m.memid));
+            combined.push_str(&format!("🗃️{}\n", m.iknow_id));
             combined.push_str(&payload);
             combined.push_str("\n\n");
             combined
@@ -67,6 +91,6 @@ impl Tool for ToolGetKnowledge {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["vecdb".to_string()]
+        vec!["knowledge".to_string()]
     }
 }

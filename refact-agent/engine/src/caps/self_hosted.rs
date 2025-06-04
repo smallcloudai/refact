@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use serde::Deserialize;
-use serde_json::json;
 
 use crate::caps::{
     BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels,
@@ -270,7 +269,7 @@ impl SelfHostedCaps {
 
             hf_tokenizer_template: default_hf_tokenizer_template(),
 
-            metadata: json!({}),
+            metadata: crate::caps::CapsMetadata::default(),
         };
 
         for (model_name, model_rec) in &self.completion.models {

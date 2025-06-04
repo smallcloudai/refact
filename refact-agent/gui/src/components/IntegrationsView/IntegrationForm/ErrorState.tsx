@@ -43,7 +43,7 @@ export const ErrorState: FC<ErrorStateProps> = ({
             title={`Open ${integr_name}.yaml configuration file in your IDE`}
             onClick={() =>
               openFile({
-                file_name: integr_config_path,
+                file_path: integr_config_path,
                 line: error_line === 0 ? 1 : error_line,
               })
             }

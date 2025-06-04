@@ -9,9 +9,9 @@ use async_trait::async_trait;
 use resvg::{tiny_skia, usvg};
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
-use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs};
+use crate::files_correction::{canonical_path, correct_to_nearest_dir_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::files_in_workspace::{get_file_text_from_memory_or_disk, ls_files};
 use crate::scratchpads::multimodality::MultimodalElement;
 
@@ -19,7 +19,9 @@ use std::io::Cursor;
 use image::imageops::FilterType;
 use image::{ImageFormat, ImageReader};
 
-pub struct ToolCat;
+pub struct ToolCat {
+    pub config_path: String,
+}
 
 
 const CAT_MAX_IMAGES_CNT: usize = 1;
@@ -98,6 +100,28 @@ fn parse_cat_args(args: &HashMap<String, Value>) -> Result<(Vec<String>, HashMap
 #[async_trait]
 impl Tool for ToolCat {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "cat".to_string(),
+            agentic: false,
+            display_name: "Cat".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            experimental: false,
+            description: "Like cat in console, but better: it can read multiple files and images. Prefer to open full files.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "paths".to_string(),
+                    description: "Comma separated file names or directories: dir1/file1.ext,dir3/dir4.".to_string(),
+                    param_type: "string".to_string(),
+                },
+            ],
+            parameters_required: vec!["paths".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,
@@ -230,29 +254,35 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
     let mut corrected_path_to_original = HashMap::new();
 
     for p in paths {
+        let path = if PathBuf::from(&p).is_absolute() {
+            canonical_path(p).to_string_lossy().to_string()
+        } else {
+            preprocess_path_for_normalization(p)
+        };
+
         // both not fuzzy
-        let candidates_file = file_repair_candidates(gcx.clone(), &p, top_n, false).await;
-        let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &p, false, top_n).await;
+        let candidates_file = file_repair_candidates(gcx.clone(), &path, top_n, false).await;
+        let candidates_dir = correct_to_nearest_dir_path(gcx.clone(), &path, false, top_n).await;
 
         if !candidates_file.is_empty() || candidates_dir.is_empty() {
-            let file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
+            let file_path = match return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates_file, &get_project_dirs(gcx.clone()).await, false).await {
                 Ok(f) => f,
                 Err(e) => { not_found_messages.push(e); continue;}
             };
             corrected_paths.push(file_path.clone());
-            corrected_path_to_original.insert(file_path, p.clone());
+            corrected_path_to_original.insert(file_path, path.clone());
         } else {
-            let candidate = match return_one_candidate_or_a_good_error(gcx.clone(), &p, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
+            let candidate = match return_one_candidate_or_a_good_error(gcx.clone(), &path, &candidates_dir, &get_project_dirs(gcx.clone()).await, true).await {
                 Ok(f) => f,
                 Err(e) => { not_found_messages.push(e); continue;}
             };
-            let path = PathBuf::from(candidate);
+            let path_buf = PathBuf::from(candidate);
             let indexing_everywhere = crate::files_blocklist::reload_indexing_everywhere_if_needed(gcx.clone()).await;
-            let files_in_dir = ls_files(&indexing_everywhere, &path, false).unwrap_or(vec![]);
+            let files_in_dir = ls_files(&indexing_everywhere, &path_buf, false).unwrap_or(vec![]);
             for file in files_in_dir {
                 let file_str = file.to_string_lossy().to_string();
                 corrected_paths.push(file_str.clone());
-                corrected_path_to_original.insert(file_str, p.clone());
+                corrected_path_to_original.insert(file_str, path.clone());
             }
         }
     }

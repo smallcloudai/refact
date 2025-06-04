@@ -63,9 +63,9 @@ Installable by the end user:
 
 - [x] Code completion with RAG
 - [x] Chat with tool usage
-- [x] definition() references() tools
-- [x] vecdb search() with scope (semantic search)
-- [x] regex_search() with scope (pattern matching)
+- [x] search_symbol_definition() search_symbol_usages() tools
+- [x] search_semantic() with scope (semantic search)
+- [x] search_pattern() with scope (pattern matching)
 - [x] @file @tree @web @definition @references @search mentions in chat
 - [x] locate() uses test-time compute to find good project cross-section
 - [x] Latest gpt-4o gpt-4o-mini

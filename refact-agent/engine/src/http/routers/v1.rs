@@ -1,3 +1,4 @@
+use at_tools::handle_v1_post_tools;
 use axum::Router;
 use axum::routing::{get, post, delete};
 use tower_http::cors::CorsLayer;
@@ -7,7 +8,7 @@ use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, h
 use crate::http::routers::v1::code_lens::handle_v1_code_lens;
 use crate::http::routers::v1::ast::{handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_status};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview, handle_v1_at_command_execute};
-use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
+use crate::http::routers::v1::at_tools::{handle_v1_get_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
@@ -33,16 +34,10 @@ use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provide
     handle_v1_get_model, handle_v1_get_provider, handle_v1_models, handle_v1_post_model, handle_v1_post_provider,
     handle_v1_delete_model, handle_v1_delete_provider, handle_v1_model_default, handle_v1_completion_model_families};
 
-#[cfg(feature = "vecdb")]
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
-#[cfg(feature="vecdb")]
-use crate::http::routers::v1::handlers_memdb::{handle_mem_add, handle_mem_erase, handle_mem_update_used, handle_mem_block_until_vectorized};
 use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integration_delete, handle_v1_integrations, handle_v1_integrations_filtered, handle_v1_integrations_mcp_logs};
-use crate::agent_db::db_cthread::{handle_db_v1_cthread_update, handle_db_v1_cthreads_sub};
-use crate::agent_db::db_cmessage::{handle_db_v1_cmessages_update, handle_db_v1_cmessages_sub};
-use crate::agent_db::db_chore::{handle_db_v1_chore_update, handle_db_v1_chore_event_update, handle_db_v1_chores_sub};
 use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
-use crate::http::routers::v1::handlers_memdb::{handle_mem_sub, handle_mem_upd};
+use crate::http::routers::v1::workspace::{handle_v1_get_app_searchable_id, handle_v1_set_active_group_id};
 
 mod ast;
 pub mod at_commands;
@@ -68,13 +63,10 @@ pub mod system_prompt;
 pub mod telemetry_chat;
 pub mod telemetry_network;
 pub mod providers;
-
 mod file_edit_tools;
-#[cfg(feature = "vecdb")]
-pub mod handlers_memdb;
 mod v1_integrations;
-#[cfg(feature = "vecdb")]
 pub mod vecdb;
+mod workspace;
 
 pub fn make_v1_router() -> Router {
     let builder = Router::new()
@@ -93,7 +85,8 @@ pub fn make_v1_router() -> Router {
 
         .route("/caps", get(handle_v1_caps))
 
-        .route("/tools", get(handle_v1_tools))
+        .route("/tools", get(handle_v1_get_tools))
+        .route("/tools", post(handle_v1_post_tools))
         .route("/tools-check-if-confirmation-needed", post(handle_v1_tools_check_if_confirmation_needed))
         .route("/tools-execute", post(handle_v1_tools_execute)) // because it works remotely
 
@@ -155,6 +148,10 @@ pub fn make_v1_router() -> Router {
         .route("/model-defaults", get(handle_v1_model_default))
         .route("/completion-model-families", get(handle_v1_completion_model_families))
 
+        // cloud related 
+        .route("/set-active-group-id", post(handle_v1_set_active_group_id))
+        .route("/get-app-searchable-id", get(handle_v1_get_app_searchable_id))
+
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))
 
@@ -165,35 +162,13 @@ pub fn make_v1_router() -> Router {
         .route("/subchat", post(handle_v1_subchat))
         .route("/subchat-single", post(handle_v1_subchat_single))
         ;
-
-    #[cfg(feature = "vecdb")]
     let builder = builder
         .route("/vdb-search", post(handle_v1_vecdb_search))
         .route("/vdb-status", get(handle_v1_vecdb_status))
-        .route("/mem-add", post(handle_mem_add))
-        .route("/mem-erase", post(handle_mem_erase))
-        .route("/mem-upd", post(handle_mem_upd))
-        .route("/mem-update-used", post(handle_mem_update_used))
-        .route("/mem-block-until-vectorized", get(handle_mem_block_until_vectorized))
-        .route("/mem-sub", post(handle_mem_sub))
         .route("/trajectory-save", post(handle_v1_trajectory_save))
         .route("/trajectory-compress", post(handle_v1_trajectory_compress))
         ;
 
-    builder
-        .layer(axum::middleware::from_fn(telemetry_middleware))
-        .layer(CorsLayer::very_permissive())
-}
-
-pub fn make_db_v1_router() -> Router {
-    let builder = Router::new()
-        .route("/cthreads-sub", post(handle_db_v1_cthreads_sub))
-        .route("/cthread-update", post(handle_db_v1_cthread_update))
-        .route("/cmessages-sub", post(handle_db_v1_cmessages_sub))
-        .route("/cmessages-update", post(handle_db_v1_cmessages_update))
-        .route("/chores-sub", post(handle_db_v1_chores_sub))
-        .route("/chore-update", post(handle_db_v1_chore_update))
-        .route("/chore-event-update", post(handle_db_v1_chore_event_update));
     builder
         .layer(axum::middleware::from_fn(telemetry_middleware))
         .layer(CorsLayer::very_permissive())

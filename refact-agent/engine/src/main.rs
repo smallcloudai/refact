@@ -3,6 +3,7 @@ use std::env;
 use std::panic;
 
 use files_correction::canonical_path;
+use integrations::running_integrations;
 use tokio::task::JoinHandle;
 use tracing::{info, Level};
 use tracing_appender;
@@ -37,12 +38,7 @@ mod files_in_jsonl;
 mod files_blocklist;
 mod fuzzy_search;
 mod files_correction;
-
-#[cfg(feature="vecdb")]
 mod vecdb;
-#[cfg(feature="vecdb")]
-mod knowledge;
-
 mod ast;
 mod subchat;
 mod at_commands;
@@ -53,30 +49,36 @@ mod tokens;
 mod scratchpad_abstract;
 mod scratchpads;
 
-#[cfg(feature="vecdb")]
 mod fetch_embedding;
 mod forward_to_hf_endpoint;
 mod forward_to_openai_endpoint;
 mod restream;
 
 mod call_validation;
-mod agent_db;
 mod dashboard;
 mod lsp;
 mod http;
-mod autonomy;
 
 mod integrations;
 mod privacy;
 mod git;
+mod cloud;
 mod agentic;
-mod trajectories;
-
+mod memories;
+// TODO: do we need this?
+mod files_correction_cache;
+pub mod constants;
 
 #[tokio::main]
 async fn main() {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+
+        // Disabling owner validation in Git can theoretically allow code execution, but libgit2 doesn't run
+        // executables, so the original risk doesn't apply. Repos in locations like CARGO_HOME would otherwise
+        // be blocked, plus several more common cases in Windows. IDEs like VSCode and JetBrains already
+        // prompt for trust when adding folders, so we disable the check.
+        let _ = git2::opts::set_verify_owner_validation(false);
     }
 
     let cpu_num = std::thread::available_parallelism().unwrap().get();
@@ -167,18 +169,13 @@ async fn main() {
     // Privacy before we do anything else, the default is to block everything
     let _ = crate::privacy::load_privacy_if_needed(gcx.clone()).await;
 
-    files_in_workspace::enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
-    files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
-
-    let gcx_clone = gcx.clone();
-    tokio::spawn(async move {
-        crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
-    });
+    // Start or connect to mcp servers
+    let _ = running_integrations::load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
 
     // not really needed, but it's nice to have an error message sooner if there's one
     let _caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await;
 
-    let mut background_tasks = start_background_tasks(gcx.clone()).await;
+    let mut background_tasks = start_background_tasks(gcx.clone(), &config_dir).await;
     // vector db will spontaneously start if the downloaded caps and command line parameters are right
 
     let should_start_http = cmdline.http_port != 0;
@@ -202,6 +199,7 @@ async fn main() {
     }
 
     background_tasks.abort().await;
+    git::checkpoints::abort_init_shadow_repos(gcx.clone()).await;
     integrations::sessions::stop_sessions(gcx.clone()).await;
     info!("saving telemetry without sending, so should be quick");
     basic_transmit::basic_telemetry_compress(gcx.clone()).await;

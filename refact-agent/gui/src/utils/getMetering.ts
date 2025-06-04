@@ -51,10 +51,10 @@ export function getTotalTokenMeteringForMessages(messages: ChatMessages) {
   }>(
     (acc, message) => {
       const {
-        metering_prompt_tokens_n,
-        metering_generated_tokens_n,
-        metering_cache_read_tokens_n,
-        metering_cache_creation_tokens_n,
+        metering_prompt_tokens_n = 0,
+        metering_generated_tokens_n = 0,
+        metering_cache_read_tokens_n = 0,
+        metering_cache_creation_tokens_n = 0,
       } = message;
       return {
         metering_prompt_tokens_n:
@@ -88,10 +88,10 @@ function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
   metering_coins_cache_creation: number;
   metering_coins_cache_read: number;
 
-  metering_prompt_tokens_n: number;
-  metering_generated_tokens_n: number;
-  metering_cache_creation_tokens_n: number;
-  metering_cache_read_tokens_n: number;
+  metering_prompt_tokens_n?: number;
+  metering_generated_tokens_n?: number;
+  metering_cache_creation_tokens_n?: number;
+  metering_cache_read_tokens_n?: number;
 } {
   if (!isAssistantMessage(message)) return false;
   if (!("usage" in message)) return false;
@@ -103,12 +103,12 @@ function hasUsageAndPrice(message: ChatMessage): message is AssistantMessage & {
   if (typeof message.metering_coins_cache_creation !== "number") return false;
   if (typeof message.metering_coins_cache_read !== "number") return false;
 
-  if (typeof message.metering_prompt_tokens_n !== "number") return false;
-  if (typeof message.metering_generated_tokens_n !== "number") return false;
-  if (typeof message.metering_cache_creation_tokens_n !== "number") {
-    return false;
-  }
-  if (typeof message.metering_cache_read_tokens_n !== "number") return false;
+  // if (typeof message.metering_prompt_tokens_n !== "number") return false;
+  // if (typeof message.metering_generated_tokens_n !== "number") return false;
+  // if (typeof message.metering_cache_creation_tokens_n !== "number") {
+  //   return false;
+  // }
+  // if (typeof message.metering_cache_read_tokens_n !== "number") return false;
 
   return true;
 }

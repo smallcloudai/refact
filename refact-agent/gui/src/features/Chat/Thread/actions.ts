@@ -30,9 +30,8 @@ import {
   generateChatTitle,
   sendChat,
 } from "../../../services/refact/chat";
-import { ToolCommand, toolsApi } from "../../../services/refact/tools";
+// import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
-import { debugApp } from "../../../debugConfig";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import {
@@ -120,6 +119,9 @@ export const setPreventSend = createAction<PayloadWithId>(
 export const setAreFollowUpsEnabled = createAction<boolean>(
   "chat/setAreFollowUpsEnabled",
 );
+export const setIsTitleGenerationEnabled = createAction<boolean>(
+  "chat/setIsTitleGenerationEnabled",
+);
 
 export const setToolUse = createAction<ToolUse>("chatThread/setToolUse");
 
@@ -198,7 +200,6 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   //   }
   //   return msg;
   // });
-  debugApp(`[DEBUG TITLE]: messagesToSend: `, messagesToSend);
 
   const caps = await thunkAPI
     .dispatch(capsApi.endpoints.getCaps.initiate(undefined))
@@ -304,25 +305,18 @@ function checkForToolLoop(message: ChatMessages): boolean {
 }
 // TODO: add props for config chat
 
-// export function chatModeToLspMode(mode?: ToolUse) {
-//   if (mode === "agent") return "AGENT";
-//   if (mode === "quick") return "NO_TOOLS";
-//   return "EXPLORE";
-// }
-
 export const chatAskQuestionThunk = createAppAsyncThunk<
   unknown,
   {
     messages: ChatMessages;
     chatId: string;
-    tools: ToolCommand[] | null;
     checkpointsEnabled?: boolean;
     mode?: LspChatMode; // used once for actions
     // TODO: make a separate function for this... and it'll need to be saved.
   }
 >(
   "chatThread/sendChat",
-  ({ messages, chatId, tools, mode, checkpointsEnabled }, thunkAPI) => {
+  ({ messages, chatId, mode, checkpointsEnabled }, thunkAPI) => {
     const state = thunkAPI.getState();
 
     const thread =
@@ -345,7 +339,6 @@ export const chatAskQuestionThunk = createAppAsyncThunk<
       messages: messagesForLsp,
       last_user_message_id: maybeLastUserMessageId,
       model: state.chat.thread.model,
-      tools,
       stream: true,
       abortSignal: thunkAPI.signal,
       increase_max_tokens: increaseMaxTokens,
@@ -409,7 +402,6 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
   "chatThread/sendCurrentChatToLspAfterToolCallUpdate",
   async ({ chatId, toolCallId }, thunkApi) => {
     const state = thunkApi.getState();
-    const toolUse = state.chat.thread.tool_use;
     if (state.chat.thread.id !== chatId) return;
     if (
       state.chat.streaming ||
@@ -430,25 +422,10 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
 
     if (!toolUseInThisSet) return;
     thunkApi.dispatch(setIsWaitingForResponse(true));
-    // duplicate in sendChat
-    let tools = await thunkApi
-      .dispatch(toolsApi.endpoints.getTools.initiate(undefined))
-      .unwrap();
-
-    if (toolUse === "quick") {
-      tools = [];
-    } else if (toolUse === "explore") {
-      tools = tools.filter((t) => !t.function.agentic);
-    }
-    tools = tools.map((t) => {
-      const { agentic: _, ...remaining } = t.function;
-      return { ...t, function: { ...remaining } };
-    });
 
     return thunkApi.dispatch(
       chatAskQuestionThunk({
         messages: state.chat.thread.messages,
-        tools,
         chatId,
         mode: state.chat.thread.mode,
         checkpointsEnabled: state.chat.checkpoints_enabled,

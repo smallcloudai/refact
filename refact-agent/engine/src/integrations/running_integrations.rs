@@ -3,31 +3,8 @@ use indexmap::IndexMap;
 use tokio::sync::RwLock as ARwLock;
 
 use crate::custom_error::YamlError;
-use crate::tools::tools_description::Tool;
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::IntegrationTrait;
-
-
-pub async fn load_integration_tools(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    allow_experimental: bool,
-) -> IndexMap<String, Box<dyn Tool + Send>> {
-    let (integraions_map, _yaml_errors) = load_integrations(gcx.clone(), allow_experimental, &["**/*".to_string()]).await;
-    let mut tools = IndexMap::new();
-    for (name, integr) in integraions_map {
-        for tool in integr.integr_tools(&name).await {
-            let mut tool_name = tool.tool_name();
-            if tool_name.is_empty() {
-                tool_name = name.clone();
-            }
-            if tools.contains_key(&tool_name) {
-                tracing::warn!("tool with name '{}' already exists, overwriting previous definition", tool_name);
-            }
-            tools.insert(tool_name, tool);
-        }
-    }
-    tools
-}
 
 /// Loads and set up integrations from config files.
 ///
@@ -35,14 +12,13 @@ pub async fn load_integration_tools(
 /// otherwise only those matching `include_paths_matching` glob patterns.
 pub async fn load_integrations(
     gcx: Arc<ARwLock<GlobalContext>>,
-    allow_experimental: bool,
     include_paths_matching: &[String],
 ) -> (IndexMap<String, Box<dyn IntegrationTrait + Send + Sync>>, Vec<YamlError>) {
     let active_project_path = crate::files_correction::get_active_project_path(gcx.clone()).await;
     let (config_dirs, global_config_dir) = crate::integrations::setting_up_integrations::get_config_dirs(gcx.clone(), &active_project_path).await;
-    let (integrations_yaml_path, is_inside_container) = {
+    let (integrations_yaml_path, is_inside_container, allow_experimental) = {
         let gcx_locked = gcx.read().await;
-        (gcx_locked.cmdline.integrations_yaml.clone(), gcx_locked.cmdline.inside_container)
+        (gcx_locked.cmdline.integrations_yaml.clone(), gcx_locked.cmdline.inside_container, gcx_locked.cmdline.experimental)
     };
 
     let mut error_log: Vec<YamlError> = Vec::new();

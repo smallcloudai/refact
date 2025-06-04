@@ -20,7 +20,7 @@ use crate::{
     global_context::GlobalContext,
     postprocessing::pp_context_files::postprocess_context_files,
     subchat::subchat,
-    tools::tools_description::Tool,
+    tools::tools_description::{Tool, ToolDesc, ToolSource, ToolSourceType},
 };
 use crate::caps::resolve_chat_model;
 use crate::global_context::try_load_caps_quickly_if_not_present;
@@ -280,7 +280,9 @@ async fn read_and_compress_directory(
         .collect())
 }
 
-pub struct ToolCreateMemoryBank;
+pub struct ToolCreateMemoryBank {
+    pub config_path: String,
+}
 
 const MB_SYSTEM_PROMPT: &str = r###"• Objective:
   – Create a clear, natural language description of the project structure while building a comprehensive architectural understanding.
@@ -435,7 +437,7 @@ impl Tool for ToolCreateMemoryBank {
 
                 // Update usage from subchat result
                 if let Some(last_msg) = subchat_result.last() {
-                    crate::tools::tool_relevant_files::update_usage_from_message(&mut usage_collector, last_msg);
+                    crate::tools::tools_execute::update_usage_from_message(&mut usage_collector, last_msg);
                     tracing::info!(
                         target = "memory_bank",
                         directory = target.target_name,
@@ -482,12 +484,17 @@ impl Tool for ToolCreateMemoryBank {
     }
 
     fn tool_depends_on(&self) -> Vec<String> {
-        vec!["ast".to_string(), "vecdb".to_string()]
+        vec![]
     }
 
-    fn tool_description(&self) -> crate::tools::tools_description::ToolDesc {
-        crate::tools::tools_description::ToolDesc {
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
             name: "create_memory_bank".into(),
+            display_name: "Create Memory Bank".into(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: true,
             description: "Gathers information about the project structure (modules, file relations, classes, etc.) and saves this data into the memory bank.".into(),

@@ -14,6 +14,7 @@ use crate::scratchpads::chat_utils_deltadelta::DeltaDeltaChatStreamer;
 use crate::scratchpads::chat_utils_limit_history::fix_and_limit_messages_history;
 use crate::scratchpads::chat_utils_prompts::prepend_the_right_system_prompt_and_maybe_more_initial_messages;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
+use crate::tools::tools_list::get_available_tools_by_chat_mode;
 
 
 const DEBUG: bool = true;
@@ -67,8 +68,6 @@ impl ScratchpadAbstract for GenericChatScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        _exploration_tools: bool,
-        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.token_bos = patch.get("token_bos").and_then(|x| x.as_str()).unwrap_or("").to_string();
         self.token_esc = patch.get("token_esc").and_then(|x| x.as_str()).unwrap_or("").to_string();
@@ -106,7 +105,17 @@ impl ScratchpadAbstract for GenericChatScratchpad {
         };
 
         let messages = if self.prepend_system_prompt && self.allow_at {
-            prepend_the_right_system_prompt_and_maybe_more_initial_messages(gcx.clone(), self.messages.clone(), &self.post.meta, &mut self.has_rag_results).await
+            prepend_the_right_system_prompt_and_maybe_more_initial_messages(
+                gcx.clone(), 
+                self.messages.clone(), 
+                &self.post.meta, 
+                &mut self.has_rag_results,
+                get_available_tools_by_chat_mode(gcx.clone(), self.post.meta.chat_mode)
+                    .await
+                    .into_iter()
+                    .map(|t| t.tool_description().name)
+                    .collect(),
+            ).await
         } else {
             self.messages.clone()
         };

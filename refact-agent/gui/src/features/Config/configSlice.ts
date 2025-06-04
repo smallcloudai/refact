@@ -15,7 +15,6 @@ export type Config = {
     vecdb?: boolean;
     ast?: boolean;
     images?: boolean;
-    knowledge?: boolean;
   };
   keyBindings?: {
     completeManual?: string;
@@ -23,6 +22,7 @@ export type Config = {
   apiKey?: string | null;
   addressURL?: string;
   shiftEnterToSubmit?: boolean;
+  currentWorkspaceName?: string;
 };
 
 const initialState: Config = {
@@ -34,7 +34,6 @@ const initialState: Config = {
     vecdb: true,
     ast: true,
     images: true,
-    knowledge: false,
   },
   themeProps: {
     appearance: "dark",
@@ -43,6 +42,7 @@ const initialState: Config = {
 };
 
 export const updateConfig = createAction<Partial<Config>>("config/update");
+
 export const setThemeMode = createAction<"light" | "dark" | "inherit">(
   "config/setThemeMode",
 );
@@ -109,10 +109,6 @@ export const selectVecdb = createSelector(
 export const selectAst = createSelector(
   selectFeatures,
   (features) => features?.ast,
-);
-export const selectKnowledgeFeature = createSelector(
-  selectFeatures,
-  (features) => features?.knowledge,
 );
 
 export const selectApiKey = (state: RootState) => state.config.apiKey;

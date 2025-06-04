@@ -1,0 +1,304 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+input FExpertInput {
+  fexp_allow_tools: String!
+  fexp_block_tools: String!
+  fexp_name: String!
+  fexp_python_kernel: String!
+  fexp_system_prompt: String!
+  fexp_ver_major: Int!
+  fexp_ver_minor: Int!
+  located_fgroup_id: String!
+  owner_fuser_id: String!
+  owner_shared: Boolean!
+}
+
+type FExpertOutput {
+  fexp_allow_tools: String!
+  fexp_block_tools: String!
+  fexp_name: String!
+  fexp_python_kernel: String!
+  fexp_system_prompt: String!
+  fexp_ver_major: Int!
+  fexp_ver_minor: Int!
+  located_fgroup_id: String!
+  owner_fuser_id: String!
+  owner_shared: Boolean!
+}
+
+input FExpertPatch {
+  located_fgroup_id: String = null
+  owner_shared: Boolean = null
+}
+
+type FExpertSubs {
+  news_action: String!
+  news_payload: FExpertOutput!
+  news_payload_id: String!
+  news_ws_id: String!
+}
+
+input FExternalDataSourceInput {
+  eds_json: JSON!
+  eds_name: String!
+  eds_type: String!
+  located_fgroup_id: String!
+}
+
+type FExternalDataSourceOutput {
+  eds_created_ts: Float!
+  eds_id: String!
+  eds_json: JSON!
+  eds_last_successful_scan_ts: Float!
+  eds_modified_ts: Float!
+  eds_name: String!
+  eds_scan_status: String!
+  eds_secret_id: Int
+  eds_type: String!
+  located_fgroup_id: String!
+  owner_fuser_id: String!
+}
+
+input FExternalDataSourcePatch {
+  eds_json: JSON = null
+  eds_last_successful_scan_ts: Float = null
+  eds_name: String = null
+  eds_scan_status: String = null
+  eds_secret_id: Int = null
+  eds_type: String = null
+  located_fgroup_id: String = null
+}
+
+type FExternalDataSourceSubs {
+  news_action: String!
+  news_payload: FExternalDataSourceOutput
+  news_payload_id: String!
+}
+
+input FKnowledgeItemInput {
+  iknow_memory: String!
+  iknow_tags: [String!]! = []
+  located_fgroup_id: String!
+  owner_shared: Boolean!
+}
+
+type FKnowledgeItemOutput {
+  iknow_created_ts: Float!
+  iknow_id: String!
+  iknow_memory: String!
+  iknow_modified_ts: Float!
+  iknow_stat_correct: Int!
+  iknow_stat_relevant: Int!
+  iknow_stat_times_used: Int!
+  iknow_tags: [String!]!
+  located_fgroup_id: String!
+  owner_fuser_id: String!
+  owner_shared: Boolean!
+}
+
+input FKnowledgeItemPatch {
+  iknow_memory: String = null
+  iknow_tags: [String!] = null
+  located_fgroup_id: String = null
+  owner_shared: Boolean = null
+}
+
+type FKnowledgeItemSubs {
+  news_action: String!
+  news_payload: FKnowledgeItemOutput
+  news_payload_id: String!
+  news_ws_id: String!
+}
+
+type FThreadDelta {
+  ftm_content: JSON!
+  ftm_role: String!
+}
+
+input FThreadInput {
+  ft_belongs_to_fce_id: String
+  ft_fexp_name: String!
+  ft_fexp_ver_major: Int!
+  ft_fexp_ver_minor: Int!
+  ft_max_new_tokens: Int! = 8192
+  ft_model: String! = ""
+  ft_n: Int! = 1
+  ft_temperature: Float! = 0
+  ft_title: String!
+  located_fgroup_id: String!
+  owner_shared: Boolean!
+}
+
+type FThreadMessage {
+  ftm_alt: Int!
+  ftm_belongs_to_ft_id: String!
+  ftm_call_id: String!
+  ftm_content: JSON!
+  ftm_created_ts: Float!
+  ftm_num: Int!
+  ftm_prev_alt: Int!
+  ftm_role: String!
+  ftm_tool_calls: JSON
+  ftm_usage: JSON
+}
+
+input FThreadMessageInput {
+  ftm_alt: Int!
+  ftm_belongs_to_ft_id: String!
+  ftm_call_id: String!
+  ftm_content: String!
+  ftm_num: Int!
+  ftm_prev_alt: Int!
+  ftm_provenance: String!
+  ftm_role: String!
+  ftm_tool_calls: String!
+  ftm_usage: String!
+}
+
+type FThreadMessageSubs {
+  news_action: String!
+  news_payload_id: String!
+  news_payload_thread: FThreadOutput
+  news_payload_thread_message: FThreadMessage
+  stream_delta: FThreadDelta
+}
+
+type FThreadMessagesCreateResult {
+  count: Int!
+  messages: [FThreadMessage!]!
+}
+
+input FThreadMultipleMessagesInput {
+  ftm_belongs_to_ft_id: String!
+  messages: [FThreadMessageInput!]!
+}
+
+type FThreadOutput {
+  ft_anything_new: Boolean!
+  ft_archived_ts: Float!
+  ft_belongs_to_fce_id: String
+  ft_created_ts: Float!
+  ft_error: String!
+  ft_fexp_name: String!
+  ft_fexp_ver_major: Int!
+  ft_fexp_ver_minor: Int!
+  ft_id: String!
+  ft_locked_by: String!
+  ft_max_new_tokens: Int!
+  ft_model: String!
+  ft_n: Int!
+  ft_need_assistant: Int!
+  ft_need_tool_calls: Int!
+  ft_temperature: Float!
+  ft_title: String!
+  ft_toolset: String!
+  ft_updated_ts: Float!
+  located_fgroup_id: String!
+  owner_fuser_id: String!
+  owner_shared: Boolean!
+}
+
+input FThreadPatch {
+  ft_anything_new: Boolean = null
+  ft_archived_ts: Float = null
+  ft_belongs_to_fce_id: String = null
+  ft_error: String = null
+  ft_max_new_tokens: Int = null
+  ft_model: String = null
+  ft_n: Int = null
+  ft_temperature: Float = null
+  ft_title: String = null
+  ft_toolset: String = null
+  located_fgroup_id: String = null
+  owner_shared: Boolean = null
+}
+
+type FThreadSubs {
+  news_action: String!
+  news_payload: FThreadOutput
+  news_payload_id: String!
+  news_ws_id: String!
+}
+
+type FWorkspace {
+  root_group_name: String!
+  ws_created_ts: Float!
+  ws_id: String!
+  ws_owner_fuser_id: String!
+  ws_root_group_id: String!
+  ws_status: String!
+}
+
+type FlexusGroup {
+  fgroup_created_ts: Float!
+  fgroup_id: String!
+  fgroup_name: String!
+  fgroup_parent_id: String
+  ws_id: String!
+}
+
+input FlexusGroupInput {
+  fgroup_name: String!
+  fgroup_parent_id: String!
+}
+
+input FlexusGroupPatch {
+  fgroup_name: String = null
+  fgroup_parent_id: String = null
+}
+
+"""The JSON scalar type represents JSON values as Python objects"""
+scalar JSON
+
+type Mutation {
+  expert_create(input: FExpertInput!): FExpertOutput!
+  expert_delete(id: String!): Boolean!
+  expert_patch(id: String!, patch: FExpertPatch!): FExpertOutput!
+  external_data_source_create(input: FExternalDataSourceInput!): FExternalDataSourceOutput!
+  external_data_source_delete(id: String!): Boolean!
+  external_data_source_patch(id: String!, patch: FExternalDataSourcePatch!): FExternalDataSourceOutput!
+  group_create(input: FlexusGroupInput!): FlexusGroup!
+  group_delete(fgroup_id: String!): String!
+  group_patch(fgroup_id: String!, patch: FlexusGroupPatch!): FlexusGroup!
+  knowledge_item_create(input: FKnowledgeItemInput!): FKnowledgeItemOutput!
+  knowledge_item_delete(id: String!): Boolean!
+  knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
+  knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItemOutput!
+  stats_add(st_how_many: Int!, st_involved_expert: String! = "", st_involved_fuser_id: String! = "", st_involved_model: String! = "", st_thing: String!, ts: Float!, ws_id: String!): Boolean!
+  thread_create(input: FThreadInput!): FThreadOutput!
+  thread_delete(id: String!): Boolean!
+  thread_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
+  thread_message_create(input: FThreadMessageInput!): FThreadMessage!
+  thread_messages_create_multiple(input: FThreadMultipleMessagesInput!): FThreadMessagesCreateResult!
+  thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
+}
+
+type Query {
+  expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
+  external_data_source_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExternalDataSourceOutput!]!
+  knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItemOutput!]!
+  login: [FWorkspace!]!
+  thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
+  thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessage!]!
+}
+
+type Subscription {
+  comprehensive_thread_subs(ft_id: String!, want_deltas: Boolean!): FThreadMessageSubs!
+  experts_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FExpertSubs!
+  external_data_sources_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FExternalDataSourceSubs!
+  knowledge_items_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FKnowledgeItemSubs!
+  threads_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FThreadSubs!
+  tree_subscription(ws_id: String!): TreeUpdateSubs!
+}
+
+type TreeUpdateSubs {
+  treeupd_action: String!
+  treeupd_id: String!
+  treeupd_path: String!
+  treeupd_title: String!
+  treeupd_type: String!
+}

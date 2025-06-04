@@ -175,6 +175,8 @@ pub struct ChatMessage {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub tool_call_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_failed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage: Option<ChatUsage>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub checkpoints: Vec<Checkpoint>,
@@ -187,7 +189,7 @@ pub struct ChatMessage {
 pub enum ModelType {
     Chat,
     Completion,
-    Embedding,    
+    Embedding,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
@@ -236,8 +238,6 @@ pub struct ChatPost {
     pub increase_max_tokens: bool,
     #[serde(default)]
     pub n: Option<usize>,
-    #[serde(default)]
-    pub tools: Option<Vec<serde_json::Value>>,
     #[serde(default)]
     pub tool_choice: Option<String>,
     #[serde(default)]
@@ -289,7 +289,7 @@ impl ChatMode {
     pub fn is_agentic(self) -> bool {
         match self {
             ChatMode::AGENT => true,
-            ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE | 
+            ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE |
                 ChatMode::PROJECT_SUMMARY => false,
         }
     }

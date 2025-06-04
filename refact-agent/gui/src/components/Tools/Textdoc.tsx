@@ -21,12 +21,11 @@ import {
 import { Box, Card, Flex, Button } from "@radix-ui/themes";
 import { TruncateLeft } from "../Text";
 import { Link } from "../Link";
-import { useEventsBusForIDE } from "../../hooks/useEventBusForIDE";
 import { filename } from "../../utils/filename";
 import styles from "./Texdoc.module.css";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { Reveal } from "../Reveal";
-import { useAppSelector, useHideScroll } from "../../hooks";
+import { useAppSelector, useHideScroll, useEventsBusForIDE } from "../../hooks";
 import { selectCanPaste, selectChatId } from "../../features/Chat";
 import { toolsApi } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
@@ -34,11 +33,12 @@ import { isRTKResponseErrorWithDetailMessage } from "../../utils";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
 
-export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
-  toolCall,
-}) => {
+export const TextDocTool: React.FC<{
+  toolCall: RawTextDocTool;
+  toolFailed?: boolean;
+}> = ({ toolCall, toolFailed = false }) => {
+  if (toolFailed) return false;
   const maybeTextDocToolCall = parseRawTextDocToolCall(toolCall);
-
   if (!maybeTextDocToolCall) return false;
 
   if (isCreateTextDocToolCall(maybeTextDocToolCall)) {
@@ -63,7 +63,8 @@ export const TextDocTool: React.FC<{ toolCall: RawTextDocTool }> = ({
 type TextDocHeaderProps = { toolCall: TextDocToolCall };
 const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
   ({ toolCall }, ref) => {
-    const { openFile, diffPasteBack, sendToolCallToIde } = useEventsBusForIDE();
+    const { queryPathThenOpenFile, diffPasteBack, sendToolCallToIde } =
+      useEventsBusForIDE();
     const [requestDryRun, dryRunResult] =
       toolsApi.useDryRunForEditToolMutation();
     const [errorMessage, setErrorMessage] = useState<string>("");
@@ -73,10 +74,12 @@ const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
     const clearErrorMessage = useCallback(() => setErrorMessage(""), []);
 
     // move this
-    const handleOpenFile = useCallback(() => {
+    const handleOpenFile = useCallback(async () => {
       if (!toolCall.function.arguments.path) return;
-      openFile({ file_name: toolCall.function.arguments.path });
-    }, [openFile, toolCall.function.arguments.path]);
+      await queryPathThenOpenFile({
+        file_path: toolCall.function.arguments.path,
+      });
+    }, [toolCall.function.arguments.path, queryPathThenOpenFile]);
 
     const handleReplace = useCallback(
       (content: string) => {
@@ -133,7 +136,7 @@ const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
               title="Open file"
               onClick={(event) => {
                 event.preventDefault();
-                handleOpenFile();
+                void handleOpenFile();
               }}
             >
               {toolCall.function.arguments.path}

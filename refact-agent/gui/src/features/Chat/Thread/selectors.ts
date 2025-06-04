@@ -2,10 +2,12 @@ import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import {
   CompressionStrength,
+  isAssistantMessage,
   isDiffMessage,
   isToolMessage,
   isUserMessage,
 } from "../../../services/refact/types";
+import { takeFromLast } from "../../../utils/takeFromLast";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
@@ -35,6 +37,8 @@ export const selectIsWaiting = (state: RootState) =>
   state.chat.waiting_for_response;
 export const selectAreFollowUpsEnabled = (state: RootState) =>
   state.chat.follow_ups_enabled;
+export const selectIsTitleGenerationEnabled = (state: RootState) =>
+  state.chat.title_generation_enabled;
 export const selectIsStreaming = (state: RootState) => state.chat.streaming;
 export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
 export const selectChatError = (state: RootState) => state.chat.error;
@@ -111,5 +115,43 @@ export const selectLastSentCompression = createSelector(
     );
 
     return lastCompression;
+  },
+);
+
+export const selectHasUncalledTools = createSelector(
+  selectMessages,
+  (messages) => {
+    if (messages.length === 0) return false;
+    const tailMessages = takeFromLast(messages, isUserMessage);
+
+    const toolCalls = tailMessages.reduce<string[]>((acc, cur) => {
+      if (!isAssistantMessage(cur)) return acc;
+      if (!cur.tool_calls || cur.tool_calls.length === 0) return acc;
+      const curToolCallIds = cur.tool_calls
+        .map((toolCall) => toolCall.id)
+        .filter((id) => id !== undefined);
+
+      return [...acc, ...curToolCallIds];
+    }, []);
+
+    if (toolCalls.length === 0) return false;
+
+    const toolMessages = tailMessages
+      .map((msg) => {
+        if (isToolMessage(msg)) {
+          return msg.content.tool_call_id;
+        }
+        if ("tool_call_id" in msg && typeof msg.tool_call_id === "string") {
+          return msg.tool_call_id;
+        }
+        return undefined;
+      })
+      .filter((id): id is string => typeof id === "string");
+
+    const hasUnsentTools = toolCalls.some(
+      (toolCallId) => !toolMessages.includes(toolCallId),
+    );
+
+    return hasUnsentTools;
   },
 );

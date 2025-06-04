@@ -118,6 +118,12 @@ fn _replace_variables_in_system_prompts(config: &mut CustomizationYaml, variable
     }
 }
 
+
+pub fn load_customization_compiled_in() -> serde_yaml::Value {
+    let compiled_in_customization = include_str!("customization_compiled_in.yaml");
+    serde_yaml::from_str(compiled_in_customization).unwrap()   // compiled-in cannot fail
+}
+
 pub fn load_and_mix_with_users_config(
     user_yaml: &str,
     caps_yaml: &str,

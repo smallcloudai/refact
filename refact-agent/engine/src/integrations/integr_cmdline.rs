@@ -13,10 +13,11 @@ use std::borrow::Cow;
 #[cfg(not(target_os = "windows"))]
 use shell_escape::escape;
 
+use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::integrations::process_io_utils::execute_command;
-use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
+use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
@@ -182,12 +183,12 @@ pub fn create_command_from_string(
 
     if command_workdir.is_empty() {
         if let Some(first_project_dir) = project_dirs.first() {
-            cmd.current_dir(first_project_dir);
+            cmd.current_dir_simplified(first_project_dir);
         } else {
             tracing::warn!("no working directory, using whatever directory this binary is run :/");
         }
     } else {
-        cmd.current_dir(command_workdir);
+        cmd.current_dir_simplified(command_workdir);
     }
 
     for (key, value) in env_variables {
@@ -221,8 +222,8 @@ pub async fn execute_blocking_command(
     let duration = t0.elapsed();
     info!("EXEC: /finished in {:?}", duration);
 
-    let stdout = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stdout).to_string());
-    let stderr = output_mini_postprocessing(&cfg.output_filter, &String::from_utf8_lossy(&output.stderr).to_string());
+    let stdout = output_mini_postprocessing(&cfg.output_filter, &output.stdout.to_string_lossy_and_strip_ansi());
+    let stderr = output_mini_postprocessing(&cfg.output_filter, &output.stderr.to_string_lossy_and_strip_ansi());
 
     let mut out = format_output(&stdout, &stderr);
     let exit_code = output.status.code().unwrap_or_default();
@@ -296,6 +297,11 @@ impl Tool for ToolCmdline {
         });
         ToolDesc {
             name: self.name.clone(),
+            display_name: self.name.clone(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: self.cfg.description.clone(),
@@ -304,8 +310,9 @@ impl Tool for ToolCmdline {
         }
     }
 
-    fn command_to_match_against_confirm_deny(
+    async fn command_to_match_against_confirm_deny(
         &self,
+        _ccx: Arc<AMutex<AtCommandsContext>>,
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<String, String> {
         let (command, _workdir) = _parse_command_args(args, &self.cfg)?;

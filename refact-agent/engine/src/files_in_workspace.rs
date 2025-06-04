@@ -13,9 +13,10 @@ use walkdir::WalkDir;
 use which::which;
 use tracing::info;
 
-use crate::files_correction::canonical_path;
+use crate::files_correction::{canonical_path, CommandSimplifiedDirExt};
 use crate::git::operations::git_ls_files;
-use crate::global_context::GlobalContext;
+use crate::global_context::{get_app_searchable_id, GlobalContext};
+use crate::integrations::running_integrations::load_integrations;
 use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
@@ -25,6 +26,8 @@ use crate::files_blocklist::{
     is_blocklisted,
     reload_indexing_everywhere_if_needed,
 };
+use crate::files_correction_cache::PathTrie;
+use crate::files_in_jsonl::enqueue_all_docs_from_jsonl_but_read_first;
 
 
 // How this works
@@ -76,7 +79,6 @@ impl Document {
         Self { doc_path: doc_path.clone(),  doc_text: None }
     }
 
-    #[cfg(feature="vecdb")]
     pub async fn update_text_from_disk(&mut self, gcx: Arc<ARwLock<GlobalContext>>) -> Result<(), String> {
         match read_file_from_disk(load_privacy_if_needed(gcx.clone()).await, &self.doc_path).await {
             Ok(res) => {
@@ -100,7 +102,6 @@ impl Document {
         self.doc_text = Some(Rope::from_str(text));
     }
 
-    #[cfg(feature="vecdb")]
     pub fn text_as_string(&self) -> Result<String, String> {
         if let Some(r) = &self.doc_text {
             return Ok(r.to_string());
@@ -131,6 +132,39 @@ impl Document {
     }
 }
 
+pub struct CacheCorrection {
+    pub filenames: PathTrie,
+    pub directories: PathTrie,
+}
+
+impl CacheCorrection {
+    pub fn new() -> Self {
+        CacheCorrection {
+            filenames: PathTrie::new(),
+            directories: PathTrie::new(),
+        }
+    }
+
+    pub fn build(paths: &Vec<PathBuf>, workspace_folders: &Vec<PathBuf>) -> CacheCorrection {
+        let filenames = PathTrie::build(&paths, &workspace_folders);
+        // TODO: I'm not sure how directories should be collected
+        let directories: Vec<PathBuf> = {
+            let mut unique_directories = HashSet::new();
+            for p in paths.iter() {
+                if let Some(parent) = p.parent() {
+                    unique_directories.insert(parent);
+                }
+            }
+            unique_directories.iter().map(|p| PathBuf::from(p)).collect()
+        };
+        let directories = PathTrie::build(&directories, &workspace_folders);
+        CacheCorrection {
+            filenames,
+            directories,
+        }
+    }
+}
+
 pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
@@ -141,8 +175,7 @@ pub struct DocumentsState {
     // query on windows: C:/Users/user/Documents/file.ext
     pub memory_document_map: HashMap<PathBuf, Arc<ARwLock<Document>>>,   // if a file is open in IDE, and it's outside workspace dirs, it will be in this map and not in workspace_files
     pub cache_dirty: Arc<AMutex<f64>>,
-    pub cache_correction: Arc<HashMap<String, HashSet<String>>>,  // map dir3/file.ext -> to /dir1/dir2/dir3/file.ext
-    pub cache_shortened: Arc<HashSet<String>>,
+    pub cache_correction: Arc<CacheCorrection>,
     pub fs_watcher: Arc<ARwLock<RecommendedWatcher>>,
 }
 
@@ -176,8 +209,7 @@ impl DocumentsState {
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
             cache_dirty: Arc::new(AMutex::<f64>::new(0.0)),
-            cache_correction: Arc::new(HashMap::<String, HashSet<String>>::new()),
-            cache_shortened: Arc::new(HashSet::<String>::new()),
+            cache_correction: Arc::new(CacheCorrection::new()),
             fs_watcher: Arc::new(ARwLock::new(watcher)),
         }
     }
@@ -231,9 +263,9 @@ pub async fn read_file_from_disk(
 
 async fn _run_command(cmd: &str, args: &[&str], path: &PathBuf, filter_out_status: bool) -> Option<Vec<PathBuf>> {
     info!("{} EXEC {} {}", path.display(), cmd, args.join(" "));
-    let output = async_process::Command::new(cmd)
+    let output = tokio::process::Command::new(cmd)
         .args(args)
-        .current_dir(path)
+        .current_dir_simplified(path)
         .output()
         .await
         .ok()?;
@@ -308,6 +340,7 @@ pub fn _ls_files(
     Ok(paths)
 }
 
+// NOTE: don't optimized for large workspaces
 pub fn ls_files(
     indexing_everywhere: &IndexingEverywhere,
     path: &PathBuf,
@@ -532,19 +565,16 @@ async fn enqueue_some_docs(
         let cx = gcx.read().await;
         (cx.vec_db.clone(), cx.ast_service.clone())
     };
-    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&paths, force).await;
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         ast_indexer_enqueue_files(ast.clone(), paths, force).await;
     }
-    let (cache_correction_arc, _) = crate::files_correction::files_cache_rebuild_as_needed(gcx.clone()).await;
+    let cache_correction_arc = crate::files_correction::files_cache_rebuild_as_needed(gcx.clone()).await;
     let mut moar_files: Vec<PathBuf> = Vec::new();
     for p in paths {
-        if !cache_correction_arc.contains_key(p) {
+        if cache_correction_arc.filenames.find_matches(&PathBuf::from(p)).len() == 0 {
             moar_files.push(PathBuf::from(p.clone()));
         }
     }
@@ -607,12 +637,9 @@ pub async fn enqueue_all_files_from_workspace_folders(
     updated_or_removed.extend(old_workspace_files.iter().map(|p| p.to_string_lossy().to_string()));
     let paths_nodups: Vec<String> = updated_or_removed.into_iter().collect();
 
-    #[cfg(feature="vecdb")]
     if let Some(ref mut db) = *vec_db_module.lock().await {
         db.vectorizer_enqueue_files(&paths_nodups, wake_up_indexers).await;
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
 
     if let Some(ast) = ast_service {
         if !vecdb_only {
@@ -626,13 +653,21 @@ pub async fn on_workspaces_init(gcx: Arc<ARwLock<GlobalContext>>) -> i32
 {
     // Called from lsp and lsp_like
     // Not called from main.rs as part of initialization
+    let folders = gcx.read().await.documents_state.workspace_folders.lock().unwrap().clone();
+    let old_app_searchable_id = gcx.read().await.app_searchable_id.clone();
+    let new_app_searchable_id = get_app_searchable_id(&folders);
+    if old_app_searchable_id != new_app_searchable_id {
+        gcx.write().await.app_searchable_id = get_app_searchable_id(&folders);
+        crate::cloud::threads_sub::trigger_threads_subscription_restart(gcx.clone()).await;
+    }
     watcher_init(gcx.clone()).await;
     let files_enqueued = enqueue_all_files_from_workspace_folders(gcx.clone(), false, false).await;
 
-    let gcx_clone = gcx.clone();
-    tokio::spawn(async move {
-        crate::git::checkpoints::init_shadow_repos_if_needed(gcx_clone).await;
-    });
+    // enqueue shadow repos initialization
+    crate::git::checkpoints::enqueue_init_shadow_repos(gcx.clone()).await;
+
+    // Start or connect to mcp servers
+    let _ = load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
 
     files_enqueued
 }
@@ -723,7 +758,6 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
     (*dirty_arc.lock().await) = now;
 
-    #[cfg(feature="vecdb")]
     match *vec_db_module.lock().await {
         Some(ref mut db) => match db.remove_file(path).await {
             Ok(_) => {}
@@ -731,8 +765,6 @@ pub async fn on_did_delete(gcx: Arc<ARwLock<GlobalContext>>, path: &PathBuf)
         },
         None => {}
     }
-    #[cfg(not(feature="vecdb"))]
-    let _ = vec_db_module;
     if let Some(ast) = &ast_service {
         let cpath = path.to_string_lossy().to_string();
         ast_indexer_enqueue_files(ast.clone(), &vec![cpath], false).await;
@@ -808,18 +840,18 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
                             canonical_path(repo_p.to_string_lossy())
                         })
                 })
-                .map(|p| { 
-                    let exists = p.join(".git").exists(); 
-                    (p.clone(), exists) 
+                .map(|p| {
+                    let exists = p.join(".git").exists();
+                    (p.clone(), exists)
                 })
                 .collect::<Vec<_>>();
-            
+
             if repo_paths.is_empty() {
                 return;
             }
-            
+
             let workspace_vcs_roots = gcx.read().await.documents_state.workspace_vcs_roots.clone();
-            
+
             let mut should_reindex = false;
             {
                 let mut workspace_vcs_roots_locked = workspace_vcs_roots.lock().unwrap();
@@ -848,7 +880,7 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter().any(
             |p| p.components().any(|c| c == Component::Normal(".git".as_ref()))
         ) => on_dot_git_dir_change(gcx_weak.clone(), event).await,
-        
+
         // In Windows, we receive generic events (Any subtype), but we receive them about each exact folder
         EventKind::Create(CreateKind::Any) | EventKind::Modify(ModifyKind::Any) | EventKind::Remove(RemoveKind::Any)
             if event.paths.iter().any(|p| p.ends_with(".git")) =>
@@ -856,7 +888,13 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
 
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
             on_file_change(gcx_weak.clone(), event).await,
-        
+
         EventKind::Other | EventKind::Any | EventKind::Access(_) => {}
     }
+}
+
+pub async fn files_in_workspace_init_task(gcx: Arc<ARwLock<GlobalContext>>) {
+    enqueue_all_files_from_workspace_folders(gcx.clone(), true, false).await;
+    enqueue_all_docs_from_jsonl_but_read_first(gcx.clone(), true, false).await;
+    crate::git::checkpoints::enqueue_init_shadow_repos(gcx.clone()).await;
 }

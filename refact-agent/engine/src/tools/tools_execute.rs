@@ -9,7 +9,7 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ContextEnum, ContextFile, SubchatParameters};
+use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ChatUsage, ContextEnum, ContextFile, SubchatParameters};
 use crate::custom_error::MapErrToString;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::http::http_post_json;
@@ -73,7 +73,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
             }
         },
         Err(e) => {
-            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.", 
+            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.",
                 params.subchat_model_type, e, current_model);
             current_model
         }
@@ -161,7 +161,7 @@ pub async fn run_tools(
     style: &Option<String>,
 ) -> Result<(Vec<ChatMessage>, bool), String> {
     let n_ctx = ccx.lock().await.n_ctx;
-    // Default tokens limit for tools that perform internal compression (`tree()`, ...) 
+    // Default tokens limit for tools that perform internal compression (`tree()`, ...)
     ccx.lock().await.tokens_for_rag = 4096;
 
     let last_msg_tool_calls = match original_messages.last().filter(|m|m.role=="assistant") {
@@ -171,7 +171,7 @@ pub async fn run_tools(
     if last_msg_tool_calls.is_empty() {
         return Ok((vec![], false));
     }
-    
+
     let mut context_files_for_pp = vec![];
     let mut generated_tool = vec![];  // tool results must go first
     let mut generated_other = vec![];
@@ -181,7 +181,7 @@ pub async fn run_tools(
         let cmd = match tools.get_mut(&t_call.function.name) {
             Some(cmd) => cmd,
             None => {
-                let tool_failed_message = tool_answer(
+                let tool_failed_message = tool_answer_err(
                     format!("tool use: function {:?} not found", &t_call.function.name), t_call.id.to_string()
                 );
                 warn!("{}", tool_failed_message.content.content_text_only());
@@ -193,7 +193,7 @@ pub async fn run_tools(
         let args = match serde_json::from_str::<HashMap<String, Value>>(&t_call.function.arguments) {
             Ok(args) => args,
             Err(e) => {
-                let tool_failed_message = tool_answer(
+                let tool_failed_message = tool_answer_err(
                     format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e), t_call.id.to_string()
                 );
                 generated_tool.push(tool_failed_message);
@@ -207,33 +207,36 @@ pub async fn run_tools(
                 match res.result {
                     MatchConfirmDenyResult::DENY => {
                         let command_to_match = cmd
-                            .command_to_match_against_confirm_deny(&args)
+                            .command_to_match_against_confirm_deny(ccx.clone(), &args).await
                             .unwrap_or("<error_command>".to_string());
-                        generated_tool.push(tool_answer(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
+                        generated_tool.push(tool_answer_err(format!("tool use: command '{command_to_match}' is denied"), t_call.id.to_string()));
                         continue;
                     }
                     _ => {}
                 }
             }
             Err(err) => {
-                generated_tool.push(tool_answer(format!("tool use: {}", err), t_call.id.to_string()));
+                generated_tool.push(tool_answer_err(format!("tool use: {}", err), t_call.id.to_string()));
                 continue;
             }
         };
 
-        let (corrections, tool_execute_results) = {
-            match cmd.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
-                Ok(msg_and_maybe_more) => msg_and_maybe_more,
-                Err(e) => {
-                    warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
-                    let mut tool_failed_message = tool_answer(e, t_call.id.to_string());
-
-                    tool_failed_message.usage = cmd.usage().clone();
-                    *cmd.usage() = None;
-
-                    generated_tool.push(tool_failed_message.clone());
-                    continue;
+        let (corrections, tool_execute_results) = match cmd.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
+            Ok((corrections, mut tool_execute_results)) => {
+                for tool_execute_result in &mut tool_execute_results {
+                    if let ContextEnum::ChatMessage(m) = tool_execute_result {
+                        m.tool_failed = Some(false);
+                    }
                 }
+                (corrections, tool_execute_results)
+            }
+            Err(e) => {
+                warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
+                let mut tool_failed_message = tool_answer_err(e, t_call.id.to_string());
+                tool_failed_message.usage = cmd.usage().clone();
+                *cmd.usage() = None;
+                generated_tool.push(tool_failed_message.clone());
+                continue;
             }
         };
 
@@ -392,12 +395,13 @@ async fn pp_run_tools(
 }
 
 
-fn tool_answer(content: String, tool_call_id: String) -> ChatMessage {
+fn tool_answer_err(content: String, tool_call_id: String) -> ChatMessage {
     ChatMessage {
         role: "tool".to_string(),
         content: ChatContent::SimpleText(content),
         tool_calls: None,
         tool_call_id,
+        tool_failed: Some(true),
         ..Default::default()
     }
 }
@@ -427,4 +431,12 @@ pub fn command_should_be_denied(
     }
 
     (false, "".to_string())
+}
+
+pub fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
+    if let Some(u) = message.usage.as_ref() {
+        usage.total_tokens += u.total_tokens;
+        usage.completion_tokens += u.completion_tokens;
+        usage.prompt_tokens += u.prompt_tokens;
+    }
 }

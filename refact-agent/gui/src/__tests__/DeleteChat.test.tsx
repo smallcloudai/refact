@@ -42,6 +42,9 @@ describe("Delete a Chat form history", () => {
     const { user, store, ...app } = render(<InnerApp />, {
       preloadedState: {
         history,
+        teams: {
+          group: { id: "123", name: "test" },
+        },
         pages: [{ name: "history" }],
         config: {
           apiKey: "test",

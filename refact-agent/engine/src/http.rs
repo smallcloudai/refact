@@ -34,14 +34,6 @@ pub async fn start_server(
         return None
     }
     let shutdown_flag: Arc<AtomicBool> = gcx.read().await.shutdown_flag.clone();
-    let chore_sleeping_point = gcx.read().await.chore_db.lock().chore_sleeping_point.clone();
-    let vecdb = gcx.read().await.vec_db.clone();
-    let memdb_mb = vecdb.lock().await.as_ref().map(|x| x.memdb.clone());
-    let memdb_sleeping_point_mb = if let Some(memdb) = memdb_mb {
-        Some(memdb.lock().await.pubsub_notifier.clone())
-    } else {
-        None
-    };
     Some(tokio::spawn(async move {
         let addr = if is_inside_container { ([0, 0, 0, 0], port).into() } else { ([127, 0, 0, 1], port).into() };
         let builder = Server::try_bind(&addr).map_err(|e| {
@@ -54,7 +46,7 @@ pub async fn start_server(
                 let router = make_refact_http_server().layer(Extension(gcx.clone()));
                 let server = builder
                     .serve(router.into_make_service())
-                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver, shutdown_flag, chore_sleeping_point, memdb_sleeping_point_mb));
+                    .with_graceful_shutdown(crate::global_context::block_until_signal(ask_shutdown_receiver, shutdown_flag));
                 let resp = server.await.map_err(|e| format!("HTTP server error: {}", e));
                 if let Err(e) = resp {
                     error!("server error: {}", e);
