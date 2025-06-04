@@ -64,14 +64,10 @@ pub async fn get_expert(
     expert_name: &str
 ) -> Result<Expert, String> {
     let client = Client::new();
-    let (api_key, located_fgroup_id) = {
-        let gcx_read = gcx.read().await;
-        (gcx_read.cmdline.api_key.clone(),
-         gcx_read.active_group_id.clone().unwrap_or_default())
-    };
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
-    query GetExpert($located_fgroup_id: String!) {
-        experts_effective_list(located_fgroup_id: $located_fgroup_id) {
+    query GetExpert($id: String!) {
+        expert_get(id: $id) {
             owner_fuser_id
             owner_shared
             located_fgroup_id
@@ -89,8 +85,8 @@ pub async fn get_expert(
         .header("Content-Type", "application/json")
         .json(&json!({
             "query": query,
-            "variables": {
-                "located_fgroup_id": located_fgroup_id
+            "variables": { 
+                "id": expert_name
             }
         }))
         .send()
@@ -110,20 +106,10 @@ pub async fn get_expert(
             return Err(format!("GraphQL error: {}", error_msg));
         }
         if let Some(data) = response_json.get("data") {
-            if let Some(expert_list) = data.get("experts_effective_list") {
-                if let Some(experts) = expert_list.as_array() {
-                    if experts.len() > 1 {
-                        tracing::warn!(
-                            "multiple experts found for group ID {} with expert_name {}, this might cause inconsistent behavior",
-                            located_fgroup_id, expert_name
-                        )
-                    }
-                    for expert_value in experts {
-                        let expert: Expert = serde_json::from_value(expert_value.clone())
-                            .map_err(|e| format!("Failed to parse expert: {}", e))?;
-                        return Ok(expert);
-                    }
-                }
+            if let Some(expert_value) = data.get("expert_get") {
+                let expert: Expert = serde_json::from_value(expert_value.clone())
+                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
+                return Ok(expert);
             }
         }
         Err(format!(
