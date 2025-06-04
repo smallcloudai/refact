@@ -60,6 +60,7 @@ use crate::fuzzy_search::fuzzy_search;
 // Read tests below, the show what this index can do!
 
 
+const MAX_DB_SIZE: usize = 10 * 1024 * 1024 * 1024; // 10GB
 const A_LOT_OF_PRINTS: bool = false;
 
 macro_rules! debug_print {
@@ -86,7 +87,7 @@ pub async fn ast_index_init(ast_permanent: String, ast_max_files: usize) -> Arc<
     tracing::info!("starting AST db, ast_permanent={:?}", ast_permanent);
     let db_env: Arc<heed::Env> = Arc::new(task::spawn_blocking(move || {
         let mut options = heed::EnvOpenOptions::new();
-        options.map_size(10 * 1024 * 1024 * 1024); // 10GB, max DB size
+        options.map_size(MAX_DB_SIZE);
         options.max_dbs(10);
         unsafe { options.open(db_path).unwrap() }
     }).await.unwrap());
@@ -213,7 +214,7 @@ pub async fn doc_add(
     Ok((defs.into_iter().map(Arc::new).collect(), language))
 }
 
-pub fn doc_remove(ast_index: Arc<AstDB>, cpath: &String)
+pub fn doc_remove(ast_index: Arc<AstDB>, cpath: &String) -> ()
 {
     let file_global_path = filesystem_path_to_double_colon_path(cpath);
     let d_prefix = format!("d|{}::", file_global_path.join("::"));
