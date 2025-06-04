@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use indexmap::IndexMap;
 use serde_json::{json, Value};
 use tokenizers::Tokenizer;
 use tokio::sync::Mutex as AMutex;
@@ -109,7 +108,7 @@ impl ScratchpadAbstract for ChatPassthrough {
         ccx: Arc<AMutex<AtCommandsContext>>,
         sampling_parameters_to_patch: &mut SamplingParameters,
     ) -> Result<String, String> {
-        let (gcx, n_ctx, should_execute_remotely) = {
+        let (gcx, mut n_ctx, should_execute_remotely) = {
             let ccx_locked = ccx.lock().await;
             (ccx_locked.global_context.clone(), ccx_locked.n_ctx, ccx_locked.should_execute_remotely)
         };
@@ -178,6 +177,17 @@ impl ScratchpadAbstract for ChatPassthrough {
             info!("PASSTHROUGH TOOLS NOT SUPPORTED");
         }
 
+        let caps = {
+            let gcx_locked = gcx.write().await;
+            gcx_locked.caps.clone().unwrap()
+        };
+        let model_record_mb = resolve_chat_model(caps, &self.post.model).ok();
+        let mut supports_reasoning = None;
+        if let Some(model_record) = &model_record_mb {
+            n_ctx = model_record.base.n_ctx.clone();
+            supports_reasoning = model_record.supports_reasoning.clone();
+        }
+
         let (limited_msgs, compression_strength) = match fix_and_limit_messages_history(
             &self.t,
             &messages,
@@ -197,25 +207,19 @@ impl ScratchpadAbstract for ChatPassthrough {
         }
 
         // Handle models that support reasoning
-        let caps = {
-            let gcx_locked = gcx.write().await;
-            gcx_locked.caps.clone().unwrap()
-        };
-        let model_record_mb = resolve_chat_model(caps, &self.post.model).ok();
-
-        let supports_reasoning = model_record_mb.as_ref()
-            .map_or(false, |m| m.supports_reasoning.is_some());
-
-        let limited_adapted_msgs = if supports_reasoning {
+        let limited_adapted_msgs = if let Some(supports_reasoning) = supports_reasoning {
             let model_record = model_record_mb.clone().unwrap();
             _adapt_for_reasoning_models(
                 limited_msgs,
                 sampling_parameters_to_patch,
-                model_record.supports_reasoning.as_ref().unwrap().clone(),
+                supports_reasoning,
                 model_record.default_temperature.clone(),
                 model_record.supports_boost_reasoning.clone(),
             )
         } else {
+            // drop all reasoning parameters in case of non-reasoning model
+            sampling_parameters_to_patch.reasoning_effort = None;
+            sampling_parameters_to_patch.thinking = None;
             limited_msgs
         };
 
@@ -278,6 +282,7 @@ fn _adapt_for_reasoning_models(
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::High);
             }
             sampling_parameters.temperature = default_temperature;
+            sampling_parameters.thinking = None;
 
             // NOTE: OpenAI prefer user message over system
             messages.into_iter().map(|mut msg| {
@@ -299,9 +304,12 @@ fn _adapt_for_reasoning_models(
                     "budget_tokens": budget_tokens,
                 }));
             }
+            sampling_parameters.reasoning_effort = None;
             messages
         },
         _ => {
+            sampling_parameters.reasoning_effort = None;
+            sampling_parameters.thinking = None;
             sampling_parameters.temperature = default_temperature.clone();
             messages
         }
