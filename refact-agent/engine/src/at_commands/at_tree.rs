@@ -206,12 +206,7 @@ async fn _print_files_tree(
 
     let mut result = String::new();
     for (name, node) in &tree.children {
-        let db_mb = if let Some(ast) = ast_db.clone() {
-            Some(ast)
-        } else {
-            None
-        };
-        if let Some(output) = traverse(node, PathBuf::from(name), 0, maxdepth, db_mb.clone()) {
+        if let Some(output) = traverse(node, PathBuf::from(name), 0, maxdepth, ast_db.clone()) {
             result.push_str(&output);
         } else {
             break;
