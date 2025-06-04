@@ -234,9 +234,13 @@ describe("Chat", () => {
 
     expect(textarea).not.toBeNull();
 
-    const quickButtons = app.getAllByText(/quick/i);
+    // Click on the response mode dropdown trigger
+    const dropdownTrigger = app.getByTitle("Response speed mode");
+    await user.click(dropdownTrigger);
 
-    await user.click(quickButtons[0]);
+    // Select "Quick" option from the dropdown
+    const quickOption = app.getByRole("option", { name: /quick/i });
+    await user.click(quickOption);
 
     await user.type(textarea, "hello");
 
@@ -417,9 +421,13 @@ describe("Chat", () => {
 
     expect(textarea).not.toBeNull();
 
-    const quickButtons = app.getAllByText(/quick/i);
+    // Click on the response mode dropdown trigger
+    const dropdownTrigger = app.getByTitle("Response speed mode");
+    await user.click(dropdownTrigger);
 
-    await user.click(quickButtons[0]);
+    // Select "Quick" option from the dropdown
+    const quickOption = app.getByRole("option", { name: /quick/i });
+    await user.click(quickOption);
 
     await user.type(textarea, "hello");
 
