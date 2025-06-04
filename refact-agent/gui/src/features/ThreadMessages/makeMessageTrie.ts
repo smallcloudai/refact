@@ -10,9 +10,15 @@ interface Node<T> {
   children: Node<T>[];
 }
 
-type EmptyNode = Node<null>;
+export type EmptyNode = Node<null>;
 
 export type FTMMessageNode = Node<FTMMessage>;
+
+export function isEmptyNode(
+  node: EmptyNode | FTMMessageNode,
+): node is EmptyNode {
+  return node.value === null;
+}
 
 // const isRoot = (message: Message): boolean => {
 //   return message.ftm_prev_alt === -1;

@@ -1,31 +1,18 @@
 import React, { useCallback, useMemo } from "react";
-import {
-  ChatMessages,
-  isAssistantMessage,
-  isChatContextFileMessage,
-  isDiffMessage,
-  isToolMessage,
-  isUserMessage,
-  UserMessage,
-} from "../../services/refact";
-import { UserInput } from "./UserInput";
+
 import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
-import { ContextFiles } from "./ContextFiles";
-import { AssistantInput } from "./AssistantInput";
-import { PlainText } from "./PlainText";
+
 import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
   selectIntegration,
   selectIsStreaming,
   selectIsWaiting,
-  selectMessages,
   selectThread,
 } from "../../features/Chat/Thread/selectors";
-import { takeWhile } from "../../utils";
-import { GroupedDiffs } from "./DiffContent";
+
 import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
@@ -34,24 +21,19 @@ import { UsageCounter } from "../UsageCounter";
 import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
-import {
-  selectThreadMessages,
-  selectThreadMessageTrie,
-} from "../../features/ThreadMessages";
+import { selectThreadMessageTrie } from "../../features/ThreadMessages";
 import { MessageNode } from "../MessageNode/MessageNode.tsx";
+import { isEmptyNode } from "../../features/ThreadMessages/makeMessageTrie.ts";
 
 export type ChatContentProps = {
-  onRetry: (index: number, question: UserMessage["ftm_content"]) => void;
+  // onRetry: (index: number, question: UserMessage["ftm_content"]) => void;
   onStopStreaming: () => void;
 };
 
 export const ChatContent: React.FC<ChatContentProps> = ({
   onStopStreaming,
-  onRetry,
 }) => {
   const dispatch = useAppDispatch();
-  // here
-  const messages = useAppSelector(selectMessages);
   const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
@@ -119,12 +101,13 @@ export const ChatContent: React.FC<ChatContentProps> = ({
         gap="1"
       >
         {/** TODO isEmpty check */}
-        {threadMessageTrie.value === null && (
+        {isEmptyNode(threadMessageTrie) ? (
           <Container>
             <PlaceHolderText />
           </Container>
+        ) : (
+          <MessageNode>{threadMessageTrie}</MessageNode>
         )}
-        <MessageNode>{threadMessageTrie}</MessageNode>
         {/* {renderMessages(messages, onRetryWrapper, isWaiting)} */}
         <Container>
           <UncommittedChangesWarning />

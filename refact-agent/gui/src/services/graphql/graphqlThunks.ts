@@ -85,6 +85,8 @@ export const createThreadThunk = createAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
+  // before creating get the id from  http://localhost:8001/v1/get-app-searchable-id
+
   const client = createGraphqlClient(apiKey, thunkAPI.signal);
 
   const result = await client.mutation<
@@ -146,3 +148,5 @@ export const createMessage = createAppAsyncThunk<
   }
   return thunkAPI.fulfillWithValue(result.data);
 });
+
+// TODO: stop is ft_error, set this and it'll stop
