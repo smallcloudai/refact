@@ -36,14 +36,10 @@ pub async fn get_thread(
     thread_id: &str,
 ) -> Result<Thread, String> {
     let client = Client::new();
-    let (api_key, located_fgroup_id) = {
-        let gcx_read = gcx.read().await;
-        (gcx_read.cmdline.api_key.clone(),
-         gcx_read.active_group_id.clone().unwrap_or_default())
-    };
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
-    query GetAllThreads($group_id: String!) {
-        thread_list(located_fgroup_id: $group_id) {
+    query GetThread($id: String!) {
+        thread_get(id: $id) {
             owner_fuser_id
             owner_shared
             located_fgroup_id
@@ -73,7 +69,7 @@ pub async fn get_thread(
         .header("Content-Type", "application/json")
         .json(&json!({
             "query": query,
-            "variables": {"group_id": located_fgroup_id}
+            "variables": {"id": thread_id}
         }))
         .send()
         .await
@@ -92,17 +88,10 @@ pub async fn get_thread(
             return Err(format!("GraphQL error: {}", error_msg));
         }
         if let Some(data) = response_json.get("data") {
-            if let Some(threads) = data.get("thread_list") {
-                if let Some(threads_array) = threads.as_array() {
-                    for thread_value in threads_array {
-                        if thread_value["ft_id"] == thread_id {
-                            let thread: Thread = serde_json::from_value(thread_value.clone())
-                                .map_err(|e| format!("Failed to parse thread: {}", e))?;
-                            return Ok(thread);
-                        }
-                    }
-                    return Err(format!("Thread with ID {} not found", thread_id));
-                }
+            if let Some(thread_value) = data.get("thread_get") {
+                let thread: Thread = serde_json::from_value(thread_value.clone())
+                    .map_err(|e| format!("Failed to parse thread: {}", e))?;
+                return Ok(thread);
             }
         }
         Err(format!(

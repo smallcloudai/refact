@@ -372,6 +372,10 @@ async fn process_thread_event(
         &thread_payload.ft_id,
         thread_payload.ft_need_tool_calls,
     ).await?;
+    if messages.is_empty() {
+        info!("thread `{}` has no messages. Skipping it", thread_payload.ft_id);
+        return Ok(());
+    }
     let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
     let hash = generate_random_hash(16);
     match lock_thread(gcx.clone(), &thread.ft_id, &hash).await {
