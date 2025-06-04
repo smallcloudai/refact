@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useMemo } from "react";
+import { FC, useEffect, useState, useMemo, useRef } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -9,6 +9,7 @@ import { Button, Flex, Table } from "@radix-ui/themes";
 import { PlusIcon } from "@radix-ui/react-icons";
 import { toPascalCase } from "../../../utils/toPascalCase";
 import { DefaultCell } from "./DefaultCell";
+import isEqual from "lodash.isequal";
 
 import styles from "./ConfirmationTable.module.css";
 
@@ -29,6 +30,16 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   onToolConfirmation,
 }) => {
   const [data, setData] = useState<string[]>(initialData);
+  const previousDataRef = useRef<string[]>(initialData);
+  const previousInitialDataRef = useRef<string[]>(initialData);
+
+  // Sync with initialData when it changes from parent
+  useEffect(() => {
+    if (!isEqual(previousInitialDataRef.current, initialData)) {
+      previousInitialDataRef.current = initialData;
+      setData(initialData);
+    }
+  }, [initialData]);
 
   const addRow = () => {
     setData((prev) => [...prev, ""]);
@@ -43,7 +54,11 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   };
 
   useEffect(() => {
-    onToolConfirmation(tableName, data);
+    // Only call onToolConfirmation if data has actually changed
+    if (!isEqual(previousDataRef.current, data)) {
+      previousDataRef.current = data;
+      onToolConfirmation(tableName, data);
+    }
   }, [tableName, data, onToolConfirmation]);
 
   const tableData = useMemo<ConfirmationRow[]>(

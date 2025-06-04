@@ -8,18 +8,21 @@ import { selectConfig } from "../../../features/Config/configSlice";
 type FormSmartlinksProps = {
   integration: Integration;
   smartlinks: TSmartLink[] | undefined;
-  availabilityValues: Record<string, boolean>;
 };
 
 export const FormSmartlinks: FC<FormSmartlinksProps> = ({
   smartlinks,
   integration,
-  availabilityValues,
 }) => {
   const config = useAppSelector(selectConfig);
   const { openFile } = useEventsBusForIDE();
 
-  const { integr_name, project_path, integr_config_path } = integration;
+  const { integr_name, project_path, integr_config_path, integr_values } =
+    integration;
+
+  const available = integr_values
+    ? (integr_values.available as Record<string, boolean>)
+    : {};
 
   if (!smartlinks?.length) return null;
 
@@ -45,7 +48,7 @@ export const FormSmartlinks: FC<FormSmartlinksProps> = ({
                 integrationPath={integr_config_path}
                 shouldBeDisabled={
                   smartlink.sl_enable_only_with_tool
-                    ? !availabilityValues.on_your_laptop
+                    ? !available.on_your_laptop
                     : false
                 }
               />

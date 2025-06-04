@@ -22,7 +22,7 @@ export const IntegrationAvailability: FC<IntegrationAvailabilityProps> = ({
   if (fieldName === "when_isolated") return null;
 
   const handleLabelClick = () => {
-    handleSwitchChange(!value);
+    handleSwitchChange(value);
   };
 
   return (

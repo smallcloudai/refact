@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState, useMemo } from "react";
+import React, { FC, useEffect, useState, useMemo, useRef } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -12,6 +12,7 @@ import { DefaultCell } from "./DefaultCell";
 import styles from "./ConfirmationTable.module.css";
 import { debugIntegrations } from "../../../debugConfig";
 import { MCPEnvs } from "../../../services/refact";
+import isEqual from "lodash.isequal";
 
 type KeyValueTableProps = {
   initialData: Record<string, string>;
@@ -38,6 +39,8 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
   );
 
   const [data, setData] = useState<MCPEnvs>(() => initialData);
+  const previousDataRef = useRef<Record<string, string>>(initialData);
+  const previousInitialDataRef = useRef<Record<string, string>>(initialData);
 
   const [keyOrders, setKeyOrders] = useState<Record<string, number>>(() => {
     const orders: Record<string, number> = {};
@@ -46,6 +49,22 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
     });
     return orders;
   });
+
+  // Sync with initialData when it changes from parent
+  useEffect(() => {
+    if (!isEqual(previousInitialDataRef.current, initialData)) {
+      previousInitialDataRef.current = initialData;
+      setData(initialData);
+
+      // Update key orders for new data
+      const orders: Record<string, number> = {};
+      Object.keys(initialData).forEach((key, index) => {
+        orders[key] = index;
+      });
+      setKeyOrders(orders);
+      setNextOrder(Object.keys(initialData).length);
+    }
+  }, [initialData]);
 
   const addRow = () => {
     const newKey = `${Object.keys(data).length}`;
@@ -110,7 +129,11 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
   };
 
   useEffect(() => {
-    onChange(data);
+    // Only call onChange if data has actually changed
+    if (!isEqual(previousDataRef.current, data)) {
+      previousDataRef.current = data;
+      onChange(data);
+    }
   }, [data, onChange]);
 
   const tableData = useMemo(

@@ -47,7 +47,6 @@ export const MCPLogs: React.FC<MCPLogsProps> = ({
             showLineNumbers={true}
             preOptions={{
               noMargin: true,
-              widthMaxContent: true,
             }}
           >
             {formattedData}
