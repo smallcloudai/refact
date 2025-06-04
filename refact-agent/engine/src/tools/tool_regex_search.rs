@@ -177,11 +177,11 @@ impl Tool for ToolRegexSearch {
             },
             agentic: false,
             experimental: false,
-            description: "Search for files and folders whose names or paths match the given regular expression patterns, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections.".to_string(),
+            description: "Search for files and folders whose names or paths match the given regular expression pattern, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections.".to_string(),
             parameters: vec![
                 ToolParam {
-                    name: "patterns".to_string(),
-                    description: "Comma-separated list of regular expression patterns. Each pattern is used to search for matching file/folder names/paths, and also for matching text inside files. Use (?i) at the start for case-insensitive search.".to_string(),
+                    name: "pattern".to_string(),
+                    description: "The pattern is used to search for matching file/folder names/paths, and also for matching text inside files. Use (?i) at the start for case-insensitive search.".to_string(),
                     param_type: "string".to_string(),
                 },
                 ToolParam {
@@ -190,7 +190,7 @@ impl Tool for ToolRegexSearch {
                     param_type: "string".to_string(),
                 }
             ],
-            parameters_required: vec!["patterns".to_string(), "scope".to_string()],
+            parameters_required: vec!["pattern".to_string(), "scope".to_string()],
         }
     }
     

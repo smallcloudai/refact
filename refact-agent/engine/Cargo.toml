@@ -14,6 +14,9 @@ build = "build.rs"
 [build-dependencies]
 shadow-rs = "1.1.0"
 
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
+
 [dependencies]
 astral-tokio-tar = "0.5.2"
 axum = { version = "0.6.20", features = ["default", "http2"] }
@@ -43,6 +46,7 @@ log = "0.4.20"
 md5 = "0.7"
 notify = { version = "8.0.0", features = ["serde"] }
 parking_lot = { version = "0.12.1", features = ["serde"] }
+pnet_datalink = "0.35.0"
 process-wrap = { version = "8.0.2", features = ["tokio1"] }
 rand = "0.8.5"
 rayon = "1.8.0"
@@ -75,6 +79,7 @@ tokenizers = "0.21.0"
 tokio = { version = "1.43.0", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
 tokio-rusqlite = "0.5.0"
 tokio-util = { version = "0.7.12", features = ["compat"] }
+tokio-tungstenite = "0.21.0"
 tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["cors"] }
 tower-lsp = "0.20"

@@ -37,7 +37,7 @@ use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provide
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integration_delete, handle_v1_integrations, handle_v1_integrations_filtered, handle_v1_integrations_mcp_logs};
 use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
-use crate::http::routers::v1::workspace::handle_v1_set_active_group_id;
+use crate::http::routers::v1::workspace::{handle_v1_get_app_searchable_id, handle_v1_set_active_group_id};
 
 mod ast;
 pub mod at_commands;
@@ -150,6 +150,7 @@ pub fn make_v1_router() -> Router {
 
         // cloud related 
         .route("/set-active-group-id", post(handle_v1_set_active_group_id))
+        .route("/get-app-searchable-id", get(handle_v1_get_app_searchable_id))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))
