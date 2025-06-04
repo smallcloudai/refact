@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
-import { makeMessageTrie, type MessageNode } from "./makeMessageTrie";
+import { makeMessageTrie, type FTMMessageNode } from "./makeMessageTrie";
 type InitialState = {
   loading: false;
   messages: Record<
@@ -10,7 +10,7 @@ type InitialState = {
     >
   >;
   ft_id: string | null;
-  messageTrie: MessageNode;
+  messageTrie: FTMMessageNode;
 };
 
 const initialState: InitialState = {

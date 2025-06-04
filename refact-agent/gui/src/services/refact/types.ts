@@ -94,9 +94,9 @@ export function isMultiModalToolContent(
   if (!ftm_content) return false;
   if (typeof ftm_content !== "object") return false;
   if (!("m_type" in ftm_content)) return false;
-  if (typeof ftm_conten.m_type !== "string") return false;
-  if (!("m_content" in ftm_conten)) return false;
-  if (typeof ftm_conten.m_content !== "string") return false;
+  if (typeof ftm_content.m_type !== "string") return false;
+  if (!("m_content" in ftm_content)) return false;
+  if (typeof ftm_content.m_content !== "string") return false;
   return true;
 }
 
@@ -108,11 +108,11 @@ export function isMultiModalToolContentArray(content: ToolContent) {
 export function isMultiModalToolResult(
   toolResult: ToolResult,
 ): toolResult is MultiModalToolResult {
-  return isMultiModalToolContentArray(toolResult.content);
+  return isMultiModalToolContentArray(toolResult.ftm_content);
 }
 
 export function isSingleModelToolResult(toolResult: ToolResult) {
-  return typeof toolResult.content === "string";
+  return typeof toolResult.ftm_content === "string";
 }
 
 interface BaseMessage {

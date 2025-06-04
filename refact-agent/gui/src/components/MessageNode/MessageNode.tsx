@@ -22,7 +22,7 @@ import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
 import { GroupedDiffs } from "../ChatContent/DiffContent";
 
-import { MessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
+import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
 
 const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
   message,
@@ -34,12 +34,12 @@ const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
   }
 
   if (isAssistantMessage(message)) {
-    // find the tool result for the tool call
+    // find the tool result for the tool cal
+
     return (
-      <AssistantInput
-        message={message.ftm_content}
-        toolCalls={message.tool_calls}
-      />
+      <AssistantInput toolCalls={message.tool_calls}>
+        {message.ftm_content}
+      </AssistantInput>
     );
   }
 

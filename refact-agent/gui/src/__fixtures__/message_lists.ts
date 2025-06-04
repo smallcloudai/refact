@@ -1,6 +1,6 @@
-import { Message } from "../features/ThreadMessages/makeMessageTrie";
+import { FTMMessage } from "../features/ThreadMessages/makeMessageTrie";
 
-export const STUB_ALICE_MESSAGES: Message[] = [
+export const STUB_ALICE_MESSAGES: FTMMessage[] = [
   {
     ftm_belongs_to_ft_id: "solarthread1",
     ftm_alt: 100,

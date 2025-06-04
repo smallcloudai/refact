@@ -7,26 +7,26 @@ import {
 } from "../../__fixtures__";
 import {
   makeMessageTrie,
-  Message,
+  FTMMessage,
 } from "../../features/ThreadMessages/makeMessageTrie";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
 import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import { setUpStore } from "../../app/store";
 import type { ChatMessage } from "../../services/refact/types";
-import { MessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
+import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
 import { MessageNode } from "./MessageNode";
 import { STUB_ALICE_MESSAGES } from "../../__fixtures__/message_lists";
 
-function chatMessagesToCMessages(chatMessages: ChatMessage[]): Message[] {
+function chatMessagesToCMessages(chatMessages: ChatMessage[]): FTMMessage[] {
   const messagesWithSystemMessage: ChatMessage[] =
     chatMessages[0].role === "system"
       ? chatMessages
       : [{ role: "system", content: "system message" }, ...chatMessages];
 
-  return messagesWithSystemMessage.map<Message>(
+  return messagesWithSystemMessage.map<FTMMessage>(
     (message: ChatMessage, index) => {
-      const cmessage: Message = {
+      const cmessage: FTMMessage = {
         ftm_alt: 0,
         ftm_num: index,
         ftm_prev_alt: message.role === "system" ? -1 : 0,
