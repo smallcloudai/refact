@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::SystemTime;
 use chrono::{DateTime, Utc};
 use git2::{IndexAddOption, Oid, Repository};
 use tokio::sync::RwLock as ARwLock;
@@ -15,6 +16,7 @@ use crate::files_correction::{deserialize_path, get_active_workspace_folder, get
 use crate::global_context::GlobalContext;
 use crate::git::{FileChange, FileChangeStatus, from_unix_glob_pattern_to_gitignore};
 use crate::git::operations::{checkout_head_and_branch_to_commit, commit, get_commit_datetime, get_diff_statuses, get_diff_statuses_index_to_commit, get_or_create_branch, stage_changes, open_or_init_repo};
+use crate::git::cleanup::RECENT_COMMITS_DURATION;
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug)]
 pub struct Checkpoint {
@@ -63,7 +65,7 @@ async fn open_shadow_repo_and_nested_repos(
         }
         Ok(result)
     }
-    
+
     let (cache_dir, vcs_roots) = {
         let gcx_locked = gcx.read().await;
         (gcx_locked.cache_dir.clone(), gcx_locked.documents_state.workspace_vcs_roots.clone())
@@ -118,9 +120,9 @@ pub async fn create_workspace_checkpoint(
     let abort_flag: Arc<AtomicBool> = gcx.read().await.git_operations_abort_flag.clone();
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
-    let (repo, nested_repos, workspace_folder_hash) = 
+    let (repo, nested_repos, workspace_folder_hash) =
         open_shadow_repo_and_nested_repos(gcx.clone(), &workspace_folder, false).await?;
-    
+
     if let Some(prev_checkpoint) = prev_checkpoint {
         if prev_checkpoint.workspace_hash() != workspace_folder_hash {
             return Err("Can not create checkpoint for different workspace folder".to_string());
@@ -137,13 +139,13 @@ pub async fn create_workspace_checkpoint(
 
         let (_, mut file_changes) = get_diff_statuses(git2::StatusShow::Workdir, &repo, false)?;
 
-        let (nested_file_changes, flatened_nested_file_changes) = 
+        let (nested_file_changes, flatened_nested_file_changes) =
             get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
         file_changes.extend(flatened_nested_file_changes);
 
         stage_changes(&repo, &file_changes, &abort_flag)?;
         let commit_oid = commit(&repo, &branch, &format!("Auto commit for chat {chat_id}"), "Refact Agent", "agent@refact.ai")?;
-        
+
         for (nested_repo, changes) in nested_file_changes {
             stage_changes(&nested_repo, &changes, &abort_flag)?;
         }
@@ -164,7 +166,19 @@ pub async fn preview_changes_for_workspace_checkpoint(
     let commit_to_restore_oid = Oid::from_str(&checkpoint_to_restore.commit_hash).map_err_to_string()?;
     let reverted_to = get_commit_datetime(&repo, &commit_to_restore_oid)?;
 
-    let mut files_changed = get_diff_statuses_index_to_commit(&repo, &commit_to_restore_oid, true)?;
+    let mut files_changed = match get_diff_statuses_index_to_commit(&repo, &commit_to_restore_oid, true) {
+        Ok(files_changed) => files_changed,
+        Err(e) => {
+            let recent_cutoff_timestamp = SystemTime::now().checked_sub(RECENT_COMMITS_DURATION).unwrap()
+                .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+
+            if reverted_to.timestamp() < recent_cutoff_timestamp as i64 {
+                return Err("This checkpoint has expired and was removed".to_string());
+            } else {
+                return Err(e);
+            }
+        }
+    };
 
     // Invert status since we got changes in reverse order so that if it fails it does not update the workspace
     for change in &mut files_changed {
@@ -183,7 +197,7 @@ pub async fn restore_workspace_checkpoint(
 ) -> Result<(), String> {
     let workspace_folder = get_active_workspace_folder(gcx.clone()).await
         .ok_or_else(|| "No active workspace folder".to_string())?;
-    let (repo, nested_repos, workspace_folder_hash) = 
+    let (repo, nested_repos, workspace_folder_hash) =
         open_shadow_repo_and_nested_repos(gcx.clone(), &workspace_folder, false).await?;
     if checkpoint_to_restore.workspace_hash() != workspace_folder_hash {
         return Err("Can not restore checkpoint for different workspace folder".to_string());
@@ -192,7 +206,7 @@ pub async fn restore_workspace_checkpoint(
     let commit_to_restore_oid = Oid::from_str(&checkpoint_to_restore.commit_hash).map_err_to_string()?;
 
     checkout_head_and_branch_to_commit(&repo, &format!("refact-{chat_id}"), &commit_to_restore_oid)?;
-    
+
     for nested_repo in &nested_repos {
         let reset_index_result = nested_repo.index()
             .and_then(|mut index| {
@@ -242,18 +256,18 @@ pub async fn init_shadow_repos_if_needed(gcx: Arc<ARwLock<GlobalContext>>) -> ()
 
         let initial_commit_result: Result<Oid, String> = (|| {
             let (_, mut file_changes) = get_diff_statuses(git2::StatusShow::Workdir, &repo, false)?;
-            let (nested_file_changes, all_nested_changes) = 
+            let (nested_file_changes, all_nested_changes) =
                 get_file_changes_from_nested_repos(&repo, &nested_repos, false)?;
             file_changes.extend(all_nested_changes);
 
             stage_changes(&repo, &file_changes, &abort_flag)?;
-            
+
             let mut index = repo.index().map_err_to_string()?;
             let tree_id = index.write_tree().map_err_to_string()?;
             let tree = repo.find_tree(tree_id).map_err_to_string()?;
             let signature = git2::Signature::now("Refact Agent", "agent@refact.ai").map_err_to_string()?;
             let commit = repo.commit(Some("HEAD"), &signature, &signature, "Initial commit", &tree, &[]).map_err_to_string()?;
-            
+
             for (nested_repo, changes) in nested_file_changes {
                 stage_changes(&nested_repo, &changes, &abort_flag)?;
             }
