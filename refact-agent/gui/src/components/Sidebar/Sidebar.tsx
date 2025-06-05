@@ -9,7 +9,6 @@ import {
 import { push } from "../../features/Pages/pagesSlice";
 import { restoreChat } from "../../features/Chat/Thread";
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
-import { selectActiveGroup } from "../../features/Teams";
 import { GroupTree } from "./GroupTree/";
 import { ErrorCallout } from "../Callout";
 import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
@@ -18,6 +17,7 @@ import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
 import { useThreadPageSub } from "../../hooks";
 import { ThreadList } from "../../features/ThreadList/ThreadList";
+import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type SidebarProps = {
   takingNotes: boolean;
@@ -36,28 +36,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
   const globalError = useAppSelector(getErrorMessage);
-  const maybeSelectedTeamsGroup = useAppSelector(selectActiveGroup);
   const currentHost = useAppSelector(selectHost);
 
   // TODO: checking graphql works;
   useThreadPageSub();
-  const history = useAppSelector((app) => app.history, {
-    // TODO: selector issue here
-    devModeChecks: { stabilityCheck: "never" },
-  });
 
-  const onDeleteHistoryItem = useCallback(
-    (id: string) => dispatch(deleteChatById(id)),
-    [dispatch],
-  );
-
-  const onHistoryItemClick = useCallback(
-    (thread: ChatHistoryItem) => {
-      dispatch(restoreChat(thread));
-      dispatch(push({ name: "chat" }));
-    },
-    [dispatch],
-  );
+  const { groupSelectionEnabled } = useActiveTeamsGroup();
 
   return (
     <Flex style={style}>
@@ -68,16 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
         </Box>
       </Flex>
 
-      {maybeSelectedTeamsGroup ? (
-        <ThreadList />
-      ) : (
-        // <ChatHistory
-        //   history={history}
-        //   onHistoryItemClick={onHistoryItemClick}
-        //   onDeleteHistoryItem={onDeleteHistoryItem}
-        // />
-        <GroupTree />
-      )}
+      {!groupSelectionEnabled ? <ThreadList /> : <GroupTree />}
       {/* TODO: duplicated */}
       {globalError && (
         <ErrorCallout

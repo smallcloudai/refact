@@ -23,6 +23,8 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll } from "../../hooks";
 import {
+  selectIsStreaming,
+  selectIsWaiting,
   selectManyDiffMessageByIds,
   selectManyToolResultsByIds,
   selectToolResultById,
@@ -131,6 +133,8 @@ export const SingleModelToolContent: React.FC<{
   const [open, setOpen] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
 
   const toolCallsId = useMemo(() => {
     const ids = toolCalls.reduce<string[]>((acc, toolCall) => {
@@ -146,6 +150,11 @@ export const SingleModelToolContent: React.FC<{
   const allResolved = useMemo(() => {
     return results.length + diffs.length === toolCallsId.length;
   }, [diffs.length, results.length, toolCallsId.length]);
+
+  const busy = useMemo(() => {
+    if (allResolved) return false;
+    return isStreaming || isWaiting;
+  }, [allResolved, isStreaming, isWaiting]);
 
   const handleClose = useCallback(() => {
     handleHide();
@@ -202,7 +211,7 @@ export const SingleModelToolContent: React.FC<{
             subchat={subchat}
             open={open}
             onClick={() => setOpen((prev) => !prev)}
-            waiting={!allResolved}
+            waiting={busy}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -328,6 +337,8 @@ const MultiModalToolContent: React.FC<{
   const [open, setOpen] = React.useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const handleHide = useHideScroll(ref);
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
   const ids = useMemo(() => {
     return toolCalls.reduce<string[]>((acc, cur) => {
       if (typeof cur === "string") return [...acc, cur];
@@ -379,6 +390,11 @@ const MultiModalToolContent: React.FC<{
     );
   }, [toolCalls, toolResults, diffs]);
 
+  const busy = useMemo(() => {
+    if (hasResults) return false;
+    return isStreaming || isWaiting;
+  }, [hasResults, isStreaming, isWaiting]);
+
   return (
     <Container>
       <Collapsible.Root open={open} onOpenChange={setOpen}>
@@ -388,7 +404,7 @@ const MultiModalToolContent: React.FC<{
             open={open}
             onClick={() => setOpen((prev) => !prev)}
             ref={ref}
-            waiting={!hasResults}
+            waiting={busy}
           />
         </Collapsible.Trigger>
         <Collapsible.Content>
@@ -525,7 +541,7 @@ const ToolUsageSummary = forwardRef<HTMLDivElement, ToolUsageSummaryProps>(
             })}
             {subchat && (
               <Flex ml="4">
-                <Spinner />
+                {waiting && <Spinner />}
                 <Text weight="light" size="1" ml="4px">
                   {subchat}
                 </Text>

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use axum::Extension;
+use axum::{Extension, Json};
 use axum::http::{Response, StatusCode};
 use hyper::Body;
 use indexmap::IndexMap;
@@ -15,7 +15,8 @@ use crate::http::http_post_json;
 use crate::http::routers::v1::chat::CHAT_TOP_N;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
-use crate::tools::tools_description::{tool_description_list_from_yaml, tools_merged_and_filtered, MatchConfirmDenyResult};
+use crate::tools::tools_description::{set_tool_config, MatchConfirmDenyResult, ToolConfig, ToolDesc, ToolGroupCategory, ToolSource};
+use crate::tools::tools_list::{get_available_tool_groups, get_available_tools};
 use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::tools::tools_execute::run_tools;
@@ -65,38 +66,86 @@ pub struct ToolExecuteResponse {
     pub tools_ran: bool,
 }
 
-pub async fn handle_v1_tools(
+#[derive(Serialize, Deserialize)]
+pub struct ToolResponse {
+    pub spec: ToolDesc,
+    pub enabled: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ToolGroupResponse {
+    pub name: String,
+    pub description: String,
+    pub category: ToolGroupCategory,
+    pub tools: Vec<ToolResponse>,
+}
+
+pub async fn handle_v1_get_tools(
     Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
-    _: hyper::body::Bytes,
-) -> axum::response::Result<Response<Body>, ScratchError> {
-    let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
-        Ok(tools) => tools,
-        Err(e) => {
-            let error_body = serde_json::json!({ "detail": e }).to_string();
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header("Content-Type", "application/json")
-                .body(Body::from(error_body))
-                .unwrap());
+) -> Json<Vec<ToolGroupResponse>> {
+    let tool_groups = get_available_tool_groups(gcx.clone()).await;
+
+    let tool_groups: Vec<ToolGroupResponse> = tool_groups.into_iter().filter_map(|tool_group| {
+        if tool_group.tools.is_empty() {
+            return None;
         }
-    };
 
-    let turned_on = all_tools.keys().cloned().collect::<Vec<_>>();
-    let allow_experimental = gcx.read().await.cmdline.experimental;
+        let tools: Vec<ToolResponse> = tool_group.tools.into_iter().map(|tool| {
+            let spec = tool.tool_description();
+            ToolResponse {
+                spec,
+                enabled: tool.config().unwrap_or_default().enabled,
+            }
+        }).collect();
 
-    let tool_desclist = tool_description_list_from_yaml(all_tools, Some(&turned_on), allow_experimental).await.unwrap_or_else(|e| {
-        tracing::error!("Error loading compiled_in_tools: {:?}", e);
-        vec![]
-    });
+        Some(ToolGroupResponse {
+            name: tool_group.name,
+            description: tool_group.description,
+            category: tool_group.category,
+            tools,
+        })
+    }).collect();
 
-    let tools_openai_stype = tool_desclist.into_iter().map(|x| x.into_openai_style()).collect::<Vec<_>>();
+    Json(tool_groups)
+}
 
-    let body = serde_json::to_string_pretty(&tools_openai_stype).map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-    Ok(Response::builder()
-        .status(StatusCode::OK)
-        .header("Content-Type", "application/json")
-        .body(Body::from(body))
-        .unwrap())
+#[derive(Deserialize)]
+pub struct ToolPost {
+    name: String,
+    source: ToolSource,
+    enabled: bool,
+}
+
+#[derive(Deserialize)]
+pub struct ToolPostReq {
+    tools: Vec<ToolPost>,
+}
+
+#[derive(Serialize)]
+pub struct ToolPostResponse {
+    success: bool,
+}
+
+pub async fn handle_v1_post_tools(
+    body_bytes: hyper::body::Bytes,
+) -> Result<Json<ToolPostResponse>, ScratchError> {
+    let tools = serde_json::from_slice::<ToolPostReq>(&body_bytes)
+        .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?
+        .tools;
+
+    for tool in tools {
+        set_tool_config(
+            tool.source.config_path, 
+            tool.name,
+            ToolConfig {
+                enabled: tool.enabled,
+            }
+        ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error setting tool config: {}", e)))?;
+    }
+
+    Ok(Json(ToolPostResponse {
+        success: true,
+    }))
 }
 
 pub async fn handle_v1_tools_check_if_confirmation_needed(
@@ -114,8 +163,8 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             .body(Body::from(body))
             .unwrap()
     }
-    
-    
+
+
     let post = serde_json::from_slice::<ToolsPermissionCheckPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
@@ -144,17 +193,11 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         "".to_string(),
     ).await)); // used only for should_confirm
 
-    let all_tools = match tools_merged_and_filtered(gcx.clone(), true).await {
-        Ok(tools) => tools,
-        Err(e) => {
-            let error_body = serde_json::json!({ "detail": e }).to_string();
-            return Ok(Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header("Content-Type", "application/json")
-                .body(Body::from(error_body))
-                .unwrap());
-        }
-    };
+    let all_tools = get_available_tools(gcx.clone()).await.into_iter()
+        .map(|tool| {
+            let spec = tool.tool_description();
+            (spec.name, tool)
+        }).collect::<IndexMap<_, _>>();
 
     let mut result_messages = vec![];
     for tool_call in &post.tool_calls {
@@ -215,7 +258,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             _ => {},
         }
     }
-    
+
     Ok(reply(!result_messages.is_empty(), &result_messages))
 }
 
@@ -248,9 +291,12 @@ pub async fn handle_v1_tools_execute(
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();
     let ccx_arc = Arc::new(AMutex::new(ccx));
 
-    let mut at_tools = tools_merged_and_filtered(gcx.clone(), false).await.map_err(|e|{
-        ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error getting at_tools: {}", e))
-    })?;
+    let mut at_tools = get_available_tools(gcx.clone()).await.into_iter()
+        .map(|tool| {
+            let spec = tool.tool_description();
+            (spec.name, tool)
+        }).collect::<IndexMap<_, _>>();
+
     let (messages, tools_ran) = run_tools(
         ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;

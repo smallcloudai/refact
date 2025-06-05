@@ -1,11 +1,17 @@
 import { RootState } from "../../app/store";
 import {
-  AT_TOOLS_AVAILABLE_URL,
   TOOLS_CHECK_CONFIRMATION,
   EDIT_TOOL_DRY_RUN_URL,
+  TOOLS,
 } from "./consts";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { ChatMessage, DiffChunk, isDiffChunk, ToolCall } from "./types";
+import {
+  ChatMessage,
+  DiffChunk,
+  isDiffChunk,
+  isSuccess,
+  ToolCall,
+} from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 export const toolsApi = createApi({
@@ -21,13 +27,15 @@ export const toolsApi = createApi({
       return headers;
     },
   }),
+  tagTypes: ["TOOL_GROUPS"],
   endpoints: (builder) => ({
-    getTools: builder.query<ToolCommand[], undefined>({
+    getToolGroups: builder.query<ToolGroup[], undefined>({
+      providesTags: ["TOOL_GROUPS"],
       queryFn: async (_args, api, _extraOptions, baseQuery) => {
         const getState = api.getState as () => RootState;
         const state = getState();
         const port = state.config.lspPort;
-        const url = `http://127.0.0.1:${port}${AT_TOOLS_AVAILABLE_URL}`;
+        const url = `http://127.0.0.1:${port}${TOOLS}`;
         const result = await baseQuery({
           url,
           credentials: "same-origin",
@@ -43,8 +51,37 @@ export const toolsApi = createApi({
             },
           };
         }
-        const tools = result.data.filter((d) => isToolCommand(d));
-        return { data: tools };
+        const toolGroups = result.data.filter((d) => isToolGroup(d));
+        return { data: toolGroups };
+      },
+    }),
+    updateToolGroups: builder.mutation<{ success: true }, ToolGroupUpdate[]>({
+      queryFn: async (newToolGroups, api, _extraOptions, baseQuery) => {
+        const getState = api.getState as () => RootState;
+        const state = getState();
+        const port = state.config.lspPort;
+        const url = `http://127.0.0.1:${port}${TOOLS}`;
+        const result = await baseQuery({
+          method: "POST",
+          url,
+          body: JSON.stringify({
+            tools: newToolGroups,
+          }),
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (result.error) return result;
+        if (!isSuccess(result.data)) {
+          return {
+            error: {
+              error: "Invalid response from tools",
+              data: result.data,
+              status: "CUSTOM_ERROR",
+            },
+          };
+        }
+
+        return { data: result.data };
       },
     }),
     checkForConfirmation: builder.mutation<
@@ -122,24 +159,48 @@ export const toolsApi = createApi({
   refetchOnMountOrArgChange: true,
 });
 
-export type ToolParams = {
+export type ToolGroupUpdate = {
+  name: string;
+  source: ToolSource;
+  enabled: boolean;
+};
+
+export type ToolGroup = {
+  name: string;
+  category: "integration" | "mcp" | "builtin";
+  description: string;
+  tools: Tool[];
+};
+
+export type ToolSource = {
+  source_type: "builtin" | "integration";
+  config_path: string;
+};
+
+export type ToolParam = {
   name: string;
   type: string;
   description: string;
 };
 
-export type ToolFunction = {
-  agentic?: boolean;
+export type ToolSpec = {
   name: string;
+  display_name: string;
   description: string;
-  // parameters: ToolParams[];
-  parameters: Record<string, unknown>;
+
+  // TODO: investigate on parameters
+  parameters: ToolParam[];
+  // parameters: Record<string, unknown>;
+  source: ToolSource;
+
   parameters_required?: string[];
+  agentic: boolean;
+  experimental?: boolean;
 };
 
-export type ToolCommand = {
-  function: ToolFunction;
-  type: "function";
+export type Tool = {
+  spec: ToolSpec;
+  enabled: boolean;
 };
 
 export type ToolConfirmationPauseReason = {
@@ -160,10 +221,14 @@ export type ToolConfirmationRequest = {
   messages: ChatMessage[];
 };
 
-function isToolCommand(tool: unknown): tool is ToolCommand {
-  if (!tool) return false;
-  if (typeof tool !== "object") return false;
-  if (!("type" in tool) || !("function" in tool)) return false;
+export function isToolGroup(tool: unknown): tool is ToolGroup {
+  if (!tool || typeof tool !== "object") return false;
+  const group = tool as ToolGroup;
+  if (typeof group.name !== "string") return false;
+  if (typeof group.category !== "string") return false;
+  if (typeof group.description !== "string") return false;
+  if (!Array.isArray(group.tools)) return false;
+  // Optionally, check that every element in tools is a Tool (if you have isTool)
   return true;
 }
 

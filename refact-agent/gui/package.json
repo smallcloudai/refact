@@ -107,6 +107,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "eslint-plugin-storybook": "^0.6.15",
+    "framer-motion": "^12.10.4",
     "graphql": "^16.11.0",
     "graphql-codegen-typescript-validation-schema": "^0.17.1",
     "graphql-ws": "^6.0.5",

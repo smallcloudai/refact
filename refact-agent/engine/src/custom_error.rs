@@ -98,3 +98,9 @@ impl<T, E: std::fmt::Display> MapErrToString<T> for Result<T, E> {
         self.map_err(|e| format!("{pref} {e}"))
     }
 }
+
+/// Does tracing::error!(), and returns the default value
+pub fn trace_and_default<T: std::default::Default, E: std::fmt::Display>(e: E) -> T {
+    tracing::error!("{e}");
+    Default::default()
+}

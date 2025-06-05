@@ -6,6 +6,7 @@ use tracing::{info, warn};
 use tokio::sync::RwLock as ARwLock;
 use std::hash::{Hash, Hasher};
 
+use crate::ast::treesitter::parsers::get_ast_parser_by_filename;
 use crate::call_validation::{ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
 use crate::files_in_workspace::{Document, get_file_text_from_memory_or_disk};
@@ -75,13 +76,12 @@ fn calculate_hash(path: &PathBuf) -> u64 {
     hasher.finish()
 }
 
-pub async fn pp_ast_markup_files(
+pub async fn pp_resolve_ctx_file_paths(
     gcx: Arc<ARwLock<GlobalContext>>,
     context_file_vec: &mut Vec<ContextFile>,
-) -> Vec<Arc<PPFile>> {
+) -> Vec<(String, String)> {
     let mut unique_cpaths = IndexSet::<String>::new();
     for context_file in context_file_vec.iter_mut() {
-        // Here we assume data came from outside, we can't trust it too much
         let path_as_presented = context_file.file_name.clone();
         let candidates = crate::files_correction::correct_to_nearest_filename(gcx.clone(), &path_as_presented, false, 5).await;
         let cpath = match candidates.first() {
@@ -97,11 +97,17 @@ pub async fn pp_ast_markup_files(
 
     let unique_cpaths_vec: Vec<String> = unique_cpaths.into_iter().collect();
     let shortified_vec: Vec<String> = shortify_paths(gcx.clone(), &unique_cpaths_vec).await;
+    unique_cpaths_vec.into_iter().zip(shortified_vec.into_iter()).collect()
+}
 
+pub async fn pp_ast_markup_files(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    context_file_vec: &mut Vec<ContextFile>,
+) -> Vec<Arc<PPFile>> {
     let mut result: Vec<Arc<PPFile>> = vec![];
     let ast_service = gcx.read().await.ast_service.clone();
-    for (cpath, short) in unique_cpaths_vec.iter().zip(shortified_vec.iter()) {
-        let cpath_pathbuf = PathBuf::from(cpath);
+    for (cpath, short) in pp_resolve_ctx_file_paths(gcx.clone(), context_file_vec).await {
+        let cpath_pathbuf = PathBuf::from(&cpath);
         let cpath_symmetry_breaker: f32 = (calculate_hash(&cpath_pathbuf) as f32) / (u64::MAX as f32) / 100.0;
         let mut doc = Document::new(&cpath_pathbuf);
         let text = match get_file_text_from_memory_or_disk(gcx.clone(), &doc.doc_path).await {
@@ -112,20 +118,21 @@ pub async fn pp_ast_markup_files(
             }
         };
         doc.update_text(&text);
-        let defs = if let Some(ast) = &ast_service {
-            let ast_index = ast.lock().await.ast_index.clone();
-            crate::ast::ast_db::doc_defs(ast_index.clone(), &doc.doc_path.to_string_lossy().to_string()).await
-        } else {
-            vec![]
+        let defs = match &ast_service {
+            Some(ast) if get_ast_parser_by_filename(&doc.doc_path).is_ok() => {
+                let ast_index = ast.lock().await.ast_index.clone();
+                crate::ast::ast_db::doc_defs(ast_index, &doc.doc_path.to_string_lossy().to_string())
+            }
+            _ => vec![],
         };
         let mut symbols_sorted_by_path_len = defs.clone();
-        symbols_sorted_by_path_len.sort_by_key(|s| s.official_path.len());
+        symbols_sorted_by_path_len.sort_by_key(|s| s.path().len());
         result.push(Arc::new(PPFile {  // doesn't matter what size the output vector is
             symbols_sorted_by_path_len,
             file_content: text,
-            cpath: cpath.clone(),
+            cpath: cpath,
             cpath_symmetry_breaker,
-            shorter_path: short.clone(),
+            shorter_path: short,
         }));
     }
 

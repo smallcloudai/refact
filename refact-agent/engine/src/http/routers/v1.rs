@@ -1,3 +1,4 @@
+use at_tools::handle_v1_post_tools;
 use axum::Router;
 use axum::routing::{get, post, delete};
 use tower_http::cors::CorsLayer;
@@ -7,7 +8,7 @@ use crate::http::routers::v1::code_completion::{handle_v1_code_completion_web, h
 use crate::http::routers::v1::code_lens::handle_v1_code_lens;
 use crate::http::routers::v1::ast::{handle_v1_ast_file_dump, handle_v1_ast_file_symbols, handle_v1_ast_status};
 use crate::http::routers::v1::at_commands::{handle_v1_command_completion, handle_v1_command_preview, handle_v1_at_command_execute};
-use crate::http::routers::v1::at_tools::{handle_v1_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
+use crate::http::routers::v1::at_tools::{handle_v1_get_tools, handle_v1_tools_check_if_confirmation_needed, handle_v1_tools_execute};
 use crate::http::routers::v1::caps::handle_v1_caps;
 use crate::http::routers::v1::caps::handle_v1_ping;
 use crate::http::routers::v1::chat::{handle_v1_chat, handle_v1_chat_completions};
@@ -36,7 +37,7 @@ use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provide
 use crate::http::routers::v1::vecdb::{handle_v1_vecdb_search, handle_v1_vecdb_status};
 use crate::http::routers::v1::v1_integrations::{handle_v1_integration_get, handle_v1_integration_icon, handle_v1_integration_save, handle_v1_integration_delete, handle_v1_integrations, handle_v1_integrations_filtered, handle_v1_integrations_mcp_logs};
 use crate::http::routers::v1::file_edit_tools::handle_v1_file_edit_tool_dry_run;
-use crate::http::routers::v1::workspace::handle_v1_set_active_group_id;
+use crate::http::routers::v1::workspace::{handle_v1_get_app_searchable_id, handle_v1_set_active_group_id};
 
 mod ast;
 pub mod at_commands;
@@ -84,7 +85,8 @@ pub fn make_v1_router() -> Router {
 
         .route("/caps", get(handle_v1_caps))
 
-        .route("/tools", get(handle_v1_tools))
+        .route("/tools", get(handle_v1_get_tools))
+        .route("/tools", post(handle_v1_post_tools))
         .route("/tools-check-if-confirmation-needed", post(handle_v1_tools_check_if_confirmation_needed))
         .route("/tools-execute", post(handle_v1_tools_execute)) // because it works remotely
 
@@ -148,6 +150,7 @@ pub fn make_v1_router() -> Router {
 
         // cloud related 
         .route("/set-active-group-id", post(handle_v1_set_active_group_id))
+        .route("/get-app-searchable-id", get(handle_v1_get_app_searchable_id))
 
         // experimental
         .route("/get-dashboard-plots", get(get_dashboard_plots))

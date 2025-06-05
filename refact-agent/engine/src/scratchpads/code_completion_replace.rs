@@ -164,7 +164,7 @@ pub async fn get_cursor_symbol_from_doc(
     let cpath_str = cpath.to_string_lossy().to_string();
     ast_indexer_enqueue_files(ast_service.clone(), &vec![cpath_str.clone()], true).await;
     ast_indexer_block_until_finished(ast_service.clone(), 20, true).await;
-    let doc_syms = doc_defs(ast_index, &cpath_str).await;
+    let doc_syms = doc_defs(ast_index, &cpath_str);
     doc_syms
         .iter()
         .filter(
@@ -602,8 +602,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        _exploration_tools: bool,
-        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.token_bos = patch
             .get("token_bos")
@@ -876,8 +874,6 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
     async fn apply_model_adaptation_patch(
         &mut self,
         patch: &Value,
-        _exploration_tools: bool,
-        _agentic_tools: bool,
     ) -> Result<(), String> {
         self.t.context_format = patch
             .get("context_format")

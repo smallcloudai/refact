@@ -5,9 +5,8 @@ use tokio::sync::RwLock as ARwLock;
 use axum::Extension;
 use axum::response::Result;
 use hyper::{Body, Response, StatusCode};
-use serde_json::Value;
 
-use crate::call_validation::{ChatContent, ChatMessage, ChatPost, ChatMode};
+use crate::call_validation::{ChatContent, ChatMessage, ChatPost};
 use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -15,45 +14,8 @@ use crate::git::checkpoints::create_workspace_checkpoint;
 use crate::global_context::{GlobalContext, SharedGlobalContext};
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::integrations::docker::docker_container_manager::docker_container_check_status_or_start;
-
-
-pub fn available_tools_by_chat_mode(current_tools: Vec<Value>, chat_mode: &ChatMode) -> Vec<Value> {
-    fn filter_out_tools(current_tools: &Vec<Value>, blacklist: &Vec<&str>) -> Vec<Value> {
-        current_tools
-            .into_iter()
-            .filter(|x| {
-                x.get("function")
-                    .and_then(|x| x.get("name"))
-                    .and_then(|tool_name| tool_name.as_str())
-                    .map(|tool_name_str| !blacklist.contains(&tool_name_str))
-                    .unwrap_or(true)
-            })
-            .cloned()
-            .collect()
-    }
-    fn keep_tools(current_tools: &Vec<Value>, whitelist: &Vec<&str>) -> Vec<Value> {
-        current_tools
-            .into_iter()
-            .filter(|x| {
-                x.get("function")
-                    .and_then(|x| x.get("name"))
-                    .and_then(|tool_name| tool_name.as_str())
-                    .map(|tool_name_str| whitelist.contains(&tool_name_str))
-                    .unwrap_or(false)
-            })
-            .cloned()
-            .collect()
-    }
-    match chat_mode {
-        ChatMode::NO_TOOLS => {
-            vec![]
-        },
-        ChatMode::AGENT => filter_out_tools(&current_tools, &vec!["search_symbol_definition", "search_symbol_usages", "search_pattern", "search_semantic"]),
-        ChatMode::EXPLORE => current_tools,
-        ChatMode::CONFIGURE => filter_out_tools(&current_tools, &vec!["tree", "locate", "knowledge", "search"]),
-        ChatMode::PROJECT_SUMMARY => keep_tools(&current_tools, &vec!["cat", "tree", "bash"]),
-    }
-}
+use crate::tools::tools_description::ToolDesc;
+use crate::tools::tools_list::get_available_tools_by_chat_mode;
 
 pub const CHAT_TOP_N: usize = 12;
 
@@ -121,27 +83,12 @@ async fn _chat(
 
     tracing::info!("chat_mode {:?}", chat_post.meta.chat_mode);
 
-    if chat_post.meta.chat_mode == ChatMode::NO_TOOLS {
-        chat_post.tools = None;
-    } else {
-        if let Some(tools) = &mut chat_post.tools {
-            for tool in &mut *tools {
-                if let Some(function) = tool.get_mut("function") {
-                    function.as_object_mut().unwrap().remove("agentic");
-                }
-            }
-            chat_post.tools = Some(available_tools_by_chat_mode(tools.clone(), &chat_post.meta.chat_mode));
-        } else {
-            // TODO at some point, get rid of /tools call on client, make so we can have chat_post.tools==None and just fill the tools here
-            chat_post.tools = Some(available_tools_by_chat_mode(vec![], &chat_post.meta.chat_mode));
-        }
-        tracing::info!("tools [{}]", chat_post.tools.as_ref().map_or("".to_string(), |tools| {
-            tools.iter()
-                .filter_map(|tool| tool.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()))
-                .collect::<Vec<&str>>()
-                .join(", ")
-        }));
-    }
+    let tools: Vec<ToolDesc> = get_available_tools_by_chat_mode(gcx.clone(), chat_post.meta.chat_mode).await
+        .into_iter()
+        .map(|tool| tool.tool_description())
+        .collect();
+
+    tracing::info!("tools: {:?}", tools.iter().map(|t| &t.name).collect::<Vec<_>>());
 
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
     let model_rec = resolve_chat_model(caps, &chat_post.model)
@@ -229,6 +176,7 @@ async fn _chat(
     let mut scratchpad = crate::scratchpads::create_chat_scratchpad(
         gcx.clone(),
         &mut chat_post,
+        tools,
         &messages,
         true,
         &model_rec,

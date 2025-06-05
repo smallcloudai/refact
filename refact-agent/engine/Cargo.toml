@@ -14,6 +14,9 @@ build = "build.rs"
 [build-dependencies]
 shadow-rs = "1.1.0"
 
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
+
 [dependencies]
 astral-tokio-tar = "0.5.2"
 axum = { version = "0.6.20", features = ["default", "http2"] }
@@ -31,6 +34,7 @@ git2 = "0.20.2"
 glob = "0.3.1"
 hashbrown = "0.15.2"
 headless_chrome = "1.0.16"
+heed = "0.22.0"
 home = "0.5"
 html2text = "0.12.5"
 hyper = { version = "0.14", features = ["server", "stream"] }
@@ -43,6 +47,7 @@ log = "0.4.20"
 md5 = "0.7"
 notify = { version = "8.0.0", features = ["serde"] }
 parking_lot = { version = "0.12.1", features = ["serde"] }
+pnet_datalink = "0.35.0"
 process-wrap = { version = "8.0.2", features = ["tokio1"] }
 rand = "0.8.5"
 rayon = "1.8.0"
@@ -65,7 +70,6 @@ shell-words = "1.1.0"
 shell-escape = "0.1.5"
 select = "0.6.0"
 similar = "2.3.0"
-sled = { version = "0.34", default-features = false, features = [] }
 sqlite-vec = { version = "0.1.6" }
 strip-ansi-escapes = "0.2.1"
 strsim = "0.11.1"
@@ -75,19 +79,20 @@ tokenizers = "0.21.0"
 tokio = { version = "1.43.0", features = ["fs", "io-std", "io-util", "macros", "rt-multi-thread", "signal", "process"] }
 tokio-rusqlite = "0.5.0"
 tokio-util = { version = "0.7.12", features = ["compat"] }
+tokio-tungstenite = "0.21.0"
 tower = { version = "0.4", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["cors"] }
 tower-lsp = "0.20"
 tracing = "0.1"
 tracing-appender = "0.2.3"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tree-sitter = "0.22"
-tree-sitter-cpp = "0.22"
-tree-sitter-java = "0.21"
-tree-sitter-javascript = "0.21"
-tree-sitter-python = "0.21"
-tree-sitter-rust = "0.21"
-tree-sitter-typescript = "0.21"
+tree-sitter = "0.25"
+tree-sitter-cpp = "0.23"
+tree-sitter-java = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-rust = "0.23"
+tree-sitter-typescript = "0.23"
 typetag = "0.2"
 url = "2.4.1"
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -95,8 +100,6 @@ walkdir = "2.3"
 which = "7.0.1"
 zerocopy = "0.8.14"
 
-# There you can use a local copy:
-mcp_client_rs = { git = "https://github.com/smallcloudai/mcp_client_rust.git" }
-#mcp_client_rs = { path = "../../../mcp_client_rust" }
-
-
+# There you can use a local copy
+# rmcp = { path = "../../../rust-sdk/crates/rmcp/", "features" = ["client", "transport-child-process", "transport-sse"] }
+rmcp = { git = "https://github.com/smallcloudai/rust-sdk", branch = "main", features = ["client", "transport-child-process", "transport-sse-client", "reqwest"] }

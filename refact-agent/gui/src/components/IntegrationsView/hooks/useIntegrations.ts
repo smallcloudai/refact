@@ -38,6 +38,7 @@ import {
   IntegrationWithIconRecordAndAddress,
   IntegrationWithIconResponse,
   isDetailMessage,
+  isDictionary,
   isMCPArgumentsArray,
   isMCPEnvironmentsDict,
   isNotConfiguredIntegrationWithIconRecord,
@@ -285,6 +286,8 @@ export const useIntegrations = ({
   const [MCPEnvironmentVariables, setMCPEnvironmentVariables] =
     useState<MCPEnvs>({});
 
+  const [headers, setHeaders] = useState<Record<string, string>>({});
+
   const [toolParameters, setToolParameters] = useState<
     ToolParameterEntity[] | null
   >(null);
@@ -414,6 +417,10 @@ export const useIntegrations = ({
           ? !isEqual(currentIntegrationValues.env, MCPEnvironmentVariables)
           : false;
 
+        const headersChanged = isDictionary(currentIntegrationValues.headers)
+          ? !isEqual(currentIntegrationValues.headers, headers)
+          : false;
+
         const confirmationRulesChanged = !isEqual(
           confirmationRules,
           currentIntegrationValues.confirmation,
@@ -423,7 +430,8 @@ export const useIntegrations = ({
           confirmationRulesChanged ||
           toolParametersChanged ||
           MCPArgumentsChanged ||
-          MCPEnvironmentVariablesChanged;
+          MCPEnvironmentVariablesChanged ||
+          headersChanged;
 
         // Manually collecting data from the form
         const formElement = document.getElementById(
@@ -488,6 +496,7 @@ export const useIntegrations = ({
     currentIntegration,
     MCPArguments,
     MCPEnvironmentVariables,
+    headers,
   ]);
 
   const handleSetCurrentIntegrationSchema = (
@@ -575,6 +584,7 @@ export const useIntegrations = ({
       if (currentIntegration.integr_name.includes("mcp")) {
         formValues.env = MCPEnvironmentVariables;
         formValues.args = MCPArguments;
+        formValues.headers = headers;
       }
       if (!currentIntegrationSchema.confirmation.not_applicable) {
         formValues.confirmation = confirmationRules;
@@ -616,6 +626,7 @@ export const useIntegrations = ({
       toolParameters,
       MCPArguments,
       MCPEnvironmentVariables,
+      headers,
     ],
   );
 
@@ -802,8 +813,10 @@ export const useIntegrations = ({
       const formData = new FormData(event.currentTarget);
       const rawFormValues = Object.fromEntries(formData.entries());
       debugIntegrations(`[DEBUG]: rawFormValues: `, rawFormValues);
-      const [type, rest] =
-        currentNotConfiguredIntegration.integr_name.split("_");
+
+      const integrationType =
+        currentNotConfiguredIntegration.integr_name.replace("_TEMPLATE", "");
+
       if (
         "integr_config_path" in rawFormValues &&
         typeof rawFormValues.integr_config_path === "string" &&
@@ -813,7 +826,7 @@ export const useIntegrations = ({
         // making integration-get call and setting the result as currentIntegration
         const commandName = rawFormValues.command_name;
         const configPath = rawFormValues.integr_config_path.replace(
-          rest,
+          "TEMPLATE",
           commandName,
         );
 
@@ -825,7 +838,7 @@ export const useIntegrations = ({
         const customIntegration: IntegrationWithIconRecord = {
           when_isolated: false,
           on_your_laptop: false,
-          integr_name: `${type}_${commandName}`,
+          integr_name: `${integrationType}_${commandName}`,
           integr_config_path: configPath,
           icon_path: currentNotConfiguredIntegration.icon_path,
           project_path: rawFormValues.integr_config_path
@@ -960,6 +973,7 @@ export const useIntegrations = ({
     setToolParameters,
     setMCPArguments,
     setMCPEnvironmentVariables,
+    setHeaders,
     isDisabledIntegrationForm,
     isApplyingIntegrationForm,
     isDeletingIntegration,

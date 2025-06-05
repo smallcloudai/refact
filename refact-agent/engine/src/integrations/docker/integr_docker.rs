@@ -11,7 +11,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ContextEnum};
 use crate::global_context::GlobalContext;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
 use crate::integrations::process_io_utils::AnsiStrippable;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::integrations::docker::docker_ssh_tunnel_utils::{SshConfig, forward_remote_docker_if_needed};
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num};
 
@@ -136,6 +136,28 @@ impl ToolDocker {
 #[async_trait]
 impl Tool for ToolDocker {
     fn as_any(&self) -> &dyn std::any::Any { self }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "docker".to_string(),
+            display_name: "Docker CLI".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: true,
+            description: "Access to docker cli, in a non-interactive way, don't open a shell.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "command".to_string(),
+                    description: "Examples: docker images".to_string(),
+                    param_type: "string".to_string(),
+                },
+            ],
+            parameters_required: vec!["command".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,

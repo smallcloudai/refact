@@ -8,7 +8,6 @@ use serde::Serialize;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
-use std::borrow::Cow;
 
 #[cfg(not(target_os = "windows"))]
 use shell_escape::escape;
@@ -17,7 +16,7 @@ use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::integrations::process_io_utils::{execute_command, AnsiStrippable};
-use crate::tools::tools_description::{ToolParam, Tool, ToolDesc};
+use crate::tools::tools_description::{ToolParam, Tool, ToolDesc, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::postprocessing::pp_command_output::{CmdlineOutputFilter, output_mini_postprocessing};
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon, IntegrationConfirmation};
@@ -144,7 +143,7 @@ pub fn replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
             #[cfg(target_os = "windows")]
             let x = powershell_escape(value);
             #[cfg(not(target_os = "windows"))]
-            let x = escape(Cow::from(value.as_str())).to_string();
+            let x = escape(std::borrow::Cow::from(value.as_str())).to_string();
             x
         };
         result = result.replace(&format!("%{}%", key), &escaped_value);
@@ -297,6 +296,11 @@ impl Tool for ToolCmdline {
         });
         ToolDesc {
             name: self.name.clone(),
+            display_name: self.name.clone(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
             agentic: true,
             experimental: false,
             description: self.cfg.description.clone(),

@@ -769,6 +769,14 @@ export function isMCPEnvironmentsDict(json: unknown): json is MCPEnvs {
   return Object.values(json).every((value) => typeof value === "string");
 }
 
+export function isDictionary(json: unknown): json is Record<string, string> {
+  if (!json) return false;
+  if (typeof json !== "object") return false;
+  if (Array.isArray(json)) return false;
+
+  return Object.values(json).every((value) => typeof value === "string");
+}
+
 export type SuccessResponse = { success: true };
 
 export function isSuccess(data: unknown): data is SuccessResponse {

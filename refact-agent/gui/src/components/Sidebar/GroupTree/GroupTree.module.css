@@ -1,7 +1,11 @@
 /* Custom styles for the Tree component */
+div > .sidebarTree {
+  height: 100% !important;
+}
 .sidebarTree {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   width: 100%;
+  height: 100% !important;
   color: var(--gray-11);
 }
 

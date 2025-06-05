@@ -32,6 +32,7 @@ import { useCoinBallance } from "../../hooks/useCoinBalance";
 import { isUserWithLoginMessage } from "../../services/smallcloud/types";
 import { resetActiveGroup, selectActiveGroup } from "../../features/Teams";
 import { popBackTo } from "../../features/Pages/pagesSlice";
+import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
 export type DropdownNavigationOptions =
   | "fim"
@@ -83,6 +84,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const coinBalance = useCoinBallance();
   const logout = useLogout();
   const { startPollingForUser } = useStartPollingForUser();
+
+  const { isKnowledgeFeatureAvailable } = useActiveTeamsGroup();
 
   const bugUrl = linkForBugReports(host);
   const discordUrl = "https://www.smallcloud.ai/discord";
@@ -257,12 +260,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
           <GearIcon /> Configure Providers
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item
-          // TODO: get real URL from cloud inference
-          onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
-        >
-          Manage Knowledge
-        </DropdownMenu.Item>
+        {isKnowledgeFeatureAvailable && (
+          <DropdownMenu.Item
+            // TODO: get real URL from cloud inference
+            onSelect={() => openUrl("https://test-teams.smallcloud.ai/")}
+          >
+            Manage Knowledge
+          </DropdownMenu.Item>
+        )}
 
         <DropdownMenu.Item onSelect={() => handleNavigation("settings")}>
           {refactProductType} Settings
@@ -315,12 +320,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
           Clear Chat History
         </DropdownMenu.Item>
 
-        <DropdownMenu.Item
-          onSelect={handleActiveGroupCleanUp}
-          disabled={activeGroup === null}
-        >
-          Unselect Active Group
-        </DropdownMenu.Item>
+        {isKnowledgeFeatureAvailable && (
+          <DropdownMenu.Item
+            onSelect={handleActiveGroupCleanUp}
+            disabled={activeGroup === null}
+          >
+            Unselect Active Group
+          </DropdownMenu.Item>
+        )}
 
         <DropdownMenu.Item
           onSelect={(event) => {

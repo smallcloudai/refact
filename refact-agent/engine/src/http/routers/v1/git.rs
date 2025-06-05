@@ -1,6 +1,7 @@
 use chrono::{Utc, DateTime};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use axum::Extension;
 use axum::http::{Response, StatusCode};
 use git2::Repository;
@@ -62,7 +63,7 @@ pub struct WorkspaceChanges {
 }
 
 pub async fn handle_v1_git_commit(
-    Extension(_gcx): Extension<Arc<ARwLock<GlobalContext>>>,
+    Extension(gcx): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     let post = serde_json::from_slice::<GitCommitPost>(&body_bytes)
@@ -71,6 +72,7 @@ pub async fn handle_v1_git_commit(
     let mut error_log = Vec::new();
     let mut commits_applied = Vec::new();
 
+    let abort_flag: Arc<AtomicBool> = gcx.read().await.git_operations_abort_flag.clone();
     for commit in post.commits {
         let repo_path = crate::files_correction::canonical_path(
             &commit.project_path.to_file_path().unwrap_or_default().display().to_string());
@@ -92,7 +94,7 @@ pub async fn handle_v1_git_commit(
             Err(e) => { error_log.push(git_error(format!("Failed to open repo: {}", e))); continue; }
         };
 
-        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes) {
+        if let Err(stage_err) = stage_changes(&repository, &commit.unstaged_changes, &abort_flag) {
             error_log.push(git_error(stage_err));
             continue;
         }

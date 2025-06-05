@@ -218,9 +218,12 @@ impl LanguageServer for LspBackend {
             *gcx_locked.documents_state.workspace_folders.lock().unwrap() = folders.clone();
             info!("LSP workspace_folders {:?}", folders);
         }
-        files_in_workspace::on_workspaces_init(
-            self.gcx.clone(),
-        ).await;
+        let gcx_clone = self.gcx.clone();
+        tokio::spawn(async move {
+            files_in_workspace::on_workspaces_init(
+                gcx_clone,
+            ).await;
+        });
 
         let completion_options: CompletionOptions;
         completion_options = CompletionOptions {

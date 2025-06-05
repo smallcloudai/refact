@@ -13,7 +13,7 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::ContextEnum;
 use crate::call_validation::{ChatContent, ChatMessage, ChatUsage};
 use crate::integrations::go_to_configuration_message;
-use crate::tools::tools_description::Tool;
+use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 
 use super::process_io_utils::AnsiStrippable;
 
@@ -112,6 +112,28 @@ impl ToolPostgres {
 #[async_trait]
 impl Tool for ToolPostgres {
     fn as_any(&self) -> &dyn std::any::Any { self }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "postgres".to_string(),
+            display_name: "PostgreSQL".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Integration,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "PostgreSQL integration, can run a single query per call.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "query".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Don't forget semicolon at the end, examples:\nSELECT * FROM table_name;\nCREATE INDEX my_index_users_email ON my_users (email);".to_string(),
+                },
+            ],
+            parameters_required: vec!["query".to_string()],
+        }
+    }
 
     async fn tool_execute(
         &mut self,

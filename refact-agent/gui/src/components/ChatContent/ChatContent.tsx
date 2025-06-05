@@ -18,7 +18,10 @@ import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
 import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
-import { getConfirmationPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+import {
+  getConfirmationPauseStatus,
+  getPauseReasonsWithPauseStatus,
+} from "../../features/ToolConfirmation/confirmationSlice";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";
 import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 import { selectThreadMessageTrie } from "../../features/ThreadMessages";
@@ -36,6 +39,8 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   const dispatch = useAppDispatch();
   // TODO: stays when creating a new chat :/
   const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
+  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
+  // const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
   const { shouldShow } = useUsageCounter();
@@ -133,7 +138,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       >
         <ScrollArea scrollbars="horizontal">
           <Flex align="start" gap="3" pb="2">
-            {(isWaiting || isStreaming) && (
+            {(isWaiting || isStreaming) && !pauseReasonsWithPause.pause && (
               <Button
                 // ml="auto"
                 color="red"

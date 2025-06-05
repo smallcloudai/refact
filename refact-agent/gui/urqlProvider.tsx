@@ -1,7 +1,6 @@
 import {
   Provider,
   createClient,
-  debugExchange,
   cacheExchange,
   fetchExchange,
   subscriptionExchange,
@@ -9,8 +8,6 @@ import {
 import { createClient as createWSClient } from "graphql-ws";
 import { WebSocket } from "ws";
 import React, { useMemo } from "react";
-import { useAppSelector } from "./src/hooks";
-import { selectConfig } from "./src/features/Config/configSlice";
 
 export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

@@ -13,7 +13,7 @@ pub mod scratchpad_utils;
 pub mod code_completion_replace;
 pub mod multimodality;
 mod comments_parser;
-mod passthrough_convert_messages;
+pub mod passthrough_convert_messages;
 mod completon_rag;
 
 use crate::ast::ast_indexer_thread::AstIndexService;
@@ -26,6 +26,7 @@ use crate::scratchpad_abstract::ScratchpadAbstract;
 use crate::completion_cache;
 use crate::telemetry::telemetry_structs;
 use crate::tokens;
+use crate::tools::tools_description::ToolDesc;
 
 
 fn verify_has_send<T: Send>(_x: &T) {}
@@ -60,7 +61,7 @@ pub async fn create_code_completion_scratchpad(
     } else {
         return Err(format!("This rust binary doesn't have code completion scratchpad \"{}\" compiled in", model_rec.scratchpad));
     }
-    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch, false, false).await?;
+    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }
@@ -68,6 +69,7 @@ pub async fn create_code_completion_scratchpad(
 pub async fn create_chat_scratchpad(
     global_context: Arc<ARwLock<GlobalContext>>,
     post: &mut ChatPost,
+    tools: Vec<ToolDesc>,
     messages: &Vec<ChatMessage>,
     prepend_system_prompt: bool,
     model_rec: &ChatModelRecord,
@@ -81,29 +83,19 @@ pub async fn create_chat_scratchpad(
         ));
     } else if model_rec.scratchpad == "PASSTHROUGH" {
         result = Box::new(chat_passthrough::ChatPassthrough::new(
-            tokenizer_arc.clone(), post, messages, prepend_system_prompt, allow_at, model_rec.supports_tools, model_rec.supports_clicks
+            tokenizer_arc.clone(), 
+            post, 
+            tools,
+            messages, 
+            prepend_system_prompt, 
+            allow_at, 
+            model_rec.supports_tools, 
+            model_rec.supports_clicks,
         ));
     } else {
         return Err(format!("This rust binary doesn't have chat scratchpad \"{}\" compiled in", model_rec.scratchpad));
     }
-    let mut exploration_tools: bool = false;
-    let mut agentic_tools: bool = false;
-    if post.tools.is_some() {
-        for t in post.tools.as_ref().unwrap() {
-            let tobj = t.as_object().unwrap();
-            if let Some(function) = tobj.get("function") {
-                if let Some(name) = function.get("name") {
-                    if name.as_str() == Some("web") {  // anything that will still be on without ast and vecdb
-                        exploration_tools = true;
-                    }
-                    if name.as_str() == Some("apply_edit") {
-                        agentic_tools = true;
-                    }
-                }
-            }
-        }
-    }
-    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch, exploration_tools, agentic_tools).await?;
+    result.apply_model_adaptation_patch(&model_rec.scratchpad_patch).await?;
     verify_has_send(&result);
     Ok(result)
 }

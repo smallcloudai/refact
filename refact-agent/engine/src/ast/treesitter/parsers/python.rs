@@ -8,7 +8,6 @@ use itertools::Itertools;
 use parking_lot::RwLock;
 use similar::DiffableStr;
 use tree_sitter::{Node, Parser, Point, Range};
-use tree_sitter_python::language;
 use uuid::Uuid;
 
 use crate::ast::treesitter::ast_instance_structs::{AstSymbolFields, AstSymbolInstanceArc, ClassFieldDeclaration, CommentDefinition, FunctionArg, FunctionCall, FunctionDeclaration, ImportDeclaration, ImportType, StructDeclaration, SymbolInformation, TypeDef, VariableDefinition, VariableUsage};
@@ -211,7 +210,7 @@ impl PythonParser {
     pub fn new() -> Result<PythonParser, ParserError> {
         let mut parser = Parser::new();
         parser
-            .set_language(&language())
+            .set_language(&tree_sitter_python::LANGUAGE.into())
             .map_err(internal_error)?;
         Ok(PythonParser { parser })
     }

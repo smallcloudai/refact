@@ -11,6 +11,7 @@ use tokio::io::AsyncWriteExt;
 use crate::custom_error::YamlError;
 use crate::global_context::GlobalContext;
 use crate::files_correction::any_glob_matches_path;
+use crate::integrations::running_integrations::load_integrations;
 // use crate::tools::tools_description::Tool;
 // use crate::yaml_configs::create_configs::{integrations_enabled_cfg, read_yaml_into_value};
 
@@ -569,6 +570,11 @@ pub async fn integration_config_save(
     file.write_all(sanitized_yaml_string.as_bytes()).await.map_err(|e| {
         format!("Failed to write to {}: {}", config_path.display(), e)
     })?;
+
+    // If it is an mcp integration, ensure we restart or reconnect to the server
+    if config_path.file_name().and_then(|f| f.to_str()).is_some_and(|f| f.starts_with("mcp_")) {
+        let _ = load_integrations(gcx.clone(), &["**/mcp_*".to_string()]).await;
+    }
 
     Ok(())
 }

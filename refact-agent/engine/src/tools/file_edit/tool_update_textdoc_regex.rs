@@ -3,7 +3,7 @@ use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, DiffChunk};
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, FilePrivacyLevel, PrivacySettings};
 use crate::tools::file_edit::auxiliary::{await_ast_indexing, convert_edit_to_diffchunks, str_replace_regex, sync_documents_ast};
-use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -23,7 +23,9 @@ struct ToolUpdateTextDocRegexArgs {
     multiple: bool,
 }
 
-pub struct ToolUpdateTextDocRegex;
+pub struct ToolUpdateTextDocRegex {
+    pub config_path: String,
+}
 
 async fn parse_args(
     gcx: Arc<ARwLock<GlobalContext>>,
@@ -181,5 +183,42 @@ impl Tool for ToolUpdateTextDocRegex {
             ask_user: vec!["update_textdoc_regex*".to_string()],
             deny: vec![],
         })
+    }
+    
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "update_textdoc_regex".to_string(),
+            display_name: "Update Text Document with Regex".to_string(),
+            source: ToolSource { 
+                source_type: ToolSourceType::Builtin, 
+                config_path: self.config_path.clone(), 
+            },
+            agentic: false,
+            experimental: false,
+            description: "Updates an existing document using regex pattern matching. Ideal when changes can be expressed as a regular expression or when you need to match variable text patterns. Avoid trailing spaces and tabs.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "path".to_string(),
+                    description: "Absolute path to the file to change.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "pattern".to_string(),
+                    description: "A regex pattern to match the text that needs to be updated. Prefer simpler regexes for better performance.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "replacement".to_string(),
+                    description: "The new text that will replace the matched pattern.".to_string(),
+                    param_type: "string".to_string(),
+                },
+                ToolParam {
+                    name: "multiple".to_string(),
+                    description: "If true, applies the replacement to all occurrences; if false, only the first occurrence is replaced.".to_string(),
+                    param_type: "boolean".to_string(),
+                }
+            ],
+            parameters_required: vec!["path".to_string(), "pattern".to_string(), "replacement".to_string(), "multiple".to_string()],
+        }
     }
 }
