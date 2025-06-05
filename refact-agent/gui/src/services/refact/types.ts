@@ -277,7 +277,9 @@ export type ChatMeta = {
 export function isChatContextFileMessage(
   message: ChatMessage,
 ): message is ChatContextFileMessage {
-  return message.ftm_role === "context_file";
+  return (
+    message.ftm_role === "context_file" && Array.isArray(message.ftm_content)
+  );
 }
 
 export function isAssistantMessage(

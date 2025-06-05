@@ -48,7 +48,7 @@ export function useMessageSubscription() {
       const input: FThreadMessageInput = {
         ftm_alt: leafMessage.ftm_alt, // increase when branching
         // ftm_app_specific: leafMessage.ftm_belongs_to_ft_id, // optional
-        ftm_belongs_to_ft_id: leafMessage.ftm_belongs_to_ft_id, // ftId.ft_id,
+        ftm_belongs_to_ft_id: maybeFtId ?? leafMessage.ftm_belongs_to_ft_id, // ftId.ft_id,
         ftm_call_id: "",
         ftm_content: JSON.stringify(content),
         ftm_num: leafMessage.ftm_num + 1,
@@ -58,9 +58,10 @@ export function useMessageSubscription() {
         ftm_tool_calls: "null", // optional
         ftm_usage: "null", // optional
       };
+      console.log("input", input);
       void dispatch(createMessage({ input }));
     },
-    [dispatch, leafMessage],
+    [dispatch, leafMessage, maybeFtId],
   );
 
   return { sendMessage };
