@@ -1,4 +1,4 @@
-import { Flex, Heading, Select, Text } from "@radix-ui/themes";
+import { Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
 import React from "react";
 import { Tree } from "react-arborist";
 import { CustomTreeNode } from "./CustomTreeNode";
@@ -7,6 +7,7 @@ import styles from "./GroupTree.module.css";
 import { ConfirmGroupSelection } from "./ConfirmGroupSelection";
 import { useGroupTree } from "./useGroupTree";
 import { ScrollArea } from "../../ScrollArea";
+import { AnimatePresence } from "framer-motion";
 
 export interface FlexusTreeNode {
   treenodePath: string;
@@ -35,19 +36,24 @@ export const GroupTree: React.FC = () => {
   } = useGroupTree();
 
   return (
-    <Flex direction="column" gap="6" mt="4" width="100%">
+    <Flex direction="column" gap="4" mt="4" width="100%">
       <Flex direction="column" gap="1">
         <Heading as="h2" size="4">
-          Choose workspace
+          Refact Teams Wizard
         </Heading>
-        <Text size="3" color="gray" mb="1">
-          Select a workspace associated to your team to continue.
+        <Separator size="4" my="2" />
+        <Heading as="h2" size="3">
+          Source selection
+        </Heading>
+        <Text size="2" color="gray" mb="1">
+          Select a cloud-based source associated with your team account to
+          continue.
         </Text>
         <Select.Root
           onValueChange={onWorkspaceSelection}
           disabled={availableWorkspaces.length === 0}
         >
-          <Select.Trigger placeholder="Choose workspace"></Select.Trigger>
+          <Select.Trigger placeholder="Please, choose source"></Select.Trigger>
           <Select.Content position="popper">
             {availableWorkspaces.map((workspace) => (
               <Select.Item value={workspace.ws_id} key={workspace.ws_id}>
@@ -58,7 +64,7 @@ export const GroupTree: React.FC = () => {
         </Select.Root>
         {availableWorkspaces.length === 0 && (
           <Text size="2" mt="2">
-            No workspaces are currently associated with your account. Please
+            No sources are currently associated with your team account. Please
             contact your Team Workspace administrator to request access. For
             further assistance, please refer to the support or bug reporting
             channels.
@@ -72,14 +78,16 @@ export const GroupTree: React.FC = () => {
           width="100%"
           height="100%"
           justify="between"
-          style={{ flex: 1, minHeight: 0 }} // <-- Add this line
+          style={{ flex: 1, minHeight: 0 }}
         >
           <Flex direction="column" gap="1" mb="4">
-            <Heading as="h2" size="4">
-              Choose desired group
+            <Heading as="h2" size="3">
+              Group selection
             </Heading>
-            <Text size="3" color="gray">
-              Select a group to sync your knowledge with the cloud.
+            <Text size="2" color="gray">
+              Choose a group within the selected source where your local
+              knowledge, chats, and features will be uploaded and synchronized
+              in the cloud.
             </Text>
           </Flex>
           <ScrollArea
@@ -94,7 +102,7 @@ export const GroupTree: React.FC = () => {
               width="100%"
               indent={28}
               onSelect={onGroupSelect}
-              openByDefault={false}
+              openByDefault={true}
               className={styles.sidebarTree}
               selection={currentSelectedTeamsGroupNode?.treenodePath}
               disableDrag
@@ -109,16 +117,17 @@ export const GroupTree: React.FC = () => {
               )}
             </Tree>
           </ScrollArea>
-          {/* TODO: make it wrapped around AnimatePresence from motion */}
-          {currentSelectedTeamsGroupNode !== null && (
-            <ConfirmGroupSelection
-              currentSelectedTeamsGroupNode={currentSelectedTeamsGroupNode}
-              setCurrentSelectedTeamsGroupNode={
-                setCurrentSelectedTeamsGroupNode
-              }
-              onGroupSelectionConfirm={onGroupSelectionConfirm}
-            />
-          )}
+          <AnimatePresence>
+            {currentSelectedTeamsGroupNode !== null && (
+              <ConfirmGroupSelection
+                currentSelectedTeamsGroupNode={currentSelectedTeamsGroupNode}
+                setCurrentSelectedTeamsGroupNode={
+                  setCurrentSelectedTeamsGroupNode
+                }
+                onGroupSelectionConfirm={onGroupSelectionConfirm}
+              />
+            )}
+          </AnimatePresence>
         </Flex>
       )}
     </Flex>
