@@ -52,10 +52,14 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
         } else if msg.role == "diff" {
             let extra_message = match serde_json::from_str::<Vec<DiffChunk>>(&msg.content.content_text_only()) {
                 Ok(chunks) => {
-                    chunks.iter()
-                        .filter(|x| !x.application_details.is_empty())
-                        .map(|x| x.application_details.clone())
-                        .join("\n")
+                    if chunks.is_empty() {
+                        "Nothing has changed.".to_string()
+                    } else {
+                        chunks.iter()
+                            .filter(|x| !x.application_details.is_empty())
+                            .map(|x| x.application_details.clone())
+                            .join("\n")
+                    }
                 },
                 Err(_) => "".to_string()
             };
