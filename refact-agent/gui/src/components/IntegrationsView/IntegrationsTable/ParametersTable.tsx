@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { FC, useEffect, useState, useMemo, useCallback } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -27,17 +27,9 @@ export const ParametersTable: FC<ParametersTableProps> = ({
   onToolParameters,
 }) => {
   const [data, setData] = useState<ToolParameterEntity[]>(initialData);
+  const [previousData, setPreviousData] =
+    useState<ToolParameterEntity[]>(initialData);
   const [validateError, setValidateError] = useState<string | null>(null);
-  const previousDataRef = useRef<ToolParameterEntity[]>(initialData);
-  const previousInitialDataRef = useRef<ToolParameterEntity[]>(initialData);
-
-  // Sync with initialData when it changes from parent
-  useEffect(() => {
-    if (!isEqual(previousInitialDataRef.current, initialData)) {
-      previousInitialDataRef.current = initialData;
-      setData(initialData);
-    }
-  }, [initialData]);
 
   const addRow = useCallback(() => {
     setData((prev) => [...prev, { name: "", description: "", type: "string" }]);
@@ -80,13 +72,21 @@ export const ParametersTable: FC<ParametersTableProps> = ({
     [validateAndUpdateField],
   );
 
+  const isDataChanged = useMemo(() => {
+    return !isEqual(previousData, data);
+  }, [previousData, data]);
+
+  const updateData = useCallback(() => {
+    setPreviousData(data);
+    onToolParameters(data);
+  }, [data, onToolParameters]);
+
   useEffect(() => {
     // Only call onToolParameters if data has actually changed
-    if (!isEqual(previousDataRef.current, data)) {
-      previousDataRef.current = data;
-      onToolParameters(data);
+    if (isDataChanged) {
+      updateData();
     }
-  }, [data, onToolParameters]);
+  }, [updateData, isDataChanged]);
 
   const tableData = useMemo<ParameterRow[]>(
     () => data.map((row, index) => ({ ...row, index })),

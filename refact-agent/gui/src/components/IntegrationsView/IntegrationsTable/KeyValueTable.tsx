@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState, useMemo, useRef } from "react";
+import React, { FC, useEffect, useState, useMemo, useCallback } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -39,8 +39,9 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
   );
 
   const [data, setData] = useState<MCPEnvs>(() => initialData);
-  const previousDataRef = useRef<Record<string, string>>(initialData);
-  const previousInitialDataRef = useRef<Record<string, string>>(initialData);
+  const [previousData, setPreviousData] = useState<MCPEnvs>(() => initialData);
+  const [previousInitialData, setPreviousInitialData] =
+    useState<Record<string, string>>(initialData);
 
   const [keyOrders, setKeyOrders] = useState<Record<string, number>>(() => {
     const orders: Record<string, number> = {};
@@ -50,11 +51,21 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
     return orders;
   });
 
+  const isDataChanged = useMemo(() => {
+    return !isEqual(previousData, data);
+  }, [previousData, data]);
+
+  const updateData = useCallback(() => {
+    setPreviousData(data);
+    onChange(data);
+  }, [data, onChange]);
+
   // Sync with initialData when it changes from parent
   useEffect(() => {
-    if (!isEqual(previousInitialDataRef.current, initialData)) {
-      previousInitialDataRef.current = initialData;
+    if (!isEqual(previousInitialData, initialData)) {
+      setPreviousInitialData(initialData);
       setData(initialData);
+      setPreviousData(initialData);
 
       // Update key orders for new data
       const orders: Record<string, number> = {};
@@ -64,11 +75,18 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
       setKeyOrders(orders);
       setNextOrder(Object.keys(initialData).length);
     }
-  }, [initialData]);
+  }, [initialData, previousInitialData]);
+
+  // Only call onChange if data has actually changed
+  useEffect(() => {
+    if (isDataChanged) {
+      updateData();
+    }
+  }, [updateData, isDataChanged]);
 
   const addRow = () => {
     const newKey = `${Object.keys(data).length}`;
-    setData((prev) => ({ ...prev, [newKey]: "" }));
+    setData((prev) => ({ ...prev, [newKey]: "" })); // Adds number in the key, maybe we don't need it
     setKeyOrders((prev) => ({ ...prev, [newKey]: nextOrder }));
     setNextOrder((prev) => prev + 1);
   };
@@ -127,14 +145,6 @@ export const KeyValueTable: FC<KeyValueTableProps> = ({
       }
     }
   };
-
-  useEffect(() => {
-    // Only call onChange if data has actually changed
-    if (!isEqual(previousDataRef.current, data)) {
-      previousDataRef.current = data;
-      onChange(data);
-    }
-  }, [data, onChange]);
 
   const tableData = useMemo(
     () =>

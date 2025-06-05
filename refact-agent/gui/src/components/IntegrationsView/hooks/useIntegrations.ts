@@ -43,6 +43,7 @@ import { toPascalCase } from "../../../utils/toPascalCase";
 import { validateSnakeCase } from "../../../utils/validateSnakeCase";
 import { formatIntegrationIconPath } from "../../../utils/formatIntegrationIconPath";
 import { prepareNotConfiguredIntegration } from "../utils/prepareNotConfiguredIntegration";
+// import groupBy from "lodash.groupby";
 
 type useIntegrationsViewArgs = {
   integrationsMap?: IntegrationWithIconResponse;
@@ -277,7 +278,6 @@ export const useIntegrations = ({
       const projectSpecific = integrations.filter(
         (integration) => integration.project_path !== "",
       );
-
       return projectSpecific.reduce<
         Record<string, IntegrationWithIconResponse["integrations"]>
       >((acc, integration) => {

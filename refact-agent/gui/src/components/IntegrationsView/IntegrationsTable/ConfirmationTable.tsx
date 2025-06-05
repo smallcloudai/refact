@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useMemo, useRef } from "react";
+import { FC, useEffect, useState, useMemo, useCallback } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -30,16 +30,24 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   onToolConfirmation,
 }) => {
   const [data, setData] = useState<string[]>(initialData);
-  const previousDataRef = useRef<string[]>(initialData);
-  const previousInitialDataRef = useRef<string[]>(initialData);
+  const [previousData, setPreviousData] = useState<string[]>(initialData);
+
+  const isDataChanged = useMemo(() => {
+    return !isEqual(previousData, data);
+  }, [previousData, data]);
+
+  const updateData = useCallback(() => {
+    setPreviousData(data);
+    onToolConfirmation(tableName, data);
+  }, [data, onToolConfirmation, tableName]);
 
   // Sync with initialData when it changes from parent
   useEffect(() => {
-    if (!isEqual(previousInitialDataRef.current, initialData)) {
-      previousInitialDataRef.current = initialData;
-      setData(initialData);
+    // Only call onToolParameters if data has actually changed
+    if (isDataChanged) {
+      updateData();
     }
-  }, [initialData]);
+  }, [updateData, isDataChanged]);
 
   const addRow = () => {
     setData((prev) => [...prev, ""]);
@@ -52,14 +60,6 @@ export const ConfirmationTable: FC<ConfirmationTableProps> = ({
   const updateRow = (index: number, value: string) => {
     setData((prev) => prev.map((row, i) => (i === index ? value : row)));
   };
-
-  useEffect(() => {
-    // Only call onToolConfirmation if data has actually changed
-    if (!isEqual(previousDataRef.current, data)) {
-      previousDataRef.current = data;
-      onToolConfirmation(tableName, data);
-    }
-  }, [tableName, data, onToolConfirmation]);
 
   const tableData = useMemo<ConfirmationRow[]>(
     () => data.map((value, index) => ({ value, index })),
