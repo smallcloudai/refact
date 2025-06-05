@@ -2,9 +2,13 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import { FTMMessage, makeMessageTrie } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
+import {
+  createMessage,
+  createThreadWithMessage,
+} from "../../services/graphql/graphqlThunks";
 
 type InitialState = {
-  loading: false;
+  loading: boolean;
   messages: Record<string, FTMMessage>;
   ft_id: string | null;
   leaf: FTMMessage | null;
@@ -182,6 +186,19 @@ export const threadMessagesSlice = createSlice({
       ) {
         state = initialState;
       }
+    });
+
+    builder.addCase(createThreadWithMessage.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(createThreadWithMessage.rejected, (state) => {
+      state.loading = false;
+    });
+    builder.addCase(createMessage.pending, (state) => {
+      state.loading = true;
+    });
+    builder.addCase(createMessage.rejected, (state) => {
+      state.loading = false;
     });
   },
 });

@@ -32,7 +32,7 @@ import {
   setThreadFtId,
 } from "../../features/ThreadMessages";
 import {
-  appSearchableIdsApi,
+  appSearchableIdsApi, // can delete
   GetAppSearchableIdResponse,
 } from "../refact/AppSearchAbleIds";
 
@@ -79,38 +79,6 @@ export const deleteThreadThunk = createAsyncThunk<
     });
   }
   return thunkAPI.fulfillWithValue({ id: args.id });
-});
-
-export const createThreadThunk = createAsyncThunk<
-  CreateThreadMutation,
-  CreateThreadMutationVariables,
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string };
-  }
->("graphql/createThread", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-
-  // before creating get the id from  http://localhost:8001/v1/get-app-searchable-id
-
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
-
-  const result = await client.mutation<
-    CreateThreadMutation,
-    CreateThreadMutationVariables
-  >(CreateThreadDocument, args);
-  if (result.error) {
-    return thunkAPI.rejectWithValue({
-      message: result.error.message,
-    });
-  }
-
-  if (!result.data) {
-    return thunkAPI.rejectWithValue({ message: "Failed to create thread" });
-  }
-  return thunkAPI.fulfillWithValue(result.data);
 });
 
 export const messagesSub = createAsyncThunk<
@@ -168,18 +136,18 @@ export const createMessage = createAppAsyncThunk<
   >(MessageCreateDocument, args);
 
   if (result.error) {
-    console.log(result);
     thunkAPI.dispatch(setError(result.error.message));
     return thunkAPI.rejectWithValue({
       message: result.error.message,
       args,
     });
   }
+  // TODO: add the message to the message list
   return thunkAPI.fulfillWithValue(result.data);
 });
 
 export const createThreadWithMessage = createAsyncThunk<
-  unknown,
+  MessageCreateMutation,
   Pick<FThreadMessageInput, "ftm_content">,
   {
     dispatch: AppDispatch;
@@ -187,39 +155,29 @@ export const createThreadWithMessage = createAsyncThunk<
     rejectValue: { message: string };
   }
 >("graphql/createThreadWithMessage", async (args, thunkAPI) => {
-  console.log("createThread with message called");
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
   const workspace = state.config.currentWorkspaceName ?? "solar_root";
-  console.log({ state, apiKey, workspace });
-  // const appId = await thunkAPI.dispatch(
-  //   appSearchableIdsApi.endpoints.getAppSearchableId.initiate(undefined),
-  // );
 
   const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
-  console.log("calling fetch", appIdUrl, apiKey);
+
   const appIdQuery = await fetch(appIdUrl, {
     credentials: "same-origin",
     redirect: "follow",
     headers: { Authorization: `Bearer ${apiKey}` },
   })
-    .then((res) => {
-      console.log("fetched", res);
-      return res.json();
-    })
+    .then((res) => res.json())
     .then((json) => ({ data: json as GetAppSearchableIdResponse, error: null }))
     .catch((error: Error) => ({ error: error, data: null }));
-
-  console.log({ appIdQuery });
 
   if (appIdQuery.error) {
     thunkAPI.rejectWithValue({ message: JSON.stringify(appIdQuery.error) });
   }
-  // if (!appId.data?.app_searchable_id) {
-  //   thunkAPI.rejectWithValue({ message: "No App Id" });
-  // }
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
   const threadQueryArgs = {
     input: {
       ft_fexp_name: "ask:1.0",
@@ -229,44 +187,66 @@ export const createThreadWithMessage = createAsyncThunk<
       ft_app_searchable: appIdQuery.data?.app_searchable_id,
     },
   };
-  const threadQuery = await createGraphqlClient(
-    apiKey,
-    thunkAPI.signal,
-  ).mutation<CreateThreadMutation, CreateThreadMutationVariables>(
-    CreateThreadDocument,
-    threadQueryArgs,
-  );
-
-  console.log({ threadQuery });
+  const threadQuery = await client.mutation<
+    CreateThreadMutation,
+    CreateThreadMutationVariables
+  >(CreateThreadDocument, threadQueryArgs);
 
   if (threadQuery.error) {
     return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
   }
 
-  if (threadQuery.data && state.threadMessages.ft_id === null) {
+  if (!threadQuery.data) {
+    return thunkAPI.rejectWithValue({
+      message: "couldn't create flexus thread id",
+    });
+  }
+
+  if (state.threadMessages.ft_id === null) {
     thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
   }
 
-  const result = await thunkAPI.dispatch(
-    createMessage({
-      input: {
-        ftm_app_specific: JSON.stringify(
-          appIdQuery.data?.app_searchable_id ?? "",
-        ),
-        ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
-        ftm_alt: 100,
-        ftm_num: 1,
-        ftm_call_id: "",
-        ftm_prev_alt: 100,
-        ftm_role: "user",
-        ftm_content: JSON.stringify(args.ftm_content),
-        ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
-        ftm_tool_calls: "null", // optional
-        ftm_usage: "null", // optional
+  const createMessageArgs = {
+    ftm_app_specific: JSON.stringify(appIdQuery.data?.app_searchable_id ?? ""),
+    ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+    ftm_alt: 100,
+    ftm_num: 1,
+    ftm_call_id: "",
+    ftm_prev_alt: 100,
+    ftm_role: "user",
+    ftm_content: JSON.stringify(args.ftm_content),
+    ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
+    ftm_tool_calls: "null", // optional
+    ftm_usage: "null", // optional
+  };
+
+  const key = `${threadQuery.data.thread_create.ft_id}:${createMessageArgs.ftm_alt}:${createMessageArgs.ftm_num}:${createMessageArgs.ftm_prev_alt}`;
+  // add it to the messages list to be replaced later
+  thunkAPI.dispatch(
+    receiveThreadMessages({
+      comprehensive_thread_subs: {
+        news_action: "INSERT",
+        news_payload_id: key,
+        news_payload_thread_message: {
+          ...createMessageArgs,
+          ftm_content: args.ftm_content,
+          ftm_created_ts: Date.now(),
+        },
       },
     }),
   );
-  return result;
+  const result = await client.mutation<
+    MessageCreateMutation,
+    MessageCreateMutationVariables
+  >(MessageCreateDocument, { input: createMessageArgs });
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message });
+  }
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({ message: "failed to create message" });
+  }
+  return thunkAPI.fulfillWithValue(result.data);
 });
 
 // TODO: stop is ft_error, set this and it'll stop

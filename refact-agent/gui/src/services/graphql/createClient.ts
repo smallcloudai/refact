@@ -1,7 +1,7 @@
 import {
   createClient,
   // debugExchange,
-  cacheExchange,
+  // cacheExchange,
   fetchExchange,
   subscriptionExchange,
 } from "@urql/core";
@@ -47,22 +47,6 @@ export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
             const dispose = wsClient.subscribe(payload, sink);
             return { unsubscribe: dispose };
           },
-          // subscribe: (sink) => ({
-          //   unsubscribe: wsClient.subscribe(
-          //     {
-          //       ...operation,
-          //       query:
-          //         typeof operation.query === "string"
-          //           ? operation.query
-          //           : (() => {
-          //               throw new Error(
-          //                 "Subscription operation.query in undefined",
-          //               );
-          //             })(),
-          //     },
-          //     sink,
-          //   ),
-          // }),
         }),
       }),
       fetchExchange,
