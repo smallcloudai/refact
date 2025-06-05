@@ -45,6 +45,7 @@ import { telemetryApi } from "../../services/refact/telemetry";
 
 import styles from "./Toolbar.module.css";
 import { selectActiveGroup } from "../../features/Teams";
+import { resetThread } from "../../features/ThreadMessages";
 
 export type DashboardTab = {
   type: "dashboard";
@@ -161,13 +162,16 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
 
   const onCreateNewChat = useCallback(() => {
     setIsRenaming((prev) => (prev ? !prev : prev));
+    // TODO: remove new chat action?
     dispatch(newChatAction());
+    dispatch(resetThread());
     dispatch(
       clearPauseReasonsAndHandleToolsStatus({
         wasInteracted: false,
         confirmationStatus: true,
       }),
     );
+    // clear out old chat
     handleNavigation("chat");
     void sendTelemetryEvent({
       scope: `openNewChat`,

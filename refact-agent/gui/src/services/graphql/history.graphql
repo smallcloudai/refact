@@ -12,10 +12,10 @@ subscription ThreadsPageSubs($located_fgroup_id: String!, $limit: Int!) {
       ft_locked_by
       ft_need_assistant
       ft_need_tool_calls
-      ft_anything_new
+      # ft_anything_new
       ft_archived_ts
       ft_created_ts
-      ft_n
+      # ft_n
       # ft_max_new_tokens
       # ft_model
     }

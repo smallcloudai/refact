@@ -57,6 +57,7 @@ import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/
 import { coinBallanceSlice } from "../features/CoinBalance";
 import { threadListSlice } from "../features/ThreadList";
 import { threadMessagesSlice } from "../features/ThreadMessages";
+import { appSearchableIdsApi } from "../services/refact/AppSearchAbleIds";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -97,6 +98,7 @@ const rootReducer = combineSlices(
     [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
+    [appSearchableIdsApi.reducerPath]: appSearchableIdsApi.reducer,
   },
   historySlice,
   errorSlice,

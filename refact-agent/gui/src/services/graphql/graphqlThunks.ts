@@ -22,11 +22,16 @@ import {
   MessageCreateMutation,
   MessageCreateDocument,
   MessagesSubscriptionSubscription,
+  FThreadMessageInput,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
 import { AppDispatch, RootState } from "../../app/store";
-import { receiveThreadMessages } from "../../features/ThreadMessages";
+import {
+  receiveThreadMessages,
+  setThreadFtId,
+} from "../../features/ThreadMessages";
+import { appSearchableIdsApi } from "../refact/AppSearchAbleIds";
 
 export const threadsPageSub = createAppAsyncThunk<
   unknown,
@@ -74,7 +79,7 @@ export const deleteThreadThunk = createAsyncThunk<
 });
 
 export const createThreadThunk = createAsyncThunk<
-  unknown,
+  CreateThreadMutation,
   CreateThreadMutationVariables,
   {
     dispatch: AppDispatch;
@@ -98,7 +103,11 @@ export const createThreadThunk = createAsyncThunk<
       message: result.error.message,
     });
   }
-  return thunkAPI.fulfillWithValue(result.data ?? args);
+
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({ message: "Failed to create thread" });
+  }
+  return thunkAPI.fulfillWithValue(result.data);
 });
 
 export const messagesSub = createAsyncThunk<
@@ -108,12 +117,14 @@ export const messagesSub = createAsyncThunk<
 >("graphql/messageSubscription", (args, thunkApi) => {
   const state = thunkApi.getState();
   const apiKey = state.config.apiKey ?? "";
-  createSubscription<
+  console.log(thunkApi.requestId);
   const sub = createSubscription<
     MessagesSubscriptionSubscription,
     MessagesSubscriptionSubscriptionVariables
   >(apiKey, MessagesSubscriptionDocument, args, thunkApi.signal, (result) => {
+    console.log(thunkApi.requestId);
     if (thunkApi.signal.aborted) {
+      console.log("handleResult called after thunk signal is aborted");
 
       return thunkApi.fulfillWithValue({});
     }
@@ -132,6 +143,7 @@ export const messagesSub = createAsyncThunk<
     thunkApi.fulfillWithValue({});
   });
 
+  // return thunkApi.fulfillWithValue({});
 });
 
 export const createMessage = createAppAsyncThunk<
@@ -153,6 +165,7 @@ export const createMessage = createAppAsyncThunk<
   >(MessageCreateDocument, args);
 
   if (result.error) {
+    console.log(result);
     thunkAPI.dispatch(setError(result.error.message));
     return thunkAPI.rejectWithValue({
       message: result.error.message,
@@ -160,6 +173,73 @@ export const createMessage = createAppAsyncThunk<
     });
   }
   return thunkAPI.fulfillWithValue(result.data);
+});
+
+export const createThreadWithMessage = createAsyncThunk<
+  unknown,
+  Pick<FThreadMessageInput, "ftm_content">,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("graphql/createThreadWithMessage", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+  const workspace = state.config.currentWorkspaceName ?? "";
+  const appId = await thunkAPI.dispatch(
+    appSearchableIdsApi.endpoints.getAppSearchableId.initiate(undefined),
+  );
+  if (appId.error) {
+    thunkAPI.rejectWithValue({ message: JSON.stringify(appId.error) });
+  }
+  // if (!appId.data?.app_searchable_id) {
+  //   thunkAPI.rejectWithValue({ message: "No App Id" });
+  // }
+
+  const threadQueryArgs = {
+    input: {
+      ft_fexp_name: "ask",
+      ft_title: "", // TODO: generate the title
+      located_fgroup_id: workspace,
+      owner_shared: false,
+      ft_app_searchable: appId.data?.app_searchable_id,
+    },
+  };
+  const threadQuery = await createGraphqlClient(
+    apiKey,
+    thunkAPI.signal,
+  ).mutation<CreateThreadMutation, CreateThreadMutationVariables>(
+    CreateThreadDocument,
+    threadQueryArgs,
+  );
+
+  if (threadQuery.error) {
+    return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
+  }
+
+  if (threadQuery.data && state.threadMessages.ft_id === null) {
+    thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
+  }
+
+  const result = await thunkAPI.dispatch(
+    createMessage({
+      input: {
+        ftm_app_specific: appId.data?.app_searchable_id,
+        ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
+        ftm_alt: 100,
+        ftm_num: 1,
+        ftm_call_id: "",
+        ftm_prev_alt: 100,
+        ftm_role: "user",
+        ftm_content: JSON.stringify(args.ftm_content),
+        ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
+        ftm_tool_calls: "null", // optional
+        ftm_usage: "null", // optional
+      },
+    }),
+  );
+  return result;
 });
 
 // TODO: stop is ft_error, set this and it'll stop

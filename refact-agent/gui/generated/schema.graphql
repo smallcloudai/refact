@@ -125,7 +125,11 @@ type FPluginOutput {
 }
 
 type FThreadDelta {
+  ftm_alt: Int!
+  ftm_belongs_to_ft_id: String!
   ftm_content: JSON!
+  ftm_num: Int!
+  ftm_prev_alt: Int!
   ftm_role: String!
 }
 

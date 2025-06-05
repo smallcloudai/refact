@@ -1,36 +1,37 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { v4 as uuid } from "uuid";
+
 import { useAppDispatch, useAppSelector } from "../../hooks";
 import { selectCurrentPage } from "../../features/Pages/pagesSlice";
 import {
   messagesSub,
   createMessage,
+  createThreadWithMessage,
 } from "../../services/graphql/graphqlThunks";
 import { FThreadMessageInput } from "../../../generated/documents";
-import { selectThreadLeaf } from "../../features/ThreadMessages";
+import { isThreadEmpty, selectThreadLeaf } from "../../features/ThreadMessages";
 
 export function useMessageSubscription() {
   const dispatch = useAppDispatch();
-  const ftId = useIdForThread();
   const leafMessage = useAppSelector(selectThreadLeaf);
+  const isEmpty = useAppSelector(isThreadEmpty);
+  const maybeFtId = useIdForThread();
   useEffect(() => {
-    if (ftId.isNew) return;
-    console.log("creating message sub");
+    if (!maybeFtId) return;
     const thunk = dispatch(
-      messagesSub({ ft_id: ftId.ft_id, want_deltas: true }),
+      messagesSub({ ft_id: maybeFtId, want_deltas: true }),
     );
     return () => {
       console.log("removing message subscription");
       thunk.abort();
     };
-  }, [dispatch, ftId]);
+  }, [dispatch, isEmpty, maybeFtId]);
 
   // It'll need the parent node, and the info for the new node
   // What about images?
   const sendMessage = useCallback(
     (content: string) => {
       if (leafMessage === null) {
-        // new thread
+        createThreadWithMessage({ ftm_content: content });
         return;
       }
       const input: FThreadMessageInput = {
@@ -60,12 +61,9 @@ export const useIdForThread = () => {
 
   const idInfo = useMemo(() => {
     if (route && "ft_id" in route && route.ft_id) {
-      return { ft_id: route.ft_id, isNew: false };
+      return route.ft_id;
     }
-    return {
-      ft_id: uuid(),
-      isNew: true,
-    };
+    return null;
   }, [route]);
 
   return idInfo;

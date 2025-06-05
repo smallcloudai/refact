@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import { FTMMessage, makeMessageTrie } from "./makeMessageTrie";
+import { pagesSlice } from "../Pages/pagesSlice";
 
 type InitialState = {
   loading: false;
@@ -158,6 +159,10 @@ export const threadMessagesSlice = createSlice({
       state = initialState;
       return state;
     },
+
+    setThreadFtId: (state, action: PayloadAction<InitialState["ft_id"]>) => {
+      state.ft_id = action.payload;
+    },
   },
   selectors: {
     selectThreadMessages: (state) => state.messages,
@@ -168,10 +173,25 @@ export const threadMessagesSlice = createSlice({
     selectThreadLeaf: (state) => state.leaf,
     isThreadEmpty: (state) => Object.values(state.messages).length === 0,
   },
+
+  extraReducers(builder) {
+    builder.addCase(pagesSlice.actions.push, (state, action) => {
+      if (
+        action.payload.name === "chat" &&
+        action.payload.ft_id !== state.ft_id
+      ) {
+        state = initialState;
+      }
+    });
+  },
 });
 
-export const { receiveThreadMessages, setThreadLeaf, resetThread } =
-  threadMessagesSlice.actions;
+export const {
+  receiveThreadMessages,
+  setThreadLeaf,
+  resetThread,
+  setThreadFtId,
+} = threadMessagesSlice.actions;
 export const {
   selectThreadMessages,
   selectThreadLoading,
