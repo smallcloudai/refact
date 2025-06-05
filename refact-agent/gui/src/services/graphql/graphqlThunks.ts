@@ -31,7 +31,10 @@ import {
   receiveThreadMessages,
   setThreadFtId,
 } from "../../features/ThreadMessages";
-import { appSearchableIdsApi } from "../refact/AppSearchAbleIds";
+import {
+  appSearchableIdsApi,
+  GetAppSearchableIdResponse,
+} from "../refact/AppSearchAbleIds";
 
 export const threadsPageSub = createAppAsyncThunk<
   unknown,
@@ -184,26 +187,46 @@ export const createThreadWithMessage = createAsyncThunk<
     rejectValue: { message: string };
   }
 >("graphql/createThreadWithMessage", async (args, thunkAPI) => {
+  console.log("createThread with message called");
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
-  const workspace = state.config.currentWorkspaceName ?? "";
-  const appId = await thunkAPI.dispatch(
-    appSearchableIdsApi.endpoints.getAppSearchableId.initiate(undefined),
-  );
-  if (appId.error) {
-    thunkAPI.rejectWithValue({ message: JSON.stringify(appId.error) });
+  const port = state.config.lspPort;
+  // TODO: where is current workspace set?
+  const workspace = state.config.currentWorkspaceName ?? "solar_root";
+  console.log({ state, apiKey, workspace });
+  // const appId = await thunkAPI.dispatch(
+  //   appSearchableIdsApi.endpoints.getAppSearchableId.initiate(undefined),
+  // );
+
+  const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
+  console.log("calling fetch", appIdUrl, apiKey);
+  const appIdQuery = await fetch(appIdUrl, {
+    credentials: "same-origin",
+    redirect: "follow",
+    headers: { Authorization: `Bearer ${apiKey}` },
+  })
+    .then((res) => {
+      console.log("fetched", res);
+      return res.json();
+    })
+    .then((json) => ({ data: json as GetAppSearchableIdResponse, error: null }))
+    .catch((error: Error) => ({ error: error, data: null }));
+
+  console.log({ appIdQuery });
+
+  if (appIdQuery.error) {
+    thunkAPI.rejectWithValue({ message: JSON.stringify(appIdQuery.error) });
   }
   // if (!appId.data?.app_searchable_id) {
   //   thunkAPI.rejectWithValue({ message: "No App Id" });
   // }
-
   const threadQueryArgs = {
     input: {
-      ft_fexp_name: "ask",
+      ft_fexp_name: "ask:1.0",
       ft_title: "", // TODO: generate the title
       located_fgroup_id: workspace,
       owner_shared: false,
-      ft_app_searchable: appId.data?.app_searchable_id,
+      ft_app_searchable: appIdQuery.data?.app_searchable_id,
     },
   };
   const threadQuery = await createGraphqlClient(
@@ -213,6 +236,8 @@ export const createThreadWithMessage = createAsyncThunk<
     CreateThreadDocument,
     threadQueryArgs,
   );
+
+  console.log({ threadQuery });
 
   if (threadQuery.error) {
     return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
@@ -225,7 +250,9 @@ export const createThreadWithMessage = createAsyncThunk<
   const result = await thunkAPI.dispatch(
     createMessage({
       input: {
-        ftm_app_specific: appId.data?.app_searchable_id,
+        ftm_app_specific: JSON.stringify(
+          appIdQuery.data?.app_searchable_id ?? "",
+        ),
         ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
         ftm_alt: 100,
         ftm_num: 1,

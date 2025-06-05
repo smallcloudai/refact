@@ -8,7 +8,15 @@ import {
   createThreadWithMessage,
 } from "../../services/graphql/graphqlThunks";
 import { FThreadMessageInput } from "../../../generated/documents";
-import { isThreadEmpty, selectThreadLeaf } from "../../features/ThreadMessages";
+import {
+  isThreadEmpty,
+  selectThreadId,
+  selectThreadLeaf,
+} from "../../features/ThreadMessages";
+
+// function usecreateThreadWithMessage() {
+
+// }
 
 export function useMessageSubscription() {
   const dispatch = useAppDispatch();
@@ -17,6 +25,7 @@ export function useMessageSubscription() {
   const maybeFtId = useIdForThread();
   useEffect(() => {
     if (!maybeFtId) return;
+    console.log("subscribing to message subscription");
     const thunk = dispatch(
       messagesSub({ ft_id: maybeFtId, want_deltas: true }),
     );
@@ -30,8 +39,10 @@ export function useMessageSubscription() {
   // What about images?
   const sendMessage = useCallback(
     (content: string) => {
+      console.log("Sending message");
+      console.log({ content, leafMessage });
       if (leafMessage === null) {
-        createThreadWithMessage({ ftm_content: content });
+        void dispatch(createThreadWithMessage({ ftm_content: content }));
         return;
       }
       const input: FThreadMessageInput = {
@@ -58,13 +69,15 @@ export function useMessageSubscription() {
 // TODO: id comes from the route or backend when creating a new thread
 export const useIdForThread = () => {
   const route = useAppSelector(selectCurrentPage);
+  const ftId = useAppSelector(selectThreadId);
 
   const idInfo = useMemo(() => {
+    if (ftId) return ftId;
     if (route && "ft_id" in route && route.ft_id) {
       return route.ft_id;
     }
     return null;
-  }, [route]);
+  }, [route, ftId]);
 
   return idInfo;
 };

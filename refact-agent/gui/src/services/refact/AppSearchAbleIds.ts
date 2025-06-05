@@ -3,11 +3,11 @@ import { RootState } from "../../app/store";
 
 // http://localhost:8001/v1/get-app-searchable-id
 
-type GetAppSearchableIdResponse = {
+export type GetAppSearchableIdResponse = {
   app_searchable_id: string;
 };
 
-function isGetAppSearchableResponse(
+export function isGetAppSearchableResponse(
   response: unknown,
 ): response is GetAppSearchableIdResponse {
   if (!response) return false;
@@ -41,11 +41,14 @@ export const appSearchableIdsApi = createApi({
           redirect: "follow",
         });
 
+        console.log("result", result);
+
         if (result.error) {
           return { error: result.error };
         }
 
         if (!isGetAppSearchableResponse(result.data)) {
+          console.log("failed validation");
           return {
             meta: result.meta,
             error: {
@@ -55,6 +58,7 @@ export const appSearchableIdsApi = createApi({
             },
           };
         }
+        console.log("returning result");
         return { data: result.data };
       },
     }),
