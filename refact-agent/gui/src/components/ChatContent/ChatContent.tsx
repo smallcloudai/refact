@@ -34,6 +34,7 @@ export const ChatContent: React.FC<ChatContentProps> = ({
   onStopStreaming,
 }) => {
   const dispatch = useAppDispatch();
+  // TODO: stays when creating a new chat :/
   const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);

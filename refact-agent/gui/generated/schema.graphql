@@ -26,7 +26,7 @@ type FExpertOutput {
   fexp_name: String!
   fexp_python_kernel: String!
   fexp_system_prompt: String!
-  located_fgroup_id: String!
+  located_fgroup_id: String
   owner_fuser_id: String
   owner_shared: Boolean!
 }

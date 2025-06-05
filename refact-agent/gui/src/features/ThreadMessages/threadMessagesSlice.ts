@@ -55,6 +55,17 @@ export const threadMessagesSlice = createSlice({
       }
 
       if (
+        action.payload.comprehensive_thread_subs.news_action === "INSERT" &&
+        action.payload.comprehensive_thread_subs.news_payload_id &&
+        action.payload.comprehensive_thread_subs.news_payload_thread_message
+      ) {
+        state.messages[
+          action.payload.comprehensive_thread_subs.news_payload_id
+        ] =
+          action.payload.comprehensive_thread_subs.news_payload_thread_message;
+      }
+
+      if (
         action.payload.comprehensive_thread_subs.news_action === "DELETE" &&
         action.payload.comprehensive_thread_subs.news_payload_id
       ) {
@@ -70,6 +81,47 @@ export const threadMessagesSlice = createSlice({
         }, {});
 
         state.messages = msgs;
+      }
+
+      if (
+        action.payload.comprehensive_thread_subs.news_action === "DELTA" &&
+        action.payload.comprehensive_thread_subs.stream_delta
+      ) {
+        if (
+          action.payload.comprehensive_thread_subs.news_payload_id in
+            state.messages &&
+          action.payload.comprehensive_thread_subs
+            .news_payload_thread_message &&
+          "ftm_content" in action.payload.comprehensive_thread_subs.stream_delta
+        ) {
+          // TODO: handle deltas, delta don't have all the info though :/
+          state.messages[
+            action.payload.comprehensive_thread_subs.news_payload_id
+          ].ftm_content +=
+            action.payload.comprehensive_thread_subs.stream_delta.ftm_content;
+        } else if (
+          !(
+            action.payload.comprehensive_thread_subs.news_payload_id in
+            state.messages
+          ) &&
+          action.payload.comprehensive_thread_subs.news_payload_thread_message
+        ) {
+          const msg: FTMMessage = {
+            ...action.payload.comprehensive_thread_subs
+              .news_payload_thread_message,
+            ftm_role:
+              action.payload.comprehensive_thread_subs.stream_delta.ftm_role,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            ftm_content:
+              action.payload.comprehensive_thread_subs.stream_delta.ftm_content,
+            ftm_num:
+              action.payload.comprehensive_thread_subs
+                .news_payload_thread_message.ftm_num + 1,
+          };
+          state.messages[
+            action.payload.comprehensive_thread_subs.news_payload_id
+          ] = msg;
+        }
       }
     },
 

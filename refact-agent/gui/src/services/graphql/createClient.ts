@@ -13,7 +13,6 @@ import {
   DocumentInput,
   OperationContext,
   OperationResult,
-  OperationResultSource,
 } from "urql";
 
 const THREE_MINUTES = 3 * 60 * 1000;
@@ -35,17 +34,12 @@ export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
     retryAttempts: 5,
   });
 
-  signal.addEventListener("abort", () => {
-    // console.log("aborting wsClient");
-    void wsClient.dispose();
-  });
-
   const urqlClient = createClient({
     url: `${protocol}://${baseUrl}`,
     exchanges: [
       // TODO: only enable this during development
       // debugExchange,
-      cacheExchange,
+      // cacheExchange,
       subscriptionExchange({
         forwardSubscription: (operation) => ({
           subscribe: (sink) => {
@@ -81,6 +75,12 @@ export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
     }),
   });
 
+  signal.addEventListener("abort", () => {
+    // console.log("aborting wsClient");
+    wsClient.terminate();
+    void wsClient.dispose();
+  });
+
   return urqlClient;
 };
 
@@ -96,6 +96,7 @@ export function createSubscription<
   context?: Partial<OperationContext> | undefined,
 ) {
   const client = createGraphqlClient(apiKey, signal);
+
   const operation = client.subscription<T, Variables>(
     query,
     variables,
@@ -128,4 +129,12 @@ export function createSubscription<
     }
   };
   document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  signal.addEventListener("abort", () => {
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    maybeClearTimeout();
+    subscription.unsubscribe();
+  });
+
+  return subscription;
 }

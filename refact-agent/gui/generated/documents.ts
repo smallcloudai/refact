@@ -41,7 +41,7 @@ export type FExpertOutput = {
   fexp_name: Scalars['String']['output'];
   fexp_python_kernel: Scalars['String']['output'];
   fexp_system_prompt: Scalars['String']['output'];
-  located_fgroup_id: Scalars['String']['output'];
+  located_fgroup_id?: Maybe<Scalars['String']['output']>;
   owner_fuser_id?: Maybe<Scalars['String']['output']>;
   owner_shared: Scalars['Boolean']['output'];
 };

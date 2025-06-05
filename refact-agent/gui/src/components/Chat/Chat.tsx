@@ -46,7 +46,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
-  useMessageSubscription();
+  const { sendMessage } = useMessageSubscription();
 
   const chatId = useAppSelector(selectChatId);
   const { submit, abort, retryFromIndex } = useSendChatRequest();
@@ -66,12 +66,13 @@ export const Chat: React.FC<ChatProps> = ({
 
   const handleSummit = useCallback(
     (value: string) => {
-      submit({ question: value });
+      // submit({ question: value });
+      sendMessage(value);
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
     },
-    [submit, isViewingRawJSON],
+    [sendMessage, isViewingRawJSON],
   );
 
   const handleThreadHistoryPage = useCallback(() => {

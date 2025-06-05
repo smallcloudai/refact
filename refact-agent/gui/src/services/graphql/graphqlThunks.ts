@@ -109,9 +109,14 @@ export const messagesSub = createAsyncThunk<
   const state = thunkApi.getState();
   const apiKey = state.config.apiKey ?? "";
   createSubscription<
+  const sub = createSubscription<
     MessagesSubscriptionSubscription,
     MessagesSubscriptionSubscriptionVariables
   >(apiKey, MessagesSubscriptionDocument, args, thunkApi.signal, (result) => {
+    if (thunkApi.signal.aborted) {
+
+      return thunkApi.fulfillWithValue({});
+    }
     if (result.error) {
       // TBD: do we hang up on errors?
       thunkApi.dispatch(setError(result.error.message));
@@ -120,6 +125,13 @@ export const messagesSub = createAsyncThunk<
       thunkApi.dispatch(receiveThreadMessages(result.data));
     }
   });
+
+  // TODO: duplicated call to unsubscribe
+  thunkApi.signal.addEventListener("abort", () => {
+    sub.unsubscribe();
+    thunkApi.fulfillWithValue({});
+  });
+
 });
 
 export const createMessage = createAppAsyncThunk<
@@ -141,6 +153,7 @@ export const createMessage = createAppAsyncThunk<
   >(MessageCreateDocument, args);
 
   if (result.error) {
+    thunkAPI.dispatch(setError(result.error.message));
     return thunkAPI.rejectWithValue({
       message: result.error.message,
       args,
