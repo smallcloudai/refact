@@ -16,6 +16,20 @@ const initialState: InitialState = {
   leaf: null,
 };
 
+const ID_REGEXP = /^(.*):(\d+):(\d+):(\d+)$/;
+
+function getInfoFromId(id: string) {
+  const result = id.match(ID_REGEXP);
+  if (result === null) return null;
+  const [ftm_belongs_to_ft_id, ftm_alt, ftm_num, ftm_prev_alt] = result;
+  return {
+    ftm_belongs_to_ft_id,
+    ftm_alt: +ftm_alt,
+    ftm_num: +ftm_num,
+    ftm_prev_alt: +ftm_prev_alt,
+  };
+}
+
 export const threadMessagesSlice = createSlice({
   name: "threadMessages",
   initialState,
@@ -25,6 +39,11 @@ export const threadMessagesSlice = createSlice({
       action: PayloadAction<MessagesSubscriptionSubscription>,
     ) => {
       state.loading = false;
+      // console.log(
+      //   "receiveMessages",
+      //   action.payload.comprehensive_thread_subs.news_action,
+      //   action.payload,
+      // );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message
@@ -106,9 +125,15 @@ export const threadMessagesSlice = createSlice({
           ) &&
           action.payload.comprehensive_thread_subs.news_payload_thread_message
         ) {
+          const infoFromId = getInfoFromId(
+            action.payload.comprehensive_thread_subs.news_payload_id,
+          );
+
           const msg: FTMMessage = {
+            // TODO: remove this, the key will suffice
             ...action.payload.comprehensive_thread_subs
               .news_payload_thread_message,
+            ...infoFromId,
             ftm_role:
               action.payload.comprehensive_thread_subs.stream_delta.ftm_role,
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -128,6 +153,11 @@ export const threadMessagesSlice = createSlice({
     setThreadLeaf: (state, action: PayloadAction<InitialState["leaf"]>) => {
       state.leaf = action.payload;
     },
+
+    resetThread: (state) => {
+      state = initialState;
+      return state;
+    },
   },
   selectors: {
     selectThreadMessages: (state) => state.messages,
@@ -136,10 +166,11 @@ export const threadMessagesSlice = createSlice({
     selectThreadMessageTrie: (state) =>
       makeMessageTrie(Object.values(state.messages)),
     selectThreadLeaf: (state) => state.leaf,
+    isThreadEmpty: (state) => Object.values(state.messages).length === 0,
   },
 });
 
-export const { receiveThreadMessages, setThreadLeaf } =
+export const { receiveThreadMessages, setThreadLeaf, resetThread } =
   threadMessagesSlice.actions;
 export const {
   selectThreadMessages,
@@ -147,4 +178,5 @@ export const {
   selectThreadId,
   selectThreadMessageTrie,
   selectThreadLeaf,
+  isThreadEmpty,
 } = threadMessagesSlice.selectors;
