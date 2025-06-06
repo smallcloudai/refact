@@ -14,15 +14,15 @@ describe("formatChatResponse", () => {
   test("it should replace the last user message", () => {
     const message: UserMessageResponse = {
       id: "test",
-      content: " what is this for?\n",
-      role: "user",
+      ftm_content: " what is this for?\n",
+      ftm_role: "user",
     };
 
     const messages: ChatMessages = [
-      { role: "user", content: "Hello" },
+      { ftm_role: "user", ftm_content: "Hello" },
       {
-        role: "assistant",
-        content: "Hi",
+        ftm_role: "assistant",
+        ftm_content: "Hi",
         tool_calls: [
           {
             function: {
@@ -37,16 +37,16 @@ describe("formatChatResponse", () => {
         ],
       },
       {
-        role: "tool",
-        content: {
+        ftm_role: "tool",
+        ftm_content: {
           tool_call_id: "call_6qxVYwV6MTcazl1Fy5pRlImi",
-          content: "stuff",
+          ftm_content: "stuff",
           tool_failed: false,
         },
       },
       {
-        role: "context_file",
-        content: [
+        ftm_role: "context_file",
+        ftm_content: [
           {
             file_content: "stuff",
             file_name: "refact-chat-js/src/services/refact/chat.ts",
@@ -57,19 +57,19 @@ describe("formatChatResponse", () => {
         ],
       },
       {
-        role: "assistant",
-        content: "test response",
+        ftm_role: "assistant",
+        ftm_content: "test response",
       },
       {
-        role: "user",
-        content:
+        ftm_role: "user",
+        ftm_content:
           "@file /Users/marc/Projects/refact-chat-js/src/__fixtures__/chat_diff.ts what is this for?\n",
       },
       {
-        role: "context_file",
-        content: [
+        ftm_role: "context_file",
+        ftm_content: [
           {
-            file_content: "test content",
+            file_content: "test ftm_content",
             file_name: "refact-chat-js/src/__fixtures__/chat_diff.ts",
             line1: 1,
             line2: 30,
@@ -84,7 +84,7 @@ describe("formatChatResponse", () => {
     const expected = [
       ...messages.slice(0, 5),
       ...messages.slice(6),
-      { role: message.role, content: message.content },
+      { ftm_role: message.ftm_role, ftm_content: message.ftm_content },
     ];
 
     expect(result).toEqual(expected);
@@ -92,15 +92,15 @@ describe("formatChatResponse", () => {
 
   test("it should put plain text before a user message at the end of the array", () => {
     const userMessage: UserMessage = {
-      role: "user",
-      content: "Hello",
+      ftm_role: "user",
+      ftm_content: "Hello",
     };
 
     const sentMessages = [userMessage];
 
     const updatedUserMessage: UserMessage = {
-      role: "user",
-      content: "hi",
+      ftm_role: "user",
+      ftm_content: "hi",
     };
 
     const userMessageResponse: UserMessageResponse = {
@@ -109,8 +109,8 @@ describe("formatChatResponse", () => {
     };
 
     const plainTextMessage: PlainTextMessage = {
-      role: "plain_text",
-      content: "test",
+      ftm_role: "plain_text",
+      ftm_content: "test",
     };
 
     const plainTextResponse: PlainTextResponse = {
@@ -133,8 +133,8 @@ describe("formatChatResponse", () => {
     const chunks: ChatResponse[] = [
       {
         id: "",
-        role: "user",
-        content: "hello\n",
+        ftm_role: "user",
+        ftm_content: "hello\n",
         checkpoints: [
           {
             workspace_folder: "/refact",
@@ -152,8 +152,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "Hello",
-              role: "assistant",
+              ftm_content: "Hello",
+              ftm_role: "assistant",
               tool_calls: null,
             },
           },
@@ -168,8 +168,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "!",
-              role: null,
+              ftm_content: "!",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -184,8 +184,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " How",
-              role: null,
+              ftm_content: " How",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -200,8 +200,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " can",
-              role: null,
+              ftm_content: " can",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -216,8 +216,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " I",
-              role: null,
+              ftm_content: " I",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -232,8 +232,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " assist",
-              role: null,
+              ftm_content: " assist",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -248,8 +248,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " you",
-              role: null,
+              ftm_content: " you",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -264,8 +264,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " with",
-              role: null,
+              ftm_content: " with",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -280,8 +280,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " your",
-              role: null,
+              ftm_content: " your",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -296,8 +296,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " project",
-              role: null,
+              ftm_content: " project",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -312,8 +312,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " today",
-              role: null,
+              ftm_content: " today",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -328,8 +328,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "?",
-              role: null,
+              ftm_content: "?",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -344,8 +344,8 @@ describe("formatChatResponse", () => {
             finish_reason: "stop",
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -360,8 +360,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -376,8 +376,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -404,8 +404,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -439,7 +439,7 @@ describe("formatChatResponse", () => {
         choices: [
           {
             index: 0,
-            delta: { role: "assistant", content: "", tool_calls: null },
+            delta: { ftm_role: "assistant", ftm_content: "", tool_calls: null },
             finish_reason: "stop",
           },
         ],
@@ -461,11 +461,11 @@ describe("formatChatResponse", () => {
           },
         ],
         compression_strength: "absent",
-        content: "hello\n",
-        role: "user",
+        ftm_content: "hello\n",
+        ftm_role: "user",
       },
       {
-        content: "Hello! How can I assist you with your project today?",
+        ftm_content: "Hello! How can I assist you with your project today?",
         finish_reason: "stop",
         metering_balance: 1085,
         metering_cache_creation_tokens_n: 0,
@@ -477,7 +477,7 @@ describe("formatChatResponse", () => {
         metering_prompt_tokens_n: 2818,
         metering_generated_tokens_n: 14,
         reasoning_content: "",
-        role: "assistant",
+        ftm_role: "assistant",
         thinking_blocks: undefined,
         tool_calls: undefined,
         usage: {
@@ -503,8 +503,8 @@ describe("formatChatResponse", () => {
     const chunks: ChatResponse[] = [
       {
         id: "",
-        role: "user",
-        content: "call tree and then do nothing\n",
+        ftm_role: "user",
+        ftm_content: "call tree and then do nothing\n",
         checkpoints: [
           {
             workspace_folder: "/someplace",
@@ -522,8 +522,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "I'll call",
-              role: "assistant",
+              ftm_content: "I'll call",
+              ftm_role: "assistant",
               tool_calls: null,
             },
           },
@@ -538,26 +538,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: " the `tree` function to show the project structure",
-              role: null,
-              tool_calls: null,
-            },
-          },
-        ],
-      },
-      {
-        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
-        created: 1746115727.9020996,
-        model: "claude-3-7-sonnet",
-
-        choices: [
-          {
-            finish_reason: null,
-            index: 0,
-            delta: {
-              content: " and then do nothing else as requested.",
-              role: null,
-
+              ftm_content: " the `tree` function to show the project structure",
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -573,8 +555,26 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "",
-              role: "assistant",
+              ftm_content: " and then do nothing else as requested.",
+              ftm_role: null,
+
+              tool_calls: null,
+            },
+          },
+        ],
+      },
+      {
+        id: "chatcmpl-db1e8dbd-5170-4a35-bc62-ae5aa6f46fa4",
+        created: 1746115727.9020996,
+        model: "claude-3-7-sonnet",
+
+        choices: [
+          {
+            finish_reason: null,
+            index: 0,
+            delta: {
+              ftm_content: "",
+              ftm_role: "assistant",
 
               tool_calls: [
                 {
@@ -601,8 +601,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "",
-              role: "assistant",
+              ftm_content: "",
+              ftm_role: "assistant",
 
               tool_calls: [
                 // odd that some of these are null?
@@ -630,8 +630,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: "",
-              role: "assistant",
+              ftm_content: "",
+              ftm_role: "assistant",
 
               tool_calls: [
                 // {
@@ -658,8 +658,8 @@ describe("formatChatResponse", () => {
             finish_reason: "tool_calls",
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -675,8 +675,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
 
               tool_calls: null,
             },
@@ -711,8 +711,8 @@ describe("formatChatResponse", () => {
             finish_reason: null,
             index: 0,
             delta: {
-              content: null,
-              role: null,
+              ftm_content: null,
+              ftm_role: null,
               tool_calls: null,
             },
           },
@@ -752,8 +752,8 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              role: "assistant",
-              content: "",
+              ftm_role: "assistant",
+              ftm_content: "",
               tool_calls: null,
             },
             finish_reason: "stop",
@@ -778,11 +778,11 @@ describe("formatChatResponse", () => {
           },
         ],
         compression_strength: "absent",
-        content: "call tree and then do nothing\n",
-        role: "user",
+        ftm_content: "call tree and then do nothing\n",
+        ftm_role: "user",
       },
       {
-        content:
+        ftm_content:
           "I'll call the `tree` function to show the project structure and then do nothing else as requested.",
         finish_reason: "stop",
         metering_balance: 952433,
@@ -795,7 +795,7 @@ describe("formatChatResponse", () => {
         metering_prompt_tokens_n: 3,
         metering_generated_tokens_n: 56,
         reasoning_content: "",
-        role: "assistant",
+        ftm_role: "assistant",
         thinking_blocks: undefined,
         tool_calls: [
           {
@@ -833,8 +833,8 @@ describe("formatChatResponse", () => {
     const chunks: ChatResponse[] = [
       {
         id: "",
-        role: "user",
-        content: "please tell me a joke, don't call any tools\n",
+        ftm_role: "user",
+        ftm_content: "please tell me a joke, don't call any tools\n",
         checkpoints: [
           {
             workspace_folder:
@@ -850,7 +850,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              role: "assistant",
+              ftm_role: "assistant",
             },
           },
         ],
@@ -863,7 +863,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: "I'",
+              ftm_content: "I'",
             },
           },
         ],
@@ -876,7 +876,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: "d tell you a joke about UDP, but you",
+              ftm_content: "d tell you a joke about UDP, but you",
             },
           },
         ],
@@ -889,7 +889,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " might not get it.\n\nWait",
+              ftm_content: " might not get it.\n\nWait",
             },
           },
         ],
@@ -902,7 +902,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: ", here's another one:",
+              ftm_content: ", here's another one:",
             },
           },
         ],
@@ -915,7 +915,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " Why do programmers prefer dark mode?",
+              ftm_content: " Why do programmers prefer dark mode?",
             },
           },
         ],
@@ -928,7 +928,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " Because light attracts bugs!",
+              ftm_content: " Because light attracts bugs!",
             },
           },
         ],
@@ -958,8 +958,8 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              role: "assistant",
-              content: "",
+              ftm_role: "assistant",
+              ftm_content: "",
               tool_calls: null,
             },
             finish_reason: "stop",
@@ -986,11 +986,11 @@ describe("formatChatResponse", () => {
           },
         ],
         compression_strength: "absent",
-        content: "please tell me a joke, don't call any tools\n",
-        role: "user",
+        ftm_content: "please tell me a joke, don't call any tools\n",
+        ftm_role: "user",
       },
       {
-        content:
+        ftm_content:
           "I'd tell you a joke about UDP, but you might not get it.\n\nWait, here's another one: Why do programmers prefer dark mode? Because light attracts bugs!",
         finish_reason: "stop",
         metering_balance: undefined,
@@ -1002,7 +1002,7 @@ describe("formatChatResponse", () => {
         metering_coins_prompt: undefined,
         metering_prompt_tokens_n: undefined,
         reasoning_content: "",
-        role: "assistant",
+        ftm_role: "assistant",
         thinking_blocks: undefined,
         tool_calls: undefined,
         usage: {
@@ -1018,8 +1018,8 @@ describe("formatChatResponse", () => {
     const chunks: ChatResponse[] = [
       {
         id: "",
-        role: "user",
-        content: "call tree\n",
+        ftm_role: "user",
+        ftm_content: "call tree\n",
         checkpoints: [
           {
             workspace_folder: "/emergency_frog_situation",
@@ -1032,8 +1032,8 @@ describe("formatChatResponse", () => {
         choices: [
           {
             delta: {
-              content: "Okay, I will",
-              role: "assistant",
+              ftm_content: "Okay, I will",
+              ftm_role: "assistant",
             },
             index: 0,
           },
@@ -1051,8 +1051,9 @@ describe("formatChatResponse", () => {
         choices: [
           {
             delta: {
-              content: " call the `tree()` tool to show the project structure.",
-              role: "assistant",
+              ftm_content:
+                " call the `tree()` tool to show the project structure.",
+              ftm_role: "assistant",
             },
             index: 0,
           },
@@ -1070,7 +1071,7 @@ describe("formatChatResponse", () => {
         choices: [
           {
             delta: {
-              role: "assistant",
+              ftm_role: "assistant",
               tool_calls: [
                 {
                   function: {
@@ -1100,8 +1101,8 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              role: "assistant",
-              content: "",
+              ftm_role: "assistant",
+              ftm_content: "",
               tool_calls: null,
             },
             finish_reason: "stop",
@@ -1126,11 +1127,11 @@ describe("formatChatResponse", () => {
           },
         ],
         compression_strength: "absent",
-        content: "call tree\n",
-        role: "user",
+        ftm_content: "call tree\n",
+        ftm_role: "user",
       },
       {
-        content:
+        ftm_content:
           "Okay, I will call the `tree()` tool to show the project structure.",
         finish_reason: "stop",
         metering_balance: undefined,
@@ -1142,7 +1143,7 @@ describe("formatChatResponse", () => {
         metering_coins_prompt: undefined,
         metering_prompt_tokens_n: undefined,
         reasoning_content: "",
-        role: "assistant",
+        ftm_role: "assistant",
         thinking_blocks: undefined,
         tool_calls: [
           {
@@ -1168,8 +1169,8 @@ describe("formatChatResponse", () => {
     const chunks: ChatResponse[] = [
       {
         id: "",
-        role: "user",
-        content: "hello\n",
+        ftm_role: "user",
+        ftm_content: "hello\n",
         checkpoints: [
           {
             workspace_folder: "/Users/marc/Projects/refact",
@@ -1189,8 +1190,8 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              role: "assistant",
-              content: "",
+              ftm_role: "assistant",
+              ftm_content: "",
               // refusal: null,
             },
             finish_reason: null,
@@ -1209,7 +1210,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: "Hello",
+              ftm_content: "Hello",
             },
             finish_reason: null,
           },
@@ -1227,7 +1228,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: "!",
+              ftm_content: "!",
             },
             finish_reason: null,
           },
@@ -1245,7 +1246,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " I'm",
+              ftm_content: " I'm",
             },
             finish_reason: null,
           },
@@ -1263,7 +1264,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " Ref",
+              ftm_content: " Ref",
             },
             finish_reason: null,
           },
@@ -1281,7 +1282,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: "act",
+              ftm_content: "act",
             },
             finish_reason: null,
           },
@@ -1299,7 +1300,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " Agent",
+              ftm_content: " Agent",
             },
             finish_reason: null,
           },
@@ -1317,7 +1318,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: ",",
+              ftm_content: ",",
             },
             finish_reason: null,
           },
@@ -1335,7 +1336,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " your",
+              ftm_content: " your",
             },
             finish_reason: null,
           },
@@ -1353,7 +1354,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " coding",
+              ftm_content: " coding",
             },
             finish_reason: null,
           },
@@ -1371,7 +1372,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " assistant",
+              ftm_content: " assistant",
             },
             finish_reason: null,
           },
@@ -1389,7 +1390,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: ".",
+              ftm_content: ".",
             },
             finish_reason: null,
           },
@@ -1407,7 +1408,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " How",
+              ftm_content: " How",
             },
             finish_reason: null,
           },
@@ -1425,7 +1426,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " can",
+              ftm_content: " can",
             },
             finish_reason: null,
           },
@@ -1443,7 +1444,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " I",
+              ftm_content: " I",
             },
             finish_reason: null,
           },
@@ -1461,7 +1462,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " help",
+              ftm_content: " help",
             },
             finish_reason: null,
           },
@@ -1479,7 +1480,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " you",
+              ftm_content: " you",
             },
             finish_reason: null,
           },
@@ -1497,7 +1498,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: " today",
+              ftm_content: " today",
             },
             finish_reason: null,
           },
@@ -1515,7 +1516,7 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              content: "?",
+              ftm_content: "?",
             },
             finish_reason: null,
           },
@@ -1567,8 +1568,8 @@ describe("formatChatResponse", () => {
           {
             index: 0,
             delta: {
-              role: "assistant",
-              content: "",
+              ftm_role: "assistant",
+              ftm_content: "",
               tool_calls: null,
             },
             finish_reason: "stop",
@@ -1594,11 +1595,11 @@ describe("formatChatResponse", () => {
           },
         ],
         compression_strength: "absent",
-        content: "hello\n",
-        role: "user",
+        ftm_content: "hello\n",
+        ftm_role: "user",
       },
       {
-        content:
+        ftm_content:
           "Hello! I'm Refact Agent, your coding assistant. How can I help you today?",
         finish_reason: "stop",
         metering_balance: undefined,
@@ -1610,7 +1611,7 @@ describe("formatChatResponse", () => {
         metering_coins_prompt: undefined,
         metering_prompt_tokens_n: undefined,
         reasoning_content: "",
-        role: "assistant",
+        ftm_role: "assistant",
         thinking_blocks: undefined,
         tool_calls: undefined,
         usage: {

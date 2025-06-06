@@ -44,11 +44,11 @@ const initialState: HistoryState = {};
 function getFirstUserContentFromChat(messages: ChatThread["messages"]): string {
   const message = messages.find(isUserMessage);
   if (!message) return "New Chat";
-  if (typeof message.content === "string") {
-    return message.content.replace(/^\s+/, "");
+  if (typeof message.ftm_content === "string") {
+    return message.ftm_content.replace(/^\s+/, "");
   }
 
-  const firstUserInput = message.content.find((message) => {
+  const firstUserInput = message.ftm_content.find((message) => {
     if ("m_type" in message && message.m_type === "text") {
       return true;
     }

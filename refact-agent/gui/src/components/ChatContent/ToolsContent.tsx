@@ -105,9 +105,9 @@ const ToolMessage: React.FC<{
           <CommandMarkdown isInsideScrollArea>{functionCalled}</CommandMarkdown>
         </Box>
       </ScrollArea>
-      {maybeResult?.content && (
+      {maybeResult?.ftm_content && (
         <Result isInsideScrollArea onClose={onClose}>
-          {maybeResult.content}
+          {maybeResult.ftm_content}
         </Result>
       )}
     </Flex>
@@ -355,7 +355,9 @@ const MultiModalToolContent: React.FC<{
   // const content = toolResults.map((toolResult) => toolResult.content);
 
   const hasImages = toolResults.some((toolResult) =>
-    toolResult.content.some((content) => content.m_type.startsWith("image/")),
+    toolResult.ftm_content.some((content) =>
+      content.m_type.startsWith("image/"),
+    ),
   );
 
   // TOOD: duplicated
@@ -416,7 +418,7 @@ const MultiModalToolContent: React.FC<{
               );
               if (!result) return null;
 
-              const texts = result.content
+              const texts = result.ftm_content
                 .filter((content) => content.m_type === "text")
                 .map((result) => result.m_content)
                 .join("\n");
@@ -461,7 +463,7 @@ const MultiModalToolContent: React.FC<{
             );
             if (!toolResult) return null;
 
-            const images = toolResult.content.filter((content) =>
+            const images = toolResult.ftm_content.filter((content) =>
               content.m_type.startsWith("image/"),
             );
             if (images.length === 0) return null;
@@ -576,9 +578,9 @@ const Knowledge: React.FC<{ toolCall: ToolCall }> = ({ toolCall }) => {
   }, [toolCall.function.arguments]);
 
   const memories = useMemo(() => {
-    if (typeof maybeResult?.content !== "string") return [];
-    return splitMemories(maybeResult.content);
-  }, [maybeResult?.content]);
+    if (typeof maybeResult?.ftm_content !== "string") return [];
+    return splitMemories(maybeResult.ftm_content);
+  }, [maybeResult?.ftm_content]);
 
   const functionCalled = "```python\n" + name + "(" + argsString + ")\n```";
 

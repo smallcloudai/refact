@@ -51,7 +51,7 @@ export function useGetLinksFromLsp() {
     if (messages.length === 0) return false;
     const last = messages[messages.length - 1];
     //TODO: handle multiple tool calls in last assistant message
-    if (last.role !== "assistant") return false;
+    if (last.ftm_role !== "assistant") return false;
     const maybeTools = last.tool_calls;
     if (maybeTools && maybeTools.length > 0) return true;
     return false;
@@ -123,7 +123,7 @@ export function useLinksFromLsp() {
     if (messages.length === 0) return false;
     const last = messages[messages.length - 1];
     //TODO: handle multiple tool calls in last assistant message
-    if (last.role !== "assistant") return false;
+    if (last.ftm_role !== "assistant") return false;
     const maybeTools = last.tool_calls;
     if (maybeTools && maybeTools.length > 0) return true;
     return false;

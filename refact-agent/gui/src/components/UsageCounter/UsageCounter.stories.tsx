@@ -49,12 +49,12 @@ const MockedStore: React.FC<{
         id: "test",
         messages: [
           {
-            role: "user",
-            content: "Hello, how are you?",
+            ftm_role: "user",
+            ftm_content: "Hello, how are you?",
           },
           {
-            role: "assistant",
-            content: "Test content",
+            ftm_role: "assistant",
+            ftm_content: "Test content",
             usage,
           },
         ],

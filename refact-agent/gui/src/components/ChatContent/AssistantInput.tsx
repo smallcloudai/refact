@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { Markdown } from "../Markdown";
 
 import { Container, Box } from "@radix-ui/themes";
-import { ToolCall } from "../../services/refact";
+import { AssistantMessage, ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
@@ -10,17 +10,17 @@ import { LikeButton } from "./LikeButton";
 import { ReasoningContent } from "./ReasoningContent";
 
 type ChatInputProps = {
-  message: string | null;
   reasoningContent?: string | null;
   toolCalls?: ToolCall[] | null;
   isLast?: boolean;
+  children: AssistantMessage["ftm_content"];
 };
 
 export const AssistantInput: React.FC<ChatInputProps> = ({
-  message,
   reasoningContent,
   toolCalls,
   isLast,
+  children,
 }) => {
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
@@ -68,10 +68,10 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
           onCopyClick={handleCopy}
         />
       )}
-      {message && (
+      {children && (
         <Box py="4">
           <Markdown canHaveInteractiveElements={true} onCopyClick={handleCopy}>
-            {message}
+            {children}
           </Markdown>
         </Box>
       )}

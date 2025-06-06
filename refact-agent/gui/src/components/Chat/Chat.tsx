@@ -25,6 +25,7 @@ import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+import { useMessageSubscription } from "./useMessageSubscription";
 
 export type ChatProps = {
   host: Config["host"];
@@ -44,9 +45,15 @@ export const Chat: React.FC<ChatProps> = ({
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
+  const { sendMessage } = useMessageSubscription();
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex } = useSendChatRequest();
+  // TODO: figure out features removed here
+  const {
+    // submit,
+    abort,
+    // retryFromIndex
+  } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
@@ -63,12 +70,13 @@ export const Chat: React.FC<ChatProps> = ({
 
   const handleSummit = useCallback(
     (value: string) => {
-      submit({ question: value });
+      // submit({ question: value });
+      sendMessage(value);
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
     },
-    [submit, isViewingRawJSON],
+    [sendMessage, isViewingRawJSON],
   );
 
   const handleThreadHistoryPage = useCallback(() => {
@@ -90,7 +98,7 @@ export const Chat: React.FC<ChatProps> = ({
       >
         <ChatContent
           key={`chat-content-${chatId}`}
-          onRetry={retryFromIndex}
+          // onRetry={retryFromIndex}
           onStopStreaming={abort}
         />
 

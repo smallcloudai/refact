@@ -160,18 +160,18 @@ export const EmptySpaceAtBottom: Story = {
       model: "gpt-4o", // or any model from STUB CAPS REQUEst
       messages: [
         {
-          role: "user",
-          content: "Hello",
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "user",
-          content: "👋",
+          ftm_role: "user",
+          ftm_content: "👋",
         },
-        // { role: "assistant", content: "👋" },
+        // { ftm_role: "assistant", ftm_content: "👋" },
       ],
       new_chat_suggested: {
         wasSuggested: false,
@@ -202,57 +202,57 @@ export const UserMessageEmptySpaceAtBottom: Story = {
       model: "gpt-4o", // or any model from STUB CAPS REQUEst
       messages: [
         {
-          role: "user",
-          content: "Hello",
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "user",
-          content: "👋",
+          ftm_role: "user",
+          ftm_content: "👋",
         },
-        { role: "assistant", content: "👋" },
+        { ftm_role: "assistant", ftm_content: "👋" },
         {
-          role: "user",
-          content: "Hello",
-        },
-        {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "user",
-          content: "👋",
-        },
-        { role: "assistant", content: "👋" },
-        {
-          role: "user",
-          content: "Hello",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "user",
+          ftm_content: "👋",
+        },
+        { ftm_role: "assistant", ftm_content: "👋" },
+        {
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "user",
-          content: "👋",
-        },
-        { role: "assistant", content: "👋" },
-        {
-          role: "user",
-          content: "Hello",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "user",
+          ftm_content: "👋",
+        },
+        { ftm_role: "assistant", ftm_content: "👋" },
+        {
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "user",
-          content: "👋",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
-        { role: "assistant", content: "👋" },
+        {
+          ftm_role: "user",
+          ftm_content: "👋",
+        },
+        { ftm_role: "assistant", ftm_content: "👋" },
       ],
       new_chat_suggested: {
         wasSuggested: false,
@@ -283,59 +283,59 @@ export const CompressButton: Story = {
       model: "gpt-4o", // or any model from STUB CAPS REQUEst
       messages: [
         {
-          role: "user",
-          content: "Hello",
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "user",
-          content: "👋",
+          ftm_role: "user",
+          ftm_content: "👋",
         },
-        { role: "assistant", content: "👋" },
+        { ftm_role: "assistant", ftm_content: "👋" },
         {
-          role: "user",
-          content: "Hello",
-        },
-        {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "user",
-          content: "👋",
-        },
-        { role: "assistant", content: "👋" },
-        {
-          role: "user",
-          content: "Hello",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "user",
+          ftm_content: "👋",
+        },
+        { ftm_role: "assistant", ftm_content: "👋" },
+        {
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "user",
-          content: "👋",
-        },
-        { role: "assistant", content: "👋" },
-        {
-          role: "user",
-          content: "Hello",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
         },
         {
-          role: "assistant",
-          content: "Hi",
+          ftm_role: "user",
+          ftm_content: "👋",
+        },
+        { ftm_role: "assistant", ftm_content: "👋" },
+        {
+          ftm_role: "user",
+          ftm_content: "Hello",
         },
         {
-          role: "user",
-          content: "👋",
+          ftm_role: "assistant",
+          ftm_content: "Hi",
+        },
+        {
+          ftm_role: "user",
+          ftm_content: "👋",
           // change this to see different button colours
           compression_strength: "low",
         },
-        { role: "assistant", content: "👋" },
+        { ftm_role: "assistant", ftm_content: "👋" },
       ],
       new_chat_suggested: {
         wasSuggested: false,

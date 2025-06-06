@@ -7,12 +7,12 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
   },
   messages: [
     {
-      role: "user",
-      content: "make a desktop and mobile screenshots of the index.html\n",
+      ftm_role: "user",
+      ftm_content: "make a desktop and mobile screenshots of the index.html\n",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "call_leDATFRCQJRefjC45EVpS0TW",
@@ -26,17 +26,17 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       ],
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "call_leDATFRCQJRefjC45EVpS0TW",
-        content:
+        ftm_content:
           "/\n  Users/\n    kot/\n      code_aprojects/\n        huddle/\n          .gitignore\n          README-template.md\n          README.md\n          index.html\n          style-guide.md\n          styles.css\n          images/\n            bg-desktop.svg\n            bg-mobile.svg\n            favicon-32x32.png\n            illustration-mockups.svg\n            logo.svg\n          design/\n            active-states.jpg\n            desktop-design.jpg\n            desktop-preview.jpg\n            mobile-design.jpg",
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "call_035coU8EfPMCt5kyzdjGP1Me",
@@ -51,10 +51,10 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       ],
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "call_035coU8EfPMCt5kyzdjGP1Me",
-        content: [
+        ftm_content: [
           {
             m_type: "text",
             m_content:
@@ -75,18 +75,18 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Here are the screenshots of the `index.html` page for both desktop and mobile views. If you need any further modifications or adjustments, please let me know!",
     },
     {
-      role: "user",
-      content:
+      ftm_role: "user",
+      ftm_content:
         "fantastic, now call two chrome() in parallel each running its own tab\n",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "It seems that the tabs are already open. Let's close the existing tabs and then reopen them in parallel.\n\nI'll proceed with closing the tabs first and then reopening them.",
       tool_calls: [
         {
@@ -112,10 +112,10 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       ],
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "call_Z0bacXQ2J69R8l7SAavCp8IL",
-        content: [
+        ftm_content: [
           {
             m_type: "text",
             m_content:
@@ -126,10 +126,10 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       },
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "call_NmC0xtr0Boz6buWVVjpuiDHO",
-        content: [
+        ftm_content: [
           {
             m_type: "text",
             m_content:
@@ -140,17 +140,17 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "The tabs have been successfully opened in parallel:\n\n- Desktop view in tab 3\n- Mobile view in tab 4\n\nIf you need any further actions or modifications, please let me know!",
     },
     {
-      role: "user",
-      content: "you forgot the screenshots\n",
+      ftm_role: "user",
+      ftm_content: "you forgot the screenshots\n",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "call_KSF9MxJi5wAUyE7jrVZ8keHq",
@@ -175,10 +175,10 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       ],
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "call_KSF9MxJi5wAUyE7jrVZ8keHq",
-        content: [
+        ftm_content: [
           {
             m_type: "text",
             m_content:
@@ -194,10 +194,10 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       },
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "call_W1ae766eqQMvHBnmVvUoUtfw",
-        content: [
+        ftm_content: [
           {
             m_type: "text",
             m_content:
@@ -213,8 +213,8 @@ export const CHAT_WITH_MULTI_MODAL: ChatThread = {
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Here are the screenshots of the `index.html` page for both desktop and mobile views, captured in parallel tabs.\n\nIf you need any further modifications or adjustments, please let me know!",
     },
   ],

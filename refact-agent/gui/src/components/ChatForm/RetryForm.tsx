@@ -15,7 +15,7 @@ import { ImageIcon, CrossCircledIcon } from "@radix-ui/react-icons";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { selectIsStreaming, selectIsWaiting } from "../../features/Chat";
 
-function getTextFromUserMessage(messages: UserMessage["content"]): string {
+function getTextFromUserMessage(messages: UserMessage["ftm_content"]): string {
   if (typeof messages === "string") return messages;
   return messages.reduce<string>((acc, message) => {
     if ("m_type" in message && message.m_type === "text")
@@ -26,7 +26,7 @@ function getTextFromUserMessage(messages: UserMessage["content"]): string {
 }
 
 function getImageFromUserMessage(
-  messages: UserMessage["content"],
+  messages: UserMessage["ftm_content"],
 ): (UserImage | ProcessedUserMessageContentWithImages)[] {
   if (typeof messages === "string") return [];
 
@@ -53,8 +53,8 @@ function getImageContent(
 
 export const RetryForm: React.FC<{
   // value: string;
-  value: UserMessage["content"];
-  onSubmit: (value: UserMessage["content"]) => void;
+  value: UserMessage["ftm_content"];
+  onSubmit: (value: UserMessage["ftm_content"]) => void;
   onClose: () => void;
 }> = (props) => {
   const shiftEnterToSubmit = useAppSelector(selectSubmitOption);

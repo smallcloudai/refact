@@ -26,8 +26,7 @@ const customRender = (
     preloadedState,
     // Automatically create a store instance if no store was passed in
     store = setUpStore({
-      // @ts-expect-error finished
-      tour: { type: "finished", step: 0 },
+      tour: { type: "finished" },
       ...preloadedState,
     }),
     ...renderOptions

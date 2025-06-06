@@ -36,7 +36,7 @@ export function useDiffFileReload() {
         return;
       }
 
-      const messageId = `${message.role}-${index + 1}`;
+      const messageId = `${message.ftm_role}-${index + 1}`;
 
       if (processedMessageIds.current.has(messageId)) {
         return;
@@ -44,7 +44,7 @@ export function useDiffFileReload() {
 
       processedMessageIds.current.add(messageId);
 
-      message.content.forEach((diff) => {
+      message.ftm_content.forEach((diff) => {
         uniqueFilePaths.add(diff.file_name);
         if (diff.file_name_rename) {
           uniqueFilePaths.add(diff.file_name_rename);

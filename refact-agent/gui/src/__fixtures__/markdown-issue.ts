@@ -4,13 +4,13 @@ export const MARKDOWN_ISSUE: ChatThread = {
   id: "1e41a050-9846-40a3-9d20-691f8c215920",
   messages: [
     {
-      role: "system",
-      content:
+      ftm_role: "system",
+      ftm_content:
         "[mode3] You are Refact Agent, an autonomous bot for coding tasks.\n\nCore Principles\n1. Use knowledge()\n  - Always use knowledge() first when you encounter an agentic (complex) task.\n  - This tool can access external data, including successful \"trajectories\" (examples of past solutions).\n  - External database records begin with the icon \"🗃️\" followed by a record identifier.\n  - Use these records to help solve your tasks by analogy.\n2. Use locate() with the Full Problem Statement\n  - Provide the entire user request in the problem_statement argument to avoid losing any details (\"telephone game\" effect).\n  - Include user's emotional stance, code snippets, formatting, instructions—everything word-for-word.\n  - Only omit parts of the user's request if they are unrelated to the final solution.\n  - Avoid using locate() if the problem is quite simple and can be solved without extensive project analysis.\n3. Execute Changes and Validate\n  - When a solution requires file modifications, use the appropriate *_textdoc() tools.\n  - After making changes, perform a validation step by reviewing modified files using cat() or similar tools.\n  - Check for available build tools (like cmdline_cargo_check, cmdline_cargo_build, etc.) and use them to validate changes.\n  - Ensure all changes are complete and consistent with the project's standards.\n  - If build validation fails or other issues are found, collect additional context and revise the changes.\n\nAnswering Strategy\n1. If the user’s question is unrelated to the project\n  - Answer directly without using any special calls.\n2. If the user’s question is related to the project\n  - First, call knowledge() for relevant information and best practices.\n3. Making Changes\n  - If a solution requires file changes, use `*_textdoc()` tools.\n  - It's a good practice to call cat() to track changes for changed files.\n\nImportant Notes\n1. Parallel Exploration\n  - When you explore different ideas, use multiple parallel methods.\n2. Project-Related Questions\n  - For any project question, always call knowledge() before taking any action.\n3. Knowledge Building (Automatic)\n  - After completing any significant task, AUTOMATICALLY use create_knowledge() without waiting for user prompting:\n    * Important code patterns and their usage locations\n    * Key relationships between classes/functions\n    * File dependencies and project structure insights\n    * Successful solution patterns for future reference\n  - Proactively create knowledge entries whenever you:\n    * Solve a problem or implement a feature\n    * Discover patterns in the codebase\n    * Learn something about project structure or dependencies\n    * Fix a bug or identify potential issues\n    * Analyze placeholders, test data, or configuration files\n  - Consider each interaction an opportunity to build the knowledge base - don't wait for explicit instructions\n4. Continuous Learning\n  - Treat every interaction as a learning opportunity\n  - When you encounter interesting code patterns, project structures, or implementation details, document them\n  - If you analyze placeholders, test data, or configuration files, record your findings\n  - Don't wait for the user to ask you to remember - proactively build the knowledge base\n\nWhen running on user's laptop, you most likely have the shell() tool. It's for one-time dependency installations, or doing whatever\nuser is asking you to do. Tools the user can set up are better, because they don't require confimations when running on a laptop.\nWhen doing something for the project using shell() tool, offer the user to make a cmdline_* tool after you have successfully run\nthe shell() call. But double-check that it doesn't already exist, and it is actually typical for this kind of project. You can offer\nthis by writing:\n\n🧩SETTINGS:cmdline_cargo_check\n\nfrom a new line, that will open (when clicked) a wizard that creates `cargo check` (in this example) command line tool.\n\nIn a similar way, service_* tools work. The difference is cmdline_* is designed for non-interactive blocking commands that immediately\nreturn text in stdout/stderr, and service_* is designed for blocking background commands, such as hypercorn server that runs forever until you hit Ctrl+C.\nHere is another example:\n\n🧩SETTINGS:service_hypercorn\n\n\nYou might receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate\nwell and they are always in English. Answer in the language the user has asked the question.\n\n\n- below general information about the current project -\n\nThe current IDE workspace has these project directories:\n/home/fupfv/git/benchmark1_0701\n\nThe active IDE file is:\n/home/fupfv/.config/Code/User/settings.json\nThere's no version control detected, complain to user if they want to use anything git/hg/svn/etc.\n\n\n\nIMPORTANT: Knowledge creation is not optional. After EVERY significant task, AUTOMATICALLY create a knowledge entry using create_knowledge() without waiting for user prompting. This is a core part of your workflow.\n",
     },
     {
-      role: "user",
-      content: "Can you create comprehensive documentation?\n",
+      ftm_role: "user",
+      ftm_content: "Can you create comprehensive documentation?\n",
       checkpoints: [
         {
           workspace_folder: "/home/fupfv/git/benchmark1_0701",
@@ -19,8 +19,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'd be happy to help create comprehensive documentation for your project. To provide the most useful documentation, I need to understand what project you're working with and what kind of documentation you need.\n\nLet me first explore the project structure to get a better understanding of what we're working with.",
       tool_calls: [
         {
@@ -36,17 +36,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01JbWarAwzjMyV6azDkd5skX",
-        content:
+        ftm_content:
           "/\n  home/\n    fupfv/\n      git/\n        benchmark1_0701/\n          12.zip\n          LICENSE\n          README.md\n          VISUALIZATION.md\n          example_new_file.py\n          grafana-dashboard.json\n          llm_load_test.zip\n          llm_load_test/\n            README.md\n            requirements.txt\n            src/\n              llm_load_test_runner.py\n              llm_test_logger.py\n              load_test.py\n          load_test_report_20240811_002319.csv\n          load_test_report_20240811_002319.json\n          make_scripts_executable.sh\n          requirements.txt\n          results/\n            run_20250129_152629/\n              load_test_report_2025-01-29T152630.827620.csv\n              load_test_report_2025-01-29T152630.827620.json\n              load_test_report_2025-01-29T152636.621391.csv\n              load_test_report_2025-01-29T152636.621391.json\n              load_test_report_2025-01-29T152642.333384.csv\n              load_test_report_2025-01-29T152642.333384.json\n              load_test_report_2025-01-29T152648.032846.csv\n              load_test_report_2025-01-29T152648.032846.json\n              load_test_report_2025-01-29T152653.733025.csv\n              load_test_report_2025-01-29T152653.733025.json\n              load_test_report_2025-01-29T152659.442419.csv\n              load_test_report_2025-01-29T152659.442419.json\n              load_test_report_20250129_152704.csv\n              load_test_report_20250129_152704.json\n            run_20250129_152807/\n              load_test_report_2025-01-29T152808.476840.csv\n              load_test_report_2025-01-29T152808.476840.json\n              load_test_report_2025-01-29T152814.290370.csv\n              load_test_report_2025-01-29T152814.290370.json\n              load_test_report_2025-01-29T152819.988992.csv\n              load_test_report_2025-01-29T152819.988992.json\n              load_test_report_2025-01-29T152825.712261.csv\n              load_test_report_2025-01-29T152825.712261.json\n              load_test_report_2025-01-29T152831.461047.csv\n              load_test_report_2025-01-29T152831.461047.json\n              load_test_report_2025-01-29T152837.233726.csv\n              load_test_report_2025-01-29T152837.233726.json\n              load_test_report_20250129_152842.csv\n              load_test_report_20250129_152842.json\n            run_20250129_152930/\n              load_test_report_2025-01-29T153031.809694.csv\n              load_test_report_2025-01-29T153031.809694.json\n              load_test_report_2025-01-29T153137.610641.csv\n              load_test_report_2025-01-29T153137.610641.json\n              load_test_report_2025-01-29T153243.818603.csv\n              load_test_report_2025-01-29T153243.818603.json\n              load_test_report_2025-01-29T153349.887918.csv\n              load_test_report_2025-01-29T153349.887918.json\n              load_test_report_2025-01-29T153504.701174.csv\n              load_test_report_2025-01-29T153504.701174.json\n              load_test_report_2025-01-29T153615.800362.csv\n              load_test_report_2025-01-29T153615.800362.json\n              load_test_report_20250129_153620.csv\n              load_test_report_20250129_153620.json\n              results_test_u1_o15.csv\n              results_test_u1_o30.csv\n              results_test_u2_o15.csv\n              results_test_u2_o30.csv\n              results_test_u50_o15.csv\n              results_test_u50_o30.csv\n          src/\n            __pycache__/\n              llm_test_logger.cpython-310.pyc\n              load_test.cpython-310.pyc\n            compare_runs.py\n            dashboard_generator.py\n            from transformers import AutoTokenizer.py\n            llm_load_test_runner.py\n            llm_test_logger.py\n            load_test.log\n            load_test.py\n            load_test_aggregator.py\n            load_test_tgi.py\n            load_test_vllm.py\n            qwen_run_20250128_193328.zip\n            qwen_run_20250129_131310.zip\n            results/\n              run_20250129_131310/\n                load_test_report_2025-01-29T131340.582736.csv\n                load_test_report_2025-01-29T131340.582736.json\n                load_test_report_2025-01-29T131416.770529.csv\n                load_test_report_2025-01-29T131416.770529.json\n                load_test_report_2025-01-29T131452.904227.csv\n                load_test_report_2025-01-29T131452.904227.json\n                load_test_report_2025-01-29T131529.208363.csv\n                load_test_report_2025-01-29T131529.208363.json\n                load_test_report_2025-01-29T131612.332502.csv\n                load_test_report_2025-01-29T131612.332502.json\n                load_test_report_2025-01-29T131654.024454.csv\n                load_test_report_2025-01-29T131654.024454.json\n                load_test_report_20250129_131659.csv\n                load_test_report_20250129_131659.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_131828/\n                load_test_report_2025-01-29T131859.729718.csv\n                load_test_report_2025-01-29T131859.729718.json\n                load_test_report_2025-01-29T131935.556939.csv\n                load_test_report_2025-01-29T131935.556939.json\n                load_test_report_2025-01-29T132011.817203.csv\n                load_test_report_2025-01-29T132011.817203.json\n                load_test_report_2025-01-29T132047.948690.csv\n                load_test_report_2025-01-29T132047.948690.json\n                load_test_report_2025-01-29T132140.620425.csv\n                load_test_report_2025-01-29T132140.620425.json\n                load_test_report_2025-01-29T132237.254055.csv\n                load_test_report_2025-01-29T132237.254055.json\n                load_test_report_20250129_132242.csv\n                load_test_report_20250129_132242.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_132842/\n                load_test_report_2025-01-29T132913.096074.csv\n                load_test_report_2025-01-29T132913.096074.json\n                load_test_report_2025-01-29T132949.286127.csv\n                load_test_report_2025-01-29T132949.286127.json\n                load_test_report_2025-01-29T133025.273897.csv\n                load_test_report_2025-01-29T133025.273897.json\n                load_test_report_2025-01-29T133102.000762.csv\n                load_test_report_2025-01-29T133102.000762.json\n                load_test_report_2025-01-29T133154.340248.csv\n                load_test_report_2025-01-29T133154.340248.json\n                load_test_report_2025-01-29T133257.783732.csv\n                load_test_report_2025-01-29T133257.783732.json\n                load_test_report_20250129_133302.csv\n                load_test_report_20250129_133302.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_133711/\n                load_test_report_2025-01-29T133742.239356.csv\n                load_test_report_2025-01-29T133742.239356.json\n                load_test_report_2025-01-29T133818.175709.csv\n                load_test_report_2025-01-29T133818.175709.json\n                load_test_report_2025-01-29T133853.789246.csv\n                load_test_report_2025-01-29T133853.789246.json\n                load_test_report_2025-01-29T133929.633962.csv\n                load_test_report_2025-01-29T133929.633962.json\n                load_test_report_2025-01-29T134013.341083.csv\n                load_test_report_2025-01-29T134013.341083.json\n                load_test_report_2025-01-29T134101.336503.csv\n                load_test_report_2025-01-29T134101.336503.json\n                load_test_report_20250129_134106.csv\n                load_test_report_20250129_134106.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_134818/\n                load_test_report_2025-01-29T134919.598778.csv\n                load_test_report_2025-01-29T134919.598778.json\n                load_test_report_2025-01-29T135025.745361.csv\n                load_test_report_2025-01-29T135025.745361.json\n                load_test_report_2025-01-29T135131.347054.csv\n                load_test_report_2025-01-29T135131.347054.json\n                load_test_report_2025-01-29T135237.241605.csv\n                load_test_report_2025-01-29T135237.241605.json\n                load_test_report_2025-01-29T135352.526234.csv\n                load_test_report_2025-01-29T135352.526234.json\n                load_test_report_2025-01-29T135509.169860.csv\n                load_test_report_2025-01-29T135509.169860.json\n                load_test_report_20250129_135514.csv\n                load_test_report_20250129_135514.json\n                results_test_u1_o15.csv\n                results_test_u1_o30.csv\n                results_test_u2_o15.csv\n                results_test_u2_o30.csv\n                results_test_u50_o15.csv\n                results_test_u50_o30.csv\n              run_20250129_135810/\n                load_test_report_2025-01-29T135911.302460.csv\n                load_test_report_2025-01-29T135911.302460.json\n                load_test_report_2025-01-29T140017.766295.csv\n                load_test_report_2025-01-29T140017.766295.json\n                load_test_report_2025-01-29T140123.329253.csv\n                load_test_report_2025-01-29T140123.329253.json\n                load_test_report_2025-01-29T140229.087510.csv\n                load_test_report_2025-01-29T140229.087510.json\n                load_test_report_2025-01-29T140354.254251.csv\n                load_test_report_2025-01-29T140354.254251.json\n                load_test_report_2025-01-29T140522.596391.csv\n                load_test_report_2025-01-29T140522.596391.json\n                load_test_report_20250129_140527.csv\n                load_test_report_20250129_140527.json\n                results_test_u1_o15.csv\n                results_test_u1_o30.csv\n                results_test_u2_o15.csv\n                results_test_u2_o30.csv\n                results_test_u50_o15.csv\n                results_test_u50_o30.csv\n              run_20250129_140726/\n                load_test_report_2025-01-29T140828.249744.csv\n                load_test_report_2025-01-29T140828.249744.json\n                load_test_report_2025-01-29T140935.241087.csv\n                load_test_report_2025-01-29T140935.241087.json\n                load_test_report_2025-01-29T141041.737827.csv\n                load_test_report_2025-01-29T141041.737827.json\n                load_test_report_2025-01-29T141148.575547.csv\n                load_test_report_2025-01-29T141148.575547.json\n                load_test_report_2025-01-29T141257.979330.csv\n                load_test_report_2025-01-29T141257.979330.json\n                load_test_report_2025-01-29T141407.813467.csv\n                load_test_report_2025-01-29T141407.813467.json\n                load_test_report_2025-01-29T141517.031485.csv\n                load_test_report_2025-01-29T141517.031485.json\n                load_test_report_2025-01-29T141626.812125.csv\n                load_test_report_2025-01-29T141626.812125.json\n                load_test_report_2025-01-29T141738.980843.csv\n                load_test_report_2025-01-29T141738.980843.json\n                load_test_report_2025-01-29T141852.372524.csv\n                load_test_report_2025-01-29T141852.372524.json\n                load_test_report_2025-01-29T142006.313659.csv\n                load_test_report_2025-01-29T142006.313659.json\n                load_test_report_2025-01-29T142122.053494.csv\n                load_test_report_2025-01-29T142122.053494.json\n                load_test_report_20250129_142127.csv\n                load_test_report_20250129_142127.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n              run_20250129_142324/\n                load_test_report_2025-01-29T142426.095040.csv\n                load_test_report_2025-01-29T142426.095040.json\n                load_test_report_2025-01-29T142532.101781.csv\n                load_test_report_2025-01-29T142532.101781.json\n                load_test_report_2025-01-29T142638.130364.csv\n                load_test_report_2025-01-29T142638.130364.json\n                load_test_report_2025-01-29T142744.373122.csv\n                load_test_report_2025-01-29T142744.373122.json\n                load_test_report_2025-01-29T142851.436595.csv\n                load_test_report_2025-01-29T142851.436595.json\n                load_test_report_2025-01-29T142958.649875.csv\n                load_test_report_2025-01-29T142958.649875.json\n                load_test_report_2025-01-29T143105.820377.csv\n                load_test_report_2025-01-29T143105.820377.json\n                load_test_report_2025-01-29T143213.483254.csv\n                load_test_report_2025-01-29T143213.483254.json\n                load_test_report_2025-01-29T143322.075349.csv\n                load_test_report_2025-01-29T143322.075349.json\n                load_test_report_2025-01-29T143431.160350.csv\n                load_test_report_2025-01-29T143431.160350.json\n                load_test_report_2025-01-29T143540.792112.csv\n                load_test_report_2025-01-29T143540.792112.json\n                load_test_report_2025-01-29T143651.193158.csv\n                load_test_report_2025-01-29T143651.193158.json\n                load_test_report_20250129_143656.csv\n                load_test_report_20250129_143656.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n              run_20250129_144231/\n                load_test_report_2025-01-29T144333.225207.csv\n                load_test_report_2025-01-29T144333.225207.json\n                load_test_report_2025-01-29T144441.892228.csv\n                load_test_report_2025-01-29T144441.892228.json\n                load_test_report_2025-01-29T144548.216391.csv\n                load_test_report_2025-01-29T144548.216391.json\n                load_test_report_2025-01-29T144654.207507.csv\n                load_test_report_2025-01-29T144654.207507.json\n                load_test_report_2025-01-29T144801.887104.csv\n                load_test_report_2025-01-29T144801.887104.json\n                load_test_report_2025-01-29T144907.892024.csv\n                load_test_report_2025-01-29T144907.892024.json\n                load_test_report_2025-01-29T145015.606306.csv\n                load_test_report_2025-01-29T145015.606306.json\n                load_test_report_2025-01-29T145124.318365.csv\n                load_test_report_2025-01-29T145124.318365.json\n                load_test_report_2025-01-29T145232.316758.csv\n                load_test_report_2025-01-29T145232.316758.json\n                load_test_report_2025-01-29T145338.561407.csv\n                load_test_report_2025-01-29T145338.561407.json\n                load_test_report_2025-01-29T145447.340833.csv\n                load_test_report_2025-01-29T145447.340833.json\n                load_test_report_2025-01-29T145556.603603.csv\n                load_test_report_2025-01-29T145556.603603.json\n                load_test_report_20250129_145601.csv\n                load_test_report_20250129_145601.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n              run_20250129_145926/\n                load_test_report_2025-01-29T150027.790900.csv\n                load_test_report_2025-01-29T150027.790900.json\n                load_test_report_2025-01-29T150134.652497.csv\n                load_test_report_2025-01-29T150134.652497.json\n                load_test_report_2025-01-29T150242.312479.csv\n                load_test_report_2025-01-29T150242.312479.json\n                load_test_report_2025-01-29T150348.489497.csv\n                load_test_report_2025-01-29T150348.489497.json\n                load_test_report_2025-01-29T150454.976232.csv\n                load_test_report_2025-01-29T150454.976232.json\n                load_test_report_2025-01-29T150600.673114.csv\n                load_test_report_2025-01-29T150600.673114.json\n                load_test_report_2025-01-29T150708.380006.csv\n                load_test_report_2025-01-29T150708.380006.json\n                load_test_report_2025-01-29T150814.575034.csv\n                load_test_report_2025-01-29T150814.575034.json\n                load_test_report_2025-01-29T150923.544283.csv\n                load_test_report_2025-01-29T150923.544283.json\n                load_test_report_2025-01-29T151030.283486.csv\n                load_test_report_2025-01-29T151030.283486.json\n                load_test_report_2025-01-29T151138.589944.csv\n                load_test_report_2025-01-29T151138.589944.json\n                load_test_report_2025-01-29T151248.730621.csv\n                load_test_report_2025-01-29T151248.730621.json\n                load_test_report_20250129_151253.csv\n                load_test_report_20250129_151253.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n              run_20250129_160612/\n                load_test_report_2025-01-29T160713.432216.csv\n                load_test_report_2025-01-29T160713.432216.json\n                load_test_report_2025-01-29T160819.907680.csv\n                load_test_report_2025-01-29T160819.907680.json\n                load_test_report_2025-01-29T160926.784918.csv\n                load_test_report_2025-01-29T160926.784918.json\n                load_test_report_2025-01-29T161033.828339.csv\n                load_test_report_2025-01-29T161033.828339.json\n                load_test_report_2025-01-29T161153.205639.csv\n                load_test_report_2025-01-29T161153.205639.json\n                load_test_report_2025-01-29T161315.237414.csv\n                load_test_report_2025-01-29T161315.237414.json\n                load_test_report_20250129_161320.csv\n                load_test_report_20250129_161320.json\n                results_test_u1_o15.csv\n                results_test_u1_o30.csv\n                results_test_u2_o15.csv\n                results_test_u2_o30.csv\n                results_test_u50_o15.csv\n                results_test_u50_o30.csv\n              run_20250129_161925/\n                load_test_report_2025-01-29T162025.734114.csv\n                load_test_report_2025-01-29T162025.734114.json\n                load_test_report_2025-01-29T162131.524371.csv\n                load_test_report_2025-01-29T162131.524371.json\n                load_test_report_2025-01-29T162237.758517.csv\n                load_test_report_2025-01-29T162237.758517.json\n                load_test_report_2025-01-29T162344.818406.csv\n                load_test_report_2025-01-29T162344.818406.json\n                load_test_report_2025-01-29T162507.384913.csv\n                load_test_report_2025-01-29T162507.384913.json\n                load_test_report_2025-01-29T162613.335853.csv\n                load_test_report_2025-01-29T162613.335853.json\n                load_test_report_20250129_162618.csv\n                load_test_report_20250129_162618.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_162732/\n                load_test_report_2025-01-29T162834.272459.csv\n                load_test_report_2025-01-29T162834.272459.json\n                load_test_report_2025-01-29T162941.672408.csv\n                load_test_report_2025-01-29T162941.672408.json\n                load_test_report_2025-01-29T163048.857712.csv\n                load_test_report_2025-01-29T163048.857712.json\n                load_test_report_2025-01-29T163157.624546.csv\n                load_test_report_2025-01-29T163157.624546.json\n                load_test_report_2025-01-29T163306.370415.csv\n                load_test_report_2025-01-29T163306.370415.json\n                load_test_report_2025-01-29T163416.065472.csv\n                load_test_report_2025-01-29T163416.065472.json\n                load_test_report_2025-01-29T163524.604470.csv\n                load_test_report_2025-01-29T163524.604470.json\n                load_test_report_2025-01-29T163632.880248.csv\n                load_test_report_2025-01-29T163632.880248.json\n                load_test_report_2025-01-29T163745.002002.csv\n                load_test_report_2025-01-29T163745.002002.json\n                load_test_report_2025-01-29T163902.036068.csv\n                load_test_report_2025-01-29T163902.036068.json\n                load_test_report_2025-01-29T164009.453151.csv\n                load_test_report_2025-01-29T164009.453151.json\n                load_test_report_2025-01-29T164122.568066.csv\n                load_test_report_2025-01-29T164122.568066.json\n                load_test_report_20250129_164127.csv\n                load_test_report_20250129_164127.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n              run_20250129_164620/\n                load_test_report_2025-01-29T164721.700661.csv\n                load_test_report_2025-01-29T164721.700661.json\n                load_test_report_2025-01-29T164827.520353.csv\n                load_test_report_2025-01-29T164827.520353.json\n                load_test_report_2025-01-29T164933.310367.csv\n                load_test_report_2025-01-29T164933.310367.json\n                load_test_report_2025-01-29T165039.642351.csv\n                load_test_report_2025-01-29T165039.642351.json\n                load_test_report_2025-01-29T165154.098239.csv\n                load_test_report_2025-01-29T165154.098239.json\n                load_test_report_2025-01-29T165308.831481.csv\n                load_test_report_2025-01-29T165308.831481.json\n                load_test_report_20250129_165313.csv\n                load_test_report_20250129_165313.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_165758/\n                load_test_report_2025-01-29T165859.461686.csv\n                load_test_report_2025-01-29T165859.461686.json\n                load_test_report_2025-01-29T170005.472004.csv\n                load_test_report_2025-01-29T170005.472004.json\n                load_test_report_2025-01-29T170111.422122.csv\n                load_test_report_2025-01-29T170111.422122.json\n                load_test_report_2025-01-29T170217.557618.csv\n                load_test_report_2025-01-29T170217.557618.json\n                load_test_report_2025-01-29T170330.493971.csv\n                load_test_report_2025-01-29T170330.493971.json\n                load_test_report_2025-01-29T170447.558129.csv\n                load_test_report_2025-01-29T170447.558129.json\n                load_test_report_20250129_170452.csv\n                load_test_report_20250129_170452.json\n                results_test_u1_o1.csv\n                results_test_u1_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o50.csv\n              run_20250129_170950/\n                load_test_report_2025-01-29T171051.361008.csv\n                load_test_report_2025-01-29T171051.361008.json\n                load_test_report_2025-01-29T171157.323565.csv\n                load_test_report_2025-01-29T171157.323565.json\n                load_test_report_2025-01-29T171303.299586.csv\n                load_test_report_2025-01-29T171303.299586.json\n                load_test_report_2025-01-29T171409.108765.csv\n                load_test_report_2025-01-29T171409.108765.json\n                load_test_report_2025-01-29T171514.861147.csv\n                load_test_report_2025-01-29T171514.861147.json\n                load_test_report_2025-01-29T171620.615624.csv\n                load_test_report_2025-01-29T171620.615624.json\n                load_test_report_2025-01-29T171726.893447.csv\n                load_test_report_2025-01-29T171726.893447.json\n                load_test_report_2025-01-29T171833.044767.csv\n                load_test_report_2025-01-29T171833.044767.json\n                load_test_report_2025-01-29T171939.151837.csv\n                load_test_report_2025-01-29T171939.151837.json\n                load_test_report_2025-01-29T172045.358719.csv\n                load_test_report_2025-01-29T172045.358719.json\n                load_test_report_2025-01-29T172151.647824.csv\n                load_test_report_2025-01-29T172151.647824.json\n                load_test_report_2025-01-29T172257.931381.csv\n                load_test_report_2025-01-29T172257.931381.json\n                load_test_report_2025-01-29T172404.993732.csv\n                load_test_report_2025-01-29T172404.993732.json\n                load_test_report_2025-01-29T172512.469972.csv\n                load_test_report_2025-01-29T172512.469972.json\n                load_test_report_2025-01-29T172619.912159.csv\n                load_test_report_2025-01-29T172619.912159.json\n                load_test_report_2025-01-29T172727.520335.csv\n                load_test_report_2025-01-29T172727.520335.json\n                load_test_report_2025-01-29T172836.287202.csv\n                load_test_report_2025-01-29T172836.287202.json\n                load_test_report_2025-01-29T172945.243054.csv\n                load_test_report_2025-01-29T172945.243054.json\n                load_test_report_2025-01-29T173054.878245.csv\n                load_test_report_2025-01-29T173054.878245.json\n                load_test_report_2025-01-29T173205.270695.csv\n                load_test_report_2025-01-29T173205.270695.json\n                load_test_report_2025-01-29T173319.135777.csv\n                load_test_report_2025-01-29T173319.135777.json\n                load_test_report_2025-01-29T173434.082094.csv\n                load_test_report_2025-01-29T173434.082094.json\n                load_test_report_2025-01-29T173550.513858.csv\n                load_test_report_2025-01-29T173550.513858.json\n                load_test_report_2025-01-29T173708.906195.csv\n                load_test_report_2025-01-29T173708.906195.json\n                load_test_report_20250129_173713.csv\n                load_test_report_20250129_173713.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u1_o1.csv\n                results_test_u1_o15.csv\n                results_test_u1_o30.csv\n                results_test_u1_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o15.csv\n                results_test_u2_o30.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o15.csv\n                results_test_u50_o30.csv\n                results_test_u50_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n              run_20250129_174215/\n                load_test_report_2025-01-29T174316.520550.csv\n                load_test_report_2025-01-29T174316.520550.json\n                load_test_report_2025-01-29T174422.384594.csv\n                load_test_report_2025-01-29T174422.384594.json\n                load_test_report_2025-01-29T174528.291764.csv\n                load_test_report_2025-01-29T174528.291764.json\n                load_test_report_2025-01-29T174633.925509.csv\n                load_test_report_2025-01-29T174633.925509.json\n                load_test_report_2025-01-29T174740.096886.csv\n                load_test_report_2025-01-29T174740.096886.json\n                load_test_report_2025-01-29T174845.697959.csv\n                load_test_report_2025-01-29T174845.697959.json\n                load_test_report_2025-01-29T174952.084484.csv\n                load_test_report_2025-01-29T174952.084484.json\n                load_test_report_2025-01-29T175058.845237.csv\n                load_test_report_2025-01-29T175058.845237.json\n                load_test_report_2025-01-29T175205.494738.csv\n                load_test_report_2025-01-29T175205.494738.json\n                load_test_report_2025-01-29T175312.831611.csv\n                load_test_report_2025-01-29T175312.831611.json\n                load_test_report_2025-01-29T175419.902976.csv\n                load_test_report_2025-01-29T175419.902976.json\n                load_test_report_2025-01-29T175527.241889.csv\n                load_test_report_2025-01-29T175527.241889.json\n                load_test_report_2025-01-29T175635.835204.csv\n                load_test_report_2025-01-29T175635.835204.json\n                load_test_report_2025-01-29T175744.448069.csv\n                load_test_report_2025-01-29T175744.448069.json\n                load_test_report_2025-01-29T175853.905293.csv\n                load_test_report_2025-01-29T175853.905293.json\n                load_test_report_2025-01-29T180003.565666.csv\n                load_test_report_2025-01-29T180003.565666.json\n                load_test_report_2025-01-29T180115.557518.csv\n                load_test_report_2025-01-29T180115.557518.json\n                load_test_report_2025-01-29T180228.466492.csv\n                load_test_report_2025-01-29T180228.466492.json\n                load_test_report_2025-01-29T180342.419821.csv\n                load_test_report_2025-01-29T180342.419821.json\n                load_test_report_2025-01-29T180457.796778.csv\n                load_test_report_2025-01-29T180457.796778.json\n                load_test_report_2025-01-29T180620.304565.csv\n                load_test_report_2025-01-29T180620.304565.json\n                load_test_report_2025-01-29T180746.057385.csv\n                load_test_report_2025-01-29T180746.057385.json\n                load_test_report_2025-01-29T180914.893498.csv\n                load_test_report_2025-01-29T180914.893498.json\n                load_test_report_2025-01-29T181046.064760.csv\n                load_test_report_2025-01-29T181046.064760.json\n                load_test_report_20250129_181051.csv\n                load_test_report_20250129_181051.json\n                results_test_u10_o1.csv\n                results_test_u10_o15.csv\n                results_test_u10_o30.csv\n                results_test_u10_o50.csv\n                results_test_u1_o1.csv\n                results_test_u1_o15.csv\n                results_test_u1_o30.csv\n                results_test_u1_o50.csv\n                results_test_u20_o1.csv\n                results_test_u20_o15.csv\n                results_test_u20_o30.csv\n                results_test_u20_o50.csv\n                results_test_u2_o1.csv\n                results_test_u2_o15.csv\n                results_test_u2_o30.csv\n                results_test_u2_o50.csv\n                results_test_u50_o1.csv\n                results_test_u50_o15.csv\n                results_test_u50_o30.csv\n                results_test_u50_o50.csv\n                results_test_u5_o1.csv\n                results_test_u5_o15.csv\n                results_test_u5_o30.csv\n                results_test_u5_o50.csv\n            starcoder2_run_20250129_123907.zip\n            starcoder_run_20250128_20.zip\n            starcoder_run_20250129_131828.zip\n            test_single_request.py\n            visualize_results.py\n          temp_file_renamed.txt\n          test_data.txt",
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nNow, let me examine the README.md file to understand the project's purpose and structure:",
       tool_calls: [
         {
@@ -62,17 +62,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01DzbsASaCkQXY2fmUYZjXbj",
-        content:
+        ftm_content:
           'Problems:\nThe path "README.md" is ambiguous. It could be interpreted as:\n/home/fupfv/git/benchmark1_0701/README.md\n/home/fupfv/git/benchmark1_0701/llm_load_test/README.md\n',
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content: "\n\nLet me check both README files:",
+      ftm_role: "assistant",
+      ftm_content: "\n\nLet me check both README files:",
       tool_calls: [
         {
           id: "toolu_01LUEfJUST74ghMbHUmuByr5",
@@ -88,16 +88,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01LUEfJUST74ghMbHUmuByr5",
-        content: "Paths found:\n/home/fupfv/git/benchmark1_0701/README.md\n",
+        ftm_content:
+          "Paths found:\n/home/fupfv/git/benchmark1_0701/README.md\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "benchmark1_0701/README.md",
           file_content:
@@ -108,8 +109,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Let me check the VISUALIZATION.md file and the main source files to understand the project better:",
       tool_calls: [
         {
@@ -126,17 +127,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_019uJg1SQ5evTU9bov6iS9hU",
-        content:
+        ftm_content:
           "Paths found:\n/home/fupfv/git/benchmark1_0701/VISUALIZATION.md\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "VISUALIZATION.md",
           file_content:
@@ -147,8 +148,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Now let me examine the main source files to understand how the tool works:",
       tool_calls: [
         {
@@ -165,17 +166,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01T48o7umn3FG5JVJWRgviUP",
-        content:
+        ftm_content:
           "Paths found:\n/home/fupfv/git/benchmark1_0701/src/llm_load_test_runner.py\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "benchmark1_0701/src/llm_load_test_runner.py",
           file_content:
@@ -186,8 +187,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Let me also check the load_test.py file to understand how the actual load testing is performed:",
       tool_calls: [
         {
@@ -204,17 +205,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01WXJiwA9oLdRRAS4SADKvmM",
-        content:
+        ftm_content:
           "Paths found:\n/home/fupfv/git/benchmark1_0701/src/load_test.py\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "benchmark1_0701/src/load_test.py",
           file_content:
@@ -225,8 +226,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Let me also check the visualization script to understand how the results are visualized:",
       tool_calls: [
         {
@@ -243,17 +244,17 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01VxiuWGqPfbMSgprqkhe7uU",
-        content:
+        ftm_content:
           "Paths found:\n/home/fupfv/git/benchmark1_0701/src/visualize_results.py\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "src/visualize_results.py",
           file_content:
@@ -264,8 +265,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "Based on my analysis of the project, I'll create comprehensive documentation for the LLM Load Testing Tool. Let me create a documentation structure that covers all aspects of the project.",
       tool_calls: [
         {
@@ -282,8 +283,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name: "/home/fupfv/git/benchmark1_0701/docs/README.md",
           file_action: "edit",
@@ -299,8 +300,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       tool_call_id: "toolu_011nt32gEpSJZet4jGzrVXBt",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nNow, let's create a detailed guide for the visualization tools:",
       tool_calls: [
         {
@@ -317,8 +318,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/home/fupfv/git/benchmark1_0701/docs/VISUALIZATION_GUIDE.md",
@@ -335,8 +336,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       tool_call_id: "toolu_01LCqsTPhkZq3mQ7eEz1SAMR",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\n\n\nNow, let's create a technical guide for developers who want to extend the tool:",
       tool_calls: [
         {
@@ -353,8 +354,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name: "/home/fupfv/git/benchmark1_0701/docs/DEVELOPER_GUIDE.md",
           file_action: "edit",
@@ -370,8 +371,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       tool_call_id: "toolu_018ik5qU9MGsUpZY4Bn5f33o",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\n\n\nFinally, let's create a quick start guide for users who want to get started quickly:",
       tool_calls: [
         {
@@ -388,8 +389,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name: "/home/fupfv/git/benchmark1_0701/docs/QUICK_START.md",
           file_action: "edit",
@@ -405,8 +406,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       tool_call_id: "toolu_01EpCs5Tzt8XiiQnKzmo7TnN",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\n\n\nLet's create a documentation index file to tie everything together:",
       tool_calls: [
         {
@@ -423,8 +424,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name: "/home/fupfv/git/benchmark1_0701/docs/index.md",
           file_action: "edit",
@@ -440,8 +441,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       tool_call_id: "toolu_01XAkFWtmSdgwToJLQQaq2nZ",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\n\n\nLet's create a knowledge entry to document what we've done:",
       tool_calls: [
         {
@@ -458,23 +459,23 @@ export const MARKDOWN_ISSUE: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01QS5KdB2vJApy8dgHkzjmyA",
-        content:
+        ftm_content:
           "Knowledge entry created successfully with ID: 594ad5ff35\nTools: documentation, markdown, technical writing\nApply to: benchmark1_0701, LLM Load Testing Tool, documentation, visualization tools, developer guide\nSearch Key: Creating comprehensive documentation for LLM load testing tool with Locust, including user guides, visualization documentation, and developer documentation\nLanguage/Framework: python/locust\nEntry: I created a comprehensive documentation suite for an LLM Load Testing Tool built with Python and Locust. The documentation was structured into several key components:\n\n1. Main Documentation (README.md):\n   - Provided a complete overview of the tool's functionality\n   - Included installation instructions, configuration options, and usage examples\n   - Documented all available metrics and how to interpret them\n   - Covered troubleshooting and advanced usage scenarios\n\n2. Visualization Guide (VISUALIZATION_GUIDE.md):\n   - Detailed explanation of all visualization tools (visualize_results.py, compare_runs.py, dashboard_generator.py)\n   - Instructions for generating and interpreting different types of visualizations\n   - Best practices for effective visualization and analysis\n   - Troubleshooting for visualization-specific issues\n\n3. Developer Guide (DEVELOPER_GUIDE.md):\n   - Technical architecture overview of the codebase\n   - Instructions for extending the tool with new providers, metrics, and visualizations\n   - Code style guidelines and testing recommendations\n   - Contributing guidelines for potential contributors\n\n4. Quick Start Guide (QUICK_START.md):\n   - Streamlined instructions for getting started quickly\n   - Basic configuration and test execution steps\n   - Common issues and solutions\n   - Pointers to more detailed documentation\n\n5. Documentation Index (index.md):\n   - Central navigation hub for all documentation\n   - Brief overview of the tool and its capabilities\n   - Links to all documentation sections\n\nThe documentation was designed to be comprehensive yet accessible, with clear navigation between different sections. It covers both user-focused aspects (how to run tests and interpret results) and developer-focused aspects (how to extend and contribute to the codebase).\n\nKey insights from analyzing the codebase:\n- The tool uses Locust for load generation and metrics collection\n- It supports multiple LLM providers through a provider class hierarchy\n- Visualization is handled by matplotlib and seaborn\n- The architecture separates concerns between test execution, data collection, and visualization\n- The tool generates both CSV and JSON reports for further analysis\n\nThis documentation structure provides a solid foundation for users to understand and effectively use the LLM Load Testing Tool, while also enabling developers to extend and improve it.",
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nI've created comprehensive documentation for the LLM Load Testing Tool. The documentation is organized into several key components:\n\n1. **Main Documentation (README.md)**\n   - Complete overview of the tool's functionality\n   - Installation instructions and configuration options\n   - Detailed explanation of metrics and reports\n   - Advanced usage scenarios and troubleshooting\n\n2. **Visualization Guide (VISUALIZATION_GUIDE.md)**\n   - Detailed explanation of all visualization tools\n   - Instructions for generating and interpreting visualizations\n   - Best practices for effective analysis\n   - Troubleshooting for visualization issues\n\n3. **Developer Guide (DEVELOPER_GUIDE.md)**\n   - Technical architecture overview\n   - Instructions for extending the tool with new providers, metrics, and visualizations\n   - Code style guidelines and testing recommendations\n   - Contributing guidelines\n\n4. **Quick Start Guide (QUICK_START.md)**\n   - Streamlined instructions for getting started quickly\n   - Basic configuration and test execution steps\n   - Common issues and solutions\n   - Pointers to more detailed documentation\n\n5. **Documentation Index (index.md)**\n   - Central navigation hub for all documentation\n   - Brief overview of the tool and its capabilities\n   - Links to all documentation sections\n\nAll documentation files have been created in the `/home/fupfv/git/benchmark1_0701/docs/` directory. The documentation is written in Markdown format, making it easy to read both in a text editor and when rendered as HTML.\n\nThe documentation covers all aspects of the tool, from basic usage to advanced customization and development. It's designed to be accessible to users with different levels of expertise, from those who just want to run a quick benchmark to developers who want to extend the tool with new features.\n\nWould you like me to explain any specific part of the documentation in more detail or make any adjustments to what I've created?",
       finish_reason: "stop",
     },
     {
-      role: "user",
-      content: "Explain metrics?",
+      ftm_role: "user",
+      ftm_content: "Explain metrics?",
       checkpoints: [
         {
           workspace_folder: "/home/fupfv/git/benchmark1_0701",
@@ -483,8 +484,8 @@ export const MARKDOWN_ISSUE: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'd be happy to explain the metrics used in the LLM Load Testing Tool. These metrics are crucial for understanding the performance of your LLM inference server under various load conditions.\n\n## Key Metrics in the LLM Load Testing Tool\n\n### Latency Metrics\n\n1. **Total Latency**\n   - **What it measures**: The total time from sending a request to receiving the complete response, measured in milliseconds (ms).\n   - **Why it matters**: This is the end-to-end time that a user would experience when interacting with your LLM server.\n   - **Interpretation**: Lower values are better. Look for how this increases with concurrency to understand scaling behavior.\n\n2. **Time To First Token (TTFT)**\n   - **What it measures**: The time it takes to receive the first token of the response after sending the request, measured in milliseconds (ms).\n   - **Why it matters**: This represents the initial latency before any content is displayed to the user, which affects perceived responsiveness.\n   - **Interpretation**: Lower values indicate a more responsive system. This metric is particularly important for streaming implementations.\n\n3. **Latency Per Token**\n   - **What it measures**: The average time taken to generate each token after the first token, measured in milliseconds per token (ms/token).\n   - **Why it matters**: This shows how efficiently the model generates content once it starts responding.\n   - **Interpretation**: Lower values indicate faster token generation. This metric helps identify if the model slows down during generation.\n\n### Throughput Metrics\n\n4. **Queries Per Second (QPS)**\n   - **What it measures**: The number of complete requests the system can handle per second.\n   - **Why it matters**: This indicates the overall throughput capacity of your LLM server.\n   - **Interpretation**: Higher values mean your server can handle more simultaneous users. Look for the point where this plateaus to identify maximum capacity.\n\n5. **Num Requests**\n   - **What it measures**: The total number of requests processed during the test.\n   - **Why it matters**: This helps verify that the test ran as expected and processed the anticipated volume.\n   - **Interpretation**: Should match your expectations based on test duration and concurrency.\n\n### Token Metrics\n\n6. **Num Tokens**\n   - **What it measures**: The number of tokens generated in the response.\n   - **Why it matters**: This helps verify that the model is generating the expected amount of content.\n   - **Interpretation**: Should match your configured `max_tokens` parameter. Discrepancies might indicate early stopping or other issues.\n\n7. **Prompt Tokens**\n   - **What it measures**: The number of tokens in the input prompt.\n   - **Why it matters**: Larger prompts consume more context window and can affect performance.\n   - **Interpretation**: Used primarily for verification and to understand the total context usage.\n\n8. **Token Generation Speed**\n   - **What it measures**: The number of tokens generated per second, calculated as `Num Tokens / (Total Latency / 1000)`.\n   - **Why it matters**: This is a key performance indicator that combines latency and output size.\n   - **Interpretation**: Higher values indicate more efficient token generation. This metric often decreases with higher concurrency.\n\n### Success Metrics\n\n9. **Success Rate**\n   - **What it measures**: The percentage of requests that completed successfully without errors.\n   - **Why it matters**: This indicates the reliability of your LLM server under load.\n   - **Interpretation**: Should be close to 100% for a stable system. Lower values indicate potential stability issues.\n\n## How These Metrics Are Collected\n\nThe metrics are collected through several mechanisms:\n\n1. **Locust Metrics**: Basic request/response metrics are collected by Locust during the load test.\n\n2. **Custom Metrics**: The tool adds custom metrics using the `add_custom_metric` function in `load_test.py`.\n\n3. **Response Parsing**: Token counts and other response-specific metrics are extracted by parsing the LLM server's response.\n\n## Visualizing and Analyzing Metrics\n\nThe visualization tools provide several ways to analyze these metrics:\n\n1. **By Concurrency Level**: See how metrics change as the number of concurrent users increases.\n\n2. **By Output Token Count**: Understand the relationship between response size and performance.\n\n3. **Distribution Analysis**: Examine the distribution of latency values to identify outliers and variability.\n\n4. **Heatmaps**: Visualize performance across different combinations of concurrency and output tokens.\n\n5. **Comparison Across Runs**: Compare metrics between different test runs to identify improvements or regressions.\n\n## Using Metrics for Optimization\n\nThese metrics can help you optimize your LLM deployment:\n\n1. **Identifying Bottlenecks**: Look for metrics that degrade significantly at certain concurrency levels.\n\n2. **Scaling Decisions**: Use throughput metrics to determine when to scale horizontally.\n\n3. **Model Selection**: Compare metrics across different models to select the best one for your use case.\n\n4. **Parameter Tuning**: Experiment with different batch sizes, quantization levels, or other parameters and observe the impact on metrics.\n\n5. **Resource Allocation**: Determine the optimal CPU/GPU resources needed based on performance under different loads.\n\nWould you like me to elaborate on any specific metric or aspect of the metrics collection and analysis?",
       finish_reason: "stop",
     },

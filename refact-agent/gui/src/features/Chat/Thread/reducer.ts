@@ -468,7 +468,7 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (hasDiff) return;
 
   const maybeToolResult = messages.find(
-    (d) => isToolMessage(d) && d.content.tool_call_id === toolCallId,
+    (d) => isToolMessage(d) && d.ftm_content.tool_call_id === toolCallId,
   );
 
   const toolCalls = messages.reduce<ToolCall[]>((acc, message) => {
@@ -488,16 +488,16 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (
     maybeToolResult &&
     isToolMessage(maybeToolResult) &&
-    typeof maybeToolResult.content.content === "string"
+    typeof maybeToolResult.ftm_content.ftm_content === "string"
   ) {
-    maybeToolResult.content.content = message;
+    maybeToolResult.ftm_content.ftm_content = message;
     return;
   } else if (
     maybeToolResult &&
     isToolMessage(maybeToolResult) &&
-    isMultiModalToolResult(maybeToolResult.content)
+    isMultiModalToolResult(maybeToolResult.ftm_content)
   ) {
-    maybeToolResult.content.content.push({
+    maybeToolResult.ftm_content.ftm_content.push({
       m_type: "text",
       m_content: message,
     });
@@ -511,9 +511,9 @@ export function maybeAppendToolCallResultFromIdeToMessages(
 
   if (assistantMessageIndex === -1) return;
   const toolMessage: ToolMessage = {
-    role: "tool",
-    content: {
-      content: message,
+    ftm_role: "tool",
+    ftm_content: {
+      ftm_content: message,
       tool_call_id: toolCallId,
       // assuming, that tool_failed is always false at this point
       tool_failed: false,

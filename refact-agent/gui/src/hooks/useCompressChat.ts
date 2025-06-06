@@ -31,10 +31,10 @@ export function useCompressChat() {
     }
 
     if (result.data) {
-      const content =
+      const ftm_content =
         "🗜️ I am continuing from a compressed chat history. Here is what happened so far: " +
         result.data.trajectory;
-      const messages: ChatMessages = [{ role: "user", content }];
+      const messages: ChatMessages = [{ ftm_role: "user", ftm_content }];
 
       const action = newChatAction({ messages, title: `🗜️ ${thread.title}` });
       dispatch(action);

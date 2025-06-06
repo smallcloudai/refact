@@ -10,3 +10,4 @@ export {
 
 export { ThinkingButton } from "./ThinkingButton";
 export { FadedButton } from "./FadedButton";
+export { CardButton } from "./CardButton";
