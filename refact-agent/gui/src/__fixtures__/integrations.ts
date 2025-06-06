@@ -49,8 +49,8 @@ export const INTEGRATIONS_RESPONSE: Integration = {
         sl_label: "Test",
         sl_chat: [
           {
-            role: "user",
-            content:
+            ftm_role: "user",
+            ftm_content:
               "🔧 Use postgres database to briefly list the tables available, express satisfaction and relief if it works, and change nothing.\nIf it doesn't work, go through the usual plan in the system prompt.\nThe current config file is @file %CURRENT_CONFIG%\n",
           },
         ],
@@ -72,8 +72,8 @@ export const INTEGRATIONS_RESPONSE: Integration = {
           sl_label: "Add Database Container",
           sl_chat: [
             {
-              role: "user",
-              content:
+              ftm_role: "user",
+              ftm_content:
                 '🔧 Your job is to create a new section under "docker" that will define a new postgres container, inside the current config file %CURRENT_CONFIG%. Follow the system prompt.\n',
             },
           ],

@@ -6,13 +6,13 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
   new_chat_suggested: { wasSuggested: false },
   messages: [
     {
-      role: "system",
-      content:
+      ftm_role: "system",
+      ftm_content:
         "[mode3] You are Refact Agent, an autonomous bot for coding tasks.\n\nCore Principles\n1. Use knowledge()\n  - Always use knowledge() first when you encounter an agentic (complex) task.\n  - This tool can access external data, including successful “trajectories” (examples of past solutions).\n  - External database records begin with the icon “🗃️” followed by a record identifier.\n  - Use these records to help solve your tasks by analogy.\n2. Use locate() with the Full Problem Statement\n  - Provide the entire user request in the problem_statement argument to avoid losing any details (“telephone game” effect).\n  - Include user’s emotional stance, code snippets, formatting, instructions—everything word-for-word.\n  - Only omit parts of the user’s request if they are unrelated to the final solution.\n  - Avoid using locate() if the problem is quite simple and can be solved without extensive project analysis.\n\nAnswering Strategy\n1. If the user’s question is unrelated to the project\n  - Answer directly without using any special calls.\n2. If the user’s question is related to the project\n  - First, call knowledge() for relevant information and best practices.\n3. Making Changes\n  - If a solution requires file changes, use `*_textdoc()` tools.\n  - It's a good practice to call cat() to track changes for changed files.\n\nImportant Notes\n1. Parallel Exploration\n  - When you explore different ideas, use multiple parallel methods.\n2. Project-Related Questions\n  - For any project question, always call knowledge() before taking any action.\n\nWhen running on user's laptop, you most likely have the shell() tool. It's for one-time dependency installations, or doing whatever\nuser is asking you to do. Tools the user can set up are better, because they don't require confimations when running on a laptop.\nWhen doing something typical for the project, offer the user to make a cmdline_* tool after you have run it.\nYou can do this by writing:\n\n🧩SETTINGS:cmdline_cargo_check\n\nfrom a new line, that will open (when clicked) a wizard that creates `cargo check` (in this example) command line tool.\n\nIn a similar way, service_* tools work. The difference is cmdline_* is designed for non-interactive blocking commands that immediately\nreturn text in stdout/stderr, and service_* is designed for blocking background commands, such as hypercorn server that runs forever until you hit Ctrl+C.\nHere is another example:\n\n🧩SETTINGS:service_hypercorn\n\n\nYou might receive additional instructions that start with 💿. Those are not coming from the user, they are programmed to help you operate\nwell and they are always in English. Answer in the language the user has asked the question.\n\n\n- below general information about the current project -\n\nThe current IDE workspace has these project directories:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation\n\nThere is no active file currently open in the IDE.\nThe project is under git version control, located at:\n/Users/marc/Projects/refact-lsp\n\n\n",
     },
     {
-      role: "user",
-      content: "Create tests for frog\n",
+      ftm_role: "user",
+      ftm_content: "Create tests for frog\n",
       checkpoints: [
         {
           workspace_folder:
@@ -22,8 +22,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'll help create tests for the frog-related code. Let me first understand the project structure and content.",
       tool_calls: [
         {
@@ -40,17 +40,17 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01XVhkyaDunsy4fPrDqy3toa",
-        content:
+        ftm_content:
           "🗃️e19af1e7b3\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don't have direct access to the command line. Look if there's a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don't see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n\n🗃️d84f5c4a7c\nAdditional instructions for django web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and locate(), looking into relevant files using cat(). If you see reference designs and sketches, read them using cat()\n2. Start django server\n3. Navigate to the place on the website that user wants to change, make a screenshot to make sure you understand what exactly needs to change\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it.\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place.\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE YOU HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n🗃️ae3f1228bd\n[\n[\"goal\", \"Rename all occurrences of 'frog' to 'bird' in the project\"],\n[\"tree(use_ast=true)\", \"Found emergency_frog_situation/ with index.html, holiday.py, work_day.py, game.js, jump_to_conclusions.py, bird.py, set_as_avatar.py\"],\n[\"search(query='frog', scope='workspace')\", \"Found frog references in work_day.py (imports, function), jump_to_conclusions.py (imports, class usage), bird.py already has Bird class\"],\n[\"thinking\", \"bird.py already has Bird class and set_as_avatar.py uses it, so we need to update work_day.py and jump_to_conclusions.py to use the existing Bird class\"],\n[\"coding\", \"📍REWRITE_WHOLE_FILE 001 'work_day.py' changed import frog->bird, bring_your_own_frog->bring_your_own_bird, frog.Frog->bird.Bird\"],\n[\"patch(tickets='001', path='tests/emergency_frog_situation/work_day.py')\", \"3 chunks applied: import change, function rename, type annotation update\"],\n[\"coding\", \"📍REWRITE_WHOLE_FILE 002 'jump_to_conclusions.py' changed import frog->bird, draw_hello_frog->draw_hello_bird, all frog.Frog->bird.Bird\"],\n[\"patch(tickets='002', path='tests/emergency_frog_situation/jump_to_conclusions.py')\", \"5 chunks applied: import, function rename, constructor call, type annotation, function call\"],\n[\"outcome\", \"SUCCESS\"]\n]\n\n🗃️2b684b6e70\nYou have a specialization today: web development.\n\nYou only need to receive instructions from the user once, and then you can autonomously fill in the details of\nthe task, make the necessary changes, verify results and make adjustments and fixes.\n\nHere's your approximate web development plan:\n1. Investigate project to understand the task given by the user, start with calling tree() and looking into relevant files. If you see reference designs and sketches, read them using cat().\n2. Run the server. You don't have direct access to the command line. Look if there's a tool for that purpose. If there is not, you cannot run a web server.\n3. Make relevant screenshots of existing website using chrome(), open both desktop and mobile tabs if the task requires it.\n4. Form a complete interpretation of the task, and write a plan.\n5. Make changes in files using 📍-notation, after that call patch(). Really, first you need to write the updates using 📍-notation, only after that you can apply it using patch().\n6. Check if screenshots got better, or any errors appeared.\n7. Goto 5, unless you see the task is complete.\n\nAs a web developer agent, you need to pay attention to detail. The task is complete if all the elements\nare at the right place. You really need to cat() designs and sketches if they are present in the task.\n\nIf you don't see a way to run a real server for the website, then just use chrome() to look\nat .html pages using file:// addresses.\n\nHere is a compressed example of successful trajectory from another project:\n\nDON'T DO STUPID THINGS:\n* DON'T SKIP MAKING SCREENSHOTS\n* DON'T CALL patch() UNTIL YOU FINIHSHED WRITING CODE IN 📍-NOTATION\n* DON'T ASK USER ANYTHING, YOU HAVE AUTONOMOUS WORK TO DO\n* MAKE SURE IF HAVE A TOOL CALL IN THE END OF EACH RESPONSE, UNLESS YOU COMPLETED AND TESTED THE TASK\n\n",
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nLet me check the project structure to understand what we're working with.",
       tool_calls: [
         {
@@ -66,17 +66,17 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01HMyLgKsLQURM9vgd3vQKXN",
-        content:
+        ftm_content:
           "/\n  home/\n    svakhreev/\n      projects/\n        refact-lsp/\n          tests/\n            emergency_frog_situation/\n              holiday.py\n              work_day.py\n              __pycache__/\n                frog.cpython-310.pyc\n              frog.py\n              jump_to_conclusions.py\n              set_as_avatar.py",
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nLet me examine the frog-related files to understand what we need to test.",
       tool_calls: [
         {
@@ -93,17 +93,17 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_0136dUTkih5ES8rrzHa5B5ep",
-        content:
+        ftm_content:
           "Paths found:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/frog.py\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "frog.py",
           file_content:
@@ -114,8 +114,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'll create tests for the Frog class and its related functionality. We'll need to test the initialization, bouncing behavior, jumping mechanics, and the croak method. Let me create a test file using pytest.",
       tool_calls: [
         {
@@ -132,8 +132,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -150,14 +150,14 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_015isrQXYKSQ4XYqECkXis3J",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nI've created a comprehensive test suite for the frog module. Here's what the tests cover:\n\n1. Basic Initialization\n- Tests that a Frog object is correctly initialized with given coordinates and velocities\n\n2. Bouncing Behavior (TestFrogBouncing class)\n- Tests bouncing off all four boundaries (left, right, top, bottom)\n- Tests that velocity is reversed appropriately when hitting boundaries\n- Tests that no bouncing occurs when the frog is within bounds\n\n3. Jumping Mechanics (TestFrogJumping class)\n- Tests normal jumping behavior with velocity and time step (DT)\n- Tests boundary clipping when jumping would exceed pond dimensions\n- Tests clipping at both maximum and minimum boundaries\n\n4. Croaking\n- Tests that the croak method outputs the correct number of \"croak\" messages\n\n5. Additional Components\n- Tests for AlternativeFrog class (basic instantiation and method existence)\n- Tests for the standalone_jumping_function\n\nThe tests use pytest and include proper handling of stdout capture for testing print statements. They also use numpy's isclose() for floating-point comparisons where appropriate.\n\nTo run these tests, you would need to have pytest installed and can run them using:\n```bash\npytest test_frog.py -v\n```\n\nThe tests are designed to be thorough while remaining readable and maintainable. Each test has a clear purpose and includes comments where necessary to explain the expected behavior.\n\nWould you like me to add any additional test cases or modify the existing ones?",
       finish_reason: "stop",
     },
     {
-      role: "user",
-      content: "Replace generated tests with well documented tests\n",
+      ftm_role: "user",
+      ftm_content: "Replace generated tests with well documented tests\n",
       checkpoints: [
         {
           workspace_folder:
@@ -167,8 +167,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'll create a new version of the tests with comprehensive documentation and clear test organization.",
       tool_calls: [
         {
@@ -185,8 +185,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -462,14 +462,14 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_019L5hGRf36DCj9q4BQfofBV",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nI've completely rewritten the tests with comprehensive documentation and better organization. Here are the key improvements:\n\n1. Added Module-Level Documentation\n- Clear description of what the test suite covers\n- Key components being tested\n- Overall structure\n\n2. Added Fixtures\n- `basic_frog`: Provides a standard frog instance for testing\n- `pond_dimensions`: Provides standard pond dimensions\n- Both fixtures are well-documented with docstrings\n\n3. Organized Tests into Logical Classes\n- `TestBoundaryBehavior`: Tests for boundary interactions\n- `TestMovement`: Tests for movement mechanics\n\n4. Improved Test Documentation\n- Each test function has a detailed docstring\n- Clear description of what is being tested\n- Expected behavior and conditions\n- Any special considerations\n\n5. Better Test Structure\n- Used parametrized tests where appropriate to reduce code duplication\n- Clear separation of setup, action, and assertion phases\n- Meaningful assertion messages\n\n6. Improved Error Handling\n- Proper cleanup of system resources (stdout capture)\n- Better error messages with context\n- Use of try/finally blocks where appropriate\n\n7. Better Test Names\n- More descriptive test names that indicate what's being tested\n- Consistent naming convention\n\nKey Features:\n1. Boundary Testing\n- Comprehensive tests for all pond boundaries\n- Tests for both position and velocity changes\n- Clear error messages for boundary violations\n\n2. Movement Testing\n- Precise testing of movement calculations\n- Boundary clipping verification\n- Multiple test cases for different scenarios\n\n3. Output Testing\n- Proper capture and verification of stdout\n- Exact string matching for croaks and messages\n- Resource cleanup after stdout capture\n\n4. Structure Testing\n- Verification of alternative implementations\n- Interface consistency checks\n- Existence of required methods\n\nThe tests are now more maintainable, readable, and provide better feedback when failures occur. Each test has a clear purpose and includes proper documentation about what it's testing and why.\n\nWould you like me to explain any particular part of the test suite in more detail?",
       finish_reason: "stop",
     },
     {
-      role: "user",
-      content:
+      ftm_role: "user",
+      ftm_content:
         "Great! Update the document and remove all docstrings one by one",
       checkpoints: [
         {
@@ -480,8 +480,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'll help you remove the docstrings one by one from the test file while preserving the functionality.",
       tool_calls: [
         {
@@ -498,8 +498,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -527,8 +527,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01KmJrYK6xn2XqGLXpFA5Tgp",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01Smt5a61QbmbmZHpbNh7BKK",
@@ -544,8 +544,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -562,8 +562,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01Smt5a61QbmbmZHpbNh7BKK",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_0168Gio2kBMYhzKe6bdxErkb",
@@ -579,8 +579,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -597,8 +597,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_0168Gio2kBMYhzKe6bdxErkb",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_016ChnUcGQGrjfbx2dSzmmeR",
@@ -614,8 +614,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -632,8 +632,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_016ChnUcGQGrjfbx2dSzmmeR",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01Fzi693dL7aKwE9gLFetqiN",
@@ -649,8 +649,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -667,8 +667,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01Fzi693dL7aKwE9gLFetqiN",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01Xtt2L5ctWViSFce6JcNR2Z",
@@ -684,8 +684,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -702,8 +702,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01Xtt2L5ctWViSFce6JcNR2Z",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01WoEFVoJi9wSp2XgTx5PCUo",
@@ -719,8 +719,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -737,8 +737,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01WoEFVoJi9wSp2XgTx5PCUo",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_017YWfgyTtHRLZjm3hrfCTBK",
@@ -754,8 +754,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -771,8 +771,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_017YWfgyTtHRLZjm3hrfCTBK",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01NsGmmfJfDR5UhmBE4N8kD4",
@@ -788,8 +788,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -806,8 +806,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01NsGmmfJfDR5UhmBE4N8kD4",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01EXrnY36zeat9gdMWAaiPDf",
@@ -823,8 +823,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -841,8 +841,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01EXrnY36zeat9gdMWAaiPDf",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01KqLh5gkGZEMkXzRjdQWcev",
@@ -858,8 +858,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -876,8 +876,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01KqLh5gkGZEMkXzRjdQWcev",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01GtAM91bdJY74XQRBhpqh8K",
@@ -893,8 +893,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -911,8 +911,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01GtAM91bdJY74XQRBhpqh8K",
     },
     {
-      role: "assistant",
-      content: "",
+      ftm_role: "assistant",
+      ftm_content: "",
       tool_calls: [
         {
           id: "toolu_01FrfBzW3RjxL3okQUqRiyWf",
@@ -928,8 +928,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -946,14 +946,14 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01FrfBzW3RjxL3okQUqRiyWf",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nNow all docstrings have been removed while preserving the test functionality. Here's a summary of what the test file contains:\n\n1. Fixtures:\n- basic_frog: Creates a standard frog at (5, 5) with velocity (1, 1)\n- pond_dimensions: Provides standard 10x10 pond dimensions\n\n2. Test Classes:\n- TestBoundaryBehavior: Tests boundary interactions with parametrized tests\n- TestMovement: Tests movement mechanics and position updates\n\n3. Standalone Tests:\n- test_frog_initialization: Basic initialization test\n- test_croak_output: Tests croaking functionality\n- test_alternative_frog_existence: Tests AlternativeFrog interface\n- test_standalone_jumping_function: Tests standalone function\n\nThe tests remain well-structured and maintain good coverage of the frog module's functionality, just without the documentation strings. Would you like me to show you the final version of the file or make any additional changes?",
       finish_reason: "stop",
     },
     {
-      role: "user",
-      content: "Great! Now remove all comments using regex\n",
+      ftm_role: "user",
+      ftm_content: "Great! Now remove all comments using regex\n",
       checkpoints: [
         {
           workspace_folder:
@@ -963,8 +963,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I'll use update_textdoc_regex to remove all comments from the test file.",
       tool_calls: [
         {
@@ -981,17 +981,17 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_01LHPjgzJ8SEuczfm6Av7qfv",
-        content:
+        ftm_content:
           'No replacement was performed, `pattern` \n```\n\\s*#.*$\n```\ndid not appear verbatim in "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py". Consider checking the file content using `cat()`',
         tool_failed: false,
       },
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nLet me check the file content to see the exact format of comments:",
       tool_calls: [
         {
@@ -1008,17 +1008,17 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "tool",
-      content: {
+      ftm_role: "tool",
+      ftm_content: {
         tool_call_id: "toolu_019iakkKqUjKP73EmEgVhCkZ",
-        content:
+        ftm_content:
           "Paths found:\n/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py\n",
         tool_failed: false,
       },
     },
     {
-      role: "context_file",
-      content: [
+      ftm_role: "context_file",
+      ftm_content: [
         {
           file_name: "test_frog.py",
           file_content:
@@ -1029,8 +1029,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       ],
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "I see the comments now. Let me remove them using regex that matches both inline comments and comment lines:",
       tool_calls: [
         {
@@ -1047,8 +1047,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       finish_reason: "stop",
     },
     {
-      role: "diff",
-      content: [
+      ftm_role: "diff",
+      ftm_content: [
         {
           file_name:
             "/Users/marc/Projects/refact-lsp/tests/emergency_frog_situation/test_frog.py",
@@ -1091,8 +1091,8 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
       tool_call_id: "toolu_01PXY5nTtbMuiA4JAjN5TMtX",
     },
     {
-      role: "assistant",
-      content:
+      ftm_role: "assistant",
+      ftm_content:
         "\n\nGreat! All comments have been removed from the test file. The functionality remains exactly the same, but now without any inline comments or comment lines. The test file is now cleaner and more concise.\n\nWould you like me to show you the final version of the file or make any other changes?",
       finish_reason: "stop",
     },
