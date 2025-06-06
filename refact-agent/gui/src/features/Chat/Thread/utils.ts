@@ -239,16 +239,19 @@ export function formatChatResponse(
 ): ChatMessages {
   if (isUserResponse(response)) {
     return replaceLastUserMessage(messages, {
-      role: response.role,
-      content: response.content,
+      ftm_role: response.ftm_role,
+      ftm_content: response.ftm_content,
       checkpoints: response.checkpoints,
       compression_strength: response.compression_strength,
     });
   }
 
   if (isContextFileResponse(response)) {
-    const content = parseOrElse<ChatContextFile[]>(response.content, []);
-    return [...messages, { role: response.role, content }];
+    const ftm_content = parseOrElse<ChatContextFile[]>(
+      response.ftm_content,
+      [],
+    );
+    return [...messages, { ftm_role: response.ftm_role, ftm_content }];
   }
 
   if (isSubchatResponse(response)) {
@@ -258,51 +261,67 @@ export function formatChatResponse(
   if (isToolResponse(response)) {
     const {
       tool_call_id,
-      content,
+      ftm_content,
       tool_failed,
       finish_reason,
       compression_strength,
     } = response;
     const filteredMessages = finishToolCallInMessages(messages, tool_call_id);
     const toolResult: ToolResult =
-      typeof content === "string"
+      typeof ftm_content === "string"
         ? {
             tool_call_id,
-            content,
+            ftm_content,
             finish_reason,
             compression_strength,
             tool_failed,
           }
         : {
             tool_call_id,
-            content,
+            ftm_content,
             finish_reason,
             compression_strength,
             tool_failed,
           };
 
-    return [...filteredMessages, { role: response.role, content: toolResult }];
+    return [
+      ...filteredMessages,
+      { ftm_role: response.ftm_role, ftm_content: toolResult },
+    ];
   }
 
   if (isDiffResponse(response)) {
-    const content = parseOrElse<DiffChunk[]>(response.content, []);
+    const ftm_content = parseOrElse<DiffChunk[]>(response.ftm_content, []);
     return [
       ...messages,
-      { role: response.role, content, tool_call_id: response.tool_call_id },
+      {
+        ftm_role: response.ftm_role,
+        ftm_content,
+        tool_call_id: response.tool_call_id,
+      },
     ];
   }
 
   if (isPlainTextResponse(response)) {
-    return [...messages, { role: response.role, content: response.content }];
+    return [
+      ...messages,
+      { ftm_role: response.ftm_role, ftm_content: response.ftm_content },
+    ];
   }
 
   if (isCDInstructionResponse(response)) {
-    return [...messages, { role: response.role, content: response.content }];
+    return [
+      ...messages,
+      { ftm_role: response.ftm_role, ftm_content: response.ftm_content },
+    ];
   }
 
   // system messages go to the front
   if (isSystemResponse(response)) {
-    return [{ role: response.role, content: response.content }, ...messages];
+    return [
+      { ftm_role: response.ftm_role, ftm_content: response.ftm_content },
+      ...messages,
+    ];
   }
 
   if (!isChatResponseChoice(response)) {
@@ -328,19 +347,22 @@ export function formatChatResponse(
 
   return response.choices.reduce<ChatMessages>((acc, cur) => {
     if (isChatContextFileDelta(cur.delta)) {
-      const msg = { role: cur.delta.role, content: cur.delta.content };
+      const msg = {
+        ftm_role: cur.delta.ftm_role,
+        ftm_content: cur.delta.ftm_content,
+      };
       return acc.concat([msg]);
     }
 
     if (
       acc.length === 0 &&
-      "content" in cur.delta &&
-      typeof cur.delta.content === "string" &&
-      cur.delta.role
+      "ftm_content" in cur.delta &&
+      typeof cur.delta.ftm_content === "string" &&
+      cur.delta.ftm_role
     ) {
       const msg: AssistantMessage = {
-        role: cur.delta.role,
-        content: cur.delta.content,
+        ftm_role: cur.delta.ftm_role,
+        ftm_content: cur.delta.ftm_content,
         reasoning_content: cur.delta.reasoning_content,
         tool_calls: cur.delta.tool_calls,
         thinking_blocks: cur.delta.thinking_blocks,
@@ -357,8 +379,8 @@ export function formatChatResponse(
       if (!isAssistantMessage(lastMessage)) {
         return acc.concat([
           {
-            role: "assistant",
-            content: "", // should be like that?
+            ftm_role: "assistant",
+            ftm_content: "", // should be like that?
             tool_calls: cur.delta.tool_calls,
             finish_reason: cur.finish_reason,
           },
@@ -371,8 +393,8 @@ export function formatChatResponse(
 
       return last.concat([
         {
-          role: "assistant",
-          content: lastMessage.content ?? "",
+          ftm_role: "assistant",
+          ftm_content: lastMessage.ftm_content ?? "",
           reasoning_content: lastMessage.reasoning_content ?? "",
           tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
@@ -387,8 +409,8 @@ export function formatChatResponse(
       if (!isAssistantMessage(lastMessage)) {
         return acc.concat([
           {
-            role: "assistant",
-            content: "", // should it be like this?
+            ftm_role: "assistant",
+            ftm_content: "", // should it be like this?
             thinking_blocks: cur.delta.thinking_blocks,
             reasoning_content: cur.delta.reasoning_content,
             finish_reason: cur.finish_reason,
@@ -405,8 +427,8 @@ export function formatChatResponse(
 
       return last.concat([
         {
-          role: "assistant",
-          content: lastMessage.content ?? "",
+          ftm_role: "assistant",
+          ftm_content: lastMessage.ftm_content ?? "",
           reasoning_content:
             (lastMessage.reasoning_content ?? "") + cur.delta.reasoning_content,
           tool_calls: lastMessage.tool_calls,
@@ -421,13 +443,13 @@ export function formatChatResponse(
     if (
       isAssistantMessage(lastMessage) &&
       isAssistantDelta(cur.delta) &&
-      typeof cur.delta.content === "string"
+      typeof cur.delta.ftm_content === "string"
     ) {
       const last = acc.slice(0, -1);
       return last.concat([
         {
-          role: "assistant",
-          content: (lastMessage.content ?? "") + cur.delta.content,
+          ftm_role: "assistant",
+          ftm_content: (lastMessage.ftm_content ?? "") + cur.delta.ftm_content,
           reasoning_content:
             (lastMessage.reasoning_content ?? "") +
             (cur.delta.reasoning_content ?? ""),
@@ -440,12 +462,12 @@ export function formatChatResponse(
       ]);
     } else if (
       isAssistantDelta(cur.delta) &&
-      typeof cur.delta.content === "string"
+      typeof cur.delta.ftm_content === "string"
     ) {
       return acc.concat([
         {
-          role: "assistant",
-          content: cur.delta.content,
+          ftm_role: "assistant",
+          ftm_content: cur.delta.ftm_content,
           reasoning_content: cur.delta.reasoning_content,
           thinking_blocks: cur.delta.thinking_blocks,
           finish_reason: cur.finish_reason,
@@ -454,21 +476,21 @@ export function formatChatResponse(
           ...mergeMetering({}, response),
         },
       ]);
-    } else if (cur.delta.role === "assistant") {
+    } else if (cur.delta.ftm_role === "assistant") {
       // empty message from JB
       // maybe here?
       return acc;
     }
 
-    if (cur.delta.role === null || cur.finish_reason !== null) {
+    if (cur.delta.ftm_role === null || cur.finish_reason !== null) {
       // NOTE: deepseek for some reason doesn't send role in all deltas
       // If cur.delta.role === 'assistant' || cur.delta.role === null, then if last message's role is not assistant, then creating a new assistant message
       // TODO: if cur.delta.role === 'assistant', then taking out from cur.delta all possible fields and values, attaching to current assistant message, sending back this one
       if (!isAssistantMessage(lastMessage) && isAssistantDelta(cur.delta)) {
         return acc.concat([
           {
-            role: "assistant",
-            content: cur.delta.content ?? "",
+            ftm_role: "assistant",
+            ftm_content: cur.delta.ftm_content ?? "",
             reasoning_content: cur.delta.reasoning_content,
             tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
@@ -486,8 +508,9 @@ export function formatChatResponse(
       ) {
         return last.concat([
           {
-            role: "assistant",
-            content: (lastMessage.content ?? "") + (cur.delta.content ?? ""),
+            ftm_role: "assistant",
+            ftm_content:
+              (lastMessage.ftm_content ?? "") + (cur.delta.ftm_content ?? ""),
             reasoning_content:
               (lastMessage.reasoning_content ?? "") +
               (cur.delta.reasoning_content ?? ""),
@@ -542,7 +565,7 @@ function handleSubchatResponse(
     if (!maybeToolCall) return iter(tail, response, accumulator.concat(head));
 
     const addMessageFiles = isSubchatContextFileResponse(resp.add_message)
-      ? parseOrElse<ChatContextFile[]>(resp.add_message.content, []).map(
+      ? parseOrElse<ChatContextFile[]>(resp.add_message.ftm_content, []).map(
           (file) => file.file_name,
         )
       : [];
@@ -604,8 +627,8 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
     if (isAssistantMessage(message)) {
       return acc.concat([
         {
-          role: message.role,
-          content: message.content,
+          ftm_role: message.ftm_role,
+          ftm_content: message.ftm_content,
           tool_calls: message.tool_calls ?? undefined,
           thinking_blocks: message.thinking_blocks ?? undefined,
           finish_reason: message.finish_reason,
@@ -617,27 +640,27 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
     if (isToolMessage(message)) {
       return acc.concat([
         {
-          role: "tool",
-          content: message.content.content,
-          tool_call_id: message.content.tool_call_id,
+          ftm_role: "tool",
+          ftm_content: message.ftm_content.ftm_content,
+          tool_call_id: message.ftm_content.tool_call_id,
         },
       ]);
     }
 
     if (isDiffMessage(message)) {
       const diff = {
-        role: message.role,
-        content: JSON.stringify(message.content),
+        ftm_role: message.ftm_role,
+        ftm_content: JSON.stringify(message.ftm_content),
         tool_call_id: message.tool_call_id,
       };
       return acc.concat([diff]);
     }
 
-    const content =
-      typeof message.content === "string"
-        ? message.content
-        : JSON.stringify(message.content);
-    return [...acc, { role: message.role, content }];
+    const ftm_content =
+      typeof message.ftm_content === "string"
+        ? message.ftm_content
+        : JSON.stringify(message.ftm_content);
+    return [...acc, { ftm_role: message.ftm_role, ftm_content }];
   }, []);
 }
 
@@ -645,16 +668,16 @@ export function formatMessagesForChat(
   messages: LspChatMessage[],
 ): ChatMessages {
   return messages.reduce<ChatMessages>((acc, message) => {
-    if (isLspUserMessage(message) && typeof message.content === "string") {
+    if (isLspUserMessage(message) && typeof message.ftm_content === "string") {
       const userMessage: UserMessage = {
-        role: message.role,
-        content: message.content,
+        ftm_role: message.ftm_role,
+        ftm_content: message.ftm_content,
         checkpoints: message.checkpoints,
       };
       return acc.concat(userMessage);
     }
 
-    if (message.role === "assistant") {
+    if (message.ftm_role === "assistant") {
       // TODO: why type cast this.
       const assistantMessage = message as AssistantMessage;
       return acc.concat({
@@ -663,35 +686,51 @@ export function formatMessagesForChat(
     }
 
     if (
-      message.role === "context_file" &&
-      typeof message.content === "string"
+      message.ftm_role === "context_file" &&
+      typeof message.ftm_content === "string"
     ) {
-      const files = parseOrElse<ChatContextFile[]>(message.content, []);
+      const files = parseOrElse<ChatContextFile[]>(message.ftm_content, []);
       const contextFileMessage: ChatContextFileMessage = {
-        role: message.role,
-        content: files,
+        ftm_role: message.ftm_role,
+        ftm_content: files,
       };
       return acc.concat(contextFileMessage);
     }
 
-    if (message.role === "system" && typeof message.content === "string") {
-      return acc.concat({ role: message.role, content: message.content });
-    }
-
-    if (message.role === "plain_text" && typeof message.content === "string") {
-      return acc.concat({ role: message.role, content: message.content });
-    }
-
     if (
-      message.role === "cd_instruction" &&
-      typeof message.content === "string"
+      message.ftm_role === "system" &&
+      typeof message.ftm_content === "string"
     ) {
-      return acc.concat({ role: message.role, content: message.content });
+      return acc.concat({
+        ftm_role: message.ftm_role,
+        ftm_content: message.ftm_content,
+      });
     }
 
     if (
-      message.role === "tool" &&
-      (typeof message.content === "string" || isToolContent(message.content)) &&
+      message.ftm_role === "plain_text" &&
+      typeof message.ftm_content === "string"
+    ) {
+      return acc.concat({
+        ftm_role: message.ftm_role,
+        ftm_content: message.ftm_content,
+      });
+    }
+
+    if (
+      message.ftm_role === "cd_instruction" &&
+      typeof message.ftm_content === "string"
+    ) {
+      return acc.concat({
+        ftm_role: message.ftm_role,
+        ftm_content: message.ftm_content,
+      });
+    }
+
+    if (
+      message.ftm_role === "tool" &&
+      (typeof message.ftm_content === "string" ||
+        isToolContent(message.ftm_content)) &&
       typeof message.tool_call_id === "string"
     ) {
       // TODO: why type cast this
@@ -699,14 +738,14 @@ export function formatMessagesForChat(
     }
 
     if (
-      message.role === "diff" &&
-      Array.isArray(message.content) &&
-      message.content.every(isDiffChunk) &&
+      message.ftm_role === "diff" &&
+      Array.isArray(message.ftm_content) &&
+      message.ftm_content.every(isDiffChunk) &&
       typeof message.tool_call_id === "string"
     ) {
       return acc.concat({
-        role: message.role,
-        content: message.content,
+        ftm_role: message.ftm_role,
+        ftm_content: message.ftm_content,
         tool_call_id: message.tool_call_id,
       });
     }

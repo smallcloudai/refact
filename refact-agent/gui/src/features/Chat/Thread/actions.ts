@@ -189,7 +189,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
 
   const messagesToSend = messages.filter(
     (msg) =>
-      !isToolMessage(msg) && !isAssistantMessage(msg) && msg.content !== "",
+      !isToolMessage(msg) && !isAssistantMessage(msg) && msg.ftm_content !== "",
   );
   // .map((msg) => {
   //   if (isAssistantMessage(msg)) {
@@ -208,8 +208,8 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   const messagesForLsp = formatMessagesForLsp([
     ...messagesToSend,
     {
-      role: "user",
-      content:
+      ftm_role: "user",
+      ftm_content:
         "Summarize the chat above in 2-3 words. Prefer filenames, classes, entities, and avoid generic terms. Example: 'Explain MyClass::f()'. Write nothing else, only the 2-3 words.",
       checkpoints: [],
     },
@@ -247,7 +247,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
       const title = chatResponseChunks.reduce<string>((acc, chunk) => {
         if (isChatResponseChoice(chunk)) {
           if (isAssistantDelta(chunk.choices[0].delta)) {
-            const deltaContent = chunk.choices[0].delta.content;
+            const deltaContent = chunk.choices[0].delta.ftm_content;
             if (deltaContent) {
               return acc + deltaContent;
             }
@@ -285,11 +285,11 @@ function checkForToolLoop(message: ChatMessages): boolean {
 
   const hasDuplicates = scanFoDuplicatesWith(toolCalls, (a, b) => {
     const aResult: ToolMessage | undefined = toolResults.find(
-      (message) => message.content.tool_call_id === a.id,
+      (message) => message.ftm_content.tool_call_id === a.id,
     );
 
     const bResult: ToolMessage | undefined = toolResults.find(
-      (message) => message.content.tool_call_id === b.id,
+      (message) => message.ftm_content.tool_call_id === b.id,
     );
 
     return (
@@ -297,7 +297,7 @@ function checkForToolLoop(message: ChatMessages): boolean {
       a.function.arguments === b.function.arguments &&
       !!aResult &&
       !!bResult &&
-      aResult.content.content === bResult.content.content
+      aResult.ftm_content.ftm_content === bResult.ftm_content.ftm_content
     );
   });
 
@@ -417,7 +417,8 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
 
     const toolUseInThisSet = lastMessages.some(
       (message) =>
-        isToolMessage(message) && message.content.tool_call_id === toolCallId,
+        isToolMessage(message) &&
+        message.ftm_content.tool_call_id === toolCallId,
     );
 
     if (!toolUseInThisSet) return;

@@ -19,7 +19,7 @@ import {
 } from "../../services/graphql/graphqlThunks";
 import { selectActiveGroup } from "../../features/Teams/teamsSlice";
 import { ScrollArea } from "../../components/ScrollArea";
-import { ChatBubbleIcon, DotFilledIcon } from "@radix-ui/react-icons";
+import { ChatBubbleIcon } from "@radix-ui/react-icons";
 import { CloseButton } from "../../components/Buttons/Buttons";
 import { CardButton } from "../../components/Buttons";
 import { RootState } from "../../app/store";
@@ -71,7 +71,14 @@ function useThreadPageSub() {
 }
 
 export const ThreadList: React.FC = () => {
-  const { error, loading, threads, onOpen, onDelete } = useThreadPageSub();
+  // TODO: error and loading states
+  const {
+    error: _error,
+    loading: _loading,
+    threads,
+    onOpen,
+    onDelete,
+  } = useThreadPageSub();
 
   return (
     <Box
@@ -156,9 +163,9 @@ const ThreadLustItem: React.FC<ThreadItemProps> = ({
       >
         <Flex gap="2px" align="center">
           {/* {isStreaming && <Spinner style={{ minWidth: 16, minHeight: 16 }} />} */}
-          {thread.ft_anything_new && (
+          {/* {thread.ft_anything_new && (
             <DotFilledIcon style={{ minWidth: 16, minHeight: 16 }} />
-          )}
+          )} */}
           <Text
             as="div"
             size="2"

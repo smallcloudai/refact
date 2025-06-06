@@ -8,9 +8,9 @@ describe("Chat Thread Reducer", () => {
     const init = chatReducer(undefined, createAction("noop")());
     const msg = chatResponse({
       id: init.thread.id,
-      role: "tool",
+      ftm_role: "tool",
       tool_call_id: "test_tool",
-      content: "👀",
+      ftm_content: "👀",
     });
 
     const result = chatReducer(init, msg);

@@ -85,7 +85,7 @@ export type ToolResult = SingleModelToolResult | MultiModalToolResult;
 
 export type MultiModalToolContent = {
   m_type: string; // "image/*" | "text" ... maybe narrow this?
-  m_ftm_content: string; // base64 if image,
+  m_content: string; // base64 if image,
 };
 
 export function isMultiModalToolContent(
