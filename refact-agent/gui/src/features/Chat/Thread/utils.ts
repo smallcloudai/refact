@@ -35,6 +35,7 @@ import {
   ThinkingBlock,
   isToolCallMessage,
   Usage,
+  LSPUserMessage,
 } from "../../../services/refact";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
@@ -621,14 +622,20 @@ function finishToolCallInMessages(
 export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
   return messages.reduce<LspChatMessage[]>((acc, message) => {
     if (isUserMessage(message)) {
-      return acc.concat([message]);
+      const { ftm_role, ftm_content, ...rest } = message;
+      const msg: LSPUserMessage = {
+        ...rest,
+        role: ftm_role,
+        content: ftm_content,
+      };
+      return acc.concat([msg]);
     }
 
     if (isAssistantMessage(message)) {
       return acc.concat([
         {
-          ftm_role: message.ftm_role,
-          ftm_content: message.ftm_content,
+          role: message.ftm_role,
+          content: message.ftm_content,
           tool_calls: message.tool_calls ?? undefined,
           thinking_blocks: message.thinking_blocks ?? undefined,
           finish_reason: message.finish_reason,
@@ -640,8 +647,8 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
     if (isToolMessage(message)) {
       return acc.concat([
         {
-          ftm_role: "tool",
-          ftm_content: message.ftm_content.ftm_content,
+          role: "tool",
+          content: message.ftm_content.ftm_content,
           tool_call_id: message.ftm_content.tool_call_id,
         },
       ]);
@@ -649,8 +656,8 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
 
     if (isDiffMessage(message)) {
       const diff = {
-        ftm_role: message.ftm_role,
-        ftm_content: JSON.stringify(message.ftm_content),
+        role: message.ftm_role,
+        content: JSON.stringify(message.ftm_content),
         tool_call_id: message.tool_call_id,
       };
       return acc.concat([diff]);
@@ -660,7 +667,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
       typeof message.ftm_content === "string"
         ? message.ftm_content
         : JSON.stringify(message.ftm_content);
-    return [...acc, { ftm_role: message.ftm_role, ftm_content }];
+    return [...acc, { role: message.ftm_role, content: ftm_content }];
   }, []);
 }
 
@@ -668,69 +675,63 @@ export function formatMessagesForChat(
   messages: LspChatMessage[],
 ): ChatMessages {
   return messages.reduce<ChatMessages>((acc, message) => {
-    if (isLspUserMessage(message) && typeof message.ftm_content === "string") {
+    if (isLspUserMessage(message) && typeof message.content === "string") {
       const userMessage: UserMessage = {
-        ftm_role: message.ftm_role,
-        ftm_content: message.ftm_content,
+        ftm_role: message.role,
+        ftm_content: message.content,
         checkpoints: message.checkpoints,
       };
       return acc.concat(userMessage);
     }
 
-    if (message.ftm_role === "assistant") {
-      // TODO: why type cast this.
-      const assistantMessage = message as AssistantMessage;
+    if (message.role === "assistant") {
+      const { role, content, ...rest } = message;
       return acc.concat({
-        ...assistantMessage,
+        ftm_role: role,
+        ftm_content: content,
+        ...rest,
       });
     }
 
     if (
-      message.ftm_role === "context_file" &&
-      typeof message.ftm_content === "string"
+      message.role === "context_file" &&
+      typeof message.content === "string"
     ) {
-      const files = parseOrElse<ChatContextFile[]>(message.ftm_content, []);
+      const files = parseOrElse<ChatContextFile[]>(message.content, []);
       const contextFileMessage: ChatContextFileMessage = {
-        ftm_role: message.ftm_role,
+        ftm_role: message.role,
         ftm_content: files,
       };
       return acc.concat(contextFileMessage);
     }
 
-    if (
-      message.ftm_role === "system" &&
-      typeof message.ftm_content === "string"
-    ) {
+    if (message.role === "system" && typeof message.content === "string") {
       return acc.concat({
-        ftm_role: message.ftm_role,
-        ftm_content: message.ftm_content,
+        ftm_role: message.role,
+        ftm_content: message.content,
+      });
+    }
+
+    if (message.role === "plain_text" && typeof message.content === "string") {
+      return acc.concat({
+        ftm_role: message.role,
+        ftm_content: message.content,
       });
     }
 
     if (
-      message.ftm_role === "plain_text" &&
-      typeof message.ftm_content === "string"
+      message.role === "cd_instruction" &&
+      typeof message.content === "string"
     ) {
       return acc.concat({
-        ftm_role: message.ftm_role,
-        ftm_content: message.ftm_content,
+        ftm_role: message.role,
+        ftm_content: message.content,
       });
     }
 
     if (
-      message.ftm_role === "cd_instruction" &&
-      typeof message.ftm_content === "string"
-    ) {
-      return acc.concat({
-        ftm_role: message.ftm_role,
-        ftm_content: message.ftm_content,
-      });
-    }
-
-    if (
-      message.ftm_role === "tool" &&
-      (typeof message.ftm_content === "string" ||
-        isToolContent(message.ftm_content)) &&
+      message.role === "tool" &&
+      (typeof message.content === "string" || isToolContent(message.content)) &&
       typeof message.tool_call_id === "string"
     ) {
       // TODO: why type cast this
@@ -738,14 +739,14 @@ export function formatMessagesForChat(
     }
 
     if (
-      message.ftm_role === "diff" &&
-      Array.isArray(message.ftm_content) &&
-      message.ftm_content.every(isDiffChunk) &&
+      message.role === "diff" &&
+      Array.isArray(message.content) &&
+      message.content.every(isDiffChunk) &&
       typeof message.tool_call_id === "string"
     ) {
       return acc.concat({
-        ftm_role: message.ftm_role,
-        ftm_content: message.ftm_content,
+        ftm_role: message.role,
+        ftm_content: message.content,
         tool_call_id: message.tool_call_id,
       });
     }

@@ -11,11 +11,19 @@ import {
 
 export const DEFAULT_MAX_NEW_TOKENS = 4096;
 
+export type LSPUserMessage = Pick<
+  UserMessage,
+  "checkpoints" | "compression_strength"
+> & {
+  role: UserMessage["ftm_role"];
+  content: UserMessage["ftm_content"];
+};
+
 export type LspChatMessage =
   | {
-      ftm_role: ChatRole;
+      role: ChatRole;
       // TODO make this a union type for user message
-      ftm_content: string | null;
+      content: string | null;
       finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
       // TBD: why was index omitted ?
       // tool_calls?: Omit<ToolCall, "index">[];
@@ -24,10 +32,10 @@ export type LspChatMessage =
       tool_call_id?: string;
       usage?: Usage | null;
     }
-  | UserMessage
+  | LSPUserMessage
   | {
-      ftm_role: "tool";
-      ftm_content: ToolResult["ftm_content"];
+      role: "tool";
+      content: ToolResult["ftm_content"];
       tool_call_id: string;
     };
 
@@ -44,8 +52,8 @@ export function isLspChatMessage(json: unknown): json is LspChatMessage {
 
 export function isLspUserMessage(
   message: LspChatMessage,
-): message is UserMessage {
-  return message.ftm_role === "user";
+): message is LSPUserMessage {
+  return message.role === "user";
 }
 
 type StreamArgs =
