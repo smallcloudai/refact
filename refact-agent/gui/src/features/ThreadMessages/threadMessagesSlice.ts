@@ -5,6 +5,7 @@ import { pagesSlice } from "../Pages/pagesSlice";
 import {
   createMessage,
   createThreadWithMessage,
+  threadsPageSub,
 } from "../../services/graphql/graphqlThunks";
 
 type InitialState = {
@@ -184,7 +185,11 @@ export const threadMessagesSlice = createSlice({
         action.payload.name === "chat" &&
         action.payload.ft_id !== state.ft_id
       ) {
-        state = initialState;
+        state = {
+          ...initialState,
+          ft_id: action.payload.ft_id ?? null,
+        };
+        return state;
       }
     });
 
