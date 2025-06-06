@@ -45,12 +45,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     currentIntegration,
     currentNotConfiguredIntegration,
     availableIntegrationsToConfigure,
-    confirmationRules,
-    availabilityValues,
-    MCPArguments,
-    MCPEnvironmentVariables,
     integrationLogo,
-    handleIntegrationFormChange,
     handleSubmit,
     handleDeleteIntegration,
     handleNotConfiguredIntegrationSubmit,
@@ -60,17 +55,13 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
     handleFormReturn,
     goBackAndClearError,
     handleIntegrationShowUp,
-    setAvailabilityValues,
-    setConfirmationRules,
-    setToolParameters,
-    setMCPArguments,
-    setMCPEnvironmentVariables,
-    setHeaders,
+    handleUpdateFormField,
     isDisabledIntegrationForm,
     isApplyingIntegrationForm,
     isDeletingIntegration,
     globalIntegrations,
     groupedProjectIntegrations,
+    formValues,
   } = useIntegrations({
     integrationsMap,
     handleIfInnerIntegrationWasSet,
@@ -85,7 +76,7 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
         leftRightPadding={leftRightPadding}
         handleFormReturn={handleFormReturn}
         handleInstantReturn={goBackAndClearError}
-        instantBackReturnment={
+        instantBackReturn={
           currentNotConfiguredIntegration?.wasOpenedThroughChat ??
           currentIntegration?.wasOpenedThroughChat ??
           false
@@ -116,20 +107,11 @@ export const IntegrationsView: FC<IntegrationViewProps> = ({
           isApplying={isApplyingIntegrationForm}
           isDeletingIntegration={isDeletingIntegration}
           isDisabled={isDisabledIntegrationForm}
+          formValues={formValues}
           onSchema={handleSetCurrentIntegrationSchema}
           onValues={handleSetCurrentIntegrationValues}
-          handleChange={handleIntegrationFormChange}
-          availabilityValues={availabilityValues}
-          confirmationRules={confirmationRules}
-          MCPArguments={MCPArguments}
-          MCPEnvironmentVariables={MCPEnvironmentVariables}
-          setAvailabilityValues={setAvailabilityValues}
-          setConfirmationRules={setConfirmationRules}
-          setMCPArguments={setMCPArguments}
-          setMCPEnvironmentVariables={setMCPEnvironmentVariables}
-          setHeaders={setHeaders}
-          setToolParameters={setToolParameters}
           handleSwitchIntegration={handleNavigateToIntegrationSetup}
+          handleUpdateFormField={handleUpdateFormField}
         />
         {information && (
           <InformationCallout

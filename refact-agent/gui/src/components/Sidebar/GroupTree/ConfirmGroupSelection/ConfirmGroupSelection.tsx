@@ -1,6 +1,7 @@
-import { Button, Card, Checkbox, Flex, Heading, Text } from "@radix-ui/themes";
+import { motion } from "framer-motion";
+import { Button, Card, Checkbox, Flex, Heading } from "@radix-ui/themes";
 import { FlexusTreeNode } from "../GroupTree";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import styles from "./ConfirmGroupSelection.module.css";
 import { useMutation } from "urql";
@@ -34,8 +35,13 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
   >(CreateGroupDocument);
 
   const [createFolderChecked, setCreateFolderChecked] = useState(false);
+
+  const isMatchingGroupNameWithWorkspace = useMemo(() => {
+    return currentSelectedTeamsGroupNode.treenodeTitle === currentWorkspaceName;
+  }, [currentSelectedTeamsGroupNode.treenodeTitle, currentWorkspaceName]);
+
   const handleConfirmClick = useCallback(async () => {
-    if (createFolderChecked) {
+    if (createFolderChecked && !isMatchingGroupNameWithWorkspace) {
       const result = await createGroup({
         fgroup_name: currentWorkspaceName,
         fgroup_parent_id: currentSelectedTeamsGroupNode.treenodeId,
@@ -73,52 +79,69 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
     setCurrentSelectedTeamsGroupNode,
     onGroupSelectionConfirm,
     currentWorkspaceName,
+    isMatchingGroupNameWithWorkspace,
   ]);
 
+  const cardVariants = {
+    initial: { y: -30, scale: 0.95, opacity: 0 },
+    animate: { y: 0, scale: 1, opacity: 1 },
+    exit: { scale: 0.95, opacity: 0 },
+  };
+
   return (
-    <Card size="3" mt="4" className={styles.modalCard}>
-      <Flex direction="column" gap="4" align="start" width="100%">
-        <Heading as="h4" size="5" mb="2">
-          Do you want to attach your current workspace to the&nbsp;
-          <span className={styles.groupName}>
-            {currentSelectedTeamsGroupNode.treenodeTitle}
-          </span>
-          &nbsp;group?
-        </Heading>
-        <Text size="2" color="gray" mb="3">
-          This will help you sync your workspace with the selected group in the
-          cloud.
-        </Text>
-        <Flex align="center" gap="3" mb="4">
-          <Checkbox
-            id="create-folder-checkbox"
-            checked={createFolderChecked}
-            onCheckedChange={(checked: boolean) =>
-              setCreateFolderChecked(checked)
-            }
-          />
-          <label
-            htmlFor="create-folder-checkbox"
-            className={styles.checkboxLabel}
-          >
-            I want to create a folder <b>{currentWorkspaceName}</b> in current
-            selected group
-          </label>
+    <motion.div
+      variants={cardVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      transition={{
+        stiffness: 100,
+        damping: 30,
+        duration: 0.15,
+      }}
+    >
+      <Card size="3" mt="4" className={styles.modalCard}>
+        <Flex direction="column" gap="4" align="start" width="100%">
+          <Heading as="h4" size="5" mb="2">
+            Connecting current IDE workspace to the&nbsp;
+            <span className={styles.groupName}>
+              {currentSelectedTeamsGroupNode.treenodeTitle}
+            </span>
+            &nbsp;group
+          </Heading>
+          {!isMatchingGroupNameWithWorkspace && (
+            <Flex align="center" gap="3" mb="4">
+              <Checkbox
+                id="create-folder-checkbox"
+                checked={createFolderChecked}
+                onCheckedChange={(checked: boolean) =>
+                  setCreateFolderChecked(checked)
+                }
+              />
+              <label
+                htmlFor="create-folder-checkbox"
+                className={styles.checkboxLabel}
+              >
+                Create and select subfolder{" "}
+                <b>{`${currentSelectedTeamsGroupNode.treenodeTitle}/${currentWorkspaceName}`}</b>{" "}
+              </label>
+            </Flex>
+          )}
+          <Flex align="center" gap="3" justify="end" width="100%">
+            <Button
+              size="2"
+              onClick={() => setCurrentSelectedTeamsGroupNode(null)}
+              color="gray"
+              variant="soft"
+            >
+              Cancel
+            </Button>
+            <Button size="2" onClick={() => void handleConfirmClick()}>
+              Confirm
+            </Button>
+          </Flex>
         </Flex>
-        <Flex align="center" gap="3" justify="end" width="100%">
-          <Button
-            size="2"
-            onClick={() => setCurrentSelectedTeamsGroupNode(null)}
-            color="gray"
-            variant="soft"
-          >
-            Cancel
-          </Button>
-          <Button size="2" onClick={() => void handleConfirmClick()}>
-            Confirm
-          </Button>
-        </Flex>
-      </Flex>
-    </Card>
+      </Card>
+    </motion.div>
   );
 };

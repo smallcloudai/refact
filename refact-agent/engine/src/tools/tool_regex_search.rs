@@ -158,7 +158,7 @@ async fn smart_compress_results(
     }
     if estimated_size > MAX_OUTPUT_SIZE {
         info!("Compressing `search_pattern` output: estimated {} bytes (exceeds 4KB limit)", estimated_size);
-        content.push_str("\nNote: Output has been compressed. Use more specific patterns or scopes for detailed results.");
+        content.push_str("\nNote: Output has been compressed. Use more specific pattern or scope for detailed results.");
     }
     content
 }
@@ -177,7 +177,7 @@ impl Tool for ToolRegexSearch {
             },
             agentic: false,
             experimental: false,
-            description: "Search for files and folders whose names or paths match the given regular expression pattern, and also search for text matches inside files using the same patterns. Reports both path matches and text matches in separate sections.".to_string(),
+            description: "Search for files and folders whose names or paths match the given regular expression pattern, and also search for text matches inside files using the same pattern. Reports both path matches and text matches in separate sections.".to_string(),
             parameters: vec![
                 ToolParam {
                     name: "pattern".to_string(),
@@ -282,7 +282,7 @@ impl Tool for ToolRegexSearch {
         }
         
         if all_search_results.is_empty() {
-            return Err("All pattern searches produced no results. Try adjusting your patterns or scope.".to_string());
+            return Err("All pattern searches produced no results. Try adjusting your pattern or scope.".to_string());
         }
 
         let mut results = vec_context_file_to_context_tools(all_search_results);

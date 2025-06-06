@@ -192,7 +192,7 @@ pub async fn str_replace(
     let occurrences = normalized_content.matches(&normalized_old_str).count();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, `old_str` did not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            "No replacement was performed, `old_str` did not appear verbatim in {:?}. Check the file content using `cat()`",
             path
         ));
     }
@@ -232,7 +232,7 @@ pub async fn str_replace_regex(
     let occurrences = matches.len();
     if occurrences == 0 {
         return Err(format!(
-            "No replacement was performed, `pattern` did not appear verbatim in {:?}. Consider checking the file content using `cat()`",
+            "No replacement was performed, `pattern` did not appear verbatim in {:?}. Check the file content using `cat()`",
             path
         ));
     }

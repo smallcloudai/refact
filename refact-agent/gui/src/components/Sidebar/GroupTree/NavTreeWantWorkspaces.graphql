@@ -1,8 +1,11 @@
 query NavTreeWantWorkspaces {
-  login {
-    ws_id
-    ws_owner_fuser_id
-    ws_root_group_id
-    root_group_name
+  query_basic_stuff {
+    fuser_id
+    workspaces {
+      ws_id
+      ws_owner_fuser_id
+      ws_root_group_id
+      root_group_name
+    }
   }
 }

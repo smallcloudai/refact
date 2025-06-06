@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
-use sled::Db;
 use tokio::sync::Mutex as AMutex;
 use tracing::warn;
 
@@ -16,7 +15,7 @@ use crate::files_correction::{correct_to_nearest_dir_path, get_project_dirs, pat
 
 
 pub struct AtTree {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtTree {
@@ -140,9 +139,9 @@ impl TreeNode {
     }
 }
 
-fn _print_symbols(db: Arc<Db>, path: &PathBuf) -> String {
+fn _print_symbols(db: Arc<AstDB>, path: &PathBuf) -> String {
     let cpath = path.to_string_lossy().to_string();
-    let defs = crate::ast::ast_db::doc_def_internal(db.clone(), &cpath);
+    let defs = crate::ast::ast_db::doc_defs(db.clone(), &cpath);
     let symbols_list = defs
         .iter()
         .filter(|x| match x.symbol_type {
@@ -157,7 +156,7 @@ fn _print_symbols(db: Arc<Db>, path: &PathBuf) -> String {
 
 async fn _print_files_tree(
     tree: &TreeNode,
-    ast_db: Option<Arc<AMutex<AstDB>>>,
+    ast_db: Option<Arc<AstDB>>,
     maxdepth: usize,
 ) -> String {
     fn traverse(
@@ -165,7 +164,7 @@ async fn _print_files_tree(
         path: PathBuf,
         depth: usize,
         maxdepth: usize,
-        db_mb: Option<Arc<Db>>,
+        ast_db: Option<Arc<AstDB>>,
     ) -> Option<String> {
         if depth > maxdepth {
             return None;
@@ -174,8 +173,8 @@ async fn _print_files_tree(
         let indent = "  ".repeat(depth);
         let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
         if !node.is_dir() {
-            if let Some(db) = &db_mb {
-                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db.clone(), &path)));
+            if let Some(db) = ast_db.clone() {
+                output.push_str(&format!("{}{}{}\n", indent, name, _print_symbols(db, &path)));
             } else {
                 output.push_str(&format!("{}{}\n", indent, name));
             }
@@ -189,7 +188,7 @@ async fn _print_files_tree(
         for (name, child) in &node.children {
             let mut child_path = path.clone();
             child_path.push(name);
-            if let Some(child_str) = traverse(child, child_path, depth + 1, maxdepth, db_mb.clone()) {
+            if let Some(child_str) = traverse(child, child_path, depth + 1, maxdepth, ast_db.clone()) {
                 child_output.push_str(&child_str);
             } else {
                 dirs += child.is_dir() as usize;
@@ -207,12 +206,7 @@ async fn _print_files_tree(
 
     let mut result = String::new();
     for (name, node) in &tree.children {
-        let db_mb = if let Some(ast) = ast_db.clone() {
-            Some(ast.lock().await.sleddb.clone())
-        } else {
-            None
-        };
-        if let Some(output) = traverse(node, PathBuf::from(name), 0, maxdepth, db_mb.clone()) {
+        if let Some(output) = traverse(node, PathBuf::from(name), 0, maxdepth, ast_db.clone()) {
             result.push_str(&output);
         } else {
             break;
@@ -224,7 +218,7 @@ async fn _print_files_tree(
 async fn _print_files_tree_with_budget(
     tree: &TreeNode,
     char_limit: usize,
-    ast_db: Option<Arc<AMutex<AstDB>>>,
+    ast_db: Option<Arc<AstDB>>,
 ) -> String {
     let mut good_enough = String::new();
     for maxdepth in 1..20 {
@@ -256,7 +250,7 @@ pub async fn print_files_tree_with_budget(
     match ast_module_option {
         Some(ast_module) => {
             crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_module.clone(), 20_000, true).await;
-            let ast_db: Option<Arc<AMutex<AstDB>>> = Some(ast_module.lock().await.ast_index.clone());
+            let ast_db: Option<Arc<AstDB>> = Some(ast_module.lock().await.ast_index.clone());
             Ok(_print_files_tree_with_budget(tree, char_limit, ast_db.clone()).await)
         }
         None => Ok(_print_files_tree_with_budget(tree, char_limit, None).await),
@@ -266,7 +260,7 @@ pub async fn print_files_tree_with_budget(
 
 #[async_trait]
 impl AtCommand for AtTree {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> { &self.params }
+    fn params(&self) -> &Vec<Box<dyn AtParam>> { &self.params }
 
     async fn at_execute(
         &self,

@@ -14,6 +14,7 @@ use tracing::info;
 
 use crate::at_commands::execute_at::run_at_commands_locally;
 use crate::indexing_utils::wait_for_indexing_if_needed;
+use crate::postprocessing::pp_utils::pp_resolve_ctx_file_paths;
 use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
@@ -25,8 +26,6 @@ use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
 use crate::http::routers::v1::chat::deserialize_messages_from_post;
-use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -103,9 +102,7 @@ pub async fn handle_v1_command_completion(
         "".to_string(),
     ).await));
 
-    let at_commands = {
-        ccx.lock().await.at_commands.clone()
-    };
+    let at_commands = ccx.lock().await.at_commands.clone();
     let at_command_names = at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
 
     let mut completions: Vec<String> = vec![];
@@ -152,7 +149,7 @@ pub async fn handle_v1_command_preview(
     let post = serde_json::from_slice::<CommandPreviewPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut messages = deserialize_messages_from_post(&post.messages)?;
-    
+
     let last_message = messages.pop();
     let mut query = if let Some(last_message) = &last_message {
         match &last_message.content {
@@ -162,7 +159,7 @@ pub async fn handle_v1_command_preview(
                 for element in elements {
                     if element.is_text() { // use last text, but expected to be only one
                         query = element.m_content.clone();
-                    }    
+                    }
                 }
                 query
             }
@@ -198,8 +195,6 @@ pub async fn handle_v1_command_preview(
         &mut query
     ).await;
 
-    let rag_n_ctx = max_tokens_for_rag_chat(model_rec.base.n_ctx, 512);  // real maxgen may be different -- comes from request
-
     let mut preview: Vec<ChatMessage> = vec![];
     for exec_result in messages_for_postprocessing.iter() {
         // at commands exec() can produce both role="user" and role="assistant" messages
@@ -216,19 +211,16 @@ pub async fn handle_v1_command_preview(
         pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
     }
 
-    let cf = postprocess_context_files(
-        global_context.clone(),
-        &mut filter_only_context_file_from_context_tool(&messages_for_postprocessing),
-        tokenizer_arc.clone(),
-        rag_n_ctx,
-        false,
-        &pp_settings,
-    ).await;
+    let mut context_files = filter_only_context_file_from_context_tool(&messages_for_postprocessing);
+    let ctx_file_paths = pp_resolve_ctx_file_paths(global_context.clone(), &mut context_files).await;
+    for (context_file, (_, short_path)) in context_files.iter_mut().zip(ctx_file_paths.into_iter()) {
+        context_file.file_name = short_path;
+    }
 
-    if !cf.is_empty() {
+    if !context_files.is_empty() {
         let message = ChatMessage {
             role: "context_file".to_string(),
-            content: ChatContent::SimpleText(serde_json::to_string(&cf).unwrap()),
+            content: ChatContent::SimpleText(serde_json::to_string(&context_files).unwrap()),
             tool_calls: None,
             tool_call_id: "".to_string(),
             ..Default::default()
@@ -246,7 +238,7 @@ pub async fn handle_v1_command_preview(
             reason: h.reason.unwrap_or_default(),
         })
     }
-    
+
     let messages_to_count = if let Some(mut last_message) = last_message {
         match &mut last_message.content {
             ChatContent::SimpleText(_) => {last_message.content = ChatContent::SimpleText(query.clone());}
@@ -263,11 +255,11 @@ pub async fn handle_v1_command_preview(
         preview.clone()
     };
     let tokens_number = count_tokens(tokenizer_arc.clone(), &messages_to_count).await?;
-    
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(
-            &json!({"messages": preview, "model": model_rec.base.id, "highlight": highlights, 
+            &json!({"messages": preview, "model": model_rec.base.id, "highlight": highlights,
                 "current_context": tokens_number, "number_context": model_rec.base.n_ctx})
         ).unwrap()))
         .unwrap())
@@ -305,7 +297,7 @@ pub async fn handle_v1_at_command_execute(
 
     let mut has_rag_results = HasRagResults::new();
     let (messages, any_context_produced) = run_at_commands_locally(
-        ccx_arc.clone(), tokenizer.clone(), post.maxgen, &post.messages, &mut has_rag_results).await;
+        ccx_arc.clone(), tokenizer.clone(), post.maxgen, post.messages, &mut has_rag_results).await;
     let messages_to_stream_back = has_rag_results.in_json;
     let undroppable_msg_number = messages.iter().rposition(|msg| msg.role == "user").unwrap_or(0);
 
@@ -337,9 +329,7 @@ async fn command_completion(
     cursor_abs: i64,
 ) -> (Vec<String>, bool, i64, i64) {    // returns ([possible, completions], good_as_it_is)
     let mut args = args;
-    let at_commands = {
-        ccx.lock().await.at_commands.clone()
-    };
+    let at_commands = ccx.lock().await.at_commands.clone();
     let at_command_names = at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
 
     let q_cmd_with_index = args.iter().enumerate().find_map(|(index, x)| {
@@ -361,23 +351,22 @@ async fn command_completion(
         }
     };
     args = args.iter().skip(q_cmd_idx + 1).map(|x|x.clone()).collect::<Vec<_>>();
-    let cmd_params_cnt = cmd.lock().await.params().len();
+    let cmd_params_cnt = cmd.params().len();
     args.truncate(cmd_params_cnt);
 
-    let can_execute = args.len() == cmd.lock().await.params().len();
+    let can_execute = args.len() == cmd.params().len();
 
-    for (arg, param) in args.iter().zip(cmd.lock().await.params()) {
-        let param_locked = param.lock().await;
-        let is_valid = param_locked.is_value_valid(ccx.clone(), &arg.value).await;
+    for (arg, param) in args.iter().zip(cmd.params()) {
+        let is_valid = param.is_value_valid(ccx.clone(), &arg.value).await;
         if !is_valid {
             return if arg.focused {
-                (param_locked.param_completion(ccx.clone(), &arg.value).await, can_execute, arg.pos1, arg.pos2)
+                (param.param_completion(ccx.clone(), &arg.value).await, can_execute, arg.pos1, arg.pos2)
             } else {
                 (vec![], false, -1, -1)
             }
         }
-        if is_valid && arg.focused && param_locked.param_completion_valid() {
-            return (param_locked.param_completion(ccx.clone(), &arg.value).await, can_execute, arg.pos1, arg.pos2);
+        if is_valid && arg.focused && param.param_completion_valid() {
+            return (param.param_completion(ccx.clone(), &arg.value).await, can_execute, arg.pos1, arg.pos2);
         }
     }
 
@@ -387,9 +376,9 @@ async fn command_completion(
 
     // if command is not focused, and the argument is empty we should make suggestions
     if !q_cmd.focused {
-        match cmd.lock().await.params().get(args.len()) {
+        match cmd.params().get(args.len()) {
             Some(param) => {
-                return (param.lock().await.param_completion(ccx.clone(), &"".to_string()).await, false, cursor_abs, cursor_abs);
+                return (param.param_completion(ccx.clone(), &"".to_string()).await, false, cursor_abs, cursor_abs);
             },
             None => {}
         }
@@ -402,15 +391,13 @@ async fn command_completion_options(
     ccx: Arc<AMutex<AtCommandsContext>>,
     q_cmd: &String,
 ) -> Vec<String> {
-    let at_commands = {
-        ccx.lock().await.at_commands.clone()
-    };
+    let at_commands = ccx.lock().await.at_commands.clone();
     let at_command_names = at_commands.keys().map(|x|x.clone()).collect::<Vec<_>>();
     at_command_names
         .iter()
         .filter(|command| command.starts_with(q_cmd))
         .map(|command| {
-            (command, jaro_winkler(&command, q_cmd))
+            (command.to_string(), jaro_winkler(&command, q_cmd))
         })
         .sorted_by(|(_, dist1), (_, dist2)| dist1.partial_cmp(dist2).unwrap())
         .rev()

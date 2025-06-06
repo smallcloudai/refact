@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::custom_error::trace_and_default;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, ContextFile};
 use crate::tools::tool_ast_definition::there_are_definitions_with_similar_names_though;
@@ -17,7 +18,7 @@ pub struct ToolAstReference {
 #[async_trait]
 impl Tool for ToolAstReference {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -47,7 +48,7 @@ impl Tool for ToolAstReference {
             let ast_index = ast_service.lock().await.ast_index.clone();
 
             crate::ast::ast_indexer_thread::ast_indexer_block_until_finished(ast_service.clone(), 20_000, true).await;
-            
+
             let mut all_results = vec![];
             let mut all_messages = vec![];
 
@@ -55,12 +56,12 @@ impl Tool for ToolAstReference {
             const DEFS_LIMIT: usize = 5;
 
             for symbol in symbols {
-                let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).await;
+                let defs = crate::ast::ast_db::definitions(ast_index.clone(), &symbol).unwrap_or_else(trace_and_default);
                 let mut symbol_messages = vec![];
 
                 if !defs.is_empty() {
                     for (_i, def) in defs.iter().take(DEFS_LIMIT).enumerate() {
-                        let usedin_and_uline = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
+                        let usedin_and_uline = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).unwrap_or_else(trace_and_default);
                         let file_paths = usedin_and_uline.iter().map(|(usedin, _)| usedin.cpath.clone()).collect::<Vec<_>>();
                         let short_file_paths = crate::files_correction::shortify_paths(gcx.clone(), &file_paths).await;
 
@@ -113,7 +114,7 @@ impl Tool for ToolAstReference {
                     let fuzzy_message = there_are_definitions_with_similar_names_though(ast_index.clone(), &symbol).await;
                     symbol_messages.push(format!("For symbol `{}`:\n{}", symbol, fuzzy_message));
                 }
-                
+
                 all_messages.push(format!("Results for symbol `{}`:\n{}", symbol, symbol_messages.join("\n")));
             }
 

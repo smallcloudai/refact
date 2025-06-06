@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { useMemo } from "react";
 import {
+  IntegrationFieldValue,
   SchemaToolConfirmation,
   ToolConfirmation,
 } from "../../../services/refact";
@@ -9,10 +10,10 @@ import { ConfirmationTable } from "../IntegrationsTable/ConfirmationTable";
 import isEqual from "lodash.isequal";
 
 type ConfirmationProps = {
-  confirmationByUser: ToolConfirmation;
+  confirmationByUser: ToolConfirmation | null;
   confirmationFromValues: ToolConfirmation | null;
   defaultConfirmationObject: SchemaToolConfirmation;
-  onChange: (fieldName: string, values: string[]) => void;
+  onChange: (fieldKey: string, fieldValue: IntegrationFieldValue) => void;
 };
 
 export const Confirmation: FC<ConfirmationProps> = ({
@@ -47,14 +48,21 @@ export const Confirmation: FC<ConfirmationProps> = ({
         confirmation request or the command will be blocked completely.
       </Text>
       <Flex direction="column" width="100%" gap="3">
-        {Object.entries(confirmationObjectToRender).map(([key, values]) => (
-          <ConfirmationTable
-            key={key}
-            initialData={values}
-            tableName={key}
-            onToolConfirmation={onChange}
-          />
-        ))}
+        {confirmationObjectToRender &&
+          Object.entries(confirmationObjectToRender).map(([key, values]) => (
+            <ConfirmationTable
+              key={key}
+              initialData={values}
+              tableName={key}
+              onToolConfirmation={(tableName, data) => {
+                // Update the nested confirmation field
+                onChange("confirmation", {
+                  ...confirmationObjectToRender,
+                  [tableName]: data,
+                });
+              }}
+            />
+          ))}
       </Flex>
     </Flex>
   );

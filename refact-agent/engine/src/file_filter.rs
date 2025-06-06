@@ -10,10 +10,10 @@ pub const SOURCE_FILE_EXTENSIONS: &[&str] = &[
     "c", "cpp", "cc", "h", "hpp", "cs", "java", "py", "rb", "go", "rs", "swift",
     "php", "js", "jsx", "ts", "tsx", "lua", "pl", "r", "sh", "bat", "cmd", "ps1",
     "m", "kt", "kts", "groovy", "dart", "fs", "fsx", "fsi", "html", "htm", "css",
-    "scss", "sass", "less", "json", "xml", "yml", "yaml", "md", "sql", "db", "sqlite",
-    "mdf", "cfg", "conf", "ini", "toml", "dockerfile", "ipynb", "rmd", "xml", "kt",
-    "xaml", "unity", "gd", "uproject", "uasset", "asm", "s", "tex", "makefile", "mk",
-    "cmake", "gradle", "liquid"
+    "scss", "sass", "less", "json", "xml", "yml", "yaml", "md", "sql", "cfg",
+    "conf", "ini", "toml", "dockerfile", "ipynb", "rmd", "xml", "kt", "xaml",
+    "unity", "gd", "uproject", "asm", "s", "tex", "makefile", "mk", "cmake",
+    "gradle", "liquid"
 ];
 
 pub fn is_valid_file(path: &PathBuf, allow_hidden_folders: bool, ignore_size_thresholds: bool) -> Result<(), Box<dyn std::error::Error>> {

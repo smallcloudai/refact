@@ -2,26 +2,30 @@ import { Flex } from "@radix-ui/themes";
 
 import styles from "./IntegrationForm.module.css";
 import { FC } from "react";
-import { Integration } from "../../../services/refact";
+import {
+  areAllFieldsBoolean,
+  Integration,
+  IntegrationFieldValue,
+} from "../../../services/refact";
 import { IntegrationAvailability } from "./IntegrationAvailability";
 import { DeletePopover } from "../../DeletePopover";
 
 type FormAvailabilityAndDeleteProps = {
   integration: Integration;
-  availabilityValues: Record<string, boolean>;
   isApplying: boolean;
   isDeletingIntegration: boolean;
-  handleAvailabilityChange: (fieldName: string, value: boolean) => void;
   onDelete: (path: string) => void;
+  onChange: (fieldKey: string, fieldValue: IntegrationFieldValue) => void;
+  formValues: Record<string, IntegrationFieldValue> | null;
 };
 
 export const FormAvailabilityAndDelete: FC<FormAvailabilityAndDeleteProps> = ({
   integration,
-  availabilityValues,
-  handleAvailabilityChange,
   onDelete,
+  onChange,
   isApplying,
   isDeletingIntegration,
+  formValues,
 }) => {
   const { integr_values, integr_config_path, integr_name } = integration;
   if (!integr_values) return null;
@@ -34,13 +38,19 @@ export const FormAvailabilityAndDelete: FC<FormAvailabilityAndDeleteProps> = ({
         justify="between"
         className={styles.switchInline}
       >
-        {integr_values.available &&
-          Object.keys(integr_values.available).map((key) => (
+        {formValues?.available &&
+          areAllFieldsBoolean(formValues.available) &&
+          Object.entries(formValues.available).map(([key, value]) => (
             <IntegrationAvailability
               key={key}
               fieldName={key}
-              value={availabilityValues[key]}
-              onChange={handleAvailabilityChange}
+              value={value}
+              onChange={() =>
+                onChange("available", {
+                  ...(formValues.available as Record<string, boolean>),
+                  [key]: !value,
+                })
+              }
             />
           ))}
       </Flex>
