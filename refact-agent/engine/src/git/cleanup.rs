@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::SystemTime;
 use std::collections::HashSet;
@@ -18,9 +19,12 @@ const CLEANUP_INTERVAL_DURATION: Duration = Duration::from_secs(24 * 60 * 60); /
 pub async fn git_shadow_cleanup_background_task(gcx: Arc<ARwLock<GlobalContext>>) {
     loop {
         // wait 2 mins before cleanup; lower priority than other startup tasks
-        tokio::time::sleep(tokio::time::Duration::from_secs(2 * 60 / 10)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(2 * 60)).await;
 
-        let cache_dir = gcx.read().await.cache_dir.clone();
+        let (cache_dir, abort_flag) = {
+            let gcx_locked = gcx.read().await;
+            (gcx_locked.cache_dir.clone(), gcx_locked.git_operations_abort_flag.clone())
+        };
         let workspace_folders = get_project_dirs(gcx.clone()).await;
         let workspace_folder_hashes: Vec<_> = workspace_folders.into_iter()
             .map(|f| official_text_hashing_function(&f.to_string_lossy())).collect();
@@ -43,7 +47,7 @@ pub async fn git_shadow_cleanup_background_task(gcx: Arc<ARwLock<GlobalContext>>
             }
         }
 
-        match cleanup_old_objects_from_repos(&cache_dir.join("shadow_git"), &workspace_folder_hashes).await {
+        match cleanup_old_objects_from_repos(&cache_dir.join("shadow_git"), &workspace_folder_hashes, abort_flag).await {
             Ok(objects_cleaned) => {
                 if objects_cleaned > 0 {
                     tracing::info!("Git object cleanup: removed {} old objects from active repositories", objects_cleaned);
@@ -125,7 +129,7 @@ async fn repo_is_inactive(
     Ok(duration_since_mtime > MAX_INACTIVE_REPO_DURATION)
 }
 
-async fn cleanup_old_objects_from_repos(dir: &Path, workspace_folder_hashes: &[String]) -> Result<usize, String> {
+async fn cleanup_old_objects_from_repos(dir: &Path, workspace_folder_hashes: &[String], abort_flag: Arc<AtomicBool>) -> Result<usize, String> {
     let mut total_objects_removed = 0;
 
     let mut entries = tokio::fs::read_dir(dir).await
@@ -144,7 +148,7 @@ async fn cleanup_old_objects_from_repos(dir: &Path, workspace_folder_hashes: &[S
             continue;
         }
 
-        match cleanup_old_objects_from_single_repo(&path).await {
+        match cleanup_old_objects_from_single_repo(&path, abort_flag.clone()).await {
             Ok(removed_count) => {
                 if removed_count > 0 {
                     tracing::info!("Cleaned {} old objects from repository: {}", removed_count, path.display());
@@ -160,7 +164,7 @@ async fn cleanup_old_objects_from_repos(dir: &Path, workspace_folder_hashes: &[S
     Ok(total_objects_removed)
 }
 
-pub async fn cleanup_old_objects_from_single_repo(repo_path: &Path) -> Result<usize, String> {
+pub async fn cleanup_old_objects_from_single_repo(repo_path: &Path, abort_flag: Arc<AtomicBool>) -> Result<usize, String> {
     let repo = Repository::open(repo_path)
         .map_err(|e| format!("Failed to open repository {}: {}", repo_path.display(), e))?;
 
@@ -168,7 +172,7 @@ pub async fn cleanup_old_objects_from_single_repo(repo_path: &Path) -> Result<us
     let cutoff_time = now.checked_sub(RECENT_COMMITS_DURATION)
         .ok_or("Failed to calculate cutoff time")?;
 
-    let (recent_objects, old_objects) = collect_objects_from_commits(&repo, cutoff_time)?;
+    let (recent_objects, old_objects) = collect_objects_from_commits(&repo, cutoff_time, abort_flag)?;
 
     let objects_to_remove: HashSet<_> = old_objects.difference(&recent_objects).collect();
 
@@ -179,7 +183,7 @@ pub async fn cleanup_old_objects_from_single_repo(repo_path: &Path) -> Result<us
     remove_unreferenced_objects(repo_path, &objects_to_remove).await
 }
 
-fn collect_objects_from_commits(repo: &Repository, cutoff_time: SystemTime) -> Result<(HashSet<String>, HashSet<String>), String> {
+fn collect_objects_from_commits(repo: &Repository, cutoff_time: SystemTime, abort_flag: Arc<AtomicBool>) -> Result<(HashSet<String>, HashSet<String>), String> {
     let mut recent_objects = HashSet::new();
     let mut old_objects = HashSet::new();
 
@@ -215,6 +219,10 @@ fn collect_objects_from_commits(repo: &Repository, cutoff_time: SystemTime) -> R
         .map_err(|e| format!("Failed to set revwalk sorting: {}", e))?;
 
     for oid_result in revwalk {
+        if abort_flag.load(Ordering::SeqCst) {
+            return Err("collect_objects_from_commits aborted".to_string());
+        }
+
         let oid = match oid_result {
             Ok(oid) => oid,
             Err(e) => { tracing::warn!("{e}"); continue; }
@@ -233,20 +241,24 @@ fn collect_objects_from_commits(repo: &Repository, cutoff_time: SystemTime) -> R
 
         objects_set.insert(oid.to_string());
 
-        walk_tree_objects(repo, &tree_oid, objects_set);
+        walk_tree_objects(repo, &tree_oid, objects_set, abort_flag.clone());
     }
 
     Ok((recent_objects, old_objects))
 }
 
 
-pub fn walk_tree_objects(repo: &Repository, tree_oid: &Oid, objects: &mut HashSet<String>) {
+pub fn walk_tree_objects(repo: &Repository, tree_oid: &Oid, objects: &mut HashSet<String>, abort_flag: Arc<AtomicBool>) {
     let tree = match repo.find_tree(*tree_oid) {
         Ok(t) => t,
         Err(_) => return,
     };
 
     for entry in tree.iter() {
+        if abort_flag.load(Ordering::SeqCst) {
+            return;
+        }
+
         let entry_oid = entry.id();
         let entry_oid_str = entry_oid.to_string();
 
@@ -258,7 +270,7 @@ pub fn walk_tree_objects(repo: &Repository, tree_oid: &Oid, objects: &mut HashSe
 
         // If this entry is a tree (subdirectory), recursively walk it
         if entry.kind() == Some(ObjectType::Tree) {
-            walk_tree_objects(repo, &entry_oid, objects);
+            walk_tree_objects(repo, &entry_oid, objects, abort_flag.clone());
         }
     }
 }
