@@ -50,6 +50,8 @@ async fn open_shadow_repo_and_nested_repos(
             } else {
                 Repository::open(&git_dir_path).map_err_to_string()
             }?;
+            let filetime_now = filetime::FileTime::now();
+            filetime::set_file_times(&git_dir_path, filetime_now, filetime_now).map_err_to_string()?;
             repo.set_workdir(path, false).map_err_to_string()?;
             for blocklisted_rule in indexing_for_path.blocklist {
                 if let Err(e) = repo.add_ignore_rule(&from_unix_glob_pattern_to_gitignore(&blocklisted_rule)) {
