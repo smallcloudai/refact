@@ -1,6 +1,9 @@
 pub mod checkpoints;
+pub mod cleanup;
 pub mod commit_info;
 pub mod operations;
+#[cfg(test)]
+pub mod cleanup_tests;
 
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -57,7 +60,7 @@ pub fn from_unix_glob_pattern_to_gitignore(pattern: &str) -> String {
         .skip_while(|&p| p.is_empty())
         .map(|part| if part == "*" { "**" } else { part })
         .collect::<Vec<_>>();
-    
+
     if parts.first() != Some(&"**") {
         format!("**/{}", parts.join("/"))
     } else {
