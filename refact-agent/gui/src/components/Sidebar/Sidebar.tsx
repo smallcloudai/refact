@@ -1,13 +1,8 @@
-import React, { useCallback } from "react";
+import React from "react";
 import { Box, Flex, Spinner } from "@radix-ui/themes";
-import { ChatHistory, type ChatHistoryProps } from "../ChatHistory";
+import { type ChatHistoryProps } from "../ChatHistory";
 import { useAppSelector, useAppDispatch } from "../../hooks";
-import {
-  ChatHistoryItem,
-  deleteChatById,
-} from "../../features/History/historySlice";
-import { push } from "../../features/Pages/pagesSlice";
-import { restoreChat } from "../../features/Chat/Thread";
+
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
 import { GroupTree } from "./GroupTree/";
 import { ErrorCallout } from "../Callout";

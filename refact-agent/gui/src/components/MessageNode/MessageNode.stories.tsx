@@ -8,6 +8,7 @@ import {
 import {
   makeMessageTrie,
   FTMMessage,
+  EmptyNode,
 } from "../../features/ThreadMessages/makeMessageTrie";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
@@ -20,19 +21,22 @@ import { STUB_ALICE_MESSAGES } from "../../__fixtures__/message_lists";
 
 function chatMessagesToCMessages(chatMessages: ChatMessage[]): FTMMessage[] {
   const messagesWithSystemMessage: ChatMessage[] =
-    chatMessages[0].role === "system"
+    chatMessages[0].ftm_role === "system"
       ? chatMessages
-      : [{ role: "system", content: "system message" }, ...chatMessages];
+      : [
+          { ftm_role: "system", ftm_content: "system message" },
+          ...chatMessages,
+        ];
 
   return messagesWithSystemMessage.map<FTMMessage>(
     (message: ChatMessage, index) => {
       const cmessage: FTMMessage = {
         ftm_alt: 0,
         ftm_num: index,
-        ftm_prev_alt: message.role === "system" ? -1 : 0,
+        ftm_prev_alt: message.ftm_role === "system" ? -1 : 0,
         ftm_belongs_to_ft_id: "test",
-        ftm_role: message.role,
-        ftm_content: message.content,
+        ftm_role: message.ftm_role,
+        ftm_content: message.ftm_content,
         ftm_tool_calls:
           "tool_calls" in message ? message.tool_calls : undefined,
         ftm_call_id: "",
@@ -47,16 +51,14 @@ function chatMessagesToCMessages(chatMessages: ChatMessage[]): FTMMessage[] {
 
 const messageTree = makeMessageTrie(STUB_ALICE_MESSAGES);
 
-const Template: React.FC<{ node: FTMessageNode | null }> = ({ node }) => {
+const Template: React.FC<{ node: FTMessageNode | EmptyNode }> = ({ node }) => {
   const store = setUpStore();
-
-  console.log({ node });
 
   return (
     <Provider store={store}>
       <Theme>
         <AbortControllerProvider>
-          {node ? (
+          {node.value ? (
             <MessageNode>{node}</MessageNode>
           ) : (
             <div>Could not make tree</div>

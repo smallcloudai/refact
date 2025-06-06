@@ -50,8 +50,8 @@ export const SmartLink: FC<{
   ]);
 
   const title = sl_chat?.reduce<string[]>((acc, cur) => {
-    if (typeof cur.content === "string")
-      return [...acc, `${cur.role}: ${cur.content}`];
+    if (typeof cur.ftm_content === "string")
+      return [...acc, `${cur.ftm_role}: ${cur.ftm_content}`];
     return acc;
   }, []);
 

@@ -347,8 +347,8 @@ type GroupedDiffsProps = {
 };
 
 export const GroupedDiffs: React.FC<GroupedDiffsProps> = ({ diffs }) => {
-  const chunks = diffs.reduce<DiffMessage["content"]>(
-    (acc, diff) => [...acc, ...diff.content],
+  const chunks = diffs.reduce<DiffMessage["ftm_content"]>(
+    (acc, diff) => [...acc, ...diff.ftm_content],
     [],
   );
 
