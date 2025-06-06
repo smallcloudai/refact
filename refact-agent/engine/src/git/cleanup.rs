@@ -11,7 +11,7 @@ use crate::custom_error::trace_and_default;
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
 
-const MAX_INACTIVE_REPO_DURATION: Duration = Duration::from_secs(7 * 24 * 3600); // 1 week
+const MAX_INACTIVE_REPO_DURATION: Duration = Duration::from_secs(1 * 60); // 1 week
 pub const RECENT_COMMITS_DURATION: Duration = Duration::from_secs(7 * 24 * 60); // 1 week
 const CLEANUP_INTERVAL_DURATION: Duration = Duration::from_secs(24 * 60 * 60); // 1 day
 
@@ -59,7 +59,7 @@ pub async fn git_shadow_cleanup_background_task(gcx: Arc<ARwLock<GlobalContext>>
 }
 
 async fn cleanup_inactive_shadow_repositories(dir: &Path, workspace_folder_hashes: &[String]) -> Result<usize, String> {
-    let mut cleanup_count = 0;
+    let mut inactive_repos = Vec::new();
 
     let mut entries = tokio::fs::read_dir(dir).await
         .map_err(|e| format!("Failed to read shadow_git directory: {}", e))?;
@@ -74,15 +74,36 @@ async fn cleanup_inactive_shadow_repositories(dir: &Path, workspace_folder_hashe
         }
 
         if repo_is_inactive(&path).await {
-            match tokio::fs::remove_dir_all(&path).await {
-                Ok(()) => {
-                    tracing::info!("Removed old shadow git repository: {}", path.display());
-                    cleanup_count += 1;
-                }
+            inactive_repos.push(path);
+        }
+    }
+
+    let mut repos_to_remove = Vec::new();
+    for repo_path in inactive_repos {
+        let dir_name = repo_path.file_name().unwrap_or_default().to_string_lossy();
+        if !dir_name.ends_with("_to_remove") {
+            let mut new_path = repo_path.clone();
+            new_path.set_file_name(format!("{dir_name}_to_remove"));
+            match tokio::fs::rename(&repo_path, &new_path).await {
+                Ok(()) => repos_to_remove.push(new_path),
                 Err(e) => {
-                    tracing::warn!("Failed to remove shadow git repository {}: {}", path.display(), e);
+                    tracing::warn!("Failed to rename repo {}: {}", repo_path.display(), e);
+                    continue;
                 }
             }
+        } else {
+            repos_to_remove.push(repo_path);
+        }
+    }
+
+    let mut cleanup_count = 0;
+    for repo in repos_to_remove {
+        match tokio::fs::remove_dir_all(&repo).await {
+            Ok(()) => {
+                tracing::info!("Removed old shadow git repository: {}", repo.display());
+                cleanup_count += 1;
+            }
+            Err(e) => tracing::warn!("Failed to remove shadow git repository {}: {}", repo.display(), e),
         }
     }
 
