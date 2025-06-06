@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Button, Card, Checkbox, Flex, Heading, Text } from "@radix-ui/themes";
+import { Button, Card, Checkbox, Flex, Heading } from "@radix-ui/themes";
 import { FlexusTreeNode } from "../GroupTree";
 import React, { useCallback, useMemo, useState } from "react";
 
@@ -103,16 +103,12 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
       <Card size="3" mt="4" className={styles.modalCard}>
         <Flex direction="column" gap="4" align="start" width="100%">
           <Heading as="h4" size="5" mb="2">
-            Would you like to connect your current workspace in IDE to the&nbsp;
+            Connecting current IDE workspace to the&nbsp;
             <span className={styles.groupName}>
               {currentSelectedTeamsGroupNode.treenodeTitle}
             </span>
-            &nbsp;group?
+            &nbsp;group
           </Heading>
-          <Text size="2" color="gray" mb="3">
-            This will help you synchronize your local workspace with the
-            selected group in the cloud.
-          </Text>
           {!isMatchingGroupNameWithWorkspace && (
             <Flex align="center" gap="3" mb="4">
               <Checkbox
@@ -126,9 +122,8 @@ export const ConfirmGroupSelection: React.FC<ConfirmGroupSelectionProps> = ({
                 htmlFor="create-folder-checkbox"
                 className={styles.checkboxLabel}
               >
-                Create a subfolder{" "}
+                Create and select subfolder{" "}
                 <b>{`${currentSelectedTeamsGroupNode.treenodeTitle}/${currentWorkspaceName}`}</b>{" "}
-                in current selected group
               </label>
             </Flex>
           )}

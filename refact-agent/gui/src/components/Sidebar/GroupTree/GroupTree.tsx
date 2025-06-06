@@ -43,17 +43,20 @@ export const GroupTree: React.FC = () => {
         </Heading>
         <Separator size="4" my="2" />
         <Heading as="h2" size="3">
-          Source selection
+          Account selection
         </Heading>
         <Text size="2" color="gray" mb="1">
-          Select a cloud-based source associated with your team account to
-          continue.
+          Refact is even better connected to the cloud, you can share knowledge
+          database within your team.
+        </Text>
+        <Text size="2" color="gray" mb="1">
+          Choose your team&apos;s account, or your personal account:
         </Text>
         <Select.Root
           onValueChange={onWorkspaceSelection}
           disabled={availableWorkspaces.length === 0}
         >
-          <Select.Trigger placeholder="Please, choose source"></Select.Trigger>
+          <Select.Trigger placeholder="Please, choose team's account"></Select.Trigger>
           <Select.Content position="popper">
             {availableWorkspaces.map((workspace) => (
               <Select.Item value={workspace.ws_id} key={workspace.ws_id}>
@@ -64,10 +67,9 @@ export const GroupTree: React.FC = () => {
         </Select.Root>
         {availableWorkspaces.length === 0 && (
           <Text size="2" mt="2">
-            No sources are currently associated with your team account. Please
-            contact your Team Workspace administrator to request access. For
-            further assistance, please refer to the support or bug reporting
-            channels.
+            No accounts are currently associated with your team. Please contact
+            your Team Workspace administrator to request access. For further
+            assistance, please refer to the support or bug reporting channels.
           </Text>
         )}
       </Flex>
@@ -80,14 +82,12 @@ export const GroupTree: React.FC = () => {
           justify="between"
           style={{ flex: 1, minHeight: 0 }}
         >
-          <Flex direction="column" gap="1" mb="4">
+          <Flex direction="column" gap="1" mb="1">
             <Heading as="h2" size="3">
               Group selection
             </Heading>
             <Text size="2" color="gray">
-              Choose a group within the selected source where your local
-              knowledge, chats, and features will be uploaded and synchronized
-              in the cloud.
+              If you have a lot of projects, you can organize them into groups:
             </Text>
           </Flex>
           <ScrollArea
