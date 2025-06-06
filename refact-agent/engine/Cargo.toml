@@ -29,6 +29,7 @@ chrono = { version = "0.4.31", features = ["serde"] }
 diff = "0.1.13"
 dunce = "1.0.5"
 dyn_partial_eq = "=0.1.2"
+filetime = "0.2.25"
 futures = "0.3"
 git2 = "0.20.2"
 glob = "0.3.1"

@@ -7,11 +7,11 @@ use tokio::sync::RwLock as ARwLock;
 use git2::{Repository, Oid, ObjectType};
 
 use crate::ast::chunk_utils::official_text_hashing_function;
-use crate::custom_error::trace_and_default;
+use crate::custom_error::{trace_and_default, MapErrToString};
 use crate::files_correction::get_project_dirs;
 use crate::global_context::GlobalContext;
 
-const MAX_INACTIVE_REPO_DURATION: Duration = Duration::from_secs(1 * 60); // 1 week
+const MAX_INACTIVE_REPO_DURATION: Duration = Duration::from_secs(7 * 24 * 60); // 1 week
 pub const RECENT_COMMITS_DURATION: Duration = Duration::from_secs(7 * 24 * 60); // 1 week
 const CLEANUP_INTERVAL_DURATION: Duration = Duration::from_secs(24 * 60 * 60); // 1 day
 
@@ -73,7 +73,7 @@ async fn cleanup_inactive_shadow_repositories(dir: &Path, workspace_folder_hashe
             continue;
         }
 
-        if repo_is_inactive(&path).await {
+        if repo_is_inactive(&path).await.unwrap_or_else(trace_and_default) {
             inactive_repos.push(path);
         }
     }
@@ -112,38 +112,17 @@ async fn cleanup_inactive_shadow_repositories(dir: &Path, workspace_folder_hashe
 
 async fn repo_is_inactive(
     repo_dir: &Path,
-) -> bool {
-    let now = SystemTime::now();
+) -> Result<bool, String> {
+    let metadata = tokio::fs::metadata(repo_dir).await
+        .map_err_with_prefix(format!("Failed to get metadata for {}:", repo_dir.display()))?;
 
-    let head_is_old_or_missing = match get_file_age(&repo_dir.join(".git").join("HEAD"), &now).await {
-        Ok(Some(age)) => age > MAX_INACTIVE_REPO_DURATION,
-        Ok(None) => true,
-        Err(e) => trace_and_default(e),
-    };
+    let mtime = metadata.modified()
+        .map_err_with_prefix(format!("Failed to get modified time for {}:", repo_dir.display()))?;
 
-    let index_is_old_or_missing = match get_file_age(&repo_dir.join(".git").join("index"), &now).await {
-        Ok(Some(age)) => age > MAX_INACTIVE_REPO_DURATION,
-        Ok(None) => true,
-        Err(e) => trace_and_default(e),
-    };
+    let duration_since_mtime = SystemTime::now().duration_since(mtime)
+        .map_err_with_prefix(format!("Failed to calculate age for {}:", repo_dir.display()))?;
 
-    head_is_old_or_missing && index_is_old_or_missing
-}
-
-async fn get_file_age(file_path: &Path, now: &SystemTime) -> Result<Option<Duration>, String> {
-    let metadata = match tokio::fs::metadata(file_path).await {
-        Ok(metadata) => metadata,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(e) => return Err(format!("Failed to get metadata for {}: {}", file_path.display(), e)),
-    };
-
-    let modified = metadata.modified()
-        .map_err(|e| format!("Failed to get modified time for {}: {}", file_path.display(), e))?;
-
-    let duration = now.duration_since(modified)
-        .map_err(|e| format!("Failed to calculate age for {}: {}", file_path.display(), e))?;
-
-    Ok(Some(duration))
+    Ok(duration_since_mtime > MAX_INACTIVE_REPO_DURATION)
 }
 
 async fn cleanup_old_objects_from_repos(dir: &Path, workspace_folder_hashes: &[String]) -> Result<usize, String> {
@@ -156,7 +135,7 @@ async fn cleanup_old_objects_from_repos(dir: &Path, workspace_folder_hashes: &[S
         .map_err(|e| format!("Failed to read directory entry: {}", e))? {
 
         let path = entry.path();
-        if !path.is_dir() || !path.join(".git").exists() || repo_is_inactive(&path).await {
+        if !path.is_dir() || !path.join(".git").exists() || repo_is_inactive(&path).await.unwrap_or_else(trace_and_default) {
             continue;
         }
 
