@@ -1,5 +1,5 @@
 use super::*;
-use std::{collections::HashSet, fs, time::SystemTime};
+use std::{collections::HashSet, fs, sync::{atomic::AtomicBool, Arc}, time::SystemTime};
 use tempfile::TempDir;
 use git2::{Repository, Signature, Time};
 use std::collections::HashMap;
@@ -157,7 +157,7 @@ fn get_objects_for_commit(repo: &Repository, commit_oid: &str) -> Result<HashSet
     let commit = repo.find_commit(oid).map_err(|e| format!("Failed to find commit: {}", e))?;
     let tree_oid = commit.tree_id();
 
-    cleanup::walk_tree_objects(repo, &tree_oid, &mut objects);
+    cleanup::walk_tree_objects(repo, &tree_oid, &mut objects, Arc::new(AtomicBool::new(false)));
 
     Ok(objects)
 }
@@ -217,7 +217,7 @@ async fn test_cleanup_old_objects_comprehensive() {
     println!("Objects to remove: {:?}", should_be_removed);
     println!("Objects to keep: {:?}", should_be_kept);
 
-    let removed_count = cleanup::cleanup_old_objects_from_single_repo(repo_path).await.expect("Cleanup failed");
+    let removed_count = cleanup::cleanup_old_objects_from_single_repo(repo_path, Arc::new(AtomicBool::new(false))).await.expect("Cleanup failed");
     println!("Cleanup completed: {} objects removed", removed_count);
 
     let objects_after = get_all_objects(repo_path).expect("Failed to get objects after cleanup");
