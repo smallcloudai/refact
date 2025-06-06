@@ -1,8 +1,4 @@
-import {
-  Client,
-  createGraphqlClient,
-  createSubscription,
-} from "./createClient";
+import { createGraphqlClient, createSubscription } from "./createClient";
 import { createAppAsyncThunk } from "./createAppAsyncThunk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
@@ -31,10 +27,6 @@ import {
   receiveThreadMessages,
   setThreadFtId,
 } from "../../features/ThreadMessages";
-import {
-  appSearchableIdsApi, // can delete
-  GetAppSearchableIdResponse,
-} from "../refact/AppSearchAbleIds";
 
 export const threadsPageSub = createAppAsyncThunk<
   unknown,
@@ -169,7 +161,21 @@ export const createThreadWithMessage = createAsyncThunk<
     headers: { Authorization: `Bearer ${apiKey}` },
   })
     .then((res) => res.json())
-    .then((json) => ({ data: json as GetAppSearchableIdResponse, error: null }))
+    .then((json) => {
+      if (!isGetAppSearchableResponse(json)) {
+        const message = `failed parse get_app_searchable_id response: ${JSON.stringify(
+          json,
+        )}`;
+        return {
+          data: null,
+          error: message,
+        };
+      }
+      return {
+        data: json,
+        error: null,
+      };
+    })
     .catch((error: Error) => ({ error: error, data: null }));
 
   if (appIdQuery.error) {
@@ -206,7 +212,7 @@ export const createThreadWithMessage = createAsyncThunk<
     thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
   }
 
-  const createMessageArgs = {
+  const createMessageArgs: FThreadMessageInput = {
     ftm_app_specific: JSON.stringify(appIdQuery.data?.app_searchable_id ?? ""),
     ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
     ftm_alt: 100,
@@ -250,3 +256,16 @@ export const createThreadWithMessage = createAsyncThunk<
 });
 
 // TODO: stop is ft_error, set this and it'll stop
+
+type GetAppSearchableIdResponse = {
+  app_searchable_id: string;
+};
+
+function isGetAppSearchableResponse(
+  response: unknown,
+): response is GetAppSearchableIdResponse {
+  if (!response) return false;
+  if (typeof response !== "object") return false;
+  if (!("app_searchable_id" in response)) return false;
+  return typeof response.app_searchable_id === "string";
+}
