@@ -268,11 +268,11 @@ impl Tool for ToolStrategicPlanning {
             usage: Some(usage_collector),
             ..Default::default()
         }));  
-        results.push(ContextEnum::ChatMessage(ChatMessage {
-            role: "cd_instruction".to_string(),
-            content: ChatContent::SimpleText(GUARDRAILS_PROMPT.to_string()),
-            ..Default::default()
-        }));
+        // results.push(ContextEnum::ChatMessage(ChatMessage {
+        //     role: "cd_instruction".to_string(),
+        //     content: ChatContent::SimpleText(GUARDRAILS_PROMPT.to_string()),
+        //     ..Default::default()
+        // }));
 
         Ok((false, results))
     }
