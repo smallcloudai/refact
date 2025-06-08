@@ -220,6 +220,7 @@ impl ScratchpadAbstract for ChatPassthrough {
             // drop all reasoning parameters in case of non-reasoning model
             sampling_parameters_to_patch.reasoning_effort = None;
             sampling_parameters_to_patch.thinking = None;
+            sampling_parameters_to_patch.enable_thinking = None;
             limited_msgs
         };
 
@@ -308,6 +309,8 @@ fn _adapt_for_reasoning_models(
         "qwen" => {
             if supports_boost_reasoning && sampling_parameters.boost_reasoning {
                 sampling_parameters.enable_thinking = Some(true);
+            } else {
+                sampling_parameters.enable_thinking = Some(false);
             }
             // In fact qwen3 wants 0.7 temperature for no-thinking mode but we'll use defaults for thinking
             sampling_parameters.temperature = default_temperature.clone();
