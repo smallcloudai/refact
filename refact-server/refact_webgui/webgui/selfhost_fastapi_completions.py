@@ -96,6 +96,7 @@ class ChatContext(NlpSamplingParams):
     n: int = 1
     reasoning_effort: Optional[str] = None  # OpenAI style reasoning
     thinking: Optional[Dict] = None  # Anthropic style reasoning
+    enable_thinking: Optional[bool] = None  # Qwen style reasoning
 
 
 class EmbeddingsStyleOpenAI(BaseModel):
@@ -569,6 +570,7 @@ class BaseCompletionsRouter(APIRouter):
             "stop": post.stop if post.stop else None,
             "n": post.n,
             "extra_headers": model_config.extra_headers if model_config.extra_headers else None,
+            "timeout": 60 * 60,  # An hour timeout for thinking models
         }
 
         if post.reasoning_effort or post.thinking:

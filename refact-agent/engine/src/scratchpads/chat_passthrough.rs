@@ -282,7 +282,6 @@ fn _adapt_for_reasoning_models(
                 sampling_parameters.reasoning_effort = Some(ReasoningEffort::High);
             }
             sampling_parameters.temperature = default_temperature;
-            sampling_parameters.thinking = None;
 
             // NOTE: OpenAI prefer user message over system
             messages.into_iter().map(|mut msg| {
@@ -304,12 +303,17 @@ fn _adapt_for_reasoning_models(
                     "budget_tokens": budget_tokens,
                 }));
             }
-            sampling_parameters.reasoning_effort = None;
+            messages
+        },
+        "qwen" => {
+            if supports_boost_reasoning && sampling_parameters.boost_reasoning {
+                sampling_parameters.enable_thinking = Some(true);
+            }
+            // In fact qwen3 wants 0.7 temperature for no-thinking mode but we'll use defaults for thinking
+            sampling_parameters.temperature = default_temperature.clone();
             messages
         },
         _ => {
-            sampling_parameters.reasoning_effort = None;
-            sampling_parameters.thinking = None;
             sampling_parameters.temperature = default_temperature.clone();
             messages
         }
