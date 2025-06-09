@@ -152,7 +152,7 @@ pub async fn tools_merged_and_filtered(
         ("search_semantic".to_string(), Box::new(crate::tools::tool_search::ToolSearch{}) as Box<dyn Tool + Send>),
         // #[cfg(feature="vecdb")]
         // ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
-        ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
+        // ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
         ("submit".to_string(), Box::new(crate::tools::tool_submit::ToolSubmit{}) as Box<dyn Tool + Send>),
     ]);
 

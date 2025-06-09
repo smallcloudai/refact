@@ -134,6 +134,13 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     } else if let Some(temperature) = sampling_parameters.temperature {
         data["temperature"] = serde_json::Value::from(temperature);
     }
+    
+    // for benchmarks   
+    data["temperature"] = serde_json::Value::from(0.0); 
+    data["tool_choice"] = serde_json::Value::from("any");
+    data["parallel_tool_calls"] = serde_json::Value::from(false);
+
+
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);
 
     info!("Request: model={}, reasoning_effort={}, T={}, n={}, stream=true", 
