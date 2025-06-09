@@ -153,6 +153,7 @@ pub async fn tools_merged_and_filtered(
         // #[cfg(feature="vecdb")]
         // ("locate".to_string(), Box::new(crate::tools::tool_locate_search::ToolLocateSearch{}) as Box<dyn Tool + Send>),
         ("debug_script".to_string(), Box::new(crate::tools::tool_debug_script::ToolDebugScript{}) as Box<dyn Tool + Send>),
+        ("submit".to_string(), Box::new(crate::tools::tool_submit::ToolSubmit{}) as Box<dyn Tool + Send>),
     ]);
 
     let integrations = crate::integrations::running_integrations::load_integration_tools(
@@ -507,6 +508,11 @@ tools:
         description: "Comma-separated list of file paths to compress in the session."
     parameters_required:
       - "file_paths"
+    
+  - name: "submit"
+    description: "Signal completion of a task. Use this when you have solved the problem or completed the task."
+    parameters: []
+    parameters_required: []
 "####;
 
 

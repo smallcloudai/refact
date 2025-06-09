@@ -179,6 +179,14 @@ def on_submit(buffer):
     elif user_input == "" and len(cli_streaming.streaming_messages) > 0:
         last_message = cli_streaming.streaming_messages[-1]
         if last_message.role == "assistant" and last_message.tool_calls is not None:
+            # Check if submit tool was called - if so, don't re-submit
+            has_submit_tool = any(
+                tool_call.function.name == "submit" 
+                for tool_call in last_message.tool_calls
+            )
+            if has_submit_tool:
+                print_formatted_text(FormattedText([("fg:#00ff00", "✓ Submit tool was called - task completed, not re-submitting")]))
+                return
             pass   # re-submit tool calls
         else:
             return

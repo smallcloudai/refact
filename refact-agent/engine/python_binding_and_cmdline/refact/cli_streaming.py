@@ -264,6 +264,28 @@ async def the_chatting_loop(model, chat_id, chat_remote, max_auto_resubmit):
 
         if not _is_streaming:
             break
+            
+        # Check if submit tool was called - if so, stop the interaction
+        should_stop_for_submit = False
+        last_message = streaming_messages[-1]
+        if last_message.tool_calls:
+            for tool_call in last_message.tool_calls:
+                if tool_call.function.name == "submit":
+                    print_formatted_text(FormattedText([("fg:#00ff00", "\n✓ Submit tool called - task completed, stopping interaction")]))
+                    should_stop_for_submit = True
+                    break
+        if should_stop_for_submit:
+            break
+        
+        # Check if there are any tool messages from submit tool execution
+        has_submit_tool_response = any(
+            msg.role == "tool" and msg.content and "Task completed successfully" in msg.content
+            for msg in streaming_messages[-5:]  # Check last 5 messages
+        )
+        if has_submit_tool_response:
+            print_formatted_text(FormattedText([("fg:#00ff00", "\n✓ Submit tool executed - task completed, stopping interaction")]))
+            break
+            
         if not streaming_messages[-1].tool_calls:
             break
     _is_streaming = False
