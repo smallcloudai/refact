@@ -295,6 +295,57 @@ pub async fn run_tools(
     Ok((new_messages, true))
 }
 
+/// Detects duplicate tool calls in the conversation history and returns a CD instruction if found
+fn detect_duplicate_tool_calls(
+    original_messages: &Vec<ChatMessage>,
+    current_tool_calls: &Vec<ChatToolCall>,
+) -> Option<ChatMessage> {
+    let mut seen_tool_calls = Vec::new();
+    info!("DETECT_DUPLICATE_TOOL_CALLS::START");
+    // Collect all tool calls from conversation history, excluding the last message (current)
+    for msg in original_messages.iter().rev().skip(1).take(10) { // Skip current message, look at last 10
+        if msg.role == "assistant" {
+            if let Some(tool_calls) = &msg.tool_calls {
+                for tool_call in tool_calls {
+                    seen_tool_calls.push((&tool_call.function.name, &tool_call.function.arguments));
+                    info!("DETECT_DUPLICATE_TOOL_CALLS::SEEN: {}({})", tool_call.function.name, 
+                        if tool_call.function.arguments.len() > 50 { format!("{}...", &tool_call.function.arguments[..50]) } 
+                        else { tool_call.function.arguments.clone() });
+                }
+            }
+        }
+    }
+    
+    // Check if any current tool call is a duplicate
+    info!("DETECT_DUPLICATE_TOOL_CALLS::CURRENT_CALLS: {:?}", current_tool_calls.clone().into_iter().map(|c| c.function.name).collect::<Vec<String>>());
+    for current_call in current_tool_calls {
+        let current_name = &current_call.function.name;
+        let current_signature = (&current_call.function.name, &current_call.function.arguments);
+        let duplicate_count = seen_tool_calls.iter().filter(|&&call| call == current_signature).count();
+        let tools_duplicate_not_allowed = vec!["search_symbol_definition", "search_symbol_usages", "tree", "create_textdoc", "update_textdoc", "update_textdoc_regex", "cat", "search_pattern", "search_semantic"];
+        if duplicate_count >= 1 && tools_duplicate_not_allowed.contains(&current_name.as_str()) { // Found at least one previous identical call
+            info!("DETECT_DUPLICATE_TOOL_CALLS::FOUND_DUPLICATE: {:?}", current_signature); 
+            let cd_instruction = format!(
+                "💿 STOP: Duplicate tool call detected! {}({}) has been called {} times with identical arguments. DO NOT call this same tool with the same arguments again. You must either: 1) Use different arguments, 2) Try a completely different tool or approach.",
+                current_call.function.name,
+                // Truncate arguments for readability  
+                if current_call.function.arguments.len() > 100 {
+                    format!("{}...", &current_call.function.arguments[..100])
+                } else {
+                    current_call.function.arguments.clone()
+                },
+                duplicate_count + 1
+            );
+            
+            info!("DETECT_DUPLICATE_TOOL_CALLS::RETURNING_CD_INSTRUCTION: {}", cd_instruction);
+            return Some(ChatMessage::new("cd_instruction".to_string(), cd_instruction));
+        }
+    }
+    
+    info!("DETECT_DUPLICATE_TOOL_CALLS::NO_DUPLICATES_FOUND");
+    None
+}
+
 async fn pp_run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     original_messages: &Vec<ChatMessage>,
@@ -314,10 +365,22 @@ async fn pp_run_tools(
         (ccx_locked.top_n, ccx_locked.correction_only_up_to_step)
     };
 
+    // Check for duplicate tool calls and add CD instruction if found
+    let mut duplicate_cd_instruction = None;
+    if let Some(last_msg) = original_messages.last().filter(|m| m.role == "assistant") {
+        if let Some(tool_calls) = &last_msg.tool_calls {
+            duplicate_cd_instruction = detect_duplicate_tool_calls(original_messages, tool_calls);
+        }
+    }
+
     if any_corrections && original_messages.len() <= correction_only_up_to_step {
         generated_other.clear();
         generated_other.push(ChatMessage::new("cd_instruction".to_string(), "💿 There are corrections in the tool calls, all the output files are suppressed. Call again with corrections.".to_string()));
-
+        
+        // Re-add the duplicate detection CD instruction if it exists
+        if let Some(duplicate_cd) = duplicate_cd_instruction {
+            generated_other.push(duplicate_cd);
+        }
     } else if tokens_for_rag > MIN_RAG_CONTEXT_LIMIT {
         let (tokens_limit_chat_msg, mut tokens_limit_files) = {
             if context_files_for_pp.is_empty() {
@@ -379,6 +442,11 @@ async fn pp_run_tools(
             generated_other.push(message);
         }
 
+        // Add duplicate detection CD instruction in normal flow too
+        if let Some(duplicate_cd) = duplicate_cd_instruction {
+            generated_other.push(duplicate_cd);
+        }
+
     } else {
         warn!("There are tool results, but tokens_for_rag={tokens_for_rag} is very small, bad things will happen.")
     }
@@ -438,5 +506,94 @@ pub fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
         usage.total_tokens += u.total_tokens;
         usage.completion_tokens += u.completion_tokens;
         usage.prompt_tokens += u.prompt_tokens;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::call_validation::ChatToolFunction;
+
+    #[test]
+    fn test_detect_duplicate_tool_calls() {
+        // Create test messages with duplicate tool calls
+        let mut messages = Vec::new();
+        
+        // First message with a tool call
+        let tool_call_1 = ChatToolCall {
+            id: "call_1".to_string(),
+            function: ChatToolFunction {
+                name: "cat".to_string(),
+                arguments: r#"{"path": "test.txt"}"#.to_string(),
+            },
+            tool_type: "function".to_string(),
+        };
+        
+        let msg_1 = ChatMessage {
+            role: "assistant".to_string(),
+            content: ChatContent::SimpleText("I'll read the file".to_string()),
+            tool_calls: Some(vec![tool_call_1.clone()]),
+            ..Default::default()
+        };
+        messages.push(msg_1);
+        
+        // Tool response
+        let tool_response = ChatMessage {
+            role: "tool".to_string(),
+            content: ChatContent::SimpleText("File content here".to_string()),
+            tool_call_id: "call_1".to_string(),
+            ..Default::default()
+        };
+        messages.push(tool_response);
+        
+        // Current message with duplicate tool call
+        let current_tool_calls = vec![tool_call_1.clone()];
+        
+        // Test duplicate detection
+        let result = detect_duplicate_tool_calls(&messages, &current_tool_calls);
+        assert!(result.is_some());
+        
+        let cd_instruction = result.unwrap();
+        assert_eq!(cd_instruction.role, "cd_instruction");
+        assert!(cd_instruction.content.content_text_only().contains("💿 STOP: Duplicate tool call detected!"));
+        assert!(cd_instruction.content.content_text_only().contains("cat"));
+        assert!(cd_instruction.content.content_text_only().contains("Try a completely different tool"));
+    }
+
+    #[test]
+    fn test_no_duplicate_tool_calls() {
+        let mut messages = Vec::new();
+        
+        // First message with a tool call
+        let tool_call_1 = ChatToolCall {
+            id: "call_1".to_string(),
+            function: ChatToolFunction {
+                name: "cat".to_string(),
+                arguments: r#"{"path": "test1.txt"}"#.to_string(),
+            },
+            tool_type: "function".to_string(),
+        };
+        
+        let msg_1 = ChatMessage {
+            role: "assistant".to_string(),
+            content: ChatContent::SimpleText("I'll read the first file".to_string()),
+            tool_calls: Some(vec![tool_call_1]),
+            ..Default::default()
+        };
+        messages.push(msg_1);
+        
+        // Current message with different tool call
+        let current_tool_calls = vec![ChatToolCall {
+            id: "call_2".to_string(),
+            function: ChatToolFunction {
+                name: "cat".to_string(),
+                arguments: r#"{"path": "test2.txt"}"#.to_string(), // Different arguments
+            },
+            tool_type: "function".to_string(),
+        }];
+        
+        // Test no duplicate detection
+        let result = detect_duplicate_tool_calls(&messages, &current_tool_calls);
+        assert!(result.is_none());
     }
 }
