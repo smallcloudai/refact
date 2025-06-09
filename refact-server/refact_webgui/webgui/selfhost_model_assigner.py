@@ -17,8 +17,7 @@ from typing import List, Dict, Any, Set, Optional
 __all__ = ["ModelAssigner"]
 
 
-# ALLOWED_N_CTX = [2 ** p for p in range(10, 20)]
-ALLOWED_N_CTX = [1024, 2048, 4096] + [8192 * (t + 1) for t in range(0, 16)]
+ALLOWED_N_CTX = [1024, 2048, 4096] + [8192 * (t + 1) for t in range(0, 19)]
 ALLOWED_GPUS_SHARD = [2 ** p for p in range(10)]
 ALLOWED_CONCURRENCY = [2 ** p for p in range(9)]
 
