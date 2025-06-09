@@ -56,7 +56,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
         }
     }
 
-    let current_model = ccx.lock().await.current_model.clone();
+    let current_model = ccx.lock().await.current_model.clone().ok_or("No current model set")?;
     let model_to_resolve = match params.subchat_model_type {
         ChatModelType::Light => &caps.defaults.chat_light_model,
         ChatModelType::Default => &caps.defaults.chat_default_model,

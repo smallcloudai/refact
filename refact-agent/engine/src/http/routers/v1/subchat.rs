@@ -42,7 +42,7 @@ pub async fn handle_v1_subchat(
         messages.clone(),
         "".to_string(),
         false,
-        post.model_name.clone(),
+        Some(post.model_name.clone()),
     ).await));
 
     let model = resolve_chat_model(caps, &post.model_name)
@@ -109,7 +109,7 @@ pub async fn handle_v1_subchat_single(
         messages.clone(),
         "".to_string(),
         false,
-        post.model_name.clone(),
+        Some(post.model_name.clone()),
     ).await));
 
     let model = resolve_chat_model(caps, &post.model_name)

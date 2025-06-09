@@ -78,7 +78,7 @@ pub async fn create_chat_post_and_scratchpad(
 
     {
         let mut ccx_locked = ccx.lock().await;
-        ccx_locked.current_model = model_id.to_string();
+        ccx_locked.current_model = Some(model_id.to_string());
     }
 
     let scratchpad = crate::scratchpads::create_chat_scratchpad(

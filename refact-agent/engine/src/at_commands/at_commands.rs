@@ -29,7 +29,7 @@ pub struct AtCommandsContext {
     pub pp_skeleton: bool,
     pub correction_only_up_to_step: usize,  // suppresses context_file messages, writes a correction message instead
     pub chat_id: String,
-    pub current_model: String,
+    pub current_model: Option<String>,
     pub should_execute_remotely: bool,
 
     pub at_commands: HashMap<String, Arc<dyn AtCommand + Send>>,  // a copy from static constant
@@ -49,7 +49,7 @@ impl AtCommandsContext {
         messages: Vec<ChatMessage>,
         chat_id: String,
         should_execute_remotely: bool,
-        current_model: String,
+        current_model: Option<String>,
     ) -> Self {
         let (tx, rx) = mpsc::unbounded_channel::<serde_json::Value>();
         AtCommandsContext {

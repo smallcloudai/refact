@@ -50,6 +50,7 @@ impl Tool for ToolMCP {
             return Err(format!("No session for {:?}", session_key));
         }
         let session = session_maybe.unwrap();
+        let current_model = current_model.ok_or("Failed to get current model")?;
         let model_supports_multimodality = caps_maybe.is_some_and(|caps| {
             resolve_chat_model(caps, &current_model).is_ok_and(|m| m.supports_multimodality)
         });

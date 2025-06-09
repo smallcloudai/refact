@@ -11,7 +11,7 @@ pub struct Thread {
     pub ft_id: String,
     pub ft_fexp_name: String,
     pub ft_title: String,
-    pub ft_toolset: Vec<Value>,
+    pub ft_toolset: Option<Vec<Value>>,
     pub ft_error: Option<String>,
     pub ft_need_assistant: i32,
     pub ft_need_tool_calls: i32,

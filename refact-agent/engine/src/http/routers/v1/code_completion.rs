@@ -74,7 +74,7 @@ pub async fn handle_v1_code_completion(
         vec![],
         "".to_string(),
         false,
-        model_rec.base.id.clone(),
+        Some(model_rec.base.id.clone()),
     ).await));
     if !code_completion_post.stream {
         crate::restream::scratchpad_interaction_not_stream(ccx.clone(), &mut scratchpad, "completion".to_string(), &model_rec.base, &mut code_completion_post.parameters, false, None).await
@@ -136,7 +136,7 @@ pub async fn handle_v1_code_completion_prompt(
         vec![],
         "".to_string(),
         false,
-        model_rec.base.id.clone(),
+        Some(model_rec.base.id.clone()),
     ).await));
     let prompt = scratchpad.prompt(ccx.clone(), &mut post.parameters).await.map_err(|e|
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Prompt: {}", e))
