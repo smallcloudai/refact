@@ -70,24 +70,28 @@ pub fn convert_messages_to_openai_format(messages: Vec<ChatMessage>, style: &Opt
 
         } else if msg.role == "plain_text" || msg.role == "cd_instruction" {
             flush_delayed_images(&mut results, &mut delay_images);
-            results.push(ChatMessage::new(
-                "user".to_string(),
-                msg.content.content_text_only(),
-            ).into_value(&style, model_id));
-
+            let mut last_msg: ChatMessage = serde_json::from_value(results.pop().unwrap()).unwrap();
+            let mut content = last_msg.content.content_text_only();
+            content.push_str(&format!("\n\n{}", msg.content.content_text_only()));
+            last_msg.content = ChatContent::SimpleText(content);
+            results.push(last_msg.into_value(&style, model_id));
         } else if msg.role == "context_file" {
             flush_delayed_images(&mut results, &mut delay_images);
             match serde_json::from_str::<Vec<ContextFile>>(&msg.content.content_text_only()) {
                 Ok(vector_of_context_files) => {
-                    for context_file in vector_of_context_files {
-                        results.push(ChatMessage::new(
-                            "user".to_string(),
-                            format!("{}:{}-{}\n```\n{}```",
+                    if let Some(last) = results.pop() {
+                        let mut last_msg: ChatMessage = serde_json::from_value(last).unwrap();
+                        let mut content = last_msg.content.content_text_only();
+                        for context_file in vector_of_context_files {
+                            let file_content = format!("{}:{}-{}\n```\n{}```",  
                                     context_file.file_name,
                                     context_file.line1,
                                     context_file.line2,
-                                    context_file.file_content),
-                        ).into_value(&style, model_id));
+                                    context_file.file_content);
+                            content.push_str(&format!("\n\n{}", file_content));
+                        }
+                        last_msg.content = ChatContent::SimpleText(content);
+                        results.push(last_msg.into_value(&style, model_id));
                     }
                 },
                 Err(e) => { error!("error parsing context file: {}", e); }
