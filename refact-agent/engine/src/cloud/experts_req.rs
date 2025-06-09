@@ -3,10 +3,6 @@ use regex::Regex;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
-use tokio::sync::RwLock as ARwLock;
-
-use crate::global_context::GlobalContext;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Expert {
@@ -60,11 +56,10 @@ impl Expert {
 }
 
 pub async fn get_expert(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    api_key: String,
     expert_name: &str
 ) -> Result<Expert, String> {
     let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetExpert($id: String!) {
         expert_get(id: $id) {

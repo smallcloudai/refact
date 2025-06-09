@@ -1,12 +1,9 @@
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, DiffChunk};
-use crate::global_context::GlobalContext;
 use log::error;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
 use itertools::Itertools;
-use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,15 +19,15 @@ pub struct ThreadMessage {
     pub ftm_usage: Option<Value>,
     pub ftm_created_ts: f64,
     pub ftm_provenance: Value,
+    pub ftm_user_preferences: Option<Value>
 }
 
 pub async fn get_thread_messages(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    api_key: String,
     thread_id: &str,
     alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
     let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
         thread_messages_list(
@@ -48,6 +45,7 @@ pub async fn get_thread_messages(
             ftm_usage
             ftm_created_ts
             ftm_provenance
+            ftm_user_preferences
         }
     }
     "#;
@@ -101,7 +99,7 @@ pub async fn get_thread_messages(
 }
 
 pub async fn create_thread_messages(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    api_key: String,
     thread_id: &str,
     messages: Vec<ThreadMessage>,
 ) -> Result<(), String> {
@@ -109,7 +107,6 @@ pub async fn create_thread_messages(
         return Err("No messages provided".to_string());
     }
     let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
     let mut input_messages = Vec::with_capacity(messages.len());
     for message in messages {
         if message.ftm_belongs_to_ft_id != thread_id {
@@ -245,6 +242,7 @@ pub fn convert_messages_to_thread_messages(
     prev_alt: i32,
     start_num: i32,
     thread_id: &str,
+    user_preferences: Option<Value>,
 ) -> Result<Vec<ThreadMessage>, String> {
     let mut output_messages = Vec::new();
     let flush_delayed_images = |results: &mut Vec<Value>, delay_images: &mut Vec<Value>| {
@@ -337,6 +335,7 @@ pub fn convert_messages_to_thread_messages(
                     .unwrap_or_default()
                     .as_secs_f64(),
                 ftm_provenance: json!({"system_type": "refact_lsp", "version": env!("CARGO_PKG_VERSION") }),
+                ftm_user_preferences: user_preferences.clone(),
             })
         }
     }

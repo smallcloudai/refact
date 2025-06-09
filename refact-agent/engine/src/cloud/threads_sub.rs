@@ -29,7 +29,7 @@ const RECONNECT_DELAY_SECONDS: u64 = 3;
 pub struct ThreadPayload {
     pub owner_fuser_id: String,
     pub ft_id: String,
-    pub ft_error: Option<String>,
+    pub ft_error: Option<Value>,
     pub ft_locked_by: String,
     pub ft_need_tool_calls: i64,
     pub ft_app_searchable: Option<String>,
@@ -217,10 +217,12 @@ async fn events_loop(
         tokio_tungstenite::WebSocketStream<
             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
         >,
-    >,
+    >
 ) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
-    let basic_info = get_basic_info(gcx.clone()).await?;
+    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
+    let basic_info = get_basic_info(api_key.clone()).await?;
     while let Some(msg) = connection.next().await {
         if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
             info!("shutting down threads subscription");
@@ -250,7 +252,7 @@ async fn events_loop(
                                 continue;
                             }
                             if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
-                                match process_thread_event(gcx.clone(), &payload, &basic_info).await {
+                                match process_thread_event(gcx.clone(), &payload, &basic_info, api_key.clone(), app_searchable_id.clone()).await {
                                     Ok(_) => {}
                                     Err(err) => {
                                         error!("failed to process thread event: {}", err);
@@ -291,9 +293,8 @@ fn generate_random_hash(length: usize) -> String {
         .collect()
 }
 
-async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, String> {
+async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
     let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetBasicInfo {
       query_basic_stuff {
@@ -349,15 +350,19 @@ async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, 
 async fn process_thread_event(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_payload: &ThreadPayload,
-    basic_info: &BasicStuff
+    basic_info: &BasicStuff,
+    api_key: String,
+    app_searchable_id: String
 ) -> Result<(), String> {
     if thread_payload.ft_need_tool_calls == -1 || thread_payload.owner_fuser_id != basic_info.fuser_id {
         return Ok(());
     }
-    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
     if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
         if ft_app_searchable != app_searchable_id {
-            info!("thread `{}` has different `app_searchable` id, skipping it", thread_payload.ft_id);
+            info!("thread `{}` has different `app_searchable` id, skipping it: {} != {}", 
+                thread_payload.ft_id, app_searchable_id, ft_app_searchable
+            );
+            return Ok(());
         }
     } else {
         info!("thread `{}` doesn't have the `app_searchable` id, skipping it", thread_payload.ft_id);
@@ -368,7 +373,7 @@ async fn process_thread_event(
         return Ok(());
     }
     let messages = crate::cloud::messages_req::get_thread_messages(
-        gcx.clone(),
+        api_key.clone(),
         &thread_payload.ft_id,
         thread_payload.ft_need_tool_calls,
     ).await?;
@@ -376,20 +381,28 @@ async fn process_thread_event(
         info!("thread `{}` has no messages. Skipping it", thread_payload.ft_id);
         return Ok(());
     }
-    let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
+    let thread = crate::cloud::threads_req::get_thread(api_key.clone(), &thread_payload.ft_id).await?;
     let hash = generate_random_hash(16);
-    match lock_thread(gcx.clone(), &thread.ft_id, &hash).await {
+    match lock_thread(api_key.clone(), &thread.ft_id, &hash).await {
         Ok(_) => {}
         Err(err) => return Err(err)
     }
     let result = if messages.iter().all(|x| x.ftm_role != "system") {
-        initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await
+        initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages, api_key.clone()).await
     } else {
-        call_tools(gcx.clone(), &thread, &messages).await
+        call_tools(gcx.clone(), &thread, &messages, api_key.clone()).await
     };
-    match crate::cloud::threads_req::unlock_thread(gcx.clone(), thread.ft_id.clone(), hash).await {
+    match &result {
+        Ok(()) => {},
+        Err(err) => {
+            crate::cloud::threads_req::set_error_thread(api_key.clone(), thread.ft_id.clone(), err.clone()).await?;
+        }
+    }
+    match crate::cloud::threads_req::unlock_thread(api_key, thread.ft_id.clone(), hash).await {
         Ok(_) => info!("thread `{}` unlocked successfully", thread.ft_id),
-        Err(err) => error!("failed to unlock thread `{}`: {}", thread.ft_id, err),
+        Err(err) => {
+            error!("failed to unlock thread `{}`: {}", thread.ft_id, err);
+        },
     }
     result
 }
@@ -399,8 +412,13 @@ async fn initialize_thread(
     expert_name: &str,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
+    api_key: String
 ) -> Result<(), String> {
-    let expert = crate::cloud::experts_req::get_expert(gcx.clone(), expert_name).await?;
+    let expert = crate::cloud::experts_req::get_expert(api_key.clone(), expert_name).await?;
+    let last_message = thread_messages.iter()
+        .max_by_key(|x| x.ftm_num)
+        .ok_or("No last message found".to_string())
+        .clone()?;
     let tools: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> =
         crate::tools::tools_list::get_available_tools(gcx.clone())
             .await
@@ -411,11 +429,10 @@ async fn initialize_thread(
         .iter()
         .map(|x| x.tool_description().into_openai_style())
         .collect::<Vec<_>>();
-    crate::cloud::threads_req::set_thread_toolset(gcx.clone(), &thread.ft_id, tool_descriptions).await?;
+    crate::cloud::threads_req::set_thread_toolset(api_key.clone(), &thread.ft_id, tool_descriptions).await?;
     let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
         gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
     ).await;
-    let last_message = thread_messages.last().unwrap();
     let output_thread_messages = vec![ThreadMessage {
         ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
         ftm_alt: last_message.ftm_alt.clone(),
@@ -432,10 +449,11 @@ async fn initialize_thread(
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs_f64(),
-        ftm_provenance: json!({"important": "information"}),
+        ftm_provenance: json!({"system_type": "refact_lsp", "version": env!("CARGO_PKG_VERSION") }),
+        ftm_user_preferences: last_message.ftm_user_preferences.clone(),
     }];
     crate::cloud::messages_req::create_thread_messages(
-        gcx.clone(),
+        api_key,
         &thread.ft_id,
         output_thread_messages,
     ).await?;
@@ -446,9 +464,18 @@ async fn call_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
+    api_key: String
 ) -> Result<(), String> {
     let max_new_tokens = 8192;
-    let last_message_num = thread_messages.iter().map(|x| x.ftm_num).max().unwrap_or(0);
+    let last_message = thread_messages.iter()
+        .max_by_key(|x| x.ftm_num)
+        .ok_or("No last message found".to_string())
+        .clone()?;
+    let model_name = last_message.ftm_user_preferences.clone()
+        .map(|x| x.get("model").cloned())
+        .flatten()
+        .ok_or(format!("Failed to get model name from the message preferences: {:?}", last_message.ftm_user_preferences))?;
+    
     let (alt, prev_alt) = thread_messages
         .last()
         .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
@@ -457,7 +484,7 @@ async fn call_tools(
     let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0)
         .await
         .map_err_to_string()?;
-    let model_rec = crate::caps::resolve_chat_model(caps, &format!("refact/{}", thread.ft_model))
+    let model_rec = crate::caps::resolve_chat_model(caps, &format!("refact/{}", model_name))
         .map_err(|e| format!("Failed to resolve chat model: {}", e))?;
     let ccx = Arc::new(AMutex::new(
         AtCommandsContext::new(
@@ -468,7 +495,7 @@ async fn call_tools(
             messages.clone(),
             thread.ft_id.to_string(),
             false,
-            thread.ft_model.to_string(),
+            model_name.to_string(),
         ).await,
     ));
     let allowed_tools = crate::cloud::messages_req::get_tool_names_from_openai_format(&thread.ft_toolset).await?;
@@ -500,11 +527,12 @@ async fn call_tools(
         output_messages.into_iter().skip(messages_count).collect(),
         alt,
         prev_alt,
-        last_message_num + 1,
+        last_message.ftm_num + 1,
         &thread.ft_id,
+        last_message.ftm_user_preferences.clone(),
     )?;
     crate::cloud::messages_req::create_thread_messages(
-        gcx.clone(),
+        api_key,
         &thread.ft_id,
         output_thread_messages,
     ).await?;
