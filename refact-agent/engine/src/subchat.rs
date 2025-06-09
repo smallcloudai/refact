@@ -363,6 +363,31 @@ pub async fn subchat(
         let mut step_n = 0;
         loop {
             let last_message = messages.last().unwrap();
+            
+            // Check if submit tool was called - if so, stop the interaction
+            let mut should_stop_for_submit = false;
+            if let Some(tool_calls) = &last_message.tool_calls {
+                for tool_call in tool_calls {
+                    if tool_call.function.name == "submit" {
+                        info!("Submit tool called, stopping interaction");
+                        should_stop_for_submit = true;
+                        break;
+                    }
+                }
+            }
+            if should_stop_for_submit {
+                break;
+            }
+            
+            // Check if there are any tool messages from submit tool execution
+            let has_submit_tool_response = messages.iter().rev().take(5).any(|msg| {
+                msg.role == "tool" && msg.content.content_text_only().contains("Task completed successfully")
+            });
+            if has_submit_tool_response {
+                info!("Submit tool response found, stopping interaction");
+                break;
+            }
+            
             if last_message.role == "assistant" && last_message.tool_calls.is_none() {
                 // don't have tool calls, exit the loop unconditionally, model thinks it has finished the work
                 break;
