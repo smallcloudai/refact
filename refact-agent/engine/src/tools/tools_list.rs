@@ -240,8 +240,7 @@ pub async fn get_available_tools_by_chat_mode(
             tools.filter(|tool| !tool.tool_description().agentic).collect()
         },
         ChatMode::AGENT => {
-            let blacklist = ["search_symbol_definition", "search_symbol_usages", "search_pattern", "search_semantic"];
-            tools.filter(|tool| !blacklist.contains(&tool.tool_description().name.as_str())).collect()
+            tools.collect()
         }
         ChatMode::CONFIGURE => {
             let blacklist = ["tree", "locate", "knowledge", "search"];
