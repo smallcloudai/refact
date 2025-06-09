@@ -20,6 +20,7 @@ __all__ = ["ModelAssigner"]
 # ALLOWED_N_CTX = [2 ** p for p in range(10, 20)]
 ALLOWED_N_CTX = [1024, 2048, 4096] + [8192 * (t + 1) for t in range(0, 16)]
 ALLOWED_GPUS_SHARD = [2 ** p for p in range(10)]
+ALLOWED_CONCURRENCY = [2 ** p for p in range(9)]
 
 
 def has_context_switch(filter_caps: List[str]) -> bool:
@@ -56,6 +57,7 @@ class ModelWatchdogDConfig:
     share_gpu: bool
     n_ctx: Optional[int] = None
     has_loras: bool = False
+    concurrency: Optional[int] = None
 
     def dump(self, model_cfg_j: Dict) -> str:
         model_cfg_j["command_line"].extend(["--model", self.model_name])
@@ -64,6 +66,8 @@ class ModelWatchdogDConfig:
                 model_cfg_j["command_line"].extend(["--n-ctx", self.n_ctx])
             if not self.has_loras:
                 model_cfg_j["command_line"].append("--loraless")
+            if self.concurrency:
+                model_cfg_j["command_line"].extend(["--concurrency", self.concurrency])
 
         model_cfg_j["gpus"] = self.gpus
         model_cfg_j["share_gpu"] = self.share_gpu
@@ -103,6 +107,10 @@ class ModelAssigner:
     @property
     def share_gpu_backends(self) -> Set[str]:
         return {"transformers"}
+
+    @property
+    def concurrency_backends(self) -> Set[str]:
+        return set()
 
     @property
     def models_db(self) -> Dict[str, Any]:
@@ -219,6 +227,7 @@ class ModelAssigner:
                         share_gpu=assignment.get("share_gpu", False),
                         n_ctx=assignment.get("n_ctx", None),
                         has_loras=self._has_loras(model_name),
+                        concurrency=assignment.get("concurrency", None),
                     ))
                     continue
                 for model_cursor in range(cursor, next_cursor, assignment["gpus_shard"]):
@@ -229,6 +238,7 @@ class ModelAssigner:
                         share_gpu=assignment.get("share_gpu", False),
                         n_ctx=assignment.get("n_ctx", None),
                         has_loras=self._has_loras(model_name),
+                        concurrency=assignment.get("concurrency", None),
                     ))
             for _ in range(model_group.gpus_shard()):
                 if gpus[cursor]["mem_total_mb"] < model_group.required_memory_mb(self.models_db):
@@ -328,6 +338,13 @@ class ModelAssigner:
                     gpus_shard for gpus_shard in ALLOWED_GPUS_SHARD
                     if gpus_shard <= max_available_shards
                 ]
+            if rec["backend"] in self.concurrency_backends:
+                default_concurrency = ALLOWED_CONCURRENCY[-1]
+                available_concurrency = ALLOWED_CONCURRENCY
+            else:
+                default_concurrency = 0
+                available_concurrency = []
+
             info.append({
                 "name": k,
                 "backend": rec["backend"],
@@ -341,6 +358,8 @@ class ModelAssigner:
                 "default_n_ctx": default_n_ctx,
                 "available_n_ctx": available_n_ctx,
                 "available_shards": available_shards,
+                "default_concurrency": default_concurrency,
+                "available_concurrency": available_concurrency,
                 "is_deprecated": bool(rec.get("deprecated", False)),
                 "repo_status": self._models_repo_status[k],
                 "repo_url": f"https://huggingface.co/{rec['model_path']}",
@@ -368,8 +387,15 @@ class ModelAssigner:
             record["n_ctx"] = n_ctx
             return record
 
+        def _set_concurrency(model: str, record: Dict) -> Dict:
+            if self.models_db[model]["backend"] in self.concurrency_backends:
+                record["concurrency"] = record.get("concurrency", ALLOWED_CONCURRENCY[-1])
+            else:
+                record["concurrency"] = 0
+            return record
+
         j["model_assign"] = self._share_gpu_filter({
-            model: _set_n_ctx(model, v)
+            model: _set_concurrency(model, _set_n_ctx(model, v))
             for model, v in j["model_assign"].items()
             if model in self.models_db
         })
