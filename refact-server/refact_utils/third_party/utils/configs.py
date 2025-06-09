@@ -17,7 +17,7 @@ class ModelCapabilities(BaseModel):
     agent: bool
     clicks: bool
     completion: bool
-    reasoning: Optional[str] = False
+    reasoning: Optional[str] = None
     boost_reasoning: bool = False
 
 
