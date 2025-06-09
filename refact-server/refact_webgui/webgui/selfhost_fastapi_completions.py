@@ -611,18 +611,11 @@ class BaseCompletionsRouter(APIRouter):
             thinking_split_token = "</think>"
 
         # Qwen3 thinking arguments override
+        # NOTE: qwen3 can work in two different modes,
+        # but we're not pass this specific argument into litellm here
         if post.enable_thinking is not None:
-            completion_kwargs["chat_template_kwargs"] = {"enable_thinking": post.enable_thinking}
-            completion_kwargs["top_k"] = 20
-            if post.enable_thinking:
-                completion_kwargs["top_p"] = 0.95
-                completion_kwargs["min_p"] = 0
-                completion_kwargs["presence_penalty"] = 1
-            else:
-                thinking_split_token = None
-                completion_kwargs["temperature"] = 0.7
-                completion_kwargs["top_p"] = 0.8
-                completion_kwargs["presence_penalty"] = 1.5
+            completion_kwargs["top_p"] = 0.95
+            completion_kwargs["presence_penalty"] = 1
         thinking_patcher = ThinkingPatcher(thinking_split_token=thinking_split_token)
 
         if post.reasoning_effort or post.thinking:
