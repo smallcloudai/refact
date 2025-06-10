@@ -84,8 +84,10 @@ function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
 
   if (!calls.length || add.function.name) {
     add.index = calls.length;
-    if (!add.id) { add.id = uuidv4() }
-    calls[calls.length] = add
+    if (!add.id) {
+      add.id = uuidv4();
+    }
+    calls[calls.length] = add;
   } else {
     const prevCall = calls[calls.length - 1];
     const prevArgs = prevCall.function.arguments;
