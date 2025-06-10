@@ -5,21 +5,24 @@ import { pagesSlice } from "../Pages/pagesSlice";
 import {
   createMessage,
   createThreadWithMessage,
-  threadsPageSub,
 } from "../../services/graphql/graphqlThunks";
 
 type InitialState = {
   loading: boolean;
   messages: Record<string, FTMMessage>;
   ft_id: string | null;
-  leaf: FTMMessage | null;
+  endNumber: number;
+  endAlt: number;
+  endPrevAlt: number;
 };
 
 const initialState: InitialState = {
   loading: false,
   messages: {},
   ft_id: null,
-  leaf: null,
+  endNumber: 0,
+  endAlt: 0,
+  endPrevAlt: 0,
 };
 
 const ID_REGEXP = /^(.*):(\d+):(\d+):(\d+)$/;
@@ -156,8 +159,13 @@ export const threadMessagesSlice = createSlice({
       }
     },
 
-    setThreadLeaf: (state, action: PayloadAction<InitialState["leaf"]>) => {
-      state.leaf = action.payload;
+    setThreadEnd: (
+      state,
+      action: PayloadAction<{ number: number; alt: number; prevAlt: number }>,
+    ) => {
+      state.endNumber = action.payload.number;
+      state.endAlt = action.payload.alt;
+      state.endPrevAlt = action.payload.prevAlt;
     },
 
     resetThread: (state) => {
@@ -175,8 +183,19 @@ export const threadMessagesSlice = createSlice({
     selectThreadId: (state) => state.ft_id,
     selectThreadMessageTrie: (state) =>
       makeMessageTrie(Object.values(state.messages)),
-    selectThreadLeaf: (state) => state.leaf,
+    selectThreadEnd: (state) => {
+      const { endNumber, endAlt, endPrevAlt } = state;
+      return { endNumber, endAlt, endPrevAlt };
+    },
     isThreadEmpty: (state) => Object.values(state.messages).length === 0,
+    selectAppSpecific: (state) => {
+      const values = Object.values(state.messages);
+      if (values.length === 0) return "";
+      if (typeof values[0].ft_app_specific === "string") {
+        return values[0].ft_app_specific;
+      }
+      return null;
+    },
   },
 
   extraReducers(builder) {
@@ -210,7 +229,7 @@ export const threadMessagesSlice = createSlice({
 
 export const {
   receiveThreadMessages,
-  setThreadLeaf,
+  setThreadEnd,
   resetThread,
   setThreadFtId,
 } = threadMessagesSlice.actions;
@@ -219,6 +238,7 @@ export const {
   selectThreadLoading,
   selectThreadId,
   selectThreadMessageTrie,
-  selectThreadLeaf,
+  selectThreadEnd,
   isThreadEmpty,
+  selectAppSpecific,
 } = threadMessagesSlice.selectors;

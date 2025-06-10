@@ -37,6 +37,7 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
     news_action
     news_payload_id
     news_payload_thread_message {
+      ft_app_specific
       ftm_belongs_to_ft_id
       ftm_alt
       ftm_num

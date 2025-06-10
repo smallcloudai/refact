@@ -86,6 +86,7 @@ export const messagesSub = createAsyncThunk<
     MessagesSubscriptionSubscriptionVariables
   >(apiKey, MessagesSubscriptionDocument, args, thunkApi.signal, (result) => {
     if (thunkApi.signal.aborted) {
+      // eslint-disable-next-line no-console
       console.log("handleResult called after thunk signal is aborted");
 
       return thunkApi.fulfillWithValue({});
@@ -225,21 +226,6 @@ export const createThreadWithMessage = createAsyncThunk<
     ftm_usage: "null", // optional
   };
 
-  // const key = `${threadQuery.data.thread_create.ft_id}:${createMessageArgs.ftm_alt}:${createMessageArgs.ftm_num}:${createMessageArgs.ftm_prev_alt}`;
-  // // add it to the messages list to be replaced later
-  // thunkAPI.dispatch(
-  //   receiveThreadMessages({
-  //     comprehensive_thread_subs: {
-  //       news_action: "INSERT",
-  //       news_payload_id: key,
-  //       news_payload_thread_message: {
-  //         ...createMessageArgs,
-  //         ftm_content: args.ftm_content,
-  //         ftm_created_ts: Date.now(),
-  //       },
-  //     },
-  //   }),
-  // );
   const result = await client.mutation<
     MessageCreateMutation,
     MessageCreateMutationVariables

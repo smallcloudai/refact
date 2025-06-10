@@ -11,7 +11,8 @@ import { FThreadMessageInput } from "../../../generated/documents";
 import {
   isThreadEmpty,
   selectThreadId,
-  selectThreadLeaf,
+  selectThreadEnd,
+  selectAppSpecific,
 } from "../../features/ThreadMessages";
 
 // function usecreateThreadWithMessage() {
@@ -20,9 +21,10 @@ import {
 
 export function useMessageSubscription() {
   const dispatch = useAppDispatch();
-  const leafMessage = useAppSelector(selectThreadLeaf);
+  const leafMessage = useAppSelector(selectThreadEnd);
   const isEmpty = useAppSelector(isThreadEmpty);
   const maybeFtId = useIdForThread();
+  const appSpecific = useAppSelector(selectAppSpecific);
   useEffect(() => {
     if (!maybeFtId) return;
     console.log("subscribing to message subscription");
@@ -41,27 +43,28 @@ export function useMessageSubscription() {
     (content: string) => {
       console.log("Sending message");
       console.log({ content, leafMessage });
-      if (leafMessage === null) {
+      if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void dispatch(createThreadWithMessage({ ftm_content: content }));
         return;
       }
       const input: FThreadMessageInput = {
-        ftm_alt: leafMessage.ftm_alt, // increase when branching
-        // ftm_app_specific: leafMessage.ftm_belongs_to_ft_id, // optional
-        ftm_belongs_to_ft_id: maybeFtId ?? leafMessage.ftm_belongs_to_ft_id, // ftId.ft_id,
+        ftm_alt: leafMessage.endAlt,
+        ftm_app_specific: JSON.stringify(appSpecific),
+        ftm_belongs_to_ft_id: maybeFtId ?? "", // ftId.ft_id,
         ftm_call_id: "",
         ftm_content: JSON.stringify(content),
-        ftm_num: leafMessage.ftm_num + 1,
-        ftm_prev_alt: leafMessage.ftm_alt, // optional
+        ftm_num: leafMessage.endNumber + 1,
+        ftm_prev_alt: leafMessage.endPrevAlt,
         ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
         ftm_role: "user",
         ftm_tool_calls: "null", // optional
         ftm_usage: "null", // optional
       };
       console.log("input", input);
+      // TODO: this will need more info
       void dispatch(createMessage({ input }));
     },
-    [dispatch, leafMessage, maybeFtId],
+    [appSpecific, dispatch, leafMessage, maybeFtId],
   );
 
   return { sendMessage };

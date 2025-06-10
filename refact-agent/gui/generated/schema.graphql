@@ -356,6 +356,7 @@ type Query {
   threads_app_captured(ft_app_capture: String!, ft_app_searchable: String!, located_fgroup_id: String!): [FThreadOutput!]!
   workspace_invitation_get(ws_id: String!, wsi_email: String!): FWorkspaceInvitationOutput!
   workspace_invitation_list(ws_id: String!): [FWorkspaceInvitationOutput!]!
+  workspace_permission_list(ws_id: String!): [FPermissionOutput!]!
 }
 
 type Subscription {

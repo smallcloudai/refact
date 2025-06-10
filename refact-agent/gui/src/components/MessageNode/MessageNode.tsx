@@ -1,14 +1,7 @@
-import React, { useCallback, useEffect, useMemo } from "react";
-// import {
-//   chatDbMessageSliceActions,
-//   CMessageNode,
-//   isUserCMessageNode,
-// } from "../../features/ChatDB/chatDbMessagesSlice";
+import React, { memo, useCallback, useEffect, useMemo } from "react";
 import { UserInput } from "../ChatContent/UserInput";
 import { AssistantInput } from "../ChatContent/AssistantInput";
 import {
-  // ChatMessage,
-  // ChatMessage,
   isAssistantMessage,
   isChatContextFileMessage,
   isChatMessage,
@@ -16,14 +9,14 @@ import {
   isPlainTextMessage,
   isUserMessage,
 } from "../../services/refact";
-import { Box, Flex, IconButton } from "@radix-ui/themes";
+import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
 import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
 import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
-import { setThreadLeaf } from "../../features/ThreadMessages";
+import { setThreadEnd } from "../../features/ThreadMessages";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 
 const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
@@ -66,31 +59,25 @@ const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
 
 export type MessageNodeProps = { children?: FTMessageNode | null };
 
-// TODO: update tracking the end point
-export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
+const MessageNodeMemo: React.FC<MessageNodeProps> = ({ children }) => {
   const dispatch = useAppDispatch();
-
-  // useEffect(() => {
-  //   if (children?.children.length === 0) {
-  //     const action = chatDbMessageSliceActions.setEnd({
-  //       number: children.message.cmessage_num,
-  //       alt: children.message.cmessage_alt,
-  //     });
-  //     dispatch(action);
-  //   }
-  // }, [
-  //   children?.children.length,
-  //   children?.message.cmessage_num,
-  //   children?.message.cmessage_alt,
-  //   dispatch,
-  // ]);
-
+  // TODO: move this up?
   useEffect(() => {
     if (children?.children.length === 0) {
-      const action = setThreadLeaf(children.value);
+      const action = setThreadEnd({
+        number: children.value.ftm_num,
+        alt: children.value.ftm_alt,
+        prevAlt: children.value.ftm_prev_alt,
+      });
       dispatch(action);
     }
-  }, [children?.children.length, children?.value, dispatch]);
+  }, [
+    children?.children.length,
+    children?.value.ftm_alt,
+    children?.value.ftm_num,
+    children?.value.ftm_prev_alt,
+    dispatch,
+  ]);
 
   if (!children) return null;
   return (
@@ -101,27 +88,8 @@ export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   );
 };
 
-// function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
-//   return {
-//     message: {
-//       cmessage_usage_model: lastMessage?.message.cmessage_usage_model ?? "",
-//       cmessage_usage_prompt: lastMessage?.message.cmessage_usage_prompt ?? 0,
-//       cmessage_usage_completion:
-//         lastMessage?.message.cmessage_usage_completion ?? 0,
-//       cmessage_belongs_to_cthread_id:
-//         lastMessage?.message.cmessage_belongs_to_cthread_id ?? "",
-//       cmessage_num: lastMessage?.message.cmessage_num ?? 0,
-
-//       cmessage_alt: (lastMessage?.message.cmessage_alt ?? 0) + 1,
-//       cmessage_prev_alt: lastMessage?.message.cmessage_alt ?? 0,
-//       cmessage_json: {
-//         role: "user",
-//         content: "dummy text about making a new message",
-//       }, // TODO: use a different type of message
-//     },
-//     children: [],
-//   };
-// }
+export const MessageNode = memo(MessageNodeMemo);
+MessageNode.displayName = "MessageNode";
 
 const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
   children,
@@ -144,25 +112,25 @@ const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
 
   const canBranch = useMemo(() => {
     if (children.length > 1) return true;
-    // if (selectedNodeIndex >= children.length && selectedNodeIndex > 0) {
-    //   return true;
-    // }
-    // if (
-    //   children[selectedNodeIndex] &&
-    //   isUserCMessageNode(children[selectedNodeIndex])
-    // ) {
-    //   return true;
-    // }
-    // return false;
-  }, [children]);
+    if (selectedNodeIndex >= children.length && selectedNodeIndex > 0) {
+      return true;
+    }
+
+    if (
+      children[selectedNodeIndex] &&
+      children[selectedNodeIndex].value.ftm_role === "user"
+    ) {
+      return true;
+    }
+    return false;
+  }, [children, selectedNodeIndex]);
 
   const nodeToRender = useMemo(() => {
-    return children[0];
-    // return (
-    //   children[selectedNodeIndex] ??
-    //   makeDummyNode(children[children.length - 1])
-    // );
-  }, [children]);
+    return (
+      children[selectedNodeIndex] ??
+      makeDummyNode(children[children.length - 1])
+    );
+  }, [children, selectedNodeIndex]);
 
   if (!canBranch) {
     return <MessageNode>{children[selectedNodeIndex]}</MessageNode>;
@@ -172,15 +140,18 @@ const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
     <Box>
       <Flex gap="4" justify="end">
         <IconButton
-          variant="outline"
+          variant="ghost"
           size="1"
           disabled={selectedNodeIndex === 0}
           onClick={goBack}
         >
           <ArrowLeftIcon />
         </IconButton>
+        <Text size="1">
+          {selectedNodeIndex} / {children.length}
+        </Text>
         <IconButton
-          variant="outline"
+          variant="ghost"
           size="1"
           disabled={selectedNodeIndex === children.length}
           onClick={goForward}
@@ -192,3 +163,23 @@ const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
     </Box>
   );
 };
+
+function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
+  // TODO handel the numbers better
+  const num = lastMessage ? lastMessage.value.ftm_num - 1 : 0;
+  return {
+    value: {
+      ftm_belongs_to_ft_id: lastMessage?.value.ftm_belongs_to_ft_id ?? "",
+      ftm_alt: (lastMessage?.value.ftm_alt ?? 100) + 1,
+      ftm_num: num,
+      ftm_prev_alt: lastMessage?.value.ftm_prev_alt ?? 100,
+      ftm_role: "", // TODO: maybe add a message.
+      ftm_content: "",
+      ftm_tool_calls: null,
+      ftm_call_id: "",
+      ftm_usage: null,
+      ftm_created_ts: Date.now(),
+    },
+    children: [],
+  };
+}
