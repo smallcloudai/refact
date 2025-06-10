@@ -82,6 +82,10 @@ POINT2 FOR_FUTURE_FEREFENCE: ...
 function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
   const calls = prev.slice();
 
+  // NOTE: we can't be sure that backend sends correct indexes for tool calls
+  // in case of qwen3 with sglang I get 2 problems fixed here:
+  // 1. index of first tool call delta == 2 next == 0 (huh?)
+  // 2. second tool call in a row has id == null
   if (!calls.length || add.function.name) {
     add.index = calls.length;
     if (!add.id) {
