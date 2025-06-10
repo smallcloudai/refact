@@ -30,7 +30,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Dict, Union, Optional, Tuple, Any
 
-__all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
+__all__ = ["BaseCompletionsRouter", "CompletionsRouter", "ThinkingPatcher"]
 
 
 def clamp(lower, upper, x):
