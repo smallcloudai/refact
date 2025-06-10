@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { UserInput } from "../ChatContent/UserInput";
 import { AssistantInput } from "../ChatContent/AssistantInput";
 import {
@@ -9,7 +9,7 @@ import {
   isPlainTextMessage,
   isUserMessage,
 } from "../../services/refact";
-import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Flex, IconButton, Text } from "@radix-ui/themes";
 import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
@@ -57,13 +57,14 @@ const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
   return false;
 };
 
-export type MessageNodeProps = { children?: FTMessageNode | null };
+export type MessageNodeProps = { children: FTMessageNode };
 
-const MessageNodeMemo: React.FC<MessageNodeProps> = ({ children }) => {
+export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   const dispatch = useAppDispatch();
+  const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
   // TODO: move this up?
   useEffect(() => {
-    if (children?.children.length === 0) {
+    if (children.children.length === 0) {
       const action = setThreadEnd({
         number: children.value.ftm_num,
         alt: children.value.ftm_alt,
@@ -72,29 +73,12 @@ const MessageNodeMemo: React.FC<MessageNodeProps> = ({ children }) => {
       dispatch(action);
     }
   }, [
-    children?.children.length,
-    children?.value.ftm_alt,
-    children?.value.ftm_num,
-    children?.value.ftm_prev_alt,
+    children.children.length,
+    children.value.ftm_alt,
+    children.value.ftm_num,
+    children.value.ftm_prev_alt,
     dispatch,
   ]);
-
-  if (!children) return null;
-  return (
-    <>
-      <ElementForNodeMessage message={children.value} />
-      <MessageNodeChildren>{children.children}</MessageNodeChildren>
-    </>
-  );
-};
-
-export const MessageNode = memo(MessageNodeMemo);
-MessageNode.displayName = "MessageNode";
-
-const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
-  children,
-}) => {
-  const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
 
   const goBack = useCallback(() => {
     setSelectedNodeIndex((prev) => {
@@ -105,62 +89,72 @@ const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
 
   const goForward = useCallback(() => {
     setSelectedNodeIndex((prev) => {
-      if (prev === children.length) return prev;
+      if (prev === children.children.length) return prev;
       return prev + 1;
     });
-  }, [children.length]);
+  }, [children.children.length]);
 
   const canBranch = useMemo(() => {
-    if (children.length > 1) return true;
-    if (selectedNodeIndex >= children.length && selectedNodeIndex > 0) {
-      return true;
-    }
-
-    if (
-      children[selectedNodeIndex] &&
-      children[selectedNodeIndex].value.ftm_role === "user"
-    ) {
-      return true;
-    }
+    if (children.children.length > 1) return true;
+    if (children.value.ftm_role === "user") return true;
     return false;
-  }, [children, selectedNodeIndex]);
+  }, [children]);
 
   const nodeToRender = useMemo(() => {
-    return (
-      children[selectedNodeIndex] ??
-      makeDummyNode(children[children.length - 1])
-    );
+    if (children.children.length === 0) return null;
+    if (selectedNodeIndex > children.children.length) {
+      return makeDummyNode(children.children[children.children.length - 1]);
+    }
+    return children.children[selectedNodeIndex];
   }, [children, selectedNodeIndex]);
 
-  if (!canBranch) {
-    return <MessageNode>{children[selectedNodeIndex]}</MessageNode>;
-  }
-
   return (
-    <Box>
-      <Flex gap="4" justify="end">
-        <IconButton
-          variant="ghost"
-          size="1"
-          disabled={selectedNodeIndex === 0}
-          onClick={goBack}
-        >
-          <ArrowLeftIcon />
-        </IconButton>
-        <Text size="1">
-          {selectedNodeIndex} / {children.length}
-        </Text>
-        <IconButton
-          variant="ghost"
-          size="1"
-          disabled={selectedNodeIndex === children.length}
-          onClick={goForward}
-        >
-          <ArrowRightIcon />
-        </IconButton>
-      </Flex>
-      <MessageNode>{nodeToRender}</MessageNode>
-    </Box>
+    <>
+      <ElementForNodeMessage message={children.value} />
+
+      {canBranch && (
+        <NodeSelectButtons
+          onBackward={goBack}
+          onForward={goForward}
+          currentNode={selectedNodeIndex}
+          totalNodes={children.children.length}
+        />
+      )}
+      {nodeToRender && <MessageNode>{nodeToRender}</MessageNode>}
+    </>
+  );
+};
+
+const NodeSelectButtons: React.FC<{
+  onForward: () => void;
+  onBackward: () => void;
+  currentNode: number;
+  totalNodes: number;
+}> = ({ onForward, onBackward, currentNode, totalNodes }) => {
+  return (
+    <Flex gap="2" justify="start" my="2">
+      <IconButton
+        variant="ghost"
+        size="1"
+        disabled={currentNode === 0}
+        radius="large"
+        onClick={onBackward}
+      >
+        <ArrowLeftIcon />
+      </IconButton>
+      <Text size="1">
+        {currentNode + 1} / {totalNodes}
+      </Text>
+      <IconButton
+        variant="ghost"
+        size="1"
+        disabled={currentNode === totalNodes}
+        onClick={onForward}
+        radius="large"
+      >
+        <ArrowRightIcon />
+      </IconButton>
+    </Flex>
   );
 };
 
