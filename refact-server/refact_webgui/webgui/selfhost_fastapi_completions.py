@@ -194,22 +194,29 @@ async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
 
 # NOTE: some models doesn't support multiple parsers for now, we need parse thinking manually in this case
 class ThinkingPatcher:
-    def __init__(self, thinking_split_token: Optional[str]):
-        self._thinking_split_token = thinking_split_token
+    def __init__(
+            self,
+            thinking_tokens: Optional[Tuple[str, str]],
+    ):
+        if thinking_tokens is None:
+            thinking_tokens = None, None
+        self._thinking_start_token, self._thinking_end_token = thinking_tokens
         self._thinking_split_index = set()
 
     def patch_choices(self, choices: List[Dict]) -> List[Dict]:
-        if self._thinking_split_token is None:
+        if self._thinking_end_token is None:
             return choices
         for choice in choices:
             index = choice["index"]
             if "delta" in choice:
                 if content := choice["delta"].get("content"):
+                    if self._thinking_start_token:
+                        content = content.replace(self._thinking_start_token, "")
                     if index not in self._thinking_split_index:
-                        if self._thinking_split_token in content:
+                        if self._thinking_end_token in content:
                             self._thinking_split_index.add(index)
                             choice["delta"]["reasoning_content"], choice["delta"]["content"] \
-                                = (*content.split(self._thinking_split_token), "")[:2]
+                                = (*content.split(self._thinking_end_token), "")[:2]
                         else:
                             choice["delta"]["reasoning_content"] = content
                             choice["delta"]["content"] = ""
@@ -218,8 +225,10 @@ class ThinkingPatcher:
                         choice["delta"]["content"] = content
             elif "message" in choice:
                 if content := choice["message"].get("content", ""):
+                    if self._thinking_start_token:
+                        content = content.replace(self._thinking_start_token, "")
                     choice["message"]["reasoning_content"], choice["message"]["content"] \
-                        = (*content.split(self._thinking_split_token), "")[:2]
+                        = (*content.split(self._thinking_end_token), "")[:2]
             else:
                 log(f"unknown choice type with keys: {choice.keys()}, skip thinking patch")
         return choices
@@ -606,9 +615,9 @@ class BaseCompletionsRouter(APIRouter):
             "timeout": 60 * 60,  # An hour timeout for thinking models
         }
 
-        thinking_split_token = None
+        thinking_tokens = None
         if model_config.capabilities.reasoning in ["qwen", "deepseek"]:
-            thinking_split_token = "</think>"
+            thinking_tokens = "<think>", "</think>"
 
         # Qwen3 thinking arguments override
         # NOTE: qwen3 can work in two different modes,
@@ -616,7 +625,7 @@ class BaseCompletionsRouter(APIRouter):
         if post.enable_thinking is not None:
             completion_kwargs["top_p"] = 0.95
             completion_kwargs["presence_penalty"] = 1
-        thinking_patcher = ThinkingPatcher(thinking_split_token=thinking_split_token)
+        thinking_patcher = ThinkingPatcher(thinking_tokens=thinking_tokens)
 
         if post.reasoning_effort or post.thinking:
             del completion_kwargs["temperature"]
