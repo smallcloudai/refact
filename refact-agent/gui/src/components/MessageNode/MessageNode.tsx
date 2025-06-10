@@ -9,7 +9,7 @@ import {
   isPlainTextMessage,
   isUserMessage,
 } from "../../services/refact";
-import { Flex, IconButton, Text } from "@radix-ui/themes";
+import { Container, Flex, IconButton, Text } from "@radix-ui/themes";
 import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
@@ -132,29 +132,31 @@ const NodeSelectButtons: React.FC<{
   totalNodes: number;
 }> = ({ onForward, onBackward, currentNode, totalNodes }) => {
   return (
-    <Flex gap="2" justify="start" my="2">
-      <IconButton
-        variant="ghost"
-        size="1"
-        disabled={currentNode === 0}
-        radius="large"
-        onClick={onBackward}
-      >
-        <ArrowLeftIcon />
-      </IconButton>
-      <Text size="1">
-        {currentNode + 1} / {totalNodes}
-      </Text>
-      <IconButton
-        variant="ghost"
-        size="1"
-        disabled={currentNode === totalNodes}
-        onClick={onForward}
-        radius="large"
-      >
-        <ArrowRightIcon />
-      </IconButton>
-    </Flex>
+    <Container my="2">
+      <Flex gap="2" justify="start">
+        <IconButton
+          variant="ghost"
+          size="1"
+          disabled={currentNode === 0}
+          radius="large"
+          onClick={onBackward}
+        >
+          <ArrowLeftIcon />
+        </IconButton>
+        <Text size="1">
+          {currentNode + 1} / {totalNodes}
+        </Text>
+        <IconButton
+          variant="ghost"
+          size="1"
+          disabled={currentNode === totalNodes}
+          onClick={onForward}
+          radius="large"
+        >
+          <ArrowRightIcon />
+        </IconButton>
+      </Flex>
+    </Container>
   );
 };
 
