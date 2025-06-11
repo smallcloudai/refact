@@ -1,6 +1,10 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
-import { FTMMessage, makeMessageTrie } from "./makeMessageTrie";
+import {
+  FTMMessage,
+  makeMessageTrie,
+  getPathToEndNode,
+} from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
 import {
   createMessage,
@@ -51,11 +55,11 @@ export const threadMessagesSlice = createSlice({
     ) => {
       state.isWaiting = false;
       // state.isStreaming = true; // TODO: figure out how to tell when the stream has ended
-      console.log(
-        "receiveMessages",
-        action.payload.comprehensive_thread_subs.news_action,
-        action.payload,
-      );
+      // console.log(
+      //   "receiveMessages",
+      //   action.payload.comprehensive_thread_subs.news_action,
+      //   action.payload,
+      // );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message
@@ -201,6 +205,15 @@ export const threadMessagesSlice = createSlice({
       }
       return null;
     },
+
+    selectMessagesFromEndNode: (state) => {
+      return getPathToEndNode(
+        state.endNumber,
+        state.endAlt,
+        state.endPrevAlt,
+        Object.values(state.messages),
+      );
+    },
   },
 
   extraReducers(builder) {
@@ -250,4 +263,5 @@ export const {
   selectThreadEnd,
   isThreadEmpty,
   selectAppSpecific,
+  selectMessagesFromEndNode,
 } = threadMessagesSlice.selectors;

@@ -65,3 +65,44 @@ function getChildren(
     return { value: s, children: getChildren(s, other) };
   });
 }
+
+export function getAncestorsForNode(
+  num: number,
+  alt: number,
+  prevAlt: number,
+  messages: FTMMessage[],
+): FTMMessage[] {
+  // TODO: dummy node might cause this to be off by one.
+  const child =
+    messages.find(
+      (message) =>
+        message.ftm_num === num &&
+        message.ftm_alt === alt &&
+        message.ftm_prev_alt === message.ftm_prev_alt,
+    ) ?? findParent(num, prevAlt, messages);
+
+  if (!child) return [];
+  return getParentsIter(child, messages);
+}
+
+function getParentsIter(
+  child: FTMMessage,
+  messages: FTMMessage[],
+  memo: FTMMessage[] = [],
+) {
+  const maybeParent = findParent(child.ftm_num, child.ftm_prev_alt, messages);
+  const collected = [child, ...memo];
+  if (!maybeParent) return collected;
+
+  return getParentsIter(maybeParent, messages, collected);
+}
+
+function findParent(
+  num: number,
+  prevAlt: number,
+  messages: FTMMessage[],
+): FTMMessage | undefined {
+  return messages.find((message) => {
+    return message.ftm_num === num - 1 && message.ftm_alt === prevAlt;
+  });
+}
