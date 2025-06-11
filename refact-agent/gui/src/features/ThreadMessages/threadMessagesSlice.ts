@@ -3,7 +3,7 @@ import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import {
   FTMMessage,
   makeMessageTrie,
-  getPathToEndNode,
+  getAncestorsForNode,
 } from "./makeMessageTrie";
 import { pagesSlice } from "../Pages/pagesSlice";
 import {
@@ -207,7 +207,7 @@ export const threadMessagesSlice = createSlice({
     },
 
     selectMessagesFromEndNode: (state) => {
-      return getPathToEndNode(
+      return getAncestorsForNode(
         state.endNumber,
         state.endAlt,
         state.endPrevAlt,
