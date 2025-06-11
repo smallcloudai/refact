@@ -1,4 +1,3 @@
-use std::future::Future;
 use crate::global_context::GlobalContext;
 use futures::{SinkExt, StreamExt};
 use reqwest::Client;
@@ -112,19 +111,7 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
         let events_result = events_loop(
             gcx.clone(),
             &mut connection,
-            api_key.clone(),
-            move |gcx, payload, basic_info, api_key, app_searchable_id| {
-                let payload_owned = payload.clone();
-                let basic_info_owned = basic_info.clone();
-                async move {
-                    match crate::cloud::threads_processing::process_thread_event(
-                        gcx, &payload_owned, &basic_info_owned, api_key, app_searchable_id,
-                    ).await {
-                        Ok(_) => Ok(false),
-                        Err(e) => Err(e)
-                    }
-                }
-            },
+            api_key.clone()
         ).await;
         if let Err(err) = events_result {
             error!("failed to process events: {}", err);
@@ -237,7 +224,7 @@ pub async fn initialize_connection(
     Ok(read)
 }
 
-pub async fn events_loop<F, Fut>(
+async fn events_loop(
     gcx: Arc<ARwLock<GlobalContext>>,
     connection: &mut futures::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<
@@ -245,12 +232,7 @@ pub async fn events_loop<F, Fut>(
         >,
     >,
     api_key: String,
-    processor: F,
-) -> Result<(), String>
-where
-    F: Fn(Arc<ARwLock<GlobalContext>>, &ThreadPayload, &BasicStuff, String, String) -> Fut + Send + Sync + Clone + 'static,
-    Fut: Future<Output=Result<bool, String>> + Send,
-{
+) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
     let app_searchable_id = gcx.read().await.app_searchable_id.clone();
     let basic_info = get_basic_info(api_key.clone()).await?;
@@ -272,8 +254,7 @@ where
                         continue;
                     }
                 };
-                let response_type = response["type"].as_str().unwrap_or("unknown");
-                match response_type {
+                match response["type"].as_str().unwrap_or("unknown") {
                     "data" => {
                         if let Some(payload) = response["payload"].as_object() {
                             let data = &payload["data"];
@@ -288,22 +269,10 @@ where
                                 let basic_info_clone = basic_info.clone();
                                 let api_key_clone = api_key.clone();
                                 let app_searchable_id_clone = app_searchable_id.clone();
-                                let processor_clone = processor.clone();
-                                let threads_in_group_clone = threads_in_group.clone();
                                 tokio::spawn(async move {
-                                    match processor_clone(
-                                        gcx_clone.clone(), &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone,
-                                    ).await {
-                                        Ok(need_to_stop) => {
-                                            if need_to_stop {
-                                                info!("thread processing requested to stop subscription");
-                                                trigger_threads_subscription_restart(gcx_clone).await;
-                                            }
-                                        }
-                                        Err(err) => {
-                                            error!("failed to process thread event in detached task: {}\n{:?}", err, threads_in_group_clone);
-                                        }
-                                    }
+                                    crate::cloud::threads_processing::process_thread_event(
+                                        gcx_clone, &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone,
+                                    ).await 
                                 });
                             } else {
                                 info!("failed to parse thread payload: {:?}", threads_in_group);

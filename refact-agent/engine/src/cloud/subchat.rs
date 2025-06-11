@@ -1,15 +1,17 @@
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
+use futures::StreamExt;
 use crate::at_commands::at_commands::AtCommandsContext;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::RwLock as ARwLock;
 use crate::call_validation::{ChatMessage, ReasoningEffort};
 use crate::cloud::{threads_req, messages_req};
-use crate::global_context::GlobalContext;
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 use serde::{Deserialize, Serialize};
-use tracing::info;
-use crate::cloud::threads_sub::{initialize_connection, events_loop, ThreadPayload, BasicStuff};
+use serde_json::Value;
+use tokio_tungstenite::tungstenite::Message;
+use tracing::{error, info};
+use crate::cloud::threads_sub::{initialize_connection, ThreadPayload};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct KernelOutput {
@@ -103,28 +105,62 @@ pub async fn subchat(
         Ok(conn) => conn,
         Err(err) => return Err(format!("Failed to initialize WebSocket connection: {}", err)),
     };
-    let thread_id_clone = thread_id.clone();
-    let processor = move |
-        _gcx: Arc<ARwLock<GlobalContext>>,
-        payload: &ThreadPayload,
-        _basic_info: &BasicStuff,
-        _processor_api_key: String,
-        _app_searchable_id: String
-    | -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<bool, String>> + Send>> {
-        let thread_id = thread_id_clone.clone();
-        let payload = payload.clone();
-        Box::pin(async move {
-            if payload.ft_id != thread_id {
-                return Ok(false);
+    while let Some(msg) = connection.next().await {
+        if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
+            info!("shutting down threads subscription");
+            break;
+        }
+        match msg {
+            Ok(Message::Text(text)) => {
+                let response: Value = match serde_json::from_str(&text) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        error!("failed to parse message: {}, error: {}", text, err);
+                        continue;
+                    }
+                };
+                match response["type"].as_str().unwrap_or("unknown") {
+                    "data" => {
+                        if let Some(payload) = response["payload"].as_object() {
+                            let data = &payload["data"];
+                            let threads_in_group = &data["threads_in_group"];
+                            let news_action = threads_in_group["news_action"].as_str().unwrap_or("");
+                            if news_action != "INSERT" && news_action != "UPDATE" {
+                                continue;
+                            }
+                            if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
+                                if payload.ft_id != thread_id {
+                                    continue;
+                                }
+                                if payload.ft_error.is_some() {
+                                    break;
+                                }
+                            } else {
+                                info!("failed to parse thread payload: {:?}", threads_in_group);
+                            }
+                        } else {
+                            info!("received data message but couldn't find payload");
+                        }
+                    }
+                    "error" => {
+                        error!("threads subscription error: {}", text);
+                    }
+                    _ => {
+                        info!("received message with unknown type: {}", text);
+                    }
+                }
             }
-            if payload.ft_error.is_some() || payload.ft_need_user > 0 {
-                return Ok(true);
-            } else {
-                Ok(false)
+            Ok(Message::Close(_)) => {
+                info!("webSocket connection closed");
+                break;
             }
-        })
-    };
-    events_loop(gcx.clone(), &mut connection, api_key.clone(), processor).await?;
+            Ok(_) => {}
+            Err(e) => {
+                return Err(format!("webSocket error: {}", e));
+            }
+        }
+    }
+
     let thread = threads_req::get_thread(api_key, &thread_id).await?;
     if let Some(error) = thread.ft_error {
         // the error might be actually a kernel output data
