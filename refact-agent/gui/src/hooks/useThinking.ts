@@ -3,11 +3,12 @@ import { useCapsForToolUse } from "./useCapsForToolUse";
 import { useAppSelector } from "./useAppSelector";
 import {
   selectChatId,
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectThreadBoostReasoning,
   setBoostReasoning,
 } from "../features/Chat";
+import { selectIsStreaming, selectIsWaiting } from "../features/ThreadMessages";
 import { useAppDispatch } from "./useAppDispatch";
 import { useGetUser } from "./useGetUser";
 

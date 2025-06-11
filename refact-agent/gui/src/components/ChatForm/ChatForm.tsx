@@ -51,13 +51,17 @@ import { AttachImagesButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
   selectChatError,
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectLastSentCompression,
   selectMessages,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities/AgentCapabilities";

@@ -23,12 +23,16 @@ import { Chevron } from "../Collapsible";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll } from "../../hooks";
 import {
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectManyDiffMessageByIds,
   selectManyToolResultsByIds,
   selectToolResultById,
 } from "../../features/Chat/Thread/selectors";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 import { ScrollArea } from "../ScrollArea";
 import { takeWhile } from "../../utils";
 import { DialogImage } from "../DialogImage";

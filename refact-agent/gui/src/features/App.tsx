@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
-import { Chat, newChatAction, selectChatId, selectIsStreaming } from "./Chat";
+import {
+  Chat,
+  newChatAction,
+  selectChatId,
+  // selectIsStreaming
+} from "./Chat";
+import { selectIsStreaming } from "./ThreadMessages";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
   useAppSelector,

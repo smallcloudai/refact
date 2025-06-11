@@ -1,7 +1,8 @@
 import { useAppSelector } from "./useAppSelector";
 import { selectAddressURL, selectApiKey } from "../features/Config/configSlice";
 import { smallCloudApi } from "../services/smallcloud";
-import { selectIsStreaming } from "../features/Chat";
+// import { selectIsStreaming } from "../features/Chat";
+import { selectIsStreaming } from "../features/ThreadMessages";
 import { useGetCapsQuery } from "./useGetCapsQuery";
 
 const NOT_SKIPPABLE_ADDRESS_URLS = [

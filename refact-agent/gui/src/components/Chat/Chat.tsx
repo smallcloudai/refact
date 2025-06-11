@@ -12,7 +12,7 @@ import {
 import { type Config } from "../../features/Config/configSlice";
 import {
   enableSend,
-  selectIsStreaming,
+  // selectIsStreaming,
   selectPreventSend,
   selectChatId,
   selectMessages,
@@ -26,6 +26,7 @@ import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
 import { useMessageSubscription } from "./useMessageSubscription";
+import { selectIsStreaming } from "../../features/ThreadMessages";
 
 export type ChatProps = {
   host: Config["host"];

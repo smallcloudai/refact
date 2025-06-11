@@ -4,10 +4,14 @@ import classnames from "classnames";
 import { knowledgeApi } from "../../services/refact/knowledge";
 import { useAppSelector } from "../../hooks";
 import {
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectMessages,
 } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 import styles from "./LikeButton.module.css";
 import { useSelector } from "react-redux";
 import { selectThreadProjectOrCurrentProject } from "../../features/Chat/currentProject";

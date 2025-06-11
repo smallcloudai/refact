@@ -9,8 +9,8 @@ import {
   selectCheckpointsEnabled,
   selectHasUncalledTools,
   selectIntegration,
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectMessages,
   selectPreventSend,
   selectSendImmediately,
@@ -18,6 +18,7 @@ import {
   selectThreadMode,
   selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
+import { selectIsStreaming, selectIsWaiting } from "../features/ThreadMessages";
 import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
   ChatMessage,

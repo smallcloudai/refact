@@ -32,9 +32,9 @@ import {
   selectAutomaticPatch,
   selectChatId,
   selectCheckpointsEnabled,
-  selectIsStreaming,
+  // selectIsStreaming,
   selectIsTitleGenerationEnabled,
-  selectIsWaiting,
+  // selectIsWaiting,
   selectMessages,
   selectToolUse,
   setAreFollowUpsEnabled,
@@ -43,6 +43,10 @@ import {
   setEnabledCheckpoints,
   setToolUse,
 } from "../../features/Chat/Thread";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
 import { toPascalCase } from "../../utils/toPascalCase";

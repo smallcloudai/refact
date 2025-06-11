@@ -13,7 +13,11 @@ import {
 } from "../../services/refact";
 import { ImageIcon, CrossCircledIcon } from "@radix-ui/react-icons";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
-import { selectIsStreaming, selectIsWaiting } from "../../features/Chat";
+// import { selectIsStreaming, selectIsWaiting } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 
 function getTextFromUserMessage(messages: UserMessage["ftm_content"]): string {
   if (typeof messages === "string") return messages;

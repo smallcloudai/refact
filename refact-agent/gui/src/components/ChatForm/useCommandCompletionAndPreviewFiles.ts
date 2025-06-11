@@ -12,10 +12,11 @@ import type { LspChatMessage } from "../../services/refact";
 import {
   getSelectedChatModel,
   selectChatId,
-  selectIsStreaming,
+  // selectIsStreaming,
   selectMessages,
   selectThreadMode,
 } from "../../features/Chat";
+import { selectIsStreaming } from "../../features/ThreadMessages";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
 function useGetCommandCompletionQuery(

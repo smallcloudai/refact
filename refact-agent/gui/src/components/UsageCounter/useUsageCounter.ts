@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 import {
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectMessages,
 } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 import { useAppSelector, useLastSentCompressionStop } from "../../hooks";
 import {
   calculateUsageInputTokens,

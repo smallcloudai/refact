@@ -15,8 +15,8 @@ import {
   selectAreFollowUpsEnabled,
   selectChatId,
   selectIntegration,
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectMessages,
   selectModel,
   selectThreadMode,
@@ -24,6 +24,7 @@ import {
   setIntegrationData,
   setIsNewChatSuggested,
 } from "../features/Chat";
+import { selectIsStreaming, selectIsWaiting } from "../features/ThreadMessages";
 import { useGoToLink } from "./useGoToLink";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";

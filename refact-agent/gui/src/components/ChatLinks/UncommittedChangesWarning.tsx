@@ -3,11 +3,15 @@ import { useAppSelector, useGetLinksFromLsp } from "../../hooks";
 import { Markdown } from "../Markdown";
 import { Flex, Separator } from "@radix-ui/themes";
 import {
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectMessages,
   selectThreadToolUse,
 } from "../../features/Chat";
+import {
+  selectIsStreaming,
+  selectIsWaiting,
+} from "../../features/ThreadMessages";
 import { getErrorMessage } from "../../features/Errors/errorsSlice";
 import { getInformationMessage } from "../../features/Errors/informationSlice";
 

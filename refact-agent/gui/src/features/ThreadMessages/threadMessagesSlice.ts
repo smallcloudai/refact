@@ -8,7 +8,8 @@ import {
 } from "../../services/graphql/graphqlThunks";
 
 type InitialState = {
-  loading: boolean;
+  isWaiting: boolean;
+  isStreaming: boolean;
   messages: Record<string, FTMMessage>;
   ft_id: string | null;
   endNumber: number;
@@ -17,7 +18,8 @@ type InitialState = {
 };
 
 const initialState: InitialState = {
-  loading: false,
+  isWaiting: false,
+  isStreaming: false,
   messages: {},
   ft_id: null,
   endNumber: 0,
@@ -47,12 +49,13 @@ export const threadMessagesSlice = createSlice({
       state,
       action: PayloadAction<MessagesSubscriptionSubscription>,
     ) => {
-      state.loading = false;
-      // console.log(
-      //   "receiveMessages",
-      //   action.payload.comprehensive_thread_subs.news_action,
-      //   action.payload,
-      // );
+      state.isWaiting = false;
+      // state.isStreaming = true; // TODO: figure out how to tell when the stream has ended
+      console.log(
+        "receiveMessages",
+        action.payload.comprehensive_thread_subs.news_action,
+        action.payload,
+      );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message
@@ -179,8 +182,10 @@ export const threadMessagesSlice = createSlice({
   },
   selectors: {
     selectThreadMessages: (state) => state.messages,
-    selectThreadLoading: (state) => state.loading,
     selectThreadId: (state) => state.ft_id,
+    selectIsWaiting: (state) => state.isWaiting,
+    selectIsStreaming: (state) => state.isStreaming,
+    selectIsWaitingOrStreaming: (state) => state.isStreaming || state.isWaiting,
     selectThreadMessageTrie: (state) =>
       makeMessageTrie(Object.values(state.messages)),
     selectThreadEnd: (state) => {
@@ -213,16 +218,18 @@ export const threadMessagesSlice = createSlice({
     });
 
     builder.addCase(createThreadWithMessage.pending, (state) => {
-      state.loading = true;
+      state.isWaiting = true;
     });
     builder.addCase(createThreadWithMessage.rejected, (state) => {
-      state.loading = false;
+      state.isStreaming = false;
+      state.isWaiting = false;
     });
     builder.addCase(createMessage.pending, (state) => {
-      state.loading = true;
+      state.isWaiting = true;
     });
     builder.addCase(createMessage.rejected, (state) => {
-      state.loading = false;
+      state.isStreaming = false;
+      state.isWaiting = false;
     });
   },
 });
@@ -235,7 +242,9 @@ export const {
 } = threadMessagesSlice.actions;
 export const {
   selectThreadMessages,
-  selectThreadLoading,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectIsWaitingOrStreaming,
   selectThreadId,
   selectThreadMessageTrie,
   selectThreadEnd,
