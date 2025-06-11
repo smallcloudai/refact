@@ -113,7 +113,7 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             gcx.clone(),
             &mut connection,
             api_key.clone(),
-            |gcx, payload, basic_info, api_key, app_searchable_id| {
+            move |gcx, payload, basic_info, api_key, app_searchable_id| {
                 let payload_owned = payload.clone();
                 let basic_info_owned = basic_info.clone();
                 async move {
@@ -248,7 +248,7 @@ pub async fn events_loop<F, Fut>(
     processor: F,
 ) -> Result<(), String>
 where
-    F: Fn(Arc<ARwLock<GlobalContext>>, &ThreadPayload, &BasicStuff, String, String) -> Fut + Send + Sync,
+    F: Fn(Arc<ARwLock<GlobalContext>>, &ThreadPayload, &BasicStuff, String, String) -> Fut + Send + Sync + Clone + 'static,
     Fut: Future<Output=Result<bool, String>> + Send,
 {
     info!("cloud threads subscription started, waiting for events...");
@@ -283,19 +283,28 @@ where
                                 continue;
                             }
                             if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
-                                match processor(
-                                    gcx.clone(), &payload, &basic_info, api_key.clone(), app_searchable_id.clone(),
-                                ).await {
-                                    Ok(need_to_stop) => {
-                                        if need_to_stop {
-                                            info!("stopping threads subscription");
-                                            break;
+                                let gcx_clone = gcx.clone();
+                                let payload_clone = payload.clone();
+                                let basic_info_clone = basic_info.clone();
+                                let api_key_clone = api_key.clone();
+                                let app_searchable_id_clone = app_searchable_id.clone();
+                                let processor_clone = processor.clone();
+                                let threads_in_group_clone = threads_in_group.clone();
+                                tokio::spawn(async move {
+                                    match processor_clone(
+                                        gcx_clone.clone(), &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone,
+                                    ).await {
+                                        Ok(need_to_stop) => {
+                                            if need_to_stop {
+                                                info!("thread processing requested to stop subscription");
+                                                trigger_threads_subscription_restart(gcx_clone).await;
+                                            }
+                                        }
+                                        Err(err) => {
+                                            error!("failed to process thread event in detached task: {}\n{:?}", err, threads_in_group_clone);
                                         }
                                     }
-                                    Err(err) => {
-                                        error!("failed to process thread event: {}\n{:?}", err, threads_in_group);
-                                    }
-                                }
+                                });
                             } else {
                                 info!("failed to parse thread payload: {:?}", threads_in_group);
                             }

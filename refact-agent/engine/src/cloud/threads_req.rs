@@ -12,10 +12,10 @@ pub struct Thread {
     pub ft_fexp_name: Option<String>,
     pub ft_title: String,
     pub ft_toolset: Option<Vec<Value>>,
-    pub ft_error: Option<String>,
-    pub ft_need_assistant: i32,
-    pub ft_need_tool_calls: i32,
-    pub ft_need_user: i32,
+    pub ft_error: Option<Value>,
+    pub ft_need_assistant: i64,
+    pub ft_need_tool_calls: i64,
+    pub ft_need_user: i64,
     pub ft_created_ts: f64,
     pub ft_updated_ts: f64,
     pub ft_archived_ts: f64,
@@ -174,7 +174,7 @@ pub async fn get_thread(
         if let Some(data) = response_json.get("data") {
             if let Some(thread_value) = data.get("thread_get") {
                 let thread: Thread = serde_json::from_value(thread_value.clone())
-                    .map_err(|e| format!("Failed to parse thread: {}", e))?;
+                    .map_err(|e| format!("Failed to parse thread: {}\n{:?}", e, thread_value))?;
                 return Ok(thread);
             }
         }
@@ -297,10 +297,14 @@ pub async fn lock_thread(
             return Err(format!("GraphQL error: {}", error_msg));
         }
         if let Some(data) = response_json.get("data") {
-            if data.get("thread_lock").is_some() {
-                return Ok(());
+            return if data.get("thread_lock").is_some() {
+                if data.get("thread_lock").unwrap().as_bool().unwrap_or(false) {
+                    Ok(())
+                } else {
+                    Err(format!("Thread {thread_id} is locked by another worker"))
+                }
             } else {
-                return Err(format!("Thread {thread_id} is locked by another worker"));
+                Err(format!("Cannot lock thread {thread_id}: {:?}", data))
             }
         }
         Err(format!(
@@ -357,10 +361,10 @@ pub async fn unlock_thread(
             return Err(format!("GraphQL error: {}", error_msg));
         }
         if let Some(data) = response_json.get("data") {
-            if data.get("thread_unlock").is_some() {
-                return Ok(());
+            return if data.get("thread_unlock").unwrap().as_bool().unwrap_or(false) {
+                Ok(())
             } else {
-                return Err(format!("Cannot unlock thread {thread_id}"));
+                Err(format!("Thread {thread_id} is locked by another worker"))
             }
         }
         Err(format!(

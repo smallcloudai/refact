@@ -7,7 +7,16 @@ use crate::cloud::{threads_req, messages_req};
 use crate::global_context::GlobalContext;
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
+use serde::{Deserialize, Serialize};
+use tracing::info;
 use crate::cloud::threads_sub::{initialize_connection, events_loop, ThreadPayload, BasicStuff};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct KernelOutput {
+    pub logs: Vec<String>,
+    pub detail: String,
+    pub flagged_by_kernel: bool
+}
 
 fn build_preferences(
     model: &str,
@@ -62,21 +71,6 @@ pub async fn subchat(
         .map(char::from)
         .collect::<String>());
     
-    let expert = crate::cloud::experts_req::get_expert(api_key.clone(), expert_name).await?;
-    let available_tools = crate::tools::tools_list::get_available_tools(gcx.clone()).await;
-    let filtered_tools: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> = available_tools
-        .into_iter()
-        .filter(|tool| expert.is_tool_allowed(&tool.tool_description().name))
-        .collect();
-    let toolset = if !filtered_tools.is_empty() {
-        Some(filtered_tools
-            .iter()
-            .map(|x| x.tool_description().into_openai_style())
-            .collect::<Vec<_>>())
-    } else {
-        None
-    };
-    
     let thread = threads_req::create_thread(
         api_key.clone(),
         &located_fgroup_id,
@@ -84,7 +78,7 @@ pub async fn subchat(
         &thread_id,  // title
         &thread_id,  // app_capture
         &app_searchable_id,
-        toolset,
+        None,
         None,  // TODO: we should find a way to forward the parent thread id
     ).await?;
     let thread_messages = messages_req::convert_messages_to_thread_messages(
@@ -130,11 +124,24 @@ pub async fn subchat(
             }
         })
     };
-    events_loop(gcx.clone(), &mut connection, api_key, processor).await?;
+    events_loop(gcx.clone(), &mut connection, api_key.clone(), processor).await?;
+    let thread = threads_req::get_thread(api_key, &thread_id).await?;
+    if let Some(error) = thread.ft_error {
+        // the error might be actually a kernel output data
+        if let Some(kernel_output) = serde_json::from_str::<KernelOutput>(&error.to_string()).ok() {
+            info!("subchat was terminated by kernel: {:?}", kernel_output);
+        } else {
+            return Err(format!("Thread error: {:?}", error));
+        }
+    }
+    
     let all_thread_messages = messages_req::get_thread_messages(
         api_key_for_messages,
         &thread_id,
         100,
     ).await?;
-    Ok(messages_req::convert_thread_messages_to_messages(&all_thread_messages))
+    Ok(messages_req::convert_thread_messages_to_messages(&all_thread_messages)
+        .into_iter()
+        .filter(|x| x.role != "kernel")
+        .collect::<Vec<_>>())
 }

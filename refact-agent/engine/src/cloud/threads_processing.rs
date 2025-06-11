@@ -82,15 +82,6 @@ async fn call_tools(
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
         .clone()?;
-    let current_model = thread_messages.iter()
-        .rev()
-        .find(|x| x.ftm_user_preferences.is_some())
-        .or_else(|| thread_messages.first())
-        .and_then(|x| {
-            let prefs = x.ftm_user_preferences.clone()?;
-            prefs["model"].as_str().map(|s| s.to_string())
-        })
-        .ok_or("No model found in user preferences".to_string())?;
     let (alt, prev_alt) = thread_messages
         .last()
         .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
@@ -161,7 +152,9 @@ pub async fn process_thread_event(
     api_key: String,
     app_searchable_id: String
 ) -> Result<(), String> {
-    if thread_payload.ft_need_tool_calls == -1 || thread_payload.owner_fuser_id != basic_info.fuser_id {
+    if thread_payload.ft_need_tool_calls == -1 
+        || thread_payload.owner_fuser_id != basic_info.fuser_id 
+        || thread_payload.ft_locked_by.is_empty() {
         return Ok(());
     }
     if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
@@ -179,52 +172,85 @@ pub async fn process_thread_event(
         info!("thread `{}` has the error: `{}`. Skipping it", thread_payload.ft_id, error);
         return Ok(());
     }
-    
-    let messages = crate::cloud::messages_req::get_thread_messages(
-        api_key.clone(),
-        &thread_payload.ft_id,
-        thread_payload.ft_need_tool_calls,
-    ).await?;
-    if messages.is_empty() {
-        info!("thread `{}` has no messages. Skipping it", thread_payload.ft_id);
+
+    let hash = crate::cloud::threads_sub::generate_random_hash(16);
+    let thread_id = thread_payload.ft_id.clone();
+    let lock_result = lock_thread(api_key.clone(), &thread_id, &hash).await;
+    if let Err(err) = lock_result {
+        info!("failed to lock thread `{}` with hash `{}`: {}", thread_id, hash, err);
         return Ok(());
     }
-    let thread = crate::cloud::threads_req::get_thread(api_key.clone(), &thread_payload.ft_id).await?;
+    info!("thread `{}` locked successfully with hash `{}`", thread_id, hash);
+    let process_result = process_locked_thread(
+        gcx, 
+        thread_payload, 
+        &thread_id, 
+        api_key.clone()
+    ).await;
+    match crate::cloud::threads_req::unlock_thread(api_key.clone(), thread_id.clone(), hash).await {
+        Ok(_) => info!("thread `{}` unlocked successfully", thread_id),
+        Err(err) => {
+            error!("failed to unlock thread `{}`: {}", thread_id, err);
+        },
+    }
+    process_result
+}
+
+async fn process_locked_thread(
+    gcx: Arc<ARwLock<GlobalContext>>,
+    thread_payload: &ThreadPayload,
+    thread_id: &str,
+    api_key: String,
+) -> Result<(), String> {
+    let messages = match crate::cloud::messages_req::get_thread_messages(
+        api_key.clone(),
+        thread_id,
+        thread_payload.ft_need_tool_calls,
+    ).await {
+        Ok(msgs) => msgs,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    if messages.is_empty() {
+        info!("thread `{}` has no messages. Skipping it", thread_id);
+        return Ok(());
+    }
+    let thread = match crate::cloud::threads_req::get_thread(api_key.clone(), thread_id).await {
+        Ok(t) => t,
+        Err(e) => {
+            return Err(e);
+        }
+    };
     let need_to_append_system = messages.iter().all(|x| x.ftm_role != "system");
     if need_to_append_system {
-       if thread_payload.ft_fexp_name.is_none() {
-            info!("thread `{}` has no expert set. Skipping it", thread_payload.ft_id);
+        if thread_payload.ft_fexp_name.is_none() {
+            info!("thread `{}` has no expert set. Skipping it", thread_id);
             return Ok(());
-        };
+        }
     } else {
         if thread.ft_toolset.is_none() {
-            info!("thread `{}` has no toolset. Skipping it", thread_payload.ft_id);
+            info!("thread `{}` has no toolset. Skipping it", thread_id);
             return Ok(());
         }
     }
-    
-    let hash = crate::cloud::threads_sub::generate_random_hash(16);
-    match lock_thread(api_key.clone(), &thread.ft_id, &hash).await {
-        Ok(_) => {}
-        Err(err) => return Err(err)
-    }
     let result = if need_to_append_system {
-        let exp_name =  thread.ft_fexp_name.clone().expect("checked before");
+        let exp_name = thread.ft_fexp_name.clone().expect("checked before");
+        info!("initializing system prompt for thread `{}`", thread_id);
         initialize_thread(gcx.clone(), &exp_name, &thread, &messages, api_key.clone()).await
     } else {
+        info!("calling tools for thread `{}`", thread_id);
         call_tools(gcx.clone(), &thread, &messages, api_key.clone()).await
     };
-    match &result {
-        Ok(()) => {},
-        Err(err) => {
-            crate::cloud::threads_req::set_error_thread(api_key.clone(), thread.ft_id.clone(), err.clone()).await?;
+    if let Err(err) = &result {
+        info!("failed to process thread `{}`, setting error: {}", thread_id, err);
+        if let Err(set_err) = crate::cloud::threads_req::set_error_thread(
+            api_key.clone(), 
+            thread_id.to_string(), 
+            err.clone()
+        ).await {
+            return Err(format!("Failed to set error on thread: {}", set_err));
         }
-    }
-    match crate::cloud::threads_req::unlock_thread(api_key, thread.ft_id.clone(), hash).await {
-        Ok(_) => info!("thread `{}` unlocked successfully", thread.ft_id),
-        Err(err) => {
-            error!("failed to unlock thread `{}`: {}", thread.ft_id, err);
-        },
     }
     result
 }
