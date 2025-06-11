@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use axum::http::StatusCode;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
-use crate::subchat::subchat;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
@@ -25,90 +24,7 @@ pub struct ToolLocateSearch {
     pub config_path: String,
 }
 
-
-const LS_SYSTEM_PROMPT: &str = r###"**Task**
-Locate every file or symbol relevant to the request:
-```
-%%REQUEST%%
-```
-
-There is also an extra context described in the conversation below. 
-> **Important:** If the conversation already supplies certain files, treat them as fully reviewed and **focus on finding *additional* relevant files or symbols**. 
-Do not stop until you have exhausted the project for new, useful artefacts!
-
-**Available tools**
-- `tree()`                     — view the project directory tree
-- `cat()`                      — view files
-c
-
-**Workflow**
-1. **Plan** – Sketch a quick strategy: which tool you’ll start with and why.  
-2. **Investigate iteratively**  
-   - Run a tool.  
-   - Interpret the output.  
-   - Decide your next step.  
-   - Repeat until no new relevant artefacts remain.  
-   - Bu sure that you are exploring new and unseen files.
-3. **Explain** – Briefly justify each action as you take it.  
-4. **Report** – End with a concise summary listing all newly discovered files/symbols and why they matter.
-"###;
-
-
-const LS_WRAP_UP: &str = r###"Inspect the task description and the files collected so far, then sort the relevant paths into the JSON structure below.
-Guidelines
-----------
-0. **Sanity-check the task**  
-   If, after reviewing the files, the task itself is impossible or incoherent, populate the `"rejection"` field with a **specific** reason and stop.
-1. **Determine what must be found or changed**  
-   • If the task is *find-only*, list the target files/symbols under **FOUND**.  
-   • If the task requires *code changes*, put the one or two files that must change under **FOUND**.  
-   • If the change belongs in an *entirely new* file, use **NEW_FILE** instead.  
-   • If the task clearly needs changes but no files qualify, reject.
-2. **Pick reference material for analogies**  
-   If the task says “implement by analogy” or you see near-duplicate code, list *best* reference files (not already in FOUND) under **SIMILAR**. Zero is fine.
-3. **Flag additional impact**  
-   *MORE_TOCHANGE* – Files you are **reasonably sure** will also need edits.  
-   *USAGE* – Files that **call or depend on** the code you will change. Name the exact symbols being used.
-4. **Be sparing**  
-   Irrelevant files hurt more than missing ones. If uncertain, leave it out.
-   Do not include already explored files!
-
-Output format
--------------
-
-```json
-{
-  "rejection": "string explaining the concrete mismatch, if any"
-}
-```
-
-or
-
-```json
-{
-  "NEW_FILE": {                    // Omit if no new files are required
-    "dir/new_module.py": ""
-  },
-  "FOUND": {                       // Must not be empty for change tasks
-    "core/handler.py": "process_event,handle_error"
-  },
-  "SIMILAR": {
-    "core/legacy_handler.py": "process_event"
-  },
-  "MORE_TOCHANGE": {
-    "api/views.py": "EventView"
-  },
-  "USAGE": {
-    "tests/test_handler.py": "process_event",
-    "app/main.py": "handle_error"
-  }
-}
-
-DO NOT CALL ANY TOOLS ANYMORE!
-```"###;
-
 static TOKENS_EXTRA_BUDGET_PERCENT: f32 = 0.06;
-
 
 async fn _make_prompt(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -299,14 +215,13 @@ impl Tool for ToolLocateSearch {
         let prompt = _make_prompt(
             ccx.clone(),
             &params,
-            &LS_SYSTEM_PROMPT.replace("%%REQUEST%%", &what_to_find),
+            &what_to_find,
             &important_paths,
             &external_messages
         ).await?;
         let (mut results, usage, tool_message, cd_instruction) = find_relevant_files_with_search(
             ccx_subchat,
             params,
-            tool_call_id.clone(),
             prompt,
         ).await?;
 
@@ -344,7 +259,6 @@ impl Tool for ToolLocateSearch {
 async fn find_relevant_files_with_search(
     ccx: Arc<AMutex<AtCommandsContext>>,
     subchat_params: SubchatParameters,
-    tool_call_id: String,
     user_query: String,
 ) -> Result<(Vec<ContextEnum>, ChatUsage, String, String), String> {
     ccx.lock().await.pp_skeleton = true;
@@ -352,7 +266,6 @@ async fn find_relevant_files_with_search(
     let total_files_in_project = gcx.read().await.documents_state.workspace_files.lock().unwrap().len();
 
     let mut usage = ChatUsage { ..Default::default() };
-    // let mut real_files = IndexMap::new();
     let mut inspected_files = HashSet::new();
     let mut results: Vec<ContextEnum> = vec![];
 
@@ -360,32 +273,18 @@ async fn find_relevant_files_with_search(
         let tool_message = format!("Inspected 0 files, project has 0 files");
         return Ok((results, usage, tool_message, "".to_string()))
     }
-
-    let log_prefix = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
-
-    let msgs = vec![
-        ChatMessage::new("user".to_string(), user_query.to_string())
-    ];
-    let result = subchat(
+    let result = crate::cloud::subchat::subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
-        msgs,
+        "locate:1.0",
         vec![
-            "tree".to_string(), "cat".to_string(),
-            "search_symbol_definition".to_string(), "search_symbol_usages".to_string(),
-            "search_pattern".to_string(), "search_semantic".to_string(),
+            ChatMessage::new("user".to_string(), user_query.to_string())
         ],
-        16,
-        subchat_params.subchat_n_ctx,
-        LS_WRAP_UP,
-        1,
-        None,
-        subchat_params.subchat_reasoning_effort,
-        Some(tool_call_id.clone()),
-        Some(format!("{log_prefix}-locate-search")),
-        Some(false),  
-    ).await?[0].clone();
-
+        subchat_params.subchat_temperature,
+        Some(subchat_params.subchat_max_new_tokens),
+        subchat_params.subchat_reasoning_effort.clone(),
+    ).await?;
+    
     check_for_inspected_files(&mut inspected_files, &result);
 
     let last_message = result.last().unwrap();

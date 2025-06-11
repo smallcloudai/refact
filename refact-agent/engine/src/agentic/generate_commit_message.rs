@@ -278,7 +278,7 @@ pub async fn generate_commit_message_by_diff(
         messages.clone(),
         "".to_string(),
         false,
-        model_id.clone(),
+        Some(model_id.clone()),
     ).await));
     let new_messages = subchat_single(
         ccx.clone(),

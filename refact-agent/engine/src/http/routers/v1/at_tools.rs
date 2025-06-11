@@ -190,7 +190,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         post.messages.clone(),
         "".to_string(),
         false,
-        "".to_string(),
+        Some("".to_string()),
     ).await)); // used only for should_confirm
 
     let all_tools = get_available_tools(gcx.clone()).await.into_iter()
@@ -285,7 +285,7 @@ pub async fn handle_v1_tools_execute(
         tools_execute_post.messages.clone(),
         tools_execute_post.chat_id.clone(),
         false,
-        model_rec.base.id.clone(),
+        Some(model_rec.base.id.clone()),
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();

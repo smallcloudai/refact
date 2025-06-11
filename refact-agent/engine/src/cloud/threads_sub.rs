@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::global_context::GlobalContext;
 use futures::{SinkExt, StreamExt};
 use reqwest::Client;
@@ -7,21 +6,13 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
-use indexmap::IndexMap;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use tokio::sync::RwLock as ARwLock;
-use tokio::sync::Mutex as AMutex;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use tracing::{error, info, warn};
 use url::Url;
-use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::ChatContent;
-use crate::cloud::messages_req::ThreadMessage;
-use crate::cloud::threads_req::{lock_thread, Thread};
-use rand::{Rng, thread_rng};
-use rand::distributions::Alphanumeric;
-use crate::custom_error::MapErrToString;
-
 
 const RECONNECT_DELAY_SECONDS: u64 = 3;
 
@@ -29,13 +20,17 @@ const RECONNECT_DELAY_SECONDS: u64 = 3;
 pub struct ThreadPayload {
     pub owner_fuser_id: String,
     pub ft_id: String,
-    pub ft_error: Option<String>,
+    pub ft_error: Option<Value>,
     pub ft_locked_by: String,
+    pub ft_fexp_name: Option<String>,
     pub ft_need_tool_calls: i64,
+    pub ft_need_user: i64,
     pub ft_app_searchable: Option<String>,
+    pub ft_app_capture: Option<String>,
+    pub ft_app_specific: Option<Value>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BasicStuff {
     pub fuser_id: String,
     pub workspaces: Vec<Value>,
@@ -51,12 +46,26 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
           ft_id
           ft_error
           ft_locked_by
+          ft_fexp_name
           ft_need_tool_calls
+          ft_need_user
           ft_app_searchable
+          ft_app_capture
+          ft_app_specific
         }
       }
     }
 "#;
+
+
+pub fn generate_random_hash(length: usize) -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
 
 pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext>>) {
     let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
@@ -68,7 +77,9 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
     if !gcx.read().await.cmdline.cloud_threads {
         return;
     }
-    
+    // let api_key = gcx.read().await.cmdline.api_key.clone();
+    // TODO: remove it later
+    let api_key = "sk_alice_123456".to_string();
     loop {
         {
             let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
@@ -81,12 +92,12 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
             continue;
         };
-        
+
         info!(
             "starting subscription for threads_in_group with fgroup_id=\"{}\"",
             located_fgroup_id
         );
-        let connection_result = initialize_connection(gcx.clone()).await;
+        let connection_result = initialize_connection(api_key.clone(), &located_fgroup_id).await;
         let mut connection = match connection_result {
             Ok(conn) => conn,
             Err(err) => {
@@ -96,18 +107,22 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
                 continue;
             }
         };
-        
-        let events_result = events_loop(gcx.clone(), &mut connection).await;
+
+        let events_result = events_loop(
+            gcx.clone(),
+            &mut connection,
+            api_key.clone()
+        ).await;
         if let Err(err) = events_result {
             error!("failed to process events: {}", err);
             info!("will attempt to reconnect in {} seconds", RECONNECT_DELAY_SECONDS);
         }
-        
+
         if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
             info!("shutting down threads subscription");
             break;
         }
-        
+
         let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
         if !restart_flag.load(Ordering::SeqCst) {
             tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
@@ -115,7 +130,10 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
     }
 }
 
-async fn initialize_connection(gcx: Arc<ARwLock<GlobalContext>>) -> Result<
+pub async fn initialize_connection(
+    api_key: String,
+    located_fgroup_id: &str,
+) -> Result<
     futures::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<
             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>
@@ -123,11 +141,6 @@ async fn initialize_connection(gcx: Arc<ARwLock<GlobalContext>>) -> Result<
     >,
     String,
 > {
-    let (api_key, located_fgroup_id) = {
-        let gcx_read = gcx.read().await;
-        (gcx_read.cmdline.api_key.clone(), 
-         gcx_read.active_group_id.clone().unwrap_or_default())
-    };
     let url = Url::parse(crate::constants::GRAPHQL_WS_URL)
         .map_err(|e| format!("Failed to parse WebSocket URL: {}", e))?;
     let mut request = url
@@ -161,8 +174,7 @@ async fn initialize_connection(gcx: Arc<ARwLock<GlobalContext>>) -> Result<
                 let response: Value = serde_json::from_str(&text)
                     .map_err(|e| format!("Failed to parse connection response: {}", e))?;
                 if let Some(msg_type) = response["type"].as_str() {
-                    if msg_type == "connection_ack" {
-                    } else if msg_type == "connection_error" {
+                    if msg_type == "connection_ack" {} else if msg_type == "connection_error" {
                         return Err(format!("Connection error: {}", response));
                     } else {
                         return Err(format!("Expected connection_ack, got: {}", response));
@@ -194,8 +206,9 @@ async fn initialize_connection(gcx: Arc<ARwLock<GlobalContext>>) -> Result<
     } else {
         return Err("No response received for connection initialization".to_string());
     }
+    let id = generate_random_hash(16);
     let subscription_message = json!({
-        "id": "42",
+        "id": id,
         "type": "start",
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,
@@ -218,9 +231,11 @@ async fn events_loop(
             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
         >,
     >,
+    api_key: String,
 ) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
-    let basic_info = get_basic_info(gcx.clone()).await?;
+    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
+    let basic_info = get_basic_info(api_key.clone()).await?;
     while let Some(msg) = connection.next().await {
         if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
             info!("shutting down threads subscription");
@@ -239,8 +254,7 @@ async fn events_loop(
                         continue;
                     }
                 };
-                let response_type = response["type"].as_str().unwrap_or("unknown");
-                match response_type {
+                match response["type"].as_str().unwrap_or("unknown") {
                     "data" => {
                         if let Some(payload) = response["payload"].as_object() {
                             let data = &payload["data"];
@@ -250,14 +264,18 @@ async fn events_loop(
                                 continue;
                             }
                             if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
-                                match process_thread_event(gcx.clone(), &payload, &basic_info).await {
-                                    Ok(_) => {}
-                                    Err(err) => {
-                                        error!("failed to process thread event: {}", err);
-                                    }
-                                }
+                                let gcx_clone = gcx.clone();
+                                let payload_clone = payload.clone();
+                                let basic_info_clone = basic_info.clone();
+                                let api_key_clone = api_key.clone();
+                                let app_searchable_id_clone = app_searchable_id.clone();
+                                tokio::spawn(async move {
+                                    crate::cloud::threads_processing::process_thread_event(
+                                        gcx_clone, &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone,
+                                    ).await 
+                                });
                             } else {
-                                info!("failed to parse thread payload: {}", text);
+                                info!("failed to parse thread payload: {:?}", threads_in_group);
                             }
                         } else {
                             info!("received data message but couldn't find payload");
@@ -283,17 +301,9 @@ async fn events_loop(
     }
     Ok(())
 }
-fn generate_random_hash(length: usize) -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(length)
-        .map(char::from)
-        .collect()
-}
 
-async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, String> {
+pub async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
     let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetBasicInfo {
       query_basic_stuff {
@@ -344,169 +354,4 @@ async fn get_basic_info(gcx: Arc<ARwLock<GlobalContext>>) -> Result<BasicStuff, 
             status, error_text
         ))
     }
-}
-
-async fn process_thread_event(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    thread_payload: &ThreadPayload,
-    basic_info: &BasicStuff
-) -> Result<(), String> {
-    if thread_payload.ft_need_tool_calls == -1 || thread_payload.owner_fuser_id != basic_info.fuser_id {
-        return Ok(());
-    }
-    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
-    if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
-        if ft_app_searchable != app_searchable_id {
-            info!("thread `{}` has different `app_searchable` id, skipping it", thread_payload.ft_id);
-        }
-    } else {
-        info!("thread `{}` doesn't have the `app_searchable` id, skipping it", thread_payload.ft_id);
-        return Ok(());
-    }
-    if let Some(error) = thread_payload.ft_error.as_ref() {
-        info!("thread `{}` has the error: `{}`. Skipping it", thread_payload.ft_id, error);
-        return Ok(());
-    }
-    let messages = crate::cloud::messages_req::get_thread_messages(
-        gcx.clone(),
-        &thread_payload.ft_id,
-        thread_payload.ft_need_tool_calls,
-    ).await?;
-    if messages.is_empty() {
-        info!("thread `{}` has no messages. Skipping it", thread_payload.ft_id);
-        return Ok(());
-    }
-    let thread = crate::cloud::threads_req::get_thread(gcx.clone(), &thread_payload.ft_id).await?;
-    let hash = generate_random_hash(16);
-    match lock_thread(gcx.clone(), &thread.ft_id, &hash).await {
-        Ok(_) => {}
-        Err(err) => return Err(err)
-    }
-    let result = if messages.iter().all(|x| x.ftm_role != "system") {
-        initialize_thread(gcx.clone(), &thread.ft_fexp_name, &thread, &messages).await
-    } else {
-        call_tools(gcx.clone(), &thread, &messages).await
-    };
-    match crate::cloud::threads_req::unlock_thread(gcx.clone(), thread.ft_id.clone(), hash).await {
-        Ok(_) => info!("thread `{}` unlocked successfully", thread.ft_id),
-        Err(err) => error!("failed to unlock thread `{}`: {}", thread.ft_id, err),
-    }
-    result
-}
-
-async fn initialize_thread(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    expert_name: &str,
-    thread: &Thread,
-    thread_messages: &Vec<ThreadMessage>,
-) -> Result<(), String> {
-    let expert = crate::cloud::experts_req::get_expert(gcx.clone(), expert_name).await?;
-    let tools: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> =
-        crate::tools::tools_list::get_available_tools(gcx.clone())
-            .await
-            .into_iter()
-            .filter(|tool| expert.is_tool_allowed(&tool.tool_description().name))
-            .collect();
-    let tool_descriptions = tools
-        .iter()
-        .map(|x| x.tool_description().into_openai_style())
-        .collect::<Vec<_>>();
-    crate::cloud::threads_req::set_thread_toolset(gcx.clone(), &thread.ft_id, tool_descriptions).await?;
-    let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
-        gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
-    ).await;
-    let last_message = thread_messages.last().unwrap();
-    let output_thread_messages = vec![ThreadMessage {
-        ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
-        ftm_alt: last_message.ftm_alt.clone(),
-        ftm_num: 0,
-        ftm_prev_alt: 100,
-        ftm_role: "system".to_string(),
-        ftm_content: Some(
-            serde_json::to_value(ChatContent::SimpleText(updated_system_prompt)).unwrap(),
-        ),
-        ftm_tool_calls: None,
-        ftm_call_id: "".to_string(),
-        ftm_usage: None,
-        ftm_created_ts: std::time::SystemTime::now()
-            .duration_since(std::time::SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs_f64(),
-        ftm_provenance: json!({"important": "information"}),
-    }];
-    crate::cloud::messages_req::create_thread_messages(
-        gcx.clone(),
-        &thread.ft_id,
-        output_thread_messages,
-    ).await?;
-    Ok(())
-}
-
-async fn call_tools(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    thread: &Thread,
-    thread_messages: &Vec<ThreadMessage>,
-) -> Result<(), String> {
-    let max_new_tokens = 8192;
-    let last_message_num = thread_messages.iter().map(|x| x.ftm_num).max().unwrap_or(0);
-    let (alt, prev_alt) = thread_messages
-        .last()
-        .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
-        .unwrap_or((0, 0));
-    let messages = crate::cloud::messages_req::convert_thread_messages_to_messages(thread_messages);
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(gcx.clone(), 0)
-        .await
-        .map_err_to_string()?;
-    let model_rec = crate::caps::resolve_chat_model(caps, &format!("refact/{}", thread.ft_model))
-        .map_err(|e| format!("Failed to resolve chat model: {}", e))?;
-    let ccx = Arc::new(AMutex::new(
-        AtCommandsContext::new(
-            gcx.clone(),
-            model_rec.base.n_ctx,
-            12,
-            false,
-            messages.clone(),
-            thread.ft_id.to_string(),
-            false,
-            thread.ft_model.to_string(),
-        ).await,
-    ));
-    let allowed_tools = crate::cloud::messages_req::get_tool_names_from_openai_format(&thread.ft_toolset).await?;
-    let mut all_tools: IndexMap<String, Box<dyn crate::tools::tools_description::Tool + Send>> =
-        crate::tools::tools_list::get_available_tools(gcx.clone()).await
-            .into_iter()
-            .filter(|x| allowed_tools.contains(&x.tool_description().name))
-            .map(|x| (x.tool_description().name, x))
-            .collect();
-    let mut has_rag_results = crate::scratchpads::scratchpad_utils::HasRagResults::new();
-    let tokenizer_arc = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
-    let messages_count = messages.len();
-    let (output_messages, _) = crate::tools::tools_execute::run_tools_locally(
-        ccx.clone(),
-        &mut all_tools,
-        tokenizer_arc,
-        max_new_tokens,
-        &messages,
-        &mut has_rag_results,
-        &None,
-    ).await?;
-    if messages.len() == output_messages.len() {
-        tracing::warn!(
-            "Thread has no active tool call awaiting but still has need_tool_call turned on"
-        );
-        return Ok(());
-    }
-    let output_thread_messages = crate::cloud::messages_req::convert_messages_to_thread_messages(
-        output_messages.into_iter().skip(messages_count).collect(),
-        alt,
-        prev_alt,
-        last_message_num + 1,
-        &thread.ft_id,
-    )?;
-    crate::cloud::messages_req::create_thread_messages(
-        gcx.clone(),
-        &thread.ft_id,
-        output_thread_messages,
-    ).await?;
-    Ok(())
 }

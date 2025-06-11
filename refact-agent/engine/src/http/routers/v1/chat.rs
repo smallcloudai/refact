@@ -205,7 +205,7 @@ async fn _chat(
         messages.clone(),
         chat_post.meta.chat_id.clone(),
         should_execute_remotely,
-        model_rec.base.id.clone(),
+        Some(model_rec.base.id.clone()),
     ).await;
     ccx.subchat_tool_parameters = chat_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = chat_post.postprocess_parameters.clone();

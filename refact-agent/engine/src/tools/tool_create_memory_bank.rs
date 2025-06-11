@@ -5,7 +5,6 @@ use std::{
 };
 
 use async_trait::async_trait;
-use chrono::Local;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
@@ -19,7 +18,6 @@ use crate::{
     files_in_workspace::{get_file_text_from_memory_or_disk, ls_files},
     global_context::GlobalContext,
     postprocessing::pp_context_files::postprocess_context_files,
-    subchat::subchat,
     tools::tools_description::{Tool, ToolDesc, ToolSource, ToolSourceType},
 };
 use crate::caps::resolve_chat_model;
@@ -284,58 +282,6 @@ pub struct ToolCreateMemoryBank {
     pub config_path: String,
 }
 
-const MB_SYSTEM_PROMPT: &str = r###"• Objective:
-  – Create a clear, natural language description of the project structure while building a comprehensive architectural understanding.
-    Do NOT call create_knowledge() until instructed
-    
-• Analysis Guidelines:
-  1. Start with knowledge(); examine existing context:
-     - Review previous descriptions of related components
-     - Understand known architectural patterns
-     - Map existing module relationships
-
-  2. Describe project structure in natural language:
-     - Explain what this directory/module is for
-     - Describe key files and their purposes
-     - Detail how files work together
-     - Note any interesting implementation details
-     - Explain naming patterns and organization
-
-  3. Analyze code architecture:
-     - Module's role and responsibilities
-     - Key types, traits, functions, and their purposes
-     - Public interfaces and abstraction boundaries
-     - Error handling and data flow patterns
-     - Cross-cutting concerns and utilities
-
-  4. Document relationships:
-     - Which modules use this one and how
-     - What this module uses from others
-     - How components communicate
-     - Integration patterns and dependencies
-
-  5. Map architectural patterns:
-     - Design patterns used and why
-     - How it fits in the layered architecture
-     - State management approaches
-     - Extension and plugin points
-
-  6. Compare with existing knowledge:
-     - "This builds upon X from module Y by..."
-     - "Unlike module X, this takes a different approach to Y by..."
-     - "This introduces a new way to handle X through..."
-
-  7. Use structured format:
-     • Purpose: [clear description of what this does]
-     • Files: [key files and their roles]
-     • Architecture: [design patterns and module relationships]
-     • Key Symbols: [important types/traits/functions]
-     • Integration: [how it works with other parts]
-
-• Operational Constraint:
-  – Do NOT call create_knowledge() until instructed."###;
-
-const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now with your complete and full analysis from the previous step if you haven't called it yet. Otherwise just type "Finished"."###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
@@ -344,8 +290,7 @@ impl ToolCreateMemoryBank {
         file_context: Option<&String>,
     ) -> String {
         let mut prompt = String::new();
-        prompt.push_str(MB_SYSTEM_PROMPT);
-        prompt.push_str(&format!("\n\nNow exploring directory: '{}' from the project '{}'", target.target_name, target.target_name.split('/').next().unwrap_or("")));
+        prompt.push_str(&format!("Now exploring directory: '{}' from the project '{}'", target.target_name, target.target_name.split('/').next().unwrap_or("")));
         {
             prompt.push_str("\nFocus on details like purpose, organization, and notable files. Here is the project structure:\n");
             prompt.push_str(&state.project_tree_summary());
@@ -395,7 +340,6 @@ impl Tool for ToolCreateMemoryBank {
 
         while state.has_unexplored_targets() && step < MAX_EXPLORATION_STEPS {
             step += 1;
-            let log_prefix = Local::now().format("%Y%m%d-%H%M%S").to_string();
             if let Some(target) = state.get_next_target() {
                 tracing::info!(
                     target = "memory_bank",
@@ -419,23 +363,16 @@ impl Tool for ToolCreateMemoryBank {
                     Self::build_step_prompt(&state, &target, file_context.as_ref())
                 );
 
-                let subchat_result = subchat(
+                let subchat_result = crate::cloud::subchat::subchat(
                     ccx_subchat.clone(),
                     params.subchat_model.as_str(),
+                    "create_memory_bank:1.0",
                     vec![step_msg],
-                    vec!["knowledge".to_string(), "create_knowledge".to_string()],
-                    8,
-                    params.subchat_max_new_tokens,
-                    MB_EXPERT_WRAP_UP,
-                    1,
-                    None,
-                    None,
-                    Some(tool_call_id.clone()),
-                    Some(format!("{log_prefix}-memory-bank-dir-{}", target.target_name.replace("/", "_"))),
-                    Some(false),
-                ).await?[0].clone();
+                    params.subchat_temperature.clone(),
+                    Some(params.subchat_max_new_tokens.clone()),
+                    params.subchat_reasoning_effort.clone(),
+                ).await?;
 
-                // Update usage from subchat result
                 if let Some(last_msg) = subchat_result.last() {
                     crate::tools::tools_execute::update_usage_from_message(&mut usage_collector, last_msg);
                     tracing::info!(
