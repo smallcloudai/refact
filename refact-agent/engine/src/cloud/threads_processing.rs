@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 use indexmap::IndexMap;
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use serde_json::json;
@@ -13,15 +12,6 @@ use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::{lock_thread, Thread};
 use crate::cloud::threads_sub::{BasicStuff, ThreadPayload};
 use crate::global_context::GlobalContext;
-
-
-fn generate_random_hash(length: usize) -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(length)
-        .map(char::from)
-        .collect()
-}
 
 
 async fn initialize_thread(
@@ -92,6 +82,15 @@ async fn call_tools(
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
         .clone()?;
+    let current_model = thread_messages.iter()
+        .rev()
+        .find(|x| x.ftm_user_preferences.is_some())
+        .or_else(|| thread_messages.first())
+        .and_then(|x| {
+            let prefs = x.ftm_user_preferences.clone()?;
+            prefs["model"].as_str().map(|s| s.to_string())
+        })
+        .ok_or("No model found in user preferences".to_string())?;
     let (alt, prev_alt) = thread_messages
         .last()
         .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
@@ -109,7 +108,8 @@ async fn call_tools(
             messages.clone(),
             thread.ft_id.to_string(),
             false,
-            None
+            // Some(current_model)
+            Some("refact/gpt-4.1-mini".to_string())
         ).await,
     ));
     let toolset = thread.ft_toolset.clone().unwrap_or_default();
@@ -203,7 +203,7 @@ pub async fn process_thread_event(
         }
     }
     
-    let hash = generate_random_hash(16);
+    let hash = crate::cloud::threads_sub::generate_random_hash(16);
     match lock_thread(api_key.clone(), &thread.ft_id, &hash).await {
         Ok(_) => {}
         Err(err) => return Err(err)

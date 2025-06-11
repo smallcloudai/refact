@@ -7,6 +7,8 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use tokio::sync::RwLock as ARwLock;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
@@ -56,6 +58,16 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
     }
 "#;
 
+
+pub fn generate_random_hash(length: usize) -> String {
+    thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect()
+}
+
+
 pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext>>) {
     let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
     restart_flag.store(true, Ordering::SeqCst);
@@ -67,6 +79,7 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
         return;
     }
     // let api_key = gcx.read().await.cmdline.api_key.clone();
+    // TODO: remove it later
     let api_key = "sk_alice_123456".to_string();
     loop {
         {
@@ -80,7 +93,7 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
             continue;
         };
-        
+
         info!(
             "starting subscription for threads_in_group with fgroup_id=\"{}\"",
             located_fgroup_id
@@ -95,31 +108,34 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
                 continue;
             }
         };
-        
+
         let events_result = events_loop(
-            gcx.clone(), 
-            &mut connection, 
+            gcx.clone(),
+            &mut connection,
             api_key.clone(),
             |gcx, payload, basic_info, api_key, app_searchable_id| {
                 let payload_owned = payload.clone();
                 let basic_info_owned = basic_info.clone();
                 async move {
-                    crate::cloud::threads_processing::process_thread_event(
-                        gcx, &payload_owned, &basic_info_owned, api_key, app_searchable_id
-                    ).await
+                    match crate::cloud::threads_processing::process_thread_event(
+                        gcx, &payload_owned, &basic_info_owned, api_key, app_searchable_id,
+                    ).await {
+                        Ok(_) => Ok(false),
+                        Err(e) => Err(e)
+                    }
                 }
-            }
+            },
         ).await;
         if let Err(err) = events_result {
             error!("failed to process events: {}", err);
             info!("will attempt to reconnect in {} seconds", RECONNECT_DELAY_SECONDS);
         }
-        
+
         if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
             info!("shutting down threads subscription");
             break;
         }
-        
+
         let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
         if !restart_flag.load(Ordering::SeqCst) {
             tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
@@ -171,8 +187,7 @@ pub async fn initialize_connection(
                 let response: Value = serde_json::from_str(&text)
                     .map_err(|e| format!("Failed to parse connection response: {}", e))?;
                 if let Some(msg_type) = response["type"].as_str() {
-                    if msg_type == "connection_ack" {
-                    } else if msg_type == "connection_error" {
+                    if msg_type == "connection_ack" {} else if msg_type == "connection_error" {
                         return Err(format!("Connection error: {}", response));
                     } else {
                         return Err(format!("Expected connection_ack, got: {}", response));
@@ -204,8 +219,9 @@ pub async fn initialize_connection(
     } else {
         return Err("No response received for connection initialization".to_string());
     }
+    let id = generate_random_hash(16);
     let subscription_message = json!({
-        "id": "42",
+        "id": id,
         "type": "start",
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,
@@ -230,10 +246,10 @@ pub async fn events_loop<F, Fut>(
     >,
     api_key: String,
     processor: F,
-) -> Result<(), String> 
+) -> Result<(), String>
 where
     F: Fn(Arc<ARwLock<GlobalContext>>, &ThreadPayload, &BasicStuff, String, String) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<(), String>> + Send,
+    Fut: Future<Output=Result<bool, String>> + Send,
 {
     info!("cloud threads subscription started, waiting for events...");
     let app_searchable_id = gcx.read().await.app_searchable_id.clone();
@@ -268,15 +284,20 @@ where
                             }
                             if let Ok(payload) = serde_json::from_value::<ThreadPayload>(threads_in_group["news_payload"].clone()) {
                                 match processor(
-                                    gcx.clone(), &payload, &basic_info, api_key.clone(), app_searchable_id.clone()
+                                    gcx.clone(), &payload, &basic_info, api_key.clone(), app_searchable_id.clone(),
                                 ).await {
-                                    Ok(_) => {}
+                                    Ok(need_to_stop) => {
+                                        if need_to_stop {
+                                            info!("stopping threads subscription");
+                                            break;
+                                        }
+                                    }
                                     Err(err) => {
-                                        error!("failed to process thread event: {}", err);
+                                        error!("failed to process thread event: {}\n{:?}", err, threads_in_group);
                                     }
                                 }
                             } else {
-                                info!("failed to parse thread payload: {}", text);
+                                info!("failed to parse thread payload: {:?}", threads_in_group);
                             }
                         } else {
                             info!("received data message but couldn't find payload");

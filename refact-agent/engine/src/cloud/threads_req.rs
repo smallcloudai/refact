@@ -15,6 +15,7 @@ pub struct Thread {
     pub ft_error: Option<String>,
     pub ft_need_assistant: i32,
     pub ft_need_tool_calls: i32,
+    pub ft_need_user: i32,
     pub ft_created_ts: f64,
     pub ft_updated_ts: f64,
     pub ft_archived_ts: f64,
@@ -45,6 +46,7 @@ pub async fn create_thread(
             ft_toolset
             ft_need_assistant
             ft_need_tool_calls
+            ft_need_user
             ft_created_ts
             ft_updated_ts
             ft_archived_ts
@@ -137,6 +139,7 @@ pub async fn get_thread(
             ft_toolset
             ft_need_assistant
             ft_need_tool_calls
+            ft_need_user
             ft_created_ts
             ft_updated_ts
             ft_archived_ts
