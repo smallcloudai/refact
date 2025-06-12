@@ -19,7 +19,7 @@ import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { type NodeSelectButtonsProps } from "../ChatContent/UserInput";
 
 const ElementForNodeMessage: React.FC<{
-  message: FTMessageNode["value"];
+  message: FTMessageNode["value"] & { ftm_role: "dummy" };
   branch?: NodeSelectButtonsProps;
 }> = ({ message, branch }) => {
   if (!isChatMessage(message)) return false;
@@ -144,7 +144,7 @@ function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
       ftm_alt: (lastMessage?.value.ftm_alt ?? 100) + 1,
       ftm_num: num,
       ftm_prev_alt: lastMessage?.value.ftm_prev_alt ?? 100,
-      ftm_role: "", // TODO: maybe add a message.
+      ftm_role: "user", // TODO: maybe add a message.
       ftm_content: "",
       ftm_tool_calls: null,
       ftm_call_id: "",

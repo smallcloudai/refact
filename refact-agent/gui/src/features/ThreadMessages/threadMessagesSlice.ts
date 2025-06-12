@@ -55,11 +55,11 @@ export const threadMessagesSlice = createSlice({
     ) => {
       state.isWaiting = false;
       // state.isStreaming = true; // TODO: figure out how to tell when the stream has ended
-      // console.log(
-      //   "receiveMessages",
-      //   action.payload.comprehensive_thread_subs.news_action,
-      //   action.payload,
-      // );
+      console.log(
+        "receiveMessages",
+        action.payload.comprehensive_thread_subs.news_action,
+        action.payload,
+      );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message
@@ -214,6 +214,12 @@ export const threadMessagesSlice = createSlice({
         Object.values(state.messages),
       );
     },
+
+    selectBranchLength: (state) => state.endNumber,
+    selectTotalMessagesInThread: (state) =>
+      Object.values(state.messages).length,
+    selectThreadMessagesIsEmpty: (state) =>
+      Object.values(state.messages).length === 0,
   },
 
   extraReducers(builder) {
@@ -264,4 +270,7 @@ export const {
   isThreadEmpty,
   selectAppSpecific,
   selectMessagesFromEndNode,
+  selectThreadMessagesIsEmpty,
+  selectTotalMessagesInThread,
+  selectBranchLength,
 } = threadMessagesSlice.selectors;

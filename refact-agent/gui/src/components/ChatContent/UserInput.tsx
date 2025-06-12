@@ -1,4 +1,11 @@
-import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
+import {
+  Box,
+  Button,
+  Container,
+  Flex,
+  IconButton,
+  Text,
+} from "@radix-ui/themes";
 import React, { useMemo, useState } from "react";
 import {
   ProcessedUserMessageContentWithImages,
@@ -12,6 +19,8 @@ import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
 import { Reveal } from "../Reveal";
 import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
+import { BranchIcon } from "../../images";
+import classNames from "classnames";
 
 export type UserInputProps = {
   children: UserMessage["ftm_content"];
@@ -84,11 +93,12 @@ export const UserInput: React.FC<UserInputProps> = ({
           onMouseEnter={() => setIsEditButtonVisible(true)}
           onMouseLeave={() => setIsEditButtonVisible(false)}
         >
+          {/** todo, no button needed */}
           <Button
             // ref={ref}
             variant="soft"
             size="4"
-            className={styles.userInput}
+            className={classNames(styles.userInput, !children && styles.empty)}
             // TODO: should this work?
             // onClick={() => handleShowTextArea(true)}
             asChild
@@ -239,8 +249,24 @@ const NodeSelectButtons: React.FC<NodeSelectButtonsProps> = ({
   currentNode,
   totalNodes,
 }) => {
+  if (totalNodes === 1 && currentNode === 0) {
+    return (
+      <Box mt="2">
+        <IconButton
+          variant="ghost"
+          size="1"
+          radius="large"
+          onClick={onForward}
+          title="create a new branch"
+        >
+          <BranchIcon />
+        </IconButton>
+      </Box>
+    );
+  }
+
   return (
-    <Flex gap="2" justify="start">
+    <Flex gap="2" justify="start" mt="2">
       <IconButton
         variant="ghost"
         size="1"
