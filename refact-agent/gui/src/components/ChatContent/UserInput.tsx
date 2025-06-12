@@ -1,4 +1,4 @@
-import { Button, Container, Flex, Text } from "@radix-ui/themes";
+import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
 import React, { useMemo, useState } from "react";
 import {
   ProcessedUserMessageContentWithImages,
@@ -11,6 +11,7 @@ import { DialogImage } from "../DialogImage";
 import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
 import { Reveal } from "../Reveal";
+import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 
 export type UserInputProps = {
   children: UserMessage["ftm_content"];
@@ -18,12 +19,14 @@ export type UserInputProps = {
   // maybe add images argument ?
   // onRetry: (index: number, question: UserMessage["content"]) => void;
   // disableRetry?: boolean;
+  branch?: NodeSelectButtonsProps;
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
   // messageIndex,
   children,
   // onRetry,
+  branch,
 }) => {
   // const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
@@ -118,6 +121,7 @@ export const UserInput: React.FC<UserInputProps> = ({
           </Flex>
         </Flex>
       )}
+      {branch && <NodeSelectButtons {...branch} />}
     </Container>
   );
 };
@@ -221,3 +225,43 @@ function processUserInputArray(
 
   return processUserInputArray(nextTail, memo.concat(elem));
 }
+
+export type NodeSelectButtonsProps = {
+  onForward: () => void;
+  onBackward: () => void;
+  currentNode: number;
+  totalNodes: number;
+};
+
+const NodeSelectButtons: React.FC<NodeSelectButtonsProps> = ({
+  onForward,
+  onBackward,
+  currentNode,
+  totalNodes,
+}) => {
+  return (
+    <Flex gap="2" justify="start">
+      <IconButton
+        variant="ghost"
+        size="1"
+        disabled={currentNode === 0}
+        radius="large"
+        onClick={onBackward}
+      >
+        <ArrowLeftIcon />
+      </IconButton>
+      <Text size="1">
+        {currentNode + 1} / {totalNodes}
+      </Text>
+      <IconButton
+        variant="ghost"
+        size="1"
+        disabled={currentNode === totalNodes}
+        onClick={onForward}
+        radius="large"
+      >
+        <ArrowRightIcon />
+      </IconButton>
+    </Flex>
+  );
+};

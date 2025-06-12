@@ -9,8 +9,6 @@ import {
   isPlainTextMessage,
   isUserMessage,
 } from "../../services/refact";
-import { Container, Flex, IconButton, Text } from "@radix-ui/themes";
-import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
 import { GroupedDiffs } from "../ChatContent/DiffContent";
@@ -18,14 +16,16 @@ import { GroupedDiffs } from "../ChatContent/DiffContent";
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
 import { setThreadEnd } from "../../features/ThreadMessages";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
+import { type NodeSelectButtonsProps } from "../ChatContent/UserInput";
 
-const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
-  message,
-}) => {
+const ElementForNodeMessage: React.FC<{
+  message: FTMessageNode["value"];
+  branch?: NodeSelectButtonsProps;
+}> = ({ message, branch }) => {
   if (!isChatMessage(message)) return false;
 
   if (isUserMessage(message)) {
-    return <UserInput>{message.ftm_content}</UserInput>;
+    return <UserInput branch={branch}>{message.ftm_content}</UserInput>;
   }
 
   if (isAssistantMessage(message)) {
@@ -57,9 +57,15 @@ const ElementForNodeMessage: React.FC<{ message: FTMessageNode["value"] }> = ({
   return false;
 };
 
-export type MessageNodeProps = { children: FTMessageNode };
+export type MessageNodeProps = {
+  children: FTMessageNode;
+  branch?: NodeSelectButtonsProps;
+};
 
-export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
+export const MessageNode: React.FC<MessageNodeProps> = ({
+  children,
+  branch,
+}) => {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -81,46 +87,53 @@ export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
 
   return (
     <>
-      <ElementForNodeMessage message={children.value} />
+      <ElementForNodeMessage branch={branch} message={children.value} />
       <MessageNodeChildren>{children.children}</MessageNodeChildren>
     </>
   );
 };
 
-const NodeSelectButtons: React.FC<{
-  onForward: () => void;
-  onBackward: () => void;
-  currentNode: number;
-  totalNodes: number;
-}> = ({ onForward, onBackward, currentNode, totalNodes }) => {
-  return (
-    <Container my="2">
-      <Flex gap="2" justify="start">
-        <IconButton
-          variant="ghost"
-          size="1"
-          disabled={currentNode === 0}
-          radius="large"
-          onClick={onBackward}
-        >
-          <ArrowLeftIcon />
-        </IconButton>
-        <Text size="1">
-          {currentNode + 1} / {totalNodes}
-        </Text>
-        <IconButton
-          variant="ghost"
-          size="1"
-          disabled={currentNode === totalNodes}
-          onClick={onForward}
-          radius="large"
-        >
-          <ArrowRightIcon />
-        </IconButton>
-      </Flex>
-    </Container>
-  );
-};
+// type NodeSelectButtonsProps = {
+//   onForward: () => void;
+//   onBackward: () => void;
+//   currentNode: number;
+//   totalNodes: number;
+// };
+
+// const NodeSelectButtons: React.FC<NodeSelectButtonsProps> = ({
+//   onForward,
+//   onBackward,
+//   currentNode,
+//   totalNodes,
+// }) => {
+//   return (
+//     <Container my="2">
+//       <Flex gap="2" justify="start">
+//         <IconButton
+//           variant="ghost"
+//           size="1"
+//           disabled={currentNode === 0}
+//           radius="large"
+//           onClick={onBackward}
+//         >
+//           <ArrowLeftIcon />
+//         </IconButton>
+//         <Text size="1">
+//           {currentNode + 1} / {totalNodes}
+//         </Text>
+//         <IconButton
+//           variant="ghost"
+//           size="1"
+//           disabled={currentNode === totalNodes}
+//           onClick={onForward}
+//           radius="large"
+//         >
+//           <ArrowRightIcon />
+//         </IconButton>
+//       </Flex>
+//     </Container>
+//   );
+// };
 
 function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
   // TODO handel the numbers better
@@ -145,14 +158,14 @@ function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
 function useThreadBranching(children: FTMessageNode[]) {
   const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
 
-  const goBack = useCallback(() => {
+  const onBackward = useCallback(() => {
     setSelectedNodeIndex((prev) => {
       if (prev === 0) return prev;
       return prev - 1;
     });
   }, []);
 
-  const goForward = useCallback(() => {
+  const onForward = useCallback(() => {
     setSelectedNodeIndex((prev) => {
       if (prev === children.length) return prev;
       return prev + 1;
@@ -182,35 +195,30 @@ function useThreadBranching(children: FTMessageNode[]) {
   }, [children, selectedNodeIndex]);
 
   return {
+    onForward,
+    onBackward,
+    currentNode: selectedNodeIndex,
+    totalNodes: children.length,
     nodeToRender,
-    goBack,
-    goForward,
     canBranch,
     selectedNodeIndex,
-    totalNodes: children.length,
   };
 }
 
 const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
   children,
 }) => {
-  const branch = useThreadBranching(children);
+  const { nodeToRender, canBranch, ...branch } = useThreadBranching(children);
 
   if (children.length === 0) return null;
 
-  if (!branch.canBranch) {
-    return <MessageNode>{branch.nodeToRender}</MessageNode>;
+  if (!canBranch) {
+    return <MessageNode>{nodeToRender}</MessageNode>;
   }
 
   return (
     <>
-      <MessageNode>{branch.nodeToRender}</MessageNode>
-      <NodeSelectButtons
-        onForward={branch.goForward}
-        onBackward={branch.goBack}
-        currentNode={branch.selectedNodeIndex}
-        totalNodes={branch.totalNodes}
-      />
+      <MessageNode branch={branch}>{nodeToRender}</MessageNode>
     </>
   );
 };
