@@ -19,7 +19,7 @@ import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { type NodeSelectButtonsProps } from "../ChatContent/UserInput";
 
 const ElementForNodeMessage: React.FC<{
-  message: FTMessageNode["value"] & { ftm_role: "dummy" };
+  message: FTMessageNode["value"];
   branch?: NodeSelectButtonsProps;
 }> = ({ message, branch }) => {
   if (!isChatMessage(message)) return false;

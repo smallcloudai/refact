@@ -27,7 +27,6 @@ import {
   goodPing,
   goodPrompts,
   goodUser,
-  makeKnowledgeFromChat,
   noCommandPreview,
   noCompletions,
   noTools,
@@ -172,7 +171,7 @@ export const TextDoc: Story = {
         goodUser,
         // noChatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
         ToolConfirmation,
         noCompletions,
         noCommandPreview,
@@ -194,7 +193,7 @@ export const MarkdownIssue: Story = {
         goodUser,
         // noChatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
         ToolConfirmation,
         noCompletions,
         noCommandPreview,
@@ -236,7 +235,7 @@ export const ToolWaiting: Story = {
         goodUser,
         // noChatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
         ToolConfirmation,
         noCompletions,
         noCommandPreview,

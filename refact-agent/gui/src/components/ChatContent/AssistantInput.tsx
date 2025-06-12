@@ -6,7 +6,6 @@ import { AssistantMessage, ToolCall } from "../../services/refact";
 import { ToolContent } from "./ToolsContent";
 import { fallbackCopying } from "../../utils/fallbackCopying";
 import { telemetryApi } from "../../services/refact/telemetry";
-import { LikeButton } from "./LikeButton";
 import { ReasoningContent } from "./ReasoningContent";
 
 type ChatInputProps = {
@@ -19,7 +18,6 @@ type ChatInputProps = {
 export const AssistantInput: React.FC<ChatInputProps> = ({
   reasoningContent,
   toolCalls,
-  isLast,
   children,
 }) => {
   const [sendTelemetryEvent] =
@@ -76,7 +74,6 @@ export const AssistantInput: React.FC<ChatInputProps> = ({
         </Box>
       )}
       {toolCalls && <ToolContent toolCalls={toolCalls} />}
-      {isLast && <LikeButton />}
     </Container>
   );
 };
