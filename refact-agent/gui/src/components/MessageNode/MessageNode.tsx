@@ -61,8 +61,7 @@ export type MessageNodeProps = { children: FTMessageNode };
 
 export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
   const dispatch = useAppDispatch();
-  const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
-  // TODO: move this up?
+
   useEffect(() => {
     if (children.children.length === 0) {
       const action = setThreadEnd({
@@ -80,47 +79,10 @@ export const MessageNode: React.FC<MessageNodeProps> = ({ children }) => {
     dispatch,
   ]);
 
-  const goBack = useCallback(() => {
-    setSelectedNodeIndex((prev) => {
-      if (prev === 0) return prev;
-      return prev - 1;
-    });
-  }, []);
-
-  const goForward = useCallback(() => {
-    setSelectedNodeIndex((prev) => {
-      if (prev === children.children.length) return prev;
-      return prev + 1;
-    });
-  }, [children.children.length]);
-
-  const canBranch = useMemo(() => {
-    if (children.children.length > 1) return true;
-    if (children.value.ftm_role === "user") return true;
-    return false;
-  }, [children]);
-
-  const nodeToRender = useMemo(() => {
-    if (children.children.length === 0) return null;
-    if (selectedNodeIndex > children.children.length) {
-      return makeDummyNode(children.children[children.children.length - 1]);
-    }
-    return children.children[selectedNodeIndex];
-  }, [children, selectedNodeIndex]);
-
   return (
     <>
       <ElementForNodeMessage message={children.value} />
-
-      {canBranch && (
-        <NodeSelectButtons
-          onBackward={goBack}
-          onForward={goForward}
-          currentNode={selectedNodeIndex}
-          totalNodes={children.children.length}
-        />
-      )}
-      {nodeToRender && <MessageNode>{nodeToRender}</MessageNode>}
+      <MessageNodeChildren>{children.children}</MessageNodeChildren>
     </>
   );
 };
@@ -179,3 +141,76 @@ function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
     children: [],
   };
 }
+
+function useThreadBranching(children: FTMessageNode[]) {
+  const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
+
+  const goBack = useCallback(() => {
+    setSelectedNodeIndex((prev) => {
+      if (prev === 0) return prev;
+      return prev - 1;
+    });
+  }, []);
+
+  const goForward = useCallback(() => {
+    setSelectedNodeIndex((prev) => {
+      if (prev === children.length) return prev;
+      return prev + 1;
+    });
+  }, [children.length]);
+
+  const canBranch = useMemo(() => {
+    if (children.length > 1) return true;
+    if (selectedNodeIndex >= children.length && selectedNodeIndex > 0) {
+      return true;
+    }
+
+    if (
+      children[selectedNodeIndex] &&
+      children[selectedNodeIndex].value.ftm_role === "user"
+    ) {
+      return true;
+    }
+    return false;
+  }, [children, selectedNodeIndex]);
+
+  const nodeToRender = useMemo(() => {
+    return (
+      children[selectedNodeIndex] ??
+      makeDummyNode(children[children.length - 1])
+    );
+  }, [children, selectedNodeIndex]);
+
+  return {
+    nodeToRender,
+    goBack,
+    goForward,
+    canBranch,
+    selectedNodeIndex,
+    totalNodes: children.length,
+  };
+}
+
+const MessageNodeChildren: React.FC<{ children: FTMessageNode[] }> = ({
+  children,
+}) => {
+  const branch = useThreadBranching(children);
+
+  if (children.length === 0) return null;
+
+  if (!branch.canBranch) {
+    return <MessageNode>{branch.nodeToRender}</MessageNode>;
+  }
+
+  return (
+    <>
+      <MessageNode>{branch.nodeToRender}</MessageNode>
+      <NodeSelectButtons
+        onForward={branch.goForward}
+        onBackward={branch.goBack}
+        currentNode={branch.selectedNodeIndex}
+        totalNodes={branch.totalNodes}
+      />
+    </>
+  );
+};
