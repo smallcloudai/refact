@@ -10,7 +10,6 @@ class LSPServerRunner:
     def __init__(
         self,
         refact_lsp_command: List[str],  # all parameters except --logs-stderr and --http-port that will be added mandatory for this class to work
-        wait_for_ast_vecdb: bool,
         refact_lsp_log: Optional[str],
         verbose: bool,
     ):
@@ -18,7 +17,6 @@ class LSPServerRunner:
         self._refact_lsp_log = refact_lsp_log
         self._refact_lsp_process: Optional[asyncio.subprocess.Process] = None
         self._port: int = 0
-        self._wait_for_ast_vecdb = wait_for_ast_vecdb
         self._verbose = verbose
         self._xdebug = 0
 
@@ -45,37 +43,31 @@ class LSPServerRunner:
                 f"--http-port={self._port}",
             ]
             ports_tried.append(self._port)
-            wait_ast = ("--ast" in args) and self._wait_for_ast_vecdb
-            wait_vecdb = ("--vecdb" in args) and self._wait_for_ast_vecdb
 
             t0 = time.time()
             if self._verbose:
                 print("REFACT LSP start", program, " ".join(args))
             self._refact_lsp_process = await asyncio.create_subprocess_exec(program, *args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, limit=1024*1024*64)
-            ast_ok, vecdb_ok, post_listening, post_busy = False, False, False, False
+            port_listening, port_busy = False, False
             while True:
                 while True:
                     stderr_line = await self._query_stderr()
                     if stderr_line is None:
                         break
                     if "HTTP server listening" in stderr_line:
-                        post_listening = True
-                    if "AST COMPLETE" in stderr_line:
-                        ast_ok = True
-                    if "VECDB COMPLETE" in stderr_line:
-                        vecdb_ok = True
+                        port_listening = True
                     if "PORT_BUSY" in stderr_line:
-                        post_busy = True
-                if (not wait_ast or ast_ok) and (not wait_vecdb or vecdb_ok) and post_listening:
+                        port_busy = True
+                if port_listening:
                     break
-                if post_busy:
+                if port_busy:
                     break
                 if not self.check_if_still_running():
                     print(self._refact_lsp_process)
                     print(self._refact_lsp_process.returncode)
-                    raise RuntimeError(f"LSP server exited unexpectedly :/")
+                    raise RuntimeError("LSP server exited unexpectedly :/")
                 await asyncio.sleep(0.1)  # waiting for start up
-            if post_busy:
+            if port_busy:
                 if self._verbose:
                     print("REFACT LSP port %d busy" % (self._port))
                 await self._stop_real()
