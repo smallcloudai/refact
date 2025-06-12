@@ -279,13 +279,6 @@ pub enum ChatMode {
 }
 
 impl ChatMode {
-    pub fn supports_checkpoints(self) -> bool {
-        match self {
-            ChatMode::NO_TOOLS => false,
-            ChatMode::AGENT | ChatMode::CONFIGURE | ChatMode::PROJECT_SUMMARY | ChatMode::EXPLORE => true,
-        }
-    }
-
     pub fn is_agentic(self) -> bool {
         match self {
             ChatMode::AGENT => true,

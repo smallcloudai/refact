@@ -11,7 +11,6 @@ use tracing::info;
 use crate::call_validation::{ChatMeta, SamplingParameters};
 use crate::caps::BaseModelRecord;
 use crate::custom_error::MapErrToString;
-use crate::scratchpads::chat_utils_limit_history::CompressionStrength;
 use crate::caps::EmbeddingModelRecord;
 
 pub async fn forward_to_openai_style_endpoint(
@@ -176,20 +175,6 @@ fn passthrough_messages_to_json(
     }
 }
 
-pub fn try_get_compression_from_prompt(
-    prompt: &str,
-) -> serde_json::Value {
-    let big_json: serde_json::Value = if prompt.starts_with("PASSTHROUGH ") {
-        serde_json::from_str( &prompt[12..]).unwrap()
-    } else {
-        return json!(CompressionStrength::Absent);
-    };
-    if let Some(compression_strength) = big_json.get("compression_strength") {
-        compression_strength.clone()
-    } else {
-        json!(CompressionStrength::Absent)
-    }
-}
 
 #[derive(serde::Serialize)]
 struct EmbeddingsPayloadOpenAI {

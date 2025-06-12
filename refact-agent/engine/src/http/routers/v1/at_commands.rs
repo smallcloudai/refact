@@ -25,7 +25,6 @@ use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
-use crate::http::routers::v1::chat::deserialize_messages_from_post;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -82,6 +81,19 @@ pub struct CommandExecuteResponse {
     pub messages_to_stream_back: Vec<serde_json::Value>,
 }
 
+pub const CHAT_TOP_N: usize = 12;
+
+pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
+    let messages: Vec<ChatMessage> = messages.iter()
+        .map(|x| serde_json::from_value(x.clone()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            tracing::error!("can't deserialize ChatMessage: {}", e);
+            ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+        })?;
+    Ok(messages)
+}
+
 pub async fn handle_v1_command_completion(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -136,8 +148,7 @@ async fn count_tokens(tokenizer_arc: Option<Arc<Tokenizer>>, messages: &Vec<Chat
         accum += message.content.count_tokens(tokenizer_arc.clone(), &None)
             .map_err(|e| ScratchError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
-                message: format!("v1_chat_token_counter: count_tokens failed: {}", e),
-                telemetry_skip: false})? as u64;
+                message: format!("v1_chat_token_counter: count_tokens failed: {}", e)})? as u64;
     }
     Ok(accum)
 }
@@ -182,7 +193,7 @@ pub async fn handle_v1_command_preview(
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
         model_rec.base.n_ctx,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),
@@ -208,7 +219,7 @@ pub async fn handle_v1_command_preview(
         ccx_locked.postprocess_parameters.clone()
     };
     if pp_settings.max_files_n == 0 {
-        pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
+        pp_settings.max_files_n = CHAT_TOP_N;
     }
 
     let mut context_files = filter_only_context_file_from_context_tool(&messages_for_postprocessing);
@@ -284,7 +295,7 @@ pub async fn handle_v1_at_command_execute(
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         post.n_ctx,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),

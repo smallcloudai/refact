@@ -10,7 +10,6 @@ use axum::response::IntoResponse;
 pub struct ScratchError {
     pub status_code: StatusCode,
     pub message: String,
-    pub telemetry_skip: bool, // because already posted a better description directly
 }
 
 impl IntoResponse for ScratchError {
@@ -40,7 +39,6 @@ impl ScratchError {
         ScratchError {
             status_code,
             message,
-            telemetry_skip: false,
         }
     }
 
@@ -48,7 +46,6 @@ impl ScratchError {
         ScratchError {
             status_code,
             message,
-            telemetry_skip: true,
         }
     }
 }

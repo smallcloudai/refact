@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock as ARwLock;
 
-use crate::call_validation::ChatMode;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::integrations::running_integrations::load_integrations;
 
@@ -81,7 +80,7 @@ async fn get_builtin_tools(
     let config_dir = gcx.read().await.config_dir.clone();
     let config_path = config_dir.join("builtin_tools.yaml").to_string_lossy().to_string();
 
-    let mut codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
+    let codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_tree::ToolTree{config_path: config_path.clone()}),
@@ -220,37 +219,3 @@ pub async fn get_available_tools(
 ) -> Vec<Box<dyn Tool + Send>> {
     get_available_tool_groups(gcx).await.into_iter().flat_map(|g| g.tools).collect()
 }
-
-pub async fn get_available_tools_by_chat_mode(
-    gcx: Arc<ARwLock<GlobalContext>>,
-    chat_mode: ChatMode,
-) -> Vec<Box<dyn Tool + Send>> {
-    if chat_mode == ChatMode::NO_TOOLS {
-        return vec![];
-    }
-
-    let tools = get_available_tool_groups(gcx).await.into_iter()
-        .flat_map(|g| g.tools)
-        .filter(|tool| tool.config().unwrap_or_default().enabled);
-
-
-    match chat_mode {
-        ChatMode::NO_TOOLS => unreachable!("Condition handled at the beginning of the function."),
-        ChatMode::EXPLORE => {
-            tools.filter(|tool| !tool.tool_description().agentic).collect()
-        },
-        ChatMode::AGENT => {
-            let blacklist = ["search_symbol_definition", "search_symbol_usages", "search_pattern", "search_semantic"];
-            tools.filter(|tool| !blacklist.contains(&tool.tool_description().name.as_str())).collect()
-        }
-        ChatMode::CONFIGURE => {
-            let blacklist = ["tree", "locate", "knowledge", "search"];
-            tools.filter(|tool| !blacklist.contains(&tool.tool_description().name.as_str())).collect()
-        },
-        ChatMode::PROJECT_SUMMARY => {
-            let whitelist = ["cat", "tree"];
-            tools.filter(|tool| whitelist.contains(&tool.tool_description().name.as_str())).collect()
-        },
-    }
-}
-

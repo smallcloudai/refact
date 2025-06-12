@@ -77,10 +77,9 @@ async fn _make_prompt(
                 format!("🤖:\n{}\n\n", &message.content.content_text_only())
             }
             "tool" => {
-                format!("📎:\n{}\n\n", &message.content.content_text_only())
+                format!("🔨:\n{}\n\n", &message.content.content_text_only())
             }
             _ => {
-                tracing::info!("skip adding message to the context: {}", crate::nicer_logs::first_n_chars(&message.content.content_text_only(), 40));
                 continue;
             }
         };
@@ -123,29 +122,7 @@ async fn _make_prompt(
 #[async_trait]
 impl Tool for ToolStrategicPlanning {
     fn as_any(&self) -> &dyn std::any::Any { self }
-    
-    fn tool_description(&self) -> ToolDesc {
-        ToolDesc {
-            name: "strategic_planning".to_string(),
-            display_name: "Strategic Planning".to_string(),
-            source: ToolSource {
-                source_type: ToolSourceType::Builtin,
-                config_path: self.config_path.clone(),
-            },
-            agentic: true,
-            experimental: false,
-            description: "Strategically plan a solution for a complex problem or create a comprehensive approach.".to_string(),
-            parameters: vec![
-                ToolParam {
-                    name: "important_paths".to_string(),
-                    param_type: "string".to_string(),
-                    description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure.".to_string(),
-                }
-            ],
-            parameters_required: vec!["important_paths".to_string()],
-        }
-    }
-    
+
     async fn tool_execute(
         &mut self,
         ccx: Arc<AMutex<AtCommandsContext>>,
@@ -231,6 +208,28 @@ impl Tool for ToolStrategicPlanning {
         }));
 
         Ok((false, results))
+    }
+
+    fn tool_description(&self) -> ToolDesc {
+        ToolDesc {
+            name: "strategic_planning".to_string(),
+            display_name: "Strategic Planning".to_string(),
+            source: ToolSource {
+                source_type: ToolSourceType::Builtin,
+                config_path: self.config_path.clone(),
+            },
+            agentic: true,
+            experimental: false,
+            description: "Strategically plan a solution for a complex problem or create a comprehensive approach.".to_string(),
+            parameters: vec![
+                ToolParam {
+                    name: "important_paths".to_string(),
+                    param_type: "string".to_string(),
+                    description: "Comma-separated list of all filenames which are required to be considered for resolving the problem. More files - better, include them even if you are not sure.".to_string(),
+                }
+            ],
+            parameters_required: vec!["important_paths".to_string()],
+        }
     }
 
     fn tool_depends_on(&self) -> Vec<String> {

@@ -10,7 +10,6 @@ use crate::integrations::docker::integr_isolation::{SettingsIsolation, Integrati
 pub mod integr_docker;
 pub mod integr_isolation;
 pub mod docker_ssh_tunnel_utils;
-pub mod docker_container_manager;
 
 pub async fn docker_and_isolation_load(gcx: Arc<ARwLock<GlobalContext>>) -> Result<(ToolDocker, Option<SettingsIsolation>), String>
 {

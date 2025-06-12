@@ -16,8 +16,6 @@ use crate::global_context::GlobalContext;
 use crate::completion_cache;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::completon_rag::retrieve_ast_based_extra_context;
-use crate::telemetry::snippets_collection;
-use crate::telemetry::telemetry_structs;
 
 
 const DEBUG: bool = false;
@@ -32,7 +30,6 @@ pub struct FillInTheMiddleScratchpad {
     pub extra_stop_tokens: Vec<String>,
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
-    pub data4snippet: snippets_collection::SaveSnippet,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
@@ -43,12 +40,10 @@ impl FillInTheMiddleScratchpad {
         post: &CodeCompletionPost,
         order: String,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
-        tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
         ast_service: Option<Arc<AMutex<AstIndexService>>>,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
-        let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         FillInTheMiddleScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
@@ -59,7 +54,6 @@ impl FillInTheMiddleScratchpad {
             extra_stop_tokens: vec![],
             context_used: json!({}),
             data4cache,
-            data4snippet,
             ast_service,
             global_context,
         }
@@ -305,7 +299,6 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         if DEBUG {
             info!("response_n_choices\n{:?}", json_choices);
         }
-        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         Ok(json!(
             {
                 "choices": json_choices,
@@ -341,7 +334,6 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             }])
         };
         self.data4cache.completion0_finish_reason = finish_reason.to_string();
-        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         Ok((json!({
             "choices": json_choices,
             "snippet_telemetry_id": self.data4cache.completion0_snippet_telemetry_id,
@@ -362,7 +354,6 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
 
     fn streaming_finished(&mut self, finish_reason: FinishReason) -> Result<Value, String> {
         self.data4cache.completion0_finish_reason = finish_reason.to_string();
-        snippets_collection::snippet_register_from_data4cache(&self.data4snippet, &mut self.data4cache, self.context_used != json!({}));
         Ok(json!({
             "choices": [{
                 "index": 0,

@@ -12,15 +12,12 @@ use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
 use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ChatUsage, ContextEnum, ContextFile, SubchatParameters};
 use crate::custom_error::MapErrToString;
 use crate::global_context::try_load_caps_quickly_if_not_present;
-use crate::http::http_post_json;
-use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
-use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
@@ -81,53 +78,6 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 
     tracing::info!("using model for subchat: {}", params.subchat_model);
     Ok(params)
-}
-
-pub async fn run_tools_remotely(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    model_id: &str,
-    maxgen: usize,
-    original_messages: &[ChatMessage],
-    stream_back_to_user: &mut HasRagResults,
-    style: &Option<String>,
-) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (n_ctx, subchat_tool_parameters, postprocess_parameters, gcx, chat_id) = {
-        let ccx_locked = ccx.lock().await;
-        (
-            ccx_locked.n_ctx,
-            ccx_locked.subchat_tool_parameters.clone(),
-            ccx_locked.postprocess_parameters.clone(),
-            ccx_locked.global_context.clone(),
-            ccx_locked.chat_id.clone(),
-        )
-    };
-
-    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
-    info!("run_tools_remotely: connecting to port {}", port);
-
-    let tools_execute_post = ToolsExecutePost {
-        messages: original_messages.to_vec(),
-        n_ctx,
-        maxgen,
-        subchat_tool_parameters,
-        postprocess_parameters,
-        model_name: model_id.to_string(),
-        chat_id,
-        style: style.clone(),
-    };
-
-    let url = format!("http://localhost:{port}/v1/tools-execute");
-    let response: ToolExecuteResponse = http_post_json(&url, &tools_execute_post).await?;
-    info!("run_tools_remotely: got response: {:?}", response);
-
-    let mut all_messages = tools_execute_post.messages;
-
-    for msg in response.messages {
-        stream_back_to_user.push_in_json(json!(&msg));
-        all_messages.push(msg);
-    }
-
-    Ok((all_messages, response.tools_ran))
 }
 
 pub async fn run_tools_locally(

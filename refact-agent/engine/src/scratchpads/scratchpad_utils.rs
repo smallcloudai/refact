@@ -53,7 +53,7 @@ pub fn max_tokens_for_rag_chat_by_tools(
     if tools.is_empty() {
         return base_limit.min(4096);
     }
-    let context_files_len = context_files.len().min(crate::http::routers::v1::chat::CHAT_TOP_N);
+    let context_files_len = context_files.len().min(crate::http::routers::v1::at_commands::CHAT_TOP_N);
     let mut overall_tool_limit: usize = 0;
     for tool in tools {
         let is_cat_with_lines = if tool.function.name == "cat" {
