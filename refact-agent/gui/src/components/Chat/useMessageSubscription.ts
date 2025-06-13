@@ -21,18 +21,22 @@ import {
 
 export function useMessageSubscription() {
   const dispatch = useAppDispatch();
-  const leafMessage = useAppSelector(selectThreadEnd);
-  const isEmpty = useAppSelector(isThreadEmpty);
+  const leafMessage = useAppSelector(selectThreadEnd, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
+  const isEmpty = useAppSelector(isThreadEmpty, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   const maybeFtId = useIdForThread();
-  const appSpecific = useAppSelector(selectAppSpecific);
+  const appSpecific = useAppSelector(selectAppSpecific, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   useEffect(() => {
     if (!maybeFtId) return;
-    console.log("subscribing to message subscription");
     const thunk = dispatch(
       messagesSub({ ft_id: maybeFtId, want_deltas: true }),
     );
     return () => {
-      console.log("removing message subscription");
       thunk.abort();
     };
   }, [dispatch, isEmpty, maybeFtId]);
@@ -41,8 +45,6 @@ export function useMessageSubscription() {
   // What about images?
   const sendMessage = useCallback(
     (content: string) => {
-      console.log("Sending message");
-      console.log({ content, leafMessage });
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void dispatch(createThreadWithMessage({ ftm_content: content }));
         return;
@@ -60,7 +62,6 @@ export function useMessageSubscription() {
         ftm_tool_calls: "null", // optional
         ftm_usage: "null", // optional
       };
-      console.log("input", input);
       // TODO: this will need more info
       void dispatch(createMessage({ input }));
     },

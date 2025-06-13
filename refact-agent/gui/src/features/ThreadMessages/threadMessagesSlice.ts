@@ -1,4 +1,8 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  createSelector,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
 import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import {
   FTMMessage,
@@ -45,7 +49,23 @@ function getInfoFromId(id: string) {
   };
 }
 
-// https://github.com/reduxjs/redux-toolkit/discussions/4553 see this for creating memotized selectors
+// https://github.com/reduxjs/redux-toolkit/discussions/4553 see this for creating memoized selectors
+
+const selectMessagesValues = createSelector(
+  (state: InitialState) => state.messages,
+  (messages) => Object.values(messages),
+);
+
+function determineIfStreaming(sub: MessagesSubscriptionSubscription): boolean {
+  if (sub.comprehensive_thread_subs.news_action === "DELTA") return true;
+  if (sub.comprehensive_thread_subs.news_action === "INSERT") return true;
+  if (!sub.comprehensive_thread_subs.news_payload_thread) return false;
+  if (sub.comprehensive_thread_subs.news_payload_thread.ft_need_user !== 100)
+    return true;
+  return false;
+  // if(sub.comprehensive_thread_subs.news_payload_thread.ft_need_user)
+}
+
 export const threadMessagesSlice = createSlice({
   name: "threadMessages",
   initialState,
@@ -55,9 +75,7 @@ export const threadMessagesSlice = createSlice({
       action: PayloadAction<MessagesSubscriptionSubscription>,
     ) => {
       state.isWaiting = false;
-      state.isStreaming =
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_user !== 100;
+      state.isStreaming = determineIfStreaming(action.payload);
       // console.log(
       //   "receiveMessages",
       //   action.payload.comprehensive_thread_subs.news_action,
@@ -193,36 +211,49 @@ export const threadMessagesSlice = createSlice({
     selectIsWaiting: (state) => state.isWaiting,
     selectIsStreaming: (state) => state.isStreaming,
     selectIsWaitingOrStreaming: (state) => state.isStreaming || state.isWaiting,
-    selectThreadMessageTrie: (state) =>
-      makeMessageTrie(Object.values(state.messages)),
+    selectThreadMessageTrie: createSelector(selectMessagesValues, (messages) =>
+      makeMessageTrie(messages),
+    ),
     selectThreadEnd: (state) => {
       const { endNumber, endAlt, endPrevAlt } = state;
       return { endNumber, endAlt, endPrevAlt };
     },
-    isThreadEmpty: (state) => Object.values(state.messages).length === 0,
-    selectAppSpecific: (state) => {
-      const values = Object.values(state.messages);
-      if (values.length === 0) return "";
-      if (typeof values[0].ft_app_specific === "string") {
-        return values[0].ft_app_specific;
+    isThreadEmpty: createSelector(
+      selectMessagesValues,
+      (messages) => messages.length === 0,
+    ),
+    selectAppSpecific: createSelector(selectMessagesValues, (messages) => {
+      if (messages.length === 0) return "";
+      if (typeof messages[0].ft_app_specific === "string") {
+        return messages[0].ft_app_specific;
       }
       return null;
-    },
+    }),
 
-    selectMessagesFromEndNode: (state) => {
-      return getAncestorsForNode(
-        state.endNumber,
-        state.endAlt,
-        state.endPrevAlt,
-        Object.values(state.messages),
-      );
-    },
+    selectMessagesFromEndNode: createSelector(
+      (state: InitialState) => {
+        const { endNumber, endAlt, endPrevAlt, messages } = state;
+        return { endNumber, endAlt, endPrevAlt, messages };
+      },
+      ({ endAlt, endNumber, endPrevAlt, messages }) => {
+        return getAncestorsForNode(
+          endNumber,
+          endAlt,
+          endPrevAlt,
+          Object.values(messages),
+        );
+      },
+    ),
 
     selectBranchLength: (state) => state.endNumber,
-    selectTotalMessagesInThread: (state) =>
-      Object.values(state.messages).length,
-    selectThreadMessagesIsEmpty: (state) =>
-      Object.values(state.messages).length === 0,
+    selectTotalMessagesInThread: createSelector(
+      selectMessagesValues,
+      (messages) => messages.length,
+    ),
+    selectThreadMessagesIsEmpty: createSelector(
+      selectMessagesValues,
+      (messages) => messages.length === 0,
+    ),
   },
 
   extraReducers(builder) {

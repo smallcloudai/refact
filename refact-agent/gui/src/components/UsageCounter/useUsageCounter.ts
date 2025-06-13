@@ -22,7 +22,9 @@ export function useUsageCounter() {
   const compressionStop = useLastSentCompressionStop();
   // here, change to selectFromEndNode
   // const messages = useAppSelector(selectMessages);
-  const messagesInBranch = useAppSelector(selectMessagesFromEndNode);
+  const messagesInBranch = useAppSelector(selectMessagesFromEndNode, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   const assistantMessages = messagesInBranch.filter(isAssistantMessage);
   // const usages = assistantMessages.map((msg) => msg.ftm_usage);
   const usages = assistantMessages.reduce<Usage[]>((acc, cur) => {

@@ -1,4 +1,8 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  createSelector,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
 import { ThreadsPageSubsSubscription } from "../../../generated/documents";
 import { errorSlice } from "../Errors/errorsSlice";
 import {
@@ -74,9 +78,13 @@ export const threadListSlice = createSlice({
   },
 
   selectors: {
-    selectThreadList: (state) => {
-      return Object.values(state.threads);
-    },
+    // selectThreadList: (state) => {
+    //   return Object.values(state.threads);
+    // },
+    selectThreadList: createSelector(
+      (state: InitialState) => state.threads,
+      (threads) => Object.values(threads),
+    ),
 
     selectThreadListError: (state) => state.error,
 

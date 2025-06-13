@@ -50,7 +50,9 @@ export const Chat: React.FC<ChatProps> = ({
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
   const { sendMessage } = useMessageSubscription();
-  const totalMessages = useAppSelector(selectTotalMessagesInThread);
+  const totalMessages = useAppSelector(selectTotalMessagesInThread, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
 
   const chatId = useAppSelector(selectChatId);
   // TODO: figure out features removed here
