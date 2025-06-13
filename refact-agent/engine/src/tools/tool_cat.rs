@@ -301,7 +301,7 @@ pub async fn paths_and_symbols_to_cat_with_path_ranges(
             let original_path = corrected_path_to_original.get(p).unwrap_or(p);
             let line_range = path_line_ranges.get(original_path).cloned().flatten();
             
-            let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p).await;
+            let doc_syms = crate::ast::ast_db::doc_defs(ast_index.clone(), &p);
             // s.name() means the last part of the path
             // symbols.contains means exact match in comma-separated list
             let mut syms_def_in_this_file = vec![];

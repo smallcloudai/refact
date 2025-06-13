@@ -1,8 +1,8 @@
 import {
   Integration,
   IntegrationField,
+  IntegrationFieldValue,
   IntegrationPrimitive,
-  ToolParameterEntity,
 } from "../../../services/refact";
 import { IntegrationFormField } from "../../../features/Integrations";
 import { Grid } from "@radix-ui/themes";
@@ -21,10 +21,8 @@ type FormFieldsProps = {
     IntegrationField<NonNullable<IntegrationPrimitive>>
   >;
   areExtraFieldsRevealed: boolean;
-  onToolParameters: (data: ToolParameterEntity[]) => void;
-  onArguments: (updatedArgs: string[]) => void;
-  onEnvs: (updatedEnvs: Record<string, string>) => void;
-  onHeaders: (updatedHeaders: Record<string, string>) => void;
+  onChange: (fieldKey: string, fieldValue: IntegrationFieldValue) => void;
+  values: Integration["integr_values"];
 };
 
 export const FormFields: FC<FormFieldsProps> = ({
@@ -32,16 +30,14 @@ export const FormFields: FC<FormFieldsProps> = ({
   importantFields,
   extraFields,
   areExtraFieldsRevealed,
-  onToolParameters,
-  onArguments,
-  onEnvs,
-  onHeaders,
+  onChange,
+  values,
 }) => {
   const {
     integr_config_path,
     integr_name,
     integr_schema,
-    integr_values,
+    // integr_values,
     project_path,
   } = integration;
   return (
@@ -50,31 +46,25 @@ export const FormFields: FC<FormFieldsProps> = ({
         <IntegrationFormField
           key={`${fieldKey}-important`}
           fieldKey={fieldKey}
-          values={integr_values}
+          values={values}
           field={integr_schema.fields[fieldKey]}
           integrationName={integr_name}
           integrationPath={integr_config_path}
           integrationProject={project_path}
-          onToolParameters={onToolParameters}
-          onArguments={onArguments}
-          onEnvs={onEnvs}
-          onHeaders={onHeaders}
+          onChange={onChange}
         />
       ))}
       {Object.keys(extraFields).map((fieldKey) => (
         <IntegrationFormField
           key={`${fieldKey}-extra`}
           fieldKey={fieldKey}
-          values={integr_values}
+          values={values}
           field={integr_schema.fields[fieldKey]}
           integrationName={integr_name}
           integrationPath={integr_config_path}
           integrationProject={project_path}
           isFieldVisible={areExtraFieldsRevealed}
-          onToolParameters={onToolParameters}
-          onArguments={onArguments}
-          onEnvs={onEnvs}
-          onHeaders={onHeaders}
+          onChange={onChange}
         />
       ))}
     </Grid>

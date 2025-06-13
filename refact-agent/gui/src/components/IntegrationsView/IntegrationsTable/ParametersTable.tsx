@@ -1,4 +1,4 @@
-import { FC, useEffect, useState, useMemo } from "react";
+import { FC, useEffect, useState, useMemo, useCallback } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -11,6 +11,7 @@ import { PlusIcon } from "@radix-ui/react-icons";
 import { validateSnakeCase } from "../../../utils/validateSnakeCase";
 import { debugTables } from "../../../debugConfig";
 import { DefaultCell } from "./DefaultCell";
+import isEqual from "lodash.isequal";
 
 type ParametersTableProps = {
   initialData: ToolParameterEntity[];
@@ -26,51 +27,66 @@ export const ParametersTable: FC<ParametersTableProps> = ({
   onToolParameters,
 }) => {
   const [data, setData] = useState<ToolParameterEntity[]>(initialData);
+  const [previousData, setPreviousData] =
+    useState<ToolParameterEntity[]>(initialData);
   const [validateError, setValidateError] = useState<string | null>(null);
 
-  const addRow = () => {
+  const addRow = useCallback(() => {
     setData((prev) => [...prev, { name: "", description: "", type: "string" }]);
-  };
+  }, []);
 
-  const removeRow = (index: number) => {
+  const removeRow = useCallback((index: number) => {
     setData((prev) => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const validateAndUpdateField = (
-    field: keyof ToolParameterEntity,
-    value: string,
-  ) => {
-    if (field === "name") {
-      if (!validateSnakeCase(value)) {
-        debugTables(
-          `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
-        );
-        setValidateError(`The value "${value}" must be written in snake case.`);
-      } else {
-        setValidateError(null);
+  const validateAndUpdateField = useCallback(
+    (field: keyof ToolParameterEntity, value: string) => {
+      if (field === "name") {
+        if (!validateSnakeCase(value)) {
+          debugTables(
+            `[DEBUG VALIDATION]: field ${field} is not written in snake case`,
+          );
+          setValidateError(
+            `The value "${value}" must be written in snake case.`,
+          );
+        } else {
+          setValidateError(null);
+        }
       }
-    }
-    return value;
-  };
+      return value;
+    },
+    [],
+  );
 
-  const updateRow = (
-    index: number,
-    field: keyof ToolParameterEntity,
-    value: string,
-  ) => {
-    debugTables(`[DEBUG]: updating data of the table`);
-    const validatedValue = validateAndUpdateField(field, value);
+  const updateRow = useCallback(
+    (index: number, field: keyof ToolParameterEntity, value: string) => {
+      debugTables(`[DEBUG]: updating data of the table`);
+      const validatedValue = validateAndUpdateField(field, value);
 
-    setData((prev) =>
-      prev.map((row, i) =>
-        i === index ? { ...row, [field]: validatedValue } : row,
-      ),
-    );
-  };
+      setData((prev) =>
+        prev.map((row, i) =>
+          i === index ? { ...row, [field]: validatedValue } : row,
+        ),
+      );
+    },
+    [validateAndUpdateField],
+  );
 
-  useEffect(() => {
+  const isDataChanged = useMemo(() => {
+    return !isEqual(previousData, data);
+  }, [previousData, data]);
+
+  const updateData = useCallback(() => {
+    setPreviousData(data);
     onToolParameters(data);
   }, [data, onToolParameters]);
+
+  useEffect(() => {
+    // Only call onToolParameters if data has actually changed
+    if (isDataChanged) {
+      updateData();
+    }
+  }, [updateData, isDataChanged]);
 
   const tableData = useMemo<ParameterRow[]>(
     () => data.map((row, index) => ({ ...row, index })),
@@ -159,8 +175,7 @@ export const ParametersTable: FC<ParametersTableProps> = ({
         ),
       },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.length],
+    [data.length, updateRow, addRow, removeRow],
   );
 
   const table = useReactTable({

@@ -14,7 +14,7 @@ use crate::call_validation::{ChatMessage, ContextEnum};
 
 
 pub struct AtWeb {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtWeb {
@@ -27,7 +27,7 @@ impl AtWeb {
 
 #[async_trait]
 impl AtCommand for AtWeb {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 

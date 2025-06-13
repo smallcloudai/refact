@@ -262,13 +262,15 @@ function render_models_assigned(models) {
         const row = document.createElement('tr');
         row.setAttribute('data-model',index);
         let model_name = document.createElement("td");
-        model_name.style.width = "20%";
+        model_name.style.width = "18%";
         let context = document.createElement("td");
-        context.style.width = "15%";
+        context.style.width = "12%";
+        let concurrency = document.createElement("td");
+        concurrency.style.width = "12%";
         let finetune_info = document.createElement("td");
-        finetune_info.style.width = "35%";
+        finetune_info.style.width = "30%";
         let select_gpus = document.createElement("td");
-        select_gpus.style.width = "15%";
+        select_gpus.style.width = "13%";
         let gpus_share = document.createElement("td");
         gpus_share.style.width = "10%";
         let del = document.createElement("td");
@@ -315,6 +317,27 @@ function render_models_assigned(models) {
         }
         if (models_info[index].available_n_ctx && models_info[index].available_n_ctx.length == 0) {
             context.innerHTML = `<span class="default-context">${models_info[index].default_n_ctx}</span>`;
+        }
+
+        const model_concurrency = models_data.model_assign[index].concurrency || models_info[index].default_concurrency;
+        if (models_info[index].available_concurrency && models_info[index].available_concurrency.length > 0) {
+            const concurrency_options = models_info[index].available_concurrency;
+            const concurrency_input = document.createElement("select");
+            concurrency_input.classList.add('form-select','form-select-sm');
+            concurrency_options.forEach(element => {
+                const concurrency_option = document.createElement("option");
+                concurrency_option.setAttribute('value',element);
+                concurrency_option.textContent = element;
+                if(element === model_concurrency) {
+                    concurrency_option.setAttribute('selected','selected');
+                }
+                concurrency_input.appendChild(concurrency_option);
+            });
+            concurrency_input.addEventListener('change', function() {
+                models_data.model_assign[index].concurrency = Number(this.value);
+                save_model_assigned();
+            });
+            concurrency.appendChild(concurrency_input);
         }
 
         let finetune_runs = [];
@@ -397,6 +420,7 @@ function render_models_assigned(models) {
 
         row.appendChild(model_name);
         row.appendChild(context);
+        row.appendChild(concurrency);
         row.appendChild(finetune_info);
         row.appendChild(select_gpus);
         row.appendChild(gpus_share);
@@ -680,6 +704,7 @@ function render_models(models) {
                     models_data.model_assign[model_name] = {
                         gpus_shard: default_gpus_shard,
                         n_ctx: element.default_n_ctx,
+                        concurrency: element.default_concurrency,
                     };
                     save_model_assigned();
                     add_model_modal.hide();

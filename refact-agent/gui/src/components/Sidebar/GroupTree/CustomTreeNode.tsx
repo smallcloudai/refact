@@ -1,12 +1,18 @@
-import React, { useCallback } from "react";
-import { Box, Flex, Text } from "@radix-ui/themes";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import React, { useCallback, useMemo } from "react";
+import { Box, Flex, Text, Tooltip } from "@radix-ui/themes";
+import {
+  BookmarkFilledIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+} from "@radix-ui/react-icons";
 import type { NodeRendererProps } from "react-arborist";
 import { FolderIcon } from "./FolderIcon";
 
 import styles from "./CustomTreeNode.module.css";
 import { TeamsGroup } from "../../../services/smallcloud/types";
 import { FlexusTreeNode } from "./GroupTree";
+import { useAppSelector } from "../../../hooks";
+import { selectConfig } from "../../../features/Config/configSlice";
 
 export type TeamsGroupTree = TeamsGroup & {
   children?: TeamsGroup[];
@@ -17,6 +23,9 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
   style,
   dragHandle,
 }: NodeRendererProps<T> & { updateTree: (newTree: T[]) => void }) => {
+  const currentWorkspaceName =
+    useAppSelector(selectConfig).currentWorkspaceName ?? "New Project";
+
   // Determine if this is a folder (has children)
   const isContainingChildren = node.data.treenodeChildren.length > 0;
 
@@ -67,6 +76,10 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
     return <FolderIcon />;
   };
 
+  const isMatchingWorkspaceNameInIDE = useMemo(() => {
+    return node.data.treenodeTitle === currentWorkspaceName;
+  }, [node.data.treenodeTitle, currentWorkspaceName]);
+
   return (
     <Flex
       align="center"
@@ -114,6 +127,13 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
       >
         {node.data.treenodeTitle}
       </Text>
+      {isMatchingWorkspaceNameInIDE && (
+        <Tooltip
+          content={`Current IDE workspace "${currentWorkspaceName}" may be a good match for this group`}
+        >
+          <BookmarkFilledIcon />
+        </Tooltip>
+      )}
     </Flex>
   );
 };

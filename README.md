@@ -19,7 +19,7 @@
 
 
 
-Refact Agent is a free, open-source AI Agent that handles engineering tasks end-to-end. It deeply understands your codebases and integrates with your tools, databases, and browsers to automate complex, multi-step tasks.
+Refact.ai is the #1 open-source AI Agent in SWE-bench verified that handles engineering tasks end-to-end. It deeply understands your codebases and integrates with your tools, databases, and browsers to automate complex, multi-step tasks.
 
 
 ## 🚀 Seamless Integration with Your Workflow  
@@ -34,10 +34,10 @@ Refact Agent works effortlessly with the tools and databases you already use:
 
 ### ⚡ Why Choose Refact Agent?  
 
-- ✅ **Deploy On-Premise:** Maintain **100% control** over your codebase.  
-- 🧠 **Access State-of-the-Art Models:** Supports Claude 3.7 Sonnet, GPT-4o, o3-mini, and more.  
-- 🔑 **Bring Your Own Key (BYOK):** Use your own API keys for external LLMs.  
-- 💬 **Integrated IDE Chat:** Stay in your workflow, no need to switch between tools!  
+- ✅ **Deploy On-Premise:** For maximum security, choose our self-hosted AI Agent version and run it on your own infrastructure.
+- 🧠 **Access State-of-the-Art Models:** Use Claude 4, GPT-4o, or GPT-4o mini with AI Agent or for chat queries.
+- 🔑 **Bring Your Own Key (BYOK):** Connect your API key and use any LLM: Gemini, Grok, OpenAI, Deepseek, and others.
+- 💬 **Integrated IDE Chat:** Integrate with GitHub, PostgreSQL, Docker, and more. Refact.ai Agent accesses your resources and handles related operations autonomously, mimicking your workflow.
 - ⚡ **Free, Unlimited, Context-Aware Auto-Completion:** Code faster with smart AI suggestions.  
 - 🛠️ **Supports 25+ Programming Languages:** Python, JavaScript, Java, Rust, TypeScript, PHP, C++, C#, Go, and many more!  
 
@@ -45,13 +45,16 @@ Refact Agent works effortlessly with the tools and databases you already use:
 
 Our Ambassadors shared remarkable stories of how they transform weeks of coding into minutes with Refact.ai Agent!
 
-1️⃣ How Refact.ai built 99.9% of an IoT cloud app [Read](https://www.linkedin.com/posts/refactai_refactai-agent-activity-7308103386451578881-FO23/)
+1️. How Refact.ai built 99.9% of an IoT cloud app [Read](https://www.linkedin.com/posts/refactai_refactai-agent-activity-7308103386451578881-FO23/)
 
-2️⃣ How AI-coded prototypes help UX teams deliver real value [Read](https://medium.com/@siarheimardovich/how-ai-coded-prototypes-help-ux-teams-deliver-real-value-b51eb2ea5167)
+2️. How AI-coded prototypes help UX teams deliver real value [Read](https://medium.com/@siarheimardovich/how-ai-coded-prototypes-help-ux-teams-deliver-real-value-b51eb2ea5167)
 
-3️⃣ 80 hours of building from scratch — instead done in 30 minutes [Read more](https://www.linkedin.com/posts/refactai_refactai-users-stories-activity-7310996174864289793-692-/)
+3️. 80 hours of building from scratch — instead done in 30 minutes [Read more](https://www.linkedin.com/posts/refactai_refactai-users-stories-activity-7310996174864289793-692-/)
 
-4️⃣ 3 weeks of waiting for a functional GUI? Built in just 14 minutes [Read more](https://www.linkedin.com/posts/refactai_refactai-users-stories-activity-7310996174864289793-692-/)
+4️. 3 weeks of waiting for a functional GUI? Built in just 14 minutes [Read more](https://www.linkedin.com/posts/refactai_refactai-users-stories-activity-7310996174864289793-692-/)
+
+5. Built an automated SEO Content Generator in 60 minutes with Refact.ai [Read more](https://refact.ai/blog/2025/automated-seo-content-generator-in-60-minutes/)
+
 
 
 📜 [View Full List of Supported Models](https://docs.refact.ai/supported-models/) 
@@ -84,7 +87,7 @@ Our Ambassadors shared remarkable stories of how they transform weeks of coding 
 
 ![integrations](https://lh7-rt.googleusercontent.com/docsz/AD_4nXc4DWYXF73AgPWAaFFGLTqEprWwA0im8R_A1QMo4QW4pTnSi1MCoP9L8udMZb5FPyN-CdgefaxJFGpX2ndn5nkjGBF2b_hZBNHogM7IM6SPvUIvUd9iE1lYIq7q-TB2qKzSGLk00A?key=zllGjEBckkx13bRZ6JIqX6qr)
 
- ✅ **State-of-the-Art Models** – Supports Claude 3.7 Sonnet, GPT-4o, o3-mini, and more.  
+ ✅ **State-of-the-Art Models** – Use Claude 4, GPT-4o, or GPT-4o mini with AI Agent or for chat queries.
 
  ✅ **Bring Your Own Key (BYOK)** – Use your own API keys for external LLMs.  
 
@@ -158,6 +161,8 @@ Want to contribute to our project? We're always open to new ideas and features!
 Your contributions help shape the future of Refact Agent! 🚀
 
 
+### ⭐ Star History
+![image (4)](https://github.com/user-attachments/assets/48440c6e-b0cd-4421-880e-44924bd21693)
 
 ### 🎉 Join the Community
 
@@ -168,5 +173,3 @@ We're all about open-source and empowering developers with AI tools. Our vision 
 
 
 **Made with ❤️ by developers who automate the boring, so you can focus on building the future.**
-
-

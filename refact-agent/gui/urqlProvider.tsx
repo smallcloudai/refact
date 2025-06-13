@@ -15,7 +15,7 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const apiKey = useAppSelector(selectConfig).apiKey;
-  const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+  const baseUrl = "app.refact.ai/v1/graphql";
 
   const protocol = "https";
   const wsProtocol = "wss";

@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::caps::{
     BaseModelRecord, ChatModelRecord, CodeAssistantCaps, CompletionModelRecord, DefaultModels,
-    EmbeddingModelRecord, default_chat_scratchpad, default_completion_scratchpad,
+    EmbeddingModelRecord, CapsMetadata, default_chat_scratchpad, default_completion_scratchpad,
     default_completion_scratchpad_patch, default_embedding_batch, default_hf_tokenizer_template,
     default_rejection_threshold, relative_to_full_url, normalize_string, resolve_relative_urls
 };
@@ -59,6 +59,10 @@ pub struct SelfHostedCapsChat {
     pub endpoint: String,
     pub models: IndexMap<String, SelfHostedCapsModelRecord>,
     pub default_model: String,
+    #[serde(default)]
+    pub default_light_model: String,
+    #[serde(default)]
+    pub default_thinking_model: String,
 }
 
 #[derive(Debug, Deserialize, Clone, Default)]
@@ -88,7 +92,12 @@ pub struct SelfHostedCaps {
 
     #[serde(default)]
     pub customization: String,
+    #[serde(default)]
     pub caps_version: i64,
+    #[serde(default)]
+    pub support_metadata: bool,
+    #[serde(default)]
+    pub metadata: CapsMetadata,
 }
 
 fn configure_base_model(
@@ -99,6 +108,7 @@ fn configure_base_model(
     tokenizer_endpoints: &HashMap<String, String>,
     caps_url: &String,
     cmdline_api_key: &str,
+    support_metadata: &bool,
 ) -> Result<(), String> {
     base_model.name = model_name.to_string();
     base_model.id = format!("{}/{}", cloud_name, model_name);
@@ -108,6 +118,7 @@ fn configure_base_model(
     if let Some(tokenizer) = tokenizer_endpoints.get(&base_model.name) {
         base_model.tokenizer = relative_to_full_url(caps_url, &tokenizer)?;
     }
+    base_model.support_metadata = support_metadata.clone();
     base_model.api_key = cmdline_api_key.to_string();
     base_model.endpoint_style = "openai".to_string();
     Ok(())
@@ -155,6 +166,7 @@ impl SelfHostedCapsModelRecord {
             &self_hosted_caps.tokenizer_endpoints,
             caps_url,
             cmdline_api_key,
+            &self_hosted_caps.support_metadata,
         )?;
 
         let (scratchpad, scratchpad_patch) = self.get_completion_scratchpad();
@@ -199,6 +211,7 @@ impl SelfHostedCapsModelRecord {
             &self_hosted_caps.tokenizer_endpoints,
             caps_url,
             cmdline_api_key,
+            &self_hosted_caps.support_metadata,
         )?;
 
         Ok(ChatModelRecord {
@@ -239,6 +252,7 @@ impl SelfHostedCapsEmbeddingModelRecord {
             &self_hosted_caps.tokenizer_endpoints,
             caps_url,
             cmdline_api_key,
+            &self_hosted_caps.support_metadata,
         )?;
 
         Ok(embedding_model)
@@ -261,15 +275,23 @@ impl SelfHostedCaps {
             defaults: DefaultModels {
                 completion_default_model: format!("{}/{}", self.cloud_name, self.completion.default_model),
                 chat_default_model: format!("{}/{}", self.cloud_name, self.chat.default_model),
-                chat_thinking_model: String::new(),
-                chat_light_model: format!("{}/{}", self.cloud_name, self.chat.default_model),
+                chat_thinking_model: if self.chat.default_thinking_model.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/{}", self.cloud_name, self.chat.default_thinking_model)
+                },
+                chat_light_model: if self.chat.default_light_model.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/{}", self.cloud_name, self.chat.default_light_model)
+                },
             },
             customization: self.customization.clone(),
             caps_version: self.caps_version,
 
             hf_tokenizer_template: default_hf_tokenizer_template(),
 
-            metadata: crate::caps::CapsMetadata::default(),
+            metadata: self.metadata.clone(),
         };
 
         for (model_name, model_rec) in &self.completion.models {
@@ -319,7 +341,7 @@ impl SelfHostedCaps {
             api_key: cmdline_api_key.to_string(),
             tokenizer_api_key: cmdline_api_key.to_string(),
             code_completion_n_ctx: 0,
-            support_metadata: false,
+            support_metadata: self.support_metadata,
             completion_models: IndexMap::new(),
             chat_models: IndexMap::new(),
             embedding_model: EmbeddingModelRecord::default(),
@@ -327,8 +349,16 @@ impl SelfHostedCaps {
             defaults: DefaultModels {
                 completion_default_model: self.completion.default_model.clone(),
                 chat_default_model: self.chat.default_model.clone(),
-                chat_thinking_model: String::new(),
-                chat_light_model: String::new(),
+                chat_thinking_model: if self.chat.default_thinking_model.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/{}", self.cloud_name, self.chat.default_thinking_model)
+                },
+                chat_light_model: if self.chat.default_light_model.is_empty() {
+                    String::new()
+                } else {
+                    format!("{}/{}", self.cloud_name, self.chat.default_light_model)
+                },
             },
             running_models: Vec::new(),
         };

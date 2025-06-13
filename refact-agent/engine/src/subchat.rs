@@ -405,13 +405,15 @@ pub async fn subchat(
                 tx_chatid_mb.clone(),
             ).await?[0].clone();
             let last_message = messages.last().unwrap();
-            let tool_call_mb = last_message.tool_calls.clone().map(|x|{
-                let tool_call = x.get(0).unwrap();
-                format!("{}({})", tool_call.function.name, tool_call.function.arguments).to_string()
-            }).unwrap_or_default();
-            let content = format!("🤖:\n{}\n{}\n", &last_message.content.content_text_only(), tool_call_mb);
-            tx_chatid_mb = Some(format!("{step_n}/{wrap_up_depth}: {content}"));
-            info!("subchat request {step_n}/{wrap_up_depth}: {content}");
+            let mut content = format!("🤖:\n{}", &last_message.content.content_text_only());
+            if let Some(tool_calls) = &last_message.tool_calls {
+                if let Some(tool_call) = tool_calls.get(0) {
+                    content = format!("{}\n{}({})", content, tool_call.function.name, tool_call.function.arguments);
+                }
+            }
+            let tx_chatid = format!("{step_n}/{wrap_up_depth}: {content}");
+            info!("subchat request {tx_chatid}");
+            tx_chatid_mb = Some(tx_chatid);
             step_n += 1;
         }
         // result => session

@@ -13,14 +13,14 @@ use crate::global_context::GlobalContext;
 
 
 pub struct AtFile {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtFile {
     pub fn new() -> Self {
         AtFile {
             params: vec![
-                Arc::new(AMutex::new(AtParamFilePath::new()))
+                Box::new(AtParamFilePath::new())
             ],
         }
     }
@@ -271,7 +271,7 @@ pub async fn context_file_from_file_path(
 
 #[async_trait]
 impl AtCommand for AtFile {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 
@@ -292,7 +292,7 @@ impl AtCommand for AtFile {
                 return Err("Cannot execute @file: no file provided".to_string());
             }
         };
-        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut arg0).await;
+        correct_at_arg(ccx.clone(), &self.params[0], &mut arg0).await;
         args.clear();
         args.push(arg0.clone());
 
