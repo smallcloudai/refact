@@ -45,6 +45,7 @@ function getInfoFromId(id: string) {
   };
 }
 
+// https://github.com/reduxjs/redux-toolkit/discussions/4553 see this for creating memotized selectors
 export const threadMessagesSlice = createSlice({
   name: "threadMessages",
   initialState,
@@ -54,12 +55,14 @@ export const threadMessagesSlice = createSlice({
       action: PayloadAction<MessagesSubscriptionSubscription>,
     ) => {
       state.isWaiting = false;
-      // state.isStreaming = true; // TODO: figure out how to tell when the stream has ended
-      console.log(
-        "receiveMessages",
-        action.payload.comprehensive_thread_subs.news_action,
-        action.payload,
-      );
+      state.isStreaming =
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          ?.ft_need_user !== 100;
+      // console.log(
+      //   "receiveMessages",
+      //   action.payload.comprehensive_thread_subs.news_action,
+      //   action.payload,
+      // );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message

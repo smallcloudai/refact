@@ -56,6 +56,8 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
     news_payload_thread {
       located_fgroup_id
       ft_id
+      ft_need_user
+      ft_need_assistant
     }
   }
 }
