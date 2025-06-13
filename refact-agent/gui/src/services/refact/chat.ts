@@ -151,6 +151,18 @@ export type Usage = {
   cache_read_input_tokens?: number;
 };
 
+export function isUsage(usage: unknown): usage is Usage {
+  if (!usage) return false;
+  if (typeof usage !== "object") return false;
+  if (!("completion_tokens" in usage)) return false;
+  if (typeof usage.completion_tokens !== "number") return false;
+  if (!("prompt_tokens" in usage)) return false;
+  if (typeof usage.prompt_tokens !== "number") return false;
+  if (!("total_tokens" in usage)) return false;
+  if (typeof usage.total_tokens !== "number") return false;
+  return true;
+}
+
 // TODO: add config url
 export async function sendChat({
   messages,

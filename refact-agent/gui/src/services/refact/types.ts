@@ -283,8 +283,12 @@ export function isChatContextFileMessage(
 }
 
 export function isAssistantMessage(
-  message: ChatMessage,
+  message: unknown,
 ): message is AssistantMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "assistant";
 }
 

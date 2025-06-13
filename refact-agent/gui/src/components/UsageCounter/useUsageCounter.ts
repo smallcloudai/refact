@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import {
-  // selectIsStreaming,
-  // selectIsWaiting,
-  selectMessages,
-} from "../../features/Chat";
+// import {
+//   // selectIsStreaming,
+//   // selectIsWaiting,
+//   selectMessages,
+// } from "../../features/Chat";
 import {
   selectIsStreaming,
   selectIsWaiting,
@@ -13,15 +13,22 @@ import {
   calculateUsageInputTokens,
   mergeUsages,
 } from "../../utils/calculateUsageInputTokens";
-import { isAssistantMessage } from "../../services/refact";
+import { isAssistantMessage, isUsage, Usage } from "../../services/refact";
+import { selectMessagesFromEndNode } from "../../features/ThreadMessages";
 
 export function useUsageCounter() {
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
   const compressionStop = useLastSentCompressionStop();
-  const messages = useAppSelector(selectMessages);
-  const assistantMessages = messages.filter(isAssistantMessage);
-  const usages = assistantMessages.map((msg) => msg.usage);
+  // here, change to selectFromEndNode
+  // const messages = useAppSelector(selectMessages);
+  const messagesInBranch = useAppSelector(selectMessagesFromEndNode);
+  const assistantMessages = messagesInBranch.filter(isAssistantMessage);
+  // const usages = assistantMessages.map((msg) => msg.ftm_usage);
+  const usages = assistantMessages.reduce<Usage[]>((acc, cur) => {
+    if (!isUsage(cur.ftm_usage)) return acc;
+    return [...acc, cur.ftm_usage];
+  }, []);
   const currentThreadUsage = mergeUsages(usages);
 
   const totalInputTokens = useMemo(() => {
@@ -49,8 +56,8 @@ export function useUsageCounter() {
   }, [compressionStop.strength]);
 
   const shouldShow = useMemo(() => {
-    return messages.length > 0 && !isStreaming && !isWaiting;
-  }, [messages.length, isStreaming, isWaiting]);
+    return messagesInBranch.length > 0 && !isStreaming && !isWaiting;
+  }, [messagesInBranch.length, isStreaming, isWaiting]);
 
   return {
     shouldShow,
