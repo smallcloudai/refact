@@ -19,9 +19,12 @@ async fn initialize_thread(
     expert_name: &str,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
-    api_key: String
+    api_key: String,
+    located_fgroup_id: String
 ) -> Result<(), String> {
     let expert = crate::cloud::experts_req::get_expert(api_key.clone(), expert_name).await?;
+    let cloud_tools = crate::cloud::cloud_tools_req::get_cloud_tools(api_key.clone(), &located_fgroup_id).await?;
+    info!("retrieving cloud tools for thread `{}`: {:?}", thread.ft_id, cloud_tools);
     let last_message = thread_messages.iter()
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
@@ -32,10 +35,13 @@ async fn initialize_thread(
             .into_iter()
             .filter(|tool| expert.is_tool_allowed(&tool.tool_description().name))
             .collect();
-    let tool_descriptions = tools
+    let mut tool_descriptions: Vec<_> = tools
         .iter()
         .map(|x| x.tool_description().into_openai_style())
-        .collect::<Vec<_>>();
+        .collect();
+    tool_descriptions.extend(
+        cloud_tools.into_iter().map(|x| x.into_openai_style())
+    );
     crate::cloud::threads_req::set_thread_toolset(api_key.clone(), &thread.ft_id, tool_descriptions).await?;
     let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
         gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
@@ -150,7 +156,8 @@ pub async fn process_thread_event(
     thread_payload: &ThreadPayload,
     basic_info: &BasicStuff,
     api_key: String,
-    app_searchable_id: String
+    app_searchable_id: String,
+    located_fgroup_id: String,
 ) -> Result<(), String> {
     if thread_payload.ft_need_tool_calls == -1 
         || thread_payload.owner_fuser_id != basic_info.fuser_id 
@@ -185,7 +192,8 @@ pub async fn process_thread_event(
         gcx, 
         thread_payload, 
         &thread_id, 
-        api_key.clone()
+        api_key.clone(),
+        located_fgroup_id
     ).await;
     match crate::cloud::threads_req::unlock_thread(api_key.clone(), thread_id.clone(), hash).await {
         Ok(_) => info!("thread `{}` unlocked successfully", thread_id),
@@ -201,6 +209,7 @@ async fn process_locked_thread(
     thread_payload: &ThreadPayload,
     thread_id: &str,
     api_key: String,
+    located_fgroup_id: String
 ) -> Result<(), String> {
     let messages = match crate::cloud::messages_req::get_thread_messages(
         api_key.clone(),
@@ -237,7 +246,7 @@ async fn process_locked_thread(
     let result = if need_to_append_system {
         let exp_name = thread.ft_fexp_name.clone().expect("checked before");
         info!("initializing system prompt for thread `{}`", thread_id);
-        initialize_thread(gcx.clone(), &exp_name, &thread, &messages, api_key.clone()).await
+        initialize_thread(gcx.clone(), &exp_name, &thread, &messages, api_key.clone(), located_fgroup_id).await
     } else {
         info!("calling tools for thread `{}`", thread_id);
         call_tools(gcx.clone(), &thread, &messages, api_key.clone()).await

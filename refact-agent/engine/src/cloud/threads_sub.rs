@@ -111,7 +111,8 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
         let events_result = events_loop(
             gcx.clone(),
             &mut connection,
-            api_key.clone()
+            api_key.clone(),
+            located_fgroup_id.clone()
         ).await;
         if let Err(err) = events_result {
             error!("failed to process events: {}", err);
@@ -232,6 +233,7 @@ async fn events_loop(
         >,
     >,
     api_key: String,
+    located_fgroup_id: String,
 ) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
     let app_searchable_id = gcx.read().await.app_searchable_id.clone();
@@ -269,9 +271,10 @@ async fn events_loop(
                                 let basic_info_clone = basic_info.clone();
                                 let api_key_clone = api_key.clone();
                                 let app_searchable_id_clone = app_searchable_id.clone();
+                                let located_fgroup_id_clone = located_fgroup_id.clone();
                                 tokio::spawn(async move {
                                     crate::cloud::threads_processing::process_thread_event(
-                                        gcx_clone, &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone,
+                                        gcx_clone, &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone, located_fgroup_id_clone
                                     ).await 
                                 });
                             } else {
