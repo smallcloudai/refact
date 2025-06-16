@@ -21,7 +21,13 @@ export type Scalars = {
 export type BasicStuffResult = {
   __typename?: 'BasicStuffResult';
   fuser_id: Scalars['String']['output'];
+  invitations?: Maybe<Array<FWorkspaceInvitationOutput>>;
   workspaces: Array<FWorkspace>;
+};
+
+export type EmailConfirmResult = {
+  __typename?: 'EmailConfirmResult';
+  fuser_id: Scalars['String']['output'];
 };
 
 export type FExpertInput = {
@@ -139,10 +145,10 @@ export type FKnowledgeItemSubs = {
   news_pubsub: Scalars['String']['output'];
 };
 
-export type FPermissionInput = {
-  fgroup_id: Scalars['String']['input'];
-  fuser_id: Scalars['String']['input'];
-  perm_role: Scalars['String']['input'];
+export type FMassInvitationOutput = {
+  __typename?: 'FMassInvitationOutput';
+  fuser_id: Scalars['String']['output'];
+  result: Scalars['String']['output'];
 };
 
 export type FPermissionOutput = {
@@ -156,11 +162,29 @@ export type FPermissionPatch = {
   perm_role?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type FPermissionSubs = {
+  __typename?: 'FPermissionSubs';
+  news_action: Scalars['String']['output'];
+  news_payload?: Maybe<FPermissionOutput>;
+  news_payload_id: Scalars['String']['output'];
+  news_pubsub: Scalars['String']['output'];
+};
+
 export type FPluginOutput = {
   __typename?: 'FPluginOutput';
   plugin_name: Scalars['String']['output'];
   plugin_setup_page: Scalars['String']['output'];
   plugin_version: Scalars['String']['output'];
+};
+
+export type FStatsOutput = {
+  __typename?: 'FStatsOutput';
+  st_how_many: Scalars['Int']['output'];
+  st_involved_fexp_name?: Maybe<Scalars['String']['output']>;
+  st_involved_fuser_id?: Maybe<Scalars['String']['output']>;
+  st_involved_model?: Maybe<Scalars['String']['output']>;
+  st_timekey: Scalars['String']['output'];
+  ws_id: Scalars['String']['output'];
 };
 
 export type FThreadDelta = {
@@ -282,6 +306,16 @@ export type FThreadSubs = {
   news_pubsub: Scalars['String']['output'];
 };
 
+export type FUserProfileOutput = {
+  __typename?: 'FUserProfileOutput';
+  fuser_fullname: Scalars['String']['output'];
+  fuser_id: Scalars['String']['output'];
+};
+
+export type FUserProfilePatch = {
+  fuser_fullname?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type FWorkspace = {
   __typename?: 'FWorkspace';
   root_group_name: Scalars['String']['output'];
@@ -292,25 +326,18 @@ export type FWorkspace = {
   ws_status: Scalars['String']['output'];
 };
 
-export type FWorkspaceInvitationInput = {
-  ws_id: Scalars['String']['input'];
-  wsi_email: Scalars['String']['input'];
-  wsi_invited_by_fuser_id: Scalars['String']['input'];
-  wsi_role: Scalars['String']['input'];
+export type FWorkspaceCreateInput = {
+  ws_name: Scalars['String']['input'];
 };
 
 export type FWorkspaceInvitationOutput = {
   __typename?: 'FWorkspaceInvitationOutput';
-  ws_id: Scalars['String']['output'];
-  wsi_created_ts: Scalars['Float']['output'];
-  wsi_email: Scalars['String']['output'];
+  group_name: Scalars['String']['output'];
+  wsi_fgroup_id: Scalars['String']['output'];
+  wsi_id: Scalars['String']['output'];
+  wsi_invite_fuser_id: Scalars['String']['output'];
   wsi_invited_by_fuser_id: Scalars['String']['output'];
   wsi_role: Scalars['String']['output'];
-  wsi_token: Scalars['String']['output'];
-};
-
-export type FWorkspaceInvitationPatch = {
-  wsi_role?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type FlexusGroup = {
@@ -319,6 +346,7 @@ export type FlexusGroup = {
   fgroup_id: Scalars['String']['output'];
   fgroup_name: Scalars['String']['output'];
   fgroup_parent_id?: Maybe<Scalars['String']['output']>;
+  my_role?: Maybe<Scalars['String']['output']>;
   ws_id: Scalars['String']['output'];
 };
 
@@ -334,6 +362,7 @@ export type FlexusGroupPatch = {
 
 export type Mutation = {
   __typename?: 'Mutation';
+  confirm_email: EmailConfirmResult;
   expert_create: FExpertOutput;
   expert_delete: Scalars['Boolean']['output'];
   expert_patch: FExpertOutput;
@@ -343,13 +372,19 @@ export type Mutation = {
   group_create: FlexusGroup;
   group_delete: Scalars['String']['output'];
   group_patch: FlexusGroup;
+  invitation_accept: Scalars['Boolean']['output'];
+  invitation_create_multiple: Array<FMassInvitationOutput>;
+  invitation_delete: Scalars['Boolean']['output'];
   knowledge_item_create: FKnowledgeItemOutput;
   knowledge_item_delete: Scalars['Boolean']['output'];
   knowledge_item_mass_group_patch: Scalars['Int']['output'];
   knowledge_item_patch: FKnowledgeItemOutput;
-  permission_create: FPermissionOutput;
+  password_change: Scalars['Boolean']['output'];
   permission_delete: Scalars['Boolean']['output'];
   permission_patch: FPermissionOutput;
+  reset_password_execute: Scalars['Boolean']['output'];
+  reset_password_start: Scalars['Boolean']['output'];
+  start_session: SessionResult;
   stats_add: Scalars['Boolean']['output'];
   tech_support_activate: Scalars['Boolean']['output'];
   tech_support_set_config: Scalars['Boolean']['output'];
@@ -361,10 +396,17 @@ export type Mutation = {
   thread_messages_create_multiple: FThreadMessagesCreateResult;
   thread_patch: FThreadOutput;
   thread_provide_toolset: Scalars['Boolean']['output'];
+  thread_reset_error: Scalars['Boolean']['output'];
   thread_unlock: Scalars['Boolean']['output'];
-  workspace_invitation_create: FWorkspaceInvitationOutput;
-  workspace_invitation_delete: Scalars['Boolean']['output'];
-  workspace_invitation_patch: FWorkspaceInvitationOutput;
+  user_profile_patch: FUserProfileOutput;
+  user_register: Scalars['Boolean']['output'];
+  workspace_create: FWorkspace;
+  workspace_delete: Scalars['String']['output'];
+};
+
+
+export type MutationConfirm_EmailArgs = {
+  token: Scalars['String']['input'];
 };
 
 
@@ -416,6 +458,24 @@ export type MutationGroup_PatchArgs = {
 };
 
 
+export type MutationInvitation_AcceptArgs = {
+  wsi_id: Scalars['String']['input'];
+};
+
+
+export type MutationInvitation_Create_MultipleArgs = {
+  emails: Array<Scalars['String']['input']>;
+  fgroup_id: Scalars['String']['input'];
+  role: Scalars['String']['input'];
+};
+
+
+export type MutationInvitation_DeleteArgs = {
+  wsi_fgroup_id: Scalars['String']['input'];
+  wsi_invite_fuser_id: Scalars['String']['input'];
+};
+
+
 export type MutationKnowledge_Item_CreateArgs = {
   input: FKnowledgeItemInput;
 };
@@ -438,8 +498,8 @@ export type MutationKnowledge_Item_PatchArgs = {
 };
 
 
-export type MutationPermission_CreateArgs = {
-  input: FPermissionInput;
+export type MutationPassword_ChangeArgs = {
+  new_password: Scalars['String']['input'];
 };
 
 
@@ -456,9 +516,28 @@ export type MutationPermission_PatchArgs = {
 };
 
 
+export type MutationReset_Password_ExecuteArgs = {
+  new_password: Scalars['String']['input'];
+  token: Scalars['String']['input'];
+};
+
+
+export type MutationReset_Password_StartArgs = {
+  username: Scalars['String']['input'];
+};
+
+
+export type MutationStart_SessionArgs = {
+  password: Scalars['String']['input'];
+  username: Scalars['String']['input'];
+  want_invitations: Scalars['Boolean']['input'];
+  want_workspaces_list: Scalars['Boolean']['input'];
+};
+
+
 export type MutationStats_AddArgs = {
   st_how_many: Scalars['Int']['input'];
-  st_involved_expert?: Scalars['String']['input'];
+  st_involved_fexp_name?: Scalars['String']['input'];
   st_involved_fuser_id?: Scalars['String']['input'];
   st_involved_model?: Scalars['String']['input'];
   st_thing: Scalars['String']['input'];
@@ -522,27 +601,42 @@ export type MutationThread_Provide_ToolsetArgs = {
 };
 
 
+export type MutationThread_Reset_ErrorArgs = {
+  ft_error: Scalars['String']['input'];
+  ft_id: Scalars['String']['input'];
+};
+
+
 export type MutationThread_UnlockArgs = {
   ft_id: Scalars['String']['input'];
   worker_name: Scalars['String']['input'];
 };
 
 
-export type MutationWorkspace_Invitation_CreateArgs = {
-  input: FWorkspaceInvitationInput;
+export type MutationUser_Profile_PatchArgs = {
+  patch: FUserProfilePatch;
 };
 
 
-export type MutationWorkspace_Invitation_DeleteArgs = {
-  ws_id: Scalars['String']['input'];
-  wsi_email: Scalars['String']['input'];
+export type MutationUser_RegisterArgs = {
+  input: RegisterInput;
 };
 
 
-export type MutationWorkspace_Invitation_PatchArgs = {
-  patch: FWorkspaceInvitationPatch;
+export type MutationWorkspace_CreateArgs = {
+  input: FWorkspaceCreateInput;
+};
+
+
+export type MutationWorkspace_DeleteArgs = {
+  dry_run?: Scalars['Boolean']['input'];
   ws_id: Scalars['String']['input'];
-  wsi_email: Scalars['String']['input'];
+};
+
+export type PasswordResetTokenInfo = {
+  __typename?: 'PasswordResetTokenInfo';
+  freset_used: Scalars['Boolean']['output'];
+  fuser_id: Scalars['String']['output'];
 };
 
 export type Query = {
@@ -552,19 +646,24 @@ export type Query = {
   experts_effective_list: Array<FExpertOutput>;
   external_data_source_get: FExternalDataSourceOutput;
   external_data_source_list: Array<FExternalDataSourceOutput>;
+  group_get: FlexusGroup;
+  group_list_for_workspace: Array<FlexusGroup>;
+  invitation_list: Array<FWorkspaceInvitationOutput>;
   knowledge_item_get: FKnowledgeItemOutput;
   knowledge_item_list: Array<FKnowledgeItemOutput>;
   permission_get: FPermissionOutput;
   permission_list: Array<FPermissionOutput>;
   plugins_installed: Array<FPluginOutput>;
   query_basic_stuff: BasicStuffResult;
+  reset_password_token_info: PasswordResetTokenInfo;
+  stats_query: Array<FStatsOutput>;
+  stats_query_distinct: StatsDistinctOutput;
   tech_support_get_config?: Maybe<TechSupportSettingsOutput>;
   thread_get: FThreadOutput;
   thread_list: Array<FThreadOutput>;
   thread_messages_list: Array<FThreadMessageOutput>;
   threads_app_captured: Array<FThreadOutput>;
-  workspace_invitation_get: FWorkspaceInvitationOutput;
-  workspace_invitation_list: Array<FWorkspaceInvitationOutput>;
+  user_profile_get: FUserProfileOutput;
   workspace_permission_list: Array<FPermissionOutput>;
 };
 
@@ -600,6 +699,21 @@ export type QueryExternal_Data_Source_ListArgs = {
 };
 
 
+export type QueryGroup_GetArgs = {
+  fgroup_id: Scalars['String']['input'];
+};
+
+
+export type QueryGroup_List_For_WorkspaceArgs = {
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type QueryInvitation_ListArgs = {
+  wsi_fgroup_id: Scalars['String']['input'];
+};
+
+
 export type QueryKnowledge_Item_GetArgs = {
   id: Scalars['String']['input'];
 };
@@ -621,6 +735,43 @@ export type QueryPermission_GetArgs = {
 
 export type QueryPermission_ListArgs = {
   fgroup_id: Scalars['String']['input'];
+};
+
+
+export type QueryQuery_Basic_StuffArgs = {
+  want_invitations?: Scalars['Boolean']['input'];
+};
+
+
+export type QueryReset_Password_Token_InfoArgs = {
+  token: Scalars['String']['input'];
+};
+
+
+export type QueryStats_QueryArgs = {
+  breakdown_fexp_name: Scalars['Boolean']['input'];
+  breakdown_fuser_id: Scalars['Boolean']['input'];
+  breakdown_model: Scalars['Boolean']['input'];
+  filter_fexp_name: Array<Scalars['String']['input']>;
+  filter_fuser_id: Array<Scalars['String']['input']>;
+  filter_model: Array<Scalars['String']['input']>;
+  filter_thing: Array<Scalars['String']['input']>;
+  st_span: Scalars['String']['input'];
+  timekey_from: Scalars['String']['input'];
+  timekey_to: Scalars['String']['input'];
+  ws_id: Scalars['String']['input'];
+};
+
+
+export type QueryStats_Query_DistinctArgs = {
+  filter_fexp_name: Array<Scalars['String']['input']>;
+  filter_fuser_id: Array<Scalars['String']['input']>;
+  filter_model: Array<Scalars['String']['input']>;
+  filter_thing: Array<Scalars['String']['input']>;
+  st_span: Scalars['String']['input'];
+  timekey_from: Scalars['String']['input'];
+  timekey_to: Scalars['String']['input'];
+  ws_id: Scalars['String']['input'];
 };
 
 
@@ -655,19 +806,32 @@ export type QueryThreads_App_CapturedArgs = {
 };
 
 
-export type QueryWorkspace_Invitation_GetArgs = {
-  ws_id: Scalars['String']['input'];
-  wsi_email: Scalars['String']['input'];
-};
-
-
-export type QueryWorkspace_Invitation_ListArgs = {
-  ws_id: Scalars['String']['input'];
-};
-
-
 export type QueryWorkspace_Permission_ListArgs = {
   ws_id: Scalars['String']['input'];
+};
+
+export type RegisterInput = {
+  fullname: Scalars['String']['input'];
+  password: Scalars['String']['input'];
+  username: Scalars['String']['input'];
+};
+
+export type SessionResult = {
+  __typename?: 'SessionResult';
+  fuser_id: Scalars['String']['output'];
+  fuser_internal_flags: Scalars['String']['output'];
+  invitations?: Maybe<Array<FWorkspaceInvitationOutput>>;
+  sess_expires_ts: Scalars['Float']['output'];
+  signed_session: Scalars['String']['output'];
+  workspaces?: Maybe<Array<FWorkspace>>;
+};
+
+export type StatsDistinctOutput = {
+  __typename?: 'StatsDistinctOutput';
+  st_involved_fexp_name: Array<Scalars['String']['output']>;
+  st_involved_fuser_id: Array<Scalars['String']['output']>;
+  st_involved_model: Array<Scalars['String']['output']>;
+  st_thing: Array<Scalars['String']['output']>;
 };
 
 export type Subscription = {
@@ -676,6 +840,7 @@ export type Subscription = {
   experts_in_group: FExpertSubs;
   external_data_sources_in_group: FExternalDataSourceSubs;
   knowledge_items_in_group: FKnowledgeItemSubs;
+  permissions_in_group_subs: FPermissionSubs;
   threads_in_group: FThreadSubs;
   tree_subscription: TreeUpdateSubs;
 };
@@ -705,6 +870,13 @@ export type SubscriptionKnowledge_Items_In_GroupArgs = {
   limit?: Scalars['Int']['input'];
   located_fgroup_id: Scalars['String']['input'];
   sort_by?: Scalars['String']['input'];
+};
+
+
+export type SubscriptionPermissions_In_Group_SubsArgs = {
+  fgroup_id: Scalars['String']['input'];
+  limit: Scalars['Int']['input'];
+  quicksearch: Scalars['String']['input'];
 };
 
 
@@ -741,6 +913,7 @@ export type TreeUpdateSubs = {
   treeupd_action: Scalars['String']['output'];
   treeupd_id: Scalars['String']['output'];
   treeupd_path: Scalars['String']['output'];
+  treeupd_role?: Maybe<Scalars['String']['output']>;
   treeupd_title: Scalars['String']['output'];
   treeupd_type: Scalars['String']['output'];
 };
