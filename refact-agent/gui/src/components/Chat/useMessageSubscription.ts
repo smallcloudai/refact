@@ -46,7 +46,7 @@ export function useMessageSubscription() {
   const sendMessage = useCallback(
     (content: string) => {
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
-        void dispatch(createThreadWithMessage({ ftm_content: content }));
+        void dispatch(createThreadWithMessage({ content }));
         return;
       }
       const input: FThreadMessageInput = {
@@ -63,7 +63,14 @@ export function useMessageSubscription() {
         ftm_usage: "null", // optional
       };
       // TODO: this will need more info
-      void dispatch(createMessage({ input }));
+      void dispatch(
+        createMessage({
+          input: {
+            ftm_belongs_to_ft_id: maybeFtId ?? "",
+            messages: [input],
+          },
+        }),
+      );
     },
     [appSpecific, dispatch, leafMessage, maybeFtId],
   );

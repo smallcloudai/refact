@@ -62,15 +62,9 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
   }
 }
 
-mutation MessageCreate($input: FThreadMessageInput!) {
-  thread_message_create(input: $input) {
-    ftm_belongs_to_ft_id
-    ftm_alt
-    ftm_num
-    ftm_prev_alt
-    ftm_role
-    ftm_content
-    ftm_tool_calls
-    ftm_call_id
+mutation MessageCreateMultiple($input: FThreadMultipleMessagesInput!) {
+  thread_messages_create_multiple(input: $input) {
+    count
+
   }
 }

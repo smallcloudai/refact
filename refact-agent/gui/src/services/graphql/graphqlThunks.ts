@@ -17,8 +17,12 @@ import {
   MessageCreateMutationVariables,
   MessageCreateMutation,
   MessageCreateDocument,
+  MessageCreateMultipleDocument,
+  MessageCreateMultipleMutation,
+  MessageCreateMultipleMutationVariables,
   MessagesSubscriptionSubscription,
   FThreadMessageInput,
+  FThreadInput,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -111,7 +115,7 @@ export const messagesSub = createAsyncThunk<
 
 export const createMessage = createAppAsyncThunk<
   unknown,
-  MessageCreateMutationVariables,
+  MessageCreateMultipleMutationVariables,
   {
     dispatch: AppDispatch;
     state: RootState;
@@ -123,9 +127,9 @@ export const createMessage = createAppAsyncThunk<
 
   const client = createGraphqlClient(apiKey, thunkAPI.signal);
   const result = await client.mutation<
-    MessageCreateMutation,
-    MessageCreateMutationVariables
-  >(MessageCreateDocument, args);
+    MessageCreateMultipleMutation,
+    MessageCreateMultipleMutationVariables
+  >(MessageCreateMultipleDocument, args);
 
   if (result.error) {
     thunkAPI.dispatch(setError(result.error.message));
@@ -140,7 +144,7 @@ export const createMessage = createAppAsyncThunk<
 
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMutation,
-  Pick<FThreadMessageInput, "ftm_content">,
+  { content: string },
   {
     dispatch: AppDispatch;
     state: RootState;
@@ -184,19 +188,17 @@ export const createThreadWithMessage = createAsyncThunk<
 
   const client = createGraphqlClient(apiKey, thunkAPI.signal);
 
-  const threadQueryArgs = {
-    input: {
-      ft_fexp_name: "ask:1.0",
-      ft_title: "", // TODO: generate the title
-      located_fgroup_id: workspace,
-      owner_shared: false,
-      ft_app_searchable: appIdQuery.data?.app_searchable_id,
-    },
+  const threadQueryArgs: FThreadInput = {
+    ft_fexp_id: "id:ask:1.0", // user selected
+    ft_title: "", // TODO: generate the title
+    located_fgroup_id: workspace,
+    owner_shared: false,
+    ft_app_searchable: appIdQuery.data?.app_searchable_id,
   };
   const threadQuery = await client.mutation<
     CreateThreadMutation,
     CreateThreadMutationVariables
-  >(CreateThreadDocument, threadQueryArgs);
+  >(CreateThreadDocument, { input: threadQueryArgs });
 
   if (threadQuery.error) {
     return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
@@ -221,16 +223,21 @@ export const createThreadWithMessage = createAsyncThunk<
     ftm_call_id: "",
     ftm_prev_alt: 100,
     ftm_role: "user",
-    ftm_content: JSON.stringify(args.ftm_content),
+    ftm_content: JSON.stringify(args.content),
     ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
     ftm_tool_calls: "null", // optional
     ftm_usage: "null", // optional
   };
 
   const result = await client.mutation<
-    MessageCreateMutation,
-    MessageCreateMutationVariables
-  >(MessageCreateDocument, { input: createMessageArgs });
+    MessageCreateMultipleMutation,
+    MessageCreateMultipleMutationVariables
+  >(MessageCreateMultipleDocument, {
+    input: {
+      ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+      messages: [createMessageArgs],
+    },
+  });
 
   if (result.error) {
     return thunkAPI.rejectWithValue({ message: result.error.message });
