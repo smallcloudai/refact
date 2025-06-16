@@ -16,6 +16,8 @@ import {
 } from "../../services/graphql/graphqlThunks";
 
 type InitialState = {
+  waitingBranches: number[]; // alt numbers
+  streamingBranches: number[]; // alt number
   isWaiting: boolean;
   isStreaming: boolean;
   messages: Record<string, FTMMessage>;
@@ -26,6 +28,8 @@ type InitialState = {
 };
 
 const initialState: InitialState = {
+  waitingBranches: [],
+  streamingBranches: [],
   isWaiting: false,
   isStreaming: false,
   messages: {},
@@ -56,16 +60,6 @@ const selectMessagesValues = createSelector(
   (messages) => Object.values(messages),
 );
 
-function determineIfStreaming(sub: MessagesSubscriptionSubscription): boolean {
-  if (sub.comprehensive_thread_subs.news_action === "DELTA") return true;
-  if (sub.comprehensive_thread_subs.news_action === "INSERT") return true;
-  if (!sub.comprehensive_thread_subs.news_payload_thread) return false;
-  if (sub.comprehensive_thread_subs.news_payload_thread.ft_need_user !== 100)
-    return true;
-  return false;
-  // if(sub.comprehensive_thread_subs.news_payload_thread.ft_need_user)
-}
-
 export const threadMessagesSlice = createSlice({
   name: "threadMessages",
   initialState,
@@ -74,17 +68,18 @@ export const threadMessagesSlice = createSlice({
       state,
       action: PayloadAction<MessagesSubscriptionSubscription>,
     ) => {
-      state.isWaiting = false;
-      state.isStreaming = determineIfStreaming(action.payload);
-      // console.log(
-      //   "receiveMessages",
-      //   action.payload.comprehensive_thread_subs.news_action,
-      //   action.payload,
-      // );
+      console.log(
+        "receiveMessages",
+        action.payload.comprehensive_thread_subs.news_action,
+        action.payload,
+      );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message
-          ?.ftm_belongs_to_ft_id !== state.ft_id
+          ?.ftm_belongs_to_ft_id &&
+        !action.payload.comprehensive_thread_subs.news_payload_thread_message.ftm_belongs_to_ft_id.startsWith(
+          state.ft_id,
+        )
       ) {
         return state;
       }
@@ -95,6 +90,38 @@ export const threadMessagesSlice = createSlice({
       ) {
         state.ft_id =
           action.payload.comprehensive_thread_subs.news_payload_thread.ft_id;
+      }
+
+      // TODO: different branches will have different waiting / streaming states
+      state.isWaiting = false;
+
+      if (
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          ?.ft_need_assistant
+      ) {
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) =>
+            n !==
+            action.payload.comprehensive_thread_subs.news_payload_thread
+              ?.ft_need_assistant,
+        );
+
+        state.streamingBranches.push(
+          action.payload.comprehensive_thread_subs.news_payload_thread
+            .ft_need_assistant,
+        );
+      }
+
+      if (
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          ?.ft_need_user
+      ) {
+        state.streamingBranches = state.streamingBranches.filter(
+          (n) =>
+            n !==
+            action.payload.comprehensive_thread_subs.news_payload_thread
+              ?.ft_need_user,
+        );
       }
 
       // TODO: are there other cases aside from update
@@ -208,9 +235,18 @@ export const threadMessagesSlice = createSlice({
   selectors: {
     selectThreadMessages: (state) => state.messages,
     selectThreadId: (state) => state.ft_id,
-    selectIsWaiting: (state) => state.isWaiting,
-    selectIsStreaming: (state) => state.isStreaming,
-    selectIsWaitingOrStreaming: (state) => state.isStreaming || state.isWaiting,
+    selectIsWaiting: (state) => {
+      const maybeBranch = state.waitingBranches.find(
+        (branch) => branch === state.endAlt,
+      );
+      return !!maybeBranch;
+    },
+    selectIsStreaming: (state) => {
+      const maybeBranch = state.streamingBranches.find(
+        (branch) => branch === state.endAlt,
+      );
+      return !!maybeBranch;
+    },
     selectThreadMessageTrie: createSelector(selectMessagesValues, (messages) =>
       makeMessageTrie(messages),
     ),
@@ -280,18 +316,30 @@ export const threadMessagesSlice = createSlice({
     });
 
     builder.addCase(createThreadWithMessage.pending, (state) => {
-      state.isWaiting = true;
+      // state.isWaiting = true;
+      state.waitingBranches.push(100);
     });
     builder.addCase(createThreadWithMessage.rejected, (state) => {
       state.isStreaming = false;
       state.isWaiting = false;
+      state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
     });
-    builder.addCase(createMessage.pending, (state) => {
-      state.isWaiting = true;
+    builder.addCase(createMessage.pending, (state, action) => {
+      const { input } = action.meta.arg;
+      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+      const { ftm_alt } = input;
+      state.waitingBranches.push(ftm_alt);
+
+      // state.isWaiting = true;
     });
-    builder.addCase(createMessage.rejected, (state) => {
+    builder.addCase(createMessage.rejected, (state, action) => {
       state.isStreaming = false;
-      state.isWaiting = false;
+      // state.isWaiting = false;
+      const { input } = action.meta.arg;
+      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+      state.waitingBranches = state.waitingBranches.filter(
+        (n) => n !== input.ftm_alt,
+      );
     });
   },
 });
@@ -316,4 +364,5 @@ export const {
   selectThreadMessagesIsEmpty,
   selectTotalMessagesInThread,
   selectBranchLength,
+  selectThreadMessageTopAltNumber,
 } = threadMessagesSlice.selectors;
