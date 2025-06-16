@@ -254,6 +254,15 @@ export const threadMessagesSlice = createSlice({
       selectMessagesValues,
       (messages) => messages.length === 0,
     ),
+
+    selectThreadMessageTopAltNumber: createSelector(
+      selectMessagesValues,
+      (messages) => {
+        if (messages.length === 0) return null;
+        const alts = messages.map((message) => message.ftm_alt);
+        return Math.max(...alts);
+      },
+    ),
   },
 
   extraReducers(builder) {

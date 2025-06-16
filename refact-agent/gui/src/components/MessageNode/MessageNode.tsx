@@ -14,9 +14,13 @@ import { ContextFiles } from "../ChatContent/ContextFiles";
 import { GroupedDiffs } from "../ChatContent/DiffContent";
 
 import { FTMMessageNode as FTMessageNode } from "../../features/ThreadMessages/makeMessageTrie";
-import { setThreadEnd } from "../../features/ThreadMessages";
+import {
+  selectThreadMessageTopAltNumber,
+  setThreadEnd,
+} from "../../features/ThreadMessages";
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { type NodeSelectButtonsProps } from "../ChatContent/UserInput";
+import { useAppSelector } from "../../hooks";
 
 const ElementForNodeMessage: React.FC<{
   message: FTMessageNode["value"];
@@ -135,15 +139,20 @@ export const MessageNode: React.FC<MessageNodeProps> = ({
 //   );
 // };
 
-function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
+function makeDummyNode(
+  ft_id?: string,
+  lastMessageNumber?: number,
+  altNumber?: number,
+  prevAlt?: number,
+): FTMessageNode {
   // TODO handel the numbers better
-  const num = lastMessage ? lastMessage.value.ftm_num - 1 : 0;
+  const num = lastMessageNumber ? lastMessageNumber - 1 : 0;
   return {
     value: {
-      ftm_belongs_to_ft_id: lastMessage?.value.ftm_belongs_to_ft_id ?? "",
-      ftm_alt: (lastMessage?.value.ftm_alt ?? 100) + 1,
+      ftm_belongs_to_ft_id: ft_id ?? "",
+      ftm_alt: (altNumber ?? 100) + 1,
       ftm_num: num,
-      ftm_prev_alt: lastMessage?.value.ftm_prev_alt ?? 100,
+      ftm_prev_alt: prevAlt ?? 100,
       ftm_role: "user", // TODO: maybe add a message.
       ftm_content: "",
       ftm_tool_calls: null,
@@ -157,6 +166,7 @@ function makeDummyNode(lastMessage?: FTMessageNode): FTMessageNode {
 
 function useThreadBranching(children: FTMessageNode[]) {
   const [selectedNodeIndex, setSelectedNodeIndex] = React.useState<number>(0);
+  const currentMaxAlt = useAppSelector(selectThreadMessageTopAltNumber);
 
   const onBackward = useCallback(() => {
     setSelectedNodeIndex((prev) => {
@@ -188,11 +198,17 @@ function useThreadBranching(children: FTMessageNode[]) {
   }, [children, selectedNodeIndex]);
 
   const nodeToRender = useMemo(() => {
-    return (
-      children[selectedNodeIndex] ??
-      makeDummyNode(children[children.length - 1])
+    if (children[selectedNodeIndex]) return children[selectedNodeIndex];
+    const lastChild =
+      children.length === 0 ? null : children[children.length - 1];
+
+    return makeDummyNode(
+      lastChild?.value.ftm_belongs_to_ft_id,
+      lastChild?.value.ftm_num,
+      currentMaxAlt ?? 100,
+      lastChild?.value.ftm_prev_alt,
     );
-  }, [children, selectedNodeIndex]);
+  }, [children, currentMaxAlt, selectedNodeIndex]);
 
   return {
     onForward,
