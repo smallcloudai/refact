@@ -123,6 +123,10 @@ const rootPersistConfig = {
   stateReconciler: mergeInitialState,
 };
 
+if (import.meta.env.DEV) {
+  rootPersistConfig.whitelist.push("teams");
+}
+
 const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
   rootPersistConfig,
   rootReducer,
