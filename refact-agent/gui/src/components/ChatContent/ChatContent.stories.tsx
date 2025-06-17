@@ -64,7 +64,7 @@ const MockedStore: React.FC<{
     <Provider store={store}>
       <Theme>
         <AbortControllerProvider>
-          <ChatContent onStopStreaming={() => ({})} />
+          <ChatContent />
         </AbortControllerProvider>
       </Theme>
     </Provider>

@@ -73,3 +73,19 @@ mutation ThreadPatch($id: String!, $message: String!) {
     ft_id
   }
 }
+
+query ExpertsForGroup($located_fgroup_id: String!) {
+  experts_effective_list(located_fgroup_id: $located_fgroup_id) {
+    fexp_id
+    fexp_name
+  }
+}
+
+query ModelsForExpert($fexp_id: String!, $inside_fgroup_id: String!) {
+  expert_choice_consequences(
+    fexp_id: $fexp_id
+    inside_fgroup_id: $inside_fgroup_id
+  ) {
+    provm_name
+  }
+}
