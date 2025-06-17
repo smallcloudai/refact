@@ -233,8 +233,8 @@ pub async fn get_threads_app_captured(
             "query": query,
             "variables": {
                 "located_fgroup_id": located_fgroup_id,
-                "ft_app_capture": ft_app_searchable,
-                "ft_app_searchable": ft_app_capture
+                "ft_app_capture": ft_app_capture,
+                "ft_app_searchable": ft_app_searchable
             }
         }))
         .send()
