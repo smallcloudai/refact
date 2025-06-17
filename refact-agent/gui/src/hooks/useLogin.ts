@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "./useAppSelector";
 import { useAppDispatch } from "./useAppDispatch";
 import { smallCloudApi } from "../services/smallcloud";
-import { isGoodResponse } from "../services/smallcloud/types";
 import {
   selectHost,
   setAddressURL,
@@ -10,6 +9,7 @@ import {
 } from "../features/Config/configSlice";
 import { useOpenUrl } from "./useOpenUrl";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
+// import { isGoodResponse } from "../services/smallcloud/types";
 
 function makeTicket() {
   return (
@@ -117,9 +117,11 @@ export const useLogin = () => {
   );
 
   useEffect(() => {
-    if (isGoodResponse(loginPollingResult.data)) {
+    // TODO: removed isGoodResponse, need rework
+    if (loginPollingResult.data && loginPollingResult.data.api_key) {
+      const apiKey = loginPollingResult.data.api_key;
       const actions = [
-        setApiKey(loginPollingResult.data.secret_key),  // XXX no longer saved here
+        setApiKey(apiKey),
         setAddressURL("Refact"),
       ];
 
@@ -127,8 +129,8 @@ export const useLogin = () => {
 
       setupHost({
         type: "cloud",
-        apiKey: loginPollingResult.data.secret_key,  // XXX no longer saved here
-        userName: loginPollingResult.data.account,
+        apiKey: apiKey,
+        userName: '',
       });
     }
   }, [dispatch, loginPollingResult.data, setupHost]);
