@@ -6,7 +6,7 @@ use serde_json::{json, Value};
 use itertools::Itertools;
 use tracing::warn;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThreadMessage {
     pub ftm_belongs_to_ft_id: String,
     pub ftm_alt: i32,

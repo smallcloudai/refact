@@ -1,17 +1,88 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use indexmap::IndexMap;
-
 use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
-use serde_json::json;
-use tracing::{error, info};
+use serde_json::{json, Value};
+use tracing::{error, info, warn};
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::ChatContent;
+use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ContextEnum, ContextFile};
 use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::{lock_thread, Thread};
 use crate::cloud::threads_sub::{BasicStuff, ThreadPayload};
 use crate::global_context::GlobalContext;
+use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat_by_tools;
+use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
+use crate::tools::tools_execute::pp_run_tools;
+
+
+pub async fn run_tool(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    t_call: &ChatToolCall,
+    tool: &mut Box<dyn Tool+Send>,
+) -> Result<(ChatMessage, Vec<ChatMessage>, Vec<ContextFile>), String> {
+    let args = match serde_json::from_str::<HashMap<String, Value>>(&t_call.function.arguments) {
+        Ok(args) => args,
+        Err(e) => {
+            return Err(format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e));
+        }
+    };
+    
+    match tool.match_against_confirm_deny(ccx.clone(), &args).await {
+        Ok(res) => {
+            match res.result {
+                MatchConfirmDenyResult::DENY => {
+                    let command_to_match = tool
+                        .command_to_match_against_confirm_deny(ccx.clone(), &args).await
+                        .unwrap_or("<error_command>".to_string());
+                    return Err(format!("tool use: command '{command_to_match}' is denied"));
+                }
+                _ => {}
+            }
+        }
+        Err(err) => return Err(err),
+    };
+
+    let tool_execute_results = match tool.tool_execute(ccx.clone(), &t_call.id.to_string(), &args).await {
+        Ok((_, mut tool_execute_results)) => {
+            for tool_execute_result in &mut tool_execute_results {
+                if let ContextEnum::ChatMessage(m) = tool_execute_result {
+                    m.tool_failed = Some(false);
+                }
+            }
+            tool_execute_results
+        }
+        Err(e) => {
+            warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
+            return Err(e);
+        }
+    };
+
+    let (mut tool_result_mb, mut other_messages, mut context_files) = (None, vec![], vec![]);
+    for msg in tool_execute_results {
+        match msg {
+            ContextEnum::ChatMessage(m) => {
+                if !m.tool_call_id.is_empty() {
+                    if tool_result_mb.is_some() {
+                        return Err(format!("duplicated output message from the tool: {}", t_call.function.name));
+                    }
+                    tool_result_mb = Some(m);
+                } else {
+                    other_messages.push(m);
+                }
+            },
+            ContextEnum::ContextFile(m) => {
+                context_files.push(m);
+            }
+        }
+    }
+    let tool_result = match tool_result_mb {
+        Some(m) => m,
+        None => return Err(format!("tool use: failed to get output message from tool: {}", t_call.function.name)),
+    };
+    
+    Ok((tool_result, other_messages, context_files))
+}
 
 
 async fn initialize_thread(
@@ -83,11 +154,28 @@ async fn call_tools(
     let n_ctx = 128000;
     let top_n = 12;
     let max_new_tokens = 8192;
-
+    
     let last_message = thread_messages.iter()
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
         .clone()?;
+    let last_tool_calls = thread_messages.last()
+        .filter(|x| x.ftm_tool_calls.is_some())
+        .cloned()
+        .map(|x| 
+            crate::cloud::messages_req::convert_thread_messages_to_messages(&vec![x.clone()])[0].clone()
+        )
+        .map(|x| x.tool_calls.clone().expect("checked before"))
+        .ok_or("No last_message_with_tool_calls found".to_string())?;
+    let current_model = thread_messages.iter()
+        .rev()
+        .find(|x| x.ftm_user_preferences.is_some())
+        .or_else(|| thread_messages.first())
+        .and_then(|x| {
+            let prefs = x.ftm_user_preferences.clone()?;
+            prefs["model"].as_str().map(|s| s.to_string())
+        })
+        .ok_or("No model found in user preferences".to_string())?;
     let (alt, prev_alt) = thread_messages
         .last()
         .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
@@ -105,51 +193,63 @@ async fn call_tools(
             messages.clone(),
             thread.ft_id.to_string(),
             false,
-            // Some(current_model)
-            Some("refact/gpt-4.1-mini".to_string())
+            Some(current_model)
         ).await,
     ));
     let toolset = thread.ft_toolset.clone().unwrap_or_default();
     let allowed_tools = crate::cloud::messages_req::get_tool_names_from_openai_format(&toolset).await?;
-    let mut all_tools: IndexMap<String, Box<dyn crate::tools::tools_description::Tool + Send>> =
+    let mut all_tools: IndexMap<String, Box<dyn Tool + Send>> =
         crate::tools::tools_list::get_available_tools(gcx.clone()).await
             .into_iter()
             .filter(|x| allowed_tools.contains(&x.tool_description().name))
             .map(|x| (x.tool_description().name, x))
             .collect();
-    let mut has_rag_results = crate::scratchpads::scratchpad_utils::HasRagResults::new();
-    let messages_count = messages.len();
-    let (output_messages, _) = crate::tools::tools_execute::run_tools_locally(
-        ccx.clone(),
-        &mut all_tools,
-        None,
-        max_new_tokens,
-        &messages,
-        &mut has_rag_results,
-        &None,
-    ).await?;
-    if messages.len() == output_messages.len() {
-        tracing::warn!(
-            "Thread has no active tool call awaiting but still has need_tool_call turned on"
-        );
-        return Ok(());
+
+    let mut all_tool_output_messages = vec![];
+    let mut all_context_files = vec![];
+    let mut all_other_messages = vec![];
+    let mut tool_id_to_index = HashMap::new();
+    // Default tokens limit for tools that perform internal compression (`tree()`, ...)
+    ccx.lock().await.tokens_for_rag = max_new_tokens;
+    for (idx, t_call) in last_tool_calls.iter().enumerate() {
+        let tool = match all_tools.get_mut(&t_call.function.name) {
+            Some(tool) => tool,
+            None => {
+                warn!("tool use: function {:?} not found", &t_call.function.name);
+                continue;
+            }
+        };
+        let (tool_result, other_messages, context_files) = run_tool(ccx.clone(), t_call, tool).await?;
+        all_tool_output_messages.push(tool_result);
+        all_context_files.extend(context_files);
+        all_other_messages.extend(other_messages);
+        tool_id_to_index.insert(t_call.id.clone(), last_message.ftm_num + 1 + (idx as i32));
     }
-    let output_thread_messages = crate::cloud::messages_req::convert_messages_to_thread_messages(
-        output_messages.into_iter().skip(messages_count).collect(),
-        alt,
-        prev_alt,
-        last_message.ftm_num + 1,
-        &thread.ft_id,
-        last_message.ftm_user_preferences.clone(),
-    )?;
-    crate::cloud::messages_req::create_thread_messages(
-        api_key,
-        &thread.ft_id,
-        output_thread_messages,
-    ).await?;
+    
+    let reserve_for_context = max_tokens_for_rag_chat_by_tools(&last_tool_calls, &all_context_files, n_ctx, max_new_tokens);
+    ccx.lock().await.tokens_for_rag = reserve_for_context;
+    let (generated_tool, generated_other) = pp_run_tools(
+        ccx.clone(), &vec![], false,
+        all_tool_output_messages, all_other_messages, &mut all_context_files, reserve_for_context,
+        None, &None,
+    ).await;
+    let mut afterwards_index = last_message.ftm_num + last_tool_calls.len() as i32 + 1;
+    let mut all_output_messages = vec![];
+    for msg in generated_tool.into_iter().chain(generated_other.into_iter()) {
+        let index = if let Some(index) = tool_id_to_index.get(&msg.tool_call_id) {
+            index.clone()
+        } else {
+            afterwards_index += 1;
+            afterwards_index - 1
+        };
+        let output_thread_messages = crate::cloud::messages_req::convert_messages_to_thread_messages(
+            vec![msg], alt, prev_alt, index, &thread.ft_id, last_message.ftm_user_preferences.clone(),
+        )?;
+        all_output_messages.extend(output_thread_messages);
+    }
+    crate::cloud::messages_req::create_thread_messages(api_key, &thread.ft_id, all_output_messages).await?;
     Ok(())
 }
-
 
 pub async fn process_thread_event(
     gcx: Arc<ARwLock<GlobalContext>>,

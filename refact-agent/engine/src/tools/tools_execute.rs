@@ -14,7 +14,7 @@ use crate::custom_error::MapErrToString;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
-use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
+use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat_by_tools;
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
 use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
@@ -80,27 +80,6 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     Ok(params)
 }
 
-pub async fn run_tools_locally(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    tools: &mut IndexMap<String, Box<dyn Tool + Send>>,
-    tokenizer: Option<Arc<Tokenizer>>,
-    maxgen: usize,
-    original_messages: &Vec<ChatMessage>,
-    stream_back_to_user: &mut HasRagResults,
-    style: &Option<String>,
-) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (new_messages, tools_ran) = run_tools(
-        ccx, tools, tokenizer, maxgen, original_messages, style
-    ).await?;
-
-    let mut all_messages = original_messages.to_vec();
-    for msg in new_messages {
-        stream_back_to_user.push_in_json(json!(&msg));
-        all_messages.push(msg);
-    }
-
-    Ok((all_messages, tools_ran))
-}
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -245,7 +224,7 @@ pub async fn run_tools(
     Ok((new_messages, true))
 }
 
-async fn pp_run_tools(
+pub(crate) async fn pp_run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     original_messages: &Vec<ChatMessage>,
     any_corrections: bool,
@@ -342,7 +321,7 @@ async fn pp_run_tools(
 }
 
 
-fn tool_answer_err(content: String, tool_call_id: String) -> ChatMessage {
+pub(crate) fn tool_answer_err(content: String, tool_call_id: String) -> ChatMessage {
     ChatMessage {
         role: "tool".to_string(),
         content: ChatContent::SimpleText(content),
