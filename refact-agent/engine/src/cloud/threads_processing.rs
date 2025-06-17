@@ -205,6 +205,14 @@ async fn call_tools(
     // Default tokens limit for tools that perform internal compression (`tree()`, ...)
     ccx.lock().await.tokens_for_rag = max_new_tokens;
     for (idx, t_call) in last_tool_calls.iter().enumerate() {
+        let is_answered = thread_messages.iter()
+            .filter(|x| x.ftm_role == "tool")
+            .any(|x| t_call.id == x.ftm_call_id);
+        if is_answered {
+            warn!("tool use: tool call `{}` is already answered, skipping it", t_call.id);
+            continue;
+        }
+
         let tool = match all_tools.get_mut(&t_call.function.name) {
             Some(tool) => tool,
             None => {
