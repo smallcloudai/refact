@@ -100,18 +100,26 @@ async fn initialize_thread(
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
         .clone()?;
-    let tools: Vec<Box<dyn crate::tools::tools_description::Tool + Send>> =
+    let tools: Vec<Box<dyn Tool + Send>> =
         crate::tools::tools_list::get_available_tools(gcx.clone())
             .await
             .into_iter()
             .filter(|tool| expert.is_tool_allowed(&tool.tool_description().name))
             .collect();
+    let tool_names = tools.iter().map(|x| x.tool_description().name.clone()).collect::<Vec<_>>();
     let mut tool_descriptions: Vec<_> = tools
         .iter()
         .map(|x| x.tool_description().into_openai_style())
         .collect();
     tool_descriptions.extend(
-        cloud_tools.into_iter().map(|x| x.into_openai_style())
+        cloud_tools.into_iter()
+            .filter(|x| {
+                if tool_names.contains(&x.ctool_name) {
+                    error!("tool `{}` is already in the toolset, filtering it out. This might cause races between cloud and binary", x.ctool_name);
+                    false
+                } else { true }
+            })
+            .map(|x| x.into_openai_style())
     );
     crate::cloud::threads_req::set_thread_toolset(api_key.clone(), &thread.ft_id, tool_descriptions).await?;
     let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
@@ -261,7 +269,7 @@ pub async fn process_thread_event(
 ) -> Result<(), String> {
     if thread_payload.ft_need_tool_calls == -1 
         || thread_payload.owner_fuser_id != basic_info.fuser_id 
-        || thread_payload.ft_locked_by.is_empty() {
+        || !thread_payload.ft_locked_by.is_empty() {
         return Ok(());
     }
     if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {

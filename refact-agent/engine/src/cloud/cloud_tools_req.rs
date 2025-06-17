@@ -33,8 +33,8 @@ pub async fn get_cloud_tools(
 ) -> Result<Vec<CloudTool>, String> {
     let client = Client::new();
     let query = r#"
-    query GetCloudTools($located_fgroup_id: String!, $include_offline: Bool!) {
-        cloud_tools_list(id: $id) {
+    query GetCloudTools($located_fgroup_id: String!) {
+        cloud_tools_list(located_fgroup_id: $located_fgroup_id, include_offline: true) {
             owner_fuser_id
             located_fgroup_id
             ctool_id
@@ -51,10 +51,7 @@ pub async fn get_cloud_tools(
         .header("Content-Type", "application/json")
         .json(&json!({
             "query": query,
-            "variables": { 
-                "located_fgroup_id": located_fgroup_id,
-                "include_offline": true
-            }
+            "variables": {"located_fgroup_id": located_fgroup_id}
         }))
         .send()
         .await
