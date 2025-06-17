@@ -84,7 +84,6 @@ pub async fn run_tool(
     Ok((tool_result, other_messages, context_files))
 }
 
-
 async fn initialize_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
     ft_fexp_id: &str,

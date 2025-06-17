@@ -1,6 +1,6 @@
 use crate::global_context::GlobalContext;
 use futures::{SinkExt, StreamExt};
-use reqwest::Client;
+use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig, graphql_error_to_string};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
@@ -292,7 +292,6 @@ async fn events_loop(
 }
 
 pub async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
-    let client = Client::new();
     let query = r#"
     query GetBasicInfo {
       query_basic_stuff {
@@ -306,42 +305,19 @@ pub async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
       }
     }
     "#;
-    let response = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .header("User-Agent", "refact-lsp")
-        .json(&json!({"query": query}))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    
+    let config = GraphQLRequestConfig {
+        api_key,
+        user_agent: Some("refact-lsp".to_string()),
+        additional_headers: None,
+    };
 
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            return Err(format!("GraphQL request error: {}", error_msg));
-        }
-        if let Some(data) = response_json.get("data") {
-            let basic_stuff_struct: BasicStuff = serde_json::from_value(data["query_basic_stuff"].clone())
-                .map_err(|e| format!("Failed to parse updated thread: {}", e))?;
-            return Ok(basic_stuff_struct);
-        }
-        Err(format!("Basic data not found or unexpected response format: {}", response_body))
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to get basic data: HTTP status {}, error: {}",
-            status, error_text
-        ))
-    }
+    execute_graphql::<BasicStuff, _>(
+        config, 
+        query, 
+        json!({}), 
+        "query_basic_stuff"
+    )
+    .await
+    .map_err(graphql_error_to_string)
 }

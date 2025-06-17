@@ -1,6 +1,5 @@
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, DiffChunk};
-use log::error;
-use reqwest::Client;
+use crate::cloud::graphql_client::{execute_graphql, execute_graphql_no_result, GraphQLRequestConfig, graphql_error_to_string};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use itertools::Itertools;
@@ -27,7 +26,6 @@ pub async fn get_thread_messages(
     thread_id: &str,
     alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
-    let client = Client::new();
     let query = r#"
     query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
         thread_messages_list(
@@ -53,50 +51,21 @@ pub async fn get_thread_messages(
         "thread_id": thread_id,
         "alt": alt
     });
-    let response = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .header("User-Agent", "refact-lsp")
-        .json(&json!({
-            "query": query,
-            "variables": variables
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    
+    let config = GraphQLRequestConfig {
+        api_key,
+        user_agent: Some("refact-lsp".to_string()),
+        additional_headers: None,
+    };
 
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
-        }
-        if let Some(data) = response_json.get("data") {
-            if let Some(messages) = data.get("thread_messages_list") {
-                let messages: Vec<ThreadMessage> = serde_json::from_value(messages.clone())
-                    .map_err(|e| format!("Failed to parse thread messages: {}", e))?;
-                return Ok(messages);
-            }
-        }
-        Err(format!("Unexpected response format: {}", response_body))
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to get thread messages: HTTP status {}, error: {}",
-            status, error_text
-        ))
-    }
+    execute_graphql::<Vec<ThreadMessage>, _>(
+        config, 
+        query, 
+        variables, 
+        "thread_messages_list"
+    )
+    .await
+    .map_err(graphql_error_to_string)
 }
 
 pub async fn create_thread_messages(
@@ -107,7 +76,7 @@ pub async fn create_thread_messages(
     if messages.is_empty() {
         return Err("No messages provided".to_string());
     }
-    let client = Client::new();
+    
     let mut input_messages = Vec::with_capacity(messages.len());
     for message in messages {
         if message.ftm_belongs_to_ft_id != thread_id {
@@ -168,45 +137,21 @@ pub async fn create_thread_messages(
         }
     }
     "#;
-    let response = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .header("User-Agent", "refact-lsp")
-        .json(&json!({
-            "query": mutation,
-            "variables": variables
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
-        }
-        if let Some(_) = response_json.get("data") {
-            return Ok(())
-        }
-        Err(format!("Unexpected response format: {}", response_body))
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to create thread messages: HTTP status {}, error: {}",
-            status, error_text
-        ))
-    }
+    
+    let config = GraphQLRequestConfig {
+        api_key,
+        user_agent: Some("refact-lsp".to_string()),
+        additional_headers: None,
+    };
+
+    execute_graphql_no_result(
+        config, 
+        mutation, 
+        variables, 
+        "thread_messages_create_multiple"
+    )
+    .await
+    .map_err(graphql_error_to_string)
 }
 
 pub fn convert_thread_messages_to_messages(

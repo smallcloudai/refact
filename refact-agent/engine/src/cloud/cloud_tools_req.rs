@@ -1,5 +1,3 @@
-use log::error;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -31,7 +29,8 @@ pub async fn get_cloud_tools(
     api_key: String,
     located_fgroup_id: &str,
 ) -> Result<Vec<CloudTool>, String> {
-    let client = Client::new();
+    use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
+    
     let query = r#"
     query GetCloudTools($located_fgroup_id: String!) {
         cloud_tools_list(located_fgroup_id: $located_fgroup_id, include_offline: true) {
@@ -45,45 +44,18 @@ pub async fn get_cloud_tools(
         }
     }
     "#;
-    let response = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .header("User-Agent", "refact-lsp")
-        .json(&json!({
-            "query": query,
-            "variables": {"located_fgroup_id": located_fgroup_id}
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    
+    let config = GraphQLRequestConfig {
+        api_key,
+        ..Default::default()
+    };
 
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
-        }
-        if let Some(data) = response_json.get("data") {
-            if let Some(tools) = data.get("cloud_tools_list") {
-                let cloud_tools: Vec<CloudTool> = serde_json::from_value(tools.clone())
-                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
-                return Ok(cloud_tools);
-            }
-        }
-        Err("Failed to get cloud tools: no data in response".to_string())
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!("Failed to get cloud tools: status: {}, error: {}", status, error_text))
-    }
+    execute_graphql::<Vec<CloudTool>, _>(
+        config,
+        query,
+        json!({"located_fgroup_id": located_fgroup_id}),
+        "cloud_tools_list"
+    )
+    .await
+    .map_err(|e| e.to_string())
 }

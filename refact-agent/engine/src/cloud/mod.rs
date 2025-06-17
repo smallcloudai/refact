@@ -5,3 +5,4 @@ mod experts_req;
 pub mod subchat;
 mod threads_processing;
 mod cloud_tools_req;
+pub mod graphql_client;
