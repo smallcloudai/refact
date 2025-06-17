@@ -211,7 +211,7 @@ pub struct SubchatParameters {
     #[serde(default)]
     pub subchat_model_type: ChatModelType,
     #[serde(default)]
-    pub subchat_model: String,
+    pub subchat_model: Option<String>,
     pub subchat_n_ctx: usize,
     #[serde(default)]
     pub subchat_tokens_for_rag: usize,

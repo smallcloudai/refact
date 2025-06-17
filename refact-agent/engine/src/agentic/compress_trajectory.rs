@@ -1,11 +1,11 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage, ContextFile};
-use crate::caps::strip_model_from_finetune;
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 
+const N_CTX: usize = 128000;
 const TEMPERATURE: f32 = 0.2;
 
 
@@ -53,33 +53,18 @@ pub async fn compress_trajectory(
     if messages.is_empty() {
         return Err("The provided chat is empty".to_string());
     }
-    let (model_id, n_ctx) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => {
-            let model_id = caps.defaults.chat_default_model.clone();
-            if let Some(model_rec) = caps.chat_models.get(&strip_model_from_finetune(&model_id)) {
-                Ok((model_id, model_rec.base.n_ctx))
-            } else {
-                Err(format!(
-                    "Model '{}' not found, server has these models: {:?}",
-                    model_id, caps.chat_models.keys()
-                ))
-            }
-        },
-        Err(_) => Err("No caps available".to_string()),
-    }?;
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(),
-        n_ctx,
+        N_CTX,
         1,
         false,
         messages.clone(),
         "".to_string(),
         false,
-        Some(model_id.clone()),
+        None
     ).await));
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
-        &model_id,
         "id:compress_trajectory:1.0",
         vec![ChatMessage {
             role: "user".to_string(),

@@ -44,39 +44,41 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
     // check if the models exist otherwise use the external chat model
     let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
 
-    if !params.subchat_model.is_empty() {
-        match resolve_chat_model(caps.clone(), &params.subchat_model) {
+    if let Some(model) = &params.subchat_model {
+        match resolve_chat_model(caps.clone(), &model) {
             Ok(_) => return Ok(params),
             Err(e) => {
-                tracing::warn!("Specified subchat_model {} is not available: {}", params.subchat_model, e);
+                tracing::warn!("Specified subchat_model {} is not available: {}", model, e);
             }
         }
     }
 
-    let current_model = ccx.lock().await.current_model.clone().ok_or("No current model set")?;
-    let model_to_resolve = match params.subchat_model_type {
-        ChatModelType::Light => &caps.defaults.chat_light_model,
-        ChatModelType::Default => &caps.defaults.chat_default_model,
-        ChatModelType::Thinking => &caps.defaults.chat_thinking_model,
-    };
-
-    params.subchat_model = match resolve_model(&caps.chat_models, model_to_resolve) {
-        Ok(model_rec) => {
-            if !is_cloud_model(&current_model) && is_cloud_model(&model_rec.base.id)
-                && params.subchat_model_type != ChatModelType::Light {
-                current_model.to_string()
-            } else {
-                model_rec.base.id.clone()
-            }
-        },
-        Err(e) => {
-            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.",
+    if let Some(current_model) = ccx.lock().await.current_model.clone() {
+        let model_to_resolve = match params.subchat_model_type {
+            ChatModelType::Light => &caps.defaults.chat_light_model,
+            ChatModelType::Default => &caps.defaults.chat_default_model,
+            ChatModelType::Thinking => &caps.defaults.chat_thinking_model,
+        };
+        params.subchat_model = match resolve_model(&caps.chat_models, model_to_resolve) {
+            Ok(model_rec) => {
+                if !is_cloud_model(&current_model) && is_cloud_model(&model_rec.base.id)
+                    && params.subchat_model_type != ChatModelType::Light {
+                    Some(current_model.to_string())
+                } else {
+                    Some(model_rec.base.id.clone())
+                }
+            },
+            Err(e) => {
+                tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.",
                 params.subchat_model_type, e, current_model);
-            current_model
-        }
-    };
+                Some(current_model)
+            }
+        };
+    }
 
-    tracing::info!("using model for subchat: {}", params.subchat_model);
+    if let Some(model) = &params.subchat_model {
+        tracing::info!("using model for subchat: {}", model);
+    }
     Ok(params)
 }
 

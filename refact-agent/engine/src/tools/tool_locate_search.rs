@@ -6,16 +6,13 @@ use serde_json::Value;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
 use async_trait::async_trait;
-use axum::http::StatusCode;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
 use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
-use crate::caps::resolve_chat_model;
-use crate::custom_error::ScratchError;
 use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization}; 
 use crate::files_in_workspace::get_file_text_from_memory_or_disk; 
 use crate::postprocessing::pp_context_files::postprocess_context_files;
@@ -34,14 +31,10 @@ async fn _make_prompt(
     previous_messages: &Vec<ChatMessage>,
 ) -> Result<String, String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
-    let model_rec = resolve_chat_model(caps, &subchat_params.subchat_model)?;
-    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e)).map_err(|x| x.message)?;
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
     let final_message = problem_statement.to_string();
-    tokens_budget -= count_text_tokens_with_fallback(tokenizer.clone(), &final_message) as i64;
+    tokens_budget -= count_text_tokens_with_fallback(None, &final_message) as i64;
     let mut context = "".to_string();
     let mut context_files = vec![];
     for p in important_paths.iter() {
@@ -83,7 +76,7 @@ async fn _make_prompt(
                 continue;
             }
         };
-        let left_tokens = tokens_budget - count_text_tokens_with_fallback(tokenizer.clone(), &message_row) as i64;
+        let left_tokens = tokens_budget - count_text_tokens_with_fallback(None, &message_row) as i64;
         if left_tokens < 0 {
             continue;
         } else {
@@ -98,7 +91,7 @@ async fn _make_prompt(
         for context_file in postprocess_context_files(
             gcx.clone(),
             &mut context_files,
-            tokenizer.clone(),
+            None,
             subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
             false, &pp_settings,).await { files_context.push_str(
                 &format!("📎 {}:{}-{}\n```\n{}```\n\n",
@@ -275,7 +268,6 @@ async fn find_relevant_files_with_search(
     }
     let result = crate::cloud::subchat::subchat(
         ccx.clone(),
-        subchat_params.subchat_model.as_str(),
         "id:locate:1.0",
         vec![
             ChatMessage::new("user".to_string(), user_query.to_string())

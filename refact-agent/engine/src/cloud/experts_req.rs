@@ -125,3 +125,72 @@ pub async fn get_expert(
         ))
     }
 }
+
+pub async fn expert_choice_consequences(
+    api_key: &str,
+    fexp_id: &str,
+    fgroup_id: &str,
+) -> Result<String, String> {
+    let client = Client::new();
+    let query = r#"
+    query GetExpertModel($fexp_id: String!, $inside_fgroup_id: String!) {
+        expert_choice_consequences(fexp_id: $fexp_id, inside_fgroup_id: $inside_fgroup_id) {
+            provm_name
+        }
+    }
+    "#;
+    let response = client
+        .post(&crate::constants::GRAPHQL_URL.to_string())
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "query": query,
+            "variables": { 
+                "fexp_id": fexp_id,
+                "inside_fgroup_id": fgroup_id
+            }
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if let Some(models_value) = data.get("expert_choice_consequences") {
+                let models: Vec<Value> = serde_json::from_value(models_value.clone())
+                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
+                if models.is_empty() {
+                    return Err(format!("No models found for the expert with name {}", fexp_id));
+                }
+                if let Some(provm_name) = models[0].get("provm_name") { 
+                    return Ok(provm_name.to_string());
+                }
+            }
+        }
+        Err(format!(
+            "Model for the expert with name '{}' not found or unexpected response format: {}",
+            fexp_id, response_body
+        ))
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!(
+            "Failed to get expert with name {}: HTTP status {}, error: {}",
+            fexp_id, status, error_text
+        ))
+    }
+}

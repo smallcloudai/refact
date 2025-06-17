@@ -1,6 +1,6 @@
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatContent, ChatMessage};
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use tokio::sync::RwLock as ARwLock;
@@ -116,24 +116,12 @@ pub async fn generate_commit_message_by_diff(
             },
         ], "id:generate_commit_message:1.0")
     };
-    let model_id = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => Ok(caps.defaults.chat_default_model.clone()),
-        Err(_) => Err("No caps available".to_string()),
-    }?;
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
-        gcx.clone(),
-        N_CTX,
-        1,
-        false,
-        messages.clone(),
-        "".to_string(),
-        false,
-        Some(model_id.clone()),
+        gcx.clone(), N_CTX, 1, false, messages.clone(), "".to_string(), false, None
     ).await));
     
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
-        &model_id,
         ft_fexp_id,
         messages,
         Some(TEMPERATURE),

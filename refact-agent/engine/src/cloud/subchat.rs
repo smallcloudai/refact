@@ -45,7 +45,6 @@ fn build_preferences(
 
 pub async fn subchat(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    model_id: &str,
     ft_fexp_id: &str,
     messages: Vec<ChatMessage>,
     temperature: Option<f32>,
@@ -66,7 +65,8 @@ pub async fn subchat(
     
     // TODO: remove later
     let api_key = "sk_alice_123456".to_string();
-    let preferences = build_preferences(model_id, temperature, max_new_tokens, 1, reasoning_effort);
+    let model_name = crate::cloud::experts_req::expert_choice_consequences(&api_key, ft_fexp_id, &located_fgroup_id).await?;
+    let preferences = build_preferences(&model_name, temperature, max_new_tokens, 1, reasoning_effort);
     let thread_id = format!("subchat_{}_{}", ft_fexp_id, thread_rng()
         .sample_iter(&Alphanumeric)
         .take(12)

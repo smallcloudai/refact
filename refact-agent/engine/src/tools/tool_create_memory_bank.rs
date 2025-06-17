@@ -20,8 +20,6 @@ use crate::{
     postprocessing::pp_context_files::postprocess_context_files,
     tools::tools_description::{Tool, ToolDesc, ToolSource, ToolSourceType},
 };
-use crate::caps::resolve_chat_model;
-use crate::global_context::try_load_caps_quickly_if_not_present;
 
 const MAX_EXPLORATION_STEPS: usize = 1000;
 
@@ -219,7 +217,6 @@ async fn read_and_compress_directory(
     gcx: Arc<ARwLock<GlobalContext>>,
     dir_relative: String,
     tokens_limit: usize,
-    model: String,
 ) -> Result<String, String> {
     let project_dirs = get_project_dirs(gcx.clone()).await;
     let base_dir = project_dirs.get(0).ok_or("No project directory found")?;
@@ -259,15 +256,12 @@ async fn read_and_compress_directory(
         });
     }
 
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
-    let model_rec = resolve_chat_model(caps, &model)?;
-    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
     let mut pp_settings = PostprocessSettings::new();
     pp_settings.max_files_n = context_files.len();
     let compressed = postprocess_context_files(
         gcx.clone(),
         &mut context_files,
-        tokenizer,
+        None,
         tokens_limit,
         false,
         &pp_settings,
@@ -352,7 +346,6 @@ impl Tool for ToolCreateMemoryBank {
                     gcx.clone(),
                     target.target_name.clone(),
                     params.subchat_tokens_for_rag,
-                    params.subchat_model.clone(),
                 ).await.map_err(|e| {
                     tracing::warn!("Failed to read/compress files for {}: {}", target.target_name, e);
                     e
@@ -365,7 +358,6 @@ impl Tool for ToolCreateMemoryBank {
 
                 let subchat_result = crate::cloud::subchat::subchat(
                     ccx_subchat.clone(),
-                    params.subchat_model.as_str(),
                     "id:create_memory_bank:1.0",
                     vec![step_msg],
                     params.subchat_temperature.clone(),

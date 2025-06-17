@@ -176,15 +176,6 @@ async fn call_tools(
         )
         .map(|x| x.tool_calls.clone().expect("checked before"))
         .ok_or("No last assistant message with tool calls found".to_string())?;
-    let current_model = thread_messages.iter()
-        .rev()
-        .find(|x| x.ftm_user_preferences.is_some())
-        .or_else(|| thread_messages.first())
-        .and_then(|x| {
-            let prefs = x.ftm_user_preferences.clone()?;
-            prefs["model"].as_str().map(|s| s.to_string())
-        })
-        .ok_or("No model found in user preferences".to_string())?;
     let (alt, prev_alt) = thread_messages
         .last()
         .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
@@ -194,15 +185,8 @@ async fn call_tools(
         .filter(|x| x.role != "kernel")
         .collect::<Vec<_>>();
     let ccx = Arc::new(AMutex::new(
-        AtCommandsContext::new(
-            gcx.clone(),
-            n_ctx,
-            top_n,
-            false,
-            messages.clone(),
-            thread.ft_id.to_string(),
-            false,
-            Some(current_model)
+        AtCommandsContext::new(gcx.clone(), n_ctx, top_n, false, messages.clone(),
+            thread.ft_id.to_string(), false, None
         ).await,
     ));
     let toolset = thread.ft_toolset.clone().unwrap_or_default();
@@ -213,7 +197,6 @@ async fn call_tools(
             .filter(|x| allowed_tools.contains(&x.tool_description().name))
             .map(|x| (x.tool_description().name, x))
             .collect();
-
     let mut all_tool_output_messages = vec![];
     let mut all_context_files = vec![];
     let mut all_other_messages = vec![];
