@@ -106,8 +106,6 @@ pub struct CommandLine {
 
     #[structopt(long, help="An pre-setup active group id")]
     pub active_group_id: Option<String>,
-    #[structopt(long, help="Enable cloud threads support")]
-    pub cloud_threads: bool,
 }
 
 impl CommandLine {

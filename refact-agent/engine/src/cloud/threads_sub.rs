@@ -64,9 +64,6 @@ pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext
 }
 
 pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
-    if !gcx.read().await.cmdline.cloud_threads {
-        return;
-    }
     // let api_key = gcx.read().await.cmdline.api_key.clone();
     // TODO: remove it later
     let api_key = "sk_alice_123456".to_string();
