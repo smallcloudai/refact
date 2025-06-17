@@ -167,14 +167,15 @@ async fn call_tools(
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
         .clone()?;
-    let last_tool_calls = thread_messages.last()
-        .filter(|x| x.ftm_tool_calls.is_some())
+    let last_tool_calls = thread_messages.iter()
+        .rev()
+        .find(|x| x.ftm_role == "assistant" && x.ftm_tool_calls.is_some())
         .cloned()
         .map(|x| 
             crate::cloud::messages_req::convert_thread_messages_to_messages(&vec![x.clone()])[0].clone()
         )
         .map(|x| x.tool_calls.clone().expect("checked before"))
-        .ok_or("No last_message_with_tool_calls found".to_string())?;
+        .ok_or("No last assistant message with tool calls found".to_string())?;
     let current_model = thread_messages.iter()
         .rev()
         .find(|x| x.ftm_user_preferences.is_some())
