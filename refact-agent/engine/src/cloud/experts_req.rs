@@ -9,6 +9,7 @@ pub struct Expert {
     pub owner_fuser_id: Option<String>,
     pub owner_shared: bool,
     pub located_fgroup_id: Option<String>,
+    pub ft_fexp_id: String,
     pub fexp_name: String,
     pub fexp_system_prompt: String,
     pub fexp_python_kernel: String,
@@ -57,7 +58,7 @@ impl Expert {
 
 pub async fn get_expert(
     api_key: String,
-    expert_name: &str
+    ft_fexp_id: &str
 ) -> Result<Expert, String> {
     let client = Client::new();
     let query = r#"
@@ -66,6 +67,7 @@ pub async fn get_expert(
             owner_fuser_id
             owner_shared
             located_fgroup_id
+            ft_fexp_id
             fexp_name
             fexp_system_prompt
             fexp_python_kernel
@@ -81,7 +83,7 @@ pub async fn get_expert(
         .json(&json!({
             "query": query,
             "variables": { 
-                "id": expert_name
+                "id": ft_fexp_id
             }
         }))
         .send()
@@ -109,7 +111,7 @@ pub async fn get_expert(
         }
         Err(format!(
             "Expert with name '{}' not found or unexpected response format: {}",
-            expert_name, response_body
+            ft_fexp_id, response_body
         ))
     } else {
         let status = response.status();
@@ -119,7 +121,7 @@ pub async fn get_expert(
             .unwrap_or_else(|_| "Unknown error".to_string());
         Err(format!(
             "Failed to get expert with name {}: HTTP status {}, error: {}",
-            expert_name, status, error_text
+            ft_fexp_id, status, error_text
         ))
     }
 }

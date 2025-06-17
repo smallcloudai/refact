@@ -80,7 +80,7 @@ pub async fn compress_trajectory(
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
         &model_id,
-        "compress_trajectory:1.0",
+        "id:compress_trajectory:1.0",
         vec![ChatMessage {
             role: "user".to_string(),
             content: ChatContent::SimpleText(_make_prompt(&messages)),

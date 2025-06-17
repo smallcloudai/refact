@@ -63,7 +63,7 @@ pub async fn generate_follow_up_message(
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
         model_id,
-        "generate_follow_up_message:1.0",
+        "id:generate_follow_up_message:1.0",
         _make_conversation(&messages),
         Some(0.0),
         Some(512),

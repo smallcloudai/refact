@@ -87,13 +87,13 @@ pub async fn run_tool(
 
 async fn initialize_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
-    expert_name: &str,
+    ft_fexp_id: &str,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
     api_key: String,
     located_fgroup_id: String
 ) -> Result<(), String> {
-    let expert = crate::cloud::experts_req::get_expert(api_key.clone(), expert_name).await?;
+    let expert = crate::cloud::experts_req::get_expert(api_key.clone(), ft_fexp_id).await?;
     let cloud_tools = crate::cloud::cloud_tools_req::get_cloud_tools(api_key.clone(), &located_fgroup_id).await?;
     info!("retrieving cloud tools for thread `{}`: {:?}", thread.ft_id, cloud_tools);
     let last_message = thread_messages.iter()
@@ -333,7 +333,7 @@ async fn process_locked_thread(
     };
     let need_to_append_system = messages.iter().all(|x| x.ftm_role != "system");
     if need_to_append_system {
-        if thread_payload.ft_fexp_name.is_none() {
+        if thread_payload.ft_fexp_id.is_none() {
             info!("thread `{}` has no expert set. Skipping it", thread_id);
             return Ok(());
         }
@@ -344,9 +344,9 @@ async fn process_locked_thread(
         }
     }
     let result = if need_to_append_system {
-        let exp_name = thread.ft_fexp_name.clone().expect("checked before");
+        let ft_fexp_id = thread.ft_fexp_id.clone().expect("checked before");
         info!("initializing system prompt for thread `{}`", thread_id);
-        initialize_thread(gcx.clone(), &exp_name, &thread, &messages, api_key.clone(), located_fgroup_id).await
+        initialize_thread(gcx.clone(), &ft_fexp_id, &thread, &messages, api_key.clone(), located_fgroup_id).await
     } else {
         info!("calling tools for thread `{}`", thread_id);
         call_tools(gcx.clone(), &thread, &messages, api_key.clone()).await

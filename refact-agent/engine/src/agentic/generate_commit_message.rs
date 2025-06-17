@@ -96,7 +96,7 @@ pub async fn generate_commit_message_by_diff(
     if diff.is_empty() {
         return Err("The provided diff is empty".to_string());
     }
-    let (messages, expert_name) = if let Some(text) = commit_message_prompt {
+    let (messages, ft_fexp_id) = if let Some(text) = commit_message_prompt {
         (vec![
             ChatMessage {
                 role: "user".to_string(),
@@ -106,7 +106,7 @@ pub async fn generate_commit_message_by_diff(
                 )),
                 ..Default::default()
             },
-        ], "generate_commit_message_with_prompt:1.0")
+        ], "id:generate_commit_message_with_prompt:1.0")
     } else {
         (vec![
             ChatMessage {
@@ -114,7 +114,7 @@ pub async fn generate_commit_message_by_diff(
                 content: ChatContent::SimpleText(format!("Diff:\n```\n{}\n```\n", diff)),
                 ..Default::default()
             },
-        ], "generate_commit_message:1.0")
+        ], "id:generate_commit_message:1.0")
     };
     let model_id = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => Ok(caps.defaults.chat_default_model.clone()),
@@ -134,7 +134,7 @@ pub async fn generate_commit_message_by_diff(
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
         &model_id,
-        expert_name,
+        ft_fexp_id,
         messages,
         Some(TEMPERATURE),
         Some(2048),

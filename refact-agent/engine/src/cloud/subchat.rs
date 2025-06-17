@@ -46,7 +46,7 @@ fn build_preferences(
 pub async fn subchat(
     ccx: Arc<AMutex<AtCommandsContext>>,
     model_id: &str,
-    expert_name: &str,
+    ft_fexp_id: &str,
     messages: Vec<ChatMessage>,
     temperature: Option<f32>,
     max_new_tokens: Option<usize>,
@@ -67,7 +67,7 @@ pub async fn subchat(
     // TODO: remove later
     let api_key = "sk_alice_123456".to_string();
     let preferences = build_preferences(model_id, temperature, max_new_tokens, 1, reasoning_effort);
-    let thread_id = format!("subchat_{}_{}", expert_name, thread_rng()
+    let thread_id = format!("subchat_{}_{}", ft_fexp_id, thread_rng()
         .sample_iter(&Alphanumeric)
         .take(12)
         .map(char::from)
@@ -76,7 +76,7 @@ pub async fn subchat(
     let thread = threads_req::create_thread(
         api_key.clone(),
         &located_fgroup_id,
-        expert_name,
+        ft_fexp_id,
         &thread_id,  // title
         &thread_id,  // app_capture
         &app_searchable_id,

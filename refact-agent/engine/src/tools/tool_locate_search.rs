@@ -276,7 +276,7 @@ async fn find_relevant_files_with_search(
     let result = crate::cloud::subchat::subchat(
         ccx.clone(),
         subchat_params.subchat_model.as_str(),
-        "locate:1.0",
+        "id:locate:1.0",
         vec![
             ChatMessage::new("user".to_string(), user_query.to_string())
         ],

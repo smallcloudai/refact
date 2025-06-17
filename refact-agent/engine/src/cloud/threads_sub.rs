@@ -22,7 +22,7 @@ pub struct ThreadPayload {
     pub ft_id: String,
     pub ft_error: Option<Value>,
     pub ft_locked_by: String,
-    pub ft_fexp_name: Option<String>,
+    pub ft_fexp_id: Option<String>,
     pub ft_need_tool_calls: i64,
     pub ft_need_user: i64,
     pub ft_app_searchable: Option<String>,
@@ -46,7 +46,7 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
           ft_id
           ft_error
           ft_locked_by
-          ft_fexp_name
+          ft_fexp_id
           ft_need_tool_calls
           ft_need_user
           ft_app_searchable

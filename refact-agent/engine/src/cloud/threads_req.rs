@@ -9,7 +9,7 @@ pub struct Thread {
     pub owner_shared: bool,
     pub located_fgroup_id: String,
     pub ft_id: String,
-    pub ft_fexp_name: Option<String>,
+    pub ft_fexp_id: Option<String>,
     pub ft_title: String,
     pub ft_toolset: Option<Vec<Value>>,
     pub ft_error: Option<Value>,
@@ -25,7 +25,7 @@ pub struct Thread {
 pub async fn create_thread(
     api_key: String,
     located_fgroup_id: &str,
-    ft_fexp_name: &str,
+    ft_fexp_id: &str,
     ft_title: &str,
     ft_app_capture: &str,
     ft_app_searchable: &str,
@@ -40,7 +40,7 @@ pub async fn create_thread(
             owner_shared
             located_fgroup_id
             ft_id
-            ft_fexp_name
+            ft_fexp_id
             ft_title
             ft_error
             ft_toolset
@@ -62,7 +62,7 @@ pub async fn create_thread(
     let mut input = json!({
         "owner_shared": false,
         "located_fgroup_id": located_fgroup_id,
-        "ft_fexp_name": ft_fexp_name,
+        "ft_fexp_id": ft_fexp_id,
         "ft_title": ft_title,
         "ft_toolset": toolset_str,
         "ft_app_capture": ft_app_capture,
@@ -133,7 +133,7 @@ pub async fn get_thread(
             owner_shared
             located_fgroup_id
             ft_id
-            ft_fexp_name,
+            ft_fexp_id,
             ft_title
             ft_error
             ft_toolset

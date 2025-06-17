@@ -182,7 +182,7 @@ impl Tool for ToolStrategicPlanning {
         let messages = crate::cloud::subchat::subchat(
             ccx_subchat.clone(),
             subchat_params.subchat_model.as_str(),
-            "strategic_planning:1.0",
+            "id:strategic_planning:1.0",
             history,
             subchat_params.subchat_temperature,
             Some(subchat_params.subchat_max_new_tokens),
