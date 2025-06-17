@@ -8,18 +8,17 @@ import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
 import {
   selectIntegration,
-  // selectIsStreaming,
-  // selectIsWaiting,
   selectThread,
 } from "../../features/Chat/Thread/selectors";
 import {
   selectIsStreaming,
+  selectIsThreadRunning,
   selectIsWaiting,
+  selectThreadId,
 } from "../../features/ThreadMessages";
 
 import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
-import { telemetryApi } from "../../services/refact/telemetry";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import {
@@ -31,38 +30,47 @@ import { LogoAnimation } from "../LogoAnimation/LogoAnimation.tsx";
 import { selectThreadMessageTrie } from "../../features/ThreadMessages";
 import { MessageNode } from "../MessageNode/MessageNode.tsx";
 import { isEmptyNode } from "../../features/ThreadMessages/makeMessageTrie.ts";
+import { pauseThreadThunk } from "../../services/graphql/graphqlThunks.ts";
 
-export type ChatContentProps = {
-  // onRetry: (index: number, question: UserMessage["ftm_content"]) => void;
-  onStopStreaming: () => void;
+const usePauseThread = () => {
+  const dispatch = useAppDispatch();
+  const isThreadRunning = useAppSelector(selectIsThreadRunning);
+  const threadId = useAppSelector(selectThreadId);
+  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
+  // TODO: hide during tool confimation pause
+  const shouldShowStopButton = useMemo(() => {
+    if (!threadId) return false;
+    if (pauseReasonsWithPause.pause) return false;
+    return isThreadRunning;
+  }, [threadId, pauseReasonsWithPause.pause, isThreadRunning]);
+
+  const handlePause = useCallback(() => {
+    if (!threadId) return;
+    void dispatch(pauseThreadThunk({ id: threadId }));
+  }, [dispatch, threadId]);
+
+  return { shouldShowStopButton, handlePause };
 };
 
-export const ChatContent: React.FC<ChatContentProps> = ({
-  onStopStreaming,
-}) => {
+export const ChatContent: React.FC = () => {
   const dispatch = useAppDispatch();
   // TODO: stays when creating a new chat :/
   const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
-  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
-  // const messages = useAppSelector(selectMessages);
   const isStreaming = useAppSelector(selectIsStreaming);
   const thread = useAppSelector(selectThread);
   const { shouldShow } = useUsageCounter();
   const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
+
   const integrationMeta = useAppSelector(selectIntegration);
   const isWaitingForConfirmation = useAppSelector(getConfirmationPauseStatus);
 
-  // const onRetryWrapper = (index: number, question: UserMessage["content"]) => {
-  //   onRetry(index, question);
-  // };
+  const { shouldShowStopButton, handlePause } = usePauseThread();
 
   const handleReturnToConfigurationClick = useCallback(() => {
     // console.log(`[DEBUG]: going back to configuration page`);
     // TBD: should it be allowed to run in the background?
-    onStopStreaming();
+    // onStopStreaming();
     dispatch(
       popBackTo({
         name: "integrations page",
@@ -73,21 +81,12 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       }),
     );
   }, [
-    onStopStreaming,
+    // onStopStreaming,
     dispatch,
     thread.integration?.project,
     thread.integration?.name,
     thread.integration?.path,
   ]);
-
-  const handleManualStopStreamingClick = useCallback(() => {
-    onStopStreaming();
-    void sendTelemetryEvent({
-      scope: `stopStreaming`,
-      success: true,
-      error_message: "",
-    });
-  }, [onStopStreaming, sendTelemetryEvent]);
 
   const shouldConfigButtonBeVisible = useMemo(() => {
     return isConfig && !integrationMeta?.path?.includes("project_summary");
@@ -142,12 +141,12 @@ export const ChatContent: React.FC<ChatContentProps> = ({
       >
         <ScrollArea scrollbars="horizontal">
           <Flex align="start" gap="3" pb="2">
-            {(isWaiting || isStreaming) && !pauseReasonsWithPause.pause && (
+            {shouldShowStopButton && (
               <Button
                 // ml="auto"
                 color="red"
-                title="stop streaming"
-                onClick={handleManualStopStreamingClick}
+                title="Pause thread"
+                onClick={handlePause}
               >
                 Stop
               </Button>

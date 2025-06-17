@@ -6,6 +6,7 @@ import {
   messagesSub,
   createMessage,
   createThreadWithMessage,
+  pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
 import { FThreadMessageInput } from "../../../generated/documents";
 import {
@@ -13,6 +14,8 @@ import {
   selectThreadId,
   selectThreadEnd,
   selectAppSpecific,
+  selectIsStreaming,
+  selectIsWaiting,
 } from "../../features/ThreadMessages";
 
 // function usecreateThreadWithMessage() {
@@ -92,4 +95,23 @@ export const useIdForThread = () => {
   }, [route, ftId]);
 
   return idInfo;
+};
+
+export const usePauseThread = () => {
+  const dispatch = useAppDispatch();
+  const isStreaming = useAppSelector(selectIsStreaming);
+  const isWaiting = useAppSelector(selectIsWaiting);
+  const threadId = useAppSelector(selectThreadId);
+
+  const shouldShow = useMemo(() => {
+    if (!threadId) return false;
+    return isStreaming || isWaiting;
+  }, [threadId, isStreaming, isWaiting]);
+
+  const handleStop = useCallback(() => {
+    if (!threadId) return;
+    void dispatch(pauseThreadThunk({ id: threadId }));
+  }, [dispatch, threadId]);
+
+  return { shouldShow, handleStop };
 };

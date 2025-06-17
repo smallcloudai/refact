@@ -14,15 +14,18 @@ import {
   CreateThreadMutationVariables,
   MessagesSubscriptionSubscriptionVariables,
   MessagesSubscriptionDocument,
-  MessageCreateMutationVariables,
-  MessageCreateMutation,
-  MessageCreateDocument,
   MessageCreateMultipleDocument,
   MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
   MessagesSubscriptionSubscription,
   FThreadMessageInput,
   FThreadInput,
+  PauseThreadDocument,
+  PauseThreadMutation,
+  PauseThreadMutationVariables,
+  ThreadPatchDocument,
+  ThreadPatchMutation,
+  ThreadPatchMutationVariables,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -119,7 +122,10 @@ export const createMessage = createAppAsyncThunk<
   {
     dispatch: AppDispatch;
     state: RootState;
-    rejectValue: { message: string; args: MessageCreateMutationVariables };
+    rejectValue: {
+      message: string;
+      args: MessageCreateMultipleMutationVariables;
+    };
   }
 >("graphql/createMessage", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
@@ -143,7 +149,7 @@ export const createMessage = createAppAsyncThunk<
 });
 
 export const createThreadWithMessage = createAsyncThunk<
-  MessageCreateMutation,
+  MessageCreateMultipleMutation,
   { content: string },
   {
     dispatch: AppDispatch;
@@ -189,7 +195,7 @@ export const createThreadWithMessage = createAsyncThunk<
   const client = createGraphqlClient(apiKey, thunkAPI.signal);
 
   const threadQueryArgs: FThreadInput = {
-    ft_fexp_id: "id:ask:1.0", // user selected
+    ft_fexp_id: "id:ask:1.0", // TODO: user selected
     ft_title: "", // TODO: generate the title
     located_fgroup_id: workspace,
     owner_shared: false,
@@ -262,3 +268,32 @@ function isGetAppSearchableResponse(
   if (!("app_searchable_id" in response)) return false;
   return typeof response.app_searchable_id === "string";
 }
+
+export const pauseThreadThunk = createAppAsyncThunk<
+  ThreadPatchMutation,
+  { id: string },
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("thread/pause", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
+  const result = await client.mutation<
+    ThreadPatchMutation,
+    ThreadPatchMutationVariables
+  >(ThreadPatchDocument, { id: args.id, message: JSON.stringify("pause") });
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue(result.error);
+  }
+
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({ message: "failed to stop thread" });
+  }
+  return thunkAPI.fulfillWithValue(result.data);
+});

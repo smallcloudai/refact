@@ -5,7 +5,7 @@ import { Flex, Button, Text, Card } from "@radix-ui/themes";
 import {
   useAppSelector,
   useAppDispatch,
-  useSendChatRequest,
+  // useSendChatRequest,
   useAutoSend,
   useCapsForToolUse,
 } from "../../hooks";
@@ -56,11 +56,7 @@ export const Chat: React.FC<ChatProps> = ({
 
   const chatId = useAppSelector(selectChatId);
   // TODO: figure out features removed here
-  const {
-    // submit,
-    abort,
-    // retryFromIndex
-  } = useSendChatRequest();
+  // const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
@@ -103,11 +99,7 @@ export const Chat: React.FC<ChatProps> = ({
         justify="between"
         px="1"
       >
-        <ChatContent
-          key={`chat-content-${chatId}`}
-          // onRetry={retryFromIndex}
-          onStopStreaming={abort}
-        />
+        <ChatContent key={`chat-content-${chatId}`} />
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 

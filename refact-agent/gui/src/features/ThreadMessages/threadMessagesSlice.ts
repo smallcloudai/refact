@@ -13,6 +13,7 @@ import { pagesSlice } from "../Pages/pagesSlice";
 import {
   createMessage,
   createThreadWithMessage,
+  pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
 
 type InitialState = {
@@ -299,6 +300,12 @@ export const threadMessagesSlice = createSlice({
         return Math.max(...alts);
       },
     ),
+
+    selectIsThreadRunning: (state) => {
+      if (state.waitingBranches.length > 0) return true;
+      if (state.streamingBranches.length > 0) return true;
+      return false;
+    },
   },
 
   extraReducers(builder) {
@@ -316,30 +323,28 @@ export const threadMessagesSlice = createSlice({
     });
 
     builder.addCase(createThreadWithMessage.pending, (state) => {
-      // state.isWaiting = true;
       state.waitingBranches.push(100);
     });
     builder.addCase(createThreadWithMessage.rejected, (state) => {
-      state.isStreaming = false;
-      state.isWaiting = false;
       state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
     });
     builder.addCase(createMessage.pending, (state, action) => {
       const { input } = action.meta.arg;
       if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
-      const { ftm_alt } = input;
-      state.waitingBranches.push(ftm_alt);
-
-      // state.isWaiting = true;
+      state.waitingBranches.push(input.messages[0].ftm_alt);
     });
     builder.addCase(createMessage.rejected, (state, action) => {
-      state.isStreaming = false;
-      // state.isWaiting = false;
       const { input } = action.meta.arg;
       if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
       state.waitingBranches = state.waitingBranches.filter(
-        (n) => n !== input.ftm_alt,
+        (n) => n !== input.messages[0].ftm_alt,
       );
+    });
+
+    builder.addCase(pauseThreadThunk.fulfilled, (state, action) => {
+      if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
+      state.waitingBranches = [];
+      state.streamingBranches = [];
     });
   },
 });
@@ -354,7 +359,6 @@ export const {
   selectThreadMessages,
   selectIsStreaming,
   selectIsWaiting,
-  selectIsWaitingOrStreaming,
   selectThreadId,
   selectThreadMessageTrie,
   selectThreadEnd,
@@ -365,4 +369,5 @@ export const {
   selectTotalMessagesInThread,
   selectBranchLength,
   selectThreadMessageTopAltNumber,
+  selectIsThreadRunning,
 } = threadMessagesSlice.selectors;

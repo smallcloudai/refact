@@ -65,6 +65,11 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
 mutation MessageCreateMultiple($input: FThreadMultipleMessagesInput!) {
   thread_messages_create_multiple(input: $input) {
     count
+  }
+}
 
+mutation ThreadPatch($id: String!, $message: String!) {
+  thread_patch(id: $id, patch: { ft_error: $message }) {
+    ft_id
   }
 }
