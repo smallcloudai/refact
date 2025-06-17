@@ -310,7 +310,7 @@ pub async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .header("User-Agent", "Refact-Agent")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({"query": query}))
         .send()
         .await

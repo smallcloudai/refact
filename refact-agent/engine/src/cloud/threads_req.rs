@@ -79,6 +79,7 @@ pub async fn create_thread(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": mutation,
             "variables": {"input": input}
@@ -153,6 +154,7 @@ pub async fn get_thread(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": {"id": thread_id}
@@ -229,6 +231,7 @@ pub async fn get_threads_app_captured(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": {
@@ -300,6 +303,7 @@ pub async fn set_thread_toolset(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": mutation,
             "variables": variables
@@ -358,6 +362,7 @@ pub async fn lock_thread(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": {"ft_id": thread_id, "worker_name": worker_name}
@@ -422,6 +427,7 @@ pub async fn unlock_thread(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": {"ft_id": thread_id, "worker_name": worker_name}
@@ -489,6 +495,7 @@ pub async fn set_error_thread(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": mutation,
             "variables": variables

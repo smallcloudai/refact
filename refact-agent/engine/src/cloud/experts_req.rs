@@ -80,6 +80,7 @@ pub async fn get_expert(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": { 
@@ -143,6 +144,7 @@ pub async fn expert_choice_consequences(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": { 

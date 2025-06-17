@@ -49,6 +49,7 @@ pub async fn get_cloud_tools(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": {"located_fgroup_id": located_fgroup_id}

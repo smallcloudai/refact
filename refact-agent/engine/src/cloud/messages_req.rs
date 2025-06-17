@@ -57,6 +57,7 @@ pub async fn get_thread_messages(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": query,
             "variables": variables
@@ -171,6 +172,7 @@ pub async fn create_thread_messages(
         .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
+        .header("User-Agent", "refact-lsp")
         .json(&json!({
             "query": mutation,
             "variables": variables
