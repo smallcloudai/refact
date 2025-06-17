@@ -101,8 +101,9 @@ export const useLogin = () => {
   const loginWithProvider = useCallback(
     (provider: "google" | "github") => {
       const ticket = makeTicket();
-      const baseUrl = new URL(`https://refact.smallcloud.ai/authentication`);
-      baseUrl.searchParams.set("token", ticket);
+      // const baseUrl = new URL(`https://refact.smallcloud.ai/authentication`);
+      const baseUrl = new URL(`http://127.0.0.1:8008/v1/streamlined-login-by-oauth`);
+      baseUrl.searchParams.set("ticket", ticket);
       baseUrl.searchParams.set("utm_source", "plugin");
       baseUrl.searchParams.set("utm_medium", host);
       baseUrl.searchParams.set("utm_campaign", "login");
@@ -118,7 +119,7 @@ export const useLogin = () => {
   useEffect(() => {
     if (isGoodResponse(loginPollingResult.data)) {
       const actions = [
-        setApiKey(loginPollingResult.data.secret_key),
+        setApiKey(loginPollingResult.data.secret_key),  // XXX no longer saved here
         setAddressURL("Refact"),
       ];
 
@@ -126,7 +127,7 @@ export const useLogin = () => {
 
       setupHost({
         type: "cloud",
-        apiKey: loginPollingResult.data.secret_key,
+        apiKey: loginPollingResult.data.secret_key,  // XXX no longer saved here
         userName: loginPollingResult.data.account,
       });
     }

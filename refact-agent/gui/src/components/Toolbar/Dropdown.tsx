@@ -63,11 +63,14 @@ function linkForBugReports(host: Config["host"]): string {
 function linkForAccount(host: Config["host"]): string {
   switch (host) {
     case "vscode":
-      return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=vscode&utm_campaign=account";
+      // return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=vscode&utm_campaign=account";
+      return "http://127.0.0.1:8008/profile?utm_source=plugin&utm_medium=vscode&utm_campaign=account";
     case "jetbrains":
-      return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
+      // return "https://refact.smallcloud.ai/account?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
+      return "http://127.0.0.1:8008/profile?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
     default:
-      return "https://refact.smallcloud.ai/account";
+      // return "https://refact.smallcloud.ai/account";
+      return "http://127.0.0.1:8008/profile";
   }
 }
 
@@ -110,7 +113,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
   const handleProUpgradeClick = useCallback(() => {
     startPollingForUser();
-    openUrl("https://refact.smallcloud.ai/pro");
+    // openUrl("https://refact.smallcloud.ai/pro");
+    openUrl("http://127.0.0.1:8008/my-workspace?pro");
   }, [openUrl, startPollingForUser]);
 
   useEffect(() => {

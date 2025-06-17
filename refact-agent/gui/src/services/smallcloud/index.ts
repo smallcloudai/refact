@@ -1,9 +1,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { RootState } from "../../app/store";
+import { setApiKey } from "../../features/Config/configSlice";
 import {
+  ApiKeyResponse,
   EmailLinkResponse,
+  isApiKeyResponse,
   isEmailLinkResponse,
-  isGoodResponse,
   isSurveyQuestions,
   isUser,
   SurveyQuestions,
@@ -26,17 +28,17 @@ export const smallCloudApi = createApi({
   }),
   tagTypes: ["User", "Polling"],
   endpoints: (builder) => ({
-    login: builder.query({
+    login: builder.query<ApiKeyResponse, string>({
       providesTags: ["Polling"],
-      queryFn: async (token, api, _extraOptions, baseQuery) => {
-        return new Promise<ReturnType<typeof baseQuery>>((resolve, reject) => {
+      queryFn: async (token, api, _extraOptions, _baseQuery) => {
+        return new Promise<{ data: ApiKeyResponse } | { error: { status: string; error: string } }>((resolve, _reject) => {
           const timeout = setInterval(() => {
             fetch(
-              "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
+              // "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
+              `http://127.0.0.1:8008/v1/streamlined-login-recall-ticket?ticket=${token}`,
               {
                 method: "GET",
                 headers: {
-                  Authorization: `codify-${token}`,
                   "Content-Type": "application/json",
                 },
                 redirect: "follow",
@@ -54,12 +56,17 @@ export const smallCloudApi = createApi({
                 return response.json() as unknown;
               })
               .then((json: unknown) => {
-                if (isGoodResponse(json)) {
+                if (isApiKeyResponse(json)) {
                   clearInterval(timeout);
+                  console.log("API Key received:", json.api_key);
+                  api.dispatch(setApiKey(json.api_key));
                   resolve({ data: json });
                 }
               })
-              .catch((err: Error) => reject(err));
+              .catch((err: Error) => {
+                clearInterval(timeout);
+                resolve({ error: { status: "FETCH_ERROR", error: err.message } });
+              });
           }, 5000);
         });
       },
@@ -132,7 +139,8 @@ export const smallCloudApi = createApi({
     >({
       async queryFn(arg, api, extraOptions, baseQuery) {
         // TODO: maybe use cookies?
-        const url = `https://www.smallcloud.ai/plugin-magic-link/${arg.token.trim()}/${arg.email.trim()}`;
+        // const url = `https://www.smallcloud.ai/plugin-magic-link/${arg.token.trim()}/${arg.email.trim()}`;
+        const url = `http://127.0.0.1:8008/v1/streamlined-login-by-email/${arg.token.trim()}/${arg.email.trim()}`;
 
         const response = await baseQuery({
           ...extraOptions,
@@ -145,7 +153,7 @@ export const smallCloudApi = createApi({
           return {
             error: {
               error:
-                "Invalid response from https://www.smallcloud.ai/plugin-magic-link",
+                "Invalid response from /v1/streamlined-login-by-email",
               data: response.data,
               status: "CUSTOM_ERROR",
             },

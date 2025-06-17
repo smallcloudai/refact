@@ -248,7 +248,8 @@ export const BallanceCallOut: React.FC<
       <br />
       Please{" "}
       <Link
-        href="https://refact.smallcloud.ai/?topup"
+        // href="https://refact.smallcloud.ai/?topup"
+        href="http://127.0.0.1:8008/my-workspace?topup"
         target="_blank"
         rel="noreferrer"
         onClick={handleLinkClick}
@@ -301,7 +302,8 @@ export const BallanceLowInformation: React.FC<Omit<CalloutProps, "type">> = (
       <br />
       Please{" "}
       <Link
-        href="https://refact.smallcloud.ai/?topup"
+        // href="https://refact.smallcloud.ai/?topup"
+        href="http://127.0.0.1:8008/my-workspace?topup"
         target="_blank"
         rel="noreferrer"
         onClick={handleLinkClick}

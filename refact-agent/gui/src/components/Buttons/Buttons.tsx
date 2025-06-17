@@ -89,9 +89,11 @@ type AgentUsageLinkButtonProps = ButtonProps & {
 };
 
 const SUBSCRIPTION_URL =
-  "https://refact.smallcloud.ai/refact/update-subscription";
+  // "https://refact.smallcloud.ai/refact/update-subscription";
+  "http://127.0.0.1:8008/my-workspace";
 
-const SUBSCRIPTION_FALLBACK_URL = "https://refact.smallcloud.ai/";
+// const SUBSCRIPTION_FALLBACK_URL = "https://refact.smallcloud.ai/";
+const SUBSCRIPTION_FALLBACK_URL = "http://127.0.0.1:8008/";
 
 export const AgentUsageLinkButton: React.FC<AgentUsageLinkButtonProps> = ({
   href,
