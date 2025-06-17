@@ -55,7 +55,7 @@ all_refact_packages = {
                   "torchinfo", "mpi4py", "deepspeed>=0.15.3",
                   "sentence-transformers>=3.4.1", "huggingface-hub>=0.29.2",
                   "aiohttp", "setproctitle", "google-auth>=2.37.0"],
-        optional=["ninja", "flash-attn"],
+        optional=["ninja", "flash-attn==2.7.4.post1"],  # NOTE: 2.8.0.post2 is the latest and it's broken
         requires_packages=["refact_known_models", "refact_data_pipeline",
                            "refact_webgui", "refact_utils"],
         data=["watchdog/watchdog.d/*"]),
