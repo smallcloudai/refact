@@ -359,6 +359,7 @@ impl Tool for ToolCreateMemoryBank {
                 let subchat_result = crate::cloud::subchat::subchat(
                     ccx_subchat.clone(),
                     "id:create_memory_bank:1.0",
+                    tool_call_id,
                     vec![step_msg],
                     params.subchat_temperature.clone(),
                     Some(params.subchat_max_new_tokens.clone()),

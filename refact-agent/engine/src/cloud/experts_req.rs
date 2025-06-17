@@ -174,7 +174,7 @@ pub async fn expert_choice_consequences(
                     return Err(format!("No models found for the expert with name {}", fexp_id));
                 }
                 if let Some(provm_name) = models[0].get("provm_name") { 
-                    return Ok(provm_name.to_string());
+                    return Ok(provm_name.as_str().unwrap_or_default().to_string());
                 }
             }
         }

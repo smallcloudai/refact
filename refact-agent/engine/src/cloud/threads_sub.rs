@@ -6,13 +6,12 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 use tokio::sync::RwLock as ARwLock;
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use tracing::{error, info, warn};
 use url::Url;
+use crate::basic_utils::generate_random_hash;
 
 const RECONNECT_DELAY_SECONDS: u64 = 3;
 
@@ -56,15 +55,6 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
       }
     }
 "#;
-
-
-pub fn generate_random_hash(length: usize) -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(length)
-        .map(char::from)
-        .collect()
-}
 
 
 pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext>>) {
@@ -207,9 +197,8 @@ pub async fn initialize_connection(
     } else {
         return Err("No response received for connection initialization".to_string());
     }
-    let id = generate_random_hash(16);
     let subscription_message = json!({
-        "id": id,
+        "id": generate_random_hash(16),
         "type": "start",
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,

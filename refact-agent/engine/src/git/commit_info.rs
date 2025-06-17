@@ -5,11 +5,11 @@ use tracing::{error, info, warn};
 
 use crate::global_context::GlobalContext;
 use crate::agentic::generate_commit_message::generate_commit_message_by_diff;
+use crate::basic_utils::generate_random_hash;
 use crate::git::CommitInfo;
 use crate::git::operations::{get_diff_statuses, git_diff_head_to_workdir_as_string};
 
-pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo>
-{
+pub async fn get_commit_information_from_current_changes(gcx: Arc<ARwLock<GlobalContext>>) -> Vec<CommitInfo> {
     let mut commits = Vec::new();
 
     let workspace_vcs_roots_arc = gcx.read().await.documents_state.workspace_vcs_roots.clone();
@@ -57,7 +57,7 @@ pub async fn generate_commit_messages(gcx: Arc<ARwLock<GlobalContext>>, commits:
             Err(e) => { error!("{}", e); continue; }
         };
 
-        commit.commit_message = match generate_commit_message_by_diff(gcx.clone(), &diff, &None).await {
+        commit.commit_message = match generate_commit_message_by_diff(gcx.clone(), &generate_random_hash(16), &diff, &None).await {
             Ok(msg) => msg,
             Err(e) => { error!("{}", e); continue; }
         };

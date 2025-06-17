@@ -45,8 +45,9 @@ fn _make_conversation(
 }
 
 pub async fn generate_follow_up_message(
-    messages: Vec<ChatMessage>,
     gcx: Arc<ARwLock<GlobalContext>>,
+    tool_call_id: &str,
+    messages: Vec<ChatMessage>,
     model_id: &str,
     chat_id: &str,
 ) -> Result<FollowUpResponse, String> {
@@ -63,6 +64,7 @@ pub async fn generate_follow_up_message(
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
         "id:generate_follow_up_message:1.0",
+        tool_call_id,
         _make_conversation(&messages),
         Some(0.0),
         Some(512),

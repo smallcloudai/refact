@@ -48,6 +48,7 @@ fn _make_prompt(
 
 pub async fn compress_trajectory(
     gcx: Arc<ARwLock<GlobalContext>>,
+    tool_call_id: &str,
     messages: &Vec<ChatMessage>,
 ) -> Result<String, String> {
     if messages.is_empty() {
@@ -66,6 +67,7 @@ pub async fn compress_trajectory(
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
         "id:compress_trajectory:1.0",
+        tool_call_id,
         vec![ChatMessage {
             role: "user".to_string(),
             content: ChatContent::SimpleText(_make_prompt(&messages)),

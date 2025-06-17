@@ -5,8 +5,6 @@ use crate::at_commands::at_commands::AtCommandsContext;
 use tokio::sync::Mutex as AMutex;
 use crate::call_validation::{ChatMessage, ReasoningEffort};
 use crate::cloud::{threads_req, messages_req};
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_tungstenite::tungstenite::Message;
@@ -46,42 +44,52 @@ fn build_preferences(
 pub async fn subchat(
     ccx: Arc<AMutex<AtCommandsContext>>,
     ft_fexp_id: &str,
+    tool_call_id: &str,
     messages: Vec<ChatMessage>,
     temperature: Option<f32>,
     max_new_tokens: Option<usize>,
     reasoning_effort: Option<ReasoningEffort>,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let (api_key, app_searchable_id, located_fgroup_id) = {
+    let (api_key, app_searchable_id, located_fgroup_id, parent_thread_id) = {
         let gcx_read = gcx.read().await;
         let located_fgroup_id = gcx_read.active_group_id.clone()
             .ok_or("No active group ID is set".to_string())?;
         (
             gcx_read.cmdline.api_key.clone(),
             gcx_read.app_searchable_id.clone(),
-            located_fgroup_id
+            located_fgroup_id,
+            ccx.lock().await.chat_id.clone(),
         )
     };
     
     // TODO: remove later
     let api_key = "sk_alice_123456".to_string();
+
     let model_name = crate::cloud::experts_req::expert_choice_consequences(&api_key, ft_fexp_id, &located_fgroup_id).await?;
     let preferences = build_preferences(&model_name, temperature, max_new_tokens, 1, reasoning_effort);
-    let thread_id = format!("subchat_{}_{}", ft_fexp_id, thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(12)
-        .map(char::from)
-        .collect::<String>());
-    
+    let existing_threads = crate::cloud::threads_req::get_threads_app_captured(
+        api_key.clone(),
+        &located_fgroup_id,
+        &app_searchable_id,
+        tool_call_id
+    ).await?;
+    if !existing_threads.is_empty() {
+        return Err(format!("There are already existing threads for this tool_id: {:?}", existing_threads));
+    }
     let thread = threads_req::create_thread(
         api_key.clone(),
         &located_fgroup_id,
         ft_fexp_id,
-        &thread_id,  // title
-        &thread_id,  // app_capture
+        &format!("subchat_{}", ft_fexp_id),
+        &tool_call_id,
         &app_searchable_id,
+        serde_json::json!({
+            "tool_call_id": tool_call_id,
+            "ft_fexp_id": ft_fexp_id,
+        }),
         None,
-        None,  // TODO: we should find a way to forward the parent thread id
+        Some(parent_thread_id)
     ).await?;
     let thread_messages = messages_req::convert_messages_to_thread_messages(
         messages,

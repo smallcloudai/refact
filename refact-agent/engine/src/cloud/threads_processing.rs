@@ -6,6 +6,7 @@ use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
 use tracing::{error, info, warn};
 use crate::at_commands::at_commands::AtCommandsContext;
+use crate::basic_utils::generate_random_hash;
 use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ContextEnum, ContextFile};
 use crate::cloud::messages_req::ThreadMessage;
 use crate::cloud::threads_req::{lock_thread, Thread};
@@ -239,7 +240,11 @@ async fn call_tools(
         )?;
         all_output_messages.extend(output_thread_messages);
     }
-    crate::cloud::messages_req::create_thread_messages(api_key, &thread.ft_id, all_output_messages).await?;
+    if !all_output_messages.is_empty() {
+        crate::cloud::messages_req::create_thread_messages(api_key, &thread.ft_id, all_output_messages).await?;
+    } else {
+        info!("thread `{}` has no tool output messages. Skipping it", thread.ft_id);
+    }
     Ok(())
 }
 
@@ -272,7 +277,7 @@ pub async fn process_thread_event(
         return Ok(());
     }
 
-    let hash = crate::cloud::threads_sub::generate_random_hash(16);
+    let hash = generate_random_hash(16);
     let thread_id = thread_payload.ft_id.clone();
     let lock_result = lock_thread(api_key.clone(), &thread_id, &hash).await;
     if let Err(err) = lock_result {

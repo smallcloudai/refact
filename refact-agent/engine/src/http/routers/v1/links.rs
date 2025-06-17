@@ -11,6 +11,7 @@ use crate::custom_error::ScratchError;
 use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
 use crate::integrations::go_to_configuration_message;
 use crate::agentic::generate_follow_up_message::generate_follow_up_message;
+use crate::basic_utils::generate_random_hash;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
 
@@ -349,7 +350,7 @@ pub async fn handle_v1_links(
             Err(_) => post.model_name.clone(),
         };
         let follow_up_response = generate_follow_up_message(
-            post.messages.clone(), gcx.clone(), &model_id, &post.meta.chat_id
+            gcx.clone(), &generate_random_hash(16), post.messages.clone(), &model_id, &post.meta.chat_id
         ).await
             .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
         new_chat_suggestion = follow_up_response.topic_changed;

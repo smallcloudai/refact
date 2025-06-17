@@ -90,6 +90,7 @@ mod tests {
 
 pub async fn generate_commit_message_by_diff(
     gcx: Arc<ARwLock<GlobalContext>>,
+    tool_call_id: &str,
     diff: &String,
     commit_message_prompt: &Option<String>,
 ) -> Result<String, String> {
@@ -123,6 +124,7 @@ pub async fn generate_commit_message_by_diff(
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),
         ft_fexp_id,
+        tool_call_id,
         messages,
         Some(TEMPERATURE),
         Some(2048),

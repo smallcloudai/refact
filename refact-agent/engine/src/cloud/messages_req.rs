@@ -139,7 +139,8 @@ pub async fn create_thread_messages(
             "ftm_tool_calls": tool_calls_str,
             "ftm_call_id": message.ftm_call_id,
             "ftm_usage": usage_str,
-            "ftm_provenance": serde_json::to_string(&message.ftm_provenance).unwrap()
+            "ftm_provenance": serde_json::to_string(&message.ftm_provenance).unwrap(),
+            "ftm_user_preferences": serde_json::to_string(&message.ftm_user_preferences).unwrap()
         }));
     }
     let variables = json!({
@@ -161,6 +162,7 @@ pub async fn create_thread_messages(
                 ftm_created_ts
                 ftm_call_id
                 ftm_provenance
+                ftm_user_preferences
             }
         }
     }

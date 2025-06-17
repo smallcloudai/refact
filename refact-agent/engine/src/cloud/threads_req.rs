@@ -29,8 +29,9 @@ pub async fn create_thread(
     ft_title: &str,
     ft_app_capture: &str,
     ft_app_searchable: &str,
+    ft_app_specific: Value,
     ft_toolset: Option<Vec<Value>>,
-    parent_ft_id: Option<&str>,
+    parent_ft_id: Option<String>,
 ) -> Result<Thread, String> {
     let client = Client::new();
     let mutation = r#"
@@ -67,6 +68,7 @@ pub async fn create_thread(
         "ft_toolset": toolset_str,
         "ft_app_capture": ft_app_capture,
         "ft_app_searchable": ft_app_searchable,
+        "ft_app_specific": serde_json::to_string(&ft_app_specific).unwrap(),
     });
 
     if let Some(parent_id) = parent_ft_id {
@@ -176,6 +178,86 @@ pub async fn get_thread(
                 let thread: Thread = serde_json::from_value(thread_value.clone())
                     .map_err(|e| format!("Failed to parse thread: {}\n{:?}", e, thread_value))?;
                 return Ok(thread);
+            }
+        }
+        Err(format!(
+            "Thread not found or unexpected response format: {}",
+            response_body
+        ))
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!(
+            "Failed to get thread: HTTP status {}, error: {}",
+            status, error_text
+        ))
+    }
+}
+
+pub async fn get_threads_app_captured(
+    api_key: String,
+    located_fgroup_id: &str,
+    ft_app_searchable: &str,
+    ft_app_capture: &str,
+) -> Result<Vec<Thread>, String> {
+    let client = Client::new();
+    let query = r#"
+    query GetThread($located_fgroup_id: String!, $ft_app_capture: String!, $ft_app_searchable: String!) {
+        threads_app_captured(located_fgroup_id: $located_fgroup_id, ft_app_capture: $ft_app_capture, ft_app_searchable: $ft_app_searchable) {
+            owner_fuser_id
+            owner_shared
+            located_fgroup_id
+            ft_id
+            ft_fexp_id,
+            ft_title
+            ft_error
+            ft_toolset
+            ft_need_assistant
+            ft_need_tool_calls
+            ft_need_user
+            ft_created_ts
+            ft_updated_ts
+            ft_archived_ts
+            ft_locked_by
+        }
+    }
+    "#;
+    let response = client
+        .post(&crate::constants::GRAPHQL_URL.to_string())
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "query": query,
+            "variables": {
+                "located_fgroup_id": located_fgroup_id,
+                "ft_app_capture": ft_app_searchable,
+                "ft_app_searchable": ft_app_capture
+            }
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if let Some(threads_value) = data.get("threads_app_captured") {
+                let threads: Vec<Thread> = serde_json::from_value(threads_value.clone())
+                    .map_err(|e| format!("Failed to parse threads: {}\n{:?}", e, threads_value))?;
+                return Ok(threads);
             }
         }
         Err(format!(

@@ -214,6 +214,7 @@ impl Tool for ToolLocateSearch {
         ).await?;
         let (mut results, usage, tool_message, cd_instruction) = find_relevant_files_with_search(
             ccx_subchat,
+            tool_call_id,
             params,
             prompt,
         ).await?;
@@ -251,6 +252,7 @@ impl Tool for ToolLocateSearch {
 
 async fn find_relevant_files_with_search(
     ccx: Arc<AMutex<AtCommandsContext>>,
+    tool_call_id: &str,
     subchat_params: SubchatParameters,
     user_query: String,
 ) -> Result<(Vec<ContextEnum>, ChatUsage, String, String), String> {
@@ -269,6 +271,7 @@ async fn find_relevant_files_with_search(
     let result = crate::cloud::subchat::subchat(
         ccx.clone(),
         "id:locate:1.0",
+        tool_call_id,
         vec![
             ChatMessage::new("user".to_string(), user_query.to_string())
         ],
