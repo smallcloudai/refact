@@ -74,40 +74,42 @@ pub async fn subchat(
         &app_searchable_id,
         tool_call_id
     ).await?;
-    if !existing_threads.is_empty() {
-        return Err(format!("There are already existing threads for this tool_id: {:?}", existing_threads));
-    }
-    let thread = threads_req::create_thread(
-        api_key.clone(),
-        &located_fgroup_id,
-        ft_fexp_id,
-        &format!("subchat_{}", ft_fexp_id),
-        &tool_call_id,
-        &app_searchable_id,
-        serde_json::json!({
+    let thread = if !existing_threads.is_empty() {
+        info!("There are already existing threads for this tool_id: {:?}", existing_threads);
+        existing_threads[0].clone()
+    } else {
+        let thread = threads_req::create_thread(
+            api_key.clone(),
+            &located_fgroup_id,
+            ft_fexp_id,
+            &format!("subchat_{}", ft_fexp_id),
+            &tool_call_id,
+            &app_searchable_id,
+            serde_json::json!({
             "tool_call_id": tool_call_id,
             "ft_fexp_id": ft_fexp_id,
         }),
-        None,
-        Some(parent_thread_id)
-    ).await?;
-    let thread_messages = messages_req::convert_messages_to_thread_messages(
-        messages,
-        100,
-        100,
-        1,
-        &thread.ft_id,
-        Some(preferences),
-    )?;
-    messages_req::create_thread_messages(
-        api_key.clone(),
-        &thread.ft_id,
-        thread_messages,
-    ).await?;
+            None,
+            Some(parent_thread_id)
+        ).await?;
+        let thread_messages = messages_req::convert_messages_to_thread_messages(
+            messages,
+            100,
+            100,
+            1,
+            &thread.ft_id,
+            Some(preferences),
+        )?;
+        messages_req::create_thread_messages(
+            api_key.clone(),
+            &thread.ft_id,
+            thread_messages,
+        ).await?;
+        thread
+    };
     
     let api_key_for_messages = api_key.clone();
     let thread_id = thread.ft_id.clone();
-
     let connection_result = initialize_connection(api_key.clone(), &located_fgroup_id).await;
     let mut connection = match connection_result {
         Ok(conn) => conn,

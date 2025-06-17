@@ -54,7 +54,6 @@ pub async fn run_tool(
             tool_execute_results
         }
         Err(e) => {
-            warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
             return Err(e);
         }
     };
@@ -212,7 +211,22 @@ async fn call_tools(
                 continue;
             }
         };
-        let (tool_result, other_messages, context_files) = run_tool(ccx.clone(), t_call, tool).await?;
+        let (tool_result, other_messages, context_files) = match run_tool(ccx.clone(), t_call, tool).await {
+            Ok(res) => res,
+            Err(err) => {
+                warn!("tool use: failed to run tool: {}", err);
+                (
+                    ChatMessage {
+                        role: "tool".to_string(),
+                        content: ChatContent::SimpleText(err),
+                        tool_call_id: t_call.id.clone(),
+                        ..ChatMessage::default()
+                    },
+                    vec![],
+                    vec![]
+                )
+            }
+        };
         all_tool_output_messages.push(tool_result);
         all_context_files.extend(context_files);
         all_other_messages.extend(other_messages);
