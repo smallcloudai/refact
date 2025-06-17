@@ -113,6 +113,7 @@ async fn initialize_thread(
         .collect();
     tool_descriptions.extend(
         cloud_tools.into_iter()
+            .filter(|x| expert.is_tool_allowed(&x.ctool_name))
             .filter(|x| {
                 if tool_names.contains(&x.ctool_name) {
                     error!("tool `{}` is already in the toolset, filtering it out. This might cause races between cloud and binary", x.ctool_name);
