@@ -305,15 +305,22 @@ running_models:
 
 models:
   claude-4:
-    n_ctx: 200000
-    generation_params:
-      temperature: 0.7
-      top_p: 0.95
+  "n_ctx": 200000,
+  "supports_tools": true,
+  "supports_multimodality": true,
+  "supports_agent": true,
+  "supports_reasoning": "anthropic",
+  "supports_boost_reasoning": true,
+  "tokenizer": "hf://Xenova/claude-tokenizer"
+
   claude-3-7-sonnet-latest:
-    n_ctx: 100000
-    generation_params:
-      temperature: 0.5
-      top_p: 0.9
+  "n_ctx": 200000,
+  "supports_tools": true,
+  "supports_multimodality": true,
+  "supports_agent": true,
+  "supports_reasoning": "anthropic",
+  "supports_boost_reasoning": true,
+  "tokenizer": "hf://Xenova/claude-tokenizer"
 ```
 
 ### Example 2: Adding a New FIM Model
@@ -346,9 +353,13 @@ running_models:
 
 model_default_settings_ui:
   chat:
-    n_ctx: 100000
-    supports_tools: true
-    tokenizer: hf://custom-ai/tokenizer
+  "n_ctx": 200000,
+  "supports_tools": true,
+  "supports_multimodality": true,
+  "supports_agent": true,
+  "supports_reasoning": "anthropic",
+  "supports_boost_reasoning": true,
+  "tokenizer": "hf://Xenova/claude-tokenizer"
 ```
 
 ---
