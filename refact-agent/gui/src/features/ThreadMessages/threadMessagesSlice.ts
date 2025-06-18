@@ -1,0 +1,373 @@
+import {
+  createSelector,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
+import { MessagesSubscriptionSubscription } from "../../../generated/documents";
+import {
+  FTMMessage,
+  makeMessageTrie,
+  getAncestorsForNode,
+} from "./makeMessageTrie";
+import { pagesSlice } from "../Pages/pagesSlice";
+import {
+  createMessage,
+  createThreadWithMessage,
+  pauseThreadThunk,
+} from "../../services/graphql/graphqlThunks";
+
+type InitialState = {
+  waitingBranches: number[]; // alt numbers
+  streamingBranches: number[]; // alt number
+  isWaiting: boolean;
+  isStreaming: boolean;
+  messages: Record<string, FTMMessage>;
+  ft_id: string | null;
+  endNumber: number;
+  endAlt: number;
+  endPrevAlt: number;
+};
+
+const initialState: InitialState = {
+  waitingBranches: [],
+  streamingBranches: [],
+  isWaiting: false,
+  isStreaming: false,
+  messages: {},
+  ft_id: null,
+  endNumber: 0,
+  endAlt: 0,
+  endPrevAlt: 0,
+};
+
+const ID_REGEXP = /^(.*):(\d+):(\d+):(\d+)$/;
+
+function getInfoFromId(id: string) {
+  const result = id.match(ID_REGEXP);
+  if (result === null) return null;
+  const [ftm_belongs_to_ft_id, ftm_alt, ftm_num, ftm_prev_alt] = result;
+  return {
+    ftm_belongs_to_ft_id,
+    ftm_alt: +ftm_alt,
+    ftm_num: +ftm_num,
+    ftm_prev_alt: +ftm_prev_alt,
+  };
+}
+
+// https://github.com/reduxjs/redux-toolkit/discussions/4553 see this for creating memoized selectors
+
+const selectMessagesValues = createSelector(
+  (state: InitialState) => state.messages,
+  (messages) => Object.values(messages),
+);
+
+export const threadMessagesSlice = createSlice({
+  name: "threadMessages",
+  initialState,
+  reducers: {
+    receiveThreadMessages: (
+      state,
+      action: PayloadAction<MessagesSubscriptionSubscription>,
+    ) => {
+      console.log(
+        "receiveMessages",
+        action.payload.comprehensive_thread_subs.news_action,
+        action.payload,
+      );
+      if (
+        state.ft_id &&
+        action.payload.comprehensive_thread_subs.news_payload_thread_message
+          ?.ftm_belongs_to_ft_id &&
+        !action.payload.comprehensive_thread_subs.news_payload_thread_message.ftm_belongs_to_ft_id.startsWith(
+          state.ft_id,
+        )
+      ) {
+        return state;
+      }
+
+      if (
+        !state.ft_id &&
+        action.payload.comprehensive_thread_subs.news_payload_thread?.ft_id
+      ) {
+        state.ft_id =
+          action.payload.comprehensive_thread_subs.news_payload_thread.ft_id;
+      }
+
+      // TODO: different branches will have different waiting / streaming states
+      state.isWaiting = false;
+
+      if (
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          ?.ft_need_assistant
+      ) {
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) =>
+            n !==
+            action.payload.comprehensive_thread_subs.news_payload_thread
+              ?.ft_need_assistant,
+        );
+
+        state.streamingBranches.push(
+          action.payload.comprehensive_thread_subs.news_payload_thread
+            .ft_need_assistant,
+        );
+      }
+
+      if (
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          ?.ft_need_user
+      ) {
+        state.streamingBranches = state.streamingBranches.filter(
+          (n) =>
+            n !==
+            action.payload.comprehensive_thread_subs.news_payload_thread
+              ?.ft_need_user,
+        );
+      }
+
+      // TODO: are there other cases aside from update
+      // actions: INITIAL_UPDATES_OVER | UPDATE | DELETE
+      if (
+        action.payload.comprehensive_thread_subs.news_action === "UPDATE" &&
+        action.payload.comprehensive_thread_subs.news_payload_id &&
+        action.payload.comprehensive_thread_subs.news_payload_thread_message
+      ) {
+        state.messages[
+          action.payload.comprehensive_thread_subs.news_payload_id
+        ] =
+          action.payload.comprehensive_thread_subs.news_payload_thread_message;
+      }
+
+      if (
+        action.payload.comprehensive_thread_subs.news_action === "INSERT" &&
+        action.payload.comprehensive_thread_subs.news_payload_id &&
+        action.payload.comprehensive_thread_subs.news_payload_thread_message
+      ) {
+        state.messages[
+          action.payload.comprehensive_thread_subs.news_payload_id
+        ] =
+          action.payload.comprehensive_thread_subs.news_payload_thread_message;
+      }
+
+      if (
+        action.payload.comprehensive_thread_subs.news_action === "DELETE" &&
+        action.payload.comprehensive_thread_subs.news_payload_id
+      ) {
+        const msgs = Object.entries(state.messages).reduce<
+          typeof state.messages
+        >((acc, [key, value]) => {
+          if (
+            key === action.payload.comprehensive_thread_subs.news_payload_id
+          ) {
+            return acc;
+          }
+          return { ...acc, [key]: value };
+        }, {});
+
+        state.messages = msgs;
+      }
+
+      if (
+        action.payload.comprehensive_thread_subs.news_action === "DELTA" &&
+        action.payload.comprehensive_thread_subs.stream_delta
+      ) {
+        if (
+          action.payload.comprehensive_thread_subs.news_payload_id in
+            state.messages &&
+          action.payload.comprehensive_thread_subs
+            .news_payload_thread_message &&
+          "ftm_content" in action.payload.comprehensive_thread_subs.stream_delta
+        ) {
+          // TODO: handle deltas, delta don't have all the info though :/
+          state.messages[
+            action.payload.comprehensive_thread_subs.news_payload_id
+          ].ftm_content +=
+            action.payload.comprehensive_thread_subs.stream_delta.ftm_content;
+        } else if (
+          !(
+            action.payload.comprehensive_thread_subs.news_payload_id in
+            state.messages
+          ) &&
+          action.payload.comprehensive_thread_subs.news_payload_thread_message
+        ) {
+          const infoFromId = getInfoFromId(
+            action.payload.comprehensive_thread_subs.news_payload_id,
+          );
+
+          const msg: FTMMessage = {
+            // TODO: remove this, the key will suffice
+            ...action.payload.comprehensive_thread_subs
+              .news_payload_thread_message,
+            ...infoFromId,
+            ftm_role:
+              action.payload.comprehensive_thread_subs.stream_delta.ftm_role,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            ftm_content:
+              action.payload.comprehensive_thread_subs.stream_delta.ftm_content,
+            ftm_num:
+              action.payload.comprehensive_thread_subs
+                .news_payload_thread_message.ftm_num + 1,
+          };
+          state.messages[
+            action.payload.comprehensive_thread_subs.news_payload_id
+          ] = msg;
+        }
+      }
+    },
+
+    setThreadEnd: (
+      state,
+      action: PayloadAction<{ number: number; alt: number; prevAlt: number }>,
+    ) => {
+      state.endNumber = action.payload.number;
+      state.endAlt = action.payload.alt;
+      state.endPrevAlt = action.payload.prevAlt;
+    },
+
+    resetThread: (state) => {
+      state = initialState;
+      return state;
+    },
+
+    setThreadFtId: (state, action: PayloadAction<InitialState["ft_id"]>) => {
+      state.ft_id = action.payload;
+    },
+  },
+  selectors: {
+    selectThreadMessages: (state) => state.messages,
+    selectThreadId: (state) => state.ft_id,
+    selectIsWaiting: (state) => {
+      const maybeBranch = state.waitingBranches.find(
+        (branch) => branch === state.endAlt,
+      );
+      return !!maybeBranch;
+    },
+    selectIsStreaming: (state) => {
+      const maybeBranch = state.streamingBranches.find(
+        (branch) => branch === state.endAlt,
+      );
+      return !!maybeBranch;
+    },
+    selectThreadMessageTrie: createSelector(selectMessagesValues, (messages) =>
+      makeMessageTrie(messages),
+    ),
+    selectThreadEnd: (state) => {
+      const { endNumber, endAlt, endPrevAlt } = state;
+      return { endNumber, endAlt, endPrevAlt };
+    },
+    isThreadEmpty: createSelector(
+      selectMessagesValues,
+      (messages) => messages.length === 0,
+    ),
+    selectAppSpecific: createSelector(selectMessagesValues, (messages) => {
+      if (messages.length === 0) return "";
+      if (typeof messages[0].ft_app_specific === "string") {
+        return messages[0].ft_app_specific;
+      }
+      return null;
+    }),
+
+    selectMessagesFromEndNode: createSelector(
+      (state: InitialState) => {
+        const { endNumber, endAlt, endPrevAlt, messages } = state;
+        return { endNumber, endAlt, endPrevAlt, messages };
+      },
+      ({ endAlt, endNumber, endPrevAlt, messages }) => {
+        return getAncestorsForNode(
+          endNumber,
+          endAlt,
+          endPrevAlt,
+          Object.values(messages),
+        );
+      },
+    ),
+
+    selectBranchLength: (state) => state.endNumber,
+    selectTotalMessagesInThread: createSelector(
+      selectMessagesValues,
+      (messages) => messages.length,
+    ),
+    selectThreadMessagesIsEmpty: createSelector(
+      selectMessagesValues,
+      (messages) => messages.length === 0,
+    ),
+
+    selectThreadMessageTopAltNumber: createSelector(
+      selectMessagesValues,
+      (messages) => {
+        if (messages.length === 0) return null;
+        const alts = messages.map((message) => message.ftm_alt);
+        return Math.max(...alts);
+      },
+    ),
+
+    selectIsThreadRunning: (state) => {
+      if (state.waitingBranches.length > 0) return true;
+      if (state.streamingBranches.length > 0) return true;
+      return false;
+    },
+  },
+
+  extraReducers(builder) {
+    builder.addCase(pagesSlice.actions.push, (state, action) => {
+      if (
+        action.payload.name === "chat" &&
+        action.payload.ft_id !== state.ft_id
+      ) {
+        state = {
+          ...initialState,
+          ft_id: action.payload.ft_id ?? null,
+        };
+        return state;
+      }
+    });
+
+    builder.addCase(createThreadWithMessage.pending, (state) => {
+      state.waitingBranches.push(100);
+    });
+    builder.addCase(createThreadWithMessage.rejected, (state) => {
+      state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
+    });
+    builder.addCase(createMessage.pending, (state, action) => {
+      const { input } = action.meta.arg;
+      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+      state.waitingBranches.push(input.messages[0].ftm_alt);
+    });
+    builder.addCase(createMessage.rejected, (state, action) => {
+      const { input } = action.meta.arg;
+      if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
+      state.waitingBranches = state.waitingBranches.filter(
+        (n) => n !== input.messages[0].ftm_alt,
+      );
+    });
+
+    builder.addCase(pauseThreadThunk.fulfilled, (state, action) => {
+      if (action.payload.thread_patch.ft_id !== state.ft_id) return state;
+      state.waitingBranches = [];
+      state.streamingBranches = [];
+    });
+  },
+});
+
+export const {
+  receiveThreadMessages,
+  setThreadEnd,
+  resetThread,
+  setThreadFtId,
+} = threadMessagesSlice.actions;
+export const {
+  selectThreadMessages,
+  selectIsStreaming,
+  selectIsWaiting,
+  selectThreadId,
+  selectThreadMessageTrie,
+  selectThreadEnd,
+  isThreadEmpty,
+  selectAppSpecific,
+  selectMessagesFromEndNode,
+  selectThreadMessagesIsEmpty,
+  selectTotalMessagesInThread,
+  selectBranchLength,
+  selectThreadMessageTopAltNumber,
+  selectIsThreadRunning,
+} = threadMessagesSlice.selectors;

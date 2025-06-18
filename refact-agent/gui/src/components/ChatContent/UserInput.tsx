@@ -1,68 +1,73 @@
-import { Pencil2Icon } from "@radix-ui/react-icons";
-import { Button, Container, Flex, IconButton, Text } from "@radix-ui/themes";
-import React, { useCallback, useMemo, useState } from "react";
-import { selectMessages } from "../../features/Chat";
-import { CheckpointButton } from "../../features/Checkpoints";
-import { useAppSelector } from "../../hooks";
 import {
-  isUserMessage,
+  Box,
+  Button,
+  Container,
+  Flex,
+  IconButton,
+  Text,
+} from "@radix-ui/themes";
+import React, { useMemo, useState } from "react";
+import {
   ProcessedUserMessageContentWithImages,
   UserMessageContentWithImage,
   type UserMessage,
 } from "../../services/refact";
 import { takeWhile } from "../../utils";
-import { RetryForm } from "../ChatForm";
+// import { RetryForm } from "../ChatForm";
 import { DialogImage } from "../DialogImage";
 import { Markdown } from "../Markdown";
 import styles from "./ChatContent.module.css";
 import { Reveal } from "../Reveal";
+import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
+import { BranchIcon } from "../../images";
+import classNames from "classnames";
 
 export type UserInputProps = {
-  children: UserMessage["content"];
-  messageIndex: number;
+  children: UserMessage["ftm_content"];
+  // messageIndex: number;
   // maybe add images argument ?
-  onRetry: (index: number, question: UserMessage["content"]) => void;
+  // onRetry: (index: number, question: UserMessage["content"]) => void;
   // disableRetry?: boolean;
+  branch?: NodeSelectButtonsProps;
 };
 
 export const UserInput: React.FC<UserInputProps> = ({
-  messageIndex,
+  // messageIndex,
   children,
-  onRetry,
+  // onRetry,
+  branch,
 }) => {
-  const messages = useAppSelector(selectMessages);
-
-  const [showTextArea, setShowTextArea] = useState(false);
+  // const [showTextArea, setShowTextArea] = useState(false);
   const [isEditButtonVisible, setIsEditButtonVisible] = useState(false);
 
-  const handleSubmit = useCallback(
-    (value: UserMessage["content"]) => {
-      onRetry(messageIndex, value);
-      setShowTextArea(false);
-    },
-    [messageIndex, onRetry],
-  );
+  // const handleSubmit = useCallback(
+  //   (value: UserMessage["content"]) => {
+  //     onRetry(messageIndex, value);
+  //     setShowTextArea(false);
+  //   },
+  //   [messageIndex, onRetry],
+  // );
 
-  const handleShowTextArea = useCallback(
-    (value: boolean) => {
-      setShowTextArea(value);
-      if (isEditButtonVisible) {
-        setIsEditButtonVisible(false);
-      }
-    },
-    [isEditButtonVisible],
-  );
+  // const handleShowTextArea = useCallback(
+  //   (value: boolean) => {
+  //     setShowTextArea(value);
+  //     if (isEditButtonVisible) {
+  //       setIsEditButtonVisible(false);
+  //     }
+  //   },
+  //   [isEditButtonVisible],
+  // );
 
   // const lines = children.split("\n"); // won't work if it's an array
   const elements = process(children);
   const isString = typeof children === "string";
   const linesLength = isString ? children.split("\n").length : Infinity;
 
-  const checkpointsFromMessage = useMemo(() => {
-    const maybeUserMessage = messages[messageIndex];
-    if (!isUserMessage(maybeUserMessage)) return null;
-    return maybeUserMessage.checkpoints;
-  }, [messageIndex, messages]);
+  // const checkpointsFromMessage = useMemo(() => {
+  //   const maybeUserMessage = messages[messageIndex];
+  //   if (!isUserMessage(maybeUserMessage)) return null;
+  //   return maybeUserMessage.checkpoints;
+  // }, [messageIndex, messages]);
 
   const isCompressed = useMemo(() => {
     if (typeof children !== "string") return false;
@@ -77,14 +82,6 @@ export const UserInput: React.FC<UserInputProps> = ({
             {elements}
           </Flex>
         </Reveal>
-      ) : showTextArea ? (
-        <RetryForm
-          onSubmit={handleSubmit}
-          // TODO
-          // value={children}
-          value={children}
-          onClose={() => handleShowTextArea(false)}
-        />
       ) : (
         <Flex
           direction="row"
@@ -96,11 +93,12 @@ export const UserInput: React.FC<UserInputProps> = ({
           onMouseEnter={() => setIsEditButtonVisible(true)}
           onMouseLeave={() => setIsEditButtonVisible(false)}
         >
+          {/** todo, no button needed */}
           <Button
             // ref={ref}
             variant="soft"
             size="4"
-            className={styles.userInput}
+            className={classNames(styles.userInput, !children && styles.empty)}
             // TODO: should this work?
             // onClick={() => handleShowTextArea(true)}
             asChild
@@ -116,23 +114,24 @@ export const UserInput: React.FC<UserInputProps> = ({
               transition: "opacity 0.15s, visibility 0.15s",
             }}
           >
-            {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
+            {/* {checkpointsFromMessage && checkpointsFromMessage.length > 0 && (
               <CheckpointButton
                 checkpoints={checkpointsFromMessage}
                 messageIndex={messageIndex}
               />
-            )}
-            <IconButton
+            )} */}
+            {/* <IconButton
               title="Edit message"
               variant="soft"
               size={"2"}
               onClick={() => handleShowTextArea(true)}
             >
               <Pencil2Icon width={15} height={15} />
-            </IconButton>
+            </IconButton> */}
           </Flex>
         </Flex>
       )}
+      {branch && <NodeSelectButtons {...branch} />}
     </Container>
   );
 };
@@ -236,3 +235,59 @@ function processUserInputArray(
 
   return processUserInputArray(nextTail, memo.concat(elem));
 }
+
+export type NodeSelectButtonsProps = {
+  onForward: () => void;
+  onBackward: () => void;
+  currentNode: number;
+  totalNodes: number;
+};
+
+const NodeSelectButtons: React.FC<NodeSelectButtonsProps> = ({
+  onForward,
+  onBackward,
+  currentNode,
+  totalNodes,
+}) => {
+  if (totalNodes === 1 && currentNode === 0) {
+    return (
+      <Box mt="2">
+        <IconButton
+          variant="ghost"
+          size="1"
+          radius="large"
+          onClick={onForward}
+          title="create a new branch"
+        >
+          <BranchIcon />
+        </IconButton>
+      </Box>
+    );
+  }
+
+  return (
+    <Flex gap="2" justify="start" mt="2">
+      <IconButton
+        variant="ghost"
+        size="1"
+        disabled={currentNode === 0}
+        radius="large"
+        onClick={onBackward}
+      >
+        <ArrowLeftIcon />
+      </IconButton>
+      <Text size="1">
+        {currentNode + 1} / {totalNodes}
+      </Text>
+      <IconButton
+        variant="ghost"
+        size="1"
+        disabled={currentNode === totalNodes}
+        onClick={onForward}
+        radius="large"
+      >
+        <ArrowRightIcon />
+      </IconButton>
+    </Flex>
+  );
+};

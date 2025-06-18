@@ -9,8 +9,8 @@ import {
   selectCheckpointsEnabled,
   selectHasUncalledTools,
   selectIntegration,
-  selectIsStreaming,
-  selectIsWaiting,
+  // selectIsStreaming,
+  // selectIsWaiting,
   selectMessages,
   selectPreventSend,
   selectSendImmediately,
@@ -18,6 +18,7 @@ import {
   selectThreadMode,
   selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
+import { selectIsStreaming, selectIsWaiting } from "../features/ThreadMessages";
 import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
   ChatMessage,
@@ -116,7 +117,10 @@ export const useSendChatRequest = () => {
     const [key, prompt] = prompts[0];
     if (key === "default") return currentMessages;
     if (currentMessages.length === 0) {
-      const message: ChatMessage = { role: "system", content: prompt.text };
+      const message: ChatMessage = {
+        ftm_role: "system",
+        ftm_content: prompt.text,
+      };
       return [message];
     }
     return currentMessages;
@@ -190,7 +194,11 @@ export const useSendChatRequest = () => {
   const maybeAddImagesToQuestion = useCallback(
     (question: string): UserMessage => {
       if (attachedImages.length === 0)
-        return { role: "user" as const, content: question, checkpoints: [] };
+        return {
+          ftm_role: "user" as const,
+          ftm_content: question,
+          checkpoints: [],
+        };
 
       const images = attachedImages.reduce<UserMessageContentWithImage[]>(
         (acc, image) => {
@@ -204,11 +212,11 @@ export const useSendChatRequest = () => {
       );
 
       if (images.length === 0)
-        return { role: "user", content: question, checkpoints: [] };
+        return { ftm_role: "user", ftm_content: question, checkpoints: [] };
 
       return {
-        role: "user",
-        content: [...images, { type: "text", text: question }],
+        ftm_role: "user",
+        ftm_content: [...images, { type: "text", text: question }],
         checkpoints: [],
       };
     },
@@ -306,10 +314,10 @@ export const useSendChatRequest = () => {
   );
 
   const retryFromIndex = useCallback(
-    (index: number, question: UserMessage["content"]) => {
+    (index: number, question: UserMessage["ftm_content"]) => {
       const messagesToKeep = currentMessages.slice(0, index);
       const messagesToSend = messagesToKeep.concat([
-        { role: "user", content: question, checkpoints: [] },
+        { ftm_role: "user", ftm_content: question, checkpoints: [] },
       ]);
       retry(messagesToSend);
     },

@@ -55,6 +55,8 @@ import { checkpointsSlice } from "../features/Checkpoints/checkpointsSlice";
 import { checkpointsApi } from "../services/refact/checkpoints";
 import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/patchesAndDiffsTrackerSlice";
 import { coinBallanceSlice } from "../features/CoinBalance";
+import { threadListSlice } from "../features/ThreadList";
+import { threadMessagesSlice } from "../features/ThreadMessages";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -110,6 +112,8 @@ const rootReducer = combineSlices(
   checkpointsSlice,
   patchesAndDiffsTrackerSlice,
   coinBallanceSlice,
+  threadListSlice,
+  threadMessagesSlice,
 );
 
 const rootPersistConfig = {
@@ -118,6 +122,10 @@ const rootPersistConfig = {
   whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
+
+if (import.meta.env.DEV) {
+  rootPersistConfig.whitelist.push("teams");
+}
 
 const persistedReducer = persistReducer<ReturnType<typeof rootReducer>>(
   rootPersistConfig,

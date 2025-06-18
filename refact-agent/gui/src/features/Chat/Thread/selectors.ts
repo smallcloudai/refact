@@ -33,13 +33,13 @@ export const selectThreadMaximumTokens = (state: RootState) =>
   state.chat.thread.currentMaximumContextTokens;
 export const selectThreadCurrentMessageTokens = (state: RootState) =>
   state.chat.thread.currentMessageContextTokens;
-export const selectIsWaiting = (state: RootState) =>
-  state.chat.waiting_for_response;
+// export const selectIsWaiting = (state: RootState) =>
+//   state.chat.waiting_for_response;
 export const selectAreFollowUpsEnabled = (state: RootState) =>
   state.chat.follow_ups_enabled;
 export const selectIsTitleGenerationEnabled = (state: RootState) =>
   state.chat.title_generation_enabled;
-export const selectIsStreaming = (state: RootState) => state.chat.streaming;
+// export const selectIsStreaming = (state: RootState) => state.chat.streaming;
 export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
 export const selectChatError = (state: RootState) => state.chat.error;
 export const selectSendImmediately = (state: RootState) =>
@@ -57,16 +57,16 @@ export const toolMessagesSelector = createSelector(
 export const selectToolResultById = createSelector(
   [toolMessagesSelector, (_, id?: string) => id],
   (messages, id) => {
-    return messages.find((message) => message.content.tool_call_id === id)
-      ?.content;
+    return messages.find((message) => message.ftm_content.tool_call_id === id)
+      ?.ftm_content;
   },
 );
 
 export const selectManyToolResultsByIds = (ids: string[]) =>
   createSelector(toolMessagesSelector, (messages) => {
     return messages
-      .filter((message) => ids.includes(message.content.tool_call_id))
-      .map((toolMessage) => toolMessage.content);
+      .filter((message) => ids.includes(message.ftm_content.tool_call_id))
+      .map((toolMessage) => toolMessage.ftm_content);
   });
 
 const selectDiffMessages = createSelector(selectMessages, (messages) =>
@@ -106,8 +106,11 @@ export const selectLastSentCompression = createSelector(
         if (isUserMessage(message) && message.compression_strength) {
           return message.compression_strength;
         }
-        if (isToolMessage(message) && message.content.compression_strength) {
-          return message.content.compression_strength;
+        if (
+          isToolMessage(message) &&
+          message.ftm_content.compression_strength
+        ) {
+          return message.ftm_content.compression_strength;
         }
         return acc;
       },
@@ -139,7 +142,7 @@ export const selectHasUncalledTools = createSelector(
     const toolMessages = tailMessages
       .map((msg) => {
         if (isToolMessage(msg)) {
-          return msg.content.tool_call_id;
+          return msg.ftm_content.tool_call_id;
         }
         if ("tool_call_id" in msg && typeof msg.tool_call_id === "string") {
           return msg.tool_call_id;

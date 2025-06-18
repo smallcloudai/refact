@@ -27,7 +27,6 @@ import {
   goodPing,
   goodPrompts,
   goodUser,
-  makeKnowledgeFromChat,
   noCommandPreview,
   noCompletions,
   noTools,
@@ -65,7 +64,7 @@ const MockedStore: React.FC<{
     <Provider store={store}>
       <Theme>
         <AbortControllerProvider>
-          <ChatContent onRetry={() => ({})} onStopStreaming={() => ({})} />
+          <ChatContent />
         </AbortControllerProvider>
       </Theme>
     </Provider>
@@ -128,7 +127,7 @@ export const Empty: Story = {
 export const AssistantMarkdown: Story = {
   args: {
     ...meta.args,
-    messages: [{ role: "assistant", content: MarkdownMessage }],
+    messages: [{ ftm_role: "assistant", ftm_content: MarkdownMessage }],
   },
 };
 
@@ -172,7 +171,7 @@ export const TextDoc: Story = {
         goodUser,
         // noChatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
         ToolConfirmation,
         noCompletions,
         noCommandPreview,
@@ -194,7 +193,7 @@ export const MarkdownIssue: Story = {
         goodUser,
         // noChatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
         ToolConfirmation,
         noCompletions,
         noCommandPreview,
@@ -208,10 +207,10 @@ export const ToolWaiting: Story = {
     thread: {
       ...MARKDOWN_ISSUE,
       messages: [
-        { role: "user", content: "call a tool and wait" },
+        { ftm_role: "user", ftm_content: "call a tool and wait" },
         {
-          role: "assistant",
-          content: "",
+          ftm_role: "assistant",
+          ftm_content: "",
           tool_calls: [
             {
               id: "toolu_01JbWarAwzjMyV6azDkd5skX",
@@ -236,7 +235,7 @@ export const ToolWaiting: Story = {
         goodUser,
         // noChatLinks,
         noTools,
-        makeKnowledgeFromChat,
+
         ToolConfirmation,
         noCompletions,
         noCommandPreview,

@@ -4,29 +4,54 @@ schema {
   subscription: Subscription
 }
 
+type BasicStuffResult {
+  fuser_id: String!
+  invitations: [FWorkspaceInvitationOutput!]
+  workspaces: [FWorkspaceOutput!]!
+}
+
+type EmailConfirmResult {
+  fuser_id: String!
+}
+
+type FApiKeyOutput {
+  apikey_archived_ts: Float!
+  apikey_created_ts: Float!
+  apikey_id: String!
+  apikey_last4digits: String!
+  full_key_shown_once: String
+}
+
+type FCloudTool {
+  ctool_confirmed_exists_ts: Float
+  ctool_description: String!
+  ctool_id: String!
+  ctool_name: String!
+  ctool_parameters: JSON!
+  located_fgroup_id: String
+  owner_fuser_id: String
+}
+
 input FExpertInput {
   fexp_allow_tools: String!
   fexp_block_tools: String!
   fexp_name: String!
   fexp_python_kernel: String!
   fexp_system_prompt: String!
-  fexp_ver_major: Int!
-  fexp_ver_minor: Int!
   located_fgroup_id: String!
-  owner_fuser_id: String!
+  owner_fuser_id: String
   owner_shared: Boolean!
 }
 
 type FExpertOutput {
   fexp_allow_tools: String!
   fexp_block_tools: String!
+  fexp_id: String!
   fexp_name: String!
   fexp_python_kernel: String!
   fexp_system_prompt: String!
-  fexp_ver_major: Int!
-  fexp_ver_minor: Int!
-  located_fgroup_id: String!
-  owner_fuser_id: String!
+  located_fgroup_id: String
+  owner_fuser_id: String
   owner_shared: Boolean!
 }
 
@@ -39,11 +64,11 @@ type FExpertSubs {
   news_action: String!
   news_payload: FExpertOutput!
   news_payload_id: String!
-  news_ws_id: String!
+  news_pubsub: String!
 }
 
 input FExternalDataSourceInput {
-  eds_json: JSON!
+  eds_json: String!
   eds_name: String!
   eds_type: String!
   located_fgroup_id: String!
@@ -64,7 +89,7 @@ type FExternalDataSourceOutput {
 }
 
 input FExternalDataSourcePatch {
-  eds_json: JSON = null
+  eds_json: String!
   eds_last_successful_scan_ts: Float = null
   eds_name: String = null
   eds_scan_status: String = null
@@ -80,6 +105,7 @@ type FExternalDataSourceSubs {
 }
 
 input FKnowledgeItemInput {
+  iknow_is_core: Boolean! = false
   iknow_memory: String!
   iknow_tags: [String!]! = []
   located_fgroup_id: String!
@@ -89,6 +115,7 @@ input FKnowledgeItemInput {
 type FKnowledgeItemOutput {
   iknow_created_ts: Float!
   iknow_id: String!
+  iknow_is_core: Boolean!
   iknow_memory: String!
   iknow_modified_ts: Float!
   iknow_stat_correct: Int!
@@ -101,6 +128,7 @@ type FKnowledgeItemOutput {
 }
 
 input FKnowledgeItemPatch {
+  iknow_is_core: Boolean = null
   iknow_memory: String = null
   iknow_tags: [String!] = null
   located_fgroup_id: String = null
@@ -111,7 +139,67 @@ type FKnowledgeItemSubs {
   news_action: String!
   news_payload: FKnowledgeItemOutput
   news_payload_id: String!
-  news_ws_id: String!
+  news_pubsub: String!
+}
+
+input FKnowledgeSearchBase {
+  group_id: String!
+}
+
+input FKnowledgeSearchInput {
+  group_id: String!
+  q: String!
+  top_n: Int! = 5
+}
+
+type FMassInvitationOutput {
+  fuser_id: String!
+  result: String!
+}
+
+type FModelItem {
+  provm_name: String!
+}
+
+type FPermissionOutput {
+  fgroup_id: String!
+  fuser_id: String!
+  perm_role: String!
+}
+
+input FPermissionPatch {
+  perm_role: String = null
+}
+
+type FPermissionSubs {
+  news_action: String!
+  news_payload: FPermissionOutput
+  news_payload_id: String!
+  news_pubsub: String!
+}
+
+type FPluginOutput {
+  plugin_name: String!
+  plugin_setup_page: String!
+  plugin_version: String!
+}
+
+input FStatsAddInput {
+  st_how_many: Int!
+  st_involved_fexp_id: String! = ""
+  st_involved_fuser_id: String! = ""
+  st_involved_model: String! = ""
+  st_thing: String!
+  ws_id: String!
+}
+
+type FStatsOutput {
+  st_how_many: Int!
+  st_involved_fexp_id: String
+  st_involved_fuser_id: String
+  st_involved_model: String
+  st_timekey: String!
+  ws_id: String!
 }
 
 type FThreadDelta {
@@ -120,56 +208,63 @@ type FThreadDelta {
 }
 
 input FThreadInput {
-  ft_belongs_to_fce_id: String
-  ft_fexp_name: String!
-  ft_fexp_ver_major: Int!
-  ft_fexp_ver_minor: Int!
-  ft_max_new_tokens: Int! = 8192
-  ft_model: String! = ""
-  ft_n: Int! = 1
-  ft_temperature: Float! = 0
+  ft_app_capture: String! = ""
+  ft_app_searchable: String! = ""
+  ft_app_specific: String! = "null"
+  ft_error: String! = "null"
+  ft_fexp_id: String!
   ft_title: String!
+  ft_toolset: String! = "null"
   located_fgroup_id: String!
   owner_shared: Boolean!
-}
-
-type FThreadMessage {
-  ftm_alt: Int!
-  ftm_belongs_to_ft_id: String!
-  ftm_call_id: String!
-  ftm_content: JSON!
-  ftm_created_ts: Float!
-  ftm_num: Int!
-  ftm_prev_alt: Int!
-  ftm_role: String!
-  ftm_tool_calls: JSON
-  ftm_usage: JSON
+  parent_ft_id: String = null
 }
 
 input FThreadMessageInput {
   ftm_alt: Int!
+  ftm_app_specific: String = "null"
   ftm_belongs_to_ft_id: String!
   ftm_call_id: String!
-  ftm_content: String!
+  ftm_content: String = "null"
   ftm_num: Int!
   ftm_prev_alt: Int!
   ftm_provenance: String!
   ftm_role: String!
-  ftm_tool_calls: String!
-  ftm_usage: String!
+  ftm_tool_calls: String = "null"
+  ftm_usage: String = "null"
+  ftm_user_preferences: String = "null"
+}
+
+type FThreadMessageOutput {
+  ft_app_capture: String
+  ft_app_searchable: String
+  ft_app_specific: JSON
+  ftm_alt: Int!
+  ftm_app_specific: JSON
+  ftm_belongs_to_ft_id: String!
+  ftm_call_id: String!
+  ftm_content: JSON
+  ftm_created_ts: Float!
+  ftm_num: Int!
+  ftm_prev_alt: Int!
+  ftm_provenance: JSON!
+  ftm_role: String!
+  ftm_tool_calls: JSON
+  ftm_usage: JSON
+  ftm_user_preferences: JSON
 }
 
 type FThreadMessageSubs {
   news_action: String!
   news_payload_id: String!
   news_payload_thread: FThreadOutput
-  news_payload_thread_message: FThreadMessage
+  news_payload_thread_message: FThreadMessageOutput
   stream_delta: FThreadDelta
 }
 
 type FThreadMessagesCreateResult {
   count: Int!
-  messages: [FThreadMessage!]!
+  messages: [FThreadMessageOutput!]!
 }
 
 input FThreadMultipleMessagesInput {
@@ -178,53 +273,72 @@ input FThreadMultipleMessagesInput {
 }
 
 type FThreadOutput {
-  ft_anything_new: Boolean!
+  ft_app_capture: String!
+  ft_app_searchable: String!
+  ft_app_specific: JSON
   ft_archived_ts: Float!
-  ft_belongs_to_fce_id: String
   ft_created_ts: Float!
-  ft_error: String!
-  ft_fexp_name: String!
-  ft_fexp_ver_major: Int!
-  ft_fexp_ver_minor: Int!
+  ft_error: JSON
+  ft_fexp_id: String!
   ft_id: String!
   ft_locked_by: String!
-  ft_max_new_tokens: Int!
-  ft_model: String!
-  ft_n: Int!
   ft_need_assistant: Int!
+  ft_need_kernel: Int!
   ft_need_tool_calls: Int!
-  ft_temperature: Float!
+  ft_need_user: Int!
   ft_title: String!
-  ft_toolset: String!
+  ft_toolset: JSON
   ft_updated_ts: Float!
   located_fgroup_id: String!
   owner_fuser_id: String!
   owner_shared: Boolean!
+  parent_ft_id: String
 }
 
 input FThreadPatch {
-  ft_anything_new: Boolean = null
+  ft_app_searchable: String = null
+  ft_app_specific: String = null
   ft_archived_ts: Float = null
-  ft_belongs_to_fce_id: String = null
   ft_error: String = null
-  ft_max_new_tokens: Int = null
-  ft_model: String = null
-  ft_n: Int = null
-  ft_temperature: Float = null
+  ft_need_user: Int = null
   ft_title: String = null
   ft_toolset: String = null
   located_fgroup_id: String = null
   owner_shared: Boolean = null
+  parent_ft_id: String = null
 }
 
 type FThreadSubs {
   news_action: String!
   news_payload: FThreadOutput
   news_payload_id: String!
-  news_ws_id: String!
+  news_pubsub: String!
 }
 
-type FWorkspace {
+type FUserProfileOutput {
+  fuser_fullname: String!
+  fuser_id: String!
+}
+
+input FUserProfilePatch {
+  fuser_fullname: String = null
+}
+
+input FWorkspaceCreateInput {
+  ws_name: String!
+}
+
+type FWorkspaceInvitationOutput {
+  group_name: String!
+  wsi_fgroup_id: String!
+  wsi_id: String!
+  wsi_invite_fuser_id: String!
+  wsi_invited_by_fuser_id: String!
+  wsi_role: String!
+}
+
+type FWorkspaceOutput {
+  coins: Int!
   root_group_name: String!
   ws_created_ts: Float!
   ws_id: String!
@@ -238,6 +352,7 @@ type FlexusGroup {
   fgroup_id: String!
   fgroup_name: String!
   fgroup_parent_id: String
+  my_role: String
   ws_id: String!
 }
 
@@ -255,6 +370,9 @@ input FlexusGroupPatch {
 scalar JSON
 
 type Mutation {
+  api_key_delete(apikey_id: String!): Boolean!
+  api_key_generate: FApiKeyOutput!
+  confirm_email(token: String!): EmailConfirmResult!
   expert_create(input: FExpertInput!): FExpertOutput!
   expert_delete(id: String!): Boolean!
   expert_patch(id: String!, patch: FExpertPatch!): FExpertOutput!
@@ -264,26 +382,95 @@ type Mutation {
   group_create(input: FlexusGroupInput!): FlexusGroup!
   group_delete(fgroup_id: String!): String!
   group_patch(fgroup_id: String!, patch: FlexusGroupPatch!): FlexusGroup!
+  invitation_accept(wsi_id: String!): Boolean!
+  invitation_create_multiple(emails: [String!]!, fgroup_id: String!, role: String!): [FMassInvitationOutput!]!
+  invitation_delete(wsi_fgroup_id: String!, wsi_invite_fuser_id: String!): Boolean!
   knowledge_item_create(input: FKnowledgeItemInput!): FKnowledgeItemOutput!
   knowledge_item_delete(id: String!): Boolean!
   knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
   knowledge_item_patch(id: String!, patch: FKnowledgeItemPatch!): FKnowledgeItemOutput!
-  stats_add(st_how_many: Int!, st_involved_expert: String! = "", st_involved_fuser_id: String! = "", st_involved_model: String! = "", st_thing: String!, ts: Float!, ws_id: String!): Boolean!
+  password_change(new_password: String!): Boolean!
+  permission_delete(fgroup_id: String!, fuser_id: String!): Boolean!
+  permission_patch(fgroup_id: String!, fuser_id: String!, patch: FPermissionPatch!): FPermissionOutput!
+  reset_password_execute(new_password: String!, token: String!): Boolean!
+  reset_password_start(username: String!): Boolean!
+  start_session(password: String!, username: String!, want_invitations: Boolean!, want_workspaces_list: Boolean!): SessionResult!
+  stats_add(records: [FStatsAddInput!]!): Boolean!
+  tech_support_activate(ws_id: String!): Boolean!
+  tech_support_set_config(config: TechSupportSettingsInput!, ws_id: String!): Boolean!
   thread_create(input: FThreadInput!): FThreadOutput!
   thread_delete(id: String!): Boolean!
+  thread_lock(ft_id: String!, worker_name: String!): Boolean!
   thread_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
-  thread_message_create(input: FThreadMessageInput!): FThreadMessage!
   thread_messages_create_multiple(input: FThreadMultipleMessagesInput!): FThreadMessagesCreateResult!
   thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
+  thread_provide_toolset(ft_id: String!, toolset: String!): Boolean!
+  thread_reset_error(ft_error: String!, ft_id: String!): Boolean!
+  thread_unlock(ft_id: String!, worker_name: String!): Boolean!
+  user_profile_patch(patch: FUserProfilePatch!): FUserProfileOutput!
+  user_register(input: RegisterInput!): Boolean!
+  workspace_create(input: FWorkspaceCreateInput!): FWorkspaceOutput!
+  workspace_delete(dry_run: Boolean! = false, ws_id: String!): String!
+}
+
+type PasswordResetTokenInfo {
+  freset_used: Boolean!
+  fuser_id: String!
 }
 
 type Query {
+  api_key_list: [FApiKeyOutput!]!
+  cloud_tools_list(include_offline: Boolean! = false, located_fgroup_id: String!): [FCloudTool!]!
+  coins_how_much_I_have(ws_id: String!): Int!
+  expert_choice_consequences(fexp_id: String!, inside_fgroup_id: String!): [FModelItem!]!
+  expert_get(id: String!): FExpertOutput!
   expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
+  experts_effective_list(located_fgroup_id: String!): [FExpertOutput!]!
+  external_data_source_get(id: String!): FExternalDataSourceOutput!
   external_data_source_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExternalDataSourceOutput!]!
+  group_get(fgroup_id: String!): FlexusGroup!
+  group_list_for_workspace(ws_id: String!): [FlexusGroup!]!
+  invitation_list(wsi_fgroup_id: String!): [FWorkspaceInvitationOutput!]!
+  knowledge_get_cores(search_input: FKnowledgeSearchBase!): [FKnowledgeItemOutput!]!
+  knowledge_item_get(id: String!): FKnowledgeItemOutput!
   knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItemOutput!]!
-  login: [FWorkspace!]!
+  knowledge_vecdb_search(search_input: FKnowledgeSearchInput!): [FKnowledgeItemOutput!]!
+  permission_get(fgroup_id: String!, fuser_id: String!): FPermissionOutput!
+  permission_list(fgroup_id: String!): [FPermissionOutput!]!
+  plugins_installed: [FPluginOutput!]!
+  query_basic_stuff(want_invitations: Boolean! = false): BasicStuffResult!
+  reset_password_token_info(token: String!): PasswordResetTokenInfo!
+  stats_query(breakdown_fexp_name: Boolean!, breakdown_fuser_id: Boolean!, breakdown_model: Boolean!, filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, filter_thing: [String!]!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): [FStatsOutput!]!
+  stats_query_distinct(filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, filter_thing: [String!]!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
+  tech_support_get_config(ws_id: String!): TechSupportSettingsOutput
+  thread_get(id: String!): FThreadOutput!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
-  thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessage!]!
+  thread_messages_list(ft_id: String!, ftm_alt: Int = null): [FThreadMessageOutput!]!
+  threads_app_captured(ft_app_capture: String!, ft_app_searchable: String!, located_fgroup_id: String!): [FThreadOutput!]!
+  user_profile_get: FUserProfileOutput!
+  workspace_permission_list(ws_id: String!): [FPermissionOutput!]!
+}
+
+input RegisterInput {
+  fullname: String!
+  password: String!
+  username: String!
+}
+
+type SessionResult {
+  fuser_id: String!
+  fuser_internal_flags: String!
+  invitations: [FWorkspaceInvitationOutput!]
+  sess_expires_ts: Float!
+  signed_session: String!
+  workspaces: [FWorkspaceOutput!]
+}
+
+type StatsDistinctOutput {
+  st_involved_fexp_id: [String!]!
+  st_involved_fuser_id: [String!]!
+  st_involved_model: [String!]!
+  st_thing: [String!]!
 }
 
 type Subscription {
@@ -291,14 +478,32 @@ type Subscription {
   experts_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FExpertSubs!
   external_data_sources_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FExternalDataSourceSubs!
   knowledge_items_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FKnowledgeItemSubs!
+  permissions_in_group_subs(fgroup_id: String!, limit: Int!, quicksearch: String!): FPermissionSubs!
   threads_in_group(limit: Int! = 0, located_fgroup_id: String!, sort_by: String! = ""): FThreadSubs!
   tree_subscription(ws_id: String!): TreeUpdateSubs!
+}
+
+input TechSupportSettingsInput {
+  support_api_key: String!
+  support_channel_list: [String!]!
+  support_discord_key: String!
+  support_fgroup_id: String!
+  support_fuser_id: String!
+}
+
+type TechSupportSettingsOutput {
+  support_api_key: String!
+  support_channel_list: [String!]!
+  support_discord_key: String!
+  support_fgroup_id: String!
+  support_fuser_id: String!
 }
 
 type TreeUpdateSubs {
   treeupd_action: String!
   treeupd_id: String!
   treeupd_path: String!
+  treeupd_role: String
   treeupd_title: String!
   treeupd_type: String!
 }

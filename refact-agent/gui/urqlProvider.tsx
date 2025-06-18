@@ -8,17 +8,17 @@ import {
 import { createClient as createWSClient } from "graphql-ws";
 import { WebSocket } from "ws";
 import React, { useMemo } from "react";
-import { useAppSelector } from "./src/hooks";
-import { selectConfig } from "./src/features/Config/configSlice";
 
 export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const apiKey = useAppSelector(selectConfig).apiKey;
-  const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+  // const apiKey = useAppSelector(selectConfig).apiKey;
+  // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+  const baseUrl = "localhost:8008/v1/graphql";
+  const apiKey = "sk_alice_123456";
 
-  const protocol = "https";
-  const wsProtocol = "wss";
+  const protocol = "http";
+  const wsProtocol = "ws";
 
   const wsClient = useMemo(
     () =>
@@ -36,6 +36,7 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
       createClient({
         url: `${protocol}://${baseUrl}`,
         exchanges: [
+          // TODO: only enable this during development
           // debugExchange,
           cacheExchange,
           subscriptionExchange({

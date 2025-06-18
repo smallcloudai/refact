@@ -5,17 +5,17 @@ import { Flex, Button, Text, Card } from "@radix-ui/themes";
 import {
   useAppSelector,
   useAppDispatch,
-  useSendChatRequest,
+  // useSendChatRequest,
   useAutoSend,
   useCapsForToolUse,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
   enableSend,
-  selectIsStreaming,
+  // selectIsStreaming,
   selectPreventSend,
   selectChatId,
-  selectMessages,
+  //  selectMessages,
   getSelectedToolUse,
   selectThreadNewChatSuggested,
 } from "../../features/Chat/Thread";
@@ -25,6 +25,11 @@ import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+import { useMessageSubscription } from "./useMessageSubscription";
+import {
+  selectIsStreaming,
+  selectTotalMessagesInThread,
+} from "../../features/ThreadMessages";
 
 export type ChatProps = {
   host: Config["host"];
@@ -44,13 +49,18 @@ export const Chat: React.FC<ChatProps> = ({
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
+  const { sendMessage } = useMessageSubscription();
+  const totalMessages = useAppSelector(selectTotalMessagesInThread, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
 
   const chatId = useAppSelector(selectChatId);
-  const { submit, abort, retryFromIndex } = useSendChatRequest();
+  // TODO: figure out features removed here
+  // const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
-  const messages = useAppSelector(selectMessages);
+  //   const messages = useAppSelector(selectMessages);
   const capsForToolUse = useCapsForToolUse();
 
   const { shouldCheckpointsPopupBeShown } = useCheckpoints();
@@ -63,12 +73,13 @@ export const Chat: React.FC<ChatProps> = ({
 
   const handleSummit = useCallback(
     (value: string) => {
-      submit({ question: value });
+      // submit({ question: value });
+      sendMessage(value);
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
     },
-    [submit, isViewingRawJSON],
+    [sendMessage, isViewingRawJSON],
   );
 
   const handleThreadHistoryPage = useCallback(() => {
@@ -88,11 +99,7 @@ export const Chat: React.FC<ChatProps> = ({
         justify="between"
         px="1"
       >
-        <ChatContent
-          key={`chat-content-${chatId}`}
-          onRetry={retryFromIndex}
-          onStopStreaming={abort}
-        />
+        <ChatContent key={`chat-content-${chatId}`} />
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 
@@ -122,7 +129,7 @@ export const Chat: React.FC<ChatProps> = ({
 
         <Flex justify="between" pl="1" pr="1" pt="1">
           {/* Two flexboxes are left for the future UI element on the right side */}
-          {messages.length > 0 && (
+          {totalMessages > 0 && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="1">
                 <Text size="1">model: {capsForToolUse.currentModel} </Text> •{" "}
@@ -133,7 +140,7 @@ export const Chat: React.FC<ChatProps> = ({
                   mode: {chatToolUse}{" "}
                 </Text>
               </Flex>
-              {messages.length !== 0 &&
+              {totalMessages !== 0 &&
                 !isStreaming &&
                 isDebugChatHistoryVisible && (
                   <ThreadHistoryButton

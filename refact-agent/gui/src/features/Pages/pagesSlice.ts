@@ -14,6 +14,7 @@ export interface HistoryList {
 
 export interface ChatPage {
   name: "chat";
+  ft_id?: string;
 }
 
 export interface FIMDebugPage {

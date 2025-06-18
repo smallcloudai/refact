@@ -43,8 +43,8 @@ export const STUB_LINKS_FOR_CHAT_RESPONSE: LinksForChatResponse = {
         },
         messages: [
           {
-            role: "user",
-            content:
+            ftm_role: "user",
+            ftm_content:
               "Make recommended_integrations an empty list, follow the system prompt.",
           },
         ],

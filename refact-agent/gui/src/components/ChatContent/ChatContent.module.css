@@ -33,6 +33,10 @@
   white-space: pre;
 }
 
+.userInput.empty {
+  opacity: 0;
+}
+
 .break_word {
   word-break: break-word;
 }

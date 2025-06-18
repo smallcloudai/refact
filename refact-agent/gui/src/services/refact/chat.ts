@@ -11,6 +11,14 @@ import {
 
 export const DEFAULT_MAX_NEW_TOKENS = 4096;
 
+export type LSPUserMessage = Pick<
+  UserMessage,
+  "checkpoints" | "compression_strength"
+> & {
+  role: UserMessage["ftm_role"];
+  content: UserMessage["ftm_content"];
+};
+
 export type LspChatMessage =
   | {
       role: ChatRole;
@@ -24,8 +32,12 @@ export type LspChatMessage =
       tool_call_id?: string;
       usage?: Usage | null;
     }
-  | UserMessage
-  | { role: "tool"; content: ToolResult["content"]; tool_call_id: string };
+  | LSPUserMessage
+  | {
+      role: "tool";
+      content: ToolResult["ftm_content"];
+      tool_call_id: string;
+    };
 
 // could be more narrow.
 export function isLspChatMessage(json: unknown): json is LspChatMessage {
@@ -40,7 +52,7 @@ export function isLspChatMessage(json: unknown): json is LspChatMessage {
 
 export function isLspUserMessage(
   message: LspChatMessage,
-): message is UserMessage {
+): message is LSPUserMessage {
   return message.role === "user";
 }
 
@@ -138,6 +150,18 @@ export type Usage = {
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
+
+export function isUsage(usage: unknown): usage is Usage {
+  if (!usage) return false;
+  if (typeof usage !== "object") return false;
+  if (!("completion_tokens" in usage)) return false;
+  if (typeof usage.completion_tokens !== "number") return false;
+  if (!("prompt_tokens" in usage)) return false;
+  if (typeof usage.prompt_tokens !== "number") return false;
+  if (!("total_tokens" in usage)) return false;
+  if (typeof usage.total_tokens !== "number") return false;
+  return true;
+}
 
 // TODO: add config url
 export async function sendChat({

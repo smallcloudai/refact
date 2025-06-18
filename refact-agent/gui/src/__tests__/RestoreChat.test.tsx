@@ -46,8 +46,12 @@ describe("Restore Chat from history", () => {
             model: "test",
             tool_use: "explore",
             messages: [
-              { role: "user", content: "test user message", checkpoints: [] },
-              { role: "assistant", content: "👋" },
+              {
+                ftm_role: "user",
+                ftm_content: "test user message",
+                checkpoints: [],
+              },
+              { ftm_role: "assistant", ftm_content: "👋" },
             ],
             new_chat_suggested: {
               wasSuggested: false,
