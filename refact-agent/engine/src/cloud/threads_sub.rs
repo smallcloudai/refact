@@ -68,9 +68,7 @@ pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext
 }
 
 pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
-    // let api_key = gcx.read().await.cmdline.api_key.clone();
-    // TODO: remove it later
-    let api_key = "sk_alice_123456".to_string();
+    let api_key = gcx.read().await.cmdline.api_key.clone();
     loop {
         {
             let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
@@ -276,6 +274,11 @@ async fn events_loop(
                     }
                     "error" => {
                         error!("threads subscription error: {}", text);
+                        return Err(format!("{}", text));
+                    }
+                    "complete" => {
+                        error!("threads subscription complete: {}.\nRestarting it", text);
+                        return Err(format!("{}", text));
                     }
                     _ => {
                         info!("received message with unknown type: {}", text);

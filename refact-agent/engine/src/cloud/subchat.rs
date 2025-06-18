@@ -63,9 +63,6 @@ pub async fn subchat(
         )
     };
     
-    // TODO: remove later
-    let api_key = "sk_alice_123456".to_string();
-
     let model_name = crate::cloud::experts_req::expert_choice_consequences(&api_key, ft_fexp_id, &located_fgroup_id).await?;
     let preferences = build_preferences(&model_name, temperature, max_new_tokens, 1, reasoning_effort);
     let existing_threads = crate::cloud::threads_req::get_threads_app_captured(
@@ -154,6 +151,9 @@ pub async fn subchat(
                     }
                     "error" => {
                         error!("threads subscription error: {}", text);
+                    }
+                    "complete" => {
+                        error!("threads subscription complete: {}.\nRestarting it", text);
                     }
                     _ => {
                         info!("received message with unknown type: {}", text);

@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use hashbrown::HashSet;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
-use crate::call_validation::{ChatMessage, ChatContent, ChatUsage, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
+use crate::call_validation::{ChatMessage, ChatContent, ContextEnum, SubchatParameters, ContextFile, PostprocessSettings};
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_or_a_good_error};
@@ -212,7 +212,7 @@ impl Tool for ToolLocateSearch {
             &important_paths,
             &external_messages
         ).await?;
-        let (mut results, usage, tool_message, cd_instruction) = find_relevant_files_with_search(
+        let (mut results, tool_message, cd_instruction) = find_relevant_files_with_search(
             ccx_subchat,
             tool_call_id,
             params,
@@ -226,7 +226,6 @@ impl Tool for ToolLocateSearch {
             content: ChatContent::SimpleText(tool_message),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
-            usage: Some(usage),
             ..Default::default()
         }));
 
@@ -237,7 +236,6 @@ impl Tool for ToolLocateSearch {
                 content: ChatContent::SimpleText(cd_instruction),
                 tool_calls: None,
                 tool_call_id: "".to_string(),
-                usage: None,
                 ..Default::default()
             }));
         }
@@ -255,18 +253,17 @@ async fn find_relevant_files_with_search(
     tool_call_id: &str,
     subchat_params: SubchatParameters,
     user_query: String,
-) -> Result<(Vec<ContextEnum>, ChatUsage, String, String), String> {
+) -> Result<(Vec<ContextEnum>, String, String), String> {
     ccx.lock().await.pp_skeleton = true;
     let gcx: Arc<ARwLock<GlobalContext>> = ccx.lock().await.global_context.clone();
     let total_files_in_project = gcx.read().await.documents_state.workspace_files.lock().unwrap().len();
 
-    let mut usage = ChatUsage { ..Default::default() };
     let mut inspected_files = HashSet::new();
     let mut results: Vec<ContextEnum> = vec![];
 
     if total_files_in_project == 0 {
         let tool_message = format!("Inspected 0 files, project has 0 files");
-        return Ok((results, usage, tool_message, "".to_string()))
+        return Ok((results, tool_message, "".to_string()))
     }
     let result = crate::cloud::subchat::subchat(
         ccx.clone(),
@@ -294,7 +291,7 @@ async fn find_relevant_files_with_search(
     let rejection = assistant_output1.get("rejection");
     if let Some(_rejection_message) = rejection {
         let cd_instruction = format!("💿 locate() looked inside of {} files, workspace has {} files.", inspected_files.len(), total_files_in_project).replace("\n", " ");
-        return Ok((results, usage, serde_json::to_string_pretty(&assistant_output1).unwrap(), cd_instruction));
+        return Ok((results, serde_json::to_string_pretty(&assistant_output1).unwrap(), cd_instruction));
     }
 
     let assistant_output2 = crate::json_utils::extract_json_object::<IndexMap<String, IndexMap<String, String>>>(last_message.content.content_text_only().as_str()).map_err(|e| {
@@ -309,7 +306,7 @@ async fn find_relevant_files_with_search(
 Don't call cat() for the same files, you already have them. Follow your task and the system prompt.
 "###, inspected_files.len(), total_files_in_project).replace("\n", " ");
 
-    Ok((results, usage, serde_json::to_string_pretty(&assistant_output2).unwrap(), cd_instruction))
+    Ok((results, serde_json::to_string_pretty(&assistant_output2).unwrap(), cd_instruction))
 }
 
 
