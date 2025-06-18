@@ -10,7 +10,6 @@ import {
 import { setCurrentProjectInfo } from "../Chat/currentProject";
 
 type InitialState = {
-  workspace: string | null;
   loading: boolean;
   error: string | null;
   experts: ExpertsForGroupQuery["experts_effective_list"];
@@ -121,9 +120,9 @@ export const expertsSlice = createSlice({
       const names = action.payload.expert_choice_consequences.map(
         (model) => model.provm_name,
       );
-      //   if (!state.selectedModel && names.length > 0) {
-      //     state.selectedModel = names[0];
-      //   }
+      if (!state.selectedModel && names.length > 0) {
+        state.selectedModel = names[0];
+      }
       if (state.selectedModel && !names.includes(state.selectedModel)) {
         state.selectedModel = null;
       }
