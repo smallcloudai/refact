@@ -1,11 +1,20 @@
-# 🤖 Contributing Models and Providers to Refact BYOK
+## 🤝 Contributing to Refact Agent
+Thanks for your interest in contributing to Refact Agent! We’re an open-source agent build with community — and we’re excited to have you here.
 
-Welcome to the comprehensive guide for adding new models and providers to Refact's Bring Your Own Key (BYOK) functionality! This guide will walk you through everything you need to know to contribute new models and providers to the Refact ecosystem.
+Whether you're fixing a bug, adding a new model, improving the docs, or exploring areas like the MCP catalog — your contributions help shape the future of AI Agents.
 
+## 🌱 How You Can Contribute
+There’s no single path to contributing. Here are a few great starting points:
 
-**Note:** At the moment, we are only accepting contributions related to **adding new models**.
-Stay tuned for updates on other contribution opportunities!
+- Try Refact out and open issues when you hit bugs or have feature ideas.
+- Add a new model or provider — this guide includes an example of how to do that
+- Explore and extend the MCP catalog
+- Improve docs
 
+Much of the setup info in this doc applies across different areas — so feel free to contribute where your interest leads you.
+
+## ✨ Got Something Else in Mind?
+If you're excited about something that’s not listed here — feel free to reach out on Discord Community (#contribution channel). We're always open to new contributions and ways to improve together.
 
 ## 📚 Table of Contents
 
@@ -76,30 +85,7 @@ The frontend will connect to the Rust engine running on port 8001.
 
 Chat models are used for conversational AI interactions. Here's how to add them:
 
-### Step 1: Add Model to Known Models
-
-Edit `refact-agent/engine/src/known_models.json`:
-
-```json
-{
-  "chat_models": {
-    "your-new-model": {
-      "n_ctx": 128000,
-      "supports_tools": true,
-      "supports_multimodality": true,
-      "supports_agent": true,
-      "scratchpad": "PASSTHROUGH",
-      "tokenizer": "hf://your-tokenizer-path",
-      "similar_models": [
-        "similar-model-1",
-        "similar-model-2"
-      ]
-    }
-  }
-}
-```
-
-### Step 2: Add to Provider Configuration
+### Step 1: Add to Provider Configuration
 
 For existing providers, edit the appropriate YAML file in `refact-agent/engine/src/yaml_configs/default_providers/`:
 
@@ -118,23 +104,19 @@ chat_models:
     supports_agent: true
     tokenizer: hf://your-tokenizer-path
 ```
+for more info about which config needs to be set up, you can see known_models.json
 
-### Step 3: Test the Model
 
-```bash
-# Test with curl
-curl http://127.0.0.1:8001/v1/chat/completions -k \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "provider/your-new-model",
-    "messages": [
-      {"role": "user", "content": "Hello, test message"}
-    ],
-    "stream": false,
-    "temperature": 0.1,
-    "max_tokens": 100
-  }'
-```
+### Step 2: Test the Model
+
+Once set up, test your model in the Refact frontend:
+
+- Can it call tools?
+- Does it support images (if enabled)?
+- Do the flags behave as expected?
+
+This ensures everything works smoothly end-to-end.
+
 
 ## ⚡ Adding Completion Models
 
@@ -149,7 +131,7 @@ FIM models use special tokens:
 - `eot`: End of text token
 
 ### Step 2: Add to Known Models
-
+Add to known models (in json) or provider file (in yaml)
 ```json
 {
   "completion_models": {
@@ -177,26 +159,10 @@ FIM models use special tokens:
 
 ### Step 3: Test Code Completion
 
-```bash
-curl http://127.0.0.1:8001/v1/code-completion -k \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "inputs": {
-      "sources": {"test.py": "def hello_world():"},
-      "cursor": {
-        "file": "test.py",
-        "line": 0,
-        "character": 18
-      },
-      "multiline": true
-    },
-    "stream": false,
-    "parameters": {
-      "temperature": 0.1,
-      "max_new_tokens": 50
-    }
-  }'
-```
+Use the Refact IDE plugin in XDebug mode. It should connect to your local LSP server on port 8001.
+
+Try triggering completions in the IDE to make sure everything’s working as expected.
+
 
 ## 🔌 Adding New Providers
 
@@ -245,18 +211,7 @@ const PROVIDER_TEMPLATES: &[(&str, &str)] = &[
 
 ### Step 3: Test Provider Integration
 
-```bash
-# Check if provider is loaded
-curl http://127.0.0.1:8001/v1/caps
-
-# Test with your provider
-curl http://127.0.0.1:8001/v1/chat/completions -k \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "your-provider/your-model",
-    "messages": [{"role": "user", "content": "Test"}]
-  }'
-```
+Test should be done in UI to see if it can be set up, and if their models work after that.
 
 ## 🧪 Testing Your Contributions
 
@@ -265,17 +220,6 @@ curl http://127.0.0.1:8001/v1/chat/completions -k \
 ```bash
 cd refact-agent/engine/
 cargo test
-```
-
-### Integration Tests
-
-```bash
-# Start the engine
-cargo run -- --http-port 8001 --logs-stderr --experimental --workspace-folder .
-
-# Run Python integration tests
-cd tests/
-python test_your_feature.py
 ```
 
 ### Manual Testing Checklist
@@ -310,9 +254,7 @@ Enable xDebug in your IDE extension settings to connect to your locally built Ru
 
 ### Code Quality
 
-1. **Follow Rust conventions**: Use `cargo fmt` and `cargo clippy`
-2. **Add tests**: Include unit tests for new functionality
-3. **Commit messages**: Use clear, descriptive commit messages
+1. **Commit messages**: Use clear, descriptive commit messages
 
 ## 🐛 Troubleshooting
 
@@ -325,12 +267,11 @@ Enable xDebug in your IDE extension settings to connect to your locally built Ru
 
 **Tokenizer errors:**
 - Verify tokenizer path is correct
-- Check if tokenizer supports the model's special tokens
 - Use `fake` tokenizer for testing if needed
 
 **API connection issues:**
 - Verify endpoint URLs are correct
-- Check API key format and permissions
+- Check API key format authorization
 - Test with curl directly first
 
 **Completion not working:**
@@ -341,8 +282,6 @@ Enable xDebug in your IDE extension settings to connect to your locally built Ru
 ### Debug Commands
 
 ```bash
-# Check logs
-cargo run -- --logs-stderr --experimental
 
 # Test specific endpoints
 curl http://127.0.0.1:8001/v1/caps
@@ -356,23 +295,25 @@ cargo check
 
 ### Example 1: Adding Claude 4 (Hypothetical) 
 
-1. **Add to known_models.json:**
-```json
-"claude-4": {
-  "n_ctx": 300000,
-  "supports_tools": true,
-  "supports_multimodality": true,
-  "supports_agent": true,
-  "scratchpad": "PASSTHROUGH",
-  "tokenizer": "hf://Xenova/claude-tokenizer"
-}
-```
+Make sure your model is listed in the config with all required fields — not just running_models, but also things like n_ctx, and any other relevant settings.
 
-2. **Update anthropic.yaml:**
+-  **Update anthropic.yaml:**
 ```yaml
 running_models:
   - claude-4
   - claude-3-7-sonnet-latest
+
+models:
+  claude-4:
+    n_ctx: 200000
+    generation_params:
+      temperature: 0.7
+      top_p: 0.95
+  claude-3-7-sonnet-latest:
+    n_ctx: 100000
+    generation_params:
+      temperature: 0.5
+      top_p: 0.9
 ```
 
 ### Example 2: Adding a New FIM Model
@@ -415,7 +356,7 @@ model_default_settings_ui:
 ## 🎯 Next Steps
 
 1. **Join our [Discord](https://www.smallcloud.ai/discord)** for community support
-2. **Check [GitHub Issues](https://github.com/smallcloudai/refact/issues)**  *new-modals* tags for contribution opportunities
+2. **Check [GitHub Issues](https://github.com/smallcloudai/refact/issues)** for contribution opportunities - search for tags related to good first issues
 3. **Check [Documentation](https://docs.refact.ai/)** for more details
 
 Happy contributing! 🚀
