@@ -378,45 +378,61 @@ pub async fn get_config_dirs(
     gcx: Arc<ARwLock<GlobalContext>>,
     current_project_path: &Option<PathBuf>
 ) -> (Vec<PathBuf>, PathBuf) {
-    let (global_config_dir, workspace_folders_arc, workspace_vcs_roots_arc, _integrations_yaml) = {
+    let (global_config_dir, workspace_folders_arc, workspace_vcs_roots_arc, dot_refact_folders_arc) = {
         let gcx_locked = gcx.read().await;
         (
             gcx_locked.config_dir.clone(),
             gcx_locked.documents_state.workspace_folders.clone(),
             gcx_locked.documents_state.workspace_vcs_roots.clone(),
-            gcx_locked.cmdline.integrations_yaml.clone(),
+            gcx_locked.documents_state.dot_refact_folders.clone(),
         )
     };
 
     let mut workspace_folders = workspace_folders_arc.lock().unwrap().clone();
-    if let Some(current_project_path) = current_project_path {
-        workspace_folders = workspace_folders.into_iter()
-            .filter(|folder| current_project_path.starts_with(&folder)).collect::<Vec<_>>();
-    }
+    let dot_refact_folders = dot_refact_folders_arc.lock().await.clone();
     let workspace_vcs_roots = workspace_vcs_roots_arc.lock().unwrap().clone();
 
-    let mut config_dirs = Vec::new();
+    let mut config_dirs = vec![];
 
-    for folder in workspace_folders {
-        let vcs_roots: Vec<PathBuf> = workspace_vcs_roots
-            .iter()
-            .filter(|root| root.starts_with(&folder))
-            .cloned()
-            .collect();
+    if let Some(current_project_path) = current_project_path {
+        workspace_folders.retain(|folder| current_project_path.starts_with(folder));
 
-        if !vcs_roots.is_empty() {
-            // it has any workspace_vcs_roots => take them as projects
-            for root in vcs_roots {
-                config_dirs.push(root.join(".refact"));
-            }
+        let active_workspace = if !workspace_folders.is_empty() {
+            workspace_folders.sort();
+            workspace_folders.truncate(1);
+
+            &workspace_folders[0]
         } else {
-            // it doesn't => use workspace_folder itself
-            // probably we see this because it's a new project that doesn't have version control yet, but added to the workspace already
-            config_dirs.push(folder.join(".refact"));
+            tracing::warn!("No workspace folders found for current project path: {}", current_project_path.display());
+            current_project_path
+        };
+
+        tracing::info!("Active workspace folder: {}", active_workspace.display());
+
+        config_dirs.extend(workspace_vcs_roots.into_iter().map(|p| p.join(".refact")).filter(|p| p.starts_with(active_workspace)));
+        config_dirs.extend(dot_refact_folders.into_iter().filter(|p| p.starts_with(active_workspace)));
+
+        for parent in active_workspace.ancestors() {
+            if parent.join(".refact").exists() || parent == active_workspace {
+                config_dirs.push(parent.join(".refact"));
+            }
+        }
+    } else {
+        config_dirs.extend(workspace_vcs_roots.into_iter().map(|p| p.join(".refact")));
+        config_dirs.extend(dot_refact_folders.into_iter());
+
+        for workspace_folder in workspace_folders {
+            for parent in workspace_folder.ancestors() {
+                if parent.join(".refact").exists() || parent == workspace_folder {
+                    config_dirs.push(parent.join(".refact"));
+                }
+            }
         }
     }
 
     config_dirs.sort();
+    config_dirs.dedup();
+
     (config_dirs, global_config_dir)
 }
 
