@@ -940,6 +940,46 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         }
     }
 
+    async fn on_dot_refact_dir_change(gcx_weak: Weak<ARwLock<GlobalContext>>, event: Event) {
+        if let Some(gcx) = gcx_weak.clone().upgrade() {
+            let dot_refact_folders_arc = gcx.read().await.documents_state.dot_refact_folders.clone();
+            let mut dot_refact_folders = dot_refact_folders_arc.lock().await;
+            match event.kind {
+                EventKind::Create(_) => {
+                    info!("Detected .refact folder creation: {:?}", event.paths);
+                    dot_refact_folders.extend(
+                        event.paths.into_iter()
+                            .filter(|p| p.ends_with(".refact"))
+                            .map(|p| canonical_path(p.to_string_lossy()))
+                    );
+                    dot_refact_folders.sort();
+                    dot_refact_folders.dedup();
+                }
+                EventKind::Remove(_) => {
+                    info!("Detected .refact folder removal: {:?}", event.paths);
+                    for p in &event.paths {
+                        if p.ends_with(".refact") {
+                            dot_refact_folders.retain(|x| x != &canonical_path(p.to_string_lossy()));
+                        }
+                    }
+                }
+                EventKind::Modify(_) => {
+                    info!("Detected .refact folder modification: {:?}", event.paths);
+                    for p in &event.paths {
+                        if p.ends_with(".refact") {
+                            let canonical = canonical_path(p.to_string_lossy());
+                            dot_refact_folders.retain(|x| x != &canonical);
+                            if p.exists() {
+                                dot_refact_folders.push(canonical);
+                            }
+                        }
+                    }
+                }
+                _ => ()
+            }
+        }
+    }
+
     match event.kind {
         // We may receive specific event that a folder is being added/removed, but not the .git itself, this happens on Unix systems
         EventKind::Create(CreateKind::Folder) | EventKind::Remove(RemoveKind::Folder) if event.paths.iter().any(
@@ -950,6 +990,10 @@ pub async fn file_watcher_event(event: Event, gcx_weak: Weak<ARwLock<GlobalConte
         EventKind::Create(CreateKind::Any) | EventKind::Modify(ModifyKind::Any) | EventKind::Remove(RemoveKind::Any)
             if event.paths.iter().any(|p| p.ends_with(".git")) =>
             on_dot_git_dir_change(gcx_weak, event).await,
+
+        EventKind::Create(CreateKind::Any | CreateKind::Folder) | EventKind::Modify(_) | EventKind::Remove(RemoveKind::Any | RemoveKind::Folder)
+            if event.paths.iter().any(|p| p.ends_with(".refact")) =>
+            on_dot_refact_dir_change(gcx_weak, event).await,
 
         EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =>
             on_file_change(gcx_weak.clone(), event).await,
