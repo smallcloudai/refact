@@ -6,14 +6,12 @@ use crate::call_validation::{ChatToolCall, ContextFile};
 use crate::postprocessing::pp_context_files::RESERVE_FOR_QUESTION_AND_FOLLOWUP;
 
 pub struct HasRagResults {
-    pub was_sent: bool,
     pub in_json: Vec<Value>,
 }
 
 impl HasRagResults {
     pub fn new() -> Self {
         HasRagResults {
-            was_sent: false,
             in_json: vec![],
         }
     }
@@ -22,14 +20,6 @@ impl HasRagResults {
 impl HasRagResults {
     pub fn push_in_json(&mut self, value: Value) {
         self.in_json.push(value);
-    }
-
-    pub fn response_streaming(&mut self) -> Result<Vec<Value>, String> {
-        if self.was_sent == true || self.in_json.is_empty() {
-            return Ok(vec![]);
-        }
-        self.was_sent = true;
-        Ok(self.in_json.clone())
     }
 }
 

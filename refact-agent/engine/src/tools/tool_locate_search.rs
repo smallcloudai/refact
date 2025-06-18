@@ -17,6 +17,8 @@ use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, pr
 use crate::files_in_workspace::get_file_text_from_memory_or_disk; 
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::tokens::count_text_tokens_with_fallback;
+
+
 pub struct ToolLocateSearch {
     pub config_path: String,
 }
@@ -185,7 +187,7 @@ impl Tool for ToolLocateSearch {
 
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
-            let mut t = AtCommandsContext::new(
+            let t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
                 8,
@@ -193,10 +195,7 @@ impl Tool for ToolLocateSearch {
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
                 ccx_lock.should_execute_remotely,
-                ccx_lock.current_model.clone(),
             ).await;
-            t.subchat_tx = ccx_lock.subchat_tx.clone();
-            t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
         };
 

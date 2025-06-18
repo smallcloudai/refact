@@ -10,7 +10,7 @@ use serde_json::Value;
 use crate::files_correction::CommandSimplifiedDirExt;
 use crate::global_context::GlobalContext;
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ContextEnum, ChatMessage, ChatContent, ChatUsage};
+use crate::call_validation::{ContextEnum, ChatMessage, ChatContent};
 use crate::files_correction::canonical_path;
 use crate::integrations::go_to_configuration_message;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
@@ -169,12 +169,6 @@ impl Tool for ToolGitlab {
 
     fn tool_depends_on(&self) -> Vec<String> {
         vec![]
-    }
-
-    fn usage(&mut self) -> &mut Option<ChatUsage> {
-        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
-        #[allow(static_mut_refs)]
-        unsafe { &mut DEFAULT_USAGE }
     }
 
     fn confirm_deny_rules(&self) -> Option<IntegrationConfirmation> {

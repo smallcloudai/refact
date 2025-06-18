@@ -118,7 +118,7 @@ pub async fn generate_commit_message_by_diff(
         ], "id:generate_commit_message:1.0")
     };
     let ccx: Arc<AMutex<AtCommandsContext>> = Arc::new(AMutex::new(AtCommandsContext::new(
-        gcx.clone(), N_CTX, 1, false, messages.clone(), "".to_string(), false, None
+        gcx.clone(), N_CTX, 1, false, messages.clone(), "".to_string(), false
     ).await));
     
     let new_messages = crate::cloud::subchat::subchat(

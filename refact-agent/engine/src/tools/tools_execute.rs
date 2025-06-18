@@ -9,15 +9,12 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ChatUsage, ContextEnum, ContextFile, SubchatParameters};
-use crate::custom_error::MapErrToString;
-use crate::global_context::try_load_caps_quickly_if_not_present;
+use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, ContextFile, SubchatParameters};
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat_by_tools;
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
 
 
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
@@ -27,8 +24,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
         let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();  // comes from the request, the request has specified parameters
         (gcx, params)
     };
-
-    let mut params = match params_mb {
+    let params = match params_mb {
         Some(params) => params,
         None => {
             let mut error_log = Vec::new();
@@ -40,45 +36,6 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
         }
     };
-
-    // check if the models exist otherwise use the external chat model
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
-
-    if let Some(model) = &params.subchat_model {
-        match resolve_chat_model(caps.clone(), &model) {
-            Ok(_) => return Ok(params),
-            Err(e) => {
-                tracing::warn!("Specified subchat_model {} is not available: {}", model, e);
-            }
-        }
-    }
-
-    if let Some(current_model) = ccx.lock().await.current_model.clone() {
-        let model_to_resolve = match params.subchat_model_type {
-            ChatModelType::Light => &caps.defaults.chat_light_model,
-            ChatModelType::Default => &caps.defaults.chat_default_model,
-            ChatModelType::Thinking => &caps.defaults.chat_thinking_model,
-        };
-        params.subchat_model = match resolve_model(&caps.chat_models, model_to_resolve) {
-            Ok(model_rec) => {
-                if !is_cloud_model(&current_model) && is_cloud_model(&model_rec.base.id)
-                    && params.subchat_model_type != ChatModelType::Light {
-                    Some(current_model.to_string())
-                } else {
-                    Some(model_rec.base.id.clone())
-                }
-            },
-            Err(e) => {
-                tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.",
-                params.subchat_model_type, e, current_model);
-                Some(current_model)
-            }
-        };
-    }
-
-    if let Some(model) = &params.subchat_model {
-        tracing::info!("using model for subchat: {}", model);
-    }
     Ok(params)
 }
 
@@ -163,9 +120,7 @@ pub async fn run_tools(
             }
             Err(e) => {
                 warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
-                let mut tool_failed_message = tool_answer_err(e, t_call.id.to_string());
-                tool_failed_message.usage = cmd.usage().clone();
-                *cmd.usage() = None;
+                let tool_failed_message = tool_answer_err(e, t_call.id.to_string());
                 generated_tool.push(tool_failed_message.clone());
                 continue;
             }
@@ -359,12 +314,4 @@ pub fn command_should_be_denied(
     }
 
     (false, "".to_string())
-}
-
-pub fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
-    if let Some(u) = message.usage.as_ref() {
-        usage.total_tokens += u.total_tokens;
-        usage.completion_tokens += u.completion_tokens;
-        usage.prompt_tokens += u.prompt_tokens;
-    }
 }

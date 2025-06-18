@@ -62,7 +62,6 @@ pub async fn compress_trajectory(
         messages.clone(),
         "".to_string(),
         false,
-        None
     ).await));
     let new_messages = crate::cloud::subchat::subchat(
         ccx.clone(),

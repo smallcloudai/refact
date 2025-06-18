@@ -8,7 +8,7 @@ use serde_json::json;
 use tokio::sync::Mutex as AMutex;
 use tracing::info;
 
-use crate::call_validation::{ChatMeta, SamplingParameters};
+use crate::call_validation::SamplingParameters;
 use crate::caps::BaseModelRecord;
 use crate::custom_error::MapErrToString;
 use crate::caps::EmbeddingModelRecord;
@@ -18,7 +18,6 @@ pub async fn forward_to_openai_style_endpoint(
     prompt: &str,
     client: &reqwest::Client,
     sampling_parameters: &SamplingParameters,
-    meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let mut headers = HeaderMap::new();
@@ -59,9 +58,6 @@ pub async fn forward_to_openai_style_endpoint(
         data["prompt"] = serde_json::Value::String(prompt.to_string());
         data["echo"] = serde_json::Value::Bool(false);
     }
-    if let Some(meta) = meta {
-        data["meta"] = json!(meta);
-    }
 
     // When cancelling requests, coroutine ususally gets aborted here on the following line.
     let req = client.post(&model_rec.endpoint)
@@ -94,7 +90,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
     prompt: &str,
     client: &reqwest::Client,
     sampling_parameters: &SamplingParameters,
-    meta: Option<ChatMeta>
 ) -> Result<EventSource, String> {
     let is_passthrough = prompt.starts_with("PASSTHROUGH ");
     let mut headers = HeaderMap::new();
@@ -140,10 +135,6 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         sampling_parameters.temperature.clone().map(|x| x.to_string()).unwrap_or("none".to_string()),
         sampling_parameters.n.clone().map(|x| x.to_string()).unwrap_or("none".to_string())
     );
-
-    if let Some(meta) = meta {
-        data["meta"] = json!(meta);
-    }
 
     if model_rec.endpoint.is_empty() {
         return Err(format!("No endpoint configured for {}", model_rec.id));

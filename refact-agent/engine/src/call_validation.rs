@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::hash::Hash;
 use axum::http::StatusCode;
-use indexmap::IndexMap;
 use ropey::Rope;
 
 use crate::custom_error::ScratchError;
@@ -157,13 +156,6 @@ impl Default for ChatContent {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct ChatUsage {
-    pub prompt_tokens: usize,
-    pub completion_tokens: usize,
-    pub total_tokens: usize, // TODO: remove (can produce self-contradictory data when prompt+completion != total)
-}
-
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct ChatMessage {
     pub role: String,
@@ -176,8 +168,6 @@ pub struct ChatMessage {
     pub tool_call_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_failed: Option<bool>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub usage: Option<ChatUsage>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub checkpoints: Vec<Checkpoint>,
     #[serde(default, skip_serializing_if="Option::is_none")]
@@ -208,10 +198,6 @@ impl Default for ChatModelType {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SubchatParameters {
-    #[serde(default)]
-    pub subchat_model_type: ChatModelType,
-    #[serde(default)]
-    pub subchat_model: Option<String>,
     pub subchat_n_ctx: usize,
     #[serde(default)]
     pub subchat_tokens_for_rag: usize,
@@ -223,76 +209,6 @@ pub struct SubchatParameters {
     pub subchat_reasoning_effort: Option<ReasoningEffort>,
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
-pub struct ChatPost {
-    pub messages: Vec<serde_json::Value>,
-    #[serde(default)]
-    pub parameters: SamplingParameters,
-    #[serde(default)]
-    pub model: String,
-    pub stream: Option<bool>,
-    pub temperature: Option<f32>,
-    #[serde(default)]
-    pub max_tokens: Option<usize>,
-    #[serde(default)]
-    pub increase_max_tokens: bool,
-    #[serde(default)]
-    pub n: Option<usize>,
-    #[serde(default)]
-    pub tool_choice: Option<String>,
-    #[serde(default)]
-    pub checkpoints_enabled: bool,
-    #[serde(default)]
-    pub only_deterministic_messages: bool, // means don't sample from the model
-    #[serde(default)]
-    pub subchat_tool_parameters: IndexMap<String, SubchatParameters>, // tool_name: {model, allowed_context, temperature}
-    #[serde(default = "PostprocessSettings::new")]
-    pub postprocess_parameters: PostprocessSettings,
-    #[serde(default)]
-    pub meta: ChatMeta,
-    #[serde(default)]
-    pub style: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct ChatMeta {
-    #[serde(default)]
-    pub chat_id: String,
-    #[serde(default)]
-    pub request_attempt_id: String,
-    #[serde(default)]
-    pub chat_remote: bool,
-    #[serde(default)]
-    pub chat_mode: ChatMode,
-    #[serde(default)]
-    pub current_config_file: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Copy)]
-#[allow(non_camel_case_types)]
-pub enum ChatMode {
-    NO_TOOLS,
-    EXPLORE,
-    AGENT,
-    CONFIGURE,
-    PROJECT_SUMMARY,
-}
-
-impl ChatMode {
-    pub fn is_agentic(self) -> bool {
-        match self {
-            ChatMode::AGENT => true,
-            ChatMode::NO_TOOLS | ChatMode::EXPLORE | ChatMode::CONFIGURE |
-                ChatMode::PROJECT_SUMMARY => false,
-        }
-    }
-}
-
-impl Default for ChatMode {
-    fn default() -> Self {
-        ChatMode::NO_TOOLS
-    }
-}
 
 fn default_true() -> bool {
     true

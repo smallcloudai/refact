@@ -1,4 +1,4 @@
-use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, DiffChunk};
+use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, DiffChunk};
 use crate::cloud::graphql_client::{execute_graphql, execute_graphql_no_result, GraphQLRequestConfig, graphql_error_to_string};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -174,9 +174,6 @@ pub fn convert_thread_messages_to_messages(
                 tool_calls,
                 tool_call_id: msg.ftm_call_id.clone(),
                 tool_failed: None,
-                usage: msg.ftm_usage.clone().map(|u| {
-                    serde_json::from_value::<ChatUsage>(u).unwrap_or_else(|_| ChatUsage::default())
-                }),
                 checkpoints: vec![],
                 thinking_blocks: None,
                 finish_reason: None,

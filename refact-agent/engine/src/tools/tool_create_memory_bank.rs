@@ -13,7 +13,7 @@ use crate::{
         at_commands::AtCommandsContext,
         at_tree::{construct_tree_out_of_flat_list_of_paths, PathsHolderNodeArc},
     },
-    call_validation::{ChatContent, ChatMessage, ChatUsage, ContextEnum, ContextFile, PostprocessSettings},
+    call_validation::{ChatContent, ChatMessage, ContextEnum, ContextFile, PostprocessSettings},
     files_correction::{get_project_dirs, paths_from_anywhere},
     files_in_workspace::{get_file_text_from_memory_or_disk, ls_files},
     global_context::GlobalContext,
@@ -312,7 +312,7 @@ impl Tool for ToolCreateMemoryBank {
         
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
-            let mut ctx = AtCommandsContext::new(
+            let ctx = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
                 25,
@@ -320,17 +320,13 @@ impl Tool for ToolCreateMemoryBank {
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
                 ccx_lock.should_execute_remotely,
-                ccx_lock.current_model.clone(),
             ).await;
-            ctx.subchat_tx = ccx_lock.subchat_tx.clone();
-            ctx.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(ctx))
         };
 
         let mut state = ExplorationState::new(gcx.clone()).await?;
         let mut final_results = Vec::new();
         let mut step = 0;
-        let mut usage_collector = ChatUsage::default();
 
         while state.has_unexplored_targets() && step < MAX_EXPLORATION_STEPS {
             step += 1;
@@ -356,7 +352,7 @@ impl Tool for ToolCreateMemoryBank {
                     Self::build_step_prompt(&state, &target, file_context.as_ref())
                 );
 
-                let subchat_result = crate::cloud::subchat::subchat(
+                crate::cloud::subchat::subchat(
                     ccx_subchat.clone(),
                     "id:create_memory_bank:1.0",
                     tool_call_id,
@@ -365,18 +361,6 @@ impl Tool for ToolCreateMemoryBank {
                     Some(params.subchat_max_new_tokens.clone()),
                     params.subchat_reasoning_effort.clone(),
                 ).await?;
-
-                if let Some(last_msg) = subchat_result.last() {
-                    crate::tools::tools_execute::update_usage_from_message(&mut usage_collector, last_msg);
-                    tracing::info!(
-                        target = "memory_bank",
-                        directory = target.target_name,
-                        prompt_tokens = usage_collector.prompt_tokens,
-                        completion_tokens = usage_collector.completion_tokens,
-                        total_tokens = usage_collector.total_tokens,
-                        "Updated token usage"
-                    );
-                }
 
                 state.mark_explored(target.clone());
                 let total = state.to_explore.len() + state.explored.len();
@@ -397,14 +381,11 @@ impl Tool for ToolCreateMemoryBank {
         final_results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(format!(
-                "Memory bank creation completed. Steps: {}, {}. Total directories: {}. Usage: {} prompt tokens, {} completion tokens",
+                "Memory bank creation completed. Steps: {}, {}. Total directories: {}",
                 step,
                 state.get_exploration_summary(),
                 state.explored.len() + state.to_explore.len(),
-                usage_collector.prompt_tokens,
-                usage_collector.completion_tokens,
             )),
-            usage: Some(usage_collector),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()

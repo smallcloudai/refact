@@ -47,7 +47,6 @@ mod scratchpad_abstract;
 mod scratchpads;
 
 mod fetch_embedding;
-mod forward_to_hf_endpoint;
 mod forward_to_openai_endpoint;
 mod restream;
 

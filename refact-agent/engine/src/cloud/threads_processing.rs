@@ -200,7 +200,7 @@ async fn call_tools(
         .collect::<Vec<_>>();
     let ccx = Arc::new(AMutex::new(
         AtCommandsContext::new(gcx.clone(), n_ctx, top_n, false, messages.clone(),
-            thread.ft_id.to_string(), false, None
+            thread.ft_id.to_string(), false
         ).await,
     ));
     let toolset = thread.ft_toolset.clone().unwrap_or_default();

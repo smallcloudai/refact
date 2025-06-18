@@ -9,7 +9,7 @@ use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSettings, SubchatParameters};
+use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
 use crate::caps::resolve_chat_model;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::tools::tools_description::{set_tool_config, MatchConfirmDenyResult, ToolConfig, ToolDesc, ToolGroupCategory, ToolSource};
@@ -24,8 +24,6 @@ struct ToolsPermissionCheckPost {
     pub tool_calls: Vec<ChatToolCall>,
     #[serde(default)]
     pub messages: Vec<ChatMessage>,
-    #[serde(default)]
-    pub meta: ChatMeta,
 }
 
 #[derive(Serialize)]
@@ -171,8 +169,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         false,
         post.messages.clone(),
         "".to_string(),
-        false,
-        Some("".to_string()),
+        false
     ).await)); // used only for should_confirm
 
     let all_tools = get_available_tools(gcx.clone()).await.into_iter()
@@ -266,8 +263,7 @@ pub async fn handle_v1_tools_execute(
         false,
         tools_execute_post.messages.clone(),
         tools_execute_post.chat_id.clone(),
-        false,
-        Some(model_rec.base.id.clone()),
+        false
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();

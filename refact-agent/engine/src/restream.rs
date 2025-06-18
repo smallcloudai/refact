@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
-use tokio::sync::mpsc;
 use async_stream::stream;
 use futures::StreamExt;
 use hyper::{Body, Response, StatusCode};
@@ -10,7 +9,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use uuid;
 
-use crate::call_validation::{ChatMeta, SamplingParameters};
+use crate::call_validation::SamplingParameters;
 use crate::caps::BaseModelRecord;
 use crate::custom_error::ScratchError;
 use crate::nicer_logs;
@@ -25,7 +24,6 @@ pub async fn scratchpad_interaction_not_stream_json(
     model_rec: &BaseModelRecord,
     parameters: &SamplingParameters,  // includes n
     only_deterministic_messages: bool,
-    meta: Option<ChatMeta>
 ) -> Result<serde_json::Value, ScratchError> {
     let t2 = std::time::SystemTime::now();
     let gcx = ccx.lock().await.global_context.clone();
@@ -42,21 +40,12 @@ pub async fn scratchpad_interaction_not_stream_json(
     let mut model_says = if only_deterministic_messages {
         save_url = "only-det-messages".to_string();
         Ok(Value::Object(serde_json::Map::new()))
-    } else if model_rec.endpoint_style == "hf" {
-        crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint(
-            &model_rec,
-            prompt,
-            &client,
-            &parameters,
-            meta
-        ).await
     } else {
         crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint(
             &model_rec,
             prompt,
             &client,
             &parameters,
-            meta
         ).await
     }.map_err(|e| {
         ScratchError::new_but_skip_telemetry(StatusCode::INTERNAL_SERVER_ERROR, format!("forward_to_endpoint: {}", e))
@@ -174,7 +163,6 @@ pub async fn scratchpad_interaction_not_stream(
     model_rec: &BaseModelRecord,
     parameters: &mut SamplingParameters,
     only_deterministic_messages: bool,
-    meta: Option<ChatMeta>
 ) -> Result<Response<Body>, ScratchError> {
     let t1 = std::time::Instant::now();
     let prompt = scratchpad.prompt(
@@ -193,7 +181,6 @@ pub async fn scratchpad_interaction_not_stream(
         &model_rec,
         parameters,
         only_deterministic_messages,
-        meta
     ).await?;
     scratchpad_response_json["created"] = json!(t2.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64());
 
@@ -212,13 +199,11 @@ pub async fn scratchpad_interaction_stream(
     mut model_rec: BaseModelRecord,
     parameters: SamplingParameters,
     only_deterministic_messages: bool,
-    meta: Option<ChatMeta>
 ) -> Result<Response<Body>, ScratchError> {
     let t1: std::time::SystemTime = std::time::SystemTime::now();
     let evstream = stream! {
         let my_scratchpad: &mut Box<dyn ScratchpadAbstract> = &mut scratchpad;
-        let mut my_parameters = parameters.clone();
-        let my_ccx = ccx.clone();
+        let my_parameters = parameters.clone();
 
         let gcx = ccx.lock().await.global_context.clone();
         let (client, slowdown_arc) = {
@@ -230,54 +215,7 @@ pub async fn scratchpad_interaction_stream(
         };
 
         let t0 = std::time::Instant::now();
-        let mut prompt = String::new();
-        {
-            let subchat_tx: Arc<AMutex<mpsc::UnboundedSender<serde_json::Value>>> = my_ccx.lock().await.subchat_tx.clone();
-            let subchat_rx: Arc<AMutex<mpsc::UnboundedReceiver<serde_json::Value>>> = my_ccx.lock().await.subchat_rx.clone();
-            let mut prompt_future = Some(Box::pin(my_scratchpad.prompt(
-                my_ccx.clone(),
-                &mut my_parameters,
-            )));
-            // horrible loop that waits for prompt() future, and at the same time retranslates any streaming via my_ccx.subchat_rx/tx to the user
-            // (without streaming the rx/tx is never processed, disposed with the ccx)
-            loop {
-                tokio::select! {
-                    value = async {
-                        subchat_rx.lock().await.recv().await
-                    } => {
-                        if let Some(value) = value {
-                            let tmp = serde_json::to_string(&value).unwrap();
-                            if tmp == "1337" {
-                                break;  // the only way out of this loop
-                            }
-                            let value_str = format!("data: {}\n\n", tmp);
-                            yield Result::<_, String>::Ok(value_str);
-                        }
-                    },
-                    prompt_maybe = async {
-                        if let Some(fut) = prompt_future.as_mut() {
-                            fut.await
-                        } else {
-                            std::future::pending().await
-                        }
-                    } => {
-                        if let Some(_fut) = prompt_future.take() {
-                            prompt = match prompt_maybe {
-                                Ok(x) => x,
-                                Err(e) => {
-                                    // XXX: tool errors go here, check again if this what we want
-                                    tracing::warn!("prompt or tool use problem inside prompt: {}", e);
-                                    let value_str = format!("data: {}\n\n", serde_json::to_string(&json!({"detail": e})).unwrap());
-                                    yield Result::<_, String>::Ok(value_str);
-                                    return;
-                                }
-                            };
-                            let _ = subchat_tx.lock().await.send(serde_json::json!(1337));
-                        }
-                    }
-                }
-            }
-        }
+        let prompt = String::new();
         info!("scratchpad_interaction_stream prompt {:?}", t0.elapsed());
 
         let _ = slowdown_arc.acquire().await;
@@ -299,23 +237,12 @@ pub async fn scratchpad_interaction_stream(
                 break;
             }
             // info!("prompt: {:?}", prompt);
-            let event_source_maybe = if model_rec.endpoint_style == "hf" {
-                crate::forward_to_hf_endpoint::forward_to_hf_style_endpoint_streaming(
-                    &model_rec,
-                    &prompt,
-                    &client,
-                    &my_parameters,
-                    meta
-                ).await
-            } else {
-                crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
-                    &model_rec,
-                    &prompt,
-                    &client,
-                    &my_parameters,
-                    meta
-                ).await
-            };
+            let event_source_maybe = crate::forward_to_openai_endpoint::forward_to_openai_style_endpoint_streaming(
+                &model_rec,
+                &prompt,
+                &client,
+                &my_parameters,
+            ).await;
             let mut event_source = match event_source_maybe {
                 Ok(event_source) => event_source,
                 Err(e) => {

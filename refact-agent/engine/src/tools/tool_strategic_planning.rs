@@ -148,7 +148,7 @@ impl Tool for ToolStrategicPlanning {
         };
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
-            let mut t = AtCommandsContext::new(
+            let t = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 subchat_params.subchat_n_ctx,
                 0,
@@ -156,10 +156,7 @@ impl Tool for ToolStrategicPlanning {
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
                 ccx_lock.should_execute_remotely,
-                ccx_lock.current_model.clone()
             ).await;
-            t.subchat_tx = ccx_lock.subchat_tx.clone();
-            t.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(t))
         };
         let prompt = _make_prompt(
@@ -190,7 +187,6 @@ impl Tool for ToolStrategicPlanning {
             content: ChatContent::SimpleText(final_message),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
-            usage: None,
             ..Default::default()
         }));  
         results.push(ContextEnum::ChatMessage(ChatMessage {
