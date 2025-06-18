@@ -18,6 +18,8 @@ pub struct Thread {
     pub ft_updated_ts: f64,
     pub ft_archived_ts: f64,
     pub ft_locked_by: String,
+    pub ft_confirmation_request: Option<Value>,
+    pub ft_confirmation_response: Option<Value>,
 }
 
 pub async fn create_thread(
@@ -51,6 +53,8 @@ pub async fn create_thread(
             ft_updated_ts
             ft_archived_ts
             ft_locked_by
+            ft_confirmation_request
+            ft_confirmation_response
         }
     }
     "#;
@@ -114,6 +118,8 @@ pub async fn get_thread(
             ft_updated_ts
             ft_archived_ts
             ft_locked_by
+            ft_confirmation_request
+            ft_confirmation_response
         }
     }
     "#;
@@ -159,6 +165,8 @@ pub async fn get_threads_app_captured(
             ft_updated_ts
             ft_archived_ts
             ft_locked_by
+            ft_confirmation_request
+            ft_confirmation_response
         }
     }
     "#;
@@ -343,6 +351,42 @@ pub async fn set_error_thread(
         mutation,
         variables,
         "thread_patch"
+    )
+    .await
+    .map_err(|e| e.to_string())
+}
+
+pub async fn set_thread_confirmation_request(
+    api_key: String,
+    thread_id: &str,
+    confirmation_request: Value,
+) -> Result<bool, String> {
+    use crate::cloud::graphql_client::{execute_graphql_bool_result, GraphQLRequestConfig};
+    
+    let mutation = r#"
+    mutation SetThreadConfirmationRequest($ft_id: String!, $confirmation_request: String!) {
+        thread_set_confirmation_request(ft_id: $ft_id, confirmation_request: $confirmation_request)
+    }
+    "#;
+    
+    let confirmation_request_str = serde_json::to_string(&confirmation_request)
+        .map_err(|e| format!("Failed to serialize confirmation request: {}", e))?;
+    
+    let variables = json!({
+        "ft_id": thread_id,
+        "confirmation_request": confirmation_request_str
+    });
+
+    let config = GraphQLRequestConfig {
+        api_key,
+        ..Default::default()
+    };
+
+    execute_graphql_bool_result(
+        config,
+        mutation,
+        variables,
+        "thread_set_confirmation_request"
     )
     .await
     .map_err(|e| e.to_string())

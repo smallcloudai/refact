@@ -27,6 +27,8 @@ pub struct ThreadPayload {
     pub ft_app_searchable: Option<String>,
     pub ft_app_capture: Option<String>,
     pub ft_app_specific: Option<Value>,
+    pub ft_confirmation_request: Option<Value>,
+    pub ft_confirmation_response: Option<Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -46,6 +48,8 @@ const THREADS_SUBSCRIPTION_QUERY: &str = r#"
           ft_error
           ft_locked_by
           ft_fexp_id
+          ft_confirmation_request
+          ft_confirmation_response
           ft_need_tool_calls
           ft_need_user
           ft_app_searchable

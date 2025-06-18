@@ -13,9 +13,23 @@ use crate::cloud::threads_req::{lock_thread, Thread};
 use crate::cloud::threads_sub::{BasicStuff, ThreadPayload};
 use crate::global_context::GlobalContext;
 use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat_by_tools;
-use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
+use crate::tools::tools_description::{MatchConfirmDeny, MatchConfirmDenyResult, Tool};
 use crate::tools::tools_execute::pp_run_tools;
 
+
+pub async fn match_against_confirm_deny(
+    ccx: Arc<AMutex<AtCommandsContext>>,
+    t_call: &ChatToolCall,
+    tool: &mut Box<dyn Tool+Send>,
+) -> Result<MatchConfirmDeny, String> {
+    let args = match serde_json::from_str::<HashMap<String, Value>>(&t_call.function.arguments) {
+        Ok(args) => args,
+        Err(e) => {
+            return Err(format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e));
+        }
+    };
+    Ok(tool.match_against_confirm_deny(ccx.clone(), &args).await?)
+}
 
 pub async fn run_tool(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -203,6 +217,13 @@ async fn call_tools(
     let mut tool_id_to_index = HashMap::new();
     // Default tokens limit for tools that perform internal compression (`tree()`, ...)
     ccx.lock().await.tokens_for_rag = max_new_tokens;
+
+    let confirmed_tool_call_ids: Vec<String> = if let Some(confirmation_response) = &thread.ft_confirmation_response {
+        serde_json::from_value(confirmation_response.clone()).map_err(|err| {
+            format!("error parsing confirmation response: {}", err)
+        })?
+    } else { vec![] };
+    let mut required_confirmation = vec![];
     for (idx, t_call) in last_tool_calls.iter().enumerate() {
         let is_answered = thread_messages.iter()
             .filter(|x| x.ftm_role == "tool")
@@ -219,6 +240,26 @@ async fn call_tools(
                 continue;
             }
         };
+        let skip_confirmation = confirmed_tool_call_ids.contains(&t_call.id);
+        if !skip_confirmation {
+            let confirm_deny_res = match_against_confirm_deny(ccx.clone(), t_call, tool).await?;
+            match &confirm_deny_res.result {
+                MatchConfirmDenyResult::CONFIRMATION => {
+                    info!("tool use: tool call `{}` requires confirmation, skipping it", t_call.id);
+                    required_confirmation.push(json!({
+                        "tool_call_id": t_call.id,
+                        "command": confirm_deny_res.command,
+                        "rule": confirm_deny_res.rule,
+                        "ftm_num": last_message.ftm_num + 1 + (idx as i32),
+                    }));
+                    continue;
+                }
+                _ => { }
+            }
+        } else {
+            info!("tool use: tool call `{}` is confirmed, processing to call it", t_call.id);
+        }
+        
         let (tool_result, other_messages, context_files) = match run_tool(ccx.clone(), t_call, tool).await {
             Ok(res) => res,
             Err(err) => {
@@ -229,9 +270,7 @@ async fn call_tools(
                         content: ChatContent::SimpleText(err),
                         tool_call_id: t_call.id.clone(),
                         ..ChatMessage::default()
-                    },
-                    vec![],
-                    vec![]
+                    }, vec![], vec![]
                 )
             }
         };
@@ -262,6 +301,15 @@ async fn call_tools(
         )?;
         all_output_messages.extend(output_thread_messages);
     }
+
+    if !required_confirmation.is_empty() {
+        if !crate::cloud::threads_req::set_thread_confirmation_request(
+            api_key.clone(), &thread.ft_id, serde_json::to_value(required_confirmation.clone()).unwrap()
+        ).await? {
+            warn!("tool use: cannot set confirmation requests: {:?}", required_confirmation);
+        }
+    }
+
     if !all_output_messages.is_empty() {
         crate::cloud::messages_req::create_thread_messages(api_key, &thread.ft_id, all_output_messages).await?;
     } else {
