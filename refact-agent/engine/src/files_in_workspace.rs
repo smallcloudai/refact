@@ -621,23 +621,6 @@ async fn recurse_all_dirs(
     }
 }
 
-#[test]
-fn test_recurse_all_dirs() {
-    let mut visited = HashSet::new();
-    let mut indexing_everywhere = IndexingEverywhere::default();
-    let base_path = canonical_path(".");
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(recurse_all_dirs(&base_path, &mut visited, &mut indexing_everywhere));
-    println!("Visited directories:");
-    for path in &visited {
-        if path.ends_with(".refact") {
-            println!("{}", path.display());
-        }
-    }
-    panic!("Test completed, check output for visited directories");
-}
-
-
 pub async fn enqueue_all_files_from_workspace_folders(
     gcx: Arc<ARwLock<GlobalContext>>,
     wake_up_indexers: bool,
