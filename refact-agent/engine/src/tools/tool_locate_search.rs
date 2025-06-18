@@ -282,10 +282,11 @@ async fn find_relevant_files_with_search(
     
     check_for_inspected_files(&mut inspected_files, &result);
 
-    let last_message = result.last().unwrap();
-    crate::tools::tools_execute::update_usage_from_message(&mut usage, &last_message);
-    assert!(last_message.role == "assistant");
-
+    let last_message = if let Some(message) = result.iter().rev().find(|msg| msg.role == "assistant").cloned() {
+        message
+    } else {
+        return Err("No assistant messages found in the subchat threads".to_string());
+    };
     let assistant_output1 = crate::json_utils::extract_json_object::<IndexMap<String, serde_json::Value>>(last_message.content.content_text_only().as_str()).map_err(|e| {
         tracing::warn!("\n{}\nUnable to parse JSON: {:?}", last_message.content.content_text_only(), e);
         format!("Unable to parse JSON: {:?}", e)
