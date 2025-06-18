@@ -17,6 +17,7 @@ import {
   selectIsStreaming,
   selectIsWaiting,
 } from "../../features/ThreadMessages";
+import { selectCurrentExpert } from "../../features/ExpertsAndModels";
 
 // function usecreateThreadWithMessage() {
 
@@ -34,6 +35,8 @@ export function useMessageSubscription() {
   const appSpecific = useAppSelector(selectAppSpecific, {
     devModeChecks: { stabilityCheck: "never" },
   });
+
+  const selectedExpert = useAppSelector(selectCurrentExpert);
   useEffect(() => {
     if (!maybeFtId) return;
     const thunk = dispatch(
@@ -49,7 +52,9 @@ export function useMessageSubscription() {
   const sendMessage = useCallback(
     (content: string) => {
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
-        void dispatch(createThreadWithMessage({ content }));
+        void dispatch(
+          createThreadWithMessage({ content, expertId: selectedExpert ?? "" }),
+        );
         return;
       }
       const input: FThreadMessageInput = {
@@ -75,7 +80,15 @@ export function useMessageSubscription() {
         }),
       );
     },
-    [appSpecific, dispatch, leafMessage, maybeFtId],
+    [
+      appSpecific,
+      dispatch,
+      leafMessage.endAlt,
+      leafMessage.endNumber,
+      leafMessage.endPrevAlt,
+      maybeFtId,
+      selectedExpert,
+    ],
   );
 
   return { sendMessage };

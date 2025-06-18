@@ -57,6 +57,7 @@ import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/
 import { coinBallanceSlice } from "../features/CoinBalance";
 import { threadListSlice } from "../features/ThreadList";
 import { threadMessagesSlice } from "../features/ThreadMessages";
+import { expertsSlice } from "../features/ExpertsAndModels";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -114,6 +115,7 @@ const rootReducer = combineSlices(
   coinBallanceSlice,
   threadListSlice,
   threadMessagesSlice,
+  expertsSlice,
 );
 
 const rootPersistConfig = {

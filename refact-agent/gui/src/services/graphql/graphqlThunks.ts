@@ -23,6 +23,12 @@ import {
   ThreadPatchDocument,
   ThreadPatchMutation,
   ThreadPatchMutationVariables,
+  ExpertsForGroupDocument,
+  ExpertsForGroupQuery,
+  ExpertsForGroupQueryVariables,
+  ModelsForExpertDocument,
+  ModelsForExpertQuery,
+  ModelsForExpertQueryVariables,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -147,7 +153,7 @@ export const createMessage = createAppAsyncThunk<
 
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
-  { content: string },
+  { content: string; expertId: string },
   {
     dispatch: AppDispatch;
     state: RootState;
@@ -192,7 +198,7 @@ export const createThreadWithMessage = createAsyncThunk<
   const client = createGraphqlClient(apiKey, thunkAPI.signal);
 
   const threadQueryArgs: FThreadInput = {
-    ft_fexp_id: "id:ask:1.0", // TODO: user selected
+    ft_fexp_id: args.expertId, // TODO: user selected
     ft_title: "", // TODO: generate the title
     located_fgroup_id: workspace,
     owner_shared: false,
@@ -292,5 +298,70 @@ export const pauseThreadThunk = createAppAsyncThunk<
   if (!result.data) {
     return thunkAPI.rejectWithValue({ message: "failed to stop thread" });
   }
+  return thunkAPI.fulfillWithValue(result.data);
+});
+
+export const getExpertsThunk = createAppAsyncThunk<
+  ExpertsForGroupQuery,
+  ExpertsForGroupQueryVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string; args: ExpertsForGroupQueryVariables };
+  }
+>("flexus/getExperts", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
+  const result = await client.query<
+    ExpertsForGroupQuery,
+    ExpertsForGroupQueryVariables
+  >(ExpertsForGroupDocument, args);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  }
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "failed to get expert data",
+      args,
+    });
+  }
+
+  return thunkAPI.fulfillWithValue(result.data);
+});
+
+export const getModelsForExpertThunk = createAppAsyncThunk<
+  ModelsForExpertQuery,
+  ModelsForExpertQueryVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string; args: ModelsForExpertQueryVariables };
+  }
+>("flexus/modelsForExpert", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
+  const result = await client.query<
+    ModelsForExpertQuery,
+    ModelsForExpertQueryVariables
+  >(ModelsForExpertDocument, args);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  }
+
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "error get models for expert",
+      args,
+    });
+  }
+
   return thunkAPI.fulfillWithValue(result.data);
 });

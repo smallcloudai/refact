@@ -68,6 +68,8 @@ import { AgentCapabilities } from "./AgentCapabilities/AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
 import classNames from "classnames";
 import { ArchiveIcon } from "@radix-ui/react-icons";
+import { ExpertSelect } from "../../features/ExpertsAndModels/Experts";
+import { ModelsForExpert } from "../../features/ExpertsAndModels";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -371,7 +373,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="1" wrap="wrap" py="1" px="2">
-            {isModelSelectVisible && <CapsSelect />}
+            <ExpertSelect />
+            <ModelsForExpert />
+            {/* {isModelSelectVisible && <CapsSelect />} */}
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               <ThinkingButton />

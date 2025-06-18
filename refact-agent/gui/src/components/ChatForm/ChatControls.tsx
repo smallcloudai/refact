@@ -582,7 +582,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
             setToolUse={onSetToolUse}
           />
           {/* <CapsSelect /> */}
-          <PromptSelect />
+          {/* <PromptSelect /> */}
         </Flex>
       )}
     </Flex>
