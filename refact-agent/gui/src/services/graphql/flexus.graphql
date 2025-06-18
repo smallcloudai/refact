@@ -48,6 +48,7 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
       ftm_call_id
       ftm_usage
       ftm_created_ts
+      ftm_user_preferences ## contains {model: "model-name" }
     }
     stream_delta {
       ftm_role
@@ -58,6 +59,7 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
       ft_id
       ft_need_user
       ft_need_assistant
+      ft_fexp_id ## contain the expert id
     }
   }
 }

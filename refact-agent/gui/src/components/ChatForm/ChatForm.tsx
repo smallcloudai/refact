@@ -16,14 +16,17 @@ import {
   useIsOnline,
   useConfig,
   useCapsForToolUse,
-  useSendChatRequest,
+  // useSendChatRequest,
   useCompressChat,
   useAutoFocusOnce,
 } from "../../hooks";
 import { ErrorCallout, Callout } from "../Callout";
 import { ComboBox } from "../ComboBox";
 import { FilesPreview } from "./FilesPreview";
-import { CapsSelect, ChatControls } from "./ChatControls";
+import {
+  // CapsSelect,
+  ChatControls,
+} from "./ChatControls";
 import { addCheckboxValuesToInput } from "./utils";
 import { useCommandCompletionAndPreviewFiles } from "./useCommandCompletionAndPreviewFiles";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -50,17 +53,18 @@ import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/
 import { AttachImagesButton, FileList } from "../Dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import {
-  selectChatError,
+  // selectChatError,
   // selectIsStreaming,
   // selectIsWaiting,
   selectLastSentCompression,
-  selectMessages,
+  // selectMessages,
   selectThreadToolUse,
   selectToolUse,
 } from "../../features/Chat";
 import {
   selectIsStreaming,
   selectIsWaiting,
+  selectThreadMessagesIsEmpty,
 } from "../../features/ThreadMessages";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
@@ -92,15 +96,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const toolUse = useAppSelector(selectToolUse);
   const globalError = useAppSelector(getErrorMessage);
   const globalErrorType = useAppSelector(getErrorType);
-  const chatError = useAppSelector(selectChatError);
+  // const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
   const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const isOnline = useIsOnline();
-  const { retry } = useSendChatRequest();
+  // const { retry } = useSendChatRequest();
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
-  const messages = useAppSelector(selectMessages);
+  const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
   const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
@@ -113,11 +117,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   }, [threadToolUse]);
 
   const onClearError = useCallback(() => {
-    if (messages.length > 0 && chatError) {
-      retry(messages);
-    }
+    // if (messages.length > 0 && chatError) {
+    //   retry(messages);
+    // }
     dispatch(clearError());
-  }, [dispatch, retry, messages, chatError]);
+  }, [dispatch]);
 
   const caps = useCapsForToolUse();
 
@@ -136,11 +140,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     // )
     //   return false;
     // if (arePromptTokensBiggerThanContext) return true;
-    if (messages.length === 0) return false;
+    if (messagesAreEmpty) return false;
     return isWaiting || isStreaming || !isOnline;
-  }, [allDisabled, messages.length, isWaiting, isStreaming, isOnline]);
-
-  const isModelSelectVisible = useMemo(() => messages.length < 1, [messages]);
+  }, [allDisabled, isOnline, isStreaming, isWaiting, messagesAreEmpty]);
 
   const { processAndInsertImages } = useAttachedImages();
   const handlePastingFile = useCallback(
@@ -373,8 +375,12 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             )}
           />
           <Flex gap="1" wrap="wrap" py="1" px="2">
-            <ExpertSelect />
-            <ModelsForExpert />
+            <ExpertSelect
+              disabled={isStreaming || isWaiting || !messagesAreEmpty}
+            />
+            <ModelsForExpert
+              disabled={isStreaming || isWaiting || !messagesAreEmpty}
+            />
             {/* {isModelSelectVisible && <CapsSelect />} */}
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
@@ -397,7 +403,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                   type="button"
                   onClick={() => void compressChat()}
                   disabled={
-                    messages.length === 0 ||
+                    messagesAreEmpty ||
                     isStreaming ||
                     isWaiting ||
                     unCalledTools

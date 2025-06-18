@@ -51,7 +51,9 @@ const useExpertsAndModels = () => {
   };
 };
 
-export const ExpertSelect: React.FC = () => {
+export const ExpertSelect: React.FC<{ disabled?: boolean }> = ({
+  disabled,
+}) => {
   const { experts, expertsLoading, selectedExpert, onSelectExpert } =
     useExpertsAndModels();
 
@@ -65,6 +67,7 @@ export const ExpertSelect: React.FC = () => {
   return (
     <Skeleton loading={expertsLoading}>
       <Select
+        disabled={disabled}
         onChange={onSelectExpert}
         value={selectedExpertOrDefault}
         options={experts.map((expert) => ({

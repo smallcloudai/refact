@@ -153,7 +153,7 @@ export const createMessage = createAppAsyncThunk<
 
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
-  { content: string; expertId: string },
+  { content: string; expertId: string; model: string },
   {
     dispatch: AppDispatch;
     state: RootState;
@@ -236,6 +236,7 @@ export const createThreadWithMessage = createAsyncThunk<
     ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
     ftm_tool_calls: "null", // optional
     ftm_usage: "null", // optional
+    ftm_user_preferences: JSON.stringify({ model: args.model }),
   };
 
   const result = await client.mutation<

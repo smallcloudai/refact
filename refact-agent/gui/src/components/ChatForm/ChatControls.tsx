@@ -16,7 +16,7 @@ import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
-import { PromptSelect } from "./PromptSelect";
+// import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import {
   ExclamationTriangleIcon,

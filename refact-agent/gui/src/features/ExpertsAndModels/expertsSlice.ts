@@ -131,6 +131,8 @@ export const expertsSlice = createSlice({
     builder.addCase(setCurrentProjectInfo, () => {
       return initialState;
     });
+
+    // TODO: add case for restoring chat
   },
 });
 

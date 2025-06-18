@@ -17,7 +17,10 @@ import {
   selectIsStreaming,
   selectIsWaiting,
 } from "../../features/ThreadMessages";
-import { selectCurrentExpert } from "../../features/ExpertsAndModels";
+import {
+  selectCurrentExpert,
+  selectCurrentModel,
+} from "../../features/ExpertsAndModels";
 
 // function usecreateThreadWithMessage() {
 
@@ -37,6 +40,7 @@ export function useMessageSubscription() {
   });
 
   const selectedExpert = useAppSelector(selectCurrentExpert);
+  const selectedModel = useAppSelector(selectCurrentModel);
   useEffect(() => {
     if (!maybeFtId) return;
     const thunk = dispatch(
@@ -53,7 +57,11 @@ export function useMessageSubscription() {
     (content: string) => {
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void dispatch(
-          createThreadWithMessage({ content, expertId: selectedExpert ?? "" }),
+          createThreadWithMessage({
+            content,
+            expertId: selectedExpert ?? "",
+            model: selectedModel ?? "",
+          }),
         );
         return;
       }
@@ -69,6 +77,7 @@ export function useMessageSubscription() {
         ftm_role: "user",
         ftm_tool_calls: "null", // optional
         ftm_usage: "null", // optional
+        ftm_user_preferences: JSON.stringify({ model: selectedModel ?? "" }),
       };
       // TODO: this will need more info
       void dispatch(
@@ -88,6 +97,7 @@ export function useMessageSubscription() {
       leafMessage.endPrevAlt,
       maybeFtId,
       selectedExpert,
+      selectedModel,
     ],
   );
 

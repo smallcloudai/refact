@@ -57,7 +57,10 @@ import { patchesAndDiffsTrackerSlice } from "../features/PatchesAndDiffsTracker/
 import { coinBallanceSlice } from "../features/CoinBalance";
 import { threadListSlice } from "../features/ThreadList";
 import { threadMessagesSlice } from "../features/ThreadMessages";
-import { expertsSlice } from "../features/ExpertsAndModels";
+import {
+  expertsSlice,
+  expertsAndModelsMiddleWare,
+} from "../features/ExpertsAndModels";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -193,6 +196,7 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
           .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)
           .prepend(listenerMiddleware.middleware)
+          .prepend(expertsAndModelsMiddleWare.middleware)
       );
     },
   });

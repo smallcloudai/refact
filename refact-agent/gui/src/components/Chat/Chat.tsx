@@ -6,7 +6,7 @@ import {
   useAppSelector,
   useAppDispatch,
   // useSendChatRequest,
-  useAutoSend,
+  // useAutoSend,
   useCapsForToolUse,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
