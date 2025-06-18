@@ -168,6 +168,8 @@ pub struct DocumentsState {
     pub workspace_folders: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_files: Arc<StdMutex<Vec<PathBuf>>>,
     pub workspace_vcs_roots: Arc<StdMutex<Vec<PathBuf>>>,
+    /// .refact folders in workspace dirs
+    pub dot_refact_folders: Arc<AMutex<Vec<PathBuf>>>,
     pub active_file_path: Option<PathBuf>,
     pub jsonl_files: Arc<StdMutex<Vec<PathBuf>>>,
     // document_map on windows: c%3A/Users/user\Documents/file.ext
@@ -204,6 +206,7 @@ impl DocumentsState {
             workspace_folders: Arc::new(StdMutex::new(workspace_dirs)),
             workspace_files: Arc::new(StdMutex::new(Vec::new())),
             workspace_vcs_roots: Arc::new(StdMutex::new(Vec::new())),
+            dot_refact_folders: Arc::new(AMutex::new(Vec::new())),
             active_file_path: None,
             jsonl_files: Arc::new(StdMutex::new(Vec::new())),
             memory_document_map: HashMap::new(),
@@ -589,6 +592,60 @@ async fn enqueue_some_docs(
     }
 }
 
+/// Expects `base_path` to be canonicalized.
+async fn recurse_all_dirs(
+    base_path: &Path,
+    visited: &mut HashSet<PathBuf>,
+    indexing_everywhere: &mut IndexingEverywhere,
+) {
+    if !base_path.is_dir() {
+        return;
+    }
+    if visited.contains(base_path) {
+        return;
+    }
+    let indexing_settings = indexing_everywhere.indexing_for_path(base_path);
+    if is_blocklisted(&indexing_settings, base_path) && !base_path.ends_with(".refact") {
+        return;
+    }
+    visited.insert(base_path.to_path_buf());
+
+    let mut entries = match tokio::fs::read_dir(base_path).await {
+        Ok(entries) => entries,
+        Err(e) => {
+            info!("Failed to read directory {}: {}", base_path.display(), e);
+            return;
+        }
+    };
+
+    while let Ok(Some(i)) = entries.next_entry().await {
+        Box::pin(
+            recurse_all_dirs(
+                &i.path(),
+                visited,
+                indexing_everywhere,
+            )
+        ).await;
+    }
+}
+
+#[test]
+fn test_recurse_all_dirs() {
+    let mut visited = HashSet::new();
+    let mut indexing_everywhere = IndexingEverywhere::default();
+    let base_path = canonical_path(".");
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(recurse_all_dirs(&base_path, &mut visited, &mut indexing_everywhere));
+    println!("Visited directories:");
+    for path in &visited {
+        if path.ends_with(".refact") {
+            println!("{}", path.display());
+        }
+    }
+    panic!("Test completed, check output for visited directories");
+}
+
+
 pub async fn enqueue_all_files_from_workspace_folders(
     gcx: Arc<ARwLock<GlobalContext>>,
     wake_up_indexers: bool,
@@ -599,7 +656,7 @@ pub async fn enqueue_all_files_from_workspace_folders(
     info!("enqueue_all_files_from_workspace_folders started files search with {} folders", folders.len());
     let mut indexing_everywhere = crate::files_blocklist::reload_global_indexing_only(gcx.clone()).await;
     let (all_files, vcs_folders) =  retrieve_files_in_workspace_folders(
-        folders,
+        folders.clone(),
         &mut indexing_everywhere,
         false,
         false
@@ -609,17 +666,32 @@ pub async fn enqueue_all_files_from_workspace_folders(
 
     let mut old_workspace_files = Vec::new();
     let cache_dirty = {
-        let mut gcx_locked = gcx.write().await;
         {
+            let gcx_locked = gcx.read().await;
             let mut workspace_files = gcx_locked.documents_state.workspace_files.lock().unwrap();
             std::mem::swap(&mut *workspace_files, &mut old_workspace_files);
             workspace_files.extend(all_files.clone());
         }
         {
+            let mut gcx_locked = gcx.write().await;
             std::mem::swap(&mut gcx_locked.documents_state.workspace_vcs_roots, &mut workspace_vcs_roots);
         }
-        gcx_locked.indexing_everywhere = Arc::new(indexing_everywhere);
-        gcx_locked.documents_state.cache_dirty.clone()
+        {
+            let mut indexing_everywhere = crate::files_blocklist::reload_global_indexing_only(gcx.clone()).await;
+            let mut visited = HashSet::new();
+            for folder in folders.iter() {
+                recurse_all_dirs(folder, &mut visited, &mut indexing_everywhere).await;
+            }
+            let mut gcx_locked = gcx.write().await;
+            gcx_locked.documents_state.dot_refact_folders = Arc::new(AMutex::new(
+                visited.into_iter().filter(|p| p.ends_with(".refact")).collect::<Vec<PathBuf>>()
+            ));
+        }
+        {
+            let mut gcx_locked = gcx.write().await;
+            gcx_locked.indexing_everywhere = Arc::new(indexing_everywhere);
+            gcx_locked.documents_state.cache_dirty.clone()
+        }
     };
 
     *cache_dirty.lock().await = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs_f64();
