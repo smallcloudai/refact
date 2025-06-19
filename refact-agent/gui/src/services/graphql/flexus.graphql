@@ -91,3 +91,18 @@ query ModelsForExpert($fexp_id: String!, $inside_fgroup_id: String!) {
     provm_name
   }
 }
+
+query ToolsForGroup($located_fgroup_id: String!) {
+  cloud_tools_list(
+    located_fgroup_id: $located_fgroup_id
+    include_offline: false
+  ) {
+    ctool_confirmed_exists_ts
+    ctool_description
+    ctool_id
+    ctool_name
+    ctool_parameters
+    located_fgroup_id
+    owner_fuser_id
+  }
+}

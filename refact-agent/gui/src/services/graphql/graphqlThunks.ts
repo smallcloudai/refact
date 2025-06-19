@@ -29,6 +29,10 @@ import {
   ModelsForExpertDocument,
   ModelsForExpertQuery,
   ModelsForExpertQueryVariables,
+  ToolsForGroupQuery,
+  ToolsForGroupQueryVariables,
+  ToolsForGroupDocument,
+  FCloudTool,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -153,13 +157,13 @@ export const createMessage = createAppAsyncThunk<
 
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
-  { content: string; expertId: string; model: string },
+  { content: string; expertId: string; model: string; tools: FCloudTool[] },
   {
     dispatch: AppDispatch;
     state: RootState;
     rejectValue: { message: string };
   }
->("graphql/createThreadWithMessage", async (args, thunkAPI) => {
+>("flexus/createThreadWithMessage", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
   const port = state.config.lspPort;
@@ -203,6 +207,7 @@ export const createThreadWithMessage = createAsyncThunk<
     located_fgroup_id: workspace,
     owner_shared: false,
     ft_app_searchable: appIdQuery.data?.app_searchable_id,
+    ft_toolset: JSON.stringify(args.tools),
   };
   const threadQuery = await client.mutation<
     CreateThreadMutation,
@@ -281,7 +286,7 @@ export const pauseThreadThunk = createAppAsyncThunk<
     state: RootState;
     rejectValue: { message: string };
   }
->("thread/pause", async (args, thunkAPI) => {
+>("flexus/thread/pause", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
@@ -366,3 +371,35 @@ export const getModelsForExpertThunk = createAppAsyncThunk<
 
   return thunkAPI.fulfillWithValue(result.data);
 });
+
+// Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
+export const getToolsForGroupThunk = createAppAsyncThunk<
+  ToolsForGroupQuery,
+  ToolsForGroupQueryVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string; args: ToolsForGroupQueryVariables };
+  }
+>("flexus/tools", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
+  const result = await client.query<
+    ToolsForGroupQuery,
+    ToolsForGroupQueryVariables
+  >(ToolsForGroupDocument, args);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  }
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({ message: "erro fetching tools", args });
+  }
+
+  return thunkAPI.fulfillWithValue(result.data);
+});
+
+// TODO: patch thread tools
