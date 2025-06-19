@@ -305,22 +305,22 @@ running_models:
 
 models:
   claude-4:
-  "n_ctx": 200000,
-  "supports_tools": true,
-  "supports_multimodality": true,
-  "supports_agent": true,
-  "supports_reasoning": "anthropic",
-  "supports_boost_reasoning": true,
-  "tokenizer": "hf://Xenova/claude-tokenizer"
+    n_ctx": 200000
+    supports_tools: true
+    supports_multimodality: true
+    supports_agent: true
+    supports_reasoning: anthropic
+    supports_boost_reasoning: true
+    tokenizer: hf://Xenova/claude-tokenizer
 
   claude-3-7-sonnet-latest:
-  "n_ctx": 200000,
-  "supports_tools": true,
-  "supports_multimodality": true,
-  "supports_agent": true,
-  "supports_reasoning": "anthropic",
-  "supports_boost_reasoning": true,
-  "tokenizer": "hf://Xenova/claude-tokenizer"
+    n_ctx: 200000
+    supports_tools: true
+    supports_multimodality: true
+    supports_agent: true
+    supports_reasoning: anthropic
+    supports_boost_reasoning: true
+    tokenizer: hf://Xenova/claude-tokenizer
 ```
 
 ### Example 2: Adding a New FIM Model
@@ -343,23 +343,31 @@ models:
 
 ```yaml
 # custom-ai.yaml
-chat_endpoint: https://api.custom-ai.com/v1/chat/completions
+chat_endpoint: https://api.anthropic.com/v1/chat/completions
 supports_completion: false
-api_key: ca-...
+
+api_key: sk-ant-...
+
+chat_models:
+  claude-3-7-sonnet-latest:
+    n_ctx: 200000
+    supports_tools: true
+    supports_multimodality: true
+    supports_clicks: true
+    supports_agent: true
+    supports_reasoning: anthropic
+    tokenizer: hf://Xenova/claude-tokenizer
 
 running_models:
-  - custom-model-pro
-  - custom-model-lite
+  - claude-3-7-sonnet-latest
 
 model_default_settings_ui:
   chat:
-  "n_ctx": 200000,
-  "supports_tools": true,
-  "supports_multimodality": true,
-  "supports_agent": true,
-  "supports_reasoning": "anthropic",
-  "supports_boost_reasoning": true,
-  "tokenizer": "hf://Xenova/claude-tokenizer"
+    n_ctx: 200000
+    supports_tools: true
+    supports_multimodality: true
+    supports_agent: true
+    tokenizer: hf://Xenova/claude-tokenizer
 ```
 
 ---
