@@ -158,8 +158,7 @@ export const smallCloudApi = createApi({
         if (!isEmailLinkResponse(response.data)) {
           return {
             error: {
-              error:
-                "Invalid response from /v1/streamlined-login-by-email",
+              error: "Invalid response from /v1/streamlined-login-by-email",
               data: response.data,
               status: "CUSTOM_ERROR",
             },

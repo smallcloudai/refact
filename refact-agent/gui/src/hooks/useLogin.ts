@@ -102,7 +102,9 @@ export const useLogin = () => {
     (provider: "google" | "github") => {
       const ticket = makeTicket();
       // const baseUrl = new URL(`https://refact.smallcloud.ai/authentication`);
-      const baseUrl = new URL(`https://app.refact.ai//v1/streamlined-login-by-oauth`);
+      const baseUrl = new URL(
+        `https://app.refact.ai//v1/streamlined-login-by-oauth`,
+      );
       baseUrl.searchParams.set("ticket", ticket);
       baseUrl.searchParams.set("utm_source", "plugin");
       baseUrl.searchParams.set("utm_medium", host);
@@ -120,10 +122,7 @@ export const useLogin = () => {
     // TODO: removed isGoodResponse, need rework
     if (loginPollingResult.data?.api_key) {
       const apiKey = loginPollingResult.data.api_key;
-      const actions = [
-        setApiKey(apiKey),
-        setAddressURL("Refact"),
-      ];
+      const actions = [setApiKey(apiKey), setAddressURL("Refact")];
 
       actions.forEach((action) => dispatch(action));
 
