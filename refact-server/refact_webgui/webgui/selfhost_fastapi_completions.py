@@ -30,7 +30,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Dict, Union, Optional, Tuple, Any
 
-__all__ = ["BaseCompletionsRouter", "CompletionsRouter"]
+__all__ = ["BaseCompletionsRouter", "CompletionsRouter", "ThinkingPatcher"]
 
 
 def clamp(lower, upper, x):
@@ -96,6 +96,7 @@ class ChatContext(NlpSamplingParams):
     n: int = 1
     reasoning_effort: Optional[str] = None  # OpenAI style reasoning
     thinking: Optional[Dict] = None  # Anthropic style reasoning
+    enable_thinking: Optional[bool] = None  # Qwen style reasoning
 
 
 class EmbeddingsStyleOpenAI(BaseModel):
@@ -189,6 +190,48 @@ async def embeddings_streamer(ticket: Ticket, timeout, created_ts):
             log("   ***  CANCEL  ***  cancelling %s" % ticket.id() + red_time(created_ts))
         ticket.cancelled = True
         ticket.done()
+
+
+# NOTE: some models doesn't support multiple parsers for now, we need parse thinking manually in this case
+class ThinkingPatcher:
+    def __init__(
+            self,
+            thinking_tokens: Optional[Tuple[str, str]],
+    ):
+        if thinking_tokens is None:
+            thinking_tokens = None, None
+        self._thinking_start_token, self._thinking_end_token = thinking_tokens
+        self._thinking_split_index = set()
+
+    def patch_choices(self, choices: List[Dict]) -> List[Dict]:
+        if self._thinking_end_token is None:
+            return choices
+        for choice in choices:
+            index = choice["index"]
+            if "delta" in choice:
+                if content := choice["delta"].get("content"):
+                    if self._thinking_start_token:
+                        content = content.replace(self._thinking_start_token, "")
+                    if index not in self._thinking_split_index:
+                        if self._thinking_end_token in content:
+                            self._thinking_split_index.add(index)
+                            choice["delta"]["reasoning_content"], choice["delta"]["content"] \
+                                = (*content.split(self._thinking_end_token), "")[:2]
+                        else:
+                            choice["delta"]["reasoning_content"] = content
+                            choice["delta"]["content"] = ""
+                    else:
+                        choice["delta"]["reasoning_content"] = ""
+                        choice["delta"]["content"] = content
+            elif "message" in choice:
+                if content := choice["message"].get("content", ""):
+                    if self._thinking_start_token:
+                        content = content.replace(self._thinking_start_token, "")
+                    choice["message"]["reasoning_content"], choice["message"]["content"] \
+                        = (*content.split(self._thinking_end_token), "")[:2]
+            else:
+                log(f"unknown choice type with keys: {choice.keys()}, skip thinking patch")
+        return choices
 
 
 class BaseCompletionsRouter(APIRouter):
@@ -569,7 +612,20 @@ class BaseCompletionsRouter(APIRouter):
             "stop": post.stop if post.stop else None,
             "n": post.n,
             "extra_headers": model_config.extra_headers if model_config.extra_headers else None,
+            "timeout": 60 * 60,  # An hour timeout for thinking models
         }
+
+        thinking_tokens = None
+        if model_config.capabilities.reasoning in ["qwen", "deepseek"]:
+            thinking_tokens = "<think>", "</think>"
+
+        # Qwen3 thinking arguments override
+        # NOTE: qwen3 can work in two different modes,
+        # but we're not pass this specific argument into litellm here
+        if post.enable_thinking is not None:
+            completion_kwargs["top_p"] = 0.95
+            completion_kwargs["presence_penalty"] = 1
+        thinking_patcher = ThinkingPatcher(thinking_tokens=thinking_tokens)
 
         if post.reasoning_effort or post.thinking:
             del completion_kwargs["temperature"]
@@ -590,11 +646,13 @@ class BaseCompletionsRouter(APIRouter):
                 async for model_response in response:
                     try:
                         data = model_response.dict()
-                        choice0 = data["choices"][0]
-                        finish_reason = choice0["finish_reason"]
-                        if delta := choice0.get("delta"):
-                            if text := delta.get("content"):
-                                generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
+                        if "choices" in data:
+                            data["choices"] = thinking_patcher.patch_choices(data["choices"])
+                            choice0 = data["choices"][0]
+                            finish_reason = choice0["finish_reason"]
+                            if delta := choice0.get("delta"):
+                                if text := delta.get("content"):
+                                    generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
 
                     except json.JSONDecodeError:
                         data = {"choices": [{"finish_reason": finish_reason}]}
@@ -626,6 +684,8 @@ class BaseCompletionsRouter(APIRouter):
                         if text := choice.get("message", {}).get("content"):
                             generated_tokens_n += litellm.token_counter(model_config.model_id, text=text)
                         finish_reason = choice.get("finish_reason")
+                    if "choices" in data:
+                        data["choices"] = thinking_patcher.patch_choices(data["choices"])
                     usage_dict = model_config.compose_usage_dict(prompt_tokens_n, generated_tokens_n)
                     data.update(usage_dict)
                 except json.JSONDecodeError:

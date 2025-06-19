@@ -223,22 +223,21 @@ export type SchemaToolConfirmation = {
 
 export type MCPArgs = string[];
 export type MCPEnvs = Record<string, string>;
+export type IntegrationFieldValue =
+  | IntegrationPrimitive
+  | Record<string, boolean>
+  | Record<string, unknown>
+  | MCPEnvs
+  | MCPArgs
+  | ToolParameterEntity[]
+  | ToolConfirmation;
 
 export type Integration = {
   project_path: string;
   integr_name: string;
   integr_config_path: string;
   integr_schema: IntegrationSchema;
-  integr_values: Record<
-    string,
-    | IntegrationPrimitive
-    | Record<string, boolean>
-    | Record<string, unknown>
-    | MCPEnvs
-    | MCPArgs
-    | ToolParameterEntity[]
-    | ToolConfirmation
-  > | null;
+  integr_values: Record<string, IntegrationFieldValue> | null;
   error_log: YamlError[];
 };
 

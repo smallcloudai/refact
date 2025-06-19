@@ -8,7 +8,6 @@ use serde::Serialize;
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::info;
-use std::borrow::Cow;
 
 #[cfg(not(target_os = "windows"))]
 use shell_escape::escape;
@@ -144,7 +143,7 @@ pub fn replace_args(x: &str, args_str: &HashMap<String, String>) -> String {
             #[cfg(target_os = "windows")]
             let x = powershell_escape(value);
             #[cfg(not(target_os = "windows"))]
-            let x = escape(Cow::from(value.as_str())).to_string();
+            let x = escape(std::borrow::Cow::from(value.as_str())).to_string();
             x
         };
         result = result.replace(&format!("%{}%", key), &escaped_value);

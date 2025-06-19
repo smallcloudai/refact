@@ -10,7 +10,7 @@ from refact_utils.finetune.utils import get_active_loras
 from refact_webgui.webgui.tab_loras import rm
 from refact_webgui.webgui.tab_loras import unpack
 from refact_webgui.webgui.tab_loras import write_to_file
-from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner
+from refact_webgui.webgui.selfhost_model_assigner import ModelAssigner, ALLOWED_CONCURRENCY
 
 from pathlib import Path
 from pydantic import BaseModel
@@ -38,6 +38,7 @@ class TabHostModelRec(BaseModel):
     gpus_shard: int = Query(default=1, ge=0, le=1024)
     share_gpu: bool = False
     n_ctx: Optional[int] = None
+    concurrency: Optional[int] = None
 
 
 class TabHostModelsAssign(BaseModel):
@@ -111,11 +112,15 @@ class TabHostRouter(APIRouter):
         for model_name, model_cfg in post.model_assign.items():
             if model_cfg.n_ctx is None:
                 raise HTTPException(status_code=400, detail=f"n_ctx must be set for {model_name}")
+            if model_cfg.concurrency is None:
+                raise HTTPException(status_code=400, detail=f"concurrency must be set for {model_name}")
             for model_info in self._model_assigner.models_info["models"]:
                 if model_info["name"] == model_name:
                     max_n_ctx = model_info["default_n_ctx"]
                     if model_cfg.n_ctx > max_n_ctx:
                         raise HTTPException(status_code=400, detail=f"n_ctx must be less or equal to {max_n_ctx} for {model_name}")
+                    if model_cfg.concurrency and model_cfg.concurrency not in model_info["available_concurrency"]:
+                        raise HTTPException(status_code=400, detail=f"concurrency must be one of {model_info['available_concurrency']} for {model_name}")
                     break
             else:
                 raise HTTPException(status_code=400, detail=f"model {model_name} not found")

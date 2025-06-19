@@ -17,7 +17,7 @@ class ModelCapabilities(BaseModel):
     agent: bool
     clicks: bool
     completion: bool
-    reasoning: Optional[str] = False
+    reasoning: Optional[str] = None
     boost_reasoning: bool = False
 
 
@@ -68,7 +68,7 @@ class ModelConfig(BaseModel):
             "supports_agent": self.capabilities.agent,
             "supports_reasoning": self.capabilities.reasoning,
             "supports_boost_reasoning": self.capabilities.boost_reasoning,
-            "default_temperature": 0.6 if self.capabilities.reasoning == "deepseek" else None,
+            "default_temperature": 0.6 if self.capabilities.reasoning in ["deepseek", "qwen"] else None,
         }
 
 

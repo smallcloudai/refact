@@ -28,7 +28,7 @@ mod tests {
         let file = canonicalize(PathBuf::from(file!())).unwrap().parent().unwrap().join("cases/ts/person.ts");
         assert!(file.exists());
 
-        base_skeletonizer_test(&LanguageId::Java, &mut parser, &file, PERSON_TS_CODE, PERSON_TS_SKELETON);
+        base_skeletonizer_test(&LanguageId::TypeScript, &mut parser, &file, PERSON_TS_CODE, PERSON_TS_SKELETON);
     }
 
     #[test]
@@ -36,6 +36,6 @@ mod tests {
         let mut parser: Box<dyn AstLanguageParser> = Box::new(TSParser::new().expect("TSParser::new"));
         let file = canonicalize(PathBuf::from(file!())).unwrap().parent().unwrap().join("cases/ts/person.ts");
         assert!(file.exists());
-        base_declaration_formatter_test(&LanguageId::Java, &mut parser, &file, PERSON_TS_CODE, PERSON_TS_DECLS);
+        base_declaration_formatter_test(&LanguageId::TypeScript, &mut parser, &file, PERSON_TS_CODE, PERSON_TS_DECLS);
     }
 }

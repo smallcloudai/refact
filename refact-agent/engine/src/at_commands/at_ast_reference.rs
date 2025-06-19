@@ -7,17 +7,18 @@ use crate::at_commands::at_commands::{AtCommand, AtCommandsContext, AtParam};
 use crate::call_validation::{ContextFile, ContextEnum};
 use crate::at_commands::execute_at::{AtCommandMember, correct_at_arg};
 use crate::at_commands::at_ast_definition::AtParamSymbolPathQuery;
+use crate::custom_error::trace_and_default;
 
 
 pub struct AtAstReference {
-    pub params: Vec<Arc<AMutex<dyn AtParam>>>,
+    pub params: Vec<Box<dyn AtParam>>,
 }
 
 impl AtAstReference {
     pub fn new() -> Self {
         AtAstReference {
             params: vec![
-                Arc::new(AMutex::new(AtParamSymbolPathQuery::new()))
+                Box::new(AtParamSymbolPathQuery::new())
             ],
         }
     }
@@ -26,7 +27,7 @@ impl AtAstReference {
 
 #[async_trait]
 impl AtCommand for AtAstReference {
-    fn params(&self) -> &Vec<Arc<AMutex<dyn AtParam>>> {
+    fn params(&self) -> &Vec<Box<dyn AtParam>> {
         &self.params
     }
 
@@ -46,7 +47,7 @@ impl AtCommand for AtAstReference {
             },
         };
 
-        correct_at_arg(ccx.clone(), self.params[0].clone(), &mut arg_symbol).await;
+        correct_at_arg(ccx.clone(), &self.params[0], &mut arg_symbol).await;
         args.clear();
         args.push(arg_symbol.clone());
 
@@ -55,14 +56,19 @@ impl AtCommand for AtAstReference {
 
         if let Some(ast_service) = ast_service_opt {
             let ast_index = ast_service.lock().await.ast_index.clone();
-            let defs = crate::ast::ast_db::definitions(ast_index.clone(), arg_symbol.text.as_str()).await;
+            let defs = crate::ast::ast_db::definitions(ast_index.clone(), arg_symbol.text.as_str())
+                .unwrap_or_else(trace_and_default);
             let mut all_results = vec![];
             let mut messages = vec![];
 
             const USAGES_LIMIT: usize = 20;
 
             if let Some(def) = defs.get(0) {
-                let usages: Vec<(Arc<crate::ast::ast_structs::AstDefinition>, usize)> = crate::ast::ast_db::usages(ast_index.clone(), def.path(), 100).await;
+                let usages: Vec<(Arc<crate::ast::ast_structs::AstDefinition>, usize)> = crate::ast::ast_db::usages(
+                    ast_index.clone(),
+                    def.path(),
+                    100,
+                ).unwrap_or_else(trace_and_default);
                 let usage_count = usages.len();
 
                 let text = format!(

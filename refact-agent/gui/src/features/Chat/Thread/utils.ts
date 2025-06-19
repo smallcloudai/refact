@@ -36,6 +36,7 @@ import {
   isToolCallMessage,
   Usage,
 } from "../../../services/refact";
+import { v4 as uuidv4 } from "uuid";
 import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
 import { checkForDetailMessage } from "./types";
@@ -81,8 +82,18 @@ POINT2 FOR_FUTURE_FEREFENCE: ...
 function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
   const calls = prev.slice();
 
-  if (calls[add.index]) {
-    const prevCall = calls[add.index];
+  // NOTE: we can't be sure that backend sends correct indexes for tool calls
+  // in case of qwen3 with sglang I get 2 problems fixed here:
+  // 1. index of first tool call delta == 2 next == 0 (huh?)
+  // 2. second tool call in a row has id == null
+  if (!calls.length || add.function.name) {
+    add.index = calls.length;
+    if (!add.id) {
+      add.id = uuidv4();
+    }
+    calls[calls.length] = add;
+  } else {
+    const prevCall = calls[calls.length - 1];
     const prevArgs = prevCall.function.arguments;
     const nextArgs = prevArgs + add.function.arguments;
     const call: ToolCall = {
@@ -92,9 +103,7 @@ function mergeToolCall(prev: ToolCall[], add: ToolCall): ToolCall[] {
         arguments: nextArgs,
       },
     };
-    calls[add.index] = call;
-  } else {
-    calls[add.index] = add;
+    calls[calls.length - 1] = call;
   }
   return calls;
 }

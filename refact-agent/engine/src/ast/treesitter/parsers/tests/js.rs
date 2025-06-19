@@ -28,7 +28,7 @@ mod tests {
         let file = canonicalize(PathBuf::from(file!())).unwrap().parent().unwrap().join("cases/js/car.js");
         assert!(file.exists());
 
-        base_skeletonizer_test(&LanguageId::Java, &mut parser, &file, CAR_JS_CODE, CAR_JS_SKELETON);
+        base_skeletonizer_test(&LanguageId::JavaScript, &mut parser, &file, CAR_JS_CODE, CAR_JS_SKELETON);
     }
 
     #[test]
@@ -36,6 +36,6 @@ mod tests {
         let mut parser: Box<dyn AstLanguageParser> = Box::new(JSParser::new().expect("JSParser::new"));
         let file = canonicalize(PathBuf::from(file!())).unwrap().parent().unwrap().join("cases/js/car.js");
         assert!(file.exists());
-        base_declaration_formatter_test(&LanguageId::Java, &mut parser, &file, CAR_JS_CODE, CAR_JS_DECLS);
+        base_declaration_formatter_test(&LanguageId::JavaScript, &mut parser, &file, CAR_JS_CODE, CAR_JS_DECLS);
     }
 }

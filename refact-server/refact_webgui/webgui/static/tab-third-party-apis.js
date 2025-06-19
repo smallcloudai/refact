@@ -654,6 +654,7 @@ function showAddModelModal(providerId) {
                                 <option value="">None</option>
                                 <option value="openai">OpenAI</option>
                                 <option value="anthropic">Anthropic</option>
+                                <option value="qwen">Qwen</option>
                                 <option value="deepseek">DeepSeek</option>
                             </select>
                             <div class="form-text">Select the reasoning type supported by this model.</div>
