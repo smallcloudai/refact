@@ -39,16 +39,17 @@ fn tool_available(
 async fn tool_available_from_gcx(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> impl Fn(&Box<dyn Tool + Send>) -> bool {
-    let (ast_on, vecdb_on, allow_experimental) = {
+    let (ast_on, vecdb_on, allow_experimental, active_group_id) = {
         let gcx_locked = gcx.read().await;
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
+        (gcx_locked.ast_service.is_some(), vecdb_on, 
+         gcx_locked.cmdline.experimental, gcx_locked.active_group_id.clone())
     };
 
     let (is_there_a_thinking_model, allow_knowledge) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
             (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
-             caps.metadata.features.contains(&"knowledge".to_string()))
+             caps.metadata.features.contains(&"knowledge".to_string()) && active_group_id.is_some())
         },
         Err(_) => (false, false),
     };

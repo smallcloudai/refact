@@ -105,13 +105,13 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         ("@knowledge-load".to_string(), Arc::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Arc<dyn AtCommand + Send>),
     ]);
 
-    let (ast_on, vecdb_on) = {
+    let (ast_on, vecdb_on, active_group_id) = {
         let gcx_locked = gcx.read().await;
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        (gcx_locked.ast_service.is_some(), vecdb_on)
+        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.active_group_id.clone())
     };
     let allow_knowledge = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-        Ok(caps) => caps.metadata.features.contains(&"knowledge".to_string()),
+        Ok(caps) => caps.metadata.features.contains(&"knowledge".to_string()) && active_group_id.is_some(),
         Err(_) => false,
     };
     let mut result = HashMap::new();
