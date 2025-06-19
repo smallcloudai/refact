@@ -3,6 +3,14 @@ export type TeamsGroup = {
   name: string;
 };
 
+export type TeamsWorkspace = {
+  ws_id: string;
+  ws_owner_fuser_id: string;
+  ws_root_group_id: string;
+  root_group_name: string;
+  coins: number;
+};
+
 export type User = {
   retcode: string;
   account: string;

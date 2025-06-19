@@ -17,21 +17,27 @@ import {
 import { useSmartSubscription } from "../../../hooks/useSmartSubscription";
 import {
   useAppDispatch,
+  useAppSelector,
   useEventsBusForIDE,
   useResizeObserver,
 } from "../../../hooks";
 import { isDetailMessage, teamsApi } from "../../../services/refact";
 import { NodeApi } from "react-arborist";
-import { resetActiveGroup, setActiveGroup } from "../../../features/Teams";
+import {
+  resetActiveGroup,
+  resetActiveWorkspace,
+  selectActiveWorkspace,
+  setActiveGroup,
+  setActiveWorkspace,
+  setSkippedWorkspaceSelection,
+} from "../../../features/Teams";
 import { setError } from "../../../features/Errors/errorsSlice";
-
-export type TeamsWorkspace =
-  NavTreeWantWorkspacesQuery["query_basic_stuff"]["workspaces"][number];
 
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
-  const [currentTeamsWorkspace, setCurrentTeamsWorkspace] =
-    useState<TeamsWorkspace | null>(null);
+  const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
+  // const [currentTeamsWorkspace, setCurrentTeamsWorkspace] =
+  //   useState<TeamsWorkspace | null>(null);
 
   const [teamsWorkspaces] = useQuery<
     NavTreeWantWorkspacesQuery,
@@ -183,15 +189,22 @@ export function useGroupTree() {
 
   const onWorkspaceSelection = useCallback(
     (workspaceId: string) => {
-      setCurrentTeamsWorkspace(
+      const maybeWorkspace =
         teamsWorkspaces.data?.query_basic_stuff.workspaces.find(
           (w) => w.ws_id === workspaceId,
-        ) ?? null,
-      );
-      setCurrentSelectedTeamsGroupNode(null);
+        );
+      if (maybeWorkspace) {
+        dispatch(setActiveWorkspace(maybeWorkspace));
+        setCurrentSelectedTeamsGroupNode(null);
+      }
     },
-    [teamsWorkspaces.data?.query_basic_stuff.workspaces],
+    [dispatch, teamsWorkspaces.data?.query_basic_stuff.workspaces],
   );
+
+  const handleSkipWorkspaceSelection = useCallback(() => {
+    dispatch(setSkippedWorkspaceSelection(true));
+    dispatch(resetActiveWorkspace());
+  }, [dispatch]);
 
   const availableWorkspaces = useMemo(() => {
     if (teamsWorkspaces.data?.query_basic_stuff.workspaces) {
@@ -218,8 +231,8 @@ export function useGroupTree() {
     onGroupSelectionConfirm,
     onWorkspaceSelection,
     touchNode,
+    handleSkipWorkspaceSelection,
     // Setters
-    setCurrentTeamsWorkspace,
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
   };

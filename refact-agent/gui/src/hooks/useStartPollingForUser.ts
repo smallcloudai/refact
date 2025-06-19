@@ -9,17 +9,17 @@ export function useStartPollingForUser() {
     let timer: NodeJS.Timeout | undefined = undefined;
     if (
       pollingForUser &&
-      !user.isFetching &&
+      // !user.isFetching &&
       !user.isLoading &&
-      user.data &&
-      user.data.inference === "FREE"
+      user.data // &&
+      // user.data.inference === "FREE"
     ) {
       timer = setTimeout(() => {
-        void user.refetch();
+        // void user.refetch();
       }, 5000);
     }
 
-    if (pollingForUser && user.data && user.data.inference !== "FREE") {
+    if (pollingForUser && user.data /*&& user.data.inference !== "FREE"*/) {
       clearTimeout(timer);
       setPollingForUser(false);
       // TODO: maybe add an animation or thanks ?
