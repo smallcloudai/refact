@@ -38,7 +38,7 @@ export type GoodPollingResponse = User & {
   login_message: string;
   "longthink-filters": [];
   "longthink-functions-today": object;
-  "longthink-functions-today-v2": object,
+  "longthink-functions-today-v2": object;
 };
 
 export type DetailedUserResponse = User & {

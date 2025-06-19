@@ -130,7 +130,7 @@ export const useLogin = () => {
       setupHost({
         type: "cloud",
         apiKey: apiKey,
-        userName: '',
+        userName: "",
       });
     }
   }, [dispatch, loginPollingResult.data, setupHost]);

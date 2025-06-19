@@ -66,11 +66,11 @@ export const smallCloudApi = createApi({
               })
               .catch((err: Error) => {
                 clearInterval(timeout);
-                resolve({ 
-                  error: { 
-                    status: "FETCH_ERROR", 
-                    error: err.message 
-                  } as FetchBaseQueryError 
+                resolve({
+                  error: {
+                    status: "FETCH_ERROR",
+                    error: err.message,
+                  } as FetchBaseQueryError,
                 });
               });
           }, 5000);
