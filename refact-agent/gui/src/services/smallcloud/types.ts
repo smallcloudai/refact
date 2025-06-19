@@ -36,6 +36,9 @@ export type GoodPollingResponse = User & {
   secret_key: string;
   tooltip_message: string;
   login_message: string;
+  "longthink-filters": [];
+  "longthink-functions-today": object;
+  "longthink-functions-today-v2": object,
 };
 
 export type DetailedUserResponse = User & {

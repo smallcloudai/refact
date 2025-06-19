@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { RootState } from "../../app/store";
 import { setApiKey } from "../../features/Config/configSlice";
 import {
@@ -31,7 +32,7 @@ export const smallCloudApi = createApi({
     login: builder.query<ApiKeyResponse, string>({
       providesTags: ["Polling"],
       queryFn: async (token, api, _extraOptions, _baseQuery) => {
-        return new Promise<{ data: ApiKeyResponse } | { error: { status: string; error: string } }>((resolve, _reject) => {
+        return new Promise((resolve, _reject) => {
           const timeout = setInterval(() => {
             fetch(
               // "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
@@ -58,14 +59,19 @@ export const smallCloudApi = createApi({
               .then((json: unknown) => {
                 if (isApiKeyResponse(json)) {
                   clearInterval(timeout);
-                  console.log("API Key received:", json.api_key);
+                  // console.log("API Key received:", json.api_key);
                   api.dispatch(setApiKey(json.api_key));
                   resolve({ data: json });
                 }
               })
               .catch((err: Error) => {
                 clearInterval(timeout);
-                resolve({ error: { status: "FETCH_ERROR", error: err.message } });
+                resolve({ 
+                  error: { 
+                    status: "FETCH_ERROR", 
+                    error: err.message 
+                  } as FetchBaseQueryError 
+                });
               });
           }, 5000);
         });
