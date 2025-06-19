@@ -126,7 +126,7 @@ Completion models are used for code completion. FIM (Fill-in-the-Middle) models 
 
 FIM models use special tokens:
 - `fim_prefix`: Text before the cursor
-- `fim_suffix`: Text after the cursor  
+- `fim_suffix`: Text after the cursor
 - `fim_middle`: Where the completion goes
 - `eot`: End of text token
 
@@ -139,7 +139,7 @@ Add to known models (in json) or provider file (in yaml)
       "n_ctx": 8192,
       "scratchpad_patch": {
         "fim_prefix": "<|fim_prefix|>",
-        "fim_suffix": "<|fim_suffix|>", 
+        "fim_suffix": "<|fim_suffix|>",
         "fim_middle": "<|fim_middle|>",
         "eot": "<|endoftext|>",
         "extra_stop_tokens": [
@@ -261,9 +261,8 @@ Enable xDebug in your IDE extension settings to connect to your locally built Ru
 ### Common Issues
 
 **Model not appearing in capabilities:**
-- Check if it's added to `running_models` in provider config
-- Verify the model exists in `known_models.json`
 - Ensure provider is properly loaded
+- Check that the model has the required capabilities, for example, supports_agent for agentic mode
 
 **Tokenizer errors:**
 - Verify tokenizer path is correct
@@ -293,19 +292,15 @@ cargo check
 
 ## 💡 Examples
 
-### Example 1: Adding Claude 4 (Hypothetical) 
+### Example 1: Adding Claude 4 (Hypothetical)
 
-Make sure your model is listed in the config with all required fields — not just running_models, but also things like n_ctx, and any other relevant settings.
+Make sure your model is listed in the config with all required fields — like n_ctx, and any other relevant settings.
 
 -  **Update anthropic.yaml:**
 ```yaml
-running_models:
-  - claude-4
-  - claude-3-7-sonnet-latest
-
-models:
+chat_models:
   claude-4:
-    n_ctx": 200000
+    n_ctx: 200000
     supports_tools: true
     supports_multimodality: true
     supports_agent: true
@@ -330,7 +325,7 @@ models:
   "n_ctx": 16384,
   "scratchpad_patch": {
     "fim_prefix": "<PRE>",
-    "fim_suffix": "<SUF>", 
+    "fim_suffix": "<SUF>",
     "fim_middle": "<MID>",
     "eot": "<EOT>"
   },
@@ -357,9 +352,6 @@ chat_models:
     supports_agent: true
     supports_reasoning: anthropic
     tokenizer: hf://Xenova/claude-tokenizer
-
-running_models:
-  - claude-3-7-sonnet-latest
 
 model_default_settings_ui:
   chat:
