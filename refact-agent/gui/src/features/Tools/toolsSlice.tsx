@@ -5,13 +5,13 @@ import { getToolsForGroupThunk } from "../../services/graphql/graphqlThunks";
 type InitialState = {
   loading: boolean;
   error: string | null;
-  toolsForGroups: Record<string, ToolsForGroupQuery["cloud_tools_list"]>;
+  toolsForGroup: ToolsForGroupQuery["cloud_tools_list"];
 };
 
 const initialState: InitialState = {
   loading: false,
   error: null,
-  toolsForGroups: {},
+  toolsForGroup: [],
 };
 
 // TODO: allow the user to configure tools, before and after creating
@@ -24,13 +24,14 @@ export const toolsSlice = createSlice({
     //   if (!(workspace in state.toolsForGroup)) return null;
     //   return state.toolsForGroup[workspace];
     // },
-    selectToolsForGroups: (state) => state.toolsForGroups,
+    selectToolsForGroup: (state) => state.toolsForGroup,
     selectToolsLoading: (state) => state.loading,
   },
   extraReducers(builder) {
     builder.addCase(getToolsForGroupThunk.pending, (state) => {
       state.loading = true;
     });
+    // TODO: global error
     builder.addCase(getToolsForGroupThunk.rejected, (state, action) => {
       state.loading = false;
       state.error = action.error.message ?? null;
@@ -38,11 +39,10 @@ export const toolsSlice = createSlice({
 
     builder.addCase(getToolsForGroupThunk.fulfilled, (state, action) => {
       state.loading = false;
-      state.toolsForGroups[action.meta.arg.located_fgroup_id] =
-        action.payload.cloud_tools_list;
+      state.error = null;
+      state.toolsForGroup = action.payload.cloud_tools_list;
     });
   },
 });
 
-export const { selectToolsForGroups, selectToolsLoading } =
-  toolsSlice.selectors;
+export const { selectToolsForGroup, selectToolsLoading } = toolsSlice.selectors;

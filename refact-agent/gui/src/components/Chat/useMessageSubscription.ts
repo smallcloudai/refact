@@ -21,7 +21,10 @@ import {
   selectCurrentExpert,
   selectCurrentModel,
 } from "../../features/ExpertsAndModels";
-import { selectToolsForGroups } from "../../features/Tools";
+import {
+  selectToolsForGroup,
+  selectToolsForGroups,
+} from "../../features/Tools";
 import { useToolsForGroup } from "../../features/Tools/useToolsForGroup";
 
 // function usecreateThreadWithMessage() {
@@ -54,7 +57,7 @@ export function useMessageSubscription() {
   }, [dispatch, isEmpty, maybeFtId]);
 
   // TODO: the user should be able to configure this
-  const { toolsForGroup } = useToolsForGroup();
+  const toolsForGroup = useAppSelector(selectToolsForGroup);
 
   // It'll need the parent node, and the info for the new node
   // What about images?

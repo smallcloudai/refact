@@ -2,13 +2,13 @@ import { useEffect, useMemo } from "react";
 import { getToolsForGroupThunk } from "../../services/graphql/graphqlThunks";
 import { useAppDispatch, useAppSelector } from "../../hooks";
 import { selectActiveGroup } from "../Teams";
-import { selectToolsForGroups, selectToolsLoading } from "./toolsSlice";
+import { selectToolsForGroup, selectToolsLoading } from "./toolsSlice";
 
 export function useToolsForGroup() {
   const dispatch = useAppDispatch();
   const group = useAppSelector(selectActiveGroup);
   const loading = useAppSelector(selectToolsLoading);
-  const toolsForGroups = useAppSelector(selectToolsForGroups);
+  const toolsForGroup = useAppSelector(selectToolsForGroup);
 
   useEffect(() => {
     if (group?.id) {
@@ -18,15 +18,8 @@ export function useToolsForGroup() {
 
   const isLoading = useMemo(() => {
     if (!group?.id) return false;
-    if (group.id in toolsForGroups) return false;
     return loading;
-  }, [group?.id, loading, toolsForGroups]);
-
-  const toolsForGroup = useMemo(() => {
-    if (!group?.id) return [];
-    if (group.id in toolsForGroups) return toolsForGroups[group.id];
-    return [];
-  }, [group?.id, toolsForGroups]);
+  }, [group?.id, loading]);
 
   return { toolsForGroup, isLoading };
 }
