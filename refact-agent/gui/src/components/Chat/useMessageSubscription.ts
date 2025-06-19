@@ -107,6 +107,7 @@ export function useMessageSubscription() {
       maybeFtId,
       selectedExpert,
       selectedModel,
+      toolsForGroup,
     ],
   );
 
