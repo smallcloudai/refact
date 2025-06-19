@@ -36,7 +36,7 @@ export const smallCloudApi = createApi({
           const timeout = setInterval(() => {
             fetch(
               // "https://www.smallcloud.ai/v1/streamlined-login-recall-ticket",
-              `http://127.0.0.1:8008/v1/streamlined-login-recall-ticket?ticket=${token}`,
+              `https://app.refact.ai/v1/streamlined-login-recall-ticket?ticket=${token}`,
               {
                 method: "GET",
                 headers: {
@@ -146,7 +146,7 @@ export const smallCloudApi = createApi({
       async queryFn(arg, api, extraOptions, baseQuery) {
         // TODO: maybe use cookies?
         // const url = `https://www.smallcloud.ai/plugin-magic-link/${arg.token.trim()}/${arg.email.trim()}`;
-        const url = `http://127.0.0.1:8008/v1/streamlined-login-by-email/${arg.token.trim()}/${arg.email.trim()}`;
+        const url = `https://app.refact.ai/v1/streamlined-login-by-email/${arg.token.trim()}/${arg.email.trim()}`;
 
         const response = await baseQuery({
           ...extraOptions,

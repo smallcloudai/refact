@@ -103,7 +103,7 @@ export const useLogin = () => {
       const ticket = makeTicket();
       // const baseUrl = new URL(`https://refact.smallcloud.ai/authentication`);
       const baseUrl = new URL(
-        `https://app.refact.ai//v1/streamlined-login-by-oauth`,
+        `https://app.refact.ai/v1/streamlined-login-by-oauth`,
       );
       baseUrl.searchParams.set("ticket", ticket);
       baseUrl.searchParams.set("utm_source", "plugin");
