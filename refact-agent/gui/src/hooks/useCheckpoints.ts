@@ -22,7 +22,6 @@ import {
   selectMessages,
 } from "../features/Chat";
 import { isUserMessage, telemetryApi } from "../services/refact";
-import { deleteChatById } from "../features/History/historySlice";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
@@ -151,7 +150,11 @@ export const useCheckpoints = () => {
         return;
       }
       if (shouldNewChatBeStarted || !maybeMessageIndex) {
-        const actions = [newChatAction(), deleteChatById(chatId)];
+        const actions = [
+          newChatAction(),
+          // TODO: handle deleting chat?
+          // deleteChatById(chatId),
+        ];
         actions.forEach((action) => dispatch(action));
       } else {
         const usefulMessages = messages.slice(0, maybeMessageIndex);

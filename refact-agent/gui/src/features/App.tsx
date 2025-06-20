@@ -70,7 +70,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
   const { chatPageChange, setIsChatStreaming, setIsChatReady } =
     useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
-  const historyState = useAppSelector((state: RootState) => state.history);
   const maybeCurrentActiveGroup = useAppSelector(selectActiveGroup);
   const chatId = useAppSelector(selectChatId);
   useEventBusForWeb();
@@ -95,8 +94,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
       if (tourState.type === "in_progress" && tourState.step === 1) {
         dispatch(push({ name: "welcome" }));
       } else if (
-        Object.keys(historyState).length === 0 &&
-        // TODO: rework when better router will be implemented
+        // threads length?
         maybeCurrentActiveGroup
       ) {
         dispatch(push({ name: "history" }));
@@ -115,7 +113,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     isLoggedIn,
     dispatch,
     tourState,
-    historyState,
     maybeCurrentActiveGroup,
   ]);
 
@@ -187,7 +184,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         {page.name === "history" && (
           <Sidebar
             takingNotes={false}
-            onOpenChatInTab={undefined}
             style={{
               alignSelf: "stretch",
               height: "calc(100% - var(--space-5)* 2)",

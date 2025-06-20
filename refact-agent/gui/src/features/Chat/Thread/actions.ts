@@ -31,7 +31,6 @@ import {
 } from "../../../services/refact/chat";
 // import { ToolCommand, toolsApi } from "../../../services/refact/tools";
 import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
-import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import {
   DetailMessageWithErrorType,
@@ -96,10 +95,6 @@ export const getSelectedChatModel = (state: RootState) =>
 
 export const removeChatFromCache = createAction<PayloadWithId>(
   "chatThread/removeChatFromCache",
-);
-
-export const restoreChat = createAction<ChatHistoryItem>(
-  "chatThread/restoreChat",
 );
 
 export const clearChatError = createAction<PayloadWithId>(

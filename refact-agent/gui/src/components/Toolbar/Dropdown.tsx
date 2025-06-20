@@ -25,7 +25,7 @@ import {
   QuestionMarkCircledIcon,
   GearIcon,
 } from "@radix-ui/react-icons";
-import { clearHistory } from "../../features/History/historySlice";
+
 import { PuzzleIcon } from "../../images/PuzzleIcon";
 import { Coin } from "../../images";
 import { useCoinBallance } from "../../hooks/useCoinBalance";
@@ -97,10 +97,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
     setLoginMessage,
     clearActiveTeamsGroupInIDE,
   } = useEventsBusForIDE();
-
-  const handleChatHistoryCleanUp = () => {
-    dispatch(clearHistory());
-  };
 
   const handleActiveGroupCleanUp = () => {
     clearActiveTeamsGroupInIDE();
@@ -314,10 +310,6 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
         <DropdownMenu.Item onSelect={() => handleNavigation("stats")}>
           Your Stats
-        </DropdownMenu.Item>
-
-        <DropdownMenu.Item onSelect={handleChatHistoryCleanUp}>
-          Clear Chat History
         </DropdownMenu.Item>
 
         {isKnowledgeFeatureAvailable && (

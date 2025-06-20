@@ -1,5 +1,4 @@
 import { combineSlices, configureStore } from "@reduxjs/toolkit";
-import { storage } from "./storage";
 import {
   FLUSH,
   PAUSE,
@@ -10,6 +9,7 @@ import {
   persistReducer,
   persistStore,
 } from "redux-persist";
+import storage from "redux-persist/lib/storage";
 import { statisticsApi } from "../services/refact/statistics";
 import {
   toolsApi,
@@ -32,10 +32,6 @@ import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
 import { chatReducer } from "../features/Chat/Thread/reducer";
-import {
-  historySlice,
-  historyMiddleware,
-} from "../features/History/historySlice";
 import { errorSlice } from "../features/Errors/errorsSlice";
 
 import { pagesSlice } from "../features/Pages/pagesSlice";
@@ -63,7 +59,7 @@ import { toolsSlice } from "../features/Tools";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
-  storage: storage(),
+  storage,
   stateReconciler: mergeInitialState,
 };
 
@@ -99,7 +95,6 @@ const rootReducer = combineSlices(
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
   },
-  historySlice,
   errorSlice,
   informationSlice,
   pagesSlice,
@@ -121,8 +116,8 @@ const rootReducer = combineSlices(
 
 const rootPersistConfig = {
   key: "root",
-  storage: storage(),
-  whitelist: [historySlice.reducerPath, "tour", userSurveySlice.reducerPath],
+  storage,
+  whitelist: ["tour", userSurveySlice.reducerPath],
   stateReconciler: mergeInitialState,
 };
 
@@ -189,7 +184,6 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             modelsApi.middleware,
             teamsApi.middleware,
           )
-          .prepend(historyMiddleware.middleware)
           // .prepend(errorMiddleware.middleware)
           .prepend(listenerMiddleware.middleware)
           .prepend(expertsAndModelsMiddleWare.middleware)

@@ -1,12 +1,12 @@
 import type { RootState } from "../app/store";
-import { ChatHistoryItem } from "../features/History/historySlice";
 
 export * from "./some_chrome_screenshots";
 
 type ChatThread = RootState["chat"]["thread"];
 type ChatMessages = ChatThread["messages"];
 
-export const MARS_ROVER_CHAT: ChatHistoryItem = {
+// TODO: update stubs
+export const MARS_ROVER_CHAT = {
   id: "9afd6fef-3e49-40df-8aca-688af3621514",
   messages: [
     // [

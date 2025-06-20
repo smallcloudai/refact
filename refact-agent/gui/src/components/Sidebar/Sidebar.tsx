@@ -1,6 +1,5 @@
 import React from "react";
 import { Box, Flex, Spinner } from "@radix-ui/themes";
-import { type ChatHistoryProps } from "../ChatHistory";
 import { useAppSelector, useAppDispatch } from "../../hooks";
 
 import { FeatureMenu } from "../../features/Config/FeatureMenu";
@@ -10,7 +9,6 @@ import { getErrorMessage, clearError } from "../../features/Errors/errorsSlice";
 import classNames from "classnames";
 import { selectHost } from "../../features/Config/configSlice";
 import styles from "./Sidebar.module.css";
-import { useThreadPageSub } from "../../hooks";
 import { ThreadList } from "../../features/ThreadList/ThreadList";
 import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
@@ -18,23 +16,13 @@ export type SidebarProps = {
   takingNotes: boolean;
   className?: string;
   style?: React.CSSProperties;
-} & Omit<
-  ChatHistoryProps,
-  | "history"
-  | "onDeleteHistoryItem"
-  | "onCreateNewChat"
-  | "onHistoryItemClick"
-  | "currentChatId"
->;
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({ takingNotes, style }) => {
   // TODO: these can be lowered.
   const dispatch = useAppDispatch();
   const globalError = useAppSelector(getErrorMessage);
   const currentHost = useAppSelector(selectHost);
-
-  // TODO: checking graphql works;
-  useThreadPageSub();
 
   const { groupSelectionEnabled } = useActiveTeamsGroup();
 

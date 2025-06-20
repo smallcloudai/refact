@@ -8,7 +8,6 @@ import {
   doneStreaming,
   newChatAction,
   chatAskQuestionThunk,
-  restoreChat,
   newIntegrationChat,
   setIsWaitingForResponse,
   upsertToolCall,
@@ -45,7 +44,7 @@ import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
-import { upsertToolCallIntoHistory } from "../features/History/historySlice";
+
 import { isToolResponse, modelsApi, providersApi } from "../services/refact";
 
 const AUTH_ERROR_MESSAGE =
@@ -62,7 +61,7 @@ startListening({
   matcher: isAnyOf(
     (d: unknown): d is ReturnType<typeof newChatAction> =>
       newChatAction.match(d),
-    (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
+    // (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
   ),
   effect: (_action, listenerApi) => {
     [
@@ -320,7 +319,11 @@ startListening({
 });
 
 startListening({
-  matcher: isAnyOf(restoreChat, newChatAction, updateConfig),
+  matcher: isAnyOf(
+    // restoreChat,
+    newChatAction,
+    updateConfig,
+  ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     const isUpdate = updateConfig.match(action);
@@ -474,7 +477,6 @@ startListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
-    listenerApi.dispatch(upsertToolCallIntoHistory(action.payload));
     listenerApi.dispatch(upsertToolCall(action.payload));
     listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 

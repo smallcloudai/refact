@@ -1,14 +1,22 @@
 import { Box, Button, Flex, Heading } from "@radix-ui/themes";
 import { ScrollArea } from "../ScrollArea";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
-import { ChatHistoryItem } from "../../events";
+import {
+  FThreadMessageOutput,
+  FThreadOutput,
+} from "../../../generated/documents";
 
 type ChatRawJSONProps = {
-  thread: ChatHistoryItem;
+  thread: FThreadOutput;
+  messages: FThreadMessageOutput;
   copyHandler: () => void;
 };
 
-export const ChatRawJSON = ({ thread, copyHandler }: ChatRawJSONProps) => {
+export const ChatRawJSON = ({
+  thread,
+  copyHandler,
+  messages,
+}: ChatRawJSONProps) => {
   return (
     <Box
       style={{
@@ -31,9 +39,9 @@ export const ChatRawJSON = ({ thread, copyHandler }: ChatRawJSONProps) => {
         <Heading as="h3" align="center" mb="2">
           Thread History
         </Heading>
-        {thread.title && (
+        {thread.ft_title && (
           <Heading as="h6" size="2" align="center" mb="4">
-            {thread.title}
+            {thread.ft_title}
           </Heading>
         )}
         <Flex
@@ -49,7 +57,7 @@ export const ChatRawJSON = ({ thread, copyHandler }: ChatRawJSONProps) => {
                 useInlineStyles={true}
                 preOptions={{ noMargin: true }}
               >
-                {JSON.stringify(thread, null, 2)}
+                {JSON.stringify(messages, null, 2)}
               </MarkdownCodeBlock>
             </Box>
           </ScrollArea>

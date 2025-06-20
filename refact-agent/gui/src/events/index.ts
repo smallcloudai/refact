@@ -12,7 +12,6 @@ import type { Snippet } from "../features/Chat/selectedSnippet";
 import type { Config } from "../features/Config/configSlice";
 import type { ErrorSliceState } from "../features/Errors/errorsSlice";
 import { request, ready, receive, error } from "../features/FIM/actions";
-import type { HistoryState } from "../features/History/historySlice";
 import type { TipOfTheDayState } from "../features/TipOfTheDay";
 import type { PageSliceState } from "../features/Pages/pagesSlice";
 import type { TourState } from "../features/Tour";
@@ -27,7 +26,6 @@ export {
   setSelectedSnippet,
 } from "../features/Chat/selectedSnippet";
 export type { FimDebugData } from "../services/refact/fim";
-export type { ChatHistoryItem } from "../features/History/historySlice";
 export { addInputValue, setInputValue } from "../components/ChatForm/actions";
 export {
   setCurrentProjectInfo,
@@ -53,7 +51,6 @@ export type InitialState = {
   active_file: FileInfo;
   selected_snippet: Snippet;
   chat: Chat;
-  history: HistoryState;
   error: ErrorSliceState;
   pages: PageSliceState;
   current_project: CurrentProjectInfo;

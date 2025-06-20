@@ -56,7 +56,6 @@ import {
 } from "../features/Chat";
 
 import { v4 as uuidv4 } from "uuid";
-import { upsertToolCallIntoHistory } from "../features/History/historySlice";
 
 type SubmitHandlerParams =
   | {
@@ -282,9 +281,6 @@ export const useSendChatRequest = () => {
   const rejectToolUsage = useCallback(
     (toolCallIds: string[]) => {
       toolCallIds.forEach((toolCallId) => {
-        dispatch(
-          upsertToolCallIntoHistory({ toolCallId, chatId, accepted: false }),
-        );
         dispatch(upsertToolCall({ toolCallId, chatId, accepted: false }));
       });
 

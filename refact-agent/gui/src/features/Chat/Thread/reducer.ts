@@ -6,7 +6,6 @@ import {
   ToolUse,
   LspChatMode,
   chatModeToLspMode,
-  isLspChatMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { chatResponse, chatAskedQuestion } from ".";
@@ -20,7 +19,6 @@ import {
   chatError,
   doneStreaming,
   removeChatFromCache,
-  restoreChat,
   setPreventSend,
   saveTitle,
   newIntegrationChat,
@@ -50,11 +48,9 @@ import {
   isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
-  isUserMessage,
   isUserResponse,
   ToolCall,
   ToolMessage,
-  UserMessage,
   validateToolCall,
 } from "../../../services/refact";
 
@@ -289,55 +285,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
       return { ...acc, [cur[0]]: cur[1] };
     }, {});
     state.cache = cache;
-  });
-
-  builder.addCase(restoreChat, (state, action) => {
-    if (state.thread.id === action.payload.id) return state;
-    const mostUptoDateThread =
-      action.payload.id in state.cache
-        ? { ...state.cache[action.payload.id] }
-        : { ...action.payload, read: true };
-
-    state.error = null;
-    state.waiting_for_response = false;
-
-    if (state.streaming) {
-      state.cache[state.thread.id] = { ...state.thread, read: false };
-    }
-    if (action.payload.id in state.cache) {
-      const { [action.payload.id]: _, ...rest } = state.cache;
-      state.cache = rest;
-      state.streaming = true;
-    } else {
-      state.streaming = false;
-    }
-    state.prevent_send = true;
-    state.thread = {
-      new_chat_suggested: { wasSuggested: false },
-      ...mostUptoDateThread,
-    };
-    state.thread.tool_use = state.thread.tool_use ?? state.tool_use;
-    if (action.payload.mode && !isLspChatMode(action.payload.mode)) {
-      state.thread.mode = "AGENT";
-    }
-
-    const lastUserMessage = action.payload.messages.reduce<UserMessage | null>(
-      (acc, cur) => {
-        if (isUserMessage(cur)) return cur;
-        return acc;
-      },
-      null,
-    );
-
-    if (
-      lastUserMessage?.compression_strength &&
-      lastUserMessage.compression_strength !== "absent"
-    ) {
-      state.thread.new_chat_suggested = {
-        wasRejectedByUser: false,
-        wasSuggested: true,
-      };
-    }
   });
 
   // New builder to save chat title within the current thread and not only inside of a history thread

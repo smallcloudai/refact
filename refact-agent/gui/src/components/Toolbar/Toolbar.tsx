@@ -1,17 +1,17 @@
 import {
   Button,
-  DropdownMenu,
+  // DropdownMenu,
   Flex,
   IconButton,
-  Spinner,
+  // Spinner,
   TabNav,
   Text,
-  TextField,
+  // TextField,
 } from "@radix-ui/themes";
 import { Dropdown, DropdownNavigationOptions } from "./Dropdown";
 import {
-  DotFilledIcon,
-  DotsVerticalIcon,
+  // DotFilledIcon,
+  // DotsVerticalIcon,
   HomeIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
@@ -19,31 +19,26 @@ import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
 import {
-  ChangeEvent,
-  KeyboardEvent,
+  // ChangeEvent,
+  // KeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import {
-  deleteChatById,
-  getHistory,
-  updateChatTitleById,
-} from "../../features/History/historySlice";
-import { restoreChat, saveTitle, selectThread } from "../../features/Chat";
-import { TruncateLeft } from "../Text";
+
+// import { TruncateLeft } from "../Text";
 import {
   useAppDispatch,
-  useAppSelector,
+  // useAppSelector,
   useEventsBusForIDE,
 } from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
 import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { telemetryApi } from "../../services/refact/telemetry";
 
-import styles from "./Toolbar.module.css";
+// import styles from "./Toolbar.module.css";
 import { resetThread } from "../../features/ThreadMessages";
 import { useActiveTeamsGroup } from "../../hooks/useActiveTeamsGroup";
 
@@ -60,9 +55,9 @@ export type ChatTab = {
   id: string;
 };
 
-function isChatTab(tab: Tab): tab is ChatTab {
-  return tab.type === "chat";
-}
+// function isChatTab(tab: Tab): tab is ChatTab {
+//   return tab.type === "chat";
+// }
 
 export type Tab = DashboardTab | ChatTab;
 
@@ -75,25 +70,25 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const tabNav = useRef<HTMLElement | null>(null);
   const [tabNavWidth, setTabNavWidth] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
-  const [focus, setFocus] = useState<HTMLElement | null>(null);
+  const [focus, _setFocus] = useState<HTMLElement | null>(null);
 
   const refs = useTourRefs();
   const [sendTelemetryEvent] =
     telemetryApi.useLazySendTelemetryChatEventQuery();
 
-  const history = useAppSelector(getHistory, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
-  const isStreaming = useAppSelector((app) => app.chat.streaming);
-  const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
-  const cache = useAppSelector((app) => app.chat.cache);
+  // const history = useAppSelector(getHistory, {
+  //   devModeChecks: { stabilityCheck: "never" },
+  // });
+  // const isStreaming = useAppSelector((app) => app.chat.streaming);
+  // const { isTitleGenerated, id: chatId } = useAppSelector(selectThread);
+  // const cache = useAppSelector((app) => app.chat.cache);
   const { newChatEnabled } = useActiveTeamsGroup();
 
   const { openSettings, openHotKeys } = useEventsBusForIDE();
 
   const [isOnlyOneChatTab, setIsOnlyOneChatTab] = useState(false);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [newTitle, setNewTitle] = useState<string | null>(null);
+  const [_isRenaming, setIsRenaming] = useState(false);
+  // const [newTitle, setNewTitle] = useState<string | null>(null);
 
   const shouldChatTabLinkBeNotClickable = useMemo(() => {
     return isOnlyOneChatTab && !isDashboardTab(activeTab);
@@ -187,10 +182,11 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         dispatch(newChatAction());
       } else {
         if (shouldChatTabLinkBeNotClickable) return;
-        const chat = history.find((chat) => chat.id === tab.id);
-        if (chat != undefined) {
-          dispatch(restoreChat(chat));
-        }
+        // TODO: load the chat by passing ft_id to push
+        // const chat = history.find((chat) => chat.id === tab.id);
+        // if (chat != undefined) {
+        //   dispatch(restoreChat(chat));
+        // }
         dispatch(popBackTo({ name: "history" }));
         dispatch(push({ name: "chat" }));
       }
@@ -200,7 +196,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
         error_message: "",
       });
     },
-    [dispatch, history, shouldChatTabLinkBeNotClickable, sendTelemetryEvent],
+    [dispatch, shouldChatTabLinkBeNotClickable, sendTelemetryEvent],
   );
 
   useEffect(() => {
@@ -221,12 +217,14 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   }, [focus]);
 
   const tabs = useMemo(() => {
-    return history.filter(
-      (chat) =>
-        chat.read === false ||
-        (activeTab.type === "chat" && activeTab.id == chat.id),
-    );
-  }, [history, activeTab]);
+    // TODO: unread threads
+    return [];
+    // return history.filter(
+    //   (chat) =>
+    //     chat.read === false ||
+    //     (activeTab.type === "chat" && activeTab.id == chat.id),
+    // );
+  }, []);
 
   const shouldCollapse = useMemo(() => {
     const dashboardWidth = windowWidth < 400 ? 47 : 70; // todo: compute this
@@ -234,41 +232,41 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     return tabNavWidth < totalWidth;
   }, [tabNavWidth, tabs.length, windowWidth]);
 
-  const handleChatThreadDeletion = useCallback(() => {
-    dispatch(deleteChatById(chatId));
-    goToTab({ type: "dashboard" });
-  }, [dispatch, chatId, goToTab]);
+  // const handleChatThreadDeletion = useCallback(() => {
+  //   dispatch(deleteChatById(chatId));
+  //   goToTab({ type: "dashboard" });
+  // }, [dispatch, chatId, goToTab]);
 
-  const handleChatThreadRenaming = useCallback(() => {
-    setIsRenaming(true);
-  }, []);
+  // const handleChatThreadRenaming = useCallback(() => {
+  //   setIsRenaming(true);
+  // }, []);
 
-  const handleKeyUpOnRename = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.code === "Escape") {
-        setIsRenaming(false);
-      }
-      if (event.code === "Enter") {
-        setIsRenaming(false);
-        if (!newTitle || newTitle.trim() === "") return;
-        if (!isTitleGenerated) {
-          dispatch(
-            saveTitle({
-              id: chatId,
-              title: newTitle,
-              isTitleGenerated: true,
-            }),
-          );
-        }
-        dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
-      }
-    },
-    [dispatch, newTitle, chatId, isTitleGenerated],
-  );
+  // const handleKeyUpOnRename = useCallback(
+  //   (event: KeyboardEvent<HTMLInputElement>) => {
+  //     if (event.code === "Escape") {
+  //       setIsRenaming(false);
+  //     }
+  //     if (event.code === "Enter") {
+  //       setIsRenaming(false);
+  //       if (!newTitle || newTitle.trim() === "") return;
+  //       if (!isTitleGenerated) {
+  //         dispatch(
+  //           saveTitle({
+  //             id: chatId,
+  //             title: newTitle,
+  //             isTitleGenerated: true,
+  //           }),
+  //         );
+  //       }
+  //       dispatch(updateChatTitleById({ chatId: chatId, newTitle: newTitle }));
+  //     }
+  //   },
+  //   [dispatch, newTitle, chatId, isTitleGenerated],
+  // );
 
-  const handleChatTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setNewTitle(event.target.value);
-  };
+  // const handleChatTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+  //   setNewTitle(event.target.value);
+  // };
 
   useEffect(() => {
     setIsOnlyOneChatTab(tabs.length < 2);
@@ -289,7 +287,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
           >
             {windowWidth < 400 || shouldCollapse ? <HomeIcon /> : "Home"}
           </TabNav.Link>
-          {tabs.map((chat) => {
+          {/* {tabs.map((chat) => {
             const isStreamingThisTab =
               chat.id in cache ||
               (isChatTab(activeTab) && chat.id === activeTab.id && isStreaming);
@@ -369,7 +367,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
                 </Flex>
               </TabNav.Link>
             );
-          })}
+          })} */}
         </TabNav.Root>
       </Flex>
       {windowWidth < 400 ? (
