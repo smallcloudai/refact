@@ -1,12 +1,14 @@
 import { toolsApi } from "../services/refact/tools";
-import { useHasCaps } from "./useHasCaps";
+import { useGetPing } from "./useGetPing";
+// import { useHasCaps } from "./useHasCaps";
 
-// here
+// can remove
 export const useGetToolGroupsQuery = () => {
-  const hasCaps = useHasCaps();
-  return toolsApi.useGetToolGroupsQuery(undefined, { skip: !hasCaps });
+  const ping = useGetPing();
+  return toolsApi.useGetToolGroupsQuery(undefined, { skip: !ping.data });
 };
 
+// use this
 export const useGetToolsLazyQuery = () => {
   return toolsApi.useLazyGetToolGroupsQuery();
 };

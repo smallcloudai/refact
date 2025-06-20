@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounceCallback } from "usehooks-ts";
 import { Checkboxes } from "./useCheckBoxes";
-import { useAppSelector, useHasCaps, useSendChatRequest } from "../../hooks";
+import {
+  useAppSelector,
+  // useHasCaps,
+  useSendChatRequest,
+} from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import {
   type CommandCompletionResponse,
@@ -24,10 +28,10 @@ function useGetCommandCompletionQuery(
   cursor: number,
   skip = false,
 ): CommandCompletionResponse {
-  const hasCaps = useHasCaps();
+  // const hasCaps = useHasCaps();
   const { data } = commandsApi.useGetCommandCompletionQuery(
     { query, cursor },
-    { skip: !hasCaps || skip },
+    { skip: skip },
   );
 
   if (!data) {
@@ -76,7 +80,7 @@ function useCommandCompletion() {
 function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
-  const hasCaps = useHasCaps();
+  // const hasCaps = useHasCaps();
   const { maybeAddImagesToQuestion } = useSendChatRequest();
 
   const messages = useAppSelector(selectMessages);
@@ -100,7 +104,7 @@ function useGetCommandPreviewQuery(
   const { data } = commandsApi.useGetCommandPreviewQuery(
     { messages: messagesToSend, meta: metaToSend, model: currentModel },
     {
-      skip: !hasCaps || isStreaming,
+      skip: isStreaming,
     },
   );
 

@@ -12,7 +12,6 @@ import {
 } from "../../__fixtures__";
 
 import {
-  goodCaps,
   goodPing,
   goodPrompts,
   goodUser,
@@ -82,14 +81,7 @@ const meta: Meta<typeof Template> = {
   component: Template,
   parameters: {
     msw: {
-      handlers: [
-        goodCaps,
-        goodPing,
-        goodPrompts,
-        goodUser,
-        chatLinks,
-        goodTools,
-      ],
+      handlers: [goodPing, goodPrompts, goodUser, chatLinks, goodTools],
     },
   },
   argTypes: {},
@@ -119,7 +111,7 @@ export const IDE: Story = {
 
   parameters: {
     msw: {
-      handlers: [goodCaps, goodPing, goodPrompts, goodUser, chatLinks, noTools],
+      handlers: [goodPing, goodPrompts, goodUser, chatLinks, noTools],
     },
   },
 };
@@ -139,7 +131,6 @@ export const Knowledge: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,
@@ -181,7 +172,6 @@ export const EmptySpaceAtBottom: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,
@@ -261,7 +251,6 @@ export const UserMessageEmptySpaceAtBottom: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,
@@ -344,7 +333,6 @@ export const CompressButton: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,
@@ -372,7 +360,6 @@ const lowBalance = http.get("https://www.smallcloud.ai/v1/login", () => {
 export const LowBalance: Story = {
   parameters: {
     msw: {
-      goodCaps,
       goodPing,
       goodPrompts,
       chatLinks,

@@ -4,14 +4,14 @@ import {
   Flex,
   HoverCard,
   Link,
-  Skeleton,
-  Box,
+  // Skeleton,
+  // Box,
   Switch,
   Badge,
   Button,
-  DataList,
+  // DataList,
 } from "@radix-ui/themes";
-import { Select, type SelectProps } from "../Select";
+// import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
@@ -47,11 +47,15 @@ import {
   selectIsStreaming,
   selectIsWaiting,
 } from "../../features/ThreadMessages";
-import { useAppSelector, useAppDispatch, useCapsForToolUse } from "../../hooks";
+import {
+  useAppSelector,
+  useAppDispatch,
+  // useCapsForToolUse
+} from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-import { toPascalCase } from "../../utils/toPascalCase";
-import { Coin } from "../../images";
-import { push } from "../../features/Pages/pagesSlice";
+// import { toPascalCase } from "../../utils/toPascalCase";
+// import { Coin } from "../../images";
+// import { push } from "../../features/Pages/pagesSlice";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -301,110 +305,6 @@ export const TitleGenerationSwitch: React.FC = () => {
           </HoverCard.Content>
         </HoverCard.Root>
       </Flex>
-    </Flex>
-  );
-};
-
-export const CapsSelect: React.FC<{ disabled?: boolean }> = ({ disabled }) => {
-  const refs = useTourRefs();
-  const caps = useCapsForToolUse();
-  const dispatch = useAppDispatch();
-
-  const handleAddNewModelClick = useCallback(() => {
-    dispatch(push({ name: "providers page" }));
-  }, [dispatch]);
-
-  const onSelectChange = useCallback(
-    (value: string) => {
-      if (value === "add-new-model") {
-        handleAddNewModelClick();
-        return;
-      }
-      caps.setCapModel(value);
-    },
-    [handleAddNewModelClick, caps],
-  );
-
-  const optionsWithToolTips: SelectProps["options"] = useMemo(() => {
-    // Map existing models with tooltips
-    const modelOptions = caps.usableModelsForPlan.map((option) => {
-      if (!caps.data) return option;
-      if (!caps.data.metadata) return option;
-      if (!caps.data.metadata.pricing) return option;
-      if (!option.value.startsWith("refact/")) return option;
-      const key = option.value.replace("refact/", "");
-      if (!(key in caps.data.metadata.pricing)) return option;
-      const pricingForModel = caps.data.metadata.pricing[key];
-      const tooltip = (
-        <Flex direction="column" gap="4">
-          <Text size="1">Cost per Million Tokens</Text>
-          <DataList.Root size="1" trim="both" className={styles.data_list}>
-            {Object.entries(pricingForModel).map(([key, value]) => {
-              return (
-                <DataList.Item key={key} align="stretch">
-                  <DataList.Label minWidth="88px">
-                    {toPascalCase(key)}
-                  </DataList.Label>
-                  <DataList.Value className={styles.data_list__value}>
-                    <Flex justify="between" align="center" gap="2">
-                      {value * 1_000} <Coin width="12px" height="12px" />
-                    </Flex>
-                  </DataList.Value>
-                </DataList.Item>
-              );
-            })}
-          </DataList.Root>
-        </Flex>
-      );
-      return {
-        ...option,
-        tooltip,
-        // title,
-      };
-    });
-
-    return [
-      ...modelOptions,
-      { type: "separator" },
-      {
-        value: "add-new-model",
-        textValue: "Add new model",
-      },
-    ];
-  }, [caps.data, caps.usableModelsForPlan]);
-
-  const allDisabled = caps.usableModelsForPlan.every((option) => {
-    if (typeof option === "string") return false;
-    return option.disabled;
-  });
-
-  return (
-    <Flex
-      gap="2"
-      align="center"
-      wrap="wrap"
-      // flexGrow="1"
-      // flexShrink="0"
-      // width="100%"
-      ref={(x) => refs.setUseModel(x)}
-    >
-      <Skeleton loading={caps.loading}>
-        <Box>
-          {allDisabled ? (
-            <Text size="1" color="gray">
-              No models available
-            </Text>
-          ) : (
-            <Select
-              title="chat model"
-              options={optionsWithToolTips}
-              value={caps.currentModel}
-              onChange={onSelectChange}
-              disabled={disabled}
-            />
-          )}
-        </Box>
-      </Skeleton>
     </Flex>
   );
 };

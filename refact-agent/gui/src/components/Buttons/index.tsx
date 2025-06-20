@@ -8,6 +8,6 @@ export {
   AgentIntegrationsButton,
 } from "./Buttons";
 
-export { ThinkingButton } from "./ThinkingButton";
+// export { ThinkingButton } from "./ThinkingButton";
 export { FadedButton } from "./FadedButton";
 export { CardButton } from "./CardButton";

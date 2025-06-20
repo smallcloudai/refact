@@ -3,7 +3,6 @@ import { describe, expect, test, beforeEach, afterEach } from "vitest";
 import {
   server,
   goodPrompts,
-  goodCaps,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -12,7 +11,6 @@ import {
   chatLinks,
   telemetryChat,
   telemetryNetwork,
-  goodCapsWithKnowledgeFeature,
 } from "../utils/mockServer";
 import { InnerApp } from "../features/App";
 import { stubResizeObserver } from "../utils/test-utils";
@@ -25,7 +23,6 @@ describe("Start a new chat", () => {
 
     server.use(
       goodPing,
-      goodCaps,
       goodPrompts,
       noTools,
       noCommandPreview,
@@ -64,9 +61,8 @@ describe("Start a new chat", () => {
     const textarea = app.container.querySelector("textarea");
     expect(textarea).not.toBeNull();
   });
-  test("open chat with New Chat Button when knowledge feature is available", async () => {
-    server.use(goodCapsWithKnowledgeFeature);
 
+  test("open chat with New Chat Button when knowledge feature is available", async () => {
     const { user, ...app } = render(<InnerApp />, {
       preloadedState: {
         pages: [{ name: "history" }],

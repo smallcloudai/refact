@@ -5,7 +5,6 @@ import { describe, expect, test } from "vitest";
 import {
   server,
   goodPrompts,
-  goodCaps,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -54,7 +53,6 @@ describe("Start a new chat", () => {
   test("User survey should open when 'questionnaire` is false", async () => {
     server.use(
       goodPing,
-      goodCaps,
       goodPrompts,
       noTools,
       noCommandPreview,

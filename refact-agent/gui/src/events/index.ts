@@ -37,7 +37,6 @@ export type { TextDocToolCall } from "../components/Tools/types";
 
 export type {
   CustomPromptsResponse,
-  CapsResponse,
   UserMessage,
   ChatMessage,
   ChatMessages,
@@ -95,7 +94,6 @@ export const fim = {
 export {
   isAssistantDelta,
   isAssistantMessage,
-  isCapsResponse,
   isChatContextFileDelta,
   isChatContextFileMessage,
   isChatResponseChoice,

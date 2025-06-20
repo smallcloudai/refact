@@ -5,7 +5,7 @@ import { DropzoneInputProps, FileRejection, useDropzone } from "react-dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { TruncateLeft } from "../Text";
 import { telemetryApi } from "../../services/refact/telemetry";
-import { useCapsForToolUse } from "../../hooks";
+// import { useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "../ChatForm/useCheckBoxes";
 
 export const FileUploadContext = createContext<{
@@ -21,10 +21,12 @@ export const DropzoneProvider: React.FC<
   React.PropsWithChildren<{ asChild?: boolean }>
 > = ({ asChild, ...props }) => {
   const { setError, processAndInsertImages } = useAttachedImages();
-  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
+  // const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
+  const isMultimodalitySupportedForCurrentModel = false;
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]): void => {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (!isMultimodalitySupportedForCurrentModel) return;
       processAndInsertImages(acceptedFiles);
 

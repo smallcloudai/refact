@@ -1,5 +1,4 @@
 import { http, HttpResponse, type HttpHandler } from "msw";
-import { EMPTY_CAPS_RESPONSE, STUB_CAPS_RESPONSE } from "./caps";
 import { SYSTEM_PROMPTS } from "./prompts";
 import { STUB_LINKS_FOR_CHAT_RESPONSE } from "./chat_links_response";
 import { TOOLS, CHAT_LINKS_URL } from "../services/refact/consts";
@@ -12,30 +11,6 @@ export const goodPing: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/ping",
   () => {
     return HttpResponse.text("pong");
-  },
-);
-
-export const goodCaps: HttpHandler = http.get(
-  "http://127.0.0.1:8001/v1/caps",
-  () => {
-    return HttpResponse.json(STUB_CAPS_RESPONSE);
-  },
-);
-
-export const goodCapsWithKnowledgeFeature: HttpHandler = http.get(
-  "http://127.0.0.1:8001/v1/caps",
-  () => {
-    return HttpResponse.json({
-      ...STUB_CAPS_RESPONSE,
-      metadata: { features: ["knowledge"] },
-    });
-  },
-);
-
-export const emptyCaps: HttpHandler = http.get(
-  `http://127.0.0.1:8001/v1/caps`,
-  () => {
-    return HttpResponse.json(EMPTY_CAPS_RESPONSE);
   },
 );
 

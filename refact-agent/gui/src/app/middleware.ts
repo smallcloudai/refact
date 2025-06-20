@@ -19,7 +19,6 @@ import {
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
 import { dockerApi } from "../services/refact/docker";
-import { capsApi, isCapsErrorResponse } from "../services/refact/caps";
 import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
 import {
@@ -99,21 +98,6 @@ startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
   matcher: isAnyOf(isRejected),
   effect: (action, listenerApi) => {
-    if (
-      capsApi.endpoints.getCaps.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isCapsErrorResponse(action.payload?.data)
-          ? action.payload.data.detail
-          : `fetching caps from lsp`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
     if (
       toolsApi.endpoints.getToolGroups.matchRejected(action) &&
       !action.meta.condition

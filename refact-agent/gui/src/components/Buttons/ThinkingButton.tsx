@@ -12,6 +12,7 @@ import {
 } from "@radix-ui/themes";
 import { AgentUsageLinkButton } from "./Buttons";
 
+// can remove
 export const ThinkingButton: React.FC = () => {
   const isBoostReasoningEnabled = useAppSelector(selectThreadBoostReasoning);
   const {

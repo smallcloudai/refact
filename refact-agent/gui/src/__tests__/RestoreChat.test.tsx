@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import {
   server,
   goodPrompts,
-  goodCaps,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -19,7 +18,6 @@ describe("Restore Chat from history", () => {
   test("Restore chat from history", async () => {
     server.use(
       goodPing,
-      goodCaps,
       goodPrompts,
       noTools,
       noCommandPreview,

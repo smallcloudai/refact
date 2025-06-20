@@ -6,7 +6,6 @@ import { ChatForm, ChatFormProps } from "./ChatForm";
 
 import {
   server,
-  goodCaps,
   goodPrompts,
   noTools,
   noCommandPreview,
@@ -16,7 +15,6 @@ import {
 } from "../../utils/mockServer";
 
 const handlers = [
-  goodCaps,
   goodUser,
   goodPrompts,
   noTools,

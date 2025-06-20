@@ -58,7 +58,6 @@ import {
   UserMessage,
   validateToolCall,
 } from "../../../services/refact";
-import { capsApi } from "../../../services/refact";
 
 const createChatThread = (
   tool_use: ToolUse,
@@ -430,22 +429,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
   builder.addCase(setIncreaseMaxTokens, (state, action) => {
     state.thread.increase_max_tokens = action.payload;
   });
-
-  builder.addMatcher(
-    capsApi.endpoints.getCaps.matchFulfilled,
-    (state, action) => {
-      const defaultModel = action.payload.chat_default_model;
-
-      const model = state.thread.model || defaultModel;
-      if (!(model in action.payload.chat_models)) return;
-
-      const currentModelMaximumContextTokens =
-        action.payload.chat_models[model].n_ctx;
-
-      state.thread.currentMaximumContextTokens =
-        currentModelMaximumContextTokens;
-    },
-  );
 
   builder.addMatcher(
     commandsApi.endpoints.getCommandPreview.matchFulfilled,

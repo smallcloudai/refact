@@ -1,4 +1,3 @@
-export * from "./caps";
 export * from "./providers";
 export * from "./models";
 export * from "./chat";

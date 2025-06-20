@@ -1,24 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   isCommitLink,
   isPostChatLink,
-  isUserMessage,
+  // isUserMessage,
   linksApi,
   type ChatLink,
 } from "..//services/refact";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
-import { useGetCapsQuery } from "./useGetCapsQuery";
+// import { useGetCapsQuery } from "./useGetCapsQuery";
 import { useSendChatRequest } from "./useSendChatRequest";
 import {
   chatModeToLspMode,
-  selectAreFollowUpsEnabled,
+  // selectAreFollowUpsEnabled,
   selectChatId,
   selectIntegration,
   // selectIsStreaming,
   // selectIsWaiting,
   selectMessages,
-  selectModel,
+  // selectModel,
   selectThreadMode,
   setIncreaseMaxTokens,
   setIntegrationData,
@@ -35,60 +35,60 @@ import { isAbsolutePath } from "../utils";
 export function useGetLinksFromLsp() {
   const dispatch = useAppDispatch();
 
-  const isStreaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
+  // const isStreaming = useAppSelector(selectIsStreaming);
+  // const isWaiting = useAppSelector(selectIsWaiting);
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);
   const maybeIntegration = useAppSelector(selectIntegration);
   const threadMode = useAppSelector(selectThreadMode);
-  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
+  // const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
   // TODO: add the model
-  const caps = useGetCapsQuery();
+  // const caps = useGetCapsQuery();
 
-  const model = useAppSelector(selectModel) || caps.data?.chat_default_model;
+  // const model = useAppSelector(selectModel) || caps.data?.chat_default_model;
 
-  const unCalledTools = React.useMemo(() => {
-    if (messages.length === 0) return false;
-    const last = messages[messages.length - 1];
-    //TODO: handle multiple tool calls in last assistant message
-    if (last.ftm_role !== "assistant") return false;
-    const maybeTools = last.tool_calls;
-    if (maybeTools && maybeTools.length > 0) return true;
-    return false;
-  }, [messages]);
+  // const unCalledTools = React.useMemo(() => {
+  //   if (messages.length === 0) return false;
+  //   const last = messages[messages.length - 1];
+  //   //TODO: handle multiple tool calls in last assistant message
+  //   if (last.ftm_role !== "assistant") return false;
+  //   const maybeTools = last.tool_calls;
+  //   if (maybeTools && maybeTools.length > 0) return true;
+  //   return false;
+  // }, [messages]);
 
-  const skipLinksRequest = useMemo(() => {
-    const lastMessageIsUserMessage =
-      messages.length > 0 && isUserMessage(messages[messages.length - 1]);
-    if (!model) return true;
-    if (!caps.data) return true;
-    return (
-      !areFollowUpsEnabled ||
-      isStreaming ||
-      isWaiting ||
-      unCalledTools ||
-      lastMessageIsUserMessage
-    );
-  }, [
-    caps.data,
-    areFollowUpsEnabled,
-    isStreaming,
-    isWaiting,
-    messages,
-    model,
-    unCalledTools,
-  ]);
+  // const skipLinksRequest = useMemo(() => {
+  //   const lastMessageIsUserMessage =
+  //     messages.length > 0 && isUserMessage(messages[messages.length - 1]);
+  //   if (!model) return true;
+  //   if (!caps.data) return true;
+  //   return (
+  //     !areFollowUpsEnabled ||
+  //     isStreaming ||
+  //     isWaiting ||
+  //     unCalledTools ||
+  //     lastMessageIsUserMessage
+  //   );
+  // }, [
+  //   caps.data,
+  //   areFollowUpsEnabled,
+  //   isStreaming,
+  //   isWaiting,
+  //   messages,
+  //   model,
+  //   unCalledTools,
+  // ]);
 
   const linksResult = linksApi.useGetLinksForChatQuery(
     {
       chat_id: chatId,
       messages,
-      model: model ?? "",
+      model: "",
       mode: chatModeToLspMode({ defaultMode: threadMode }),
       current_config_file: maybeIntegration?.path,
     },
-    { skip: skipLinksRequest },
+    { skip: true },
   );
 
   useEffect(() => {

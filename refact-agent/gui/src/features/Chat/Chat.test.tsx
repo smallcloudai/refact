@@ -30,14 +30,13 @@ import { Chat } from "./Chat";
 //   ToolCall,
 //   ToolResult,
 // } from "../events";
-import { STUB_CAPS_RESPONSE } from "../../__fixtures__";
+
 // import { useEventBusForChat } from "../hooks";
 
 import { http, HttpResponse } from "msw";
 
 import {
   server,
-  goodCaps,
   goodPrompts,
   noTools,
   noCommandPreview,
@@ -50,7 +49,6 @@ import {
 } from "../../utils/mockServer";
 
 const handlers = [
-  goodCaps,
   goodPrompts,
   noTools,
   noCommandPreview,
@@ -240,8 +238,6 @@ describe("Chat", () => {
 
     await user.type(textarea, "hello");
 
-    await waitFor(() => app.queryByText(STUB_CAPS_RESPONSE.chat_default_model));
-
     await user.keyboard("{Enter}");
 
     await waitFor(() => {
@@ -260,7 +256,7 @@ describe("Chat", () => {
       noCommandPreview,
       noCompletions,
       noTools,
-      goodCaps,
+
       goodPing,
     );
     const chatSpy = vi.fn();
@@ -281,11 +277,6 @@ describe("Chat", () => {
     // await waitFor(() => expect(app.queryByTitle("chat model")).not.toBeNull(), {
     //   timeout: 1000,
     // });
-    await waitFor(() =>
-      expect(
-        app.queryByText(STUB_CAPS_RESPONSE.chat_default_model),
-      ).not.toBeNull(),
-    );
 
     await user.click(app.getByTitle("chat model"));
 
@@ -378,7 +369,7 @@ describe("Chat", () => {
       goodPing,
       goodPrompts,
       noCommandPreview,
-      goodCaps,
+
       noCommandPreview,
       noCompletions,
       noTools,

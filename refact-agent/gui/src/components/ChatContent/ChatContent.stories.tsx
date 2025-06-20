@@ -23,7 +23,6 @@ import {
 import { http, HttpResponse } from "msw";
 import { CHAT_LINKS_URL } from "../../services/refact/consts";
 import {
-  goodCaps,
   goodPing,
   goodPrompts,
   goodUser,
@@ -165,7 +164,6 @@ export const TextDoc: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,
@@ -187,7 +185,6 @@ export const MarkdownIssue: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,
@@ -229,7 +226,6 @@ export const ToolWaiting: Story = {
   parameters: {
     msw: {
       handlers: [
-        goodCaps,
         goodPing,
         goodPrompts,
         goodUser,

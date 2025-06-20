@@ -1,13 +1,18 @@
 import React, { useCallback, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
-import { Flex, Button, Text, Card } from "@radix-ui/themes";
+import {
+  Flex,
+  Button,
+  // Text,
+  Card,
+} from "@radix-ui/themes";
 import {
   useAppSelector,
   useAppDispatch,
   // useSendChatRequest,
   // useAutoSend,
-  useCapsForToolUse,
+  // useCapsForToolUse,
 } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
 import {
@@ -16,10 +21,10 @@ import {
   selectPreventSend,
   selectChatId,
   //  selectMessages,
-  getSelectedToolUse,
+  // getSelectedToolUse,
   selectThreadNewChatSuggested,
 } from "../../features/Chat/Thread";
-import { ThreadHistoryButton } from "../Buttons";
+// import { ThreadHistoryButton } from "../Buttons";
 import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
@@ -28,7 +33,7 @@ import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
 import { useMessageSubscription } from "./useMessageSubscription";
 import {
   selectIsStreaming,
-  selectTotalMessagesInThread,
+  // selectTotalMessagesInThread,
 } from "../../features/ThreadMessages";
 
 export type ChatProps = {
@@ -50,23 +55,23 @@ export const Chat: React.FC<ChatProps> = ({
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
   const isStreaming = useAppSelector(selectIsStreaming);
   const { sendMessage } = useMessageSubscription();
-  const totalMessages = useAppSelector(selectTotalMessagesInThread, {
-    devModeChecks: { stabilityCheck: "never" },
-  });
+  // const totalMessages = useAppSelector(selectTotalMessagesInThread, {
+  //   devModeChecks: { stabilityCheck: "never" },
+  // });
 
   const chatId = useAppSelector(selectChatId);
   // TODO: figure out features removed here
   // const { submit, abort, retryFromIndex } = useSendChatRequest();
 
-  const chatToolUse = useAppSelector(getSelectedToolUse);
+  // const chatToolUse = useAppSelector(getSelectedToolUse);
   const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   //   const messages = useAppSelector(selectMessages);
-  const capsForToolUse = useCapsForToolUse();
+  // const capsForToolUse = useCapsForToolUse();
 
   const { shouldCheckpointsPopupBeShown } = useCheckpoints();
 
-  const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
-    useState(false);
+  // const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
+  //   useState(false);
 
   const preventSend = useAppSelector(selectPreventSend);
   const onEnableSend = () => dispatch(enableSend({ id: chatId }));
@@ -74,7 +79,7 @@ export const Chat: React.FC<ChatProps> = ({
   const handleSummit = useCallback(
     (value: string) => {
       // submit({ question: value });
-      sendMessage(value);
+      void sendMessage(value);
       if (isViewingRawJSON) {
         setIsViewingRawJSON(false);
       }
@@ -127,9 +132,9 @@ export const Chat: React.FC<ChatProps> = ({
           unCalledTools={unCalledTools}
         />
 
-        <Flex justify="between" pl="1" pr="1" pt="1">
-          {/* Two flexboxes are left for the future UI element on the right side */}
-          {totalMessages > 0 && (
+        {/* <Flex justify="between" pl="1" pr="1" pt="1"> */}
+        {/* Two flexboxes are left for the future UI element on the right side */}
+        {/* {totalMessages > 0 && (
             <Flex align="center" justify="between" width="100%">
               <Flex align="center" gap="1">
                 <Text size="1">model: {capsForToolUse.currentModel} </Text> •{" "}
@@ -150,8 +155,8 @@ export const Chat: React.FC<ChatProps> = ({
                   />
                 )}
             </Flex>
-          )}
-        </Flex>
+          )} */}
+        {/* </Flex> */}
       </Flex>
     </DropzoneProvider>
   );

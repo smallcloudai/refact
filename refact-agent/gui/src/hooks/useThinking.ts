@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { useCapsForToolUse } from "./useCapsForToolUse";
+// import { useCapsForToolUse } from "./useCapsForToolUse";
 import { useAppSelector } from "./useAppSelector";
 import {
   selectChatId,
@@ -11,7 +11,7 @@ import {
 import { selectIsStreaming, selectIsWaiting } from "../features/ThreadMessages";
 import { useAppDispatch } from "./useAppDispatch";
 import { useGetUser } from "./useGetUser";
-
+// TODO: remove
 export function useThinking() {
   const dispatch = useAppDispatch();
 
@@ -21,14 +21,15 @@ export function useThinking() {
 
   const isBoostReasoningEnabled = useAppSelector(selectThreadBoostReasoning);
 
-  const caps = useCapsForToolUse();
+  // const caps = useCapsForToolUse();
   const { data: userData } = useGetUser();
 
-  const supportsBoostReasoning = useMemo(() => {
-    const models = caps.data?.chat_models;
-    const item = models?.[caps.currentModel];
-    return item?.supports_boost_reasoning ?? false;
-  }, [caps.data?.chat_models, caps.currentModel]);
+  const supportsBoostReasoning = false;
+  // const supportsBoostReasoning = useMemo(() => {
+  //   const models = caps.data?.chat_models;
+  //   const item = models?.[caps.currentModel];
+  //   return item?.supports_boost_reasoning ?? false;
+  // }, [caps.data?.chat_models, caps.currentModel]);
 
   const shouldBeTeasing = useMemo(
     () => userData?.inference === "FREE",
@@ -37,24 +38,20 @@ export function useThinking() {
 
   const shouldBeDisabled = useMemo(() => {
     return (
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       !supportsBoostReasoning || shouldBeTeasing || isStreaming || isWaiting
     );
   }, [supportsBoostReasoning, isStreaming, isWaiting, shouldBeTeasing]);
 
   const noteText = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!supportsBoostReasoning)
-      return `Note: ${caps.currentModel} doesn't support thinking`;
+      return `Note: current model doesn't support thinking`;
     if (isStreaming || isWaiting)
       return `Note: you can't ${
         isBoostReasoningEnabled ? "disable" : "enable"
       } reasoning while stream is in process`;
-  }, [
-    supportsBoostReasoning,
-    isStreaming,
-    isWaiting,
-    isBoostReasoningEnabled,
-    caps.currentModel,
-  ]);
+  }, [supportsBoostReasoning, isStreaming, isWaiting, isBoostReasoningEnabled]);
 
   const handleReasoningChange = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, checked: boolean) => {
@@ -66,6 +63,7 @@ export function useThinking() {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!supportsBoostReasoning) {
       dispatch(setBoostReasoning({ chatId, value: supportsBoostReasoning }));
     }
@@ -76,6 +74,6 @@ export function useThinking() {
     shouldBeDisabled,
     shouldBeTeasing,
     noteText,
-    areCapsInitialized: !caps.uninitialized,
+    areCapsInitialized: true,
   };
 }

@@ -10,11 +10,13 @@ import {
 } from "../features/AttachedImages";
 import { setError } from "../features/Errors/errorsSlice";
 import { setInformation } from "../features/Errors/informationSlice";
-import { useCapsForToolUse } from "./useCapsForToolUse";
+// import { useCapsForToolUse } from "./useCapsForToolUse";
 
+// TODO: maybe remove
 export function useAttachedImages() {
   const images = useAppSelector(selectAllImages);
-  const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
+  // const { isMultimodalitySupportedForCurrentModel } = useCapsForToolUse();
+  const isMultimodalitySupportedForCurrentModel = false;
   const dispatch = useAppDispatch();
 
   const removeImage = useCallback(
@@ -62,6 +64,7 @@ export function useAttachedImages() {
   );
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!isMultimodalitySupportedForCurrentModel) {
       const action = resetAttachedImagesSlice();
       dispatch(action);
