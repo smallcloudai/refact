@@ -125,7 +125,27 @@ export const Dropdown: React.FC<DropdownProps> = ({
     openPrivacyFile,
     setLoginMessage,
     clearActiveTeamsGroupInIDE,
+    clearActiveTeamsWorkspaceInIDE,
   } = useEventsBusForIDE();
+
+  useEffect(() => {
+    if (
+      user.data &&
+      !user.data.workspaces.some((w) => w.ws_id === activeWorkspace?.ws_id)
+    ) {
+      // current workspace is no longer in list of cloud ones, resetting state
+      clearActiveTeamsGroupInIDE();
+      clearActiveTeamsWorkspaceInIDE();
+      const actions = [resetActiveGroup(), resetActiveWorkspace()];
+      actions.forEach((action) => dispatch(action));
+    }
+  }, [
+    dispatch,
+    clearActiveTeamsGroupInIDE,
+    clearActiveTeamsWorkspaceInIDE,
+    activeWorkspace,
+    user.data,
+  ]);
 
   const handleChatHistoryCleanUp = () => {
     dispatch(clearHistory());

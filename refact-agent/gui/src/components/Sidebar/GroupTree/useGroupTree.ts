@@ -36,8 +36,6 @@ import { setError } from "../../../features/Errors/errorsSlice";
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
   const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
-  // const [currentTeamsWorkspace, setCurrentTeamsWorkspace] =
-  //   useState<TeamsWorkspace | null>(null);
 
   const [teamsWorkspaces] = useQuery<
     NavTreeWantWorkspacesQuery,
@@ -121,7 +119,8 @@ export function useGroupTree() {
   });
 
   const dispatch = useAppDispatch();
-  const { setActiveTeamsGroupInIDE } = useEventsBusForIDE();
+  const { setActiveTeamsGroupInIDE, setActiveTeamsWorkspaceInIDE } =
+    useEventsBusForIDE();
 
   const [setActiveGroupIdTrigger] = teamsApi.useSetActiveGroupIdMutation();
   const [currentSelectedTeamsGroupNode, setCurrentSelectedTeamsGroupNode] =
@@ -154,35 +153,34 @@ export function useGroupTree() {
   }, []);
 
   const onGroupSelectionConfirm = useCallback(
-    (group: FlexusTreeNode) => {
+    async (group: FlexusTreeNode) => {
       const newGroup = {
         id: group.treenodeId,
         name: group.treenodeTitle,
       };
 
       setActiveTeamsGroupInIDE(newGroup);
-      void setActiveGroupIdTrigger({
-        group_id: group.treenodeId,
-      })
-        .then((result) => {
-          if (result.data) {
-            dispatch(setActiveGroup(newGroup));
-            return;
-          } else {
-            // TODO: rework error handling
-            let errorMessage: string;
-            if ("data" in result.error && isDetailMessage(result.error.data)) {
-              errorMessage = result.error.data.detail;
-            } else {
-              errorMessage =
-                "Error: Something went wrong while selecting a group. Try again.";
-            }
-            dispatch(setError(errorMessage));
-          }
-        })
-        .catch(() => {
-          dispatch(resetActiveGroup());
+      try {
+        const result = await setActiveGroupIdTrigger({
+          group_id: group.treenodeId,
         });
+        if (result.data) {
+          dispatch(setActiveGroup(newGroup));
+          return;
+        } else {
+          // TODO: rework error handling
+          let errorMessage: string;
+          if ("data" in result.error && isDetailMessage(result.error.data)) {
+            errorMessage = result.error.data.detail;
+          } else {
+            errorMessage =
+              "Error: Something went wrong while selecting a group. Try again.";
+          }
+          dispatch(setError(errorMessage));
+        }
+      } catch {
+        dispatch(resetActiveGroup());
+      }
     },
     [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
   );
@@ -194,11 +192,16 @@ export function useGroupTree() {
           (w) => w.ws_id === workspaceId,
         );
       if (maybeWorkspace) {
+        setActiveTeamsWorkspaceInIDE(maybeWorkspace);
         dispatch(setActiveWorkspace(maybeWorkspace));
         setCurrentSelectedTeamsGroupNode(null);
       }
     },
-    [dispatch, teamsWorkspaces.data?.query_basic_stuff.workspaces],
+    [
+      dispatch,
+      setActiveTeamsWorkspaceInIDE,
+      teamsWorkspaces.data?.query_basic_stuff.workspaces,
+    ],
   );
 
   const handleSkipWorkspaceSelection = useCallback(() => {
@@ -212,6 +215,13 @@ export function useGroupTree() {
     }
     return [];
   }, [teamsWorkspaces.data?.query_basic_stuff.workspaces]);
+
+  useEffect(() => {
+    if (availableWorkspaces.length === 1) {
+      dispatch(setActiveWorkspace(availableWorkspaces[0]));
+      setActiveTeamsWorkspaceInIDE(availableWorkspaces[0]);
+    }
+  }, [dispatch, setActiveTeamsWorkspaceInIDE, availableWorkspaces]);
 
   return {
     // Refs
