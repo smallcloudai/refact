@@ -27,16 +27,6 @@ export const goodCaps: HttpHandler = http.get(
   },
 );
 
-export const goodCapsWithKnowledgeFeature: HttpHandler = http.get(
-  "http://127.0.0.1:8001/v1/caps",
-  () => {
-    return HttpResponse.json({
-      ...STUB_CAPS_RESPONSE,
-      metadata: { features: ["knowledge"] },
-    });
-  },
-);
-
 export const emptyCaps: HttpHandler = http.get(
   `http://127.0.0.1:8001/v1/caps`,
   () => {
