@@ -1,3 +1,3 @@
-pub const CLOUD_URL: &str = "https://test-teams-v1.smallcloud.ai/v1";
-pub const GRAPHQL_WS_URL: &str = "ws://test-teams-v1.smallcloud.ai/v1/graphql";
-pub const GRAPHQL_URL: &str = "https://test-teams-v1.smallcloud.ai/v1/graphql";
+pub const CLOUD_URL: &str = "http://localhost:8008/v1";
+pub const GRAPHQL_WS_URL: &str = "ws://localhost:8008/v1/graphql";
+pub const GRAPHQL_URL: &str = "http://localhost:8008/v1/graphql";

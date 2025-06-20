@@ -9,18 +9,12 @@ use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::MIN_RAG_CONTEXT_LIMIT;
-use crate::call_validation::{ChatContent, ChatMessage, ChatModelType, ChatUsage, ContextEnum, ContextFile, SubchatParameters};
-use crate::custom_error::MapErrToString;
-use crate::global_context::try_load_caps_quickly_if_not_present;
-use crate::http::http_post_json;
-use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
+use crate::call_validation::{ChatContent, ChatMessage, ContextEnum, ContextFile, SubchatParameters};
 use crate::postprocessing::pp_context_files::postprocess_context_files;
 use crate::postprocessing::pp_plain_text::postprocess_plain_text;
-use crate::scratchpads::scratchpad_utils::{HasRagResults, max_tokens_for_rag_chat_by_tools};
+use crate::scratchpads::scratchpad_utils::max_tokens_for_rag_chat_by_tools;
 use crate::tools::tools_description::{MatchConfirmDenyResult, Tool};
 use crate::yaml_configs::customization_loader::load_customization;
-use crate::caps::{is_cloud_model, resolve_chat_model, resolve_model};
-use crate::http::routers::v1::at_tools::{ToolExecuteResponse, ToolsExecutePost};
 
 
 pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_name: &str) -> Result<SubchatParameters, String> {
@@ -30,8 +24,7 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
         let params = ccx_locked.subchat_tool_parameters.get(tool_name).cloned();  // comes from the request, the request has specified parameters
         (gcx, params)
     };
-
-    let mut params = match params_mb {
+    let params = match params_mb {
         Some(params) => params,
         None => {
             let mut error_log = Vec::new();
@@ -43,114 +36,9 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
                 .ok_or_else(|| format!("subchat params for tool {} not found (checked in Post and in Customization)", tool_name))?
         }
     };
-
-    // check if the models exist otherwise use the external chat model
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err_to_string()?;
-
-    if !params.subchat_model.is_empty() {
-        match resolve_chat_model(caps.clone(), &params.subchat_model) {
-            Ok(_) => return Ok(params),
-            Err(e) => {
-                tracing::warn!("Specified subchat_model {} is not available: {}", params.subchat_model, e);
-            }
-        }
-    }
-
-    let current_model = ccx.lock().await.current_model.clone();
-    let model_to_resolve = match params.subchat_model_type {
-        ChatModelType::Light => &caps.defaults.chat_light_model,
-        ChatModelType::Default => &caps.defaults.chat_default_model,
-        ChatModelType::Thinking => &caps.defaults.chat_thinking_model,
-    };
-
-    params.subchat_model = match resolve_model(&caps.chat_models, model_to_resolve) {
-        Ok(model_rec) => {
-            if !is_cloud_model(&current_model) && is_cloud_model(&model_rec.base.id)
-                && params.subchat_model_type != ChatModelType::Light {
-                current_model.to_string()
-            } else {
-                model_rec.base.id.clone()
-            }
-        },
-        Err(e) => {
-            tracing::warn!("{:?} model is not available: {}. Using {} model as a fallback.",
-                params.subchat_model_type, e, current_model);
-            current_model
-        }
-    };
-
-    tracing::info!("using model for subchat: {}", params.subchat_model);
     Ok(params)
 }
 
-pub async fn run_tools_remotely(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    model_id: &str,
-    maxgen: usize,
-    original_messages: &[ChatMessage],
-    stream_back_to_user: &mut HasRagResults,
-    style: &Option<String>,
-) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (n_ctx, subchat_tool_parameters, postprocess_parameters, gcx, chat_id) = {
-        let ccx_locked = ccx.lock().await;
-        (
-            ccx_locked.n_ctx,
-            ccx_locked.subchat_tool_parameters.clone(),
-            ccx_locked.postprocess_parameters.clone(),
-            ccx_locked.global_context.clone(),
-            ccx_locked.chat_id.clone(),
-        )
-    };
-
-    let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &chat_id).await?;
-    info!("run_tools_remotely: connecting to port {}", port);
-
-    let tools_execute_post = ToolsExecutePost {
-        messages: original_messages.to_vec(),
-        n_ctx,
-        maxgen,
-        subchat_tool_parameters,
-        postprocess_parameters,
-        model_name: model_id.to_string(),
-        chat_id,
-        style: style.clone(),
-    };
-
-    let url = format!("http://localhost:{port}/v1/tools-execute");
-    let response: ToolExecuteResponse = http_post_json(&url, &tools_execute_post).await?;
-    info!("run_tools_remotely: got response: {:?}", response);
-
-    let mut all_messages = tools_execute_post.messages;
-
-    for msg in response.messages {
-        stream_back_to_user.push_in_json(json!(&msg));
-        all_messages.push(msg);
-    }
-
-    Ok((all_messages, response.tools_ran))
-}
-
-pub async fn run_tools_locally(
-    ccx: Arc<AMutex<AtCommandsContext>>,
-    tools: &mut IndexMap<String, Box<dyn Tool + Send>>,
-    tokenizer: Option<Arc<Tokenizer>>,
-    maxgen: usize,
-    original_messages: &Vec<ChatMessage>,
-    stream_back_to_user: &mut HasRagResults,
-    style: &Option<String>,
-) -> Result<(Vec<ChatMessage>, bool), String> {
-    let (new_messages, tools_ran) = run_tools(
-        ccx, tools, tokenizer, maxgen, original_messages, style
-    ).await?;
-
-    let mut all_messages = original_messages.to_vec();
-    for msg in new_messages {
-        stream_back_to_user.push_in_json(json!(&msg));
-        all_messages.push(msg);
-    }
-
-    Ok((all_messages, tools_ran))
-}
 
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
@@ -232,9 +120,7 @@ pub async fn run_tools(
             }
             Err(e) => {
                 warn!("tool use {}({:?}) FAILED: {}", &t_call.function.name, &args, e);
-                let mut tool_failed_message = tool_answer_err(e, t_call.id.to_string());
-                tool_failed_message.usage = cmd.usage().clone();
-                *cmd.usage() = None;
+                let tool_failed_message = tool_answer_err(e, t_call.id.to_string());
                 generated_tool.push(tool_failed_message.clone());
                 continue;
             }
@@ -295,7 +181,7 @@ pub async fn run_tools(
     Ok((new_messages, true))
 }
 
-async fn pp_run_tools(
+pub(crate) async fn pp_run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     original_messages: &Vec<ChatMessage>,
     any_corrections: bool,
@@ -392,7 +278,7 @@ async fn pp_run_tools(
 }
 
 
-fn tool_answer_err(content: String, tool_call_id: String) -> ChatMessage {
+pub(crate) fn tool_answer_err(content: String, tool_call_id: String) -> ChatMessage {
     ChatMessage {
         role: "tool".to_string(),
         content: ChatContent::SimpleText(content),
@@ -428,12 +314,4 @@ pub fn command_should_be_denied(
     }
 
     (false, "".to_string())
-}
-
-pub fn update_usage_from_message(usage: &mut ChatUsage, message: &ChatMessage) {
-    if let Some(u) = message.usage.as_ref() {
-        usage.total_tokens += u.total_tokens;
-        usage.completion_tokens += u.completion_tokens;
-        usage.prompt_tokens += u.prompt_tokens;
-    }
 }

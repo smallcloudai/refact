@@ -9,12 +9,9 @@ use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatMessage, ChatMeta, ChatToolCall, PostprocessSettings, SubchatParameters};
+use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
 use crate::caps::resolve_chat_model;
-use crate::http::http_post_json;
-use crate::http::routers::v1::chat::CHAT_TOP_N;
 use crate::indexing_utils::wait_for_indexing_if_needed;
-use crate::integrations::docker::docker_container_manager::docker_container_get_host_lsp_port_to_connect;
 use crate::tools::tools_description::{set_tool_config, MatchConfirmDenyResult, ToolConfig, ToolDesc, ToolGroupCategory, ToolSource};
 use crate::tools::tools_list::{get_available_tool_groups, get_available_tools};
 use crate::custom_error::ScratchError;
@@ -27,8 +24,6 @@ struct ToolsPermissionCheckPost {
     pub tool_calls: Vec<ChatToolCall>,
     #[serde(default)]
     pub messages: Vec<ChatMessage>,
-    #[serde(default)]
-    pub meta: ChatMeta,
 }
 
 #[derive(Serialize)]
@@ -164,23 +159,8 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
             .unwrap()
     }
 
-
     let post = serde_json::from_slice::<ToolsPermissionCheckPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-
-    let is_inside_container = gcx.read().await.cmdline.inside_container;
-    if post.meta.chat_remote && !is_inside_container {
-        let port = docker_container_get_host_lsp_port_to_connect(gcx.clone(), &post.meta.chat_id).await
-            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-        let url = format!("http://localhost:{port}/v1/tools-check-if-confirmation-needed");
-        let response: serde_json::Value = http_post_json( &url, &post).await
-            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-        return Ok(Response::builder()
-           .status(StatusCode::OK)
-          .header("Content-Type", "application/json")
-          .body(Body::from(serde_json::to_string(&response).unwrap()))
-          .unwrap());
-    }
 
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         gcx.clone(),
@@ -189,8 +169,7 @@ pub async fn handle_v1_tools_check_if_confirmation_needed(
         false,
         post.messages.clone(),
         "".to_string(),
-        false,
-        "".to_string(),
+        false
     ).await)); // used only for should_confirm
 
     let all_tools = get_available_tools(gcx.clone()).await.into_iter()
@@ -280,12 +259,11 @@ pub async fn handle_v1_tools_execute(
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
         tools_execute_post.n_ctx,
-        CHAT_TOP_N,
+        crate::http::routers::v1::at_commands::CHAT_TOP_N,
         false,
         tools_execute_post.messages.clone(),
         tools_execute_post.chat_id.clone(),
-        false,
-        model_rec.base.id.clone(),
+        false
     ).await;
     ccx.subchat_tool_parameters = tools_execute_post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = tools_execute_post.postprocess_parameters.clone();

@@ -6,8 +6,13 @@ use tokio::sync::RwLock as ARwLock;
 
 use crate::global_context::GlobalContext;
 use crate::integrations::utils::{serialize_num_to_str, deserialize_str_to_num, serialize_ports, deserialize_ports};
-use crate::integrations::docker::docker_container_manager::Port;
 use crate::integrations::integr_abstract::{IntegrationTrait, IntegrationCommon};
+
+#[derive(Clone, Debug)]
+pub struct Port {
+    pub published: String,
+    pub target: String,
+}
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 pub struct SettingsIsolation {

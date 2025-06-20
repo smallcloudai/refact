@@ -9,7 +9,6 @@ use tokio::sync::RwLock as ARwLock;
 use tokio::sync::Mutex as AMutex;
 use strsim::jaro_winkler;
 use itertools::Itertools;
-use tokenizers::Tokenizer;
 use tracing::info;
 
 use crate::at_commands::execute_at::run_at_commands_locally;
@@ -18,14 +17,13 @@ use crate::postprocessing::pp_utils::pp_resolve_ctx_file_paths;
 use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
-use crate::call_validation::{ChatMeta, PostprocessSettings, SubchatParameters};
+use crate::call_validation::{PostprocessSettings, SubchatParameters};
 use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
 use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
-use crate::http::routers::v1::chat::deserialize_messages_from_post;
 use crate::scratchpads::scratchpad_utils::HasRagResults;
 
 
@@ -44,14 +42,8 @@ struct CommandCompletionResponse {
 
 #[derive(Serialize, Deserialize, Clone)]
 struct CommandPreviewPost {
-    #[serde(default)]
     pub messages: Vec<Value>,
-    #[serde(default)]
-    model: String,
-    #[serde(default)]
-    provider: String,
-    #[serde(default)]
-    pub meta: ChatMeta,
+    model_n_ctx: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -82,6 +74,19 @@ pub struct CommandExecuteResponse {
     pub messages_to_stream_back: Vec<serde_json::Value>,
 }
 
+pub const CHAT_TOP_N: usize = 12;
+
+pub fn deserialize_messages_from_post(messages: &Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, ScratchError> {
+    let messages: Vec<ChatMessage> = messages.iter()
+        .map(|x| serde_json::from_value(x.clone()))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| {
+            tracing::error!("can't deserialize ChatMessage: {}", e);
+            ScratchError::new(StatusCode::BAD_REQUEST, format!("JSON problem: {}", e))
+        })?;
+    Ok(messages)
+}
+
 pub async fn handle_v1_command_completion(
     Extension(global_context): Extension<Arc<ARwLock<GlobalContext>>>,
     body_bytes: hyper::body::Bytes,
@@ -99,7 +104,6 @@ pub async fn handle_v1_command_completion(
         vec![],
         "".to_string(),
         false,
-        "".to_string(),
     ).await));
 
     let at_commands = ccx.lock().await.at_commands.clone();
@@ -129,15 +133,14 @@ pub async fn handle_v1_command_completion(
         .unwrap())
 }
 
-async fn count_tokens(tokenizer_arc: Option<Arc<Tokenizer>>, messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
+async fn count_tokens(messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> {
     let mut accum: u64 = 0;
 
     for message in messages {
-        accum += message.content.count_tokens(tokenizer_arc.clone(), &None)
+        accum += message.content.count_tokens(None, &None)
             .map_err(|e| ScratchError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
-                message: format!("v1_chat_token_counter: count_tokens failed: {}", e),
-                telemetry_skip: false})? as u64;
+                message: format!("v1_chat_token_counter: count_tokens failed: {}", e)})? as u64;
     }
     Ok(accum)
 }
@@ -149,7 +152,6 @@ pub async fn handle_v1_command_preview(
     let post = serde_json::from_slice::<CommandPreviewPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
     let mut messages = deserialize_messages_from_post(&post.messages)?;
-
     let last_message = messages.pop();
     let mut query = if let Some(last_message) = &last_message {
         match &last_message.content {
@@ -168,26 +170,14 @@ pub async fn handle_v1_command_preview(
         String::new()
     };
 
-    let caps = crate::global_context::try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let model_rec = resolve_chat_model(caps, &post.model)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-    let tokenizer_arc = match tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await {
-        Ok(x) => x,
-        Err(e) => {
-            tracing::error!(e);
-            return Err(ScratchError::new(StatusCode::BAD_REQUEST, e));
-        }
-    };
-
     let ccx = Arc::new(AMutex::new(AtCommandsContext::new(
         global_context.clone(),
-        model_rec.base.n_ctx,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        post.model_n_ctx,
+        CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),
         false,
-        model_rec.base.id.clone(),
     ).await));
 
     let (messages_for_postprocessing, vec_highlights) = execute_at_commands_in_query(
@@ -208,7 +198,7 @@ pub async fn handle_v1_command_preview(
         ccx_locked.postprocess_parameters.clone()
     };
     if pp_settings.max_files_n == 0 {
-        pp_settings.max_files_n = crate::http::routers::v1::chat::CHAT_TOP_N;
+        pp_settings.max_files_n = CHAT_TOP_N;
     }
 
     let mut context_files = filter_only_context_file_from_context_tool(&messages_for_postprocessing);
@@ -254,13 +244,12 @@ pub async fn handle_v1_command_preview(
     } else {
         preview.clone()
     };
-    let tokens_number = count_tokens(tokenizer_arc.clone(), &messages_to_count).await?;
+    let tokens_number = count_tokens(&messages_to_count).await?;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(serde_json::to_string_pretty(
-            &json!({"messages": preview, "model": model_rec.base.id, "highlight": highlights,
-                "current_context": tokens_number, "number_context": model_rec.base.n_ctx})
+            &json!({"messages": preview, "highlight": highlights, "current_context": tokens_number})
         ).unwrap()))
         .unwrap())
 }
@@ -284,12 +273,11 @@ pub async fn handle_v1_at_command_execute(
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         post.n_ctx,
-        crate::http::routers::v1::chat::CHAT_TOP_N,
+        CHAT_TOP_N,
         true,
         vec![],
         "".to_string(),
         false,
-        model_rec.base.id.clone(),
     ).await;
     ccx.subchat_tool_parameters = post.subchat_tool_parameters.clone();
     ccx.postprocess_parameters = post.postprocess_parameters.clone();

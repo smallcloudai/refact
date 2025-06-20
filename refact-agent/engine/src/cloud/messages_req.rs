@@ -1,15 +1,11 @@
-use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, ChatUsage, DiffChunk};
-use crate::global_context::GlobalContext;
-use log::error;
-use reqwest::Client;
+use crate::call_validation::{ChatContent, ChatMessage, ChatToolCall, DiffChunk};
+use crate::cloud::graphql_client::{execute_graphql, execute_graphql_no_result, GraphQLRequestConfig, graphql_error_to_string};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::sync::Arc;
 use itertools::Itertools;
-use tokio::sync::RwLock as ARwLock;
 use tracing::warn;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThreadMessage {
     pub ftm_belongs_to_ft_id: String,
     pub ftm_alt: i32,
@@ -22,15 +18,14 @@ pub struct ThreadMessage {
     pub ftm_usage: Option<Value>,
     pub ftm_created_ts: f64,
     pub ftm_provenance: Value,
+    pub ftm_user_preferences: Option<Value>
 }
 
 pub async fn get_thread_messages(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    api_key: String,
     thread_id: &str,
     alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
-    let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
     let query = r#"
     query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
         thread_messages_list(
@@ -48,6 +43,7 @@ pub async fn get_thread_messages(
             ftm_usage
             ftm_created_ts
             ftm_provenance
+            ftm_user_preferences
         }
     }
     "#;
@@ -55,61 +51,32 @@ pub async fn get_thread_messages(
         "thread_id": thread_id,
         "alt": alt
     });
-    let response = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "query": query,
-            "variables": variables
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    
+    let config = GraphQLRequestConfig {
+        api_key,
+        user_agent: Some("refact-lsp".to_string()),
+        additional_headers: None,
+    };
 
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
-        }
-        if let Some(data) = response_json.get("data") {
-            if let Some(messages) = data.get("thread_messages_list") {
-                let messages: Vec<ThreadMessage> = serde_json::from_value(messages.clone())
-                    .map_err(|e| format!("Failed to parse thread messages: {}", e))?;
-                return Ok(messages);
-            }
-        }
-        Err(format!("Unexpected response format: {}", response_body))
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to get thread messages: HTTP status {}, error: {}",
-            status, error_text
-        ))
-    }
+    execute_graphql::<Vec<ThreadMessage>, _>(
+        config, 
+        query, 
+        variables, 
+        "thread_messages_list"
+    )
+    .await
+    .map_err(graphql_error_to_string)
 }
 
 pub async fn create_thread_messages(
-    gcx: Arc<ARwLock<GlobalContext>>,
+    api_key: String,
     thread_id: &str,
     messages: Vec<ThreadMessage>,
 ) -> Result<(), String> {
     if messages.is_empty() {
         return Err("No messages provided".to_string());
     }
-    let client = Client::new();
-    let api_key = gcx.read().await.cmdline.api_key.clone();
+    
     let mut input_messages = Vec::with_capacity(messages.len());
     for message in messages {
         if message.ftm_belongs_to_ft_id != thread_id {
@@ -142,7 +109,8 @@ pub async fn create_thread_messages(
             "ftm_tool_calls": tool_calls_str,
             "ftm_call_id": message.ftm_call_id,
             "ftm_usage": usage_str,
-            "ftm_provenance": serde_json::to_string(&message.ftm_provenance).unwrap()
+            "ftm_provenance": serde_json::to_string(&message.ftm_provenance).unwrap(),
+            "ftm_user_preferences": serde_json::to_string(&message.ftm_user_preferences).unwrap()
         }));
     }
     let variables = json!({
@@ -164,48 +132,26 @@ pub async fn create_thread_messages(
                 ftm_created_ts
                 ftm_call_id
                 ftm_provenance
+                ftm_user_preferences
             }
         }
     }
     "#;
-    let response = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
-        .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
-        .json(&json!({
-            "query": mutation,
-            "variables": variables
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
-    if response.status().is_success() {
-        let response_body = response
-            .text()
-            .await
-            .map_err(|e| format!("Failed to read response body: {}", e))?;
-        let response_json: Value = serde_json::from_str(&response_body)
-            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-        if let Some(errors) = response_json.get("errors") {
-            let error_msg = errors.to_string();
-            error!("GraphQL error: {}", error_msg);
-            return Err(format!("GraphQL error: {}", error_msg));
-        }
-        if let Some(_) = response_json.get("data") {
-            return Ok(())
-        }
-        Err(format!("Unexpected response format: {}", response_body))
-    } else {
-        let status = response.status();
-        let error_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
-        Err(format!(
-            "Failed to create thread messages: HTTP status {}, error: {}",
-            status, error_text
-        ))
-    }
+    
+    let config = GraphQLRequestConfig {
+        api_key,
+        user_agent: Some("refact-lsp".to_string()),
+        additional_headers: None,
+    };
+
+    execute_graphql_no_result(
+        config, 
+        mutation, 
+        variables, 
+        "thread_messages_create_multiple"
+    )
+    .await
+    .map_err(graphql_error_to_string)
 }
 
 pub fn convert_thread_messages_to_messages(
@@ -228,9 +174,6 @@ pub fn convert_thread_messages_to_messages(
                 tool_calls,
                 tool_call_id: msg.ftm_call_id.clone(),
                 tool_failed: None,
-                usage: msg.ftm_usage.clone().map(|u| {
-                    serde_json::from_value::<ChatUsage>(u).unwrap_or_else(|_| ChatUsage::default())
-                }),
                 checkpoints: vec![],
                 thinking_blocks: None,
                 finish_reason: None,
@@ -245,6 +188,7 @@ pub fn convert_messages_to_thread_messages(
     prev_alt: i32,
     start_num: i32,
     thread_id: &str,
+    user_preferences: Option<Value>,
 ) -> Result<Vec<ThreadMessage>, String> {
     let mut output_messages = Vec::new();
     let flush_delayed_images = |results: &mut Vec<Value>, delay_images: &mut Vec<Value>| {
@@ -337,6 +281,7 @@ pub fn convert_messages_to_thread_messages(
                     .unwrap_or_default()
                     .as_secs_f64(),
                 ftm_provenance: json!({"system_type": "refact_lsp", "version": env!("CARGO_PKG_VERSION") }),
+                ftm_user_preferences: user_preferences.clone(),
             })
         }
     }

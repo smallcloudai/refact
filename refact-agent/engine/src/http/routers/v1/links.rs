@@ -5,20 +5,17 @@ use hyper::Body;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 
-use crate::call_validation::{ChatMessage, ChatMeta, ChatMode};
-use crate::caps::resolve_chat_model;
+use crate::call_validation::ChatMessage;
 use crate::custom_error::ScratchError;
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 use crate::integrations::go_to_configuration_message;
-use crate::agentic::generate_follow_up_message::generate_follow_up_message;
 use crate::git::commit_info::{get_commit_information_from_current_changes, generate_commit_messages};
 // use crate::http::routers::v1::git::GitCommitPost;
 
 #[derive(Deserialize, Clone, Debug)]
 pub struct LinksPost {
     messages: Vec<ChatMessage>,
-    model_name: String,
-    meta: ChatMeta,
+    chat_mode: String,
 }
 
 #[derive(Default, Serialize, Deserialize, Debug)]
@@ -79,10 +76,10 @@ pub async fn handle_v1_links(
     let mut links: Vec<Link> = Vec::new();
     let mut uncommited_changes_warning = String::new();
 
-    tracing::info!("for links, post.meta.chat_mode == {:?}", post.meta.chat_mode);
+    tracing::info!("for links, post.meta.chat_mode == {:?}", post.chat_mode);
     let (_integrations_map, integration_yaml_errors) = crate::integrations::running_integrations::load_integrations(gcx.clone(), &["**/*".to_string()]).await;
 
-    if post.meta.chat_mode == ChatMode::CONFIGURE {
+    if post.chat_mode.to_lowercase() == "configure" {
         if last_message_assistant_without_tools_with_code_blocks(&post.messages) {
             links.push(Link {
                 link_action: LinkAction::FollowUp,
@@ -95,7 +92,7 @@ pub async fn handle_v1_links(
         }
     }
 
-    if post.meta.chat_mode == ChatMode::PROJECT_SUMMARY {
+    if post.chat_mode.to_lowercase() == "project_summary" {
         if last_message_assistant_without_tools_with_code_blocks(&post.messages) {
             links.push(Link {
                 link_action: LinkAction::FollowUp,
@@ -129,7 +126,7 @@ pub async fn handle_v1_links(
     // }
 
     // GIT uncommitted
-    if post.meta.chat_mode.is_agentic() && post.messages.is_empty() {
+    if post.messages.is_empty() {
         let commits_info = get_commit_information_from_current_changes(gcx.clone()).await;
 
         let mut commit_texts = Vec::new();
@@ -205,29 +202,27 @@ pub async fn handle_v1_links(
     }
 
     // Failures in integrations
-    if post.meta.chat_mode.is_agentic() {
-        for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
-            links.push(Link {
-                link_action: LinkAction::Goto,
-                link_text: format!("Configure {failed_integr_name}"),
-                link_goto: Some(format!("SETTINGS:{failed_integr_name}")),
-                link_summary_path: None,
-                link_tooltip: format!(""),
-                ..Default::default()
-            })
-        }
+    for failed_integr_name in failed_integration_names_after_last_user_message(&post.messages) {
+        links.push(Link {
+            link_action: LinkAction::Goto,
+            link_text: format!("Configure {failed_integr_name}"),
+            link_goto: Some(format!("SETTINGS:{failed_integr_name}")),
+            link_summary_path: None,
+            link_tooltip: format!(""),
+            ..Default::default()
+        })
+    }
 
-        // YAML problems
-        for e in integration_yaml_errors {
-            links.push(Link {
-                link_action: LinkAction::Goto,
-                link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.path, 20)),
-                link_goto: Some(format!("SETTINGS:{}", e.path)),
-                link_summary_path: None,
-                link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
-                ..Default::default()
-            });
-        }
+    // YAML problems
+    for e in integration_yaml_errors {
+        links.push(Link {
+            link_action: LinkAction::Goto,
+            link_text: format!("Syntax error in {}", crate::nicer_logs::last_n_chars(&e.path, 20)),
+            link_goto: Some(format!("SETTINGS:{}", e.path)),
+            link_summary_path: None,
+            link_tooltip: format!("Error at line {}: {}", e.error_line, e.error_msg),
+            ..Default::default()
+        });
     }
 
     // RegenerateWithIncreasedContextSize
@@ -335,46 +330,12 @@ pub async fn handle_v1_links(
         }
     }
     */
-
-    // Follow-up
-    let mut new_chat_suggestion = false;
-    if post.meta.chat_mode != ChatMode::NO_TOOLS
-        && links.is_empty()
-        && post.messages.len() > 2
-        && post.messages.last().map(|x| x.role == "assistant").unwrap_or(false)
-    {
-        let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-        let model_id = match resolve_chat_model(caps.clone(), &caps.defaults.chat_light_model) {
-            Ok(light_model) => light_model.base.id.clone(),
-            Err(_) => post.model_name.clone(),
-        };
-        let follow_up_response = generate_follow_up_message(
-            post.messages.clone(), gcx.clone(), &model_id, &post.meta.chat_id
-        ).await
-            .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error generating follow-up message: {}", e)))?;
-        new_chat_suggestion = follow_up_response.topic_changed;
-        for follow_up_message in follow_up_response.follow_ups {
-            tracing::info!("follow-up {:?}", follow_up_message);
-            links.push(Link {
-                link_action: LinkAction::FollowUp,
-                link_text: follow_up_message,
-                link_goto: None,
-                link_summary_path: None,
-                link_tooltip: format!(""),
-                ..Default::default()
-            });
-        }
-    }
-
-    tracing::info!("generated links2\n{}", serde_json::to_string_pretty(&links).unwrap());
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Content-Type", "application/json")
         .body(Body::from(serde_json::to_string_pretty(&serde_json::json!({
             "links": links,
             "uncommited_changes_warning": uncommited_changes_warning,
-            "new_chat_suggestion": new_chat_suggestion
         })).unwrap())).unwrap())
 }
 

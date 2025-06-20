@@ -273,7 +273,7 @@ pub async fn load_caps_value_from_url(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> Result<(serde_json::Value, String), String> {
     let caps_urls = if cmdline.address_url.to_lowercase() == "refact" {
-        vec!["https://inference.smallcloud.ai/coding_assistant_caps.json".to_string()]
+        vec!["https://app.refact.ai/coding_assistant_caps.json".to_string()]
     } else {
         let base_url = Url::parse(&cmdline.address_url)
             .map_err(|_| "failed to parse address url".to_string())?;
@@ -436,8 +436,4 @@ pub fn resolve_completion_model<'a>(
         }
         Err(err) => Err(err),
     }
-}
-
-pub fn is_cloud_model(model_id: &str) -> bool {
-    model_id.starts_with("refact/")
 }

@@ -1,6 +1,4 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::Hasher;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -23,7 +21,6 @@ use crate::files_in_workspace::DocumentsState;
 use crate::integrations::docker::docker_ssh_tunnel_utils::SshTunnel;
 use crate::integrations::sessions::IntegrationSession;
 use crate::privacy::PrivacySettings;
-use crate::telemetry::telemetry_structs;
 use crate::background_tasks::BackgroundTasksHolder;
 
 
@@ -107,21 +104,6 @@ pub struct CommandLine {
 
     #[structopt(long, help="An pre-setup active group id")]
     pub active_group_id: Option<String>,
-    #[structopt(long, help="Enable cloud threads support")]
-    pub cloud_threads: bool,
-}
-
-impl CommandLine {
-    fn create_hash(msg: String) -> String {
-        let mut hasher = DefaultHasher::new();
-        hasher.write(msg.as_bytes());
-        format!("{:x}", hasher.finish())
-    }
-
-    pub fn get_prefix(&self) -> String {
-        // This helps several self-hosting or cloud accounts to not mix
-        Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
-    }
 }
 
 pub struct AtCommandsPreviewCache {
@@ -163,7 +145,6 @@ pub struct GlobalContext {
     pub tokenizer_map: HashMap<String, Option<Arc<Tokenizer>>>,
     pub tokenizer_download_lock: Arc<AMutex<bool>>,
     pub completions_cache: Arc<StdRwLock<CompletionCache>>,
-    pub telemetry: Arc<StdRwLock<telemetry_structs::Storage>>,
     pub vec_db: Arc<AMutex<Option<crate::vecdb::vdb_highlev::VecDb>>>,
     pub vec_db_error: String,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
@@ -412,7 +393,6 @@ pub async fn create_global_context(
         tokenizer_map: HashMap::new(),
         tokenizer_download_lock: Arc::new(AMutex::<bool>::new(false)),
         completions_cache: Arc::new(StdRwLock::new(CompletionCache::new())),
-        telemetry: Arc::new(StdRwLock::new(telemetry_structs::Storage::new())),
         vec_db: Arc::new(AMutex::new(None)),
         vec_db_error: String::new(),
         ast_service: None,

@@ -17,7 +17,6 @@ use crate::files_correction::{canonical_path, CommandSimplifiedDirExt};
 use crate::git::operations::git_ls_files;
 use crate::global_context::{get_app_searchable_id, GlobalContext};
 use crate::integrations::running_integrations::load_integrations;
-use crate::telemetry;
 use crate::file_filter::{is_valid_file, SOURCE_FILE_EXTENSIONS};
 use crate::ast::ast_indexer_thread::ast_indexer_enqueue_files;
 use crate::privacy::{check_file_privacy, load_privacy_if_needed, PrivacySettings, FilePrivacyLevel};
@@ -735,12 +734,6 @@ pub async fn on_did_change(
     if go_ahead {
         enqueue_some_docs(gcx.clone(), &vec![cpath], false).await;
     }
-
-    telemetry::snippets_collection::sources_changed(
-        gcx.clone(),
-        &path.to_string_lossy().to_string(),
-        text,
-    ).await;
 
     info!("on_did_change {}, total time {:.3}s", crate::nicer_logs::last_n_chars(&path.to_string_lossy().to_string(), 30), t0.elapsed().as_secs_f32());
 }

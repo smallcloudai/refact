@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
 use url::Url;
 
-use crate::call_validation::ChatMeta;
 use crate::files_correction::{deserialize_path, serialize_path};
 use crate::custom_error::ScratchError;
 use crate::git::{CommitInfo, FileChange};
@@ -33,7 +32,7 @@ pub struct GitError {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CheckpointsPost {
     pub checkpoints: Vec<Checkpoint>,
-    pub meta: ChatMeta,
+    pub chat_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -148,7 +147,7 @@ pub async fn handle_v1_checkpoints_preview(
         return Err(ScratchError::new(StatusCode::NOT_IMPLEMENTED, "Multiple checkpoints to restore not implemented yet".to_string()));
     }
 
-    let response = match preview_changes_for_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.meta.chat_id).await {
+    let response = match preview_changes_for_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.chat_id).await {
         Ok((files_changed, reverted_to, checkpoint_for_undo)) => {
             CheckpointsPreviewResponse {
                 reverted_changes: vec![WorkspaceChanges {
@@ -189,7 +188,7 @@ pub async fn handle_v1_checkpoints_restore(
         return Err(ScratchError::new(StatusCode::NOT_IMPLEMENTED, "Multiple checkpoints to restore not implemented yet".to_string()));
     }
 
-    let response = match restore_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.meta.chat_id).await {
+    let response = match restore_workspace_checkpoint(gcx.clone(), &post.checkpoints.first().unwrap(), &post.chat_id).await {
         Ok(_) => {
             CheckpointsRestoreResponse {
                 success: true,

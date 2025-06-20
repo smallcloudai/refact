@@ -8,8 +8,6 @@ use crate::completion_cache;
 use crate::global_context::GlobalContext;
 use crate::scratchpad_abstract::{FinishReason, HasTokenizerAndEot, ScratchpadAbstract};
 use crate::scratchpads::comments_parser::parse_comments;
-use crate::telemetry::snippets_collection;
-use crate::telemetry::telemetry_structs;
 use async_trait::async_trait;
 use ropey::Rope;
 use serde_json::{json, Value};
@@ -552,7 +550,6 @@ pub struct CodeCompletionReplaceScratchpad {
     pub cursor_subblock: Option<SubBlock>,
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
-    pub data4snippet: snippets_collection::SaveSnippet,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
@@ -562,12 +559,10 @@ impl CodeCompletionReplaceScratchpad {
         tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
-        tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
         ast_service: Option<Arc<AMutex<AstIndexService>>>,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
-        let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         CodeCompletionReplaceScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
@@ -580,7 +575,6 @@ impl CodeCompletionReplaceScratchpad {
             cursor_subblock: None,
             context_used: json!({}),
             data4cache,
-            data4snippet,
             ast_service,
             global_context,
         }
@@ -792,11 +786,6 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             self.post.inputs.multiline,
             &mut self.data4cache,
         );
-        snippets_collection::snippet_register_from_data4cache(
-            &self.data4snippet,
-            &mut self.data4cache,
-            self.context_used != json!({}),
-        );
         Ok(json!(
             {
                 "choices": json_choices,
@@ -839,7 +828,6 @@ pub struct CodeCompletionReplacePassthroughScratchpad {
     pub cursor_subblock: Option<SubBlock>,
     pub context_used: Value,
     pub data4cache: completion_cache::CompletionSaveToCache,
-    pub data4snippet: snippets_collection::SaveSnippet,
     pub ast_service: Option<Arc<AMutex<AstIndexService>>>,
     pub global_context: Arc<ARwLock<GlobalContext>>,
 }
@@ -849,12 +837,10 @@ impl CodeCompletionReplacePassthroughScratchpad {
         tokenizer: Option<Arc<Tokenizer>>,
         post: &CodeCompletionPost,
         cache_arc: Arc<StdRwLock<completion_cache::CompletionCache>>,
-        tele_storage: Arc<StdRwLock<telemetry_structs::Storage>>,
         ast_service: Option<Arc<AMutex<AstIndexService>>>,
         global_context: Arc<ARwLock<GlobalContext>>,
     ) -> Self {
         let data4cache = completion_cache::CompletionSaveToCache::new(cache_arc, &post);
-        let data4snippet = snippets_collection::SaveSnippet::new(tele_storage, &post);
         CodeCompletionReplacePassthroughScratchpad {
             t: HasTokenizerAndEot::new(tokenizer),
             post: post.clone(),
@@ -862,7 +848,6 @@ impl CodeCompletionReplacePassthroughScratchpad {
             cursor_subblock: None,
             context_used: json!({}),
             data4cache,
-            data4snippet,
             ast_service,
             global_context,
         }
@@ -1056,11 +1041,6 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             &finish_reasons,
             self.post.inputs.multiline,
             &mut self.data4cache,
-        );
-        snippets_collection::snippet_register_from_data4cache(
-            &self.data4snippet,
-            &mut self.data4cache,
-            self.context_used != json!({}),
         );
         Ok(json!({
             "choices": json_choices,

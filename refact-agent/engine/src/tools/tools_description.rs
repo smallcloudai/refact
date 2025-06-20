@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use tokio::sync::Mutex as AMutex;
 
 use crate::at_commands::at_commands::AtCommandsContext;
-use crate::call_validation::{ChatUsage, ContextEnum};
+use crate::call_validation::ContextEnum;
 use crate::custom_error::MapErrToString;
 use crate::integrations::integr_abstract::IntegrationConfirmation;
 use crate::tools::tools_execute::{command_should_be_confirmed_by_user, command_should_be_denied};
@@ -186,12 +186,6 @@ pub trait Tool: Send + Sync {
     }
 
     fn tool_depends_on(&self) -> Vec<String> { vec![] }   // "ast", "vecdb"
-
-    fn usage(&mut self) -> &mut Option<ChatUsage> {
-        static mut DEFAULT_USAGE: Option<ChatUsage> = None;
-        #[allow(static_mut_refs)]
-        unsafe { &mut DEFAULT_USAGE }
-    }
 }
 
 pub async fn set_tool_config(config_path: String, tool_name: String, new_config: ToolConfig) -> Result<(), String> {
@@ -247,13 +241,6 @@ fn default_param_type() -> String {
     "string".to_string()
 }
 
-/// TODO: Think a better way to know if we can send array type to the model
-/// 
-/// For now, anthropic models support it, gpt models don't, for other, we'll need to test
-pub fn model_supports_array_param_type(model_id: &str) -> bool {
-    model_id.contains("claude")
-}
-
 pub fn make_openai_tool_value(
     name: String,
     description: String,
@@ -294,27 +281,4 @@ impl ToolDesc {
             self.parameters,
         )
     }
-
-    pub fn is_supported_by(&self, model: &str) -> bool {
-        if !model_supports_array_param_type(model) {
-            for param in &self.parameters {
-                if param.param_type == "array" {
-                    tracing::warn!("Tool {} has array parameter, but model {} does not support it", self.name, model);
-                    return false;
-                }
-            }
-        }
-        true
-    }
 }
-
-#[allow(dead_code)]
-const NOT_READY_TOOLS: &str = r####"
-  - name: "diff"
-    description: "Perform a diff operation. Can be used to get git diff for a project (no arguments) or git diff for a specific file (file_path)"
-    parameters:
-      - name: "file_path"
-        type: "string"
-        description: "Path to the specific file to diff (optional)."
-    parameters_required:
-"####;

@@ -23,8 +23,6 @@ pub mod mcp;
 pub mod process_io_utils;
 pub mod docker;
 pub mod sessions;
-pub mod config_chat;
-pub mod project_summary_chat;
 pub mod yaml_schema;
 pub mod setting_up_integrations;
 pub mod running_integrations;

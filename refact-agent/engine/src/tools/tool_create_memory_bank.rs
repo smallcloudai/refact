@@ -5,7 +5,6 @@ use std::{
 };
 
 use async_trait::async_trait;
-use chrono::Local;
 use serde_json::Value;
 use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
@@ -14,16 +13,13 @@ use crate::{
         at_commands::AtCommandsContext,
         at_tree::{construct_tree_out_of_flat_list_of_paths, PathsHolderNodeArc},
     },
-    call_validation::{ChatContent, ChatMessage, ChatUsage, ContextEnum, ContextFile, PostprocessSettings},
+    call_validation::{ChatContent, ChatMessage, ContextEnum, ContextFile, PostprocessSettings},
     files_correction::{get_project_dirs, paths_from_anywhere},
     files_in_workspace::{get_file_text_from_memory_or_disk, ls_files},
     global_context::GlobalContext,
     postprocessing::pp_context_files::postprocess_context_files,
-    subchat::subchat,
     tools::tools_description::{Tool, ToolDesc, ToolSource, ToolSourceType},
 };
-use crate::caps::resolve_chat_model;
-use crate::global_context::try_load_caps_quickly_if_not_present;
 
 const MAX_EXPLORATION_STEPS: usize = 1000;
 
@@ -221,7 +217,6 @@ async fn read_and_compress_directory(
     gcx: Arc<ARwLock<GlobalContext>>,
     dir_relative: String,
     tokens_limit: usize,
-    model: String,
 ) -> Result<String, String> {
     let project_dirs = get_project_dirs(gcx.clone()).await;
     let base_dir = project_dirs.get(0).ok_or("No project directory found")?;
@@ -261,15 +256,12 @@ async fn read_and_compress_directory(
         });
     }
 
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await.map_err(|x| x.message)?;
-    let model_rec = resolve_chat_model(caps, &model)?;
-    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await?;
     let mut pp_settings = PostprocessSettings::new();
     pp_settings.max_files_n = context_files.len();
     let compressed = postprocess_context_files(
         gcx.clone(),
         &mut context_files,
-        tokenizer,
+        None,
         tokens_limit,
         false,
         &pp_settings,
@@ -284,58 +276,6 @@ pub struct ToolCreateMemoryBank {
     pub config_path: String,
 }
 
-const MB_SYSTEM_PROMPT: &str = r###"• Objective:
-  – Create a clear, natural language description of the project structure while building a comprehensive architectural understanding.
-    Do NOT call create_knowledge() until instructed
-    
-• Analysis Guidelines:
-  1. Start with knowledge(); examine existing context:
-     - Review previous descriptions of related components
-     - Understand known architectural patterns
-     - Map existing module relationships
-
-  2. Describe project structure in natural language:
-     - Explain what this directory/module is for
-     - Describe key files and their purposes
-     - Detail how files work together
-     - Note any interesting implementation details
-     - Explain naming patterns and organization
-
-  3. Analyze code architecture:
-     - Module's role and responsibilities
-     - Key types, traits, functions, and their purposes
-     - Public interfaces and abstraction boundaries
-     - Error handling and data flow patterns
-     - Cross-cutting concerns and utilities
-
-  4. Document relationships:
-     - Which modules use this one and how
-     - What this module uses from others
-     - How components communicate
-     - Integration patterns and dependencies
-
-  5. Map architectural patterns:
-     - Design patterns used and why
-     - How it fits in the layered architecture
-     - State management approaches
-     - Extension and plugin points
-
-  6. Compare with existing knowledge:
-     - "This builds upon X from module Y by..."
-     - "Unlike module X, this takes a different approach to Y by..."
-     - "This introduces a new way to handle X through..."
-
-  7. Use structured format:
-     • Purpose: [clear description of what this does]
-     • Files: [key files and their roles]
-     • Architecture: [design patterns and module relationships]
-     • Key Symbols: [important types/traits/functions]
-     • Integration: [how it works with other parts]
-
-• Operational Constraint:
-  – Do NOT call create_knowledge() until instructed."###;
-
-const MB_EXPERT_WRAP_UP: &str = r###"Call create_knowledge() now with your complete and full analysis from the previous step if you haven't called it yet. Otherwise just type "Finished"."###;
 
 impl ToolCreateMemoryBank {
     fn build_step_prompt(
@@ -344,8 +284,7 @@ impl ToolCreateMemoryBank {
         file_context: Option<&String>,
     ) -> String {
         let mut prompt = String::new();
-        prompt.push_str(MB_SYSTEM_PROMPT);
-        prompt.push_str(&format!("\n\nNow exploring directory: '{}' from the project '{}'", target.target_name, target.target_name.split('/').next().unwrap_or("")));
+        prompt.push_str(&format!("Now exploring directory: '{}' from the project '{}'", target.target_name, target.target_name.split('/').next().unwrap_or("")));
         {
             prompt.push_str("\nFocus on details like purpose, organization, and notable files. Here is the project structure:\n");
             prompt.push_str(&state.project_tree_summary());
@@ -373,7 +312,7 @@ impl Tool for ToolCreateMemoryBank {
         
         let ccx_subchat = {
             let ccx_lock = ccx.lock().await;
-            let mut ctx = AtCommandsContext::new(
+            let ctx = AtCommandsContext::new(
                 ccx_lock.global_context.clone(),
                 params.subchat_n_ctx,
                 25,
@@ -381,21 +320,16 @@ impl Tool for ToolCreateMemoryBank {
                 ccx_lock.messages.clone(),
                 ccx_lock.chat_id.clone(),
                 ccx_lock.should_execute_remotely,
-                ccx_lock.current_model.clone(),
             ).await;
-            ctx.subchat_tx = ccx_lock.subchat_tx.clone();
-            ctx.subchat_rx = ccx_lock.subchat_rx.clone();
             Arc::new(AMutex::new(ctx))
         };
 
         let mut state = ExplorationState::new(gcx.clone()).await?;
         let mut final_results = Vec::new();
         let mut step = 0;
-        let mut usage_collector = ChatUsage::default();
 
         while state.has_unexplored_targets() && step < MAX_EXPLORATION_STEPS {
             step += 1;
-            let log_prefix = Local::now().format("%Y%m%d-%H%M%S").to_string();
             if let Some(target) = state.get_next_target() {
                 tracing::info!(
                     target = "memory_bank",
@@ -408,7 +342,6 @@ impl Tool for ToolCreateMemoryBank {
                     gcx.clone(),
                     target.target_name.clone(),
                     params.subchat_tokens_for_rag,
-                    params.subchat_model.clone(),
                 ).await.map_err(|e| {
                     tracing::warn!("Failed to read/compress files for {}: {}", target.target_name, e);
                     e
@@ -419,34 +352,15 @@ impl Tool for ToolCreateMemoryBank {
                     Self::build_step_prompt(&state, &target, file_context.as_ref())
                 );
 
-                let subchat_result = subchat(
+                crate::cloud::subchat::subchat(
                     ccx_subchat.clone(),
-                    params.subchat_model.as_str(),
+                    "id:create_memory_bank:1.0",
+                    tool_call_id,
                     vec![step_msg],
-                    vec!["knowledge".to_string(), "create_knowledge".to_string()],
-                    8,
-                    params.subchat_max_new_tokens,
-                    MB_EXPERT_WRAP_UP,
-                    1,
-                    None,
-                    None,
-                    Some(tool_call_id.clone()),
-                    Some(format!("{log_prefix}-memory-bank-dir-{}", target.target_name.replace("/", "_"))),
-                    Some(false),
-                ).await?[0].clone();
-
-                // Update usage from subchat result
-                if let Some(last_msg) = subchat_result.last() {
-                    crate::tools::tools_execute::update_usage_from_message(&mut usage_collector, last_msg);
-                    tracing::info!(
-                        target = "memory_bank",
-                        directory = target.target_name,
-                        prompt_tokens = usage_collector.prompt_tokens,
-                        completion_tokens = usage_collector.completion_tokens,
-                        total_tokens = usage_collector.total_tokens,
-                        "Updated token usage"
-                    );
-                }
+                    params.subchat_temperature.clone(),
+                    Some(params.subchat_max_new_tokens.clone()),
+                    params.subchat_reasoning_effort.clone(),
+                ).await?;
 
                 state.mark_explored(target.clone());
                 let total = state.to_explore.len() + state.explored.len();
@@ -467,14 +381,11 @@ impl Tool for ToolCreateMemoryBank {
         final_results.push(ContextEnum::ChatMessage(ChatMessage {
             role: "tool".to_string(),
             content: ChatContent::SimpleText(format!(
-                "Memory bank creation completed. Steps: {}, {}. Total directories: {}. Usage: {} prompt tokens, {} completion tokens",
+                "Memory bank creation completed. Steps: {}, {}. Total directories: {}",
                 step,
                 state.get_exploration_summary(),
                 state.explored.len() + state.to_explore.len(),
-                usage_collector.prompt_tokens,
-                usage_collector.completion_tokens,
             )),
-            usage: Some(usage_collector),
             tool_calls: None,
             tool_call_id: tool_call_id.clone(),
             ..Default::default()

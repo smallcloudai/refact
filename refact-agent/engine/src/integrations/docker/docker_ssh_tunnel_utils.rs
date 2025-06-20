@@ -4,8 +4,8 @@ use tokio::{net::{TcpListener, TcpStream}, process::{Child, ChildStderr, ChildSt
 use tracing::{info, warn};
 
 use crate::global_context::GlobalContext;
+use crate::integrations::docker::integr_isolation::Port;
 use crate::integrations::process_io_utils::blocking_read_until_token_or_timeout;
-use crate::integrations::docker::docker_container_manager::Port;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SshConfig {

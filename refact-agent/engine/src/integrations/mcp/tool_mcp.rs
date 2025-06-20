@@ -8,7 +8,6 @@ use tokio::sync::Mutex as AMutex;
 use tokio::time::timeout;
 use tokio::time::Duration;
 
-use crate::caps::resolve_chat_model;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::scratchpads::multimodality::MultimodalElement;
 use crate::tools::tools_description::{Tool, ToolDesc, ToolParam, ToolSource, ToolSourceType};
@@ -37,22 +36,14 @@ impl Tool for ToolMCP {
         args: &HashMap<String, serde_json::Value>,
     ) -> Result<(bool, Vec<ContextEnum>), String> {
         let session_key = format!("{}", self.config_path);
-        let (gcx, current_model) = {
-            let ccx_locked = ccx.lock().await;
-            (ccx_locked.global_context.clone(), ccx_locked.current_model.clone())
-        };
-        let (session_maybe, caps_maybe) = {
-            let gcx_locked = gcx.read().await;
-            (gcx_locked.integration_sessions.get(&session_key).cloned(), gcx_locked.caps.clone())
-        };
+        let gcx = ccx.lock().await.global_context.clone();
+        let session_maybe = gcx.read().await.integration_sessions.get(&session_key).cloned();
         if session_maybe.is_none() {
             tracing::error!("No session for {:?}, strange (2)", session_key);
             return Err(format!("No session for {:?}", session_key));
         }
         let session = session_maybe.unwrap();
-        let model_supports_multimodality = caps_maybe.is_some_and(|caps| {
-            resolve_chat_model(caps, &current_model).is_ok_and(|m| m.supports_multimodality)
-        });
+        let model_supports_multimodality = true;  // TODO: hardcoded for now
         mcp_session_wait_startup(session.clone()).await;
 
         let json_args = serde_json::json!(args);
