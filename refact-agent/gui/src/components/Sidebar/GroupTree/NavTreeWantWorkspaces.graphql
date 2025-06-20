@@ -1,11 +1,13 @@
 query NavTreeWantWorkspaces {
   query_basic_stuff {
     fuser_id
+    my_own_ws_id
     workspaces {
       ws_id
       ws_owner_fuser_id
       ws_root_group_id
       root_group_name
+      coins
     }
   }
 }

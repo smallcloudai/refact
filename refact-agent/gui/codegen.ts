@@ -1,7 +1,7 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
 
 const config: CodegenConfig = {
-  schema: "http://localhost:8008/v1/graphql", // requires flexus codebase to be running
+  schema: "https://app.refact.ai/v1/graphql", // requires flexus codebase to be running
   documents: ["src/**/*.(tsx|graphql)"],
   ignoreNoDocuments: true,
   generates: {

@@ -17,21 +17,25 @@ import {
 import { useSmartSubscription } from "../../../hooks/useSmartSubscription";
 import {
   useAppDispatch,
+  useAppSelector,
   useEventsBusForIDE,
   useResizeObserver,
 } from "../../../hooks";
 import { isDetailMessage, teamsApi } from "../../../services/refact";
 import { NodeApi } from "react-arborist";
-import { resetActiveGroup, setActiveGroup } from "../../../features/Teams";
+import {
+  resetActiveGroup,
+  resetActiveWorkspace,
+  selectActiveWorkspace,
+  setActiveGroup,
+  setActiveWorkspace,
+  setSkippedWorkspaceSelection,
+} from "../../../features/Teams";
 import { setError } from "../../../features/Errors/errorsSlice";
-
-export type TeamsWorkspace =
-  NavTreeWantWorkspacesQuery["query_basic_stuff"]["workspaces"][number];
 
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
-  const [currentTeamsWorkspace, setCurrentTeamsWorkspace] =
-    useState<TeamsWorkspace | null>(null);
+  const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
 
   const [teamsWorkspaces] = useQuery<
     NavTreeWantWorkspacesQuery,
@@ -115,7 +119,8 @@ export function useGroupTree() {
   });
 
   const dispatch = useAppDispatch();
-  const { setActiveTeamsGroupInIDE } = useEventsBusForIDE();
+  const { setActiveTeamsGroupInIDE, setActiveTeamsWorkspaceInIDE } =
+    useEventsBusForIDE();
 
   const [setActiveGroupIdTrigger] = teamsApi.useSetActiveGroupIdMutation();
   const [currentSelectedTeamsGroupNode, setCurrentSelectedTeamsGroupNode] =
@@ -148,50 +153,61 @@ export function useGroupTree() {
   }, []);
 
   const onGroupSelectionConfirm = useCallback(
-    (group: FlexusTreeNode) => {
+    async (group: FlexusTreeNode) => {
       const newGroup = {
         id: group.treenodeId,
         name: group.treenodeTitle,
       };
 
       setActiveTeamsGroupInIDE(newGroup);
-      void setActiveGroupIdTrigger({
-        group_id: group.treenodeId,
-      })
-        .then((result) => {
-          if (result.data) {
-            dispatch(setActiveGroup(newGroup));
-            return;
-          } else {
-            // TODO: rework error handling
-            let errorMessage: string;
-            if ("data" in result.error && isDetailMessage(result.error.data)) {
-              errorMessage = result.error.data.detail;
-            } else {
-              errorMessage =
-                "Error: Something went wrong while selecting a group. Try again.";
-            }
-            dispatch(setError(errorMessage));
-          }
-        })
-        .catch(() => {
-          dispatch(resetActiveGroup());
+      try {
+        const result = await setActiveGroupIdTrigger({
+          group_id: group.treenodeId,
         });
+        if (result.data) {
+          dispatch(setActiveGroup(newGroup));
+          return;
+        } else {
+          // TODO: rework error handling
+          let errorMessage: string;
+          if ("data" in result.error && isDetailMessage(result.error.data)) {
+            errorMessage = result.error.data.detail;
+          } else {
+            errorMessage =
+              "Error: Something went wrong while selecting a group. Try again.";
+          }
+          dispatch(setError(errorMessage));
+        }
+      } catch {
+        dispatch(resetActiveGroup());
+      }
     },
     [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
   );
 
   const onWorkspaceSelection = useCallback(
     (workspaceId: string) => {
-      setCurrentTeamsWorkspace(
+      const maybeWorkspace =
         teamsWorkspaces.data?.query_basic_stuff.workspaces.find(
           (w) => w.ws_id === workspaceId,
-        ) ?? null,
-      );
-      setCurrentSelectedTeamsGroupNode(null);
+        );
+      if (maybeWorkspace) {
+        setActiveTeamsWorkspaceInIDE(maybeWorkspace);
+        dispatch(setActiveWorkspace(maybeWorkspace));
+        setCurrentSelectedTeamsGroupNode(null);
+      }
     },
-    [teamsWorkspaces.data?.query_basic_stuff.workspaces],
+    [
+      dispatch,
+      setActiveTeamsWorkspaceInIDE,
+      teamsWorkspaces.data?.query_basic_stuff.workspaces,
+    ],
   );
+
+  const handleSkipWorkspaceSelection = useCallback(() => {
+    dispatch(setSkippedWorkspaceSelection(true));
+    dispatch(resetActiveWorkspace());
+  }, [dispatch]);
 
   const availableWorkspaces = useMemo(() => {
     if (teamsWorkspaces.data?.query_basic_stuff.workspaces) {
@@ -199,6 +215,13 @@ export function useGroupTree() {
     }
     return [];
   }, [teamsWorkspaces.data?.query_basic_stuff.workspaces]);
+
+  useEffect(() => {
+    if (availableWorkspaces.length === 1) {
+      dispatch(setActiveWorkspace(availableWorkspaces[0]));
+      setActiveTeamsWorkspaceInIDE(availableWorkspaces[0]);
+    }
+  }, [dispatch, setActiveTeamsWorkspaceInIDE, availableWorkspaces]);
 
   return {
     // Refs
@@ -218,8 +241,8 @@ export function useGroupTree() {
     onGroupSelectionConfirm,
     onWorkspaceSelection,
     touchNode,
+    handleSkipWorkspaceSelection,
     // Setters
-    setCurrentTeamsWorkspace,
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
   };

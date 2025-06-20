@@ -3,6 +3,14 @@ export type TeamsGroup = {
   name: string;
 };
 
+export type TeamsWorkspace = {
+  ws_id: string;
+  ws_owner_fuser_id: string;
+  ws_root_group_id: string;
+  root_group_name: string;
+  coins: number;
+};
+
 export type User = {
   retcode: string;
   account: string;
@@ -36,9 +44,9 @@ export type GoodPollingResponse = User & {
   secret_key: string;
   tooltip_message: string;
   login_message: string;
-  "longthink-filters": unknown[];
-  "longthink-functions-today": Record<string, LongThinkFunction>;
-  "longthink-functions-today-v2": Record<string, LongThinkFunction>;
+  "longthink-filters": [];
+  "longthink-functions-today": object;
+  "longthink-functions-today-v2": object;
 };
 
 export type DetailedUserResponse = User & {
@@ -153,5 +161,18 @@ export function isEmailLinkResponse(json: unknown): json is EmailLinkResponse {
     typeof json.retcode === "string" &&
     "status" in json &&
     typeof json.status === "string"
+  );
+}
+
+export type ApiKeyResponse = {
+  api_key: string;
+};
+
+export function isApiKeyResponse(json: unknown): json is ApiKeyResponse {
+  return (
+    typeof json === "object" &&
+    json !== null &&
+    "api_key" in json &&
+    typeof json.api_key === "string"
   );
 }

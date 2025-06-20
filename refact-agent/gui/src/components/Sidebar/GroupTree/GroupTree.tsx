@@ -1,13 +1,21 @@
-import { Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import {
+  Button,
+  Flex,
+  Heading,
+  Select,
+  Separator,
+  Text,
+} from "@radix-ui/themes";
 import React from "react";
 import { Tree } from "react-arborist";
-import { CustomTreeNode } from "./CustomTreeNode";
-
-import styles from "./GroupTree.module.css";
-import { ConfirmGroupSelection } from "./ConfirmGroupSelection";
-import { useGroupTree } from "./useGroupTree";
-import { ScrollArea } from "../../ScrollArea";
 import { AnimatePresence } from "framer-motion";
+
+import { CustomTreeNode } from "./CustomTreeNode";
+import { ConfirmGroupSelection } from "./ConfirmGroupSelection";
+import { ScrollArea } from "../../ScrollArea";
+
+import { useGroupTree } from "./useGroupTree";
+import styles from "./GroupTree.module.css";
 
 export interface FlexusTreeNode {
   treenodePath: string;
@@ -29,6 +37,7 @@ export const GroupTree: React.FC = () => {
     onGroupSelect,
     onGroupSelectionConfirm,
     setCurrentSelectedTeamsGroupNode,
+    handleSkipWorkspaceSelection,
     setGroupTreeData,
     onWorkspaceSelection,
     availableWorkspaces,
@@ -55,6 +64,7 @@ export const GroupTree: React.FC = () => {
         <Select.Root
           onValueChange={onWorkspaceSelection}
           disabled={availableWorkspaces.length === 0}
+          value={currentTeamsWorkspace?.ws_id}
         >
           <Select.Trigger placeholder="Please, choose team's account"></Select.Trigger>
           <Select.Content position="popper">
@@ -72,6 +82,14 @@ export const GroupTree: React.FC = () => {
             assistance, please refer to the support or bug reporting channels.
           </Text>
         )}
+        <Button
+          onClick={handleSkipWorkspaceSelection}
+          variant="outline"
+          color="gray"
+          mt="2"
+        >
+          Skip Selection
+        </Button>
       </Flex>
       {currentTeamsWorkspace && filteredGroupTreeData.length > 0 && (
         <Flex
@@ -124,7 +142,9 @@ export const GroupTree: React.FC = () => {
                 setCurrentSelectedTeamsGroupNode={
                   setCurrentSelectedTeamsGroupNode
                 }
-                onGroupSelectionConfirm={onGroupSelectionConfirm}
+                onGroupSelectionConfirm={(group) =>
+                  void onGroupSelectionConfirm(group)
+                }
               />
             )}
           </AnimatePresence>

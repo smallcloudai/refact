@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use itertools::Itertools;
+use log::error;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use tokio::sync::RwLock as ARwLock;
 use crate::global_context::GlobalContext;
 use tokio::fs;
@@ -113,77 +114,129 @@ pub async fn memories_add(
     gcx: Arc<ARwLock<GlobalContext>>,
     m_type: &str,
     m_memory: &str,
-    unknown_project: bool
+    _unknown_project: bool
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_group_id = gcx.read().await.active_group_id.clone()
         .ok_or("active_group_id must be set")?;
-    let mut body = serde_json::json!({
-        "group_id": active_group_id,
-        "iknow_tags": vec![m_type.to_string()],
-        "knowledge_memory": m_memory
-    });
-    if !unknown_project {
-        body["group_id"] = Value::from(active_group_id.clone());
-    }
-    let response = client.post(format!("{}/knowledge/upload", crate::constants::CLOUD_URL))
+    let query = r#"
+        mutation CreateKnowledgeItem($input: FKnowledgeItemInput!) {
+            knowledge_item_create(input: $input) {
+                iknow_id
+            }
+        }
+    "#;
+    let response = client
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await;
-    match response {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                info!("Successfully added memory to remote server");
-                Ok(())
-            } else {
-                let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-                Err(format!("Failed to add memory: HTTP status {}, error: {}", status, error_text))
+        .header("User-Agent", "refact-lsp")
+        .json(&json!({
+            "query": query,
+            "variables": { 
+                "input": {
+                    "iknow_memory": m_memory,
+                    "located_fgroup_id": active_group_id,
+                    "iknow_is_core": false,
+                    "iknow_tags": vec![m_type.to_string()],
+                    "owner_shared": false      
+                }
             }
-        },
-        Err(e) => Err(format!("Failed to send memory add request: {}", e))
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if let Some(_) = data.get("knowledge_item_create") {
+                info!("Successfully added memory to remote server");
+                return Ok(());
+            }
+        }
+        Err("Failed to add memory to remote server".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!("Failed to add memory to remote server: HTTP status {}, error: {}", status, error_text))
     }
 }
 
-
 pub async fn memories_search(
     gcx: Arc<ARwLock<GlobalContext>>,
-    query: &String,
+    q: &String,
     top_n: usize,
 ) -> Result<Vec<MemoRecord>, String> {
     let client = reqwest::Client::new();
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_group_id = gcx.read().await.active_group_id.clone()
         .ok_or("active_group_id must be set")?;
-    let url = format!("{}/knowledge/vsearch", crate::constants::CLOUD_URL);
-    let body = serde_json::json!({
-        "group_id": active_group_id,
-        "q": query,
-        "top_n": top_n,
-    });
-    let response = client.post(&url)
+    let query = r#"
+        query KnowledgeSearch($fgroup_id: String!, $q: String!, $top_n: Int!) {
+            knowledge_vecdb_search(fgroup_id: $fgroup_id, q: $q, top_n: $top_n) {
+                iknow_id 
+                iknow_memory
+                iknow_tags
+            }
+        }
+    "#;
+    let response = client
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await;
-    match response {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                let response_body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
-                let results: Vec<MemoRecord> = serde_json::from_str(&response_body)
-                    .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-                Ok(results)
-            } else {
-                let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-                Err(format!("Failed to search memories: HTTP status {}, error: {}", status, error_text))
+        .header("User-Agent", "refact-lsp")
+        .json(&json!({
+            "query": query,
+            "variables": {
+                "fgroup_id": active_group_id,
+                "q": q,
+                "top_n": top_n,
             }
-        },
-        Err(e) => Err(format!("Failed to send memory search request: {}", e))
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if let Some(memories_value) = data.get("knowledge_vecdb_search") {
+                let memories: Vec<MemoRecord> = serde_json::from_value(memories_value.clone())
+                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
+                return Ok(memories);
+            }
+        }
+        Err("Failed to get memories from remote server".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!("Failed to get memories from remote server: HTTP status {}, error: {}", status, error_text))
     }
 }
 
@@ -194,28 +247,55 @@ pub async fn memories_get_core(
     let api_key = gcx.read().await.cmdline.api_key.clone();
     let active_group_id = gcx.read().await.active_group_id.clone()
         .ok_or("active_group_id must be set")?;
-    let url = format!("{}/knowledge/get_cores", crate::constants::CLOUD_URL);
-    let body = serde_json::json!({"group_id": active_group_id});
-    let response = client.post(&url)
+    let query = r#"
+        query KnowledgeSearch($fgroup_id: String!) {
+            knowledge_get_cores(fgroup_id: $fgroup_id) {
+                iknow_id 
+                iknow_memory
+                iknow_tags
+            }
+        }
+    "#;
+    let response = client
+        .post(&crate::constants::GRAPHQL_URL.to_string())
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await;
-
-    match response {
-        Ok(resp) => {
-            if resp.status().is_success() {
-                let response_body = resp.text().await.map_err(|e| format!("Failed to read response body: {}", e))?;
-                let results: Vec<MemoRecord> = serde_json::from_str(&response_body)
-                    .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
-                Ok(results)
-            } else {
-                let status = resp.status();
-                let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-                Err(format!("Failed to search memories: HTTP status {}, error: {}", status, error_text))
+        .header("User-Agent", "refact-lsp")
+        .json(&json!({
+            "query": query,
+            "variables": {
+              "fgroup_id": active_group_id
             }
-        },
-        Err(e) => Err(format!("Failed to send memory search request: {}", e))
+        }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send GraphQL request: {}", e))?;
+    if response.status().is_success() {
+        let response_body = response
+            .text()
+            .await
+            .map_err(|e| format!("Failed to read response body: {}", e))?;
+        let response_json: Value = serde_json::from_str(&response_body)
+            .map_err(|e| format!("Failed to parse response JSON: {}", e))?;
+        if let Some(errors) = response_json.get("errors") {
+            let error_msg = errors.to_string();
+            error!("GraphQL error: {}", error_msg);
+            return Err(format!("GraphQL error: {}", error_msg));
+        }
+        if let Some(data) = response_json.get("data") {
+            if let Some(memories_value) = data.get("knowledge_get_cores") {
+                let memories: Vec<MemoRecord> = serde_json::from_value(memories_value.clone())
+                    .map_err(|e| format!("Failed to parse expert: {}", e))?;
+                return Ok(memories);
+            }
+        }
+        Err("Failed to get core memories from remote server".to_string())
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(format!("Failed to get core memories from remote server: HTTP status {}, error: {}", status, error_text))
     }
 }
