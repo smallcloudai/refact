@@ -76,7 +76,6 @@ function linkForAccount(host: Config["host"]): string {
       return "https://app.refact.ai/profile?utm_source=plugin&utm_medium=jetbrains&utm_campaign=account";
     default:
       return "https://app.refact.ai/profile?utm_source=plugin&utm_medium=unknown&utm_campaign=account";
-    default:
   }
 }
 
