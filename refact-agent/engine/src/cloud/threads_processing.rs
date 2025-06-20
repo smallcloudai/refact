@@ -215,6 +215,7 @@ async fn call_tools(
     let mut all_context_files = vec![];
     let mut all_other_messages = vec![];
     let mut tool_id_to_index = HashMap::new();
+    let mut required_confirmation = vec![];
     // Default tokens limit for tools that perform internal compression (`tree()`, ...)
     ccx.lock().await.tokens_for_rag = max_new_tokens;
 
@@ -223,7 +224,20 @@ async fn call_tools(
             format!("error parsing confirmation response: {}", err)
         })?
     } else { vec![] };
-    let mut required_confirmation = vec![];
+    let waiting_for_confirmation = if let Some(confirmation_response) = &thread.ft_confirmation_response {
+        match serde_json::from_value::<Vec<serde_json::Value>>(confirmation_response.clone()) {
+            Ok(items) => {
+                items.iter()
+                    .filter_map(|item| item.get("tool_call_id").and_then(|id| id.as_str()))
+                    .map(|s| s.to_string())
+                    .collect::<Vec<_>>()
+            }
+            Err(err) => {
+                warn!("error parsing confirmation response: {}", err);
+                vec![]
+            }
+        }
+    } else { vec![] };
     for (idx, t_call) in last_tool_calls.iter().enumerate() {
         let is_answered = thread_messages.iter()
             .filter(|x| x.ftm_role == "tool")
@@ -246,12 +260,14 @@ async fn call_tools(
             match &confirm_deny_res.result {
                 MatchConfirmDenyResult::CONFIRMATION => {
                     info!("tool use: tool call `{}` requires confirmation, skipping it", t_call.id);
-                    required_confirmation.push(json!({
-                        "tool_call_id": t_call.id,
-                        "command": confirm_deny_res.command,
-                        "rule": confirm_deny_res.rule,
-                        "ftm_num": last_message.ftm_num + 1 + (idx as i32),
-                    }));
+                    if !waiting_for_confirmation.contains(&t_call.id) {
+                        required_confirmation.push(json!({
+                            "tool_call_id": t_call.id,
+                            "command": confirm_deny_res.command,
+                            "rule": confirm_deny_res.rule,
+                            "ftm_num": last_message.ftm_num + 1 + (idx as i32),
+                        }));
+                    }
                     continue;
                 }
                 _ => { }
