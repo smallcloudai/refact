@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo } from "react";
 
-import { useAppDispatch, useAppSelector } from "../../hooks";
+import {
+  useAppDispatch,
+  useAppSelector,
+  useGetToolGroupsQuery,
+  useGetToolsLazyQuery,
+} from "../../hooks";
 import { selectCurrentPage } from "../../features/Pages/pagesSlice";
 import {
   messagesSub,
@@ -21,11 +26,9 @@ import {
   selectCurrentExpert,
   selectCurrentModel,
 } from "../../features/ExpertsAndModels";
-import {
-  selectToolsForGroup,
-  selectToolsForGroups,
-} from "../../features/Tools";
-import { useToolsForGroup } from "../../features/Tools/useToolsForGroup";
+import { selectToolsForGroup } from "../../features/Tools";
+import { unknown } from "zod";
+import { Tool } from "../../services/refact/tools";
 
 // function usecreateThreadWithMessage() {
 
@@ -57,19 +60,24 @@ export function useMessageSubscription() {
   }, [dispatch, isEmpty, maybeFtId]);
 
   // TODO: the user should be able to configure this
-  const toolsForGroup = useAppSelector(selectToolsForGroup);
+  const [getTools, _] = useGetToolsLazyQuery();
 
-  // It'll need the parent node, and the info for the new node
-  // What about images?
   const sendMessage = useCallback(
-    (content: string) => {
+    async (content: string) => {
+      const lspToolGroups = (await getTools(undefined)).data ?? [];
+      const allTools = lspToolGroups.reduce<Tool[]>((acc, toolGroup) => {
+        return [...acc, ...toolGroup.tools];
+      }, []);
+      const enabledTools = allTools.filter((tool) => tool.enabled);
+      const specs = enabledTools.map((tool) => tool.spec);
+
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void dispatch(
           createThreadWithMessage({
             content,
             expertId: selectedExpert ?? "",
             model: selectedModel ?? "",
-            tools: toolsForGroup,
+            tools: specs,
           }),
         );
         return;
@@ -86,7 +94,10 @@ export function useMessageSubscription() {
         ftm_role: "user",
         ftm_tool_calls: "null", // optional
         ftm_usage: "null", // optional
-        ftm_user_preferences: JSON.stringify({ model: selectedModel ?? "" }),
+        ftm_user_preferences: JSON.stringify({
+          model: selectedModel ?? "",
+          tools: specs,
+        }),
       };
       // TODO: this will need more info
       void dispatch(
@@ -101,13 +112,13 @@ export function useMessageSubscription() {
     [
       appSpecific,
       dispatch,
+      getTools,
       leafMessage.endAlt,
       leafMessage.endNumber,
       leafMessage.endPrevAlt,
       maybeFtId,
       selectedExpert,
       selectedModel,
-      toolsForGroup,
     ],
   );
 

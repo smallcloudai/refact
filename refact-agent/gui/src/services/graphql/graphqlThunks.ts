@@ -41,6 +41,7 @@ import {
   receiveThreadMessages,
   setThreadFtId,
 } from "../../features/ThreadMessages";
+import { Tool } from "../refact/tools";
 
 export const threadsPageSub = createAppAsyncThunk<
   unknown,
@@ -157,7 +158,12 @@ export const createMessage = createAppAsyncThunk<
 
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
-  { content: string; expertId: string; model: string; tools: FCloudTool[] },
+  {
+    content: string;
+    expertId: string;
+    model: string;
+    tools: (Tool["spec"] | FCloudTool)[];
+  },
   {
     dispatch: AppDispatch;
     state: RootState;
@@ -207,7 +213,6 @@ export const createThreadWithMessage = createAsyncThunk<
     located_fgroup_id: workspace,
     owner_shared: false,
     ft_app_searchable: appIdQuery.data?.app_searchable_id,
-    ft_toolset: JSON.stringify(args.tools),
   };
   const threadQuery = await client.mutation<
     CreateThreadMutation,
@@ -241,7 +246,10 @@ export const createThreadWithMessage = createAsyncThunk<
     ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
     ftm_tool_calls: "null", // optional
     ftm_usage: "null", // optional
-    ftm_user_preferences: JSON.stringify({ model: args.model }),
+    ftm_user_preferences: JSON.stringify({
+      model: args.model,
+      tools: args.tools,
+    }),
   };
 
   const result = await client.mutation<
