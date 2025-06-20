@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import { HttpResponse, http } from "msw";
 import {
   server,
-  goodPrompts,
   noTools,
   goodUser,
   goodPing,
@@ -20,7 +19,7 @@ describe.skip("chat caps error", () => {
     server.use(
       goodPing,
       noTools,
-      goodPrompts,
+
       goodUser,
       chatLinks,
       telemetryChat,

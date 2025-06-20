@@ -44,8 +44,6 @@ export const selectPreventSend = (state: RootState) => state.chat.prevent_send;
 export const selectChatError = (state: RootState) => state.chat.error;
 export const selectSendImmediately = (state: RootState) =>
   state.chat.send_immediately;
-export const getSelectedSystemPrompt = (state: RootState) =>
-  state.chat.system_prompt;
 
 export const toolMessagesSelector = createSelector(
   selectMessages,

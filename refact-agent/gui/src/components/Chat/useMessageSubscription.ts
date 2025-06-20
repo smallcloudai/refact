@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import {
   useAppDispatch,
   useAppSelector,
-  useGetToolGroupsQuery,
   useGetToolsLazyQuery,
 } from "../../hooks";
 import { selectCurrentPage } from "../../features/Pages/pagesSlice";
@@ -26,8 +25,6 @@ import {
   selectCurrentExpert,
   selectCurrentModel,
 } from "../../features/ExpertsAndModels";
-import { selectToolsForGroup } from "../../features/Tools";
-import { unknown } from "zod";
 import { Tool } from "../../services/refact/tools";
 
 // function usecreateThreadWithMessage() {

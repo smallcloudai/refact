@@ -19,7 +19,6 @@ import {
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
 import { dockerApi } from "../services/refact/docker";
-import { promptsApi } from "../services/refact/prompts";
 import { toolsApi } from "../services/refact/tools";
 import {
   commandsApi,
@@ -124,21 +123,6 @@ startListening({
         : isDetailMessage(action.payload?.data)
           ? action.payload.data.detail
           : `confirmation check from lsp`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
-    if (
-      promptsApi.endpoints.getPrompts.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isDetailMessage(action.payload?.data)
-          ? action.payload.data.detail.split("\n").slice(0, 2).join("\n")
-          : `fetching system prompts.`;
 
       listenerApi.dispatch(setError(message));
       listenerApi.dispatch(setIsAuthError(isAuthError));

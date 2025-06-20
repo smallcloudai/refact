@@ -13,7 +13,6 @@ import {
 
 import {
   goodPing,
-  goodPrompts,
   goodUser,
   chatLinks,
   goodTools,
@@ -49,7 +48,6 @@ const Template: React.FC<{
       send_immediately: false,
       error: null,
       cache: {},
-      system_prompt: {},
       thread: threadData,
     },
     config,
@@ -81,7 +79,7 @@ const meta: Meta<typeof Template> = {
   component: Template,
   parameters: {
     msw: {
-      handlers: [goodPing, goodPrompts, goodUser, chatLinks, goodTools],
+      handlers: [goodPing, goodUser, chatLinks, goodTools],
     },
   },
   argTypes: {},
@@ -111,7 +109,7 @@ export const IDE: Story = {
 
   parameters: {
     msw: {
-      handlers: [goodPing, goodPrompts, goodUser, chatLinks, noTools],
+      handlers: [goodPing, goodUser, chatLinks, noTools],
     },
   },
 };
@@ -132,12 +130,11 @@ export const Knowledge: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         chatLinks,
         noTools,
-        ,
       ],
     },
   },
@@ -173,7 +170,7 @@ export const EmptySpaceAtBottom: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         chatLinks,
@@ -252,12 +249,11 @@ export const UserMessageEmptySpaceAtBottom: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         chatLinks,
         noTools,
-        ,
       ],
     },
   },
@@ -334,7 +330,7 @@ export const CompressButton: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         chatLinks,
@@ -361,7 +357,7 @@ export const LowBalance: Story = {
   parameters: {
     msw: {
       goodPing,
-      goodPrompts,
+
       chatLinks,
       noTools,
       lowBalance,

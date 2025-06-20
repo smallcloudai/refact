@@ -78,7 +78,6 @@ import classNames from "classnames";
 import { ArchiveIcon } from "@radix-ui/react-icons";
 import { ExpertSelect } from "../../features/ExpertsAndModels/Experts";
 import { ModelsForExpert } from "../../features/ExpertsAndModels";
-import { useToolsForGroup } from "../../features/Tools/useToolsForGroup";
 
 export type ChatFormProps = {
   onSubmit: (str: string) => void;
@@ -120,9 +119,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const shouldAgentCapabilitiesBeShown = useMemo(() => {
     return threadToolUse === "agent";
   }, [threadToolUse]);
-
-  // TODO: temp
-  const _tools = useToolsForGroup();
 
   const onClearError = useCallback(() => {
     // if (messages.length > 0 && chatError) {
@@ -396,7 +392,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
             <ModelsForExpert
               disabled={isStreaming || isWaiting || !messagesAreEmpty}
             />
-            {/* {isModelSelectVisible && <CapsSelect />} */}
 
             <Flex justify="end" flexGrow="1" wrap="wrap" gap="2">
               {/* <ThinkingButton /> */}

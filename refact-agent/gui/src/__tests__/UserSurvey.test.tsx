@@ -4,7 +4,6 @@ import { render } from "../utils/test-utils";
 import { describe, expect, test } from "vitest";
 import {
   server,
-  goodPrompts,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -53,7 +52,7 @@ describe("Start a new chat", () => {
   test("User survey should open when 'questionnaire` is false", async () => {
     server.use(
       goodPing,
-      goodPrompts,
+
       noTools,
       noCommandPreview,
       noCompletions,

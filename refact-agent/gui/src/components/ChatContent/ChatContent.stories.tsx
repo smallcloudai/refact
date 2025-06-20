@@ -24,7 +24,6 @@ import { http, HttpResponse } from "msw";
 import { CHAT_LINKS_URL } from "../../services/refact/consts";
 import {
   goodPing,
-  goodPrompts,
   goodUser,
   noCommandPreview,
   noCompletions,
@@ -54,7 +53,6 @@ const MockedStore: React.FC<{
       send_immediately: false,
       error: null,
       cache: {},
-      system_prompt: {},
       thread: threadData,
     },
   });
@@ -165,7 +163,7 @@ export const TextDoc: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         noTools,
@@ -186,7 +184,7 @@ export const MarkdownIssue: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         noTools,
@@ -227,7 +225,7 @@ export const ToolWaiting: Story = {
     msw: {
       handlers: [
         goodPing,
-        goodPrompts,
+
         goodUser,
         // noChatLinks,
         noTools,

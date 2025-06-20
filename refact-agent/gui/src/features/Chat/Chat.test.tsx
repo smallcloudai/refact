@@ -37,7 +37,6 @@ import { http, HttpResponse } from "msw";
 
 import {
   server,
-  goodPrompts,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -49,7 +48,6 @@ import {
 } from "../../utils/mockServer";
 
 const handlers = [
-  goodPrompts,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -252,7 +250,6 @@ describe("Chat", () => {
     // Missing props in jsdom
     // window.PointerEvent = class PointerEvent extends Event {};
     server.use(
-      goodPrompts,
       noCommandPreview,
       noCompletions,
       noTools,
@@ -367,7 +364,7 @@ describe("Chat", () => {
     const encoder = new TextEncoder();
     server.use(
       goodPing,
-      goodPrompts,
+
       noCommandPreview,
 
       noCommandPreview,

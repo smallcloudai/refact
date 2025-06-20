@@ -1,5 +1,4 @@
 import { Usage } from "../../../services/refact";
-import { SystemPrompts } from "../../../services/refact/prompts";
 import { ChatMessages } from "../../../services/refact/types";
 import { parseOrElse } from "../../../utils/parseOrElse";
 
@@ -47,7 +46,6 @@ export type Chat = {
   waiting_for_response: boolean;
   max_new_tokens?: number;
   cache: Record<string, ChatThread>;
-  system_prompt: SystemPrompts;
   tool_use: ToolUse;
   send_immediately: boolean;
   follow_ups_enabled?: boolean;

@@ -1,5 +1,4 @@
 import { http, HttpResponse, type HttpHandler } from "msw";
-import { SYSTEM_PROMPTS } from "./prompts";
 import { STUB_LINKS_FOR_CHAT_RESPONSE } from "./chat_links_response";
 import { TOOLS, CHAT_LINKS_URL } from "../services/refact/consts";
 import { STUB_TOOL_RESPONSE } from "./tools_response";
@@ -18,13 +17,6 @@ export const noTools: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/tools",
   () => {
     return HttpResponse.json([]);
-  },
-);
-
-export const goodPrompts: HttpHandler = http.get(
-  "http://127.0.0.1:8001/v1/customization",
-  () => {
-    return HttpResponse.json({ system_prompts: SYSTEM_PROMPTS });
   },
 );
 

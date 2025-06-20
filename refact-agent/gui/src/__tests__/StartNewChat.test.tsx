@@ -2,7 +2,6 @@ import { render } from "../utils/test-utils";
 import { describe, expect, test, beforeEach, afterEach } from "vitest";
 import {
   server,
-  goodPrompts,
   noTools,
   noCommandPreview,
   noCompletions,
@@ -23,7 +22,7 @@ describe("Start a new chat", () => {
 
     server.use(
       goodPing,
-      goodPrompts,
+
       noTools,
       noCommandPreview,
       noCompletions,

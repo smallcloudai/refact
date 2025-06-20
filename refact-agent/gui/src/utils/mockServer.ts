@@ -3,7 +3,6 @@ import { setupServer } from "msw/node";
 import type { Store } from "../app/store";
 import {
   statisticsApi,
-  promptsApi,
   toolsApi,
   commandsApi,
   pingApi,
@@ -13,7 +12,6 @@ export * from "../__fixtures__/msw";
 
 export const resetApi = (store: Store) => {
   store.dispatch(statisticsApi.util.resetApiState());
-  store.dispatch(promptsApi.util.resetApiState());
   store.dispatch(toolsApi.util.resetApiState());
   store.dispatch(commandsApi.util.resetApiState());
   store.dispatch(pingApi.util.resetApiState());

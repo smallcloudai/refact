@@ -43,7 +43,6 @@ const MockedStore: React.FC<{
       prevent_send: false,
       send_immediately: false,
       tool_use: "agent",
-      system_prompt: {},
       cache: {},
       thread: {
         id: "test",

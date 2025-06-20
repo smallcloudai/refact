@@ -36,7 +36,6 @@ export {
 export type { TextDocToolCall } from "../components/Tools/types";
 
 export type {
-  CustomPromptsResponse,
   UserMessage,
   ChatMessage,
   ChatMessages,
@@ -100,14 +99,12 @@ export {
   isChatUserMessageResponse,
   isCommandCompletionResponse,
   isCommandPreviewResponse,
-  isCustomPromptsResponse,
   isDetailMessage,
   isDiffMessage,
   isDiffResponse,
   isPlainTextMessage,
   isPlainTextResponse,
   isStatisticDataResponse,
-  isSystemPrompts,
   isToolCallDelta,
   isToolCallMessage,
   isToolMessage,

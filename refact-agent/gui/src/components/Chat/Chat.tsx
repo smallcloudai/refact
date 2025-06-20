@@ -25,7 +25,7 @@ import {
   selectThreadNewChatSuggested,
 } from "../../features/Chat/Thread";
 // import { ThreadHistoryButton } from "../Buttons";
-import { push } from "../../features/Pages/pagesSlice";
+// import { push } from "../../features/Pages/pagesSlice";
 import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
@@ -87,9 +87,10 @@ export const Chat: React.FC<ChatProps> = ({
     [sendMessage, isViewingRawJSON],
   );
 
-  const handleThreadHistoryPage = useCallback(() => {
-    dispatch(push({ name: "thread history page", chatId }));
-  }, [chatId, dispatch]);
+  // TODO: this
+  // const handleThreadHistoryPage = useCallback(() => {
+  //   dispatch(push({ name: "thread history page", chatId }));
+  // }, [chatId, dispatch]);
 
   // useAutoSend();
 

@@ -15,7 +15,6 @@ import {
   enableSend,
   clearChatError,
   setChatModel,
-  setSystemPrompt,
   newChatAction,
   backUpMessages,
   chatError,
@@ -118,7 +117,6 @@ const createInitialState = ({
     prevent_send: false,
     waiting_for_response: false,
     cache: {},
-    system_prompt: {},
     tool_use,
     checkpoints_enabled: true,
     send_immediately: false,
@@ -161,10 +159,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.model = action.payload;
   });
 
-  builder.addCase(setSystemPrompt, (state, action) => {
-    state.system_prompt = action.payload;
-  });
-
   builder.addCase(newChatAction, (state, action) => {
     const next = createInitialState({
       tool_use: state.tool_use,
@@ -175,7 +169,7 @@ export const chatReducer = createReducer(initialState, (builder) => {
       next.cache[state.thread.id] = { ...state.thread, read: false };
     }
     next.thread.model = state.thread.model;
-    next.system_prompt = state.system_prompt;
+
     next.checkpoints_enabled = state.checkpoints_enabled;
     next.follow_ups_enabled = state.follow_ups_enabled;
     next.title_generation_enabled = state.title_generation_enabled;
@@ -366,7 +360,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     next.thread.messages = action.payload.messages;
 
     next.thread.model = state.thread.model;
-    next.system_prompt = state.system_prompt;
     next.cache = { ...state.cache };
     if (state.streaming) {
       next.cache[state.thread.id] = { ...state.thread, read: false };

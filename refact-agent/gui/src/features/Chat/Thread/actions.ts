@@ -23,7 +23,6 @@ import {
   type ChatResponse,
 } from "../../../services/refact/types";
 import type { AppDispatch, RootState } from "../../../app/store";
-import { type SystemPrompts } from "../../../services/refact/prompts";
 import { formatMessagesForLsp, consumeStream } from "./utils";
 import {
   DEFAULT_MAX_NEW_TOKENS,
@@ -35,7 +34,6 @@ import { scanFoDuplicatesWith, takeFromEndWhile } from "../../../utils";
 import { ChatHistoryItem } from "../../History/historySlice";
 import { ideToolCallResponse } from "../../../hooks/useEventBusForIDE";
 import {
-  capsApi,
   DetailMessageWithErrorType,
   isDetailMessage,
 } from "../../../services/refact";
@@ -95,10 +93,6 @@ export const doneStreaming = createAction<PayloadWithId>(
 export const setChatModel = createAction<string>("chatThread/setChatModel");
 export const getSelectedChatModel = (state: RootState) =>
   state.chat.thread.model;
-
-export const setSystemPrompt = createAction<SystemPrompts>(
-  "chatThread/setSystemPrompt",
-);
 
 export const removeChatFromCache = createAction<PayloadWithId>(
   "chatThread/removeChatFromCache",
@@ -201,10 +195,7 @@ export const chatGenerateTitleThunk = createAppAsyncThunk<
   //   return msg;
   // });
 
-  const caps = await thunkAPI
-    .dispatch(capsApi.endpoints.getCaps.initiate(undefined))
-    .unwrap();
-  const model = caps.chat_default_model;
+  const model = "";
   const messagesForLsp = formatMessagesForLsp([
     ...messagesToSend,
     {

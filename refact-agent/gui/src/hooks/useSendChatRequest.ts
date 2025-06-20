@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
-  getSelectedSystemPrompt,
   selectAutomaticPatch,
   selectChatError,
   selectChatId,
@@ -100,7 +99,6 @@ export const useSendChatRequest = () => {
   const isWaiting = useAppSelector(selectIsWaiting);
 
   const currentMessages = useAppSelector(selectMessages);
-  const systemPrompt = useAppSelector(getSelectedSystemPrompt);
   const toolUse = useAppSelector(selectThreadToolUse);
   const attachedImages = useAppSelector(selectAllImages);
   const threadMode = useAppSelector(selectThreadMode);
@@ -110,21 +108,6 @@ export const useSendChatRequest = () => {
 
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const checkpointsEnabled = useAppSelector(selectCheckpointsEnabled);
-
-  const messagesWithSystemPrompt = useMemo(() => {
-    const prompts = Object.entries(systemPrompt);
-    if (prompts.length === 0) return currentMessages;
-    const [key, prompt] = prompts[0];
-    if (key === "default") return currentMessages;
-    if (currentMessages.length === 0) {
-      const message: ChatMessage = {
-        ftm_role: "system",
-        ftm_content: prompt.text,
-      };
-      return [message];
-    }
-    return currentMessages;
-  }, [currentMessages, systemPrompt]);
 
   const sendMessages = useCallback(
     async (messages: ChatMessages, maybeMode?: LspChatMode) => {
@@ -230,7 +213,7 @@ export const useSendChatRequest = () => {
       maybeMessages,
       maybeDropLastMessage,
     }: SubmitHandlerParams) => {
-      let messages = messagesWithSystemPrompt;
+      let messages = currentMessages;
       if (maybeDropLastMessage) {
         messages = messages.slice(0, -1);
       }
@@ -255,7 +238,7 @@ export const useSendChatRequest = () => {
     [
       dispatch,
       maybeAddImagesToQuestion,
-      messagesWithSystemPrompt,
+      currentMessages,
       sendMessages,
       threadIntegration,
       threadMode,
@@ -333,7 +316,6 @@ export const useSendChatRequest = () => {
     maybeAddImagesToQuestion,
     rejectToolUsage,
     sendMessages,
-    messagesWithSystemPrompt,
   };
 };
 
@@ -349,7 +331,7 @@ export function useAutoSend() {
   const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
   const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
   const hasUnsentTools = useAppSelector(selectHasUncalledTools);
-  const { sendMessages, messagesWithSystemPrompt } = useSendChatRequest();
+  const { sendMessages } = useSendChatRequest();
   // TODO: make a selector for this, or show tool formation
   const thread = useAppSelector(selectThread);
   const isIntegration = thread.integration ?? false;
@@ -357,9 +339,9 @@ export function useAutoSend() {
   useEffect(() => {
     if (sendImmediately) {
       dispatch(setSendImmediately(false));
-      void sendMessages(messagesWithSystemPrompt);
+      void sendMessages(currentMessages);
     }
-  }, [dispatch, messagesWithSystemPrompt, sendImmediately, sendMessages]);
+  }, [currentMessages, dispatch, sendImmediately, sendMessages]);
 
   const stop = useMemo(() => {
     if (errored) return true;
