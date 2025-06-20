@@ -1,6 +1,4 @@
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::Hasher;
 use std::io;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -106,19 +104,6 @@ pub struct CommandLine {
 
     #[structopt(long, help="An pre-setup active group id")]
     pub active_group_id: Option<String>,
-}
-
-impl CommandLine {
-    fn create_hash(msg: String) -> String {
-        let mut hasher = DefaultHasher::new();
-        hasher.write(msg.as_bytes());
-        format!("{:x}", hasher.finish())
-    }
-
-    pub fn get_prefix(&self) -> String {
-        // This helps several self-hosting or cloud accounts to not mix
-        Self::create_hash(format!("{}:{}", self.address_url.clone(), self.api_key.clone()))[..6].to_string()
-    }
 }
 
 pub struct AtCommandsPreviewCache {
