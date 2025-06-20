@@ -5,7 +5,6 @@ pub mod scope_utils;
 
 mod tool_ast_definition;
 mod tool_ast_reference;
-mod tool_web;
 mod tool_tree;
 mod tool_cat;
 mod tool_rm;

@@ -98,9 +98,7 @@ async fn get_builtin_tools(
         Box::new(crate::tools::tool_mv::ToolMv{config_path: config_path.clone()}),
     ];
 
-    let web_tools: Vec<Box<dyn Tool + Send>> = vec![
-        Box::new(crate::tools::tool_web::ToolWeb{config_path: config_path.clone()}),
-    ];
+    let web_tools: Vec<Box<dyn Tool + Send>> = vec![];
 
     let deep_analysis_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}),

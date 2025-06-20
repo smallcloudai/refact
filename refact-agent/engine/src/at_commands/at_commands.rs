@@ -13,7 +13,6 @@ use crate::at_commands::at_file::AtFile;
 use crate::at_commands::at_ast_definition::AtAstDefinition;
 use crate::at_commands::at_ast_reference::AtAstReference;
 use crate::at_commands::at_tree::AtTree;
-use crate::at_commands::at_web::AtWeb;
 use crate::at_commands::execute_at::AtCommandMember;
 
 
@@ -82,7 +81,6 @@ pub async fn at_commands_dict(gcx: Arc<ARwLock<GlobalContext>>) -> HashMap<Strin
         ("@definition".to_string(), Arc::new(AtAstDefinition::new()) as Arc<dyn AtCommand + Send>),
         ("@references".to_string(), Arc::new(AtAstReference::new()) as Arc<dyn AtCommand + Send>),
         ("@tree".to_string(), Arc::new(AtTree::new()) as Arc<dyn AtCommand + Send>),
-        ("@web".to_string(), Arc::new(AtWeb::new()) as Arc<dyn AtCommand + Send>),
         ("@search".to_string(), Arc::new(crate::at_commands::at_search::AtSearch::new()) as Arc<dyn AtCommand + Send>),
         ("@knowledge-load".to_string(), Arc::new(crate::at_commands::at_knowledge::AtLoadKnowledge::new()) as Arc<dyn AtCommand + Send>),
     ]);
