@@ -48,8 +48,7 @@ async fn tool_available_from_gcx(
 
     let (is_there_a_thinking_model, allow_knowledge) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
-            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
-             caps.metadata.features.contains(&"knowledge".to_string()) && active_group_id.is_some())
+            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(), active_group_id.is_some())
         },
         Err(_) => (false, false),
     };
