@@ -8,7 +8,9 @@ export type TeamsWorkspace = {
   ws_owner_fuser_id: string;
   ws_root_group_id: string;
   root_group_name: string;
-  coins: number;
+  have_coins_exactly: number;
+  have_coins_enough: boolean;
+  have_admin: boolean;
 };
 
 export type User = {
