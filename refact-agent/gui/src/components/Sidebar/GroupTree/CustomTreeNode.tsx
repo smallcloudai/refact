@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { Box, Flex, Text, Tooltip } from "@radix-ui/themes";
+import { Box, Checkbox, Flex, Text, Tooltip } from "@radix-ui/themes";
 import {
   BookmarkFilledIcon,
   ChevronDownIcon,
@@ -21,8 +21,14 @@ export type TeamsGroupTree = TeamsGroup & {
 export const CustomTreeNode = <T extends FlexusTreeNode>({
   node,
   style,
+  createFolderChecked,
+  setCreateFolderChecked,
   dragHandle,
-}: NodeRendererProps<T> & { updateTree: (newTree: T[]) => void }) => {
+}: NodeRendererProps<T> & {
+  updateTree: (newTree: T[]) => void;
+  createFolderChecked: boolean;
+  setCreateFolderChecked: (state: boolean) => void;
+}) => {
   const currentWorkspaceName =
     useAppSelector(selectConfig).currentWorkspaceName ?? "New Project";
 
@@ -127,6 +133,25 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
       >
         {node.data.treenodeTitle}
       </Text>
+      {node.isSelected && currentWorkspaceName !== node.data.treenodeTitle && (
+        <Flex align="center" gap="3">
+          <Text
+            htmlFor="create-folder-checkbox"
+            as="label"
+            size="1"
+            className={styles.checkboxLabel}
+          >
+            Create <Text weight="bold">{currentWorkspaceName}</Text> here
+          </Text>
+          <Checkbox
+            id="create-folder-checkbox"
+            checked={createFolderChecked}
+            onCheckedChange={(checked: boolean) =>
+              setCreateFolderChecked(checked)
+            }
+          />
+        </Flex>
+      )}
       {isMatchingWorkspaceNameInIDE && (
         <Tooltip
           content={`Current IDE workspace "${currentWorkspaceName}" may be a good match for this group`}

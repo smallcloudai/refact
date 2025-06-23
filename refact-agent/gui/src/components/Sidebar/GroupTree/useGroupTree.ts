@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlexusTreeNode } from "./GroupTree";
 import {
+  CreateGroupDocument,
+  CreateGroupMutation,
+  CreateGroupMutationVariables,
   NavTreeSubsDocument,
   NavTreeSubsSubscription,
   NavTreeWantWorkspacesDocument,
   NavTreeWantWorkspacesQuery,
   NavTreeWantWorkspacesQueryVariables,
 } from "../../../../generated/documents";
-import { useQuery } from "urql";
+import { useMutation, useQuery } from "urql";
 import {
   cleanupInsertedLater,
   markForDelete,
@@ -32,10 +35,17 @@ import {
   setSkippedWorkspaceSelection,
 } from "../../../features/Teams";
 import { setError } from "../../../features/Errors/errorsSlice";
+import { selectConfig } from "../../../features/Config/configSlice";
 
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
+  const [createFolderChecked, setCreateFolderChecked] = useState(false);
   const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
+
+  const [_, createGroup] = useMutation<
+    CreateGroupMutation,
+    CreateGroupMutationVariables
+  >(CreateGroupDocument);
 
   const [teamsWorkspaces] = useQuery<
     NavTreeWantWorkspacesQuery,
@@ -204,6 +214,58 @@ export function useGroupTree() {
     ],
   );
 
+  const currentWorkspaceName =
+    useAppSelector(selectConfig).currentWorkspaceName ?? "New Project";
+
+  const isMatchingGroupNameWithWorkspace = useMemo(() => {
+    return (
+      currentSelectedTeamsGroupNode?.treenodeTitle === currentWorkspaceName
+    );
+  }, [currentSelectedTeamsGroupNode?.treenodeTitle, currentWorkspaceName]);
+
+  const handleConfirmSelectionClick = useCallback(async () => {
+    if (!currentSelectedTeamsGroupNode) return;
+    if (createFolderChecked && !isMatchingGroupNameWithWorkspace) {
+      const result = await createGroup({
+        fgroup_name: currentWorkspaceName,
+        fgroup_parent_id: currentSelectedTeamsGroupNode.treenodeId,
+      });
+
+      if (result.error) {
+        dispatch(setError(result.error.message));
+        return;
+      }
+
+      const newGroup = result.data?.group_create;
+      if (newGroup) {
+        const newNode: FlexusTreeNode = {
+          treenodeId: newGroup.fgroup_id,
+          treenodeTitle: newGroup.fgroup_name,
+          treenodeType: "group",
+          treenodePath: `${currentSelectedTeamsGroupNode.treenodePath}/group:${newGroup.fgroup_id}`,
+          treenode__DeleteMe: false,
+          treenode__InsertedLater: false,
+          treenodeChildren: [],
+          treenodeExpanded: false,
+        };
+        setCurrentSelectedTeamsGroupNode(newNode);
+        void onGroupSelectionConfirm(newNode);
+      }
+    } else {
+      void onGroupSelectionConfirm(currentSelectedTeamsGroupNode);
+      setCurrentSelectedTeamsGroupNode(null);
+    }
+  }, [
+    dispatch,
+    createGroup,
+    currentSelectedTeamsGroupNode,
+    setCurrentSelectedTeamsGroupNode,
+    onGroupSelectionConfirm,
+    currentWorkspaceName,
+    createFolderChecked,
+    isMatchingGroupNameWithWorkspace,
+  ]);
+
   const handleSkipWorkspaceSelection = useCallback(() => {
     dispatch(setSkippedWorkspaceSelection(true));
     dispatch(resetActiveWorkspace());
@@ -234,6 +296,7 @@ export function useGroupTree() {
     // Current states
     currentTeamsWorkspace,
     currentSelectedTeamsGroupNode,
+    createFolderChecked,
     // Dimensions
     treeHeight,
     // Actions
@@ -242,8 +305,10 @@ export function useGroupTree() {
     onWorkspaceSelection,
     touchNode,
     handleSkipWorkspaceSelection,
+    handleConfirmSelectionClick,
     // Setters
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
+    setCreateFolderChecked,
   };
 }

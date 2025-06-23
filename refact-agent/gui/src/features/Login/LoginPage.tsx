@@ -15,7 +15,7 @@ import { Accordion } from "../../components/Accordion";
 import { useLogin, useEmailLogin, useEventsBusForIDE } from "../../hooks";
 import { UnderConstruction } from "./UnderConstruction";
 
-const IS_LOGIN_DISABLED = true;
+const IS_LOGIN_DISABLED = false;
 
 export const LoginPage: React.FC = () => {
   const { loginWithProvider, polling, cancelLogin } = useLogin();
