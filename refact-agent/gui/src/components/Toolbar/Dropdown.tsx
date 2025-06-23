@@ -102,8 +102,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
       (w) => w.ws_id === activeWorkspace?.ws_id,
     );
     if (!maybeWorkspaceWithCoins) return null;
-    if (maybeWorkspaceWithCoins.ws_id !== user.data?.my_own_ws_id) return null;
-    return Math.round(maybeWorkspaceWithCoins.coins / 1000);
+    if (!maybeWorkspaceWithCoins.have_admin) return null;
+    if (maybeWorkspaceWithCoins.have_coins_exactly === 0) return null;
+    return Math.round(maybeWorkspaceWithCoins.have_coins_exactly / 1000);
   }, [user.data, activeWorkspace?.ws_id]);
 
   const isActiveRootGroup = useMemo(() => {
@@ -197,7 +198,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
           </DropdownMenu.Item>
         )}
 
-        {user.data && coinBalance && (
+        {user.data && activeWorkspace && coinBalance && (
           <DropdownMenu.Label>
             <Flex align="center" gap="1">
               {/**TODO: there could be multiple source for this */}
@@ -210,7 +211,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
                   <Flex direction="column" gap="2">
                     <Text as="p" size="2">
                       Current coins balance on &apos;
-                      {activeWorkspace?.root_group_name}&apos; workspace
+                      {activeWorkspace.root_group_name}&apos; workspace
                     </Text>
                   </Flex>
                 </HoverCard.Content>

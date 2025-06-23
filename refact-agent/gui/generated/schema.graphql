@@ -6,7 +6,7 @@ schema {
 
 type BasicStuffResult {
   fuser_id: String!
-  fuser_stripe_stuff: JSON
+  fuser_psystem: JSON
   invitations: [FWorkspaceInvitationOutput!]
   my_own_ws_id: String
   workspaces: [FWorkspaceOutput!]!
@@ -180,6 +180,8 @@ type FPluginOutput {
 }
 
 input FStatsAddInput {
+  fgroup_id: String! = ""
+  st_chart: Int!
   st_how_many: Int!
   st_involved_fexp_id: String! = ""
   st_involved_fuser_id: String! = ""
@@ -337,7 +339,9 @@ type FWorkspaceInvitationOutput {
 }
 
 type FWorkspaceOutput {
-  coins: Int!
+  have_admin: Boolean!
+  have_coins_enough: Boolean!
+  have_coins_exactly: Int!
   root_group_name: String!
   ws_archived_ts: Float!
   ws_created_ts: Float!
@@ -384,6 +388,7 @@ type Mutation {
   invitation_accept(wsi_id: String!): Boolean!
   invitation_create_multiple(emails: [String!]!, fgroup_id: String!, role: String!): [FMassInvitationOutput!]!
   invitation_delete(wsi_fgroup_id: String!, wsi_invite_fuser_id: String!): Boolean!
+  invitation_reject(wsi_id: String!): Boolean!
   knowledge_item_create(input: FKnowledgeItemInput!): FKnowledgeItemOutput!
   knowledge_item_delete(id: String!): Boolean!
   knowledge_item_mass_group_patch(dst_group_id: String!, src_group_id: String!): Int!
@@ -407,12 +412,13 @@ type Mutation {
   thread_patch(id: String!, patch: FThreadPatch!): FThreadOutput!
   thread_provide_toolset(ft_id: String!, toolset: String!): Boolean!
   thread_reset_error(ft_error: String!, ft_id: String!): Boolean!
+  thread_reset_title(ft_id: String!, ft_title: String!): Boolean!
   thread_set_confirmation_request(confirmation_request: String!, ft_id: String!): Boolean!
   thread_set_confirmation_response(confirmation_response: String!, ft_id: String!): Boolean!
   thread_unlock(ft_id: String!, worker_name: String!): Boolean!
   user_profile_patch(patch: FUserProfilePatch!): FUserProfileOutput!
   user_register(input: RegisterInput!): Boolean!
-  workspace_create(input: FWorkspaceCreateInput!): FWorkspaceOutput!
+  workspace_create(input: FWorkspaceCreateInput!): String!
   workspace_delete(dry_run: Boolean! = false, ws_id: String!): String!
 }
 
@@ -442,8 +448,8 @@ type Query {
   plugins_installed: [FPluginOutput!]!
   query_basic_stuff(want_invitations: Boolean! = false): BasicStuffResult!
   reset_password_token_info(token: String!): PasswordResetTokenInfo!
-  stats_query(breakdown_fexp_name: Boolean!, breakdown_fuser_id: Boolean!, breakdown_model: Boolean!, filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, filter_thing: [String!]!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): [FStatsOutput!]!
-  stats_query_distinct(filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, filter_thing: [String!]!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
+  stats_query(breakdown_fexp_name: Boolean!, breakdown_fuser_id: Boolean!, breakdown_model: Boolean!, fgroup_id: String! = "", filter_fexp_id: [String!]! = [], filter_fuser_id: [String!]! = [], filter_model: [String!]! = [], filter_thing: [String!]! = [], st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String! = ""): [FStatsOutput!]!
+  stats_query_distinct(fgroup_id: String! = "", filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
   tech_support_get_config(ws_id: String!): TechSupportSettingsOutput
   thread_get(id: String!): FThreadOutput!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
@@ -460,6 +466,7 @@ input RegisterInput {
 }
 
 type StatsDistinctOutput {
+  st_chart: Int!
   st_involved_fexp_id: [String!]!
   st_involved_fuser_id: [String!]!
   st_involved_model: [String!]!
@@ -497,6 +504,7 @@ type TreeUpdateSubs {
   treeupd_id: String!
   treeupd_path: String!
   treeupd_role: String
+  treeupd_tag: String!
   treeupd_title: String!
   treeupd_type: String!
 }

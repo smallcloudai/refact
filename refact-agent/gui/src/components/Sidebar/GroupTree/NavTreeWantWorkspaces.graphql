@@ -7,7 +7,9 @@ query NavTreeWantWorkspaces {
       ws_owner_fuser_id
       ws_root_group_id
       root_group_name
-      coins
+      have_coins_exactly
+      have_coins_enough
+      have_admin
     }
   }
 }
