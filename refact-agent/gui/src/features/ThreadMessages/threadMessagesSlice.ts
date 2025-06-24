@@ -47,7 +47,7 @@ const ID_REGEXP = /^(.*):(\d+):(\d+):(\d+)$/;
 function getInfoFromId(id: string) {
   const result = id.match(ID_REGEXP);
   if (result === null) return null;
-  const [ftm_belongs_to_ft_id, ftm_alt, ftm_num, ftm_prev_alt] = result;
+  const [_, ftm_belongs_to_ft_id, ftm_alt, ftm_num, ftm_prev_alt] = result;
   return {
     ftm_belongs_to_ft_id,
     ftm_alt: +ftm_alt,
@@ -109,10 +109,19 @@ export const threadMessagesSlice = createSlice({
               ?.ft_need_assistant,
         );
 
-        state.streamingBranches.push(
+        if (
           action.payload.comprehensive_thread_subs.news_payload_thread
-            .ft_need_assistant,
-        );
+            .ft_need_assistant !== -1 &&
+          !state.streamingBranches.includes(
+            action.payload.comprehensive_thread_subs.news_payload_thread
+              .ft_need_assistant,
+          )
+        ) {
+          state.streamingBranches.push(
+            action.payload.comprehensive_thread_subs.news_payload_thread
+              .ft_need_assistant,
+          );
+        }
       }
 
       if (
@@ -169,6 +178,10 @@ export const threadMessagesSlice = createSlice({
         state.messages = msgs;
       }
 
+      const infoFromId = getInfoFromId(
+        action.payload.comprehensive_thread_subs.news_payload_id,
+      );
+
       if (
         action.payload.comprehensive_thread_subs.news_action === "DELTA" &&
         action.payload.comprehensive_thread_subs.stream_delta
@@ -176,39 +189,31 @@ export const threadMessagesSlice = createSlice({
         if (
           action.payload.comprehensive_thread_subs.news_payload_id in
             state.messages &&
-          action.payload.comprehensive_thread_subs
-            .news_payload_thread_message &&
           "ftm_content" in action.payload.comprehensive_thread_subs.stream_delta
         ) {
-          // TODO: handle deltas, delta don't have all the info though :/
+          // TODO: multimodal could break this
           state.messages[
             action.payload.comprehensive_thread_subs.news_payload_id
           ].ftm_content +=
             action.payload.comprehensive_thread_subs.stream_delta.ftm_content;
         } else if (
+          infoFromId &&
           !(
             action.payload.comprehensive_thread_subs.news_payload_id in
             state.messages
-          ) &&
-          action.payload.comprehensive_thread_subs.news_payload_thread_message
+          )
         ) {
-          const infoFromId = getInfoFromId(
-            action.payload.comprehensive_thread_subs.news_payload_id,
-          );
-
           const msg: FTMMessage = {
-            // TODO: remove this, the key will suffice
-            ...action.payload.comprehensive_thread_subs
-              .news_payload_thread_message,
             ...infoFromId,
             ftm_role:
               action.payload.comprehensive_thread_subs.stream_delta.ftm_role,
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             ftm_content:
               action.payload.comprehensive_thread_subs.stream_delta.ftm_content,
-            ftm_num:
-              action.payload.comprehensive_thread_subs
-                .news_payload_thread_message.ftm_num + 1,
+
+            // TODO: these
+            ftm_call_id: "",
+            ftm_created_ts: 0,
           };
           state.messages[
             action.payload.comprehensive_thread_subs.news_payload_id
