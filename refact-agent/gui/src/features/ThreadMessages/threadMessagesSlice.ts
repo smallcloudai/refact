@@ -15,6 +15,8 @@ import {
   createThreadWithMessage,
   pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
+import { isToolMessage } from "../../events";
+import { ToolMessage } from "../../services/refact";
 
 type InitialState = {
   waitingBranches: number[]; // alt numbers
@@ -306,6 +308,38 @@ export const threadMessagesSlice = createSlice({
       if (state.streamingBranches.length > 0) return true;
       return false;
     },
+    /**
+     * 
+     * export const selectManyToolResultsByIds = (ids: string[]) =>
+       createSelector(toolMessagesSelector, (messages) => {
+         return messages
+           .filter((message) => ids.includes(message.ftm_content.tool_call_id))
+           .map((toolMessage) => toolMessage.ftm_content);
+       });
+     */
+
+    selectManyToolMessagesByIds: createSelector(
+      [selectMessagesValues, (_messages, ids: string[]) => ids],
+      (messages, ids) => {
+        const toolMessages = messages.reduce<ToolMessage[]>((acc, message) => {
+          if (!isToolMessage(message)) return acc;
+          if (!ids.includes(message.ftm_call_id)) return acc;
+          return [...acc, message];
+        }, []);
+
+        return toolMessages;
+      },
+    ),
+
+    selectToolMessageById: createSelector(
+      [selectMessagesValues, (_messages, id?: string) => id],
+      (messages, id) => {
+        return messages.find((message) => {
+          if (!isToolMessage(message)) return false;
+          return message.ftm_call_id === id;
+        });
+      },
+    ),
   },
 
   extraReducers(builder) {
@@ -370,4 +404,6 @@ export const {
   selectBranchLength,
   selectThreadMessageTopAltNumber,
   selectIsThreadRunning,
+  selectManyToolMessagesByIds,
+  selectToolMessageById,
 } = threadMessagesSlice.selectors;

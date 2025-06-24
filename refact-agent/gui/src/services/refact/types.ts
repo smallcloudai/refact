@@ -1,3 +1,4 @@
+import { FThreadMessageOutput } from "../../../generated/documents";
 import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
 import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";
@@ -67,7 +68,9 @@ export function isToolContent(json: unknown): json is ToolContent {
   return false;
 }
 export interface BaseToolResult {
-  tool_call_id: string;
+  ftm_role: "tool";
+  ftm_call_id: string;
+  // tool_call_id: string;
   finish_reason?: string; // "call_failed" | "call_worked";
   ftm_content: ToolContent;
   compression_strength?: CompressionStrength;
@@ -77,11 +80,11 @@ export interface BaseToolResult {
 export interface SingleModelToolResult extends BaseToolResult {
   ftm_content: string;
 }
-export interface MultiModalToolResult extends BaseToolResult {
+export interface MultiModalToolMessage extends ToolMessage {
   ftm_content: MultiModalToolContent[];
 }
 
-export type ToolResult = SingleModelToolResult | MultiModalToolResult;
+// export type ToolResult = SingleModelToolResult | MultiModalToolResult;
 
 export type MultiModalToolContent = {
   m_type: string; // "image/*" | "text" ... maybe narrow this?
@@ -105,22 +108,24 @@ export function isMultiModalToolContentArray(content: ToolContent) {
   return content.every(isMultiModalToolContent);
 }
 
-export function isMultiModalToolResult(
-  toolResult: ToolResult,
-): toolResult is MultiModalToolResult {
-  return isMultiModalToolContentArray(toolResult.ftm_content);
+export function isMultiModalToolMessage(
+  toolMessage: unknown,
+): toolMessage is MultiModalToolMessage {
+  if (!isToolMessage(toolMessage)) return false;
+  return isMultiModalToolContentArray(toolMessage.ftm_content);
 }
 
-export function isSingleModelToolResult(toolResult: ToolResult) {
-  return typeof toolResult.ftm_content === "string";
+export function isSingleModelToolMessage(toolMessage: ToolMessage) {
+  return typeof toolMessage.ftm_content === "string";
 }
 
+// FTheadMessageOutput
 interface BaseMessage {
   ftm_role: ChatRole;
   ftm_content:
     | string
     | ChatContextFile[]
-    | ToolResult
+    | MultiModalToolContent[]
     | DiffChunk[]
     | null
     | (UserMessageContentWithImage | ProcessedUserMessageContentWithImages)[];
@@ -159,7 +164,7 @@ export interface AssistantMessage extends BaseMessage, CostInfo {
   ftm_role: "assistant";
   ftm_content: string | null;
   reasoning_content?: string | null; // NOTE: only for internal UI usage, don't send it back
-  tool_calls?: ToolCall[] | null;
+  ftm_tool_calls?: ToolCall[] | null;
   thinking_blocks?: ThinkingBlock[] | null;
   finish_reason?: "stop" | "length" | "abort" | "tool_calls" | null;
   usage?: Usage | null;
@@ -176,7 +181,8 @@ export interface SystemMessage extends BaseMessage {
 
 export interface ToolMessage extends BaseMessage {
   ftm_role: "tool";
-  ftm_content: ToolResult;
+  ftm_content: ToolContent;
+  ftm_call_id: string;
 }
 
 // TODO: There maybe sub-types for this
@@ -292,7 +298,11 @@ export function isAssistantMessage(
   return message.ftm_role === "assistant";
 }
 
-export function isToolMessage(message: ChatMessage): message is ToolMessage {
+export function isToolMessage(message: unknown): message is ToolMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "tool";
 }
 
@@ -310,7 +320,7 @@ export function isToolCallMessage(
   message: ChatMessage,
 ): message is ToolCallMessage {
   if (!isAssistantMessage(message)) return false;
-  const tool_calls = message.tool_calls;
+  const tool_calls = message.ftm_tool_calls;
   if (!tool_calls) return false;
   // TODO: check browser support of every
   return tool_calls.every(isToolCall);
@@ -457,11 +467,12 @@ export type ChatUserMessageResponse =
       compression_strength?: CompressionStrength;
     };
 
+// TODO: old lsp responses
 export type ToolResponse = {
   id: string;
   ftm_role: "tool";
   tool_failed?: boolean;
-} & ToolResult;
+} & ToolMessage;
 
 export function isChatUserMessageResponse(
   json: unknown,

@@ -35,8 +35,9 @@ const ElementForNodeMessage: React.FC<{
   if (isAssistantMessage(message)) {
     // find the tool result for the tool cal
 
+    // TODO: why is this an error
     return (
-      <AssistantInput toolCalls={message.tool_calls}>
+      <AssistantInput toolCalls={message.ftm_tool_calls}>
         {message.ftm_content}
       </AssistantInput>
     );

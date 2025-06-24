@@ -14,6 +14,7 @@ import {
 } from "./types";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
 
+// Add cloud tools here ?
 export const toolsApi = createApi({
   reducerPath: "tools",
   baseQuery: fetchBaseQuery({
@@ -51,6 +52,8 @@ export const toolsApi = createApi({
             },
           };
         }
+
+        // add cloud tools here?
         const toolGroups = result.data.filter((d) => isToolGroup(d));
         return { data: toolGroups };
       },
