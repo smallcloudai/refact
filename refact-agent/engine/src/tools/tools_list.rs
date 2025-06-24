@@ -81,7 +81,7 @@ async fn get_builtin_tools(
     let config_dir = gcx.read().await.config_dir.clone();
     let config_path = config_dir.join("builtin_tools.yaml").to_string_lossy().to_string();
 
-    let mut codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
+    let codebase_search_tools: Vec<Box<dyn Tool + Send>> = vec![
         Box::new(crate::tools::tool_ast_definition::ToolAstDefinition{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_ast_reference::ToolAstReference{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_tree::ToolTree{config_path: config_path.clone()}),
