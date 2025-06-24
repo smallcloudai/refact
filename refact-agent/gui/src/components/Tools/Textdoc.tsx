@@ -38,6 +38,7 @@ export const TextDocTool: React.FC<{
   toolFailed?: boolean;
 }> = ({ toolCall, toolFailed = false }) => {
   if (toolFailed) return false;
+
   const maybeTextDocToolCall = parseRawTextDocToolCall(toolCall);
   if (!maybeTextDocToolCall) return false;
 

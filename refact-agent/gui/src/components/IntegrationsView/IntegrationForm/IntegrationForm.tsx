@@ -1,22 +1,16 @@
 import { Button, Flex, Grid, Text } from "@radix-ui/themes";
 import classNames from "classnames";
 import { FC, FormEvent, useEffect } from "react";
-import { debugIntegrations } from "../../../debugConfig";
 import { useGetIntegrationDataByPathQuery } from "../../../hooks/useGetIntegrationDataByPathQuery";
 import { Spinner } from "../../Spinner";
 import { Confirmation } from "../Confirmation";
-import { useFormAvailability } from "../hooks/useFormAvailability";
 import { useFormFields } from "../hooks/useFormFields";
 import { IntegrationDocker } from "../IntegrationDocker";
 
-import type { ToolParameterEntity } from "../../../services/refact";
 import {
-  areAllFieldsBoolean,
   areToolConfirmation,
-  isMCPArgumentsArray,
-  isMCPEnvironmentsDict,
+  IntegrationFieldValue,
   type Integration,
-  type ToolConfirmation,
 } from "../../../services/refact";
 import { ErrorState } from "./ErrorState";
 import { FormAvailabilityAndDelete } from "./FormAvailabilityAndDelete";
@@ -31,31 +25,19 @@ type IntegrationFormProps = {
   isApplying: boolean;
   isDisabled: boolean;
   isDeletingIntegration: boolean;
-  availabilityValues: Record<string, boolean>;
-  confirmationRules: ToolConfirmation;
-  MCPArguments: string[];
-  MCPEnvironmentVariables: Record<string, string>;
   handleSubmit: (event: FormEvent<HTMLFormElement>) => void;
   handleDeleteIntegration: (path: string) => void;
-  handleChange: (event: FormEvent<HTMLFormElement>) => void;
   onSchema: (schema: Integration["integr_schema"]) => void;
   onValues: (values: Integration["integr_values"]) => void;
-  setAvailabilityValues: React.Dispatch<
-    React.SetStateAction<Record<string, boolean>>
-  >;
-  setConfirmationRules: React.Dispatch<React.SetStateAction<ToolConfirmation>>;
-  setMCPArguments: React.Dispatch<React.SetStateAction<string[]>>;
-  setMCPEnvironmentVariables: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
-  setHeaders: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setToolParameters: React.Dispatch<
-    React.SetStateAction<ToolParameterEntity[] | null>
-  >;
   handleSwitchIntegration: (
     integrationName: string,
     integrationConfigPath: string,
   ) => void;
+  handleUpdateFormField: (
+    fieldKey: string,
+    fieldValue: IntegrationFieldValue,
+  ) => void;
+  formValues: Integration["integr_values"];
 };
 
 export const IntegrationForm: FC<IntegrationFormProps> = ({
@@ -63,23 +45,13 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
   isApplying,
   isDisabled,
   isDeletingIntegration,
-  availabilityValues,
-  confirmationRules,
-  // TODO: make those params being sent to LSP
-  // MCPArguments,
-  // MCPEnvironmentVariables,
   handleSubmit,
   handleDeleteIntegration,
-  handleChange,
   onSchema,
   onValues,
-  setAvailabilityValues,
-  setConfirmationRules,
-  setMCPArguments,
-  setMCPEnvironmentVariables,
-  setHeaders,
-  setToolParameters,
   handleSwitchIntegration,
+  handleUpdateFormField,
+  formValues,
 }) => {
   const { integration } = useGetIntegrationDataByPathQuery(integrationPath);
 
@@ -89,64 +61,21 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
     areExtraFieldsRevealed,
     toggleExtraFields,
   } = useFormFields(integration.data?.integr_schema.fields);
-  const {
-    handleAvailabilityChange,
-    handleConfirmationChange,
-    handleToolParameters,
-    handleMCPArguments,
-    handleMCPEnvironmentVariables,
-    handleHeaders,
-  } = useFormAvailability({
-    setAvailabilityValues,
-    setConfirmationRules,
-    setToolParameters,
-    setMCPArguments,
-    setMCPEnvironmentVariables,
-    setHeaders,
-  });
 
-  // Set initial values from integration data
-  useEffect(() => {
-    if (integration.data?.integr_schema) {
-      onSchema(integration.data.integr_schema);
-    }
-    if (integration.data?.integr_values) {
-      onValues(integration.data.integr_values);
-    }
-
-    debugIntegrations("[DEBUG]: integration.data: ", integration);
-  }, [integration, onSchema, onValues, handleAvailabilityChange]);
+  const schema = integration.data?.integr_schema;
+  const values = integration.data?.integr_values;
 
   useEffect(() => {
-    if (
-      integration.data?.integr_values?.available &&
-      areAllFieldsBoolean(integration.data.integr_values.available)
-    ) {
-      Object.entries(integration.data.integr_values.available).forEach(
-        ([fieldKey, value]) => {
-          handleAvailabilityChange(fieldKey, value);
-        },
-      );
+    if (schema) {
+      onSchema(schema);
     }
-  }, [integration, handleAvailabilityChange]);
+  }, [schema, onSchema]);
 
   useEffect(() => {
-    if (
-      integration.data?.integr_values?.args &&
-      isMCPArgumentsArray(integration.data.integr_values.args)
-    ) {
-      handleMCPArguments(integration.data.integr_values.args);
+    if (values) {
+      onValues(values);
     }
-  }, [integration, handleMCPArguments]);
-
-  useEffect(() => {
-    if (
-      integration.data?.integr_values?.args &&
-      isMCPEnvironmentsDict(integration.data.integr_values.env)
-    ) {
-      handleMCPEnvironmentVariables(integration.data.integr_values.env);
-    }
-  }, [integration, handleMCPEnvironmentVariables]);
+  }, [values, onValues]);
 
   if (integration.isLoading) {
     return <Spinner spinning />;
@@ -175,35 +104,28 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
         </Text>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        onChange={handleChange}
-        id={`form-${integration.data.integr_name}`}
-      >
+      <form onSubmit={handleSubmit} id={`form-${integration.data.integr_name}`}>
         <Flex direction="column" gap="2">
           <Grid mb="0">
             <FormAvailabilityAndDelete
               integration={integration.data}
-              availabilityValues={availabilityValues}
-              handleAvailabilityChange={handleAvailabilityChange}
               isApplying={isApplying}
               isDeletingIntegration={isDeletingIntegration}
+              formValues={formValues}
               onDelete={handleDeleteIntegration}
+              onChange={handleUpdateFormField}
             />
             <FormSmartlinks
               integration={integration.data}
               smartlinks={integration.data.integr_schema.smartlinks}
-              availabilityValues={availabilityValues}
             />
             <FormFields
               integration={integration.data}
               importantFields={importantFields}
               extraFields={extraFields}
               areExtraFieldsRevealed={areExtraFieldsRevealed}
-              onToolParameters={handleToolParameters}
-              onArguments={handleMCPArguments}
-              onEnvs={handleMCPEnvironmentVariables}
-              onHeaders={handleHeaders}
+              values={formValues}
+              onChange={handleUpdateFormField}
             />
           </Grid>
 
@@ -227,7 +149,11 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
           {!integration.data.integr_schema.confirmation.not_applicable && (
             <Flex gap="4" mb="3">
               <Confirmation
-                confirmationByUser={confirmationRules}
+                confirmationByUser={
+                  areToolConfirmation(formValues?.confirmation)
+                    ? formValues.confirmation
+                    : null
+                }
                 confirmationFromValues={
                   areToolConfirmation(
                     integration.data.integr_values?.confirmation,
@@ -238,7 +164,7 @@ export const IntegrationForm: FC<IntegrationFormProps> = ({
                 defaultConfirmationObject={
                   integration.data.integr_schema.confirmation
                 }
-                onChange={handleConfirmationChange}
+                onChange={handleUpdateFormField}
               />
             </Flex>
           )}

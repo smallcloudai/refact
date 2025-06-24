@@ -84,7 +84,7 @@ async fn parse_args(
             }
         },
         Some(v) => return Err(format!("Error: The 'multiple' argument must be a boolean (true/false) indicating whether to replace all occurrences, but received: {:?}", v)),
-        None => return Err("Error: The 'multiple' argument is required. Please specify true to replace all occurrences or false to replace only the first occurrence.".to_string())
+        None => false,
     };
 
     Ok(ToolUpdateTextDocRegexArgs {
@@ -217,7 +217,7 @@ impl Tool for ToolUpdateTextDocRegex {
                     param_type: "boolean".to_string(),
                 }
             ],
-            parameters_required: vec!["path".to_string(), "pattern".to_string(), "replacement".to_string(), "multiple".to_string()],
+            parameters_required: vec!["path".to_string(), "pattern".to_string(), "replacement".to_string()],
         }
     }
 }

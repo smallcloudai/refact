@@ -42,6 +42,9 @@ pub async fn forward_to_openai_style_endpoint(
         data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
     } else if let Some(thinking) = sampling_parameters.thinking.clone() {
         data["thinking"] = thinking.clone();
+    } else if let Some(enable_thinking) = sampling_parameters.enable_thinking {
+        data["enable_thinking"] = serde_json::Value::Bool(enable_thinking);
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
     } else if let Some(temperature) = sampling_parameters.temperature {
         data["temperature"] = serde_json::Value::from(temperature);
     }
@@ -124,7 +127,10 @@ pub async fn forward_to_openai_style_endpoint_streaming(
         data["reasoning_effort"] = serde_json::Value::String(reasoning_effort.to_string());
     } else if let Some(thinking) = sampling_parameters.thinking.clone() {
         data["thinking"] = thinking.clone();
-    } else if let Some(temperature) = sampling_parameters.temperature {
+    } else if let Some(enable_thinking) = sampling_parameters.enable_thinking {
+        data["enable_thinking"] = serde_json::Value::Bool(enable_thinking);
+        data["temperature"] = serde_json::Value::from(sampling_parameters.temperature);
+    }else if let Some(temperature) = sampling_parameters.temperature {
         data["temperature"] = serde_json::Value::from(temperature);
     }
     data["max_completion_tokens"] = serde_json::Value::from(sampling_parameters.max_new_tokens);

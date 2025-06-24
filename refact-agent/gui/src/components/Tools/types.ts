@@ -92,8 +92,11 @@ export const isUpdateTextDocToolCall = (
   if (typeof toolCall.function.arguments.old_str !== "string") return false;
   if (!("replacement" in toolCall.function.arguments)) return false;
   if (typeof toolCall.function.arguments.replacement !== "string") return false;
-  if (!("multiple" in toolCall.function.arguments)) return false;
-  if (typeof toolCall.function.arguments.multiple !== "boolean") return false;
+  if (
+    "multiple" in toolCall.function.arguments &&
+    typeof toolCall.function.arguments.multiple !== "boolean"
+  )
+    return false;
   return true;
 };
 
@@ -119,8 +122,11 @@ export const isUpdateRegexTextDocToolCall = (
   if (typeof toolCall.function.arguments.pattern !== "string") return false;
   if (!("replacement" in toolCall.function.arguments)) return false;
   if (typeof toolCall.function.arguments.replacement !== "string") return false;
-  if (!("multiple" in toolCall.function.arguments)) return false;
-  if (typeof toolCall.function.arguments.multiple !== "boolean") return false;
+  if (
+    "multiple" in toolCall.function.arguments &&
+    typeof toolCall.function.arguments.multiple !== "boolean"
+  )
+    return false;
   return true;
 };
 

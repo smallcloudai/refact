@@ -52,6 +52,8 @@ pub struct SamplingParameters {
     pub reasoning_effort: Option<ReasoningEffort>,  // OpenAI style reasoning
     #[serde(default)]
     pub thinking: Option<serde_json::Value>,  // Anthropic style reasoning
+    #[serde(default)]
+    pub enable_thinking: Option<bool>,  // Qwen style reasoning
 }
 
 #[derive(Debug, Deserialize, Clone)]

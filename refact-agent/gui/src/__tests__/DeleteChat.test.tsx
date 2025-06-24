@@ -17,6 +17,8 @@ describe.skip("Delete a Chat form history", () => {
       preloadedState: {
         teams: {
           group: { id: "123", name: "test" },
+          workspace: { ws_id: "123", root_group_name: "test" },
+          skipped: false,
         },
         pages: [{ name: "history" }],
         config: {

@@ -38,16 +38,16 @@ fn tool_available(
 async fn tool_available_from_gcx(
     gcx: Arc<ARwLock<GlobalContext>>,
 ) -> impl Fn(&Box<dyn Tool + Send>) -> bool {
-    let (ast_on, vecdb_on, allow_experimental) = {
+    let (ast_on, vecdb_on, allow_experimental, active_group_id) = {
         let gcx_locked = gcx.read().await;
         let vecdb_on = gcx_locked.vec_db.lock().await.is_some();
-        (gcx_locked.ast_service.is_some(), vecdb_on, gcx_locked.cmdline.experimental)
+        (gcx_locked.ast_service.is_some(), vecdb_on, 
+         gcx_locked.cmdline.experimental, gcx_locked.active_group_id.clone())
     };
 
     let (is_there_a_thinking_model, allow_knowledge) = match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
         Ok(caps) => {
-            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(),
-             caps.metadata.features.contains(&"knowledge".to_string()))
+            (caps.chat_models.get(&caps.defaults.chat_thinking_model).is_some(), active_group_id.is_some())
         },
         Err(_) => (false, false),
     };
@@ -87,7 +87,7 @@ async fn get_builtin_tools(
         Box::new(crate::tools::tool_cat::ToolCat{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_regex_search::ToolRegexSearch{config_path: config_path.clone()}),
         Box::new(crate::tools::tool_search::ToolSearch{config_path: config_path.clone()}),
-        Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}),
+        // Box::new(crate::tools::tool_locate_search::ToolLocateSearch{config_path: config_path.clone()}),
     ];
 
     let codebase_change_tools: Vec<Box<dyn Tool + Send>> = vec![
