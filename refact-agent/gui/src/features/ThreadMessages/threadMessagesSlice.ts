@@ -21,8 +21,6 @@ import { ToolMessage } from "../../services/refact";
 type InitialState = {
   waitingBranches: number[]; // alt numbers
   streamingBranches: number[]; // alt number
-  isWaiting: boolean;
-  isStreaming: boolean;
   messages: Record<string, FTMMessage>;
   ft_id: string | null;
   endNumber: number;
@@ -33,8 +31,6 @@ type InitialState = {
 const initialState: InitialState = {
   waitingBranches: [],
   streamingBranches: [],
-  isWaiting: false,
-  isStreaming: false,
   messages: {},
   ft_id: null,
   endNumber: 0,
@@ -71,11 +67,11 @@ export const threadMessagesSlice = createSlice({
       state,
       action: PayloadAction<MessagesSubscriptionSubscription>,
     ) => {
-      console.log(
-        "receiveMessages",
-        action.payload.comprehensive_thread_subs.news_action,
-        action.payload,
-      );
+      // console.log(
+      //   "receiveMessages",
+      //   action.payload.comprehensive_thread_subs.news_action,
+      //   action.payload,
+      // );
       if (
         state.ft_id &&
         action.payload.comprehensive_thread_subs.news_payload_thread_message
@@ -95,39 +91,30 @@ export const threadMessagesSlice = createSlice({
           action.payload.comprehensive_thread_subs.news_payload_thread.ft_id;
       }
 
-      // TODO: different branches will have different waiting / streaming states
-      state.isWaiting = false;
+      if (
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          ?.ft_need_assistant &&
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          .ft_need_assistant !== -1
+      ) {
+        state.waitingBranches.push(
+          action.payload.comprehensive_thread_subs.news_payload_thread
+            .ft_need_assistant,
+        );
+      }
 
       if (
         action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_assistant
+          ?.ft_need_user &&
+        action.payload.comprehensive_thread_subs.news_payload_thread
+          .ft_need_user !== -1
       ) {
         state.waitingBranches = state.waitingBranches.filter(
           (n) =>
             n !==
             action.payload.comprehensive_thread_subs.news_payload_thread
-              ?.ft_need_assistant,
+              ?.ft_need_user,
         );
-
-        if (
-          action.payload.comprehensive_thread_subs.news_payload_thread
-            .ft_need_assistant !== -1 &&
-          !state.streamingBranches.includes(
-            action.payload.comprehensive_thread_subs.news_payload_thread
-              .ft_need_assistant,
-          )
-        ) {
-          state.streamingBranches.push(
-            action.payload.comprehensive_thread_subs.news_payload_thread
-              .ft_need_assistant,
-          );
-        }
-      }
-
-      if (
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_user
-      ) {
         state.streamingBranches = state.streamingBranches.filter(
           (n) =>
             n !==
@@ -218,6 +205,12 @@ export const threadMessagesSlice = createSlice({
           state.messages[
             action.payload.comprehensive_thread_subs.news_payload_id
           ] = msg;
+          if (!state.streamingBranches.includes(infoFromId.ftm_alt)) {
+            state.streamingBranches.push(infoFromId.ftm_alt);
+            state.waitingBranches = state.waitingBranches.filter(
+              (n) => n !== infoFromId.ftm_alt,
+            );
+          }
         }
       }
     },
