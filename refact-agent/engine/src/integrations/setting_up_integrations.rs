@@ -159,7 +159,6 @@ pub async fn read_integrations_d(
         // Find integrations present in config_dir/integrations.d
         if let Ok(mut entries) = tokio::fs::read_dir(config_dir.join("integrations.d")).await {
             while let Ok(Some(entry)) = entries.next_entry().await {
-                // Get filename without extension or ignore if extension is not yaml
                 let file_name = if let Some(name) = entry.file_name().to_string_lossy().strip_suffix(".yaml") {
                     name.to_string()
                 } else {
