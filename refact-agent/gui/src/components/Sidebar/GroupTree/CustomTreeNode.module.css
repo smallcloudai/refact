@@ -9,3 +9,7 @@
   margin-left: var(--left-padding);
   transition: all 0.2s ease;
 }
+
+.checkboxLabel {
+  cursor: pointer;
+}
