@@ -1,4 +1,4 @@
-import { FThreadMessageOutput } from "../../../generated/documents";
+// import { FThreadMessageOutput } from "../../../generated/documents";
 import { LspChatMode } from "../../features/Chat";
 import { Checkpoint } from "../../features/Checkpoints/types";
 import { GetChatTitleActionPayload, GetChatTitleResponse, Usage } from "./chat";

@@ -205,7 +205,7 @@ const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
     () => assistantMessages[assistantMessages.length - 1],
     [assistantMessages],
   );
-  const toolCalls = lastAssistantMessage.tool_calls;
+  const toolCalls = lastAssistantMessage.ftm_tool_calls;
 
   if (!toolCalls) return;
 

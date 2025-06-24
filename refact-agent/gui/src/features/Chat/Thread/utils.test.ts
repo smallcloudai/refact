@@ -23,7 +23,7 @@ describe("formatChatResponse", () => {
       {
         ftm_role: "assistant",
         ftm_content: "Hi",
-        tool_calls: [
+        ftm_tool_calls: [
           {
             function: {
               arguments:
@@ -38,11 +38,8 @@ describe("formatChatResponse", () => {
       },
       {
         ftm_role: "tool",
-        ftm_content: {
-          tool_call_id: "call_6qxVYwV6MTcazl1Fy5pRlImi",
-          ftm_content: "stuff",
-          tool_failed: false,
-        },
+        ftm_call_id: "call_6qxVYwV6MTcazl1Fy5pRlImi",
+        ftm_content: "stuff",
       },
       {
         ftm_role: "context_file",

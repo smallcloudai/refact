@@ -271,11 +271,11 @@ function checkForToolLoop(message: ChatMessages): boolean {
 
   const hasDuplicates = scanFoDuplicatesWith(toolCalls, (a, b) => {
     const aResult: ToolMessage | undefined = toolResults.find(
-      (message) => message.ftm_content.tool_call_id === a.id,
+      (message) => message.ftm_call_id === a.id,
     );
 
     const bResult: ToolMessage | undefined = toolResults.find(
-      (message) => message.ftm_content.tool_call_id === b.id,
+      (message) => message.ftm_call_id === b.id,
     );
 
     return (
@@ -283,7 +283,7 @@ function checkForToolLoop(message: ChatMessages): boolean {
       a.function.arguments === b.function.arguments &&
       !!aResult &&
       !!bResult &&
-      aResult.ftm_content.ftm_content === bResult.ftm_content.ftm_content
+      aResult.ftm_content === bResult.ftm_content
     );
   });
 
@@ -402,9 +402,7 @@ export const sendCurrentChatToLspAfterToolCallUpdate = createAppAsyncThunk<
     );
 
     const toolUseInThisSet = lastMessages.some(
-      (message) =>
-        isToolMessage(message) &&
-        message.ftm_content.tool_call_id === toolCallId,
+      (message) => isToolMessage(message) && message.ftm_call_id === toolCallId,
     );
 
     if (!toolUseInThisSet) return;

@@ -117,9 +117,9 @@ export const useSendChatRequest = () => {
         !isWaiting &&
         !wasInteracted &&
         isAssistantMessage(lastMessage) &&
-        lastMessage.tool_calls
+        lastMessage.ftm_tool_calls
       ) {
-        const toolCalls = lastMessage.tool_calls;
+        const toolCalls = lastMessage.ftm_tool_calls;
         if (
           !(
             toolCalls[0].function.name &&

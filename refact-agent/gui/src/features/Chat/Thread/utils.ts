@@ -9,7 +9,6 @@ import {
   SubchatResponse,
   ToolCall,
   ToolMessage,
-  ToolResult,
   UserMessage,
   isAssistantDelta,
   isAssistantMessage,
@@ -243,6 +242,7 @@ function mergeMetering(
   };
 }
 
+// TODO: can remove
 export function formatChatResponse(
   messages: ChatMessages,
   response: ChatResponse,
@@ -269,35 +269,12 @@ export function formatChatResponse(
   }
 
   if (isToolResponse(response)) {
-    const {
-      tool_call_id,
-      ftm_content,
-      tool_failed,
-      finish_reason,
-      compression_strength,
-    } = response;
-    const filteredMessages = finishToolCallInMessages(messages, tool_call_id);
-    const toolResult: ToolResult =
-      typeof ftm_content === "string"
-        ? {
-            tool_call_id,
-            ftm_content,
-            finish_reason,
-            compression_strength,
-            tool_failed,
-          }
-        : {
-            tool_call_id,
-            ftm_content,
-            finish_reason,
-            compression_strength,
-            tool_failed,
-          };
+    const filteredMessages = finishToolCallInMessages(
+      messages,
+      response.ftm_call_id,
+    );
 
-    return [
-      ...filteredMessages,
-      { ftm_role: response.ftm_role, ftm_content: toolResult },
-    ];
+    return [...filteredMessages, { ...response }];
   }
 
   if (isDiffResponse(response)) {
@@ -374,7 +351,7 @@ export function formatChatResponse(
         ftm_role: cur.delta.ftm_role,
         ftm_content: cur.delta.ftm_content,
         reasoning_content: cur.delta.reasoning_content,
-        tool_calls: cur.delta.tool_calls,
+        ftm_tool_calls: cur.delta.tool_calls,
         thinking_blocks: cur.delta.thinking_blocks,
         finish_reason: cur.finish_reason,
         usage: response.usage,
@@ -391,14 +368,14 @@ export function formatChatResponse(
           {
             ftm_role: "assistant",
             ftm_content: "", // should be like that?
-            tool_calls: cur.delta.tool_calls,
+            ftm_tool_calls: cur.delta.tool_calls,
             finish_reason: cur.finish_reason,
           },
         ]);
       }
 
       const last = acc.slice(0, -1);
-      const collectedCalls = lastMessage.tool_calls ?? [];
+      const collectedCalls = lastMessage.ftm_tool_calls ?? [];
       const tool_calls = mergeToolCalls(collectedCalls, cur.delta.tool_calls);
 
       return last.concat([
@@ -406,7 +383,7 @@ export function formatChatResponse(
           ftm_role: "assistant",
           ftm_content: lastMessage.ftm_content ?? "",
           reasoning_content: lastMessage.reasoning_content ?? "",
-          tool_calls: tool_calls,
+          ftm_tool_calls: tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: takeHighestUsage(lastMessage.usage, response.usage),
@@ -441,7 +418,7 @@ export function formatChatResponse(
           ftm_content: lastMessage.ftm_content ?? "",
           reasoning_content:
             (lastMessage.reasoning_content ?? "") + cur.delta.reasoning_content,
-          tool_calls: lastMessage.tool_calls,
+          ftm_tool_calls: lastMessage.ftm_tool_calls,
           thinking_blocks: thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: takeHighestUsage(lastMessage.usage, response.usage),
@@ -463,7 +440,7 @@ export function formatChatResponse(
           reasoning_content:
             (lastMessage.reasoning_content ?? "") +
             (cur.delta.reasoning_content ?? ""),
-          tool_calls: lastMessage.tool_calls,
+          ftm_tool_calls: lastMessage.ftm_tool_calls,
           thinking_blocks: lastMessage.thinking_blocks,
           finish_reason: cur.finish_reason,
           usage: takeHighestUsage(lastMessage.usage, response.usage),
@@ -502,7 +479,7 @@ export function formatChatResponse(
             ftm_role: "assistant",
             ftm_content: cur.delta.ftm_content ?? "",
             reasoning_content: cur.delta.reasoning_content,
-            tool_calls: cur.delta.tool_calls,
+            ftm_tool_calls: cur.delta.tool_calls,
             thinking_blocks: cur.delta.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: response.usage,
@@ -524,7 +501,7 @@ export function formatChatResponse(
             reasoning_content:
               (lastMessage.reasoning_content ?? "") +
               (cur.delta.reasoning_content ?? ""),
-            tool_calls: lastMessage.tool_calls,
+            ftm_tool_calls: lastMessage.ftm_tool_calls,
             thinking_blocks: lastMessage.thinking_blocks,
             finish_reason: cur.finish_reason,
             usage: takeHighestUsage(lastMessage.usage, response.usage),
@@ -564,11 +541,11 @@ function handleSubchatResponse(
 
     const [head, ...tail] = msgs;
 
-    if (!isAssistantMessage(head) || !head.tool_calls) {
+    if (!isAssistantMessage(head) || !head.ftm_tool_calls) {
       return iter(tail, response, accumulator.concat(head));
     }
 
-    const maybeToolCall = head.tool_calls.find(
+    const maybeToolCall = head.ftm_tool_calls.find(
       (toolCall) => toolCall.id === resp.tool_call_id,
     );
 
@@ -590,14 +567,14 @@ function handleSubchatResponse(
       attached_files: attachedFiles,
     };
 
-    const toolCalls = head.tool_calls.map((toolCall) => {
+    const toolCalls = head.ftm_tool_calls.map((toolCall) => {
       if (toolCall.id === toolCallWithCubChat.id) return toolCallWithCubChat;
       return toolCall;
     });
 
     const message: AssistantMessage = {
       ...head,
-      tool_calls: toolCalls,
+      ftm_tool_calls: toolCalls,
     };
 
     const nextAccumulator = [...accumulator, message];
@@ -615,10 +592,10 @@ function finishToolCallInMessages(
     if (!isAssistantMessage(message)) {
       return message;
     }
-    if (!message.tool_calls) {
+    if (!message.ftm_tool_calls) {
       return message;
     }
-    const tool_calls = message.tool_calls.map((toolCall) => {
+    const tool_calls = message.ftm_tool_calls.map((toolCall) => {
       if (toolCall.id !== toolCallId) {
         return toolCall;
       }
@@ -645,7 +622,7 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
         {
           role: message.ftm_role,
           content: message.ftm_content,
-          tool_calls: message.tool_calls ?? undefined,
+          tool_calls: message.ftm_tool_calls ?? undefined,
           thinking_blocks: message.thinking_blocks ?? undefined,
           finish_reason: message.finish_reason,
           usage: message.usage,
@@ -657,8 +634,8 @@ export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
       return acc.concat([
         {
           role: "tool",
-          content: message.ftm_content.ftm_content,
-          tool_call_id: message.ftm_content.tool_call_id,
+          content: message.ftm_content,
+          tool_call_id: message.ftm_call_id,
         },
       ]);
     }

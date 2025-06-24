@@ -5,7 +5,7 @@ import {
   ChatRole,
   ThinkingBlock,
   ToolCall,
-  ToolResult,
+  ToolMessage,
   UserMessage,
 } from "./types";
 
@@ -35,7 +35,7 @@ export type LspChatMessage =
   | LSPUserMessage
   | {
       role: "tool";
-      content: ToolResult["ftm_content"];
+      content: ToolMessage["ftm_content"];
       tool_call_id: string;
     };
 

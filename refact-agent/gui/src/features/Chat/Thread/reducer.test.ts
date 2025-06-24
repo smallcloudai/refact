@@ -9,7 +9,7 @@ describe("Chat Thread Reducer", () => {
     const msg = chatResponse({
       id: init.thread.id,
       ftm_role: "tool",
-      tool_call_id: "test_tool",
+      ftm_call_id: "test_tool",
       ftm_content: "👀",
     });
 

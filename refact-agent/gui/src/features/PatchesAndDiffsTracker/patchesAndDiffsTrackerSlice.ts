@@ -13,7 +13,7 @@ export type PatchMeta = {
 };
 
 const initialState: { patches: PatchMeta[] } = { patches: [] };
-
+// TODO: maybe remove this?
 export const patchesAndDiffsTrackerSlice = createSlice({
   name: "patchesAndDiffsTracker",
   initialState,
@@ -51,7 +51,7 @@ export const patchesAndDiffsTrackerSlice = createSlice({
       const { messages, chatId } = action.meta.arg;
       const lastMessage = messages[messages.length - 1];
       if (!isAssistantMessage(lastMessage)) return state;
-      const toolCalls = lastMessage.tool_calls;
+      const toolCalls = lastMessage.ftm_tool_calls;
       if (!toolCalls) return state;
       const patches = toolCalls.reduce<PatchMeta[]>((acc, toolCall) => {
         if (toolCall.id === undefined) return acc;

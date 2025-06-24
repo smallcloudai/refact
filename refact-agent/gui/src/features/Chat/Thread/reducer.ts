@@ -45,7 +45,7 @@ import {
   commandsApi,
   isAssistantMessage,
   isDiffMessage,
-  isMultiModalToolResult,
+  // isMultiModalToolResult,
   isToolCallMessage,
   isToolMessage,
   isUserResponse,
@@ -391,13 +391,13 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (hasDiff) return;
 
   const maybeToolResult = messages.find(
-    (d) => isToolMessage(d) && d.ftm_content.tool_call_id === toolCallId,
+    (d) => isToolMessage(d) && d.ftm_call_id === toolCallId,
   );
 
   const toolCalls = messages.reduce<ToolCall[]>((acc, message) => {
     if (!isAssistantMessage(message)) return acc;
-    if (!message.tool_calls) return acc;
-    return acc.concat(message.tool_calls);
+    if (!message.ftm_tool_calls) return acc;
+    return acc.concat(message.ftm_tool_calls);
   }, []);
 
   const maybeToolCall = toolCalls.find(
@@ -411,16 +411,16 @@ export function maybeAppendToolCallResultFromIdeToMessages(
   if (
     maybeToolResult &&
     isToolMessage(maybeToolResult) &&
-    typeof maybeToolResult.ftm_content.ftm_content === "string"
+    typeof maybeToolResult.ftm_content === "string"
   ) {
-    maybeToolResult.ftm_content.ftm_content = message;
+    maybeToolResult.ftm_content = message;
     return;
   } else if (
     maybeToolResult &&
     isToolMessage(maybeToolResult) &&
-    isMultiModalToolResult(maybeToolResult.ftm_content)
+    Array.isArray(maybeToolResult.ftm_content)
   ) {
-    maybeToolResult.ftm_content.ftm_content.push({
+    maybeToolResult.ftm_content.push({
       m_type: "text",
       m_content: message,
     });
@@ -429,18 +429,16 @@ export function maybeAppendToolCallResultFromIdeToMessages(
 
   const assistantMessageIndex = messages.findIndex((message) => {
     if (!isAssistantMessage(message)) return false;
-    return message.tool_calls?.find((toolCall) => toolCall.id === toolCallId);
+    return message.ftm_tool_calls?.find(
+      (toolCall) => toolCall.id === toolCallId,
+    );
   });
 
   if (assistantMessageIndex === -1) return;
   const toolMessage: ToolMessage = {
     ftm_role: "tool",
-    ftm_content: {
-      ftm_content: message,
-      tool_call_id: toolCallId,
-      // assuming, that tool_failed is always false at this point
-      tool_failed: false,
-    },
+    ftm_content: message,
+    ftm_call_id: toolCallId,
   };
 
   messages.splice(assistantMessageIndex + 1, 0, toolMessage);

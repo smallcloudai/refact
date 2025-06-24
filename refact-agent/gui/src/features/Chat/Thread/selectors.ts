@@ -1,7 +1,7 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import {
-  CompressionStrength,
+  // CompressionStrength,
   isAssistantMessage,
   isDiffMessage,
   isToolMessage,
@@ -55,15 +55,14 @@ export const toolMessagesSelector = createSelector(
 export const selectToolResultById = createSelector(
   [toolMessagesSelector, (_, id?: string) => id],
   (messages, id) => {
-    return messages.find((message) => message.ftm_content.tool_call_id === id)
-      ?.ftm_content;
+    return messages.find((message) => message.ftm_call_id === id)?.ftm_content;
   },
 );
 
 export const selectManyToolResultsByIds = (ids: string[]) =>
   createSelector(toolMessagesSelector, (messages) => {
     return messages
-      .filter((message) => ids.includes(message.ftm_content.tool_call_id))
+      .filter((message) => ids.includes(message.ftm_call_id))
       .map((toolMessage) => toolMessage.ftm_content);
   });
 
@@ -98,24 +97,26 @@ export const selectThreadMode = createSelector(
 
 export const selectLastSentCompression = createSelector(
   selectMessages,
-  (messages) => {
-    const lastCompression = messages.reduce<null | CompressionStrength>(
-      (acc, message) => {
-        if (isUserMessage(message) && message.compression_strength) {
-          return message.compression_strength;
-        }
-        if (
-          isToolMessage(message) &&
-          message.ftm_content.compression_strength
-        ) {
-          return message.ftm_content.compression_strength;
-        }
-        return acc;
-      },
-      null,
-    );
+  (_messages) => {
+    // TODO: this
+    // const lastCompression = messages.reduce<null | CompressionStrength>(
+    //   (acc, message) => {
+    //     if (isUserMessage(message) && message.compression_strength) {
+    //       return message.compression_strength;
+    //     }
+    //     if (
+    //       isToolMessage(message) &&
+    //       message.ftm_content.compression_strength
+    //     ) {
+    //       return message.ftm_content.compression_strength;
+    //     }
+    //     return acc;
+    //   },
+    //   null,
+    // );
 
-    return lastCompression;
+    // return lastCompression;
+    return null;
   },
 );
 
@@ -127,8 +128,8 @@ export const selectHasUncalledTools = createSelector(
 
     const toolCalls = tailMessages.reduce<string[]>((acc, cur) => {
       if (!isAssistantMessage(cur)) return acc;
-      if (!cur.tool_calls || cur.tool_calls.length === 0) return acc;
-      const curToolCallIds = cur.tool_calls
+      if (!cur.ftm_tool_calls || cur.ftm_tool_calls.length === 0) return acc;
+      const curToolCallIds = cur.ftm_tool_calls
         .map((toolCall) => toolCall.id)
         .filter((id) => id !== undefined);
 
@@ -140,10 +141,10 @@ export const selectHasUncalledTools = createSelector(
     const toolMessages = tailMessages
       .map((msg) => {
         if (isToolMessage(msg)) {
-          return msg.ftm_content.tool_call_id;
+          return msg.ftm_call_id;
         }
-        if ("tool_call_id" in msg && typeof msg.tool_call_id === "string") {
-          return msg.tool_call_id;
+        if ("ftm_call_id" in msg && typeof msg.ftm_call_id === "string") {
+          return msg.ftm_call_id;
         }
         return undefined;
       })

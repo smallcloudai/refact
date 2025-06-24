@@ -206,7 +206,7 @@ export const ToolWaiting: Story = {
         {
           ftm_role: "assistant",
           ftm_content: "",
-          tool_calls: [
+          ftm_tool_calls: [
             {
               id: "toolu_01JbWarAwzjMyV6azDkd5skX",
               function: {
