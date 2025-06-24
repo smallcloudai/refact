@@ -661,9 +661,6 @@ pub async fn enqueue_all_files_from_workspace_folders(
             gcx_locked.documents_state.dot_refact_folders = Arc::new(AMutex::new(
                 visited.into_iter().filter(|p| p.ends_with(".refact")).collect::<Vec<PathBuf>>()
             ));
-        }
-        {
-            let mut gcx_locked = gcx.write().await;
             gcx_locked.indexing_everywhere = Arc::new(indexing_everywhere);
             gcx_locked.documents_state.cache_dirty.clone()
         }
