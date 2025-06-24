@@ -120,10 +120,11 @@ showDollarsBtn.onclick = () => setTable('dollars');
 | Self-hosting option available | |
 | Discord support | |
 
-## Bring Your Own Key (BYOK)
+## Configure Providers (BYOK)
 
-If you prefer to use your own API key (for OpenAI, Anthropic, or local models), you can connect it to Refact.ai. When using BYOK, requests are billed by your provider and do not consume Refact.ai coins.
+Refact.ai allows you to connect your own API keys for OpenAI, Anthropic, DeepSeek, and other providers using the **Configure Providers** feature (also known as BYOK – Bring Your Own Key). This gives you full control over which models you use and how you are billed.
 
 **No commission:** For now, Refact.ai does not take any commission or markup on API usage. You pay only for the actual API cost of the model you use.
 
-For more information on how to use Bring Your Own Key (BYOK), see the [BYOK documentation](https://github.com/smallcloudai/refact/blob/main/docs/byok.md) in the repository.
+For a step-by-step guide on setting up and using this feature, see the [Configure Providers (BYOK) documentation](/byok/).
+
