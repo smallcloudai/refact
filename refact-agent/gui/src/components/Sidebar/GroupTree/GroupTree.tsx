@@ -78,17 +78,18 @@ export const GroupTree: React.FC = () => {
           </Select.Content>
         </Select.Root>
         {availableWorkspaces.length === 0 && (
-          <>
-            <Text size="1" mt="2">
-              No accounts are currently associated with your team. Please
-              contact your Team Workspace administrator to request access. For
-              further assistance, please refer to the support or bug reporting
-              channels. You can create a new account by clicking link below:
+          <Flex direction="column" gap="1" mt="2">
+            <Text size="1">
+              No accounts are currently associated with your team. For further
+              assistance, please refer to the support or bug reporting channels.
+            </Text>
+            <Text size="1">
+              You can create a new account by clicking link below
             </Text>
             <Link href="#" size="1" mt="1" onClick={handleCreateAccountClick}>
               Add new account
             </Link>
-          </>
+          </Flex>
         )}
       </Flex>
       {currentTeamsWorkspace && filteredGroupTreeData.length > 0 && (
