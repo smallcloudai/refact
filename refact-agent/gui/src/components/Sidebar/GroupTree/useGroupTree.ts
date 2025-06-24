@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FlexusTreeNode } from "./GroupTree";
 import {
   CreateGroupDocument,
@@ -22,6 +28,7 @@ import {
   useAppDispatch,
   useAppSelector,
   useEventsBusForIDE,
+  useOpenUrl,
   useResizeObserver,
 } from "../../../hooks";
 import { isDetailMessage, teamsApi } from "../../../services/refact";
@@ -40,7 +47,9 @@ import { selectConfig } from "../../../features/Config/configSlice";
 export function useGroupTree() {
   const [groupTreeData, setGroupTreeData] = useState<FlexusTreeNode[]>([]);
   const [createFolderChecked, setCreateFolderChecked] = useState(false);
+
   const currentTeamsWorkspace = useAppSelector(selectActiveWorkspace);
+  const openUrl = useOpenUrl();
 
   const [_, createGroup] = useMutation<
     CreateGroupMutation,
@@ -195,11 +204,11 @@ export function useGroupTree() {
     [dispatch, setActiveGroupIdTrigger, setActiveTeamsGroupInIDE],
   );
 
-  const onWorkspaceSelection = useCallback(
-    (workspaceId: string) => {
+  const onWorkspaceSelectChange = useCallback(
+    (value: string) => {
       const maybeWorkspace =
         teamsWorkspaces.data?.query_basic_stuff.workspaces.find(
-          (w) => w.ws_id === workspaceId,
+          (w) => w.ws_id === value,
         );
       if (maybeWorkspace) {
         setActiveTeamsWorkspaceInIDE(maybeWorkspace);
@@ -212,6 +221,15 @@ export function useGroupTree() {
       setActiveTeamsWorkspaceInIDE,
       teamsWorkspaces.data?.query_basic_stuff.workspaces,
     ],
+  );
+
+  const handleCreateAccountClick = useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      openUrl("http://app.refact.ai/profile?action=create-workspace");
+    },
+    [openUrl],
   );
 
   const currentWorkspaceName =
@@ -302,10 +320,11 @@ export function useGroupTree() {
     // Actions
     onGroupSelect,
     onGroupSelectionConfirm,
-    onWorkspaceSelection,
+    onWorkspaceSelectChange,
     touchNode,
     handleSkipWorkspaceSelection,
     handleConfirmSelectionClick,
+    handleCreateAccountClick,
     // Setters
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,

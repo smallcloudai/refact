@@ -1,10 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { Box, Checkbox, Flex, Text, Tooltip } from "@radix-ui/themes";
-import {
-  BookmarkFilledIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from "@radix-ui/react-icons";
+import { BookmarkFilledIcon, ChevronDownIcon } from "@radix-ui/react-icons";
 import type { NodeRendererProps } from "react-arborist";
 import { FolderIcon } from "./FolderIcon";
 
@@ -56,30 +52,20 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
     [isContainingChildren, node],
   );
 
-  // Select the appropriate icon based on node type and state
-  const getIcon = () => {
-    if (isContainingChildren) {
-      return node.isOpen ? (
-        <ChevronDownIcon
-          width={16}
-          height={16}
-          style={{
-            color: node.isSelected ? "var(--accent-9)" : "var(--gray-10)",
-            transition: "transform 0.2s ease, color 0.2s ease",
-          }}
-        />
-      ) : (
-        <ChevronRightIcon
-          width={16}
-          height={16}
-          style={{
-            color: node.isSelected ? "var(--accent-9)" : "var(--gray-10)",
-            transition: "transform 0.2s ease, color 0.2s ease",
-          }}
-        />
-      );
-    }
-    return <FolderIcon />;
+  // Chevron icon for expandable nodes
+  const getChevronIcon = () => {
+    if (!isContainingChildren) return null;
+
+    return (
+      <ChevronDownIcon
+        width={16}
+        height={16}
+        style={{
+          transform: node.isOpen ? "rotate(0deg)" : "rotate(-90deg)",
+          transition: "transform 0.2s ease, color 0.2s ease",
+        }}
+      />
+    );
   };
 
   const isMatchingWorkspaceNameInIDE = useMemo(() => {
@@ -98,35 +84,51 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
       ref={dragHandle}
       className={styles.treeNode}
     >
-      {/* Icon container */}
       <Box
         onClick={isContainingChildren ? handleChevronClick : undefined}
         style={{
           display: "flex",
           alignItems: "center",
-          marginRight: isContainingChildren ? 12 : 8,
+          justifyContent: "center",
+          width: 20,
           cursor: isContainingChildren ? "pointer" : "default",
-          color: node.isSelected ? "var(--accent-9)" : "var(--gray-11)",
+          color: "var(--gray-11)",
           flexShrink: 0,
         }}
       >
-        {getIcon()}
+        {getChevronIcon()}
       </Box>
 
-      {isContainingChildren && (
-        <FolderIcon width={16} height={16} open={node.isOpen} />
-      )}
+      <Box
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 20,
+          flexShrink: 0,
+        }}
+        ml="2"
+      >
+        <FolderIcon
+          width={16}
+          height={16}
+          open={isContainingChildren ? node.isOpen : false}
+          style={{
+            color: node.isSelected ? "var(--accent-9)" : "var(--gray-10)",
+          }}
+        />
+      </Box>
 
       <Text
         size="2"
-        weight={"regular"}
+        weight="regular"
+        ml="2"
         style={{
           flexGrow: 1,
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
           color: "inherit",
-          marginLeft: isContainingChildren ? 8 : 4,
           minWidth: 0, // This helps text truncation work properly
         }}
         title={node.data.treenodeTitle}
