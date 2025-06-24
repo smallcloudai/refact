@@ -409,13 +409,6 @@ declare module 'astro:content' {
   collection: "docs";
   data: InferEntrySchema<"docs">
 } & { render(): Render[".md"] };
-"guides/usage-based-pricing.md": {
-	id: "guides/usage-based-pricing.md";
-  slug: "guides/usage-based-pricing";
-  body: string;
-  collection: "docs";
-  data: InferEntrySchema<"docs">
-} & { render(): Render[".md"] };
 "guides/version-specific/enterprise/getting-started.md": {
 	id: "guides/version-specific/enterprise/getting-started.md";
   slug: "guides/version-specific/enterprise/getting-started";
@@ -496,6 +489,13 @@ declare module 'astro:content' {
 "introduction/quickstart.md": {
 	id: "introduction/quickstart.md";
   slug: "introduction/quickstart";
+  body: string;
+  collection: "docs";
+  data: InferEntrySchema<"docs">
+} & { render(): Render[".md"] };
+"introduction/usage-based-pricing.md": {
+	id: "introduction/usage-based-pricing.md";
+  slug: "introduction/usage-based-pricing";
   body: string;
   collection: "docs";
   data: InferEntrySchema<"docs">

@@ -29,9 +29,9 @@ For select models, click the `💡Think` button to enable advanced reasoning, he
 - Qwen2.5-Coder-1.5B
 
 
-## BYOK (Bring your own key)
+## Configure Providers (BYOK)
 
-Refact.ai gives flexibility to connect your API key and use any external LLM like Gemini, Grok, OpenAI, Deepseek, and others. Read the guide in our [BYOK Documentation](https://docs.refact.ai/byok/).
+Refact.ai gives you the flexibility to connect your own API key and use external LLMs like Gemini, Grok, OpenAI, DeepSeek, and others. For a step-by-step guide, see the [Configure Providers (BYOK) documentation](/byok/).
 
 
 ## Self-Hosted Version

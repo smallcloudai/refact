@@ -351,10 +351,10 @@ export default defineConfig({
           }
         },
         {
-          label: 'BYOK',
+          label: 'Configure Providers (BYOK)',
           link: '/byok/',
           attrs: {
-            'aria-label': 'Learn about Bring Your Own Key (BYOK)'
+            'aria-label': 'Configure Providers (BYOK) documentation'
           }
         },
         {
