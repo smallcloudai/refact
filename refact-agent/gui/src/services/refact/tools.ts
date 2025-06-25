@@ -87,6 +87,7 @@ export const toolsApi = createApi({
         return { data: result.data };
       },
     }),
+    // here
     checkForConfirmation: builder.mutation<
       ToolConfirmationResponse,
       ToolConfirmationRequest
@@ -205,7 +206,7 @@ export type Tool = {
   spec: ToolSpec;
   enabled: boolean;
 };
-
+// here
 export type ToolConfirmationPauseReason = {
   type: "confirmation" | "denial";
   command: string;

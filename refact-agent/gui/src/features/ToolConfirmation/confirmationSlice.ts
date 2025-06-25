@@ -25,10 +25,12 @@ type ConfirmationActionPayload = {
   confirmationStatus: boolean;
 };
 
+// TBD: data is held in thread now
 export const confirmationSlice = createSlice({
   name: "confirmation",
   initialState,
   reducers: {
+    // here?
     setPauseReasons(
       state,
       action: PayloadAction<ToolConfirmationPauseReason[]>,

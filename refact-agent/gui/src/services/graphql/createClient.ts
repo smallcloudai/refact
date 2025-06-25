@@ -17,10 +17,11 @@ import {
 
 const THREE_MINUTES = 3 * 60 * 1000;
 
-export const createGraphqlClient = (apiKey: string, signal: AbortSignal) => {
-  // const apiKey = "sk_alice_123456";
-  // const baseUrl = "localhost:8008/v1/graphql";
-  const baseUrl = "app.refact.ai/v1/graphql";
+export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
+  const apiKey = "sk_alice_123456";
+  // TODO: make this a build variable
+  const baseUrl = "localhost:8008/v1/graphql";
+  // const baseUrl = "app.refact.ai/v1/graphql";
   // console.log("creating client");
   // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
 

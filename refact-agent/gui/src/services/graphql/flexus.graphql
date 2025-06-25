@@ -54,12 +54,15 @@ subscription MessagesSubscription($ft_id: String!, $want_deltas: Boolean!) {
       ftm_role
       ftm_content
     }
+    ## TBD: we could dispatch new_payload_thread_message, stream_delta, and new_payload_thread separately ?
     news_payload_thread {
       located_fgroup_id
       ft_id
       ft_need_user
       ft_need_assistant
       ft_fexp_id ## contain the expert id
+      ft_confirmation_request
+      ft_confirmation_response
     }
   }
 }

@@ -56,15 +56,7 @@ import {
   FileList,
 } from "../Dropzone";
 // import { useAttachedImages } from "../../hooks/useAttachedImages";
-import {
-  // selectChatError,
-  // selectIsStreaming,
-  // selectIsWaiting,
-  selectLastSentCompression,
-  // selectMessages,
-  selectThreadToolUse,
-  selectToolUse,
-} from "../../features/Chat";
+import { selectThreadToolUse, selectToolUse } from "../../features/Chat";
 import {
   selectIsStreaming,
   selectIsWaiting,
@@ -83,14 +75,12 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  unCalledTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
@@ -109,7 +99,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-  const lastSentCompression = useAppSelector(selectLastSentCompression);
+
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
@@ -315,7 +305,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  if (!isStreaming && pauseReasonsWithPause.pause) {
+  if (!isStreaming) {
     return (
       <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
     );
@@ -402,22 +392,19 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 <IconButton
                   size="1"
                   variant="ghost"
-                  color={
-                    lastSentCompression === "high"
-                      ? "red"
-                      : lastSentCompression === "medium"
-                        ? "yellow"
-                        : undefined
-                  }
+                  // TODO: last sent compression?
+                  // color={
+
+                  //   lastSentCompression === "high"
+                  //     ? "red"
+                  //     : lastSentCompression === "medium"
+                  //       ? "yellow"
+                  //       : undefined
+                  // }
                   title="Compress chat and continue"
                   type="button"
                   onClick={() => void compressChat()}
-                  disabled={
-                    messagesAreEmpty ||
-                    isStreaming ||
-                    isWaiting ||
-                    unCalledTools
-                  }
+                  disabled={messagesAreEmpty || isStreaming || isWaiting}
                   loading={compressChatRequest.isLoading || isCompressing}
                 >
                   <ArchiveIcon />

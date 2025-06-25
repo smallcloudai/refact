@@ -182,7 +182,7 @@ type FPluginOutput {
 input FStatsAddInput {
   fgroup_id: String! = ""
   st_chart: Int!
-  st_how_many: Int!
+  st_how_many: Union!
   st_involved_fexp_id: String! = ""
   st_involved_fuser_id: String! = ""
   st_involved_model: String! = ""
@@ -191,7 +191,7 @@ input FStatsAddInput {
 }
 
 type FStatsOutput {
-  st_how_many: Int!
+  st_how_many: Union!
   st_involved_fexp_id: String
   st_involved_fuser_id: String
   st_involved_model: String
@@ -450,8 +450,6 @@ type Query {
   reset_password_token_info(token: String!): PasswordResetTokenInfo!
   stats_query(breakdown_fexp_name: Boolean!, breakdown_fuser_id: Boolean!, breakdown_model: Boolean!, fgroup_id: String! = "", filter_fexp_id: [String!]! = [], filter_fuser_id: [String!]! = [], filter_model: [String!]! = [], filter_thing: [String!]! = [], st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String! = ""): [FStatsOutput!]!
   stats_query_distinct(fgroup_id: String! = "", filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
-  stripe_topup(amount: Int!, customer_id: String!, email: String!, return_url: String!, subscription_id: String!): String!
-  stripe_update_subscription(customer_id: String!, email: String!, return_url: String!, subscription_id: String!): String!
   tech_support_get_config(ws_id: String!): TechSupportSettingsOutput
   thread_get(id: String!): FThreadOutput!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
@@ -510,3 +508,6 @@ type TreeUpdateSubs {
   treeupd_title: String!
   treeupd_type: String!
 }
+
+"""BigInt field"""
+scalar Union

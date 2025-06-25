@@ -3,23 +3,25 @@ import {
   createClient,
   cacheExchange,
   fetchExchange,
+  // debugExchange,
   subscriptionExchange,
 } from "urql";
 import { createClient as createWSClient } from "graphql-ws";
 import { WebSocket } from "ws";
 import React, { useMemo } from "react";
-import { useAppSelector } from "./src/hooks/useAppSelector";
-import { selectConfig } from "./src/features/Config/configSlice";
+// import { useAppSelector } from "./src/hooks/useAppSelector";
+// import { selectConfig } from "./src/features/Config/configSlice";
 
 export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   // const apiKey = useAppSelector(selectConfig).apiKey;
   // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
-  // const baseUrl = "localhost:8008/v1/graphql";
-  // const apiKey = "sk_alice_123456";
-  const apiKey = useAppSelector(selectConfig).apiKey;
-  const baseUrl = "app.refact.ai/v1/graphql";
+  // TODO: make this a build variable
+  const baseUrl = "localhost:8008/v1/graphql";
+  const apiKey = "sk_alice_123456";
+  // const apiKey = useAppSelector(selectConfig).apiKey;
+  // const baseUrl = "app.refact.ai/v1/graphql";
 
   const protocol = "http";
   const wsProtocol = "ws";

@@ -2,7 +2,7 @@ import React from "react";
 import type { Config } from "../Config/configSlice";
 import { Chat as ChatComponent } from "../../components/Chat";
 import { useAppSelector } from "../../hooks";
-import { selectHasUncalledTools } from "./Thread";
+import { selectBranchHasUncalledTools } from "../ThreadMessages";
 
 export type ChatProps = {
   host: Config["host"];
@@ -24,14 +24,12 @@ export const Chat: React.FC<ChatProps> = ({
   const maybeSendToSideBar =
     host === "vscode" && tabbed ? sendToSideBar : undefined;
 
-  const unCalledTools = useAppSelector(selectHasUncalledTools);
   return (
     <ChatComponent
       style={style}
       host={host}
       tabbed={tabbed}
       backFromChat={backFromChat}
-      unCalledTools={unCalledTools}
       maybeSendToSidebar={maybeSendToSideBar}
     />
   );

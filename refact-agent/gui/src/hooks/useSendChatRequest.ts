@@ -1,23 +1,26 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
   selectAutomaticPatch,
-  selectChatError,
+  // selectChatError,
   selectChatId,
   selectCheckpointsEnabled,
-  selectHasUncalledTools,
+  // selectHasUncalledTools,
   selectIntegration,
   // selectIsStreaming,
   // selectIsWaiting,
   selectMessages,
-  selectPreventSend,
-  selectSendImmediately,
-  selectThread,
+  // selectPreventSend,
+  // selectSendImmediately,
+  // selectThread,
   selectThreadMode,
   selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
-import { selectIsStreaming, selectIsWaiting } from "../features/ThreadMessages";
+import {
+  // selectIsStreaming,
+  selectIsWaiting,
+} from "../features/ThreadMessages";
 import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
   ChatMessage,
@@ -31,7 +34,7 @@ import {
   backUpMessages,
   chatAskQuestionThunk,
   chatAskedQuestion,
-  setSendImmediately,
+  // setSendImmediately,
 } from "../features/Chat/Thread/actions";
 
 import { selectAllImages } from "../features/AttachedImages";
@@ -314,63 +317,3 @@ export const useSendChatRequest = () => {
     sendMessages,
   };
 };
-
-// NOTE: only use this once
-export function useAutoSend() {
-  const dispatch = useAppDispatch();
-  const streaming = useAppSelector(selectIsStreaming);
-  const currentMessages = useAppSelector(selectMessages);
-  const errored = useAppSelector(selectChatError);
-  const preventSend = useAppSelector(selectPreventSend);
-  const isWaiting = useAppSelector(selectIsWaiting);
-  const sendImmediately = useAppSelector(selectSendImmediately);
-  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
-  const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
-  const hasUnsentTools = useAppSelector(selectHasUncalledTools);
-  const { sendMessages } = useSendChatRequest();
-  // TODO: make a selector for this, or show tool formation
-  const thread = useAppSelector(selectThread);
-  const isIntegration = thread.integration ?? false;
-
-  useEffect(() => {
-    if (sendImmediately) {
-      dispatch(setSendImmediately(false));
-      void sendMessages(currentMessages);
-    }
-  }, [currentMessages, dispatch, sendImmediately, sendMessages]);
-
-  const stop = useMemo(() => {
-    if (errored) return true;
-    if (preventSend) return true;
-    if (isWaiting) return true;
-    if (streaming) return true;
-    return !hasUnsentTools;
-  }, [errored, hasUnsentTools, isWaiting, preventSend, streaming]);
-
-  const stopForToolConfirmation = useMemo(() => {
-    if (isIntegration) return false;
-    return !wasInteracted && !areToolsConfirmed;
-  }, [isIntegration, wasInteracted, areToolsConfirmed]);
-
-  useEffect(() => {
-    if (stop) return;
-    if (stopForToolConfirmation) return;
-
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: false,
-        confirmationStatus: areToolsConfirmed,
-      }),
-    );
-
-    void sendMessages(currentMessages, thread.mode);
-  }, [
-    areToolsConfirmed,
-    currentMessages,
-    dispatch,
-    sendMessages,
-    stop,
-    stopForToolConfirmation,
-    thread.mode,
-  ]);
-}
