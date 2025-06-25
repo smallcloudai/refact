@@ -137,8 +137,8 @@
     "textarea-caret": "^3.1.0",
     "typescript": "^5.8.3",
     "typescript-plugin-css-modules": "^5.0.2",
-    "usehooks-ts": "^2.14.0",
     "urql": "^4.2.2",
+    "usehooks-ts": "^2.14.0",
     "uuid": "^9.0.1",
     "vite": "^5.0.8",
     "vite-plugin-dts": "^3.7.0",
@@ -158,5 +158,8 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.44.0"
   }
 }
