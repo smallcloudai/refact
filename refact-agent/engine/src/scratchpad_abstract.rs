@@ -134,7 +134,7 @@ impl HasTokenizerAndEot {
         &self,
         text: &str,
     ) -> Result<i32, String> {
-        count_text_tokens(self.tokenizer.clone(), text).map(|t| t as i32)
+        Ok(count_text_tokens(text) as i32)
     }
 
     pub fn assert_one_token(
@@ -145,7 +145,7 @@ impl HasTokenizerAndEot {
             return Err("assert_one_token: no tokenizer".to_string());
         }
 
-        let token_count = count_text_tokens(self.tokenizer.clone(), text)?;
+        let token_count = count_text_tokens(text);
 
         if token_count != 1 {
             Err(format!("assert_one_token: expected 1 token for \"{text}\", got {token_count}"))

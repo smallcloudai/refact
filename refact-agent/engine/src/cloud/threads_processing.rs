@@ -302,9 +302,8 @@ async fn call_tools(
     let reserve_for_context = max_tokens_for_rag_chat_by_tools(&last_tool_calls, &all_context_files, n_ctx, max_new_tokens);
     ccx.lock().await.tokens_for_rag = reserve_for_context;
     let (generated_tool, generated_other) = pp_run_tools(
-        ccx.clone(), &vec![], false,
-        all_tool_output_messages, all_other_messages, &mut all_context_files, reserve_for_context,
-        None, &None,
+        ccx.clone(), &vec![], false, all_tool_output_messages, 
+        all_other_messages, &mut all_context_files, reserve_for_context, &None,
     ).await;
     let mut afterwards_index = last_message.ftm_num + last_tool_calls.len() as i32 + 1;
     let mut all_output_messages = vec![];

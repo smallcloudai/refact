@@ -1,20 +1,16 @@
-use std::sync::Arc;
-use tokenizers::Tokenizer;
-
 use crate::call_validation::{ChatContent, ChatMessage};
 use crate::scratchpads::multimodality::MultimodalElement;
-use crate::tokens::count_text_tokens_with_fallback;
+use crate::tokens::count_text_tokens;
 
 
 fn limit_text_content(
-    tokenizer: Option<Arc<Tokenizer>>,
     text: &String,
     tok_used: &mut usize,
     tok_per_m: usize,
 ) -> String {
     let mut new_text_lines = vec![];
     for line in text.lines() {
-        let line_tokens = count_text_tokens_with_fallback(tokenizer.clone(), &line);
+        let line_tokens = count_text_tokens(&line);
         if *tok_used + line_tokens > tok_per_m {
             if new_text_lines.is_empty() {
                 new_text_lines.push("No content: tokens limit reached");
@@ -30,7 +26,6 @@ fn limit_text_content(
 
 pub async fn postprocess_plain_text(
     plain_text_messages: Vec<ChatMessage>,
-    tokenizer: Option<Arc<Tokenizer>>,
     tokens_limit: usize,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, usize) {
@@ -39,7 +34,7 @@ pub async fn postprocess_plain_text(
     }
     let mut messages_sorted = plain_text_messages;
     let messages_len = messages_sorted.len();
-    messages_sorted.sort_by(|a, b| a.content.size_estimate(tokenizer.clone(), style).cmp(&b.content.size_estimate(tokenizer.clone(), style)));
+    messages_sorted.sort_by(|a, b| a.content.size_estimate(style).cmp(&b.content.size_estimate(style)));
 
     let mut tok_used_global = 0;
     let mut tok_per_m = tokens_limit / messages_len;
@@ -50,7 +45,7 @@ pub async fn postprocess_plain_text(
 
         msg.content = match msg.content {
             ChatContent::SimpleText(text) => {
-                let new_content = limit_text_content(tokenizer.clone(), &text, &mut tok_used, tok_per_m);
+                let new_content = limit_text_content(&text, &mut tok_used, tok_per_m);
                 ChatContent::SimpleText(new_content)
             },
             ChatContent::Multimodal(elements) => {
@@ -59,10 +54,10 @@ pub async fn postprocess_plain_text(
                 for element in elements {
                     if element.is_text() {
                         let mut el_cloned = element.clone();
-                        el_cloned.m_content = limit_text_content(tokenizer.clone(), &el_cloned.m_content, &mut tok_used, tok_per_m);
+                        el_cloned.m_content = limit_text_content(&el_cloned.m_content, &mut tok_used, tok_per_m);
                         new_content.push(el_cloned)
                     } else if element.is_image() {
-                        let tokens = element.count_tokens(None, style).unwrap() as usize;
+                        let tokens = element.count_tokens(style).unwrap() as usize;
                         if tok_used + tokens > tok_per_m {
                             let new_el = MultimodalElement {
                                 m_type: "text".to_string(),

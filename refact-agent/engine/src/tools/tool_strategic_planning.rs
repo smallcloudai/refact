@@ -12,7 +12,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
 use crate::files_in_workspace::get_file_text_from_memory_or_disk;
 use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::tokens::count_text_tokens_with_fallback;
+use crate::tokens::count_text_tokens;
 
 pub struct ToolStrategicPlanning {
     pub config_path: String,
@@ -75,7 +75,7 @@ async fn _make_prompt(
                 continue;
             }
         };
-        let left_tokens = tokens_budget - count_text_tokens_with_fallback(None, &message_row) as i64;
+        let left_tokens = tokens_budget - count_text_tokens(&message_row) as i64;
         if left_tokens < 0 {
             // we do not end here, maybe there are smaller useful messages at the beginning
             continue;
@@ -91,7 +91,6 @@ async fn _make_prompt(
         for context_file in postprocess_context_files(
             gcx.clone(),
             &mut context_files,
-            None,
             subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
             false,
             &pp_settings,

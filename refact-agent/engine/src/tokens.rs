@@ -198,29 +198,9 @@ pub async fn cached_tokenizer(
 /// Estimate as length / 3.5, since 3 is reasonable estimate for code, and 4 for natural language
 fn estimate_tokens(text: &str) -> usize {  1 + text.len() * 2 / 7 }
 
-pub fn count_text_tokens(
-    tokenizer: Option<Arc<Tokenizer>>,
-    text: &str,
-) -> Result<usize, String> {
-    match tokenizer {
-        Some(tokenizer) => {
-            match tokenizer.encode_fast(text, false) {
-                Ok(tokens) => Ok(tokens.len()),
-                Err(e) => Err(format!("Encoding error: {e}")),
-            }
-        }
-        None => {
-            Ok(estimate_tokens(text))
-        }
-    }
-}
 
-pub fn count_text_tokens_with_fallback(
-    tokenizer: Option<Arc<Tokenizer>>,
+pub fn count_text_tokens(
     text: &str,
 ) -> usize {
-    count_text_tokens(tokenizer, text).unwrap_or_else(|e| {
-        tracing::error!("{e}");
-        estimate_tokens(text)
-    })
+    estimate_tokens(text)
 }
