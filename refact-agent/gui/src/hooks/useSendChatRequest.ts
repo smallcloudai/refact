@@ -39,12 +39,12 @@ import {
 
 import { selectAllImages } from "../features/AttachedImages";
 import { useAbortControllers } from "./useAbortControllers";
-import {
-  clearPauseReasonsAndHandleToolsStatus,
-  getToolsConfirmationStatus,
-  getToolsInteractionStatus,
-  setPauseReasons,
-} from "../features/ToolConfirmation/confirmationSlice";
+// import {
+//   clearPauseReasonsAndHandleToolsStatus,
+//   getToolsConfirmationStatus,
+//   getToolsInteractionStatus,
+//   setPauseReasons,
+// } from "../features/ToolConfirmation/confirmationSlice";
 import {
   chatModeToLspMode,
   doneStreaming,
@@ -103,8 +103,8 @@ export const useSendChatRequest = () => {
   const attachedImages = useAppSelector(selectAllImages);
   const threadMode = useAppSelector(selectThreadMode);
   const threadIntegration = useAppSelector(selectIntegration);
-  const wasInteracted = useAppSelector(getToolsInteractionStatus); // shows if tool confirmation popup was interacted by user
-  const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
+  // const wasInteracted = useAppSelector(getToolsInteractionStatus);
+  // const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
   const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const checkpointsEnabled = useAppSelector(selectCheckpointsEnabled);
@@ -116,7 +116,7 @@ export const useSendChatRequest = () => {
 
       if (
         !isWaiting &&
-        !wasInteracted &&
+        // !wasInteracted &&
         isAssistantMessage(lastMessage) &&
         lastMessage.ftm_tool_calls
       ) {
@@ -133,7 +133,7 @@ export const useSendChatRequest = () => {
             messages: messages,
           }).unwrap();
           if (confirmationResponse.pause) {
-            dispatch(setPauseReasons(confirmationResponse.pause_reasons));
+            // dispatch(setPauseReasons(confirmationResponse.pause_reasons));
             return;
           }
         }
@@ -166,7 +166,7 @@ export const useSendChatRequest = () => {
       dispatch,
       chatId,
       threadMode,
-      wasInteracted,
+      // wasInteracted,
       checkpointsEnabled,
       abortControllers,
       triggerCheckForConfirmation,
@@ -257,15 +257,15 @@ export const useSendChatRequest = () => {
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
-      dispatch(
-        clearPauseReasonsAndHandleToolsStatus({
-          wasInteracted: false,
-          confirmationStatus: areToolsConfirmed,
-        }),
-      );
+      // dispatch(
+      //   clearPauseReasonsAndHandleToolsStatus({
+      //     wasInteracted: false,
+      //     confirmationStatus: areToolsConfirmed,
+      //   }),
+      // );
       void sendMessages(messages);
     },
-    [abort, sendMessages, dispatch, areToolsConfirmed],
+    [abort, sendMessages],
   );
 
   const retryFromIndex = useCallback(

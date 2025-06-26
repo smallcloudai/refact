@@ -35,7 +35,7 @@ import {
   useEventsBusForIDE,
 } from "../../hooks";
 import { useWindowDimensions } from "../../hooks/useWindowDimensions";
-import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
+// import { clearPauseReasonsAndHandleToolsStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import { telemetryApi } from "../../services/refact/telemetry";
 
 // import styles from "./Toolbar.module.css";
@@ -160,12 +160,6 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     // TODO: remove new chat action?
     dispatch(newChatAction());
     dispatch(resetThread());
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: false,
-        confirmationStatus: true,
-      }),
-    );
     // clear out old chat
     handleNavigation("chat");
     void sendTelemetryEvent({

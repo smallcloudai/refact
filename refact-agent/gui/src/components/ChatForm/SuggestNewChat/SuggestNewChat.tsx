@@ -1,14 +1,16 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
-import { ArchiveIcon, Cross2Icon } from "@radix-ui/react-icons";
+import {
+  //  ArchiveIcon,
+  Cross2Icon,
+} from "@radix-ui/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 
-import { clearPauseReasonsAndHandleToolsStatus } from "../../../features/ToolConfirmation/confirmationSlice";
 import {
   useAppDispatch,
   useAppSelector,
   useCompressChat,
-  useLastSentCompressionStop,
+  // useLastSentCompressionStop,
 } from "../../../hooks";
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
 import { telemetryApi } from "../../../services/refact";
@@ -40,8 +42,7 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { compressChat, isCompressing } = useCompressChat();
-  const lastSentCompression = useLastSentCompressionStop();
+  const { isCompressing } = useCompressChat();
 
   useEffect(() => {
     if (shouldBeVisible) {
@@ -77,10 +78,6 @@ export const SuggestNewChat = ({
   const onCreateNewChat = useCallback(() => {
     const actions = [
       newChatAction(),
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: false,
-        confirmationStatus: true,
-      }),
       popBackTo({ name: "history" }),
       push({ name: "chat" }),
     ];
@@ -123,7 +120,7 @@ export const SuggestNewChat = ({
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          {lastSentCompression.strength &&
+          {/* {lastSentCompression.strength &&
             lastSentCompression.strength !== "absent" && (
               <Link
                 size="1"
@@ -143,7 +140,7 @@ export const SuggestNewChat = ({
                   Compress and open in a new chat.
                 </Flex>
               </Link>
-            )}
+            )} */}
         </Flex>
         <Box position="absolute" top="1" right="1">
           <IconButton

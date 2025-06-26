@@ -37,10 +37,6 @@ import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
 import {
-  resetConfirmationInteractedState,
-  updateConfirmationAfterIdeToolUse,
-} from "../features/ToolConfirmation/confirmationSlice";
-import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
@@ -72,7 +68,6 @@ startListening({
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       resetAttachedImagesSlice(),
-      resetConfirmationInteractedState(),
     ].forEach((api) => listenerApi.dispatch(api));
 
     listenerApi.dispatch(clearError());
@@ -471,6 +466,7 @@ startListening({
   },
 });
 
+// TODO: this should let flexus know that the user accepted the tool
 // Tool Call results from ide.
 startListening({
   actionCreator: ideToolCallResponse,
@@ -478,14 +474,14 @@ startListening({
     const state = listenerApi.getState();
 
     listenerApi.dispatch(upsertToolCall(action.payload));
-    listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
+    // listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
     const pauseReasons = state.confirmation.pauseReasons.filter(
       (reason) => reason.tool_call_id !== action.payload.toolCallId,
     );
 
     if (pauseReasons.length === 0) {
-      listenerApi.dispatch(resetConfirmationInteractedState());
+      // listenerApi.dispatch(resetConfirmationInteractedState());
       listenerApi.dispatch(setIsWaitingForResponse(false));
     }
 
