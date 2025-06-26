@@ -1,13 +1,21 @@
-import { Flex, Heading, Select, Separator, Text } from "@radix-ui/themes";
+import {
+  Button,
+  Flex,
+  Heading,
+  Select,
+  Separator,
+  Text,
+} from "@radix-ui/themes";
 import React from "react";
 import { Tree } from "react-arborist";
-import { CustomTreeNode } from "./CustomTreeNode";
 
-import styles from "./GroupTree.module.css";
-import { ConfirmGroupSelection } from "./ConfirmGroupSelection";
-import { useGroupTree } from "./useGroupTree";
+import { CustomTreeNode } from "./CustomTreeNode";
 import { ScrollArea } from "../../ScrollArea";
 import { AnimatePresence } from "framer-motion";
+
+import { useGroupTree } from "./useGroupTree";
+import styles from "./GroupTree.module.css";
+import { useOpenUrl } from "../../../hooks";
 
 export interface FlexusTreeNode {
   treenodePath: string;
@@ -21,16 +29,20 @@ export interface FlexusTreeNode {
 }
 
 export const GroupTree: React.FC = () => {
+  const openUrl = useOpenUrl();
+
   const {
     treeParentRef,
     currentSelectedTeamsGroupNode,
     currentTeamsWorkspace,
     filteredGroupTreeData,
     onGroupSelect,
-    onGroupSelectionConfirm,
-    setCurrentSelectedTeamsGroupNode,
+    handleSkipWorkspaceSelection,
     setGroupTreeData,
     onWorkspaceSelection,
+    handleConfirmSelectionClick,
+    createFolderChecked,
+    setCreateFolderChecked,
     availableWorkspaces,
     treeHeight,
   } = useGroupTree();
@@ -38,31 +50,41 @@ export const GroupTree: React.FC = () => {
   return (
     <Flex direction="column" gap="4" mt="4" width="100%">
       <Flex direction="column" gap="1">
-        <Heading as="h2" size="4">
-          Refact Teams Wizard
+        <Heading as="h1" size="6" mb="1">
+          Welcome to Refact.ai
         </Heading>
+        <Text size="2" color="gray" mb="1">
+          Refact.ai Agent autonomously completes your software engineering tasks
+          end to end — and now comes with memory, turning your individual or
+          team experience into a continuously evolving knowledge base.
+        </Text>
         <Separator size="4" my="2" />
-        <Heading as="h2" size="3">
-          Account selection
+        <Heading as="h2" size="3" mb="1">
+          Choose your Workspace
         </Heading>
-        <Text size="2" color="gray" mb="1">
-          Refact is even better connected to the cloud, you can share knowledge
-          database within your team.
-        </Text>
-        <Text size="2" color="gray" mb="1">
-          Choose your team&apos;s account, or your personal account:
-        </Text>
         <Select.Root
           onValueChange={onWorkspaceSelection}
-          disabled={availableWorkspaces.length === 0}
+          // disabled={availableWorkspaces.length === 0}
+          value={currentTeamsWorkspace?.ws_id}
         >
-          <Select.Trigger placeholder="Please, choose team's account"></Select.Trigger>
+          <Select.Trigger></Select.Trigger>
           <Select.Content position="popper">
             {availableWorkspaces.map((workspace) => (
               <Select.Item value={workspace.ws_id} key={workspace.ws_id}>
                 {workspace.root_group_name}
               </Select.Item>
             ))}
+            {availableWorkspaces.length !== 0 && <Select.Separator />}
+            <Select.Item
+              value="add-new-workspace"
+              onClickCapture={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openUrl("https://app.refact.ai/profile");
+              }}
+            >
+              Add new workspace
+            </Select.Item>
           </Select.Content>
         </Select.Root>
         {availableWorkspaces.length === 0 && (
@@ -84,10 +106,10 @@ export const GroupTree: React.FC = () => {
         >
           <Flex direction="column" gap="1" mb="1">
             <Heading as="h2" size="3">
-              Group selection
+              Choose your Group
             </Heading>
             <Text size="2" color="gray">
-              If you have a lot of projects, you can organize them into groups:
+              If you have several projects, organize them into groups
             </Text>
           </Flex>
           <ScrollArea
@@ -113,23 +135,33 @@ export const GroupTree: React.FC = () => {
               childrenAccessor={"treenodeChildren"}
             >
               {(nodeProps) => (
-                <CustomTreeNode updateTree={setGroupTreeData} {...nodeProps} />
+                <CustomTreeNode
+                  updateTree={setGroupTreeData}
+                  createFolderChecked={createFolderChecked}
+                  setCreateFolderChecked={setCreateFolderChecked}
+                  {...nodeProps}
+                />
               )}
             </Tree>
           </ScrollArea>
-          <AnimatePresence>
-            {currentSelectedTeamsGroupNode !== null && (
-              <ConfirmGroupSelection
-                currentSelectedTeamsGroupNode={currentSelectedTeamsGroupNode}
-                setCurrentSelectedTeamsGroupNode={
-                  setCurrentSelectedTeamsGroupNode
-                }
-                onGroupSelectionConfirm={onGroupSelectionConfirm}
-              />
-            )}
-          </AnimatePresence>
         </Flex>
       )}
+      <Flex gap="2" justify="end">
+        <Button
+          onClick={handleSkipWorkspaceSelection}
+          variant="outline"
+          color="gray"
+        >
+          Skip
+        </Button>
+        <Button
+          onClick={() => void handleConfirmSelectionClick()}
+          variant="outline"
+          disabled={currentSelectedTeamsGroupNode === null}
+        >
+          Confirm
+        </Button>
+      </Flex>
     </Flex>
   );
 };

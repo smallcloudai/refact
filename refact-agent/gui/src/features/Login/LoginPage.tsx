@@ -13,6 +13,9 @@ import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { GoogleIcon } from "../../images/GoogleIcon";
 import { Accordion } from "../../components/Accordion";
 import { useLogin, useEmailLogin, useEventsBusForIDE } from "../../hooks";
+import { UnderConstruction } from "./UnderConstruction";
+
+const IS_LOGIN_DISABLED = false;
 
 export const LoginPage: React.FC = () => {
   const { loginWithProvider, polling, cancelLogin } = useLogin();
@@ -46,6 +49,11 @@ export const LoginPage: React.FC = () => {
       // no-op
     }
   }, [cancelLogin, emailLoginAbort]);
+
+  // eslint-disable-next-line
+  if (IS_LOGIN_DISABLED) {
+    return <UnderConstruction />;
+  }
 
   return (
     <Container>
