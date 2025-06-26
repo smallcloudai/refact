@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CloudTool {
@@ -52,6 +53,7 @@ pub async fn get_cloud_tools(
         ..Default::default()
     };
 
+    info!("get_cloud_tools: address={}, located_fgroup_id={}", config.address, located_fgroup_id);
     execute_graphql::<Vec<CloudTool>, _>(
         config,
         query,

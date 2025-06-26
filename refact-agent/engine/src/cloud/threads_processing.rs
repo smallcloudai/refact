@@ -109,7 +109,6 @@ async fn initialize_thread(
 ) -> Result<(), String> {
     let expert = crate::cloud::experts_req::get_expert(cmd_address_url, api_key, ft_fexp_id).await?;
     let cloud_tools = crate::cloud::cloud_tools_req::get_cloud_tools(cmd_address_url, api_key, located_fgroup_id).await?;
-    info!("retrieving cloud tools for thread `{}`: {:?}", thread.ft_id, cloud_tools);
     let last_message = thread_messages.iter()
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())

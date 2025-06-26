@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::RwLock as ARwLock;
+use tracing::info;
 use crate::global_context::GlobalContext;
 use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
 
@@ -34,7 +34,7 @@ pub async fn memories_add(
     "#;
     
     let config = GraphQLRequestConfig {
-        address: cmd_address_url,
+        address: cmd_address_url.to_string(),
         api_key,
         ..Default::default()
     };
@@ -48,8 +48,10 @@ pub async fn memories_add(
             "owner_shared": false      
         }
     });
-    
-    // We don't need the actual result, just need to know if it succeeded
+
+    info!("memories_add: address={}, iknow_memory={}, located_fgroup_id={}, iknow_is_core={}, iknow_tags={}, owner_shared={}",
+        config.address, m_memory, active_group_id, false, m_type, false
+    );
     execute_graphql::<serde_json::Value, _>(
         config,
         query,
@@ -58,8 +60,8 @@ pub async fn memories_add(
     )
     .await
     .map_err(|e| e.to_string())?;
-    
     info!("Successfully added memory to remote server");
+    
     Ok(())
 }
 
@@ -92,7 +94,7 @@ pub async fn memories_get_core(
     let variables = json!({
         "fgroup_id": active_group_id
     });
-    
+    info!("memories_get_core: address={}, fgroup_id={}", config.address, active_group_id);
     let memories: Vec<MemoRecord> = execute_graphql(
         config,
         query,

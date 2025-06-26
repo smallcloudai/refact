@@ -129,35 +129,10 @@ pub fn get_chunks(
 mod tests {
     use std::path::PathBuf;
     use std::str::FromStr;
-    use std::sync::Arc;
-
     use crate::ast::chunk_utils::get_chunks;
-    use crate::tokens::count_text_tokens;
-    // use crate::vecdb::vdb_structs::SplitResult;
-
-    const DUMMY_TOKENIZER: &str = include_str!("dummy_tokenizer.json");
-    const PYTHON_CODE: &str = r#"def square_number(x):
-    """
-    This function takes a number and returns its square.
-
-    Parameters:
-    x (int): A number to be squared.
-
-    Returns:
-    int: The square of the input number.
-    """
-    return x**2"#;
-
-    #[test]
-    fn dummy_tokenizer_test() {
-        let tokenizer = Arc::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap());
-        let text_orig_tok_n = count_text_tokens(PYTHON_CODE);
-        assert_eq!(text_orig_tok_n, PYTHON_CODE.len());
-    }
 
     #[test]
     fn simple_chunk_test_1_with_128_limit() {
-        let tokenizer = Some(Arc::new(tokenizers::Tokenizer::from_str(DUMMY_TOKENIZER).unwrap()));
         let orig = include_str!("../caps/mod.rs").to_string();
         let token_limits = [10, 50, 100, 200, 300];
         for &token_limit in &token_limits {

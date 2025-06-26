@@ -2,6 +2,7 @@ use log::error;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Expert {
@@ -84,6 +85,7 @@ pub async fn get_expert(
         ..Default::default()
     };
 
+    info!("get_expert: address={}, fexp_id={}", config.address, fexp_id);
     execute_graphql::<Expert, _>(
         config,
         query,
@@ -125,7 +127,8 @@ pub async fn expert_choice_consequences(
         "fexp_id": fexp_id,
         "inside_fgroup_id": fgroup_id
     });
-    
+
+    info!("expert_choice_consequences: address={}, fexp_id={}, inside_fgroup_id={}", config.address, fexp_id, fgroup_id);
     let result: Vec<ModelInfo> = execute_graphql(
         config,
         query,
