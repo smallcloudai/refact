@@ -2,6 +2,7 @@ use log::error;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Expert {
@@ -56,7 +57,8 @@ impl Expert {
 }
 
 pub async fn get_expert(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     fexp_id: &str
 ) -> Result<Expert, String> {
     use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
@@ -78,10 +80,12 @@ pub async fn get_expert(
     "#;
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
+    info!("get_expert: address={}, fexp_id={}", config.address, fexp_id);
     execute_graphql::<Expert, _>(
         config,
         query,
@@ -93,6 +97,7 @@ pub async fn get_expert(
 }
 
 pub async fn expert_choice_consequences(
+    cmd_address_url: &str,
     api_key: &str,
     fexp_id: &str,
     fgroup_id: &str,
@@ -113,6 +118,7 @@ pub async fn expert_choice_consequences(
     "#;
     
     let config = GraphQLRequestConfig {
+        address: cmd_address_url.to_string(),
         api_key: api_key.to_string(),
         ..Default::default()
     };
@@ -121,7 +127,8 @@ pub async fn expert_choice_consequences(
         "fexp_id": fexp_id,
         "inside_fgroup_id": fgroup_id
     });
-    
+
+    info!("expert_choice_consequences: address={}, fexp_id={}, inside_fgroup_id={}", config.address, fexp_id, fgroup_id);
     let result: Vec<ModelInfo> = execute_graphql(
         config,
         query,

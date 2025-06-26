@@ -4,7 +4,6 @@ use glob::Pattern;
 use indexmap::IndexMap;
 use tokio::sync::Mutex as AMutex;
 use serde_json::{json, Value};
-use tokenizers::Tokenizer;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::AtCommandsContext;
@@ -43,7 +42,6 @@ pub async fn unwrap_subchat_params(ccx: Arc<AMutex<AtCommandsContext>>, tool_nam
 pub async fn run_tools(
     ccx: Arc<AMutex<AtCommandsContext>>,
     tools: &mut IndexMap<String, Box<dyn Tool+Send>>,
-    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     original_messages: &Vec<ChatMessage>,
     style: &Option<String>,
@@ -169,7 +167,6 @@ pub async fn run_tools(
         generated_other,
         &mut context_files_for_pp,
         tokens_for_rag,
-        tokenizer.clone(),
         style,
     ).await;
 
@@ -189,7 +186,6 @@ pub(crate) async fn pp_run_tools(
     mut generated_other: Vec<ChatMessage>,
     context_files_for_pp: &mut Vec<ContextFile>,
     tokens_for_rag: usize,
-    tokenizer: Option<Arc<Tokenizer>>,
     style: &Option<String>,
 ) -> (Vec<ChatMessage>, Vec<ChatMessage>) {
     let (top_n, correction_only_up_to_step) = {
@@ -212,10 +208,7 @@ pub(crate) async fn pp_run_tools(
         info!("run_tools: tokens_for_rag={} tokens_limit_chat_msg={} tokens_limit_files={}", tokens_for_rag, tokens_limit_chat_msg, tokens_limit_files);
 
         let (pp_chat_msg, non_used_tokens_for_rag) = postprocess_plain_text(
-            generated_tool.into_iter().chain(generated_other.into_iter()).collect(),
-            tokenizer.clone(),
-            tokens_limit_chat_msg,
-            style,
+            generated_tool.into_iter().chain(generated_other.into_iter()).collect(), tokens_limit_chat_msg, style,
         ).await;
 
         // re-add potentially truncated messages, role="tool" will still go first
@@ -245,12 +238,7 @@ pub(crate) async fn pp_run_tools(
         }
 
         let context_file_vec = postprocess_context_files(
-            gcx.clone(),
-            context_files_for_pp,
-            tokenizer.clone(),
-            tokens_limit_files,
-            false,
-            &pp_settings,
+            gcx.clone(), context_files_for_pp, tokens_limit_files, false, &pp_settings,
         ).await;
 
         if !context_file_vec.is_empty() {

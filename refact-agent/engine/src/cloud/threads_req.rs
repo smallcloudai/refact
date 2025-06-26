@@ -23,7 +23,8 @@ pub struct Thread {
 }
 
 pub async fn create_thread(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     located_fgroup_id: &str,
     ft_fexp_id: &str,
     ft_title: &str,
@@ -80,10 +81,13 @@ pub async fn create_thread(
     }
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
-
+    tracing::info!("create_thread: address={}, ft_title={}, ft_app_capture={}, ft_app_searchable={}",
+        config.address, ft_title, ft_app_capture, ft_app_searchable
+    );
     execute_graphql::<Thread, _>(
         config,
         mutation,
@@ -95,7 +99,8 @@ pub async fn create_thread(
 }
 
 pub async fn get_thread(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
 ) -> Result<Thread, String> {
     use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
@@ -125,10 +130,11 @@ pub async fn get_thread(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
-
+    tracing::info!("get_thread: address={}, thread_id={}", config.address, thread_id);
     execute_graphql::<Thread, _>(
         config,
         query,
@@ -140,7 +146,8 @@ pub async fn get_thread(
 }
 
 pub async fn get_threads_app_captured(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     located_fgroup_id: &str,
     ft_app_searchable: &str,
     ft_app_capture: &str,
@@ -172,7 +179,8 @@ pub async fn get_threads_app_captured(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -181,7 +189,9 @@ pub async fn get_threads_app_captured(
         "ft_app_capture": ft_app_capture,
         "ft_app_searchable": ft_app_searchable
     });
-
+    tracing::info!("get_threads_app_captured: address={}, located_fgroup_id={}, ft_app_capture={}, ft_app_searchable={}",
+        config.address, located_fgroup_id, ft_app_capture, ft_app_searchable
+    );
     execute_graphql::<Vec<Thread>, _>(
         config,
         query,
@@ -193,9 +203,10 @@ pub async fn get_threads_app_captured(
 }
 
 pub async fn set_thread_toolset(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
-    ft_toolset: Vec<Value>,
+    ft_toolset: Vec<Value>
 ) -> Result<Vec<Value>, String> {
     use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
     
@@ -215,11 +226,14 @@ pub async fn set_thread_toolset(
     });
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
-    // We need to handle this special case as it returns a nested object
+    tracing::info!("set_thread_toolset: address={}, thread_id={}, ft_toolset={:?}",
+        config.address, thread_id, ft_toolset
+    );
     let result = execute_graphql::<Value, _>(
         config,
         mutation,
@@ -228,8 +242,6 @@ pub async fn set_thread_toolset(
     )
     .await
     .map_err(|e| e.to_string())?;
-
-    // Extract ft_toolset from the result
     if let Some(ft_toolset_json) = result.get("ft_toolset") {
         let ft_toolset: Vec<Value> = serde_json::from_value(ft_toolset_json.clone())
             .map_err(|e| format!("Failed to parse updated thread: {}", e))?;
@@ -240,7 +252,8 @@ pub async fn set_thread_toolset(
 }
 
 pub async fn lock_thread(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     hash: &str,
 ) -> Result<(), String> {
@@ -254,7 +267,8 @@ pub async fn lock_thread(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -263,6 +277,9 @@ pub async fn lock_thread(
         "worker_name": worker_name
     });
 
+    tracing::info!("lock_thread: address={}, thread_id={}, worker_name={}",
+        config.address, thread_id, worker_name
+    );
     let result = execute_graphql_bool_result(
         config,
         query,
@@ -280,9 +297,10 @@ pub async fn lock_thread(
 }
 
 pub async fn unlock_thread(
-    api_key: String,
-    thread_id: String,
-    hash: String,
+    cmd_address_url: &str,
+    api_key: &str ,
+    thread_id: &str,
+    hash: &str,
 ) -> Result<(), String> {
     use crate::cloud::graphql_client::{execute_graphql_bool_result, GraphQLRequestConfig};
     
@@ -294,7 +312,8 @@ pub async fn unlock_thread(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -303,6 +322,9 @@ pub async fn unlock_thread(
         "worker_name": worker_name
     });
 
+    tracing::info!("unlock_thread: address={}, thread_id={}, worker_name={}",
+        config.address, thread_id, worker_name
+    );
     let result = execute_graphql_bool_result(
         config,
         query,
@@ -320,9 +342,10 @@ pub async fn unlock_thread(
 }
 
 pub async fn set_error_thread(
-    api_key: String,
-    thread_id: String,
-    error: String,
+    cmd_address_url: &str,
+    api_key: &str,
+    thread_id: &str,
+    error: &str,
 ) -> Result<(), String> {
     use crate::cloud::graphql_client::{execute_graphql_no_result, GraphQLRequestConfig};
     
@@ -342,10 +365,14 @@ pub async fn set_error_thread(
     });
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
-
+    
+    tracing::info!("unlock_thread: address={}, thread_id={}, ft_error={}",
+        config.address, thread_id, error
+    );
     execute_graphql_no_result(
         config,
         mutation,
@@ -357,7 +384,8 @@ pub async fn set_error_thread(
 }
 
 pub async fn set_thread_confirmation_request(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     confirmation_request: Value,
 ) -> Result<bool, String> {
@@ -378,10 +406,13 @@ pub async fn set_thread_confirmation_request(
     });
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
-
+    tracing::info!("unlock_thread: address={}, thread_id={}, confirmation_request_str={:?}",
+        config.address, thread_id, confirmation_request_str
+    );
     execute_graphql_bool_result(
         config,
         mutation,

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tracing::info;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CloudTool {
@@ -26,7 +27,8 @@ impl CloudTool {
 }
 
 pub async fn get_cloud_tools(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     located_fgroup_id: &str,
 ) -> Result<Vec<CloudTool>, String> {
     use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
@@ -46,10 +48,12 @@ pub async fn get_cloud_tools(
     "#;
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
+    info!("get_cloud_tools: address={}, located_fgroup_id={}", config.address, located_fgroup_id);
     execute_graphql::<Vec<CloudTool>, _>(
         config,
         query,

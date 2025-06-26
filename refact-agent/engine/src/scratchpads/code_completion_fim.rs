@@ -115,7 +115,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             tracing::warn!("will not use ast because {}{}{}{}", self.t.context_format.is_empty() as i32, self.post.use_ast as i32, (rag_tokens_n > 0) as i32, self.ast_service.is_some() as i32);
         }
 
-        let limit: i32 = (n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32);
+        let limit: usize = ((n_ctx as i32) - (self.post.parameters.max_new_tokens as i32) - (rag_tokens_n as i32)) as usize;
         if limit < 512 {
             let msg = format!("n_ctx={} - max_new_tokens={} - rag_tokens_n={} leaves too little {} space for completion to work",
             n_ctx, self.post.parameters.max_new_tokens, rag_tokens_n, limit);
@@ -168,7 +168,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
         let mut after = String::new();
         let mut fim_line1: i32 = i32::MAX;
         let mut fim_line2: i32 = i32::MIN;
-        tokens_used += self.t.count_tokens(
+        tokens_used += self.t.count_text_tokens_with_tokenizer(
             (cursor_line1.clone() + &cursor_line2).as_str()
         )?;
         let mut rel_line_n: i32 = 0;
@@ -176,7 +176,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             rel_line_n += 1;
             if let Some(before_line) = before_line {
                 let before_line = before_line.to_string();
-                let tokens = self.t.count_tokens(before_line.as_str())?;
+                let tokens = self.t.count_text_tokens_with_tokenizer(before_line.as_str())?;
                 if tokens_used + tokens > limit {
                     break;
                 }
@@ -186,7 +186,7 @@ impl ScratchpadAbstract for FillInTheMiddleScratchpad {
             }
             if let Some(after_line) = after_line {
                 let after_line = after_line.to_string();
-                let tokens = self.t.count_tokens(after_line.as_str())?;
+                let tokens = self.t.count_text_tokens_with_tokenizer(after_line.as_str())?;
                 if tokens_used + tokens > limit {
                     break;
                 }

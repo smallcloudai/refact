@@ -51,11 +51,12 @@ pub async fn subchat(
     reasoning_effort: Option<ReasoningEffort>,
 ) -> Result<Vec<ChatMessage>, String> {
     let gcx = ccx.lock().await.global_context.clone();
-    let (api_key, app_searchable_id, located_fgroup_id, parent_thread_id) = {
+    let (cmd_address_url, api_key, app_searchable_id, located_fgroup_id, parent_thread_id) = {
         let gcx_read = gcx.read().await;
         let located_fgroup_id = gcx_read.active_group_id.clone()
             .ok_or("No active group ID is set".to_string())?;
         (
+            gcx_read.cmdline.address_url.clone(),
             gcx_read.cmdline.api_key.clone(),
             gcx_read.app_searchable_id.clone(),
             located_fgroup_id,
@@ -63,10 +64,11 @@ pub async fn subchat(
         )
     };
     
-    let model_name = crate::cloud::experts_req::expert_choice_consequences(&api_key, ft_fexp_id, &located_fgroup_id).await?;
+    let model_name = crate::cloud::experts_req::expert_choice_consequences(&cmd_address_url, &api_key, ft_fexp_id, &located_fgroup_id).await?;
     let preferences = build_preferences(&model_name, temperature, max_new_tokens, 1, reasoning_effort);
     let existing_threads = crate::cloud::threads_req::get_threads_app_captured(
-        api_key.clone(),
+        &cmd_address_url,
+        &api_key,
         &located_fgroup_id,
         &app_searchable_id,
         tool_call_id
@@ -76,7 +78,8 @@ pub async fn subchat(
         existing_threads[0].clone()
     } else {
         let thread = threads_req::create_thread(
-            api_key.clone(),
+            &cmd_address_url,
+            &api_key,
             &located_fgroup_id,
             ft_fexp_id,
             &format!("subchat_{}", ft_fexp_id),
@@ -90,24 +93,16 @@ pub async fn subchat(
             Some(parent_thread_id)
         ).await?;
         let thread_messages = messages_req::convert_messages_to_thread_messages(
-            messages,
-            100,
-            100,
-            1,
-            &thread.ft_id,
-            Some(preferences),
+            messages, 100, 100, 1, &thread.ft_id, Some(preferences)
         )?;
         messages_req::create_thread_messages(
-            api_key.clone(),
-            &thread.ft_id,
-            thread_messages,
+            &cmd_address_url, &api_key, &thread.ft_id, thread_messages
         ).await?;
         thread
     };
     
-    let api_key_for_messages = api_key.clone();
     let thread_id = thread.ft_id.clone();
-    let connection_result = initialize_connection(api_key.clone(), &located_fgroup_id).await;
+    let connection_result = initialize_connection(&cmd_address_url, &api_key, &located_fgroup_id).await;
     let mut connection = match connection_result {
         Ok(conn) => conn,
         Err(err) => return Err(format!("Failed to initialize WebSocket connection: {}", err)),
@@ -171,7 +166,7 @@ pub async fn subchat(
         }
     }
 
-    let thread = threads_req::get_thread(api_key, &thread_id).await?;
+    let thread = threads_req::get_thread(&cmd_address_url, &api_key, &thread_id).await?;
     if let Some(error) = thread.ft_error {
         // the error might be actually a kernel output data
         if let Some(kernel_output) = serde_json::from_str::<KernelOutput>(&error.to_string()).ok() {
@@ -182,9 +177,7 @@ pub async fn subchat(
     }
     
     let all_thread_messages = messages_req::get_thread_messages(
-        api_key_for_messages,
-        &thread_id,
-        100,
+        &cmd_address_url, &api_key, &thread_id, 100
     ).await?;
     Ok(messages_req::convert_thread_messages_to_messages(&all_thread_messages)
         .into_iter()

@@ -104,12 +104,6 @@ async fn get_builtin_tools(
         Box::new(crate::tools::tool_strategic_planning::ToolStrategicPlanning{config_path: config_path.clone()}),
     ];
 
-    let knowledge_tools: Vec<Box<dyn Tool + Send>> = vec![
-        Box::new(crate::tools::tool_knowledge::ToolGetKnowledge{config_path: config_path.clone()}),
-        Box::new(crate::tools::tool_create_knowledge::ToolCreateKnowledge{config_path: config_path.clone()}),
-        Box::new(crate::tools::tool_create_memory_bank::ToolCreateMemoryBank{config_path: config_path.clone()}),
-    ];
-
     let mut tool_groups = vec![
         ToolGroup {
             name: "Codebase Search".to_string(),
@@ -134,12 +128,6 @@ async fn get_builtin_tools(
             description: "Strategic planning tools".to_string(),
             category: ToolGroupCategory::Builtin,
             tools: deep_analysis_tools,
-        },
-        ToolGroup {
-            name: "Knowledge".to_string(),
-            description: "Knowledge tools".to_string(),
-            category: ToolGroupCategory::Builtin,
-            tools: knowledge_tools,
         },
     ];
 

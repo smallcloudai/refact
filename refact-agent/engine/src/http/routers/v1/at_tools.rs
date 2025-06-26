@@ -10,12 +10,11 @@ use tokio::sync::{Mutex as AMutex, RwLock as ARwLock};
 
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::call_validation::{ChatMessage, ChatToolCall, PostprocessSettings, SubchatParameters};
-use crate::caps::resolve_chat_model;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::tools::tools_description::{set_tool_config, MatchConfirmDenyResult, ToolConfig, ToolDesc, ToolGroupCategory, ToolSource};
 use crate::tools::tools_list::{get_available_tool_groups, get_available_tools};
 use crate::custom_error::ScratchError;
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 use crate::tools::tools_execute::run_tools;
 
 
@@ -246,16 +245,8 @@ pub async fn handle_v1_tools_execute(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     wait_for_indexing_if_needed(gcx.clone()).await;
-
     let tools_execute_post = serde_json::from_slice::<ToolsExecutePost>(&body_bytes)
       .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-
-    let caps = try_load_caps_quickly_if_not_present(gcx.clone(), 0).await?;
-    let model_rec = resolve_chat_model(caps, &tools_execute_post.model_name)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    let tokenizer = crate::tokens::cached_tokenizer(gcx.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-
     let mut ccx = AtCommandsContext::new(
         gcx.clone(),
         tools_execute_post.n_ctx,
@@ -276,7 +267,7 @@ pub async fn handle_v1_tools_execute(
         }).collect::<IndexMap<_, _>>();
 
     let (messages, tools_ran) = run_tools(
-        ccx_arc.clone(), &mut at_tools, tokenizer.clone(), tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
+        ccx_arc.clone(), &mut at_tools, tools_execute_post.maxgen, &tools_execute_post.messages, &tools_execute_post.style
     ).await.map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("Error running tools: {}", e)))?;
 
     let response = ToolExecuteResponse {

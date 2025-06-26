@@ -2,7 +2,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex as AMutex;
 use regex::Regex;
 use serde_json::{json, Value};
-use tokenizers::Tokenizer;
 use tracing::{info, warn};
 
 use crate::at_commands::at_commands::{AtCommandsContext, AtParam, filter_only_context_file_from_context_tool};
@@ -17,7 +16,6 @@ pub const MIN_RAG_CONTEXT_LIMIT: usize = 256;
 
 pub async fn run_at_commands_locally(
     ccx: Arc<AMutex<AtCommandsContext>>,
-    tokenizer: Option<Arc<Tokenizer>>,
     maxgen: usize,
     mut original_messages: Vec<ChatMessage>,
     stream_back_to_user: &mut HasRagResults,
@@ -63,7 +61,7 @@ pub async fn run_at_commands_locally(
             continue;
         }
         let mut content = msg.content.content_text_only();
-        let content_n_tokens = msg.content.count_tokens(tokenizer.clone(), &None).unwrap_or(0) as usize;
+        let content_n_tokens = msg.content.count_tokens(&None).unwrap_or(0) as usize;
 
         let mut context_limit = reserve_for_context / messages_with_at.max(1);
         context_limit = context_limit.saturating_sub(content_n_tokens);
@@ -111,7 +109,6 @@ pub async fn run_at_commands_locally(
 
             let (pp_plain_text, non_used_plain) = postprocess_plain_text(
                 plain_text_messages,
-                tokenizer.clone(),
                 tokens_limit_plain,
                 &None,
             ).await;
@@ -133,7 +130,6 @@ pub async fn run_at_commands_locally(
             let post_processed = postprocess_context_files(
                 gcx.clone(),
                 &mut context_file_pp,
-                tokenizer.clone(),
                 tokens_limit_files,
                 false,
                 &pp_settings,

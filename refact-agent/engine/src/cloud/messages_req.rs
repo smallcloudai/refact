@@ -22,7 +22,8 @@ pub struct ThreadMessage {
 }
 
 pub async fn get_thread_messages(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
@@ -53,11 +54,15 @@ pub async fn get_thread_messages(
     });
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };
 
+    tracing::info!("get_thread_messages: address={}, thread_id={}, alt={}",
+        config.address, thread_id, alt
+    );
     execute_graphql::<Vec<ThreadMessage>, _>(
         config, 
         query, 
@@ -69,15 +74,16 @@ pub async fn get_thread_messages(
 }
 
 pub async fn create_thread_messages(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     messages: Vec<ThreadMessage>,
 ) -> Result<(), String> {
     if messages.is_empty() {
         return Err("No messages provided".to_string());
     }
-    
     let mut input_messages = Vec::with_capacity(messages.len());
+    let messages_len = messages.len();
     for message in messages {
         if message.ftm_belongs_to_ft_id != thread_id {
             return Err(format!(
@@ -139,11 +145,14 @@ pub async fn create_thread_messages(
     "#;
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };
-
+    tracing::info!("create_thread_messages: address={}, thread_id={}, messages_len={}",
+        config.address, thread_id, messages_len
+    );
     execute_graphql_no_result(
         config, 
         mutation, 

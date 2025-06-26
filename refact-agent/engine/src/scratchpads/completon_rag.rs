@@ -205,7 +205,6 @@ pub async fn retrieve_ast_based_extra_context(
     let postprocessed_messages = postprocess_context_files(
         gcx.clone(),
         &mut ast_context_file_vec,
-        t.tokenizer.clone(),
         rag_tokens_n,
         false,
         &pp_settings,

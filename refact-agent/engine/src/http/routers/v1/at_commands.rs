@@ -14,13 +14,10 @@ use tracing::info;
 use crate::at_commands::execute_at::run_at_commands_locally;
 use crate::indexing_utils::wait_for_indexing_if_needed;
 use crate::postprocessing::pp_utils::pp_resolve_ctx_file_paths;
-use crate::tokens;
 use crate::at_commands::at_commands::AtCommandsContext;
 use crate::at_commands::execute_at::{execute_at_commands_in_query, parse_words_from_line};
 use crate::call_validation::{PostprocessSettings, SubchatParameters};
-use crate::caps::resolve_chat_model;
 use crate::custom_error::ScratchError;
-use crate::global_context::try_load_caps_quickly_if_not_present;
 use crate::global_context::GlobalContext;
 use crate::call_validation::{ChatMessage, ChatContent, ContextEnum};
 use crate::at_commands::at_commands::filter_only_context_file_from_context_tool;
@@ -137,7 +134,7 @@ async fn count_tokens(messages: &Vec<ChatMessage>) -> Result<u64, ScratchError> 
     let mut accum: u64 = 0;
 
     for message in messages {
-        accum += message.content.count_tokens(None, &None)
+        accum += message.content.count_tokens(&None)
             .map_err(|e| ScratchError {
                 status_code: StatusCode::INTERNAL_SERVER_ERROR,
                 message: format!("v1_chat_token_counter: count_tokens failed: {}", e)})? as u64;
@@ -259,17 +256,8 @@ pub async fn handle_v1_at_command_execute(
     body_bytes: hyper::body::Bytes,
 ) -> Result<Response<Body>, ScratchError> {
     wait_for_indexing_if_needed(global_context.clone()).await;
-
     let post = serde_json::from_slice::<CommandExecutePost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
-
-    let caps = try_load_caps_quickly_if_not_present(global_context.clone(), 0).await?;
-    let model_rec = resolve_chat_model(caps, &post.model_name)
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-
-    let tokenizer = tokens::cached_tokenizer(global_context.clone(), &model_rec.base).await
-        .map_err(|e| ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, e))?;
-
     let mut ccx = AtCommandsContext::new(
         global_context.clone(),
         post.n_ctx,
@@ -285,7 +273,7 @@ pub async fn handle_v1_at_command_execute(
 
     let mut has_rag_results = HasRagResults::new();
     let (messages, any_context_produced) = run_at_commands_locally(
-        ccx_arc.clone(), tokenizer.clone(), post.maxgen, post.messages, &mut has_rag_results).await;
+        ccx_arc.clone(), post.maxgen, post.messages, &mut has_rag_results).await;
     let messages_to_stream_back = has_rag_results.in_json;
     let undroppable_msg_number = messages.iter().rposition(|msg| msg.role == "user").unwrap_or(0);
 
