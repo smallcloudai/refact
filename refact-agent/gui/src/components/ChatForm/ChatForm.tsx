@@ -60,7 +60,7 @@ import {
   // selectChatError,
   // selectIsStreaming,
   // selectIsWaiting,
-  selectLastSentCompression,
+  // selectLastSentCompression,
   // selectMessages,
   selectThreadToolUse,
   selectToolUse,
@@ -109,7 +109,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-  const lastSentCompression = useAppSelector(selectLastSentCompression);
+  // const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
@@ -402,13 +402,13 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 <IconButton
                   size="1"
                   variant="ghost"
-                  color={
-                    lastSentCompression === "high"
-                      ? "red"
-                      : lastSentCompression === "medium"
-                        ? "yellow"
-                        : undefined
-                  }
+                  // color={
+                  //   lastSentCompression === "high"
+                  //     ? "red"
+                  //     : lastSentCompression === "medium"
+                  //       ? "yellow"
+                  //       : undefined
+                  // }
                   title="Compress chat and continue"
                   type="button"
                   onClick={() => void compressChat()}

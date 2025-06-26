@@ -25,14 +25,14 @@ export function useLastSentCompressionStop() {
 
   useEffect(() => {
     if (
-      lastSentCompression &&
-      lastSentCompression !== "absent" &&
+      // lastSentCompression &&
+      // lastSentCompression !== "absent" &&
       messagesFromLastUserMessage >= 40
     ) {
       dispatch(setPreventSend({ id: chatId }));
       dispatch(setIsNewChatSuggested({ chatId, value: true }));
     }
-  }, [chatId, dispatch, lastSentCompression, messagesFromLastUserMessage]);
+  }, [chatId, dispatch, /*lastSentCompression,*/ messagesFromLastUserMessage]);
 
   const resume = useCallback(() => {
     dispatch(setIsNewChatSuggestionRejected({ chatId, value: true }));

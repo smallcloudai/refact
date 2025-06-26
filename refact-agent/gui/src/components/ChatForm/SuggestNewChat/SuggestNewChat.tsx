@@ -1,5 +1,5 @@
 import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
-import { ArchiveIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { /*ArchiveIcon,*/ Cross2Icon } from "@radix-ui/react-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import classNames from "classnames";
 
@@ -8,7 +8,7 @@ import {
   useAppDispatch,
   useAppSelector,
   useCompressChat,
-  useLastSentCompressionStop,
+  // useLastSentCompressionStop,
 } from "../../../hooks";
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
 import { telemetryApi } from "../../../services/refact";
@@ -40,8 +40,8 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { compressChat, isCompressing } = useCompressChat();
-  const lastSentCompression = useLastSentCompressionStop();
+  const { /*compressChat,*/ isCompressing } = useCompressChat();
+  // const lastSentCompression = useLastSentCompressionStop();
 
   useEffect(() => {
     if (shouldBeVisible) {
@@ -123,7 +123,8 @@ export const SuggestNewChat = ({
           <Link size="1" onClick={onCreateNewChat} color="indigo">
             Start a new chat
           </Link>
-          {lastSentCompression.strength &&
+
+          {/* <>{lastSentCompression.strength &&
             lastSentCompression.strength !== "absent" && (
               <Link
                 size="1"
@@ -143,7 +144,7 @@ export const SuggestNewChat = ({
                   Compress and open in a new chat.
                 </Flex>
               </Link>
-            )}
+            )}</> */}
         </Flex>
         <Box position="absolute" top="1" right="1">
           <IconButton
