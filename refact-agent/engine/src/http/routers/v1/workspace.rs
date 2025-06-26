@@ -4,7 +4,7 @@ use axum::http::{Response, StatusCode};
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock as ARwLock;
-
+use tracing::info;
 use crate::custom_error::ScratchError;
 use crate::global_context::GlobalContext;
 
@@ -22,6 +22,7 @@ pub async fn handle_v1_set_active_group_id(
     let post = serde_json::from_slice::<SetActiveGroupIdPost>(&body_bytes)
         .map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, format!("JSON problem: {}", e)))?;
 
+    info!("set active group id to {}", post.group_id);
     gcx.write().await.active_group_id = Some(post.group_id);
     crate::cloud::threads_sub::trigger_threads_subscription_restart(gcx.clone()).await;
     
