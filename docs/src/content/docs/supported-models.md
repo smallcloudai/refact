@@ -9,18 +9,24 @@ With Refact.ai, access state-of-the-art models in your VS Code or JetBrains plug
 
 ### AI Agent models
 - GPT 4.1 (default)
-- Claude 3.7 Sonnet
-- Claude 3.5 Sonnet
+- Claude 4 Sonnet
 - GPT-4o
-- o3-mini
+- o4-mini
+- Gemini 2.5 Pro
+- Gemini 2.5 Pro Preview
+
 
 ### Chat models
 - GPT 4.1 (default)
-- Claude 3.7 Sonnet
-- Claude 3.5 Sonnet
+- GPT-4.1 Mini
+- GPT-4.1 Nano
+- Claude 4 Sonnet  
 - GPT-4o
 - GPT-4o-mini
-- o3-mini
+- o4-mini
+- Gemini 2.5 Pro
+- Gemini 2.5 Pro Preview
+
 
 For select models, click the `💡Think` button to enable advanced reasoning, helping AI better solve complex tasks. Available only in [Refact.ai Pro plan](https://refact.ai/pricing/).
 
@@ -31,7 +37,8 @@ For select models, click the `💡Think` button to enable advanced reasoning, he
 
 ## BYOK (Bring your own key)
 
-Refact.ai gives flexibility to connect your API key and use any external LLM like Gemini, Grok, OpenAI, Deepseek, and others. Read the guide in our [BYOK Documentation](https://docs.refact.ai/byok/).
+Refact.ai lets you connect your own API key and use any external LLM, including GPT, Claude, Gemini, Grok, DeepSeek, and others. It's easy: read the guide in our [BYOK Documentation](https://docs.refact.ai/byok/).
+
 
 
 ## Self-Hosted Version
