@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 import {
-  selectAutomaticPatch,
+  // selectAutomaticPatch,
   // selectChatError,
   selectChatId,
   selectCheckpointsEnabled,
@@ -17,15 +17,15 @@ import {
   selectThreadMode,
   selectThreadToolUse,
 } from "../features/Chat/Thread/selectors";
-import {
-  // selectIsStreaming,
-  selectIsWaiting,
-} from "../features/ThreadMessages";
-import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
+// import {
+//   // selectIsStreaming,
+//   selectIsWaiting,
+// } from "../features/ThreadMessages";
+// import { useCheckForConfirmationMutation } from "./useGetToolGroupsQuery";
 import {
   ChatMessage,
   ChatMessages,
-  isAssistantMessage,
+  //  isAssistantMessage,
   isUserMessage,
   UserMessage,
   UserMessageContentWithImage,
@@ -91,53 +91,20 @@ export const useSendChatRequest = () => {
   const dispatch = useAppDispatch();
   const abortControllers = useAbortControllers();
 
-  // const [triggerGetTools] = useGetToolsLazyQuery();
-  const [triggerCheckForConfirmation] = useCheckForConfirmationMutation();
-
   const chatId = useAppSelector(selectChatId);
-
-  const isWaiting = useAppSelector(selectIsWaiting);
 
   const currentMessages = useAppSelector(selectMessages);
   const toolUse = useAppSelector(selectThreadToolUse);
   const attachedImages = useAppSelector(selectAllImages);
   const threadMode = useAppSelector(selectThreadMode);
   const threadIntegration = useAppSelector(selectIntegration);
-  // const wasInteracted = useAppSelector(getToolsInteractionStatus);
-  // const areToolsConfirmed = useAppSelector(getToolsConfirmationStatus);
 
-  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
   const checkpointsEnabled = useAppSelector(selectCheckpointsEnabled);
 
   const sendMessages = useCallback(
-    async (messages: ChatMessages, maybeMode?: LspChatMode) => {
+    (messages: ChatMessages, maybeMode?: LspChatMode) => {
       dispatch(setIsWaitingForResponse(true));
       const lastMessage = messages.slice(-1)[0];
-
-      if (
-        !isWaiting &&
-        // !wasInteracted &&
-        isAssistantMessage(lastMessage) &&
-        lastMessage.ftm_tool_calls
-      ) {
-        const toolCalls = lastMessage.ftm_tool_calls;
-        if (
-          !(
-            toolCalls[0].function.name &&
-            PATCH_LIKE_FUNCTIONS.includes(toolCalls[0].function.name) &&
-            isPatchAutomatic
-          )
-        ) {
-          const confirmationResponse = await triggerCheckForConfirmation({
-            tool_calls: toolCalls,
-            messages: messages,
-          }).unwrap();
-          if (confirmationResponse.pause) {
-            // dispatch(setPauseReasons(confirmationResponse.pause_reasons));
-            return;
-          }
-        }
-      }
 
       dispatch(backUpMessages({ id: chatId, messages }));
       dispatch(chatAskedQuestion({ id: chatId }));
@@ -162,15 +129,11 @@ export const useSendChatRequest = () => {
     },
     [
       toolUse,
-      isWaiting,
       dispatch,
       chatId,
       threadMode,
-      // wasInteracted,
       checkpointsEnabled,
       abortControllers,
-      triggerCheckForConfirmation,
-      isPatchAutomatic,
     ],
   );
 
@@ -233,7 +196,7 @@ export const useSendChatRequest = () => {
       });
       dispatch(setChatMode(mode));
 
-      void sendMessages(messages, mode);
+      sendMessages(messages, mode);
     },
     [
       dispatch,
@@ -257,13 +220,7 @@ export const useSendChatRequest = () => {
   const retry = useCallback(
     (messages: ChatMessages) => {
       abort();
-      // dispatch(
-      //   clearPauseReasonsAndHandleToolsStatus({
-      //     wasInteracted: false,
-      //     confirmationStatus: areToolsConfirmed,
-      //   }),
-      // );
-      void sendMessages(messages);
+      sendMessages(messages);
     },
     [abort, sendMessages],
   );

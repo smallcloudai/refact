@@ -3,8 +3,7 @@ export const STATISTIC_URL = `/v1/get-dashboard-plots`;
 export const AT_COMMAND_COMPLETION = "/v1/at-command-completion";
 export const AT_COMMAND_PREVIEW = "/v1/at-command-preview";
 export const TOOLS = "/v1/tools";
-export const TOOLS_CHECK_CONFIRMATION =
-  "/v1/tools-check-if-confirmation-needed";
+
 export const EDIT_TOOL_DRY_RUN_URL = "/v1/file_edit_tool_dry_run";
 export const CONFIG_PATH_URL = "/v1/config-path";
 export const FULL_PATH_URL = "/v1/fullpath";

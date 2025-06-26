@@ -42,6 +42,7 @@ import {
 } from "../hooks/useEventBusForIDE";
 
 import { isToolResponse, modelsApi, providersApi } from "../services/refact";
+import { selectToolConfirmationRequests } from "../features/ThreadMessages";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -102,21 +103,6 @@ startListening({
         : isDetailMessage(action.payload?.data)
           ? action.payload.data.detail
           : `fetching tool groups from lsp`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
-    if (
-      toolsApi.endpoints.checkForConfirmation.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isDetailMessage(action.payload?.data)
-          ? action.payload.data.detail
-          : `confirmation check from lsp`;
 
       listenerApi.dispatch(setError(message));
       listenerApi.dispatch(setIsAuthError(isAuthError));
@@ -473,10 +459,13 @@ startListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
+    // TODO: this should let flexus know that the user accepted the tool
     listenerApi.dispatch(upsertToolCall(action.payload));
     // listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
 
-    const pauseReasons = state.confirmation.pauseReasons.filter(
+    const toolsToBeConfirmed = selectToolConfirmationRequests(state);
+
+    const pauseReasons = toolsToBeConfirmed.filter(
       (reason) => reason.tool_call_id !== action.payload.toolCallId,
     );
 

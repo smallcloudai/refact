@@ -28,7 +28,6 @@ import {
   noCommandPreview,
   noCompletions,
   noTools,
-  ToolConfirmation,
 } from "../../__fixtures__/msw";
 
 const MockedStore: React.FC<{
@@ -168,7 +167,6 @@ export const TextDoc: Story = {
         // noChatLinks,
         noTools,
 
-        ToolConfirmation,
         noCompletions,
         noCommandPreview,
       ],
@@ -189,7 +187,6 @@ export const MarkdownIssue: Story = {
         // noChatLinks,
         noTools,
 
-        ToolConfirmation,
         noCompletions,
         noCommandPreview,
       ],
@@ -230,7 +227,6 @@ export const ToolWaiting: Story = {
         // noChatLinks,
         noTools,
 
-        ToolConfirmation,
         noCompletions,
         noCommandPreview,
       ],
