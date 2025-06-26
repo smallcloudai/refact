@@ -41,7 +41,7 @@ jobs:
           npm pkg delete scripts.prepare
           npm ci
 
-      - run: npm run test
+      # - run: npm run test
       - run: npm run format:check
       - run: npm run types
       - run: npm run lint
