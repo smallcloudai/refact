@@ -198,9 +198,16 @@ pub async fn cached_tokenizer(
 /// Estimate as length / 3.5, since 3 is reasonable estimate for code, and 4 for natural language
 fn estimate_tokens(text: &str) -> usize {  1 + text.len() * 2 / 7 }
 
-
-pub fn count_text_tokens(
+pub fn count_text_tokens_with_tokenizer(
+    tokenizer: Arc<Tokenizer>,
     text: &str,
-) -> usize {
+) -> Result<usize, String> {
+    match tokenizer.encode_fast(text, false) {
+        Ok(tokens) => Ok(tokens.len()),
+        Err(e) => Err(format!("Encoding error: {e}")),
+    }
+}
+
+pub fn count_text_tokens(text: &str) -> usize {
     estimate_tokens(text)
 }
