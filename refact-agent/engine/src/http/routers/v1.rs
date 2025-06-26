@@ -21,7 +21,6 @@ use crate::http::routers::v1::status::handle_v1_rag_status;
 use crate::http::routers::v1::customization::handle_v1_customization;
 use crate::http::routers::v1::customization::handle_v1_config_path;
 use crate::http::routers::v1::gui_help_handlers::handle_v1_fullpath;
-use crate::http::routers::v1::sync_files::handle_v1_sync_files_extract_tar;
 use crate::http::routers::v1::providers::{handle_v1_providers, handle_v1_provider_templates,
     handle_v1_get_model, handle_v1_get_provider, handle_v1_models, handle_v1_post_model, handle_v1_post_provider,
     handle_v1_delete_model, handle_v1_delete_provider, handle_v1_model_default, handle_v1_completion_model_families};
@@ -46,7 +45,6 @@ mod gui_help_handlers;
 pub mod links;
 pub mod lsp_like_handlers;
 pub mod status;
-pub mod sync_files;
 pub mod providers;
 mod file_edit_tools;
 mod v1_integrations;
@@ -82,7 +80,6 @@ pub fn make_v1_router() -> Router {
         .route("/config-path", get(handle_v1_config_path))
 
         .route("/customization", get(handle_v1_customization))
-        .route("/sync-files-extract-tar", post(handle_v1_sync_files_extract_tar))
         .route("/git-commit", post(handle_v1_git_commit))
 
         .route("/at-command-completion", post(handle_v1_command_completion))
@@ -109,6 +106,7 @@ pub fn make_v1_router() -> Router {
 
         .route("/file_edit_tool_dry_run", post(handle_v1_file_edit_tool_dry_run))
         
+        // TODO: outdated, remove them all except completion models
         .route("/providers", get(handle_v1_providers))
         .route("/provider-templates", get(handle_v1_provider_templates))
         .route("/provider", get(handle_v1_get_provider))
