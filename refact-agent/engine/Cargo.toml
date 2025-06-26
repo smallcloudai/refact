@@ -18,6 +18,7 @@ shadow-rs = "1.1.0"
 winreg = "0.55.0"
 
 [dependencies]
+ahash = "0.8.12"
 astral-tokio-tar = "0.5.2"
 axum = { version = "0.6.20", features = ["default", "http2"] }
 async-process = "2.0.1"
