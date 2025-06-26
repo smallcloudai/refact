@@ -38,7 +38,7 @@ export const GroupTree: React.FC = () => {
     setGroupTreeData,
     onWorkspaceSelectChange,
     handleConfirmSelectionClick,
-    handleCreateAccountClick,
+    handleCreateWorkspaceClick,
     createFolderChecked,
     setCreateFolderChecked,
     availableWorkspaces,
@@ -52,23 +52,29 @@ export const GroupTree: React.FC = () => {
           Welcome to Refact.ai
         </Heading>
         <Text size="2" color="gray" mb="1">
-          Refact.ai Agent autonomously completes your software engineering tasks
-          end to end — and now comes with memory, turning your individual or
-          team experience into a continuously evolving knowledge base.
+          Refact.ai Agent autonomously completes your dev tasks end to end — and
+          gathers both individual and team experience into an evolving knowledge
+          base.
         </Text>
         <Heading as="h2" size="3" mt="4">
-          Select an Account
+          Select your Workspace
         </Heading>
         <Text size="1" color="gray" mb="1">
-          Use your individual account or ask admin for access to your
-          team&apos;s shared account
+          Use your personal Workspace or ask admin for access to your
+          team&apos;s shared one
         </Text>
         <Select.Root
           onValueChange={onWorkspaceSelectChange}
           value={currentTeamsWorkspace?.ws_id}
           disabled={availableWorkspaces.length === 0}
         >
-          <Select.Trigger placeholder="Select an Account" />
+          <Select.Trigger
+            placeholder={
+              availableWorkspaces.length === 0
+                ? "No available Workspaces"
+                : "Select your workspace"
+            }
+          ></Select.Trigger>
           <Select.Content position="popper">
             {availableWorkspaces.map((workspace) => (
               <Select.Item value={workspace.ws_id} key={workspace.ws_id}>
@@ -78,18 +84,12 @@ export const GroupTree: React.FC = () => {
           </Select.Content>
         </Select.Root>
         {availableWorkspaces.length === 0 && (
-          <Flex direction="column" gap="1" mt="2">
-            <Text size="1">
-              No accounts are currently associated with your team. For further
-              assistance, please refer to the support or bug reporting channels.
-            </Text>
-            <Text size="1">
-              You can create a new account by clicking link below
-            </Text>
-            <Link href="#" size="1" mt="1" onClick={handleCreateAccountClick}>
-              Add new account
-            </Link>
-          </Flex>
+          <Text size="1" mt="2">
+            <Link href="#" size="1" mt="1" onClick={handleCreateWorkspaceClick}>
+              Create a new one
+            </Link>{" "}
+            or contact your admin to access a team Workspace.
+          </Text>
         )}
       </Flex>
       {currentTeamsWorkspace && filteredGroupTreeData.length > 0 && (
