@@ -22,7 +22,8 @@ pub struct ThreadMessage {
 }
 
 pub async fn get_thread_messages(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     alt: i64,
 ) -> Result<Vec<ThreadMessage>, String> {
@@ -53,7 +54,8 @@ pub async fn get_thread_messages(
     });
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };
@@ -69,7 +71,8 @@ pub async fn get_thread_messages(
 }
 
 pub async fn create_thread_messages(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     messages: Vec<ThreadMessage>,
 ) -> Result<(), String> {
@@ -139,7 +142,8 @@ pub async fn create_thread_messages(
     "#;
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };

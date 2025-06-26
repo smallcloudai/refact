@@ -29,12 +29,6 @@ impl AtTree {
 #[derive(Debug, Clone)]
 pub struct PathsHolderNodeArc(Arc<RwLock<PathsHolderNode>>);
 
-impl PathsHolderNodeArc {
-    pub fn read(&self) -> std::sync::RwLockReadGuard<'_, PathsHolderNode> {
-        self.0.read().unwrap()
-    }
-}
-
 impl PartialEq for PathsHolderNodeArc {
     fn eq(&self, other: &Self) -> bool {
         self.0.read().unwrap().path == other.0.read().unwrap().path
@@ -47,67 +41,6 @@ pub struct PathsHolderNode {
     is_dir: bool,
     child_paths: Vec<PathsHolderNodeArc>,
     depth: usize,
-}
-
-impl PathsHolderNode {
-    pub fn file_name(&self) -> String {
-        self.path.file_name().unwrap_or_default().to_string_lossy().to_string()
-    }
-
-    pub fn child_paths(&self) -> &Vec<PathsHolderNodeArc> {
-        &self.child_paths
-    }
-
-    pub fn get_path(&self) -> &PathBuf {
-        &self.path
-    }
-}
-
-pub fn construct_tree_out_of_flat_list_of_paths(paths_from_anywhere: &Vec<PathBuf>) -> Vec<PathsHolderNodeArc> {
-    let mut root_nodes: Vec<PathsHolderNodeArc> = Vec::new();
-    let mut nodes_map: HashMap<PathBuf, PathsHolderNodeArc> = HashMap::new();
-
-    for path in paths_from_anywhere {
-        let components: Vec<_> = path.components().collect();
-        let components_count = components.len();
-
-        let mut current_path = PathBuf::new();
-        let mut parent_node: Option<PathsHolderNodeArc> = None;
-
-        for (index, component) in components.into_iter().enumerate() {
-            current_path.push(component);
-
-            let is_last = index == components_count - 1;
-            let depth = index;
-            let node = nodes_map.entry(current_path.clone()).or_insert_with(|| {
-                PathsHolderNodeArc(Arc::new(RwLock::new(
-                    PathsHolderNode {
-                        path: current_path.clone(),
-                        is_dir: !is_last,
-                        child_paths: Vec::new(),
-                        depth,
-                    }
-                )))
-            });
-
-            if node.0.read().unwrap().depth != depth {
-                node.0.write().unwrap().depth = depth;
-            }
-
-            if let Some(parent) = parent_node {
-                if !parent.0.read().unwrap().child_paths.contains(node) {
-                    parent.0.write().unwrap().child_paths.push(node.clone());
-                }
-            } else {
-                if !root_nodes.contains(node) {
-                    root_nodes.push(node.clone());
-                }
-            }
-
-            parent_node = Some(node.clone());
-        }
-    }
-    root_nodes
 }
 
 pub struct TreeNode {

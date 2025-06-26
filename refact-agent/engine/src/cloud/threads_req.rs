@@ -23,7 +23,8 @@ pub struct Thread {
 }
 
 pub async fn create_thread(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     located_fgroup_id: &str,
     ft_fexp_id: &str,
     ft_title: &str,
@@ -80,7 +81,8 @@ pub async fn create_thread(
     }
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -95,7 +97,8 @@ pub async fn create_thread(
 }
 
 pub async fn get_thread(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
 ) -> Result<Thread, String> {
     use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
@@ -125,7 +128,8 @@ pub async fn get_thread(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -140,7 +144,8 @@ pub async fn get_thread(
 }
 
 pub async fn get_threads_app_captured(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     located_fgroup_id: &str,
     ft_app_searchable: &str,
     ft_app_capture: &str,
@@ -172,7 +177,8 @@ pub async fn get_threads_app_captured(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -193,7 +199,8 @@ pub async fn get_threads_app_captured(
 }
 
 pub async fn set_thread_toolset(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     ft_toolset: Vec<Value>,
 ) -> Result<Vec<Value>, String> {
@@ -215,7 +222,8 @@ pub async fn set_thread_toolset(
     });
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -240,7 +248,8 @@ pub async fn set_thread_toolset(
 }
 
 pub async fn lock_thread(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     hash: &str,
 ) -> Result<(), String> {
@@ -254,7 +263,8 @@ pub async fn lock_thread(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -280,9 +290,10 @@ pub async fn lock_thread(
 }
 
 pub async fn unlock_thread(
-    api_key: String,
-    thread_id: String,
-    hash: String,
+    cmd_address_url: &str,
+    api_key: &str ,
+    thread_id: &str,
+    hash: &str,
 ) -> Result<(), String> {
     use crate::cloud::graphql_client::{execute_graphql_bool_result, GraphQLRequestConfig};
     
@@ -294,7 +305,8 @@ pub async fn unlock_thread(
     "#;
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -320,9 +332,10 @@ pub async fn unlock_thread(
 }
 
 pub async fn set_error_thread(
-    api_key: String,
-    thread_id: String,
-    error: String,
+    cmd_address_url: &str,
+    api_key: &str,
+    thread_id: &str,
+    error: &str,
 ) -> Result<(), String> {
     use crate::cloud::graphql_client::{execute_graphql_no_result, GraphQLRequestConfig};
     
@@ -342,7 +355,8 @@ pub async fn set_error_thread(
     });
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -357,7 +371,8 @@ pub async fn set_error_thread(
 }
 
 pub async fn set_thread_confirmation_request(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     confirmation_request: Value,
 ) -> Result<bool, String> {
@@ -378,7 +393,8 @@ pub async fn set_thread_confirmation_request(
     });
 
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 

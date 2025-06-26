@@ -68,7 +68,10 @@ pub async fn trigger_threads_subscription_restart(gcx: Arc<ARwLock<GlobalContext
 }
 
 pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
-    let api_key = gcx.read().await.cmdline.api_key.clone();
+    let (address_url, api_key) = {
+        let gcx_read = gcx.read().await;
+        (gcx_read.cmdline.address_url.clone(), gcx_read.cmdline.api_key.clone())
+    };
     loop {
         {
             let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
@@ -86,7 +89,7 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             "starting subscription for threads_in_group with fgroup_id=\"{}\"",
             located_fgroup_id
         );
-        let connection_result = initialize_connection(api_key.clone(), &located_fgroup_id).await;
+        let connection_result = initialize_connection(&address_url, &api_key, &located_fgroup_id).await;
         let mut connection = match connection_result {
             Ok(conn) => conn,
             Err(err) => {
@@ -100,8 +103,9 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
         let events_result = events_loop(
             gcx.clone(),
             &mut connection,
-            api_key.clone(),
-            located_fgroup_id.clone()
+            &address_url,
+            &api_key,
+            &located_fgroup_id
         ).await;
         if let Err(err) = events_result {
             error!("failed to process events: {}", err);
@@ -121,7 +125,8 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
 }
 
 pub async fn initialize_connection(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     located_fgroup_id: &str,
 ) -> Result<
     futures::stream::SplitStream<
@@ -131,7 +136,7 @@ pub async fn initialize_connection(
     >,
     String,
 > {
-    let url = Url::parse(crate::constants::GRAPHQL_WS_URL)
+    let url = Url::parse(&crate::constants::get_graphql_ws_url(cmd_address_url))
         .map_err(|e| format!("Failed to parse WebSocket URL: {}", e))?;
     let mut request = url
         .into_client_request()
@@ -220,18 +225,19 @@ async fn events_loop(
             tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
         >,
     >,
-    api_key: String,
-    located_fgroup_id: String,
+    cmd_address_url: &str,
+    api_key: &str,
+    located_fgroup_id: &str,
 ) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
     let app_searchable_id = gcx.read().await.app_searchable_id.clone();
-    let basic_info = get_basic_info(api_key.clone()).await?;
+    let basic_info = get_basic_info(cmd_address_url, api_key).await?;
     while let Some(msg) = connection.next().await {
-        if gcx.read().await.shutdown_flag.load(Ordering::SeqCst) {
+        if gcx.clone().read().await.shutdown_flag.load(Ordering::SeqCst) {
             info!("shutting down threads subscription");
             break;
         }
-        if gcx.read().await.threads_subscription_restart_flag.load(Ordering::SeqCst) {
+        if gcx.clone().read().await.threads_subscription_restart_flag.load(Ordering::SeqCst) {
             info!("restart flag detected, restarting threads subscription");
             return Ok(());
         }
@@ -257,12 +263,13 @@ async fn events_loop(
                                 let gcx_clone = gcx.clone();
                                 let payload_clone = payload.clone();
                                 let basic_info_clone = basic_info.clone();
-                                let api_key_clone = api_key.clone();
+                                let cmd_address_url_clone = cmd_address_url.to_string();
+                                let api_key_clone = api_key.to_string();
                                 let app_searchable_id_clone = app_searchable_id.clone();
-                                let located_fgroup_id_clone = located_fgroup_id.clone();
+                                let located_fgroup_id_clone = located_fgroup_id.to_string();
                                 tokio::spawn(async move {
                                     crate::cloud::threads_processing::process_thread_event(
-                                        gcx_clone, &payload_clone, &basic_info_clone, api_key_clone, app_searchable_id_clone, located_fgroup_id_clone
+                                        gcx_clone, payload_clone, basic_info_clone, cmd_address_url_clone, api_key_clone, app_searchable_id_clone, located_fgroup_id_clone
                                     ).await 
                                 });
                             } else {
@@ -298,7 +305,7 @@ async fn events_loop(
     Ok(())
 }
 
-pub async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
+pub async fn get_basic_info(cmd_address_url: &str, api_key: &str) -> Result<BasicStuff, String> {
     let query = r#"
     query GetBasicInfo {
       query_basic_stuff {
@@ -314,7 +321,8 @@ pub async fn get_basic_info(api_key: String) -> Result<BasicStuff, String> {
     "#;
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };

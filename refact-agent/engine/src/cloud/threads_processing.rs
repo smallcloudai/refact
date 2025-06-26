@@ -103,11 +103,12 @@ async fn initialize_thread(
     ft_fexp_id: &str,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
-    api_key: String,
-    located_fgroup_id: String
+    cmd_address_url: &str,
+    api_key: &str,
+    located_fgroup_id: &str
 ) -> Result<(), String> {
-    let expert = crate::cloud::experts_req::get_expert(api_key.clone(), ft_fexp_id).await?;
-    let cloud_tools = crate::cloud::cloud_tools_req::get_cloud_tools(api_key.clone(), &located_fgroup_id).await?;
+    let expert = crate::cloud::experts_req::get_expert(cmd_address_url, api_key, ft_fexp_id).await?;
+    let cloud_tools = crate::cloud::cloud_tools_req::get_cloud_tools(cmd_address_url, api_key, located_fgroup_id).await?;
     info!("retrieving cloud tools for thread `{}`: {:?}", thread.ft_id, cloud_tools);
     let last_message = thread_messages.iter()
         .max_by_key(|x| x.ftm_num)
@@ -135,7 +136,7 @@ async fn initialize_thread(
             })
             .map(|x| x.into_openai_style())
     );
-    crate::cloud::threads_req::set_thread_toolset(api_key.clone(), &thread.ft_id, tool_descriptions).await?;
+    crate::cloud::threads_req::set_thread_toolset(cmd_address_url, api_key, &thread.ft_id, tool_descriptions).await?;
     let updated_system_prompt = crate::scratchpads::chat_utils_prompts::system_prompt_add_extra_instructions(
         gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
     ).await;
@@ -159,7 +160,8 @@ async fn initialize_thread(
         ftm_user_preferences: last_message.ftm_user_preferences.clone(),
     }];
     crate::cloud::messages_req::create_thread_messages(
-        api_key,
+        &cmd_address_url,
+        &api_key,
         &thread.ft_id,
         output_thread_messages,
     ).await?;
@@ -170,7 +172,8 @@ async fn call_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
-    api_key: String
+    cmd_address_url: &str,
+    api_key: &str
 ) -> Result<(), String> {
     // TODO: think of better ways to handle these params
     let n_ctx = 128000;
@@ -320,14 +323,14 @@ async fn call_tools(
 
     if !required_confirmation.is_empty() {
         if !crate::cloud::threads_req::set_thread_confirmation_request(
-            api_key.clone(), &thread.ft_id, serde_json::to_value(required_confirmation.clone()).unwrap()
+            cmd_address_url, api_key, &thread.ft_id, serde_json::to_value(required_confirmation.clone()).unwrap()
         ).await? {
             warn!("tool use: cannot set confirmation requests: {:?}", required_confirmation);
         }
     }
 
     if !all_output_messages.is_empty() {
-        crate::cloud::messages_req::create_thread_messages(api_key, &thread.ft_id, all_output_messages).await?;
+        crate::cloud::messages_req::create_thread_messages(cmd_address_url, api_key, &thread.ft_id, all_output_messages).await?;
     } else {
         info!("thread `{}` has no tool output messages. Skipping it", thread.ft_id);
     }
@@ -336,8 +339,9 @@ async fn call_tools(
 
 pub async fn process_thread_event(
     gcx: Arc<ARwLock<GlobalContext>>,
-    thread_payload: &ThreadPayload,
-    basic_info: &BasicStuff,
+    thread_payload: ThreadPayload,
+    basic_info: BasicStuff,
+    cmd_address_url: String,
     api_key: String,
     app_searchable_id: String,
     located_fgroup_id: String,
@@ -365,7 +369,7 @@ pub async fn process_thread_event(
 
     let hash = generate_random_hash(16);
     let thread_id = thread_payload.ft_id.clone();
-    let lock_result = lock_thread(api_key.clone(), &thread_id, &hash).await;
+    let lock_result = lock_thread(&cmd_address_url, &api_key, &thread_id, &hash).await;
     if let Err(err) = lock_result {
         info!("failed to lock thread `{}` with hash `{}`: {}", thread_id, hash, err);
         return Ok(());
@@ -373,12 +377,13 @@ pub async fn process_thread_event(
     info!("thread `{}` locked successfully with hash `{}`", thread_id, hash);
     let process_result = process_locked_thread(
         gcx, 
-        thread_payload, 
-        &thread_id, 
-        api_key.clone(),
-        located_fgroup_id
+        &thread_payload, 
+        &thread_id,
+        &cmd_address_url,
+        &api_key,
+        &located_fgroup_id
     ).await;
-    match crate::cloud::threads_req::unlock_thread(api_key.clone(), thread_id.clone(), hash).await {
+    match crate::cloud::threads_req::unlock_thread(&cmd_address_url, &api_key, &thread_id, &hash).await {
         Ok(_) => info!("thread `{}` unlocked successfully", thread_id),
         Err(err) => {
             error!("failed to unlock thread `{}`: {}", thread_id, err);
@@ -391,11 +396,13 @@ async fn process_locked_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread_payload: &ThreadPayload,
     thread_id: &str,
-    api_key: String,
-    located_fgroup_id: String
+    cmd_address_url: &str,
+    api_key: &str,
+    located_fgroup_id: &str
 ) -> Result<(), String> {
     let messages = match crate::cloud::messages_req::get_thread_messages(
-        api_key.clone(),
+        &cmd_address_url,
+        &api_key,
         thread_id,
         thread_payload.ft_need_tool_calls,
     ).await {
@@ -408,7 +415,7 @@ async fn process_locked_thread(
         info!("thread `{}` has no messages. Skipping it", thread_id);
         return Ok(());
     }
-    let thread = match crate::cloud::threads_req::get_thread(api_key.clone(), thread_id).await {
+    let thread = match crate::cloud::threads_req::get_thread(cmd_address_url, api_key, thread_id).await {
         Ok(t) => t,
         Err(e) => {
             return Err(e);
@@ -429,17 +436,15 @@ async fn process_locked_thread(
     let result = if need_to_append_system {
         let ft_fexp_id = thread.ft_fexp_id.clone().expect("checked before");
         info!("initializing system prompt for thread `{}`", thread_id);
-        initialize_thread(gcx.clone(), &ft_fexp_id, &thread, &messages, api_key.clone(), located_fgroup_id).await
+        initialize_thread(gcx.clone(), &ft_fexp_id, &thread, &messages, cmd_address_url, api_key, located_fgroup_id).await
     } else {
         info!("calling tools for thread `{}`", thread_id);
-        call_tools(gcx.clone(), &thread, &messages, api_key.clone()).await
+        call_tools(gcx.clone(), &thread, &messages, cmd_address_url, api_key).await
     };
     if let Err(err) = &result {
         info!("failed to process thread `{}`, setting error: {}", thread_id, err);
         if let Err(set_err) = crate::cloud::threads_req::set_error_thread(
-            api_key.clone(), 
-            thread_id.to_string(), 
-            err.clone()
+            cmd_address_url, api_key, thread_id, err
         ).await {
             return Err(format!("Failed to set error on thread: {}", set_err));
         }

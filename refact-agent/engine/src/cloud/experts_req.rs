@@ -56,7 +56,8 @@ impl Expert {
 }
 
 pub async fn get_expert(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     fexp_id: &str
 ) -> Result<Expert, String> {
     use crate::cloud::graphql_client::{execute_graphql, GraphQLRequestConfig};
@@ -78,7 +79,8 @@ pub async fn get_expert(
     "#;
     
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         ..Default::default()
     };
 
@@ -93,6 +95,7 @@ pub async fn get_expert(
 }
 
 pub async fn expert_choice_consequences(
+    cmd_address_url: &str,
     api_key: &str,
     fexp_id: &str,
     fgroup_id: &str,
@@ -113,6 +116,7 @@ pub async fn expert_choice_consequences(
     "#;
     
     let config = GraphQLRequestConfig {
+        address: cmd_address_url.to_string(),
         api_key: api_key.to_string(),
         ..Default::default()
     };

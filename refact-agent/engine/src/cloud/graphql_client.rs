@@ -6,9 +6,11 @@ use serde::Serialize;
 use reqwest::Client;
 use serde_json::{Value, json};
 use log::error;
+use crate::constants::get_graphql_url;
 
 /// Configuration for GraphQL requests
 pub struct GraphQLRequestConfig {
+    pub address: String,
     pub api_key: String,
     pub user_agent: Option<String>,
     pub additional_headers: Option<HashMap<String, String>>,
@@ -17,6 +19,7 @@ pub struct GraphQLRequestConfig {
 impl Default for GraphQLRequestConfig {
     fn default() -> Self {
         Self {
+            address: String::new(),
             api_key: String::new(),
             user_agent: Some("refact-lsp".to_string()),
             additional_headers: None,
@@ -84,7 +87,7 @@ where
     let client = Client::new();
     
     let mut request_builder = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
+        .post(&get_graphql_url(&config.address))
         .header("Authorization", format!("Bearer {}", config.api_key))
         .header("Content-Type", "application/json");
     
@@ -173,7 +176,7 @@ where
     let client = Client::new();
     
     let mut request_builder = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
+        .post(&get_graphql_url(&config.address))
         .header("Authorization", format!("Bearer {}", config.api_key))
         .header("Content-Type", "application/json");
     
@@ -254,7 +257,7 @@ where
     let client = Client::new();
     
     let mut request_builder = client
-        .post(&crate::constants::GRAPHQL_URL.to_string())
+        .post(&get_graphql_url(&config.address))
         .header("Authorization", format!("Bearer {}", config.api_key))
         .header("Content-Type", "application/json");
     
