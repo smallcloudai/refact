@@ -17,8 +17,8 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   const apiKey = useAppSelector(selectConfig).apiKey;
   const baseUrl = "app.refact.ai/v1/graphql";
 
-  const protocol = "https";
-  const wsProtocol = "wss";
+  const protocol = "http";
+  const wsProtocol = "ws";
 
   const wsClient = useMemo(
     () =>
