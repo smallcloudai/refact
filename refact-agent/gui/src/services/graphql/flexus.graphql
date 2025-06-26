@@ -109,3 +109,13 @@ query ToolsForGroup($located_fgroup_id: String!) {
     owner_fuser_id
   }
 }
+
+mutation ThreadConfirmationResponse(
+  $confirmation_response: String = ""
+  $ft_id: String = ""
+) {
+  thread_set_confirmation_response(
+    ft_id: $ft_id
+    confirmation_response: $confirmation_response
+  )
+}

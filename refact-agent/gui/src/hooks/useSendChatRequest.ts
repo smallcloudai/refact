@@ -43,7 +43,6 @@ import {
   clearPauseReasonsAndHandleToolsStatus,
   getToolsConfirmationStatus,
   getToolsInteractionStatus,
-  resetConfirmationInteractedState,
   setPauseReasons,
 } from "../features/ToolConfirmation/confirmationSlice";
 import {
@@ -55,7 +54,6 @@ import {
   setIsWaitingForResponse,
   setLastUserMessageId,
   setPreventSend,
-  upsertToolCall,
 } from "../features/Chat";
 
 import { v4 as uuidv4 } from "uuid";
@@ -270,31 +268,6 @@ export const useSendChatRequest = () => {
     [abort, sendMessages, dispatch, areToolsConfirmed],
   );
 
-  const confirmToolUsage = useCallback(() => {
-    dispatch(
-      clearPauseReasonsAndHandleToolsStatus({
-        wasInteracted: true,
-        confirmationStatus: true,
-      }),
-    );
-
-    dispatch(setIsWaitingForResponse(false));
-  }, [dispatch]);
-
-  const rejectToolUsage = useCallback(
-    (toolCallIds: string[]) => {
-      toolCallIds.forEach((toolCallId) => {
-        dispatch(upsertToolCall({ toolCallId, chatId, accepted: false }));
-      });
-
-      dispatch(resetConfirmationInteractedState());
-      dispatch(setIsWaitingForResponse(false));
-      dispatch(doneStreaming({ id: chatId }));
-      dispatch(setPreventSend({ id: chatId }));
-    },
-    [chatId, dispatch],
-  );
-
   const retryFromIndex = useCallback(
     (index: number, question: UserMessage["ftm_content"]) => {
       const messagesToKeep = currentMessages.slice(0, index);
@@ -311,9 +284,9 @@ export const useSendChatRequest = () => {
     abort,
     retry,
     retryFromIndex,
-    confirmToolUsage,
+
     maybeAddImagesToQuestion,
-    rejectToolUsage,
+
     sendMessages,
   };
 };

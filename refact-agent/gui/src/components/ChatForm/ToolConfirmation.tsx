@@ -3,35 +3,93 @@ import {
   PATCH_LIKE_FUNCTIONS,
   useAppDispatch,
   useAppSelector,
-  useSendChatRequest,
+  // useSendChatRequest,
   // useEventsBusForIDE
 } from "../../hooks";
 import { Card, Button, Text, Flex } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
-import { Link } from "../Link";
 import styles from "./ToolConfirmation.module.css";
-import { push } from "../../features/Pages/pagesSlice";
-// here
-import {
-  isAssistantMessage,
-  isToolCall,
-  ToolConfirmationPauseReason,
-} from "../../services/refact";
+import { isAssistantMessage, isToolCall } from "../../services/refact";
 
-// here
-import {
-  selectChatId,
-  selectMessages,
-  setAutomaticPatch,
-} from "../../features/Chat";
 import {
   selectThreadMessages,
-  selectMessagesFromEndNode,
-  selectToolConfirmationRequests,
+  selectThreadMeta,
+  selectThreadEnd,
+  ToolConfirmationRequest,
 } from "../../features/ThreadMessages";
+import {
+  createMessage,
+  tooConfirmationThunk,
+} from "../../services/graphql/graphqlThunks";
+import { FThreadMessageInput } from "../../../generated/documents";
+import { parseOrElse } from "../../utils/parseOrElse";
+
+function useToolConfirmation() {
+  const dispatch = useAppDispatch();
+  const threadMeta = useAppSelector(selectThreadMeta);
+  const threadEnd = useAppSelector(selectThreadEnd);
+
+  const confirmToolUsage = useCallback(
+    (ids: string[]) => {
+      if (!threadMeta?.ft_id) return;
+      const action = tooConfirmationThunk({
+        ft_id: threadMeta.ft_id,
+        confirmation_response: JSON.stringify(ids),
+      });
+      void dispatch(action);
+    },
+    [dispatch, threadMeta?.ft_id],
+  );
+
+  const rejectToolUsage = useCallback(
+    (ids: string[]) => {
+      // TODO: find the message with the tool call
+      if (!threadMeta?.ft_id) return;
+      const messagesToSend: FThreadMessageInput[] = ids.map((id, index) => {
+        return {
+          ftm_role: "tool",
+          ftm_belongs_to_ft_id: threadMeta.ft_id,
+          ftm_content: JSON.stringify("The user rejected the changes."),
+          ftm_call_id: id,
+          ftm_num: threadEnd.endNumber + index + 1,
+          ftm_alt: threadEnd.endAlt,
+          ftm_prev_alt: threadEnd.endPrevAlt,
+          ftm_provenance: "null",
+        };
+      });
+      const action = createMessage({
+        input: {
+          ftm_belongs_to_ft_id: threadMeta.ft_id,
+          messages: messagesToSend,
+        },
+      });
+
+      void dispatch(action);
+    },
+    [
+      dispatch,
+      threadEnd.endAlt,
+      threadEnd.endNumber,
+      threadEnd.endPrevAlt,
+      threadMeta?.ft_id,
+    ],
+  );
+
+  const allowAll = useCallback(() => {
+    if (!threadMeta?.ft_id) return;
+    const action = tooConfirmationThunk({
+      ft_id: threadMeta.ft_id,
+      confirmation_response: JSON.stringify(["*"]),
+    });
+
+    void dispatch(action);
+  }, [dispatch, threadMeta?.ft_id]);
+
+  return { confirmToolUsage, rejectToolUsage, allowAll };
+}
 
 type ToolConfirmationProps = {
-  pauseReasons: ToolConfirmationPauseReason[];
+  toolConfirmationRequests: ToolConfirmationRequest[];
 };
 
 const getConfirmationMessage = (
@@ -68,110 +126,96 @@ const getConfirmationMessage = (
 };
 
 // here
-export const ToolConfirmation: React.FC<ToolConfirmationProps> = () =>
-  // {pauseReasons}
-  {
-    const dispatch = useAppDispatch();
-    // can we remove pause reasons ?
-    const chatId = useAppSelector(selectChatId);
+export const ToolConfirmation: React.FC<ToolConfirmationProps> = ({
+  toolConfirmationRequests,
+}) => {
+  const commands = toolConfirmationRequests.map((reason) => reason.command);
+  const rules = toolConfirmationRequests.map((reason) => reason.rule);
+  const types = toolConfirmationRequests.map((_) => "confirmation"); // "confirmation" or "denial"
+  const toolCallIds = toolConfirmationRequests.map(
+    (reason) => reason.tool_call_id,
+  );
 
-    const toolConfirmationRequests = useAppSelector(
-      selectToolConfirmationRequests,
-    );
+  const isPatchConfirmation = commands.some((command) =>
+    PATCH_LIKE_FUNCTIONS.includes(command),
+  );
 
-    const commands = toolConfirmationRequests.map((reason) => reason.command);
-    const rules = toolConfirmationRequests.map((reason) => reason.rule);
-    const types = toolConfirmationRequests.map((_) => "confirmation"); // "confirmation" or "denial"
-    const toolCallIds = toolConfirmationRequests.map(
-      (reason) => reason.tool_call_id,
-    );
+  // TBD: integration chats?
+  // const integrationPaths = toolConfirmationRequests.map(
+  //   (reason) => reason.integr_config_path ?? null,
+  // );
 
-    const isPatchConfirmation = commands.some((command) =>
-      PATCH_LIKE_FUNCTIONS.includes(command),
-    );
+  // assuming that at least one path out of all objects is not null so we can show up the link
+  // const maybeIntegrationPath = integrationPaths.find((path) => path !== null);
 
-    // TBD: integration chats?
-    // const integrationPaths = toolConfirmationRequests.map(
-    //   (reason) => reason.integr_config_path ?? null,
-    // );
+  const allConfirmation = types.every((type) => type === "confirmation");
+  const confirmationCommands = commands.filter(
+    (_, i) => types[i] === "confirmation",
+  );
+  const denialCommands = commands.filter((_, i) => types[i] === "denial");
 
-    // assuming that at least one path out of all objects is not null so we can show up the link
-    // const maybeIntegrationPath = integrationPaths.find((path) => path !== null);
+  const { rejectToolUsage, confirmToolUsage, allowAll } = useToolConfirmation();
 
-    const allConfirmation = types.every((type) => type === "confirmation");
-    const confirmationCommands = commands.filter(
-      (_, i) => types[i] === "confirmation",
-    );
-    const denialCommands = commands.filter((_, i) => types[i] === "denial");
+  const handleAllowForThisChat = useCallback(() => {
+    allowAll();
+  }, [allowAll]);
 
-    // const { rejectToolUsage, confirmToolUsage } = useSendChatRequest();
+  const handleReject = useCallback(() => {
+    rejectToolUsage(toolCallIds);
+  }, [rejectToolUsage, toolCallIds]);
 
-    const rejectToolUsage = useCallback((_ids: string[]) => {
-      // TODO: create a tool message with the rejected tool call id and a mesage
-    }, []);
+  const handleConfirmation = useCallback(() => {
+    confirmToolUsage(toolCallIds);
+  }, [confirmToolUsage, toolCallIds]);
 
-    const confirmToolUsage = useCallback(() => {
-      // TODO: patch thread to add `ft_confirmation_response`
-    }, []);
+  const message = getConfirmationMessage(
+    commands,
+    rules,
+    types,
+    confirmationCommands,
+    denialCommands,
+  );
 
-    // this
-    const handleAllowForThisChat = () => {
-      dispatch(setAutomaticPatch({ chatId, value: true }));
-      confirmToolUsage();
-    };
+  if (confirmationCommands.length === 0) return null;
 
-    const handleReject = useCallback(() => {
-      rejectToolUsage(toolCallIds);
-    }, [rejectToolUsage, toolCallIds]);
-
-    const message = getConfirmationMessage(
-      commands,
-      rules,
-      types,
-      confirmationCommands,
-      denialCommands,
-    );
-
-    if (confirmationCommands.length === 0) return null;
-
-    // TODO: this should use the confirmation requests and not the messages
-    if (isPatchConfirmation) {
-      // TODO: think of multiple toolcalls support
-      return (
-        <PatchConfirmation
-          handleAllowForThisChat={handleAllowForThisChat}
-          rejectToolUsage={handleReject}
-          confirmToolUsage={confirmToolUsage}
-        />
-      );
-    }
-
+  // TODO: this should use the confirmation requests and not the messages
+  if (isPatchConfirmation) {
+    // TODO: think of multiple toolcalls support
     return (
-      <Card className={styles.ToolConfirmationCard}>
-        <Flex
-          align="start"
-          justify="between"
-          direction="column"
-          wrap="wrap"
-          gap="4"
-        >
-          <Flex align="start" direction="column" gap="3" maxWidth="100%">
-            <Flex
-              align="baseline"
-              gap="1"
-              className={styles.ToolConfirmationHeading}
-            >
-              <Text as="span">⚠️</Text>
-              <Text>Model {allConfirmation ? "wants" : "tried"} to run:</Text>
-            </Flex>
-            {commands.map((command, i) => (
-              <Markdown
-                key={toolCallIds[i]}
-              >{`${"```bash\n"}${command}${"\n```"}`}</Markdown>
-            ))}
-            <Text className={styles.ToolConfirmationText}>
-              <Markdown color="indigo">{message.concat("\n\n")}</Markdown>
-              {/* {maybeIntegrationPath && (
+      <PatchConfirmation
+        handleAllowForThisChat={handleAllowForThisChat}
+        rejectToolUsage={handleReject}
+        confirmToolUsage={handleConfirmation}
+      />
+    );
+  }
+
+  return (
+    <Card className={styles.ToolConfirmationCard}>
+      <Flex
+        align="start"
+        justify="between"
+        direction="column"
+        wrap="wrap"
+        gap="4"
+      >
+        <Flex align="start" direction="column" gap="3" maxWidth="100%">
+          <Flex
+            align="baseline"
+            gap="1"
+            className={styles.ToolConfirmationHeading}
+          >
+            <Text as="span">⚠️</Text>
+            <Text>Model {allConfirmation ? "wants" : "tried"} to run:</Text>
+          </Flex>
+          {commands.map((command, i) => (
+            <Markdown
+              key={toolCallIds[i]}
+            >{`${"```bash\n"}${command}${"\n```"}`}</Markdown>
+          ))}
+          <Text className={styles.ToolConfirmationText}>
+            <Markdown color="indigo">{message.concat("\n\n")}</Markdown>
+            {/* {maybeIntegrationPath && (
                 <Text className={styles.ToolConfirmationText} mt="3">
                   You can modify the ruleset on{" "}
                   <Link
@@ -190,32 +234,32 @@ export const ToolConfirmation: React.FC<ToolConfirmationProps> = () =>
                   </Link>
                 </Text>
               )} */}
-            </Text>
-          </Flex>
-          <Flex align="end" justify="start" gap="2" direction="row">
+          </Text>
+        </Flex>
+        <Flex align="end" justify="start" gap="2" direction="row">
+          <Button
+            color="grass"
+            variant="surface"
+            size="1"
+            onClick={handleConfirmation}
+          >
+            {allConfirmation ? "Confirm" : "Continue"}
+          </Button>
+          {allConfirmation && (
             <Button
-              color="grass"
+              color="red"
               variant="surface"
               size="1"
-              onClick={confirmToolUsage}
+              onClick={handleReject}
             >
-              {allConfirmation ? "Confirm" : "Continue"}
+              Stop
             </Button>
-            {allConfirmation && (
-              <Button
-                color="red"
-                variant="surface"
-                size="1"
-                onClick={handleReject}
-              >
-                Stop
-              </Button>
-            )}
-          </Flex>
+          )}
         </Flex>
-      </Card>
-    );
-  };
+      </Flex>
+    </Card>
+  );
+};
 
 type PatchConfirmationProps = {
   handleAllowForThisChat: () => void;
@@ -238,17 +282,24 @@ const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
   }, [assistantMessages]);
 
   const toolCalls = Array.isArray(lastAssistantMessage?.ftm_tool_calls)
-    ? lastAssistantMessage.ftm_tool_calls.filter(isToolCall)
+    ? lastAssistantMessage.ftm_tool_calls
+        .filter(isToolCall)
+        .filter((message) => {
+          return (
+            message.function.name &&
+            PATCH_LIKE_FUNCTIONS.includes(message.function.name)
+          );
+        })
     : null;
 
-  if (!toolCalls) return;
+  if (!toolCalls || toolCalls.length === 0) return;
 
-  const parsedArgsFromToolCall = JSON.parse(
+  const parsedArgsFromToolCall = parseOrElse<{ path: string; tickets: string }>(
     toolCalls[0].function.arguments,
-  ) as {
-    path: string;
-    tickets: string;
-  };
+    { path: "", tickets: "" },
+  );
+  console.log({ parsedArgsFromToolCall, toolCalls });
+
   const extractedFileNameFromPath =
     parsedArgsFromToolCall.path.split(/[/\\]/)[
       parsedArgsFromToolCall.path.split(/[/\\]/).length - 1

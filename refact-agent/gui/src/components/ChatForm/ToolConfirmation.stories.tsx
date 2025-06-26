@@ -31,7 +31,7 @@ const MockedStore: React.FC<{
     <Provider store={store}>
       <AbortControllerProvider>
         <Theme accentColor="gray">
-          <ToolConfirmation pauseReasons={pauseReasons} />
+          <ToolConfirmation toolConfirmationRequests={[]} />
         </Theme>
       </AbortControllerProvider>
     </Provider>

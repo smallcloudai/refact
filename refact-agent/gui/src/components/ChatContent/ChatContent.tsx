@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import { ScrollArea, ScrollAreaWithAnchor } from "../ScrollArea";
 import { Flex, Container, Button, Box } from "@radix-ui/themes";

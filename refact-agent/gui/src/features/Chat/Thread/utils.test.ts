@@ -1649,6 +1649,7 @@ describe("mergeToolCalls", () => {
         function: {
           arguments: '{"',
         },
+        id: "call_8Btwv94t0eH60msyRQHFCxyU",
         index: 0,
       },
     ];

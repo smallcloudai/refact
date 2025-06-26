@@ -50,7 +50,7 @@ import {
   InformationCallout,
 } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
-import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+// import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import {
   // AttachImagesButton,
   FileList,
@@ -61,6 +61,7 @@ import {
   selectIsStreaming,
   selectIsWaiting,
   selectThreadMessagesIsEmpty,
+  selectToolConfirmationRequests,
 } from "../../features/ThreadMessages";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
@@ -92,9 +93,11 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const globalErrorType = useAppSelector(getErrorType);
   // const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
-  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const isOnline = useIsOnline();
+  const toolConfirmationRequests = useAppSelector(
+    selectToolConfirmationRequests,
+  );
   // const { retry } = useSendChatRequest();
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
@@ -305,9 +308,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  if (!isStreaming) {
+  if (!isStreaming && toolConfirmationRequests.length > 0) {
     return (
-      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
+      <ToolConfirmation toolConfirmationRequests={toolConfirmationRequests} />
     );
   }
 

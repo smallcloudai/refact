@@ -33,6 +33,9 @@ import {
   ToolsForGroupQueryVariables,
   ToolsForGroupDocument,
   FCloudTool,
+  ThreadConfirmationResponseMutation,
+  ThreadConfirmationResponseMutationVariables,
+  ThreadConfirmationResponseDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -125,7 +128,7 @@ export const messagesSub = createAsyncThunk<
 });
 
 export const createMessage = createAppAsyncThunk<
-  unknown,
+  MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
   {
     dispatch: AppDispatch;
@@ -149,6 +152,11 @@ export const createMessage = createAppAsyncThunk<
     thunkAPI.dispatch(setError(result.error.message));
     return thunkAPI.rejectWithValue({
       message: result.error.message,
+      args,
+    });
+  } else if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "create message: no data in response",
       args,
     });
   }
@@ -411,3 +419,39 @@ export const getToolsForGroupThunk = createAppAsyncThunk<
 });
 
 // TODO: patch thread tools
+
+export const tooConfirmationThunk = createAppAsyncThunk<
+  ThreadConfirmationResponseMutation,
+  ThreadConfirmationResponseMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: {
+      message: string;
+      args: ThreadConfirmationResponseMutationVariables;
+    };
+  }
+>("flexus/tools/confirmation/response", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const result = await client.mutation<
+    ThreadConfirmationResponseMutation,
+    ThreadConfirmationResponseMutationVariables
+  >(ThreadConfirmationResponseDocument, args);
+
+  console.log("confirmation response");
+  console.log(result);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  } else if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "failed to confirm tools",
+      args,
+    });
+  }
+
+  return thunkAPI.fulfillWithValue(result.data);
+});

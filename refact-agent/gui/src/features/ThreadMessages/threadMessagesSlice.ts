@@ -4,8 +4,6 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import {
-  FThreadMessageOutput,
-  FThreadMessageSubs,
   FThreadOutput,
   MessagesSubscriptionSubscription,
 } from "../../../generated/documents";
@@ -21,15 +19,10 @@ import {
   pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
 import { isToolMessage } from "../../events";
-import {
-  isAssistantMessage,
-  isCDInstructionMessage,
-  isToolCall,
-  ToolMessage,
-} from "../../services/refact";
+import { isToolCall, ToolMessage } from "../../services/refact";
 
 // TODO: move this somewhere
-type ToolConfirmationRequest = {
+export type ToolConfirmationRequest = {
   rule: string; // "default"
   command: string;
   ftm_num: number;
@@ -181,6 +174,13 @@ export const threadMessagesSlice = createSlice({
           action.payload.comprehensive_thread_subs.news_payload_id
         ] =
           action.payload.comprehensive_thread_subs.news_payload_thread_message;
+
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) =>
+            n !==
+            action.payload.comprehensive_thread_subs.news_payload_thread_message
+              ?.ftm_alt,
+        );
       }
 
       if (
@@ -272,6 +272,7 @@ export const threadMessagesSlice = createSlice({
   },
   selectors: {
     selectThreadMessages: (state) => Object.values(state.messages),
+    selectThreadMeta: (state) => state.thread,
     selectThreadId: (state) => state.ft_id,
     selectIsWaiting: (state) => {
       const maybeBranch = state.waitingBranches.find(
@@ -280,6 +281,7 @@ export const threadMessagesSlice = createSlice({
       return !!maybeBranch;
     },
     selectIsStreaming: (state) => {
+      if (state.streamingBranches.length === 0) return false;
       const maybeBranch = state.streamingBranches.find(
         (branch) => branch === state.endAlt,
       );
@@ -379,24 +381,43 @@ export const threadMessagesSlice = createSlice({
 
     selectToolConfirmationRequests: (state) => {
       if (!state.thread) return [];
+      if (
+        Array.isArray(state.thread.ft_confirmation_response) &&
+        state.thread.ft_confirmation_response.includes("*")
+      ) {
+        return [];
+      }
       const messages = Object.values(state.messages);
       if (messages.length === 0) return [];
       if (!state.thread.ft_confirmation_request) return [];
       if (!Array.isArray(state.thread.ft_confirmation_request)) return [];
+      const responses = Array.isArray(state.thread.ft_confirmation_response)
+        ? state.thread.ft_confirmation_response
+        : [];
       const toolRequests = state.thread.ft_confirmation_request.filter(
         isToolConfirmationRequest,
       );
 
-      return toolRequests;
-      // TBD: do request accumulate after they are called?
-      // const maybeArray = Array.isArray(state.thread.ft_confirmation_response)
-      //   ? state.thread.ft_confirmation_response
-      //   : [];
-      // const confirmed: string[] = maybeArray.filter(
-      //   (res) => typeof res === "string",
-      // );
-      // note rejected messages are tool messages sent by the user
+      const messageIds = messages.map((message) => message.ftm_call_id);
+      const unresolved = toolRequests.filter(
+        (req) =>
+          !responses.includes(req.tool_call_id) &&
+          !messageIds.includes(req.tool_call_id),
+      );
+
+      return unresolved;
     },
+    selectMessageByToolCallId: createSelector(
+      [selectMessagesValues, (_messages, id: string) => id],
+      (messages, id) => {
+        return messages.find((message) => {
+          if (!Array.isArray(message.ftm_tool_calls)) return false;
+          return message.ftm_tool_calls
+            .filter(isToolCall)
+            .some((toolCall) => toolCall.id === id);
+        });
+      },
+    ),
   },
 
   extraReducers(builder) {
@@ -465,4 +486,6 @@ export const {
   selectManyToolMessagesByIds,
   selectToolMessageById,
   selectToolConfirmationRequests,
+  selectThreadMeta,
+  selectMessageByToolCallId,
 } = threadMessagesSlice.selectors;
