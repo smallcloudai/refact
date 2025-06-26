@@ -223,7 +223,7 @@ export function useGroupTree() {
     ],
   );
 
-  const handleCreateAccountClick = useCallback(
+  const handleCreateWorkspaceClick = useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       event.stopPropagation();
@@ -324,7 +324,7 @@ export function useGroupTree() {
     touchNode,
     handleSkipWorkspaceSelection,
     handleConfirmSelectionClick,
-    handleCreateAccountClick,
+    handleCreateWorkspaceClick,
     // Setters
     setGroupTreeData,
     setCurrentSelectedTeamsGroupNode,
