@@ -222,9 +222,13 @@ async fn call_tools(
     ccx.lock().await.tokens_for_rag = max_new_tokens;
 
     let confirmed_tool_call_ids: Vec<String> = if let Some(confirmation_response) = &thread.ft_confirmation_response {
-        serde_json::from_value(confirmation_response.clone()).map_err(|err| {
-            format!("error parsing confirmation response: {}", err)
-        })?
+        if confirmation_response.as_str().unwrap_or("") == "*" {
+            last_tool_calls.iter().map(|x| x.id.clone()).collect()
+        } else {
+            serde_json::from_value(confirmation_response.clone()).map_err(|err| {
+                format!("error parsing confirmation response: {}", err)
+            })?
+        }
     } else { vec![] };
     let waiting_for_confirmation = if let Some(confirmation_response) = &thread.ft_confirmation_response {
         match serde_json::from_value::<Vec<serde_json::Value>>(confirmation_response.clone()) {
