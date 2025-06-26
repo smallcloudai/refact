@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { Box, Checkbox, Flex, Text, Tooltip } from "@radix-ui/themes";
-import { BookmarkFilledIcon, ChevronDownIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon, StarFilledIcon } from "@radix-ui/react-icons";
 import type { NodeRendererProps } from "react-arborist";
 import { FolderIcon } from "./FolderIcon";
 
@@ -158,7 +158,7 @@ export const CustomTreeNode = <T extends FlexusTreeNode>({
         <Tooltip
           content={`Current IDE workspace "${currentWorkspaceName}" may be a good match for this group`}
         >
-          <BookmarkFilledIcon />
+          <StarFilledIcon />
         </Tooltip>
       )}
     </Flex>
