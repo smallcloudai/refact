@@ -8,7 +8,7 @@ import {
   selectIsStreaming,
   selectIsWaiting,
 } from "../../features/ThreadMessages";
-import { useAppSelector, useLastSentCompressionStop } from "../../hooks";
+import { useAppSelector /*useLastSentCompressionStop*/ } from "../../hooks";
 import {
   calculateUsageInputTokens,
   mergeUsages,
@@ -19,7 +19,7 @@ import { selectMessagesFromEndNode } from "../../features/ThreadMessages";
 export function useUsageCounter() {
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const compressionStop = useLastSentCompressionStop();
+  // const compressionStop = useLastSentCompressionStop();
   // here, change to selectFromEndNode
   // const messages = useAppSelector(selectMessages);
   const messagesInBranch = useAppSelector(selectMessagesFromEndNode, {
@@ -44,18 +44,28 @@ export function useUsageCounter() {
     });
   }, [currentThreadUsage]);
 
-  const isOverflown = useMemo(() => {
-    if (compressionStop.strength === "low") return true;
-    if (compressionStop.strength === "medium") return true;
-    if (compressionStop.strength === "high") return true;
-    return false;
-  }, [compressionStop.strength]);
+  const isOverflown = useMemo(
+    () => {
+      // if (compressionStop.strength === "low") return true;
+      // if (compressionStop.strength === "medium") return true;
+      // if (compressionStop.strength === "high") return true;
+      return false;
+    },
+    [
+      /*compressionStop.strength*/
+    ],
+  );
 
-  const isWarning = useMemo(() => {
-    if (compressionStop.strength === "medium") return true;
-    if (compressionStop.strength === "high") return true;
-    return false;
-  }, [compressionStop.strength]);
+  const isWarning = useMemo(
+    () => {
+      // if (compressionStop.strength === "medium") return true;
+      // if (compressionStop.strength === "high") return true;
+      return false;
+    },
+    [
+      /*compressionStop.strength*/
+    ],
+  );
 
   const shouldShow = useMemo(() => {
     return messagesInBranch.length > 0 && !isStreaming && !isWaiting;

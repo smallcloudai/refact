@@ -37,6 +37,7 @@ const ElementForNodeMessage: React.FC<{
 
     // TODO: why is this an error
     return (
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       <AssistantInput toolCalls={message.ftm_tool_calls}>
         {message.ftm_content}
       </AssistantInput>
@@ -49,6 +50,7 @@ const ElementForNodeMessage: React.FC<{
 
   if (isChatContextFileMessage(message)) {
     // TODO: why is this a linter error?
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     return <ContextFiles files={message.ftm_content} />;
   }
 
