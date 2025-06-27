@@ -42,7 +42,7 @@ pub async fn run_tool(
             return Err(format!("Tool use: couldn't parse arguments: {}. Error:\n{}", t_call.function.arguments, e));
         }
     };
-    
+
     match tool.match_against_confirm_deny(ccx.clone(), &args).await {
         Ok(res) => {
             match res.result {
@@ -94,7 +94,7 @@ pub async fn run_tool(
         Some(m) => m,
         None => return Err(format!("tool use: failed to get output message from tool: {}", t_call.function.name)),
     };
-    
+
     Ok((tool_result, other_messages, context_files))
 }
 
@@ -102,17 +102,12 @@ async fn initialize_thread(
     gcx: Arc<ARwLock<GlobalContext>>,
     ft_fexp_id: &str,
     thread: &Thread,
-    thread_messages: &Vec<ThreadMessage>,
     cmd_address_url: &str,
     api_key: &str,
     located_fgroup_id: &str
 ) -> Result<(), String> {
     let expert = crate::cloud::experts_req::get_expert(cmd_address_url, api_key, ft_fexp_id).await?;
     let cloud_tools = crate::cloud::cloud_tools_req::get_cloud_tools(cmd_address_url, api_key, located_fgroup_id).await?;
-    let last_message = thread_messages.iter()
-        .max_by_key(|x| x.ftm_num)
-        .ok_or("No last message found".to_string())
-        .clone()?;
     let tools: Vec<Box<dyn Tool + Send>> =
         crate::tools::tools_list::get_available_tools(gcx.clone())
             .await
@@ -140,8 +135,8 @@ async fn initialize_thread(
         gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
     ).await;
     let output_thread_messages = vec![ThreadMessage {
-        ftm_belongs_to_ft_id: last_message.ftm_belongs_to_ft_id.clone(),
-        ftm_alt: last_message.ftm_alt.clone(),
+        ftm_belongs_to_ft_id: ft_fexp_id.to_string(),
+        ftm_alt: 100,  // convention, system prompt always at num=0, alt=100
         ftm_num: 0,
         ftm_prev_alt: 100,
         ftm_role: "system".to_string(),
@@ -151,12 +146,12 @@ async fn initialize_thread(
         ftm_tool_calls: None,
         ftm_call_id: "".to_string(),
         ftm_usage: None,
-        ftm_created_ts: std::time::SystemTime::now()
+        ftm_created_ts: std::time::SystemTime::now()    // XXX not accepted by server
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs_f64(),
         ftm_provenance: json!({"system_type": "refact_lsp", "version": env!("CARGO_PKG_VERSION") }),
-        ftm_user_preferences: last_message.ftm_user_preferences.clone(),
+        ftm_user_preferences: None,
     }];
     crate::cloud::messages_req::create_thread_messages(
         &cmd_address_url,
@@ -171,6 +166,7 @@ async fn call_tools(
     gcx: Arc<ARwLock<GlobalContext>>,
     thread: &Thread,
     thread_messages: &Vec<ThreadMessage>,
+    alt: i64,
     cmd_address_url: &str,
     api_key: &str
 ) -> Result<(), String> {
@@ -178,7 +174,7 @@ async fn call_tools(
     let n_ctx = 128000;
     let top_n = 12;
     let max_new_tokens = 8192;
-    
+
     let last_message = thread_messages.iter()
         .max_by_key(|x| x.ftm_num)
         .ok_or("No last message found".to_string())
@@ -187,15 +183,11 @@ async fn call_tools(
         .rev()
         .find(|x| x.ftm_role == "assistant" && x.ftm_tool_calls.is_some())
         .cloned()
-        .map(|x| 
+        .map(|x|
             crate::cloud::messages_req::convert_thread_messages_to_messages(&vec![x.clone()])[0].clone()
         )
         .map(|x| x.tool_calls.clone().expect("checked before"))
         .ok_or("No last assistant message with tool calls found".to_string())?;
-    let (alt, prev_alt) = thread_messages
-        .last()
-        .map(|msg| (msg.ftm_alt, msg.ftm_prev_alt))
-        .unwrap_or((0, 0));
     let messages = crate::cloud::messages_req::convert_thread_messages_to_messages(thread_messages)
         .into_iter()
         .filter(|x| x.role != "kernel")
@@ -216,7 +208,7 @@ async fn call_tools(
     let mut all_tool_output_messages = vec![];
     let mut all_context_files = vec![];
     let mut all_other_messages = vec![];
-    let mut tool_id_to_index = HashMap::new();
+    let mut tool_id_to_num = HashMap::new();
     let mut required_confirmation = vec![];
     // Default tokens limit for tools that perform internal compression (`tree()`, ...)
     ccx.lock().await.tokens_for_rag = max_new_tokens;
@@ -271,7 +263,7 @@ async fn call_tools(
                             "tool_call_id": t_call.id,
                             "command": confirm_deny_res.command,
                             "rule": confirm_deny_res.rule,
-                            "ftm_num": last_message.ftm_num + 1 + (idx as i32),
+                            "ftm_num": last_message.ftm_num + 1 + idx as i64,
                         }));
                     }
                     continue;
@@ -281,7 +273,7 @@ async fn call_tools(
         } else {
             info!("tool use: tool call `{}` is confirmed, processing to call it", t_call.id);
         }
-        
+
         let (tool_result, other_messages, context_files) = match run_tool(ccx.clone(), t_call, tool).await {
             Ok(res) => res,
             Err(err) => {
@@ -299,26 +291,26 @@ async fn call_tools(
         all_tool_output_messages.push(tool_result);
         all_context_files.extend(context_files);
         all_other_messages.extend(other_messages);
-        tool_id_to_index.insert(t_call.id.clone(), last_message.ftm_num + 1 + (idx as i32));
+        tool_id_to_num.insert(t_call.id.clone(), last_message.ftm_num + 1 + idx as i64);
     }
-    
+
     let reserve_for_context = max_tokens_for_rag_chat_by_tools(&last_tool_calls, &all_context_files, n_ctx, max_new_tokens);
     ccx.lock().await.tokens_for_rag = reserve_for_context;
     let (generated_tool, generated_other) = pp_run_tools(
-        ccx.clone(), &vec![], false, all_tool_output_messages, 
+        ccx.clone(), &vec![], false, all_tool_output_messages,
         all_other_messages, &mut all_context_files, reserve_for_context, &None,
     ).await;
-    let mut afterwards_index = last_message.ftm_num + last_tool_calls.len() as i32 + 1;
+    let mut afterwards_num = last_message.ftm_num + last_tool_calls.len() as i64 + 1;
     let mut all_output_messages = vec![];
     for msg in generated_tool.into_iter().chain(generated_other.into_iter()) {
-        let index = if let Some(index) = tool_id_to_index.get(&msg.tool_call_id) {
-            index.clone()
+        let dest_num = if let Some(dest_num) = tool_id_to_num.get(&msg.tool_call_id) {
+            dest_num.clone()
         } else {
-            afterwards_index += 1;
-            afterwards_index - 1
+            afterwards_num += 1;
+            afterwards_num - 1
         };
         let output_thread_messages = crate::cloud::messages_req::convert_messages_to_thread_messages(
-            vec![msg], alt, prev_alt, index, &thread.ft_id, last_message.ftm_user_preferences.clone(),
+            vec![msg], alt, alt, dest_num, &thread.ft_id, last_message.ftm_user_preferences.clone(),
         )?;
         all_output_messages.extend(output_thread_messages);
     }
@@ -348,14 +340,14 @@ pub async fn process_thread_event(
     app_searchable_id: String,
     located_fgroup_id: String,
 ) -> Result<(), String> {
-    if thread_payload.ft_need_tool_calls == -1 
-        || thread_payload.owner_fuser_id != basic_info.fuser_id 
+    if thread_payload.ft_need_tool_calls == -1
+        || thread_payload.owner_fuser_id != basic_info.fuser_id
         || !thread_payload.ft_locked_by.is_empty() {
         return Ok(());
     }
     if let Some(ft_app_searchable) = thread_payload.ft_app_searchable.clone() {
         if ft_app_searchable != app_searchable_id {
-            info!("thread `{}` has different `app_searchable` id, skipping it: {} != {}", 
+            info!("thread `{}` has different `app_searchable` id, skipping it: {} != {}",
                 thread_payload.ft_id, app_searchable_id, ft_app_searchable
             );
             return Ok(());
@@ -378,8 +370,8 @@ pub async fn process_thread_event(
     }
     info!("thread `{}` locked successfully with hash `{}`", thread_id, hash);
     let process_result = process_locked_thread(
-        gcx, 
-        &thread_payload, 
+        gcx,
+        &thread_payload,
         &thread_id,
         &cmd_address_url,
         &api_key,
@@ -402,6 +394,7 @@ async fn process_locked_thread(
     api_key: &str,
     located_fgroup_id: &str
 ) -> Result<(), String> {
+    let alt = thread_payload.ft_need_tool_calls;
     let messages = match crate::cloud::messages_req::get_thread_messages(
         &cmd_address_url,
         &api_key,
@@ -438,10 +431,10 @@ async fn process_locked_thread(
     let result = if need_to_append_system {
         let ft_fexp_id = thread.ft_fexp_id.clone().expect("checked before");
         info!("initializing system prompt for thread `{}`", thread_id);
-        initialize_thread(gcx.clone(), &ft_fexp_id, &thread, &messages, cmd_address_url, api_key, located_fgroup_id).await
+        initialize_thread(gcx.clone(), &ft_fexp_id, &thread, cmd_address_url, api_key, located_fgroup_id).await
     } else {
         info!("calling tools for thread `{}`", thread_id);
-        call_tools(gcx.clone(), &thread, &messages, cmd_address_url, api_key).await
+        call_tools(gcx.clone(), &thread, &messages, alt, cmd_address_url, api_key).await
     };
     if let Err(err) = &result {
         info!("failed to process thread `{}`, setting error: {}", thread_id, err);

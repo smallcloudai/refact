@@ -37,6 +37,7 @@ pub struct BasicStuff {
     pub workspaces: Vec<Value>,
 }
 
+// XXX use xxx_subs::filter for ft_app_capture
 const THREADS_SUBSCRIPTION_QUERY: &str = r#"
     subscription ThreadsPageSubs($located_fgroup_id: String!) {
       threads_in_group(located_fgroup_id: $located_fgroup_id) {
@@ -100,7 +101,7 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             }
         };
 
-        let events_result = events_loop(
+        let events_result = actual_subscription_loop(
             gcx.clone(),
             &mut connection,
             &address_url,
@@ -218,7 +219,7 @@ pub async fn initialize_connection(
     Ok(read)
 }
 
-async fn events_loop(
+async fn actual_subscription_loop(
     gcx: Arc<ARwLock<GlobalContext>>,
     connection: &mut futures::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<
@@ -270,7 +271,7 @@ async fn events_loop(
                                 tokio::spawn(async move {
                                     crate::cloud::threads_processing::process_thread_event(
                                         gcx_clone, payload_clone, basic_info_clone, cmd_address_url_clone, api_key_clone, app_searchable_id_clone, located_fgroup_id_clone
-                                    ).await 
+                                    ).await
                                 });
                             } else {
                                 info!("failed to parse thread payload: {:?}", threads_in_group);
@@ -319,7 +320,7 @@ pub async fn get_basic_info(cmd_address_url: &str, api_key: &str) -> Result<Basi
       }
     }
     "#;
-    
+
     let config = GraphQLRequestConfig {
         address: cmd_address_url.to_string(),
         api_key: api_key.to_string(),
@@ -328,9 +329,9 @@ pub async fn get_basic_info(cmd_address_url: &str, api_key: &str) -> Result<Basi
     };
 
     execute_graphql::<BasicStuff, _>(
-        config, 
-        query, 
-        json!({}), 
+        config,
+        query,
+        json!({}),
         "query_basic_stuff"
     )
     .await
