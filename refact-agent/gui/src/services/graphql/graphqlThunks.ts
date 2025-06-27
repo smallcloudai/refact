@@ -1,5 +1,4 @@
 import { createGraphqlClient, createSubscription } from "./createClient";
-import { createAppAsyncThunk } from "./createAppAsyncThunk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 import {
@@ -49,9 +48,13 @@ import {
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
 
-export const threadsPageSub = createAppAsyncThunk<
+export const threadsPageSub = createAsyncThunk<
   unknown,
-  ThreadsPageSubsSubscriptionVariables
+  ThreadsPageSubsSubscriptionVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+  }
 >("graphql/threadsPageSub", (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
@@ -173,7 +176,7 @@ export const messagesSub = createAsyncThunk<
   // return thunkApi.fulfillWithValue({});
 });
 
-export const createMessage = createAppAsyncThunk<
+export const createMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
   {
@@ -366,7 +369,7 @@ function isGetAppSearchableResponse(
   return typeof response.app_searchable_id === "string";
 }
 
-export const pauseThreadThunk = createAppAsyncThunk<
+export const pauseThreadThunk = createAsyncThunk<
   ThreadPatchMutation,
   { id: string },
   {
@@ -395,7 +398,7 @@ export const pauseThreadThunk = createAppAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const getExpertsThunk = createAppAsyncThunk<
+export const getExpertsThunk = createAsyncThunk<
   ExpertsForGroupQuery,
   ExpertsForGroupQueryVariables,
   {
@@ -427,7 +430,7 @@ export const getExpertsThunk = createAppAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const getModelsForExpertThunk = createAppAsyncThunk<
+export const getModelsForExpertThunk = createAsyncThunk<
   ModelsForExpertQuery,
   ModelsForExpertQueryVariables,
   {
@@ -461,7 +464,7 @@ export const getModelsForExpertThunk = createAppAsyncThunk<
 });
 
 // Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
-export const getToolsForGroupThunk = createAppAsyncThunk<
+export const getToolsForGroupThunk = createAsyncThunk<
   ToolsForGroupQuery,
   ToolsForGroupQueryVariables,
   {
@@ -492,7 +495,7 @@ export const getToolsForGroupThunk = createAppAsyncThunk<
 
 // TODO: patch thread tools
 
-export const toolConfirmationThunk = createAppAsyncThunk<
+export const toolConfirmationThunk = createAsyncThunk<
   ThreadConfirmationResponseMutation,
   ThreadConfirmationResponseMutationVariables,
   {
