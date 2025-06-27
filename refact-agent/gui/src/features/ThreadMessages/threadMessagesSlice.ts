@@ -3,7 +3,10 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import { MessagesSubscriptionSubscription } from "../../../generated/documents";
+import {
+  FThreadMessageOutput,
+  MessagesSubscriptionSubscription,
+} from "../../../generated/documents";
 import {
   FTMMessage,
   makeMessageTrie,
@@ -408,6 +411,18 @@ export const threadMessagesSlice = createSlice({
         });
       },
     ),
+
+    selectLastMessageForAlt: createSelector(
+      [selectMessagesValues, (_messages, alt: number) => alt],
+      (messages, alt) => {
+        const messagesForAlt = messages.filter(
+          (message) => message.ftm_alt === alt,
+        );
+        if (messagesForAlt.length === 0) return null;
+        const last = messagesForAlt.sort((a, b) => b.ftm_num - a.ftm_num)[0];
+        return last;
+      },
+    ),
   },
 
   extraReducers(builder) {
@@ -481,4 +496,5 @@ export const {
   selectToolConfirmationRequests,
   selectThreadMeta,
   selectMessageByToolCallId,
+  selectLastMessageForAlt,
 } = threadMessagesSlice.selectors;

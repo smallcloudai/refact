@@ -308,7 +308,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  if (!isStreaming && toolConfirmationRequests.length > 0) {
+  if (toolConfirmationRequests.length > 0) {
     return (
       <ToolConfirmation toolConfirmationRequests={toolConfirmationRequests} />
     );

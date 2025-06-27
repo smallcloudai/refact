@@ -9,9 +9,9 @@ import {
   newChatAction,
   chatAskQuestionThunk,
   newIntegrationChat,
-  setIsWaitingForResponse,
-  upsertToolCall,
-  sendCurrentChatToLspAfterToolCallUpdate,
+  // setIsWaitingForResponse,
+  // upsertToolCall,
+  // sendCurrentChatToLspAfterToolCallUpdate,
   chatResponse,
   chatError,
 } from "../features/Chat/Thread";
@@ -42,7 +42,15 @@ import {
 } from "../hooks/useEventBusForIDE";
 
 import { isToolResponse, modelsApi, providersApi } from "../services/refact";
-import { selectToolConfirmationRequests } from "../features/ThreadMessages";
+import {
+  selectLastMessageForAlt,
+  selectMessageByToolCallId,
+  selectToolConfirmationRequests,
+} from "../features/ThreadMessages";
+import {
+  rejectToolUsageAction,
+  toolConfirmationThunk,
+} from "../services/graphql/graphqlThunks";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -459,29 +467,39 @@ startListening({
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
-    // TODO: this should let flexus know that the user accepted the tool
-    listenerApi.dispatch(upsertToolCall(action.payload));
-    // listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
+    // TODO: reject, will require making a new message so the chat must be loaded
+    if (state.threadMessages.thread?.ft_id !== action.payload.chatId) return;
 
-    const toolsToBeConfirmed = selectToolConfirmationRequests(state);
-
-    const pauseReasons = toolsToBeConfirmed.filter(
-      (reason) => reason.tool_call_id !== action.payload.toolCallId,
+    // Check if already confirmed
+    const pendingRequests = selectToolConfirmationRequests(state);
+    const maybePendingToolCall = pendingRequests.find(
+      (req) => req.tool_call_id === action.payload.toolCallId,
     );
+    if (!maybePendingToolCall) return;
 
-    if (pauseReasons.length === 0) {
-      // listenerApi.dispatch(resetConfirmationInteractedState());
-      listenerApi.dispatch(setIsWaitingForResponse(false));
+    if (action.payload.accepted) {
+      const thunk = toolConfirmationThunk({
+        ft_id: action.payload.chatId,
+        confirmation_response: JSON.stringify([action.payload.toolCallId]),
+      });
+      void listenerApi.dispatch(thunk);
+      return;
     }
 
-    if (pauseReasons.length === 0 && action.payload.accepted) {
-      void listenerApi.dispatch(
-        sendCurrentChatToLspAfterToolCallUpdate({
-          chatId: action.payload.chatId,
-          toolCallId: action.payload.toolCallId,
-        }),
-      );
-    }
+    // rejection creates a new message at the end of the thread
+    // find the parent, then find the end point
+    const message = selectMessageByToolCallId(state, action.payload.toolCallId);
+    if (!message) return;
+    const lastMessage = selectLastMessageForAlt(state, message.ftm_alt);
+    if (!lastMessage) return;
+    const rejectAction = rejectToolUsageAction(
+      [action.payload.toolCallId],
+      action.payload.chatId,
+      lastMessage.ftm_num,
+      lastMessage.ftm_alt,
+      lastMessage.ftm_prev_alt,
+    );
+    void listenerApi.dispatch(rejectAction);
   },
 });
 

@@ -18,10 +18,9 @@ import {
   ToolConfirmationRequest,
 } from "../../features/ThreadMessages";
 import {
-  createMessage,
-  tooConfirmationThunk,
+  rejectToolUsageAction,
+  toolConfirmationThunk,
 } from "../../services/graphql/graphqlThunks";
-import { FThreadMessageInput } from "../../../generated/documents";
 import { parseOrElse } from "../../utils/parseOrElse";
 
 function useToolConfirmation() {
@@ -32,7 +31,7 @@ function useToolConfirmation() {
   const confirmToolUsage = useCallback(
     (ids: string[]) => {
       if (!threadMeta?.ft_id) return;
-      const action = tooConfirmationThunk({
+      const action = toolConfirmationThunk({
         ft_id: threadMeta.ft_id,
         confirmation_response: JSON.stringify(ids),
       });
@@ -45,25 +44,13 @@ function useToolConfirmation() {
     (ids: string[]) => {
       // TODO: find the message with the tool call
       if (!threadMeta?.ft_id) return;
-      const messagesToSend: FThreadMessageInput[] = ids.map((id, index) => {
-        return {
-          ftm_role: "tool",
-          ftm_belongs_to_ft_id: threadMeta.ft_id,
-          ftm_content: JSON.stringify("The user rejected the changes."),
-          ftm_call_id: id,
-          ftm_num: threadEnd.endNumber + index + 1,
-          ftm_alt: threadEnd.endAlt,
-          ftm_prev_alt: threadEnd.endPrevAlt,
-          ftm_provenance: "null",
-        };
-      });
-      const action = createMessage({
-        input: {
-          ftm_belongs_to_ft_id: threadMeta.ft_id,
-          messages: messagesToSend,
-        },
-      });
-
+      const action = rejectToolUsageAction(
+        ids,
+        threadMeta.ft_id,
+        threadEnd.endNumber,
+        threadEnd.endAlt,
+        threadEnd.endPrevAlt,
+      );
       void dispatch(action);
     },
     [
@@ -77,7 +64,7 @@ function useToolConfirmation() {
 
   const allowAll = useCallback(() => {
     if (!threadMeta?.ft_id) return;
-    const action = tooConfirmationThunk({
+    const action = toolConfirmationThunk({
       ft_id: threadMeta.ft_id,
       confirmation_response: JSON.stringify(["*"]),
     });
