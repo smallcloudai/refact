@@ -125,7 +125,6 @@ export const messagesSub = createAsyncThunk<
           news_action: result.data.comprehensive_thread_subs.news_action,
           news_payload_id:
             result.data.comprehensive_thread_subs.news_payload_id,
-          // TODO: odd type error :/ missing properties
           news_payload_thread:
             result.data.comprehensive_thread_subs.news_payload_thread,
         }),
@@ -158,7 +157,6 @@ export const messagesSub = createAsyncThunk<
           news_action: result.data.comprehensive_thread_subs.news_action,
           news_payload_id:
             result.data.comprehensive_thread_subs.news_payload_id,
-          // TODO: odd type here
           news_payload_thread_message:
             result.data.comprehensive_thread_subs.news_payload_thread_message,
         }),

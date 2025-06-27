@@ -47,6 +47,18 @@ function isToolConfirmationRequest(
   return true;
 }
 
+type Thread = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread"]
+>;
+
+type Delta = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["stream_delta"]
+>;
+
+type Message = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
+>;
+
 type InitialState = {
   waitingBranches: number[]; // alt numbers
   streamingBranches: number[]; // alt number
@@ -55,7 +67,7 @@ type InitialState = {
   endNumber: number;
   endAlt: number;
   endPrevAlt: number;
-  thread: FThreadOutput | null;
+  thread: Thread | null;
 };
 
 const initialState: InitialState = {
@@ -99,7 +111,7 @@ export const threadMessagesSlice = createSlice({
       action: PayloadAction<{
         news_action: string;
         news_payload_id: string;
-        news_payload_thread: FThreadOutput;
+        news_payload_thread: Thread;
       }>,
     ) => {
       if (state.thread === null && action.payload.news_action === "UPDATE") {
@@ -141,7 +153,7 @@ export const threadMessagesSlice = createSlice({
       action: PayloadAction<{
         news_action: string;
         news_payload_id: string;
-        stream_delta: FThreadDelta;
+        stream_delta: Delta;
       }>,
     ) => {
       if (action.payload.news_action !== "DELTA") return state;
@@ -208,7 +220,7 @@ export const threadMessagesSlice = createSlice({
       action: PayloadAction<{
         news_action: string;
         news_payload_id: string;
-        news_payload_thread_message: FThreadMessageOutput;
+        news_payload_thread_message: Message;
       }>, // change this to FThreadMessageOutput
     ) => {
       if (!state.thread) return state;
