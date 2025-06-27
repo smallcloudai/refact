@@ -41,6 +41,7 @@ import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
 import { AppDispatch, RootState } from "../../app/store";
 import {
+  receiveDeltaStream,
   receiveThreadMessages,
   setThreadFtId,
 } from "../../features/ThreadMessages";
@@ -113,7 +114,16 @@ export const messagesSub = createAsyncThunk<
       // TBD: do we hang up on errors?
       thunkApi.dispatch(setError(result.error.message));
     }
-    if (result.data) {
+    if (result.data?.comprehensive_thread_subs.stream_delta) {
+      thunkApi.dispatch(
+        receiveDeltaStream({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+          stream_delta: result.data.comprehensive_thread_subs.stream_delta,
+        }),
+      );
+    } else if (result.data) {
       thunkApi.dispatch(receiveThreadMessages(result.data));
     }
   });

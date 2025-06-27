@@ -4,6 +4,7 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import {
+  FThreadDelta,
   FThreadOutput,
   MessagesSubscriptionSubscription,
 } from "../../../generated/documents";
@@ -92,9 +93,68 @@ export const threadMessagesSlice = createSlice({
   name: "threadMessages",
   initialState,
   reducers: {
+    receiveThread: (
+      state,
+      _action: PayloadAction<{
+        news_action: string;
+        news_payload_id: string;
+        thread: FThreadOutput;
+      }>,
+    ) => {
+      return state;
+      // thread updates
+    },
+    receiveDeltaStream: (
+      state,
+      action: PayloadAction<{
+        news_action: string;
+        news_payload_id: string;
+        stream_delta: FThreadDelta;
+      }>,
+    ) => {
+      if (action.payload.news_action !== "DELTA") return state;
+      if (
+        !state.thread?.ft_id ||
+        !action.payload.news_payload_id.startsWith(state.thread.ft_id)
+      ) {
+        return state;
+      }
+
+      if (
+        action.payload.news_payload_id in state.messages &&
+        "ftm_content" in action.payload.stream_delta
+      ) {
+        // TODO: multimodal could break this
+        state.messages[action.payload.news_payload_id].ftm_content +=
+          action.payload.stream_delta.ftm_content;
+        return state;
+      }
+
+      const infoFromId = getInfoFromId(action.payload.news_payload_id);
+      if (!infoFromId) return state;
+      if (!(action.payload.news_payload_id in state.messages)) {
+        const msg: FTMMessage = {
+          ...infoFromId,
+          ftm_role: action.payload.stream_delta.ftm_role,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          ftm_content: action.payload.stream_delta.ftm_content,
+          // TODO: these
+          ftm_call_id: "",
+          ftm_created_ts: 0,
+        };
+        state.messages[action.payload.news_payload_id] = msg;
+      }
+
+      if (!state.streamingBranches.includes(infoFromId.ftm_alt)) {
+        state.streamingBranches.push(infoFromId.ftm_alt);
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== infoFromId.ftm_alt,
+        );
+      }
+    },
     receiveThreadMessages: (
       state,
-      action: PayloadAction<MessagesSubscriptionSubscription>,
+      action: PayloadAction<MessagesSubscriptionSubscription>, // change this to FThreadMessageOutput
     ) => {
       console.log(
         "receiveMessages",
@@ -199,55 +259,6 @@ export const threadMessagesSlice = createSlice({
         }, {});
 
         state.messages = msgs;
-      }
-
-      const infoFromId = getInfoFromId(
-        action.payload.comprehensive_thread_subs.news_payload_id,
-      );
-
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "DELTA" &&
-        action.payload.comprehensive_thread_subs.stream_delta
-      ) {
-        if (
-          action.payload.comprehensive_thread_subs.news_payload_id in
-            state.messages &&
-          "ftm_content" in action.payload.comprehensive_thread_subs.stream_delta
-        ) {
-          // TODO: multimodal could break this
-          state.messages[
-            action.payload.comprehensive_thread_subs.news_payload_id
-          ].ftm_content +=
-            action.payload.comprehensive_thread_subs.stream_delta.ftm_content;
-        } else if (
-          infoFromId &&
-          !(
-            action.payload.comprehensive_thread_subs.news_payload_id in
-            state.messages
-          )
-        ) {
-          const msg: FTMMessage = {
-            ...infoFromId,
-            ftm_role:
-              action.payload.comprehensive_thread_subs.stream_delta.ftm_role,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            ftm_content:
-              action.payload.comprehensive_thread_subs.stream_delta.ftm_content,
-
-            // TODO: these
-            ftm_call_id: "",
-            ftm_created_ts: 0,
-          };
-          state.messages[
-            action.payload.comprehensive_thread_subs.news_payload_id
-          ] = msg;
-          if (!state.streamingBranches.includes(infoFromId.ftm_alt)) {
-            state.streamingBranches.push(infoFromId.ftm_alt);
-            state.waitingBranches = state.waitingBranches.filter(
-              (n) => n !== infoFromId.ftm_alt,
-            );
-          }
-        }
       }
     },
 
@@ -463,6 +474,7 @@ export const threadMessagesSlice = createSlice({
 });
 
 export const {
+  receiveDeltaStream,
   receiveThreadMessages,
   setThreadEnd,
   resetThread,
