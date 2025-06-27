@@ -3,12 +3,7 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import {
-  FThreadDelta,
-  FThreadMessageOutput,
-  FThreadOutput,
-  MessagesSubscriptionSubscription,
-} from "../../../generated/documents";
+import { MessagesSubscriptionSubscription } from "../../../generated/documents";
 import {
   FTMMessage,
   makeMessageTrie,
