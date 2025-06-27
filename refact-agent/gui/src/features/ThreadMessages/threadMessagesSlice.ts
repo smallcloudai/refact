@@ -110,13 +110,14 @@ export const threadMessagesSlice = createSlice({
       }>,
     ) => {
       if (state.thread === null && action.payload.news_action === "UPDATE") {
-        // TODO: some type error
         state.thread = action.payload.news_payload_thread;
       } else if (
         state.thread &&
         !action.payload.news_payload_id.startsWith(state.thread.ft_id)
       ) {
         return state;
+      } else {
+        state.thread = action.payload.news_payload_thread;
       }
 
       if (
