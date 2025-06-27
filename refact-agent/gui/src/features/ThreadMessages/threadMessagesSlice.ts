@@ -113,7 +113,7 @@ export const threadMessagesSlice = createSlice({
         state.thread = action.payload.news_payload_thread;
       } else if (
         state.thread &&
-        !action.payload.news_payload_id.startsWith(state.thread.ft_id)
+        action.payload.news_payload_id !== state.thread.ft_id
       ) {
         return state;
       } else {
