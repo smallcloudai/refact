@@ -60,7 +60,6 @@ const Template: React.FC<{
           <AbortControllerProvider>
             <Flex direction="column" align="stretch" height="100dvh">
               <Chat
-                unCalledTools={false}
                 host="web"
                 tabbed={false}
                 backFromChat={() => ({})}

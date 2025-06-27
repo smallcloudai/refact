@@ -9,9 +9,9 @@ import {
   newChatAction,
   chatAskQuestionThunk,
   newIntegrationChat,
-  setIsWaitingForResponse,
-  upsertToolCall,
-  sendCurrentChatToLspAfterToolCallUpdate,
+  // setIsWaitingForResponse,
+  // upsertToolCall,
+  // sendCurrentChatToLspAfterToolCallUpdate,
   chatResponse,
   chatError,
 } from "../features/Chat/Thread";
@@ -37,15 +37,20 @@ import { nextTip } from "../features/TipOfTheDay";
 import { telemetryApi } from "../services/refact/telemetry";
 import { CONFIG_PATH_URL, FULL_PATH_URL } from "../services/refact/consts";
 import {
-  resetConfirmationInteractedState,
-  updateConfirmationAfterIdeToolUse,
-} from "../features/ToolConfirmation/confirmationSlice";
-import {
   ideToolCallResponse,
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 
 import { isToolResponse, modelsApi, providersApi } from "../services/refact";
+import {
+  selectLastMessageForAlt,
+  selectMessageByToolCallId,
+  selectToolConfirmationRequests,
+} from "../features/ThreadMessages";
+import {
+  rejectToolUsageAction,
+  toolConfirmationThunk,
+} from "../services/graphql/graphqlThunks";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -72,7 +77,6 @@ startListening({
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       resetAttachedImagesSlice(),
-      resetConfirmationInteractedState(),
     ].forEach((api) => listenerApi.dispatch(api));
 
     listenerApi.dispatch(clearError());
@@ -107,21 +111,6 @@ startListening({
         : isDetailMessage(action.payload?.data)
           ? action.payload.data.detail
           : `fetching tool groups from lsp`;
-
-      listenerApi.dispatch(setError(message));
-      listenerApi.dispatch(setIsAuthError(isAuthError));
-    }
-    if (
-      toolsApi.endpoints.checkForConfirmation.matchRejected(action) &&
-      !action.meta.condition
-    ) {
-      const errorStatus = action.payload?.status;
-      const isAuthError = errorStatus === 401;
-      const message = isAuthError
-        ? AUTH_ERROR_MESSAGE
-        : isDetailMessage(action.payload?.data)
-          ? action.payload.data.detail
-          : `confirmation check from lsp`;
 
       listenerApi.dispatch(setError(message));
       listenerApi.dispatch(setIsAuthError(isAuthError));
@@ -471,32 +460,46 @@ startListening({
   },
 });
 
+// TODO: this should let flexus know that the user accepted the tool
 // Tool Call results from ide.
 startListening({
   actionCreator: ideToolCallResponse,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
 
-    listenerApi.dispatch(upsertToolCall(action.payload));
-    listenerApi.dispatch(updateConfirmationAfterIdeToolUse(action.payload));
+    // TODO: reject, will require making a new message so the chat must be loaded
+    if (state.threadMessages.thread?.ft_id !== action.payload.chatId) return;
 
-    const pauseReasons = state.confirmation.pauseReasons.filter(
-      (reason) => reason.tool_call_id !== action.payload.toolCallId,
+    // Check if already confirmed
+    const pendingRequests = selectToolConfirmationRequests(state);
+    const maybePendingToolCall = pendingRequests.find(
+      (req) => req.tool_call_id === action.payload.toolCallId,
     );
+    if (!maybePendingToolCall) return;
 
-    if (pauseReasons.length === 0) {
-      listenerApi.dispatch(resetConfirmationInteractedState());
-      listenerApi.dispatch(setIsWaitingForResponse(false));
+    if (action.payload.accepted) {
+      const thunk = toolConfirmationThunk({
+        ft_id: action.payload.chatId,
+        confirmation_response: JSON.stringify([action.payload.toolCallId]),
+      });
+      void listenerApi.dispatch(thunk);
+      return;
     }
 
-    if (pauseReasons.length === 0 && action.payload.accepted) {
-      void listenerApi.dispatch(
-        sendCurrentChatToLspAfterToolCallUpdate({
-          chatId: action.payload.chatId,
-          toolCallId: action.payload.toolCallId,
-        }),
-      );
-    }
+    // rejection creates a new message at the end of the thread
+    // find the parent, then find the end point
+    const message = selectMessageByToolCallId(state, action.payload.toolCallId);
+    if (!message) return;
+    const lastMessage = selectLastMessageForAlt(state, message.ftm_alt);
+    if (!lastMessage) return;
+    const rejectAction = rejectToolUsageAction(
+      [action.payload.toolCallId],
+      action.payload.chatId,
+      lastMessage.ftm_num,
+      lastMessage.ftm_alt,
+      lastMessage.ftm_prev_alt,
+    );
+    void listenerApi.dispatch(rejectAction);
   },
 });
 

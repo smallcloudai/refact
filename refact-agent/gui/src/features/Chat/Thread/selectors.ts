@@ -1,13 +1,6 @@
 import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
-import {
-  // CompressionStrength,
-  isAssistantMessage,
-  isDiffMessage,
-  isToolMessage,
-  isUserMessage,
-} from "../../../services/refact/types";
-import { takeFromLast } from "../../../utils/takeFromLast";
+import { isDiffMessage, isToolMessage } from "../../../services/refact/types";
 
 export const selectThread = (state: RootState) => state.chat.thread;
 export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
@@ -117,43 +110,5 @@ export const selectLastSentCompression = createSelector(
 
     // return lastCompression;
     return null;
-  },
-);
-
-export const selectHasUncalledTools = createSelector(
-  selectMessages,
-  (messages) => {
-    if (messages.length === 0) return false;
-    const tailMessages = takeFromLast(messages, isUserMessage);
-
-    const toolCalls = tailMessages.reduce<string[]>((acc, cur) => {
-      if (!isAssistantMessage(cur)) return acc;
-      if (!cur.ftm_tool_calls || cur.ftm_tool_calls.length === 0) return acc;
-      const curToolCallIds = cur.ftm_tool_calls
-        .map((toolCall) => toolCall.id)
-        .filter((id) => id !== undefined);
-
-      return [...acc, ...curToolCallIds];
-    }, []);
-
-    if (toolCalls.length === 0) return false;
-
-    const toolMessages = tailMessages
-      .map((msg) => {
-        if (isToolMessage(msg)) {
-          return msg.ftm_call_id;
-        }
-        if ("ftm_call_id" in msg && typeof msg.ftm_call_id === "string") {
-          return msg.ftm_call_id;
-        }
-        return undefined;
-      })
-      .filter((id): id is string => typeof id === "string");
-
-    const hasUnsentTools = toolCalls.some(
-      (toolCallId) => !toolMessages.includes(toolCallId),
-    );
-
-    return hasUnsentTools;
   },
 );

@@ -50,25 +50,18 @@ import {
   InformationCallout,
 } from "../Callout/Callout";
 import { ToolConfirmation } from "./ToolConfirmation";
-import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
+// import { getPauseReasonsWithPauseStatus } from "../../features/ToolConfirmation/confirmationSlice";
 import {
   // AttachImagesButton,
   FileList,
 } from "../Dropzone";
 // import { useAttachedImages } from "../../hooks/useAttachedImages";
-import {
-  // selectChatError,
-  // selectIsStreaming,
-  // selectIsWaiting,
-  // selectLastSentCompression,
-  // selectMessages,
-  selectThreadToolUse,
-  selectToolUse,
-} from "../../features/Chat";
+import { selectThreadToolUse, selectToolUse } from "../../features/Chat";
 import {
   selectIsStreaming,
   selectIsWaiting,
   selectThreadMessagesIsEmpty,
+  selectToolConfirmationRequests,
 } from "../../features/ThreadMessages";
 import { telemetryApi } from "../../services/refact";
 import { push } from "../../features/Pages/pagesSlice";
@@ -83,14 +76,12 @@ export type ChatFormProps = {
   onSubmit: (str: string) => void;
   onClose?: () => void;
   className?: string;
-  unCalledTools: boolean;
 };
 
 export const ChatForm: React.FC<ChatFormProps> = ({
   onSubmit,
   onClose,
   className,
-  unCalledTools,
 }) => {
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
@@ -102,14 +93,15 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const globalErrorType = useAppSelector(getErrorType);
   // const chatError = useAppSelector(selectChatError);
   const information = useAppSelector(getInformationMessage);
-  const pauseReasonsWithPause = useAppSelector(getPauseReasonsWithPauseStatus);
   const [helpInfo, setHelpInfo] = React.useState<React.ReactNode | null>(null);
   const isOnline = useIsOnline();
+  const toolConfirmationRequests = useAppSelector(
+    selectToolConfirmationRequests,
+  );
   // const { retry } = useSendChatRequest();
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-  // const lastSentCompression = useAppSelector(selectLastSentCompression);
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
@@ -315,9 +307,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
     );
   }
 
-  if (!isStreaming && pauseReasonsWithPause.pause) {
+  if (toolConfirmationRequests.length > 0) {
     return (
-      <ToolConfirmation pauseReasons={pauseReasonsWithPause.pauseReasons} />
+      <ToolConfirmation toolConfirmationRequests={toolConfirmationRequests} />
     );
   }
 
@@ -402,6 +394,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 <IconButton
                   size="1"
                   variant="ghost"
+                  // TODO: last sent compression?
                   // color={
                   //   lastSentCompression === "high"
                   //     ? "red"
@@ -412,12 +405,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                   title="Compress chat and continue"
                   type="button"
                   onClick={() => void compressChat()}
-                  disabled={
-                    messagesAreEmpty ||
-                    isStreaming ||
-                    isWaiting ||
-                    unCalledTools
-                  }
+                  disabled={messagesAreEmpty || isStreaming || isWaiting}
                   loading={compressChatRequest.isLoading || isCompressing}
                 >
                   <ArchiveIcon />

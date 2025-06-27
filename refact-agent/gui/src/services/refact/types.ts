@@ -31,23 +31,25 @@ export type ToolCall = {
   };
   index: number;
   type?: "function";
-  id?: string;
+  id: string;
   attached_files?: string[];
   subchat?: string;
 };
+
+export function isToolCall(toolCall: unknown): toolCall is ToolCall {
+  if (!toolCall) return false;
+  if (typeof toolCall !== "object") return false;
+  if (!("type" in toolCall)) return false;
+  if (typeof toolCall.type !== "string") return false;
+  if (!("id" in toolCall)) return false;
+  if (typeof toolCall.id !== "string") return false;
+  return toolCall.type === "function";
+}
 
 export type ToolUsage = {
   functionName: string;
   amountOfCalls: number;
 };
-
-function isToolCall(call: unknown): call is ToolCall {
-  if (!call) return false;
-  if (typeof call !== "object") return false;
-  if (!("function" in call)) return false;
-  if (!("index" in call)) return false;
-  return true;
-}
 
 export const validateToolCall = (toolCall: ToolCall) => {
   if (!isToolCall(toolCall)) return false;
@@ -333,8 +335,12 @@ export function isPlainTextMessage(
 }
 
 export function isCDInstructionMessage(
-  message: ChatMessage,
+  message: unknown,
 ): message is CDInstructionMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "cd_instruction";
 }
 

@@ -1,5 +1,4 @@
 import { createGraphqlClient, createSubscription } from "./createClient";
-import { createAppAsyncThunk } from "./createAppAsyncThunk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 import {
@@ -33,19 +32,29 @@ import {
   ToolsForGroupQueryVariables,
   ToolsForGroupDocument,
   FCloudTool,
+  ThreadConfirmationResponseMutation,
+  ThreadConfirmationResponseMutationVariables,
+  ThreadConfirmationResponseDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
 import { AppDispatch, RootState } from "../../app/store";
 import {
+  receiveDeltaStream,
+  receiveThread,
   receiveThreadMessages,
+  removeMessage,
   setThreadFtId,
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
 
-export const threadsPageSub = createAppAsyncThunk<
+export const threadsPageSub = createAsyncThunk<
   unknown,
-  ThreadsPageSubsSubscriptionVariables
+  ThreadsPageSubsSubscriptionVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+  }
 >("graphql/threadsPageSub", (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
@@ -106,12 +115,55 @@ export const messagesSub = createAsyncThunk<
 
       return thunkApi.fulfillWithValue({});
     }
+
+    // console.log(result);
     if (result.error) {
       // TBD: do we hang up on errors?
       thunkApi.dispatch(setError(result.error.message));
     }
-    if (result.data) {
-      thunkApi.dispatch(receiveThreadMessages(result.data));
+
+    if (result.data?.comprehensive_thread_subs.news_payload_thread) {
+      thunkApi.dispatch(
+        receiveThread({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+          news_payload_thread:
+            result.data.comprehensive_thread_subs.news_payload_thread,
+        }),
+      );
+    }
+    if (result.data?.comprehensive_thread_subs.stream_delta) {
+      thunkApi.dispatch(
+        receiveDeltaStream({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+          stream_delta: result.data.comprehensive_thread_subs.stream_delta,
+        }),
+      );
+    }
+
+    if (result.data?.comprehensive_thread_subs.news_action === "DELETE") {
+      thunkApi.dispatch(
+        removeMessage({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+        }),
+      );
+    }
+
+    if (result.data?.comprehensive_thread_subs.news_payload_thread_message) {
+      thunkApi.dispatch(
+        receiveThreadMessages({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+          news_payload_thread_message:
+            result.data.comprehensive_thread_subs.news_payload_thread_message,
+        }),
+      );
     }
   });
 
@@ -124,8 +176,8 @@ export const messagesSub = createAsyncThunk<
   // return thunkApi.fulfillWithValue({});
 });
 
-export const createMessage = createAppAsyncThunk<
-  unknown,
+export const createMessage = createAsyncThunk<
+  MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
   {
     dispatch: AppDispatch;
@@ -151,10 +203,41 @@ export const createMessage = createAppAsyncThunk<
       message: result.error.message,
       args,
     });
+  } else if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "create message: no data in response",
+      args,
+    });
   }
   // TODO: add the message to the message list
   return thunkAPI.fulfillWithValue(result.data);
 });
+
+export function rejectToolUsageAction(
+  ids: string[],
+  ft_id: string,
+  endNumber: number,
+  endAlt: number,
+  endPrevAlt: number,
+) {
+  const messagesToSend: FThreadMessageInput[] = ids.map((id, index) => {
+    return {
+      ftm_role: "tool",
+      ftm_belongs_to_ft_id: ft_id,
+      ftm_content: JSON.stringify("The user rejected the changes."),
+      ftm_call_id: id,
+      ftm_num: endNumber + index + 1,
+      ftm_alt: endAlt,
+      ftm_prev_alt: endPrevAlt,
+      ftm_provenance: "null",
+    };
+  });
+  const action = createMessage({
+    input: { messages: messagesToSend, ftm_belongs_to_ft_id: ft_id },
+  });
+
+  return action;
+}
 
 export const createThreadWithMessage = createAsyncThunk<
   MessageCreateMultipleMutation,
@@ -286,7 +369,7 @@ function isGetAppSearchableResponse(
   return typeof response.app_searchable_id === "string";
 }
 
-export const pauseThreadThunk = createAppAsyncThunk<
+export const pauseThreadThunk = createAsyncThunk<
   ThreadPatchMutation,
   { id: string },
   {
@@ -315,7 +398,7 @@ export const pauseThreadThunk = createAppAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const getExpertsThunk = createAppAsyncThunk<
+export const getExpertsThunk = createAsyncThunk<
   ExpertsForGroupQuery,
   ExpertsForGroupQueryVariables,
   {
@@ -347,7 +430,7 @@ export const getExpertsThunk = createAppAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const getModelsForExpertThunk = createAppAsyncThunk<
+export const getModelsForExpertThunk = createAsyncThunk<
   ModelsForExpertQuery,
   ModelsForExpertQueryVariables,
   {
@@ -381,7 +464,7 @@ export const getModelsForExpertThunk = createAppAsyncThunk<
 });
 
 // Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
-export const getToolsForGroupThunk = createAppAsyncThunk<
+export const getToolsForGroupThunk = createAsyncThunk<
   ToolsForGroupQuery,
   ToolsForGroupQueryVariables,
   {
@@ -411,3 +494,36 @@ export const getToolsForGroupThunk = createAppAsyncThunk<
 });
 
 // TODO: patch thread tools
+
+export const toolConfirmationThunk = createAsyncThunk<
+  ThreadConfirmationResponseMutation,
+  ThreadConfirmationResponseMutationVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: {
+      message: string;
+      args: ThreadConfirmationResponseMutationVariables;
+    };
+  }
+>("flexus/tools/confirmation/response", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const result = await client.mutation<
+    ThreadConfirmationResponseMutation,
+    ThreadConfirmationResponseMutationVariables
+  >(ThreadConfirmationResponseDocument, args);
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  } else if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "failed to confirm tools",
+      args,
+    });
+  }
+
+  return thunkAPI.fulfillWithValue(result.data);
+});

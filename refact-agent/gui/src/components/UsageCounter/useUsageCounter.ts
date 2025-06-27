@@ -8,7 +8,10 @@ import {
   selectIsStreaming,
   selectIsWaiting,
 } from "../../features/ThreadMessages";
-import { useAppSelector /*useLastSentCompressionStop*/ } from "../../hooks";
+import {
+  useAppSelector,
+  // useLastSentCompressionStop
+} from "../../hooks";
 import {
   calculateUsageInputTokens,
   mergeUsages,
@@ -44,28 +47,18 @@ export function useUsageCounter() {
     });
   }, [currentThreadUsage]);
 
-  const isOverflown = useMemo(
-    () => {
-      // if (compressionStop.strength === "low") return true;
-      // if (compressionStop.strength === "medium") return true;
-      // if (compressionStop.strength === "high") return true;
-      return false;
-    },
-    [
-      /*compressionStop.strength*/
-    ],
-  );
+  const isOverflown = useMemo(() => {
+    // if (compressionStop.strength === "low") return true;
+    // if (compressionStop.strength === "medium") return true;
+    // if (compressionStop.strength === "high") return true;
+    return false;
+  }, []);
 
-  const isWarning = useMemo(
-    () => {
-      // if (compressionStop.strength === "medium") return true;
-      // if (compressionStop.strength === "high") return true;
-      return false;
-    },
-    [
-      /*compressionStop.strength*/
-    ],
-  );
+  const isWarning = useMemo(() => {
+    // if (compressionStop.strength === "medium") return true;
+    // if (compressionStop.strength === "high") return true;
+    return false;
+  }, []);
 
   const shouldShow = useMemo(() => {
     return messagesInBranch.length > 0 && !isStreaming && !isWaiting;
