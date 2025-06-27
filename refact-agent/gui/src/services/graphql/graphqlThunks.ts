@@ -112,6 +112,8 @@ export const messagesSub = createAsyncThunk<
 
       return thunkApi.fulfillWithValue({});
     }
+
+    // console.log(result);
     if (result.error) {
       // TBD: do we hang up on errors?
       thunkApi.dispatch(setError(result.error.message));
@@ -150,8 +152,17 @@ export const messagesSub = createAsyncThunk<
       );
     }
 
-    if (result.data) {
-      thunkApi.dispatch(receiveThreadMessages(result.data));
+    if (result.data?.comprehensive_thread_subs.news_payload_thread_message) {
+      thunkApi.dispatch(
+        receiveThreadMessages({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+          // TODO: odd type here
+          news_payload_thread_message:
+            result.data.comprehensive_thread_subs.news_payload_thread_message,
+        }),
+      );
     }
   });
 

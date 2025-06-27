@@ -5,6 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import {
   FThreadDelta,
+  FThreadMessageOutput,
   FThreadOutput,
   MessagesSubscriptionSubscription,
 } from "../../../generated/documents";
@@ -204,42 +205,31 @@ export const threadMessagesSlice = createSlice({
 
     receiveThreadMessages: (
       state,
-      action: PayloadAction<MessagesSubscriptionSubscription>, // change this to FThreadMessageOutput
+      action: PayloadAction<{
+        news_action: string;
+        news_payload_id: string;
+        news_payload_thread_message: FThreadMessageOutput;
+      }>, // change this to FThreadMessageOutput
     ) => {
-      console.log(
-        "receiveMessages",
-        action.payload.comprehensive_thread_subs.news_action,
-        action.payload,
-      );
+      if (!state.thread) return state;
+
+      if (!action.payload.news_payload_id.startsWith(state.thread.ft_id)) {
+        return state;
+      }
 
       // TODO: are there other cases aside from update
       // actions: INITIAL_UPDATES_OVER | UPDATE | DELETE
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "UPDATE" &&
-        action.payload.comprehensive_thread_subs.news_payload_id &&
-        action.payload.comprehensive_thread_subs.news_payload_thread_message
-      ) {
-        state.messages[
-          action.payload.comprehensive_thread_subs.news_payload_id
-        ] =
-          action.payload.comprehensive_thread_subs.news_payload_thread_message;
+      if (action.payload.news_action === "UPDATE") {
+        state.messages[action.payload.news_payload_id] =
+          action.payload.news_payload_thread_message;
       }
 
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "INSERT" &&
-        action.payload.comprehensive_thread_subs.news_payload_id &&
-        action.payload.comprehensive_thread_subs.news_payload_thread_message
-      ) {
-        state.messages[
-          action.payload.comprehensive_thread_subs.news_payload_id
-        ] =
-          action.payload.comprehensive_thread_subs.news_payload_thread_message;
+      if (action.payload.news_action === "INSERT") {
+        state.messages[action.payload.news_payload_id] =
+          action.payload.news_payload_thread_message;
 
         state.waitingBranches = state.waitingBranches.filter(
-          (n) =>
-            n !==
-            action.payload.comprehensive_thread_subs.news_payload_thread_message
-              ?.ftm_alt,
+          (n) => n !== action.payload.news_payload_thread_message.ftm_alt,
         );
       }
     },
