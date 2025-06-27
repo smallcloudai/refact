@@ -285,7 +285,6 @@ const PatchConfirmation: React.FC<PatchConfirmationProps> = ({
     toolCalls[0].function.arguments,
     { path: "", tickets: "" },
   );
-  console.log({ parsedArgsFromToolCall, toolCalls });
 
   const extractedFileNameFromPath =
     parsedArgsFromToolCall.path.split(/[/\\]/)[

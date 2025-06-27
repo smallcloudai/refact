@@ -516,9 +516,6 @@ export const toolConfirmationThunk = createAsyncThunk<
     ThreadConfirmationResponseMutationVariables
   >(ThreadConfirmationResponseDocument, args);
 
-  console.log("confirmation response");
-  console.log(result);
-
   if (result.error) {
     return thunkAPI.rejectWithValue({ message: result.error.message, args });
   } else if (!result.data) {
