@@ -5,4 +5,3 @@ pub mod at_commands;
 pub mod at_file;
 pub mod at_tree;
 pub mod at_search;
-pub mod at_knowledge;

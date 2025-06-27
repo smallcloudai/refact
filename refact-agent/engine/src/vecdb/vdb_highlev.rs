@@ -34,12 +34,11 @@ async fn do_i_need_to_reload_vecdb(
     };
 
     let vecdb_max_files = gcx.read().await.cmdline.vecdb_max_files;
-    let mut consts = {
+    let consts = {
         VecdbConstants {
             embedding_model: caps.embedding_model.clone(),
-            tokenizer: None,
             splitter_window_size: caps.embedding_model.base.n_ctx / 2,
-            vecdb_max_files: vecdb_max_files,
+            vecdb_max_files
         }
     };
 
@@ -61,18 +60,7 @@ async fn do_i_need_to_reload_vecdb(
         return (true, None);
     }
 
-    let tokenizer_result = crate::tokens::cached_tokenizer(
-        gcx.clone(), &consts.embedding_model.base,
-    ).await;
-    
-    consts.tokenizer = match tokenizer_result {
-        Ok(tokenizer) => tokenizer,
-        Err(err) => {
-            error!("vecdb launch failed, embedding model tokenizer didn't load: {}", err);
-            return (false, None);
-        }
-    };
-    return (true, Some(consts));
+    (true, Some(consts))
 }
 
 pub async fn vecdb_background_reload(

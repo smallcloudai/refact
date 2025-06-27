@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use regex::Regex;
+use fancy_regex::Regex;
 use tokio::sync::Mutex as AMutex;
 use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization};
 use tokio::sync::RwLock as ARwLock;

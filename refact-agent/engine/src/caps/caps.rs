@@ -400,18 +400,6 @@ pub fn resolve_model<'a, T>(
     ).cloned().ok_or(format!("Model '{}' not found. Server has the following models: {:?}", model_id, models.keys()))
 }
 
-pub fn resolve_chat_model<'a>(
-    caps: Arc<CodeAssistantCaps>,
-    requested_model_id: &str,
-) -> Result<Arc<ChatModelRecord>, String> {
-    let model_id = if !requested_model_id.is_empty() {
-        requested_model_id
-    } else {
-        &caps.defaults.chat_default_model
-    };
-    resolve_model(&caps.chat_models, model_id)
-}
-
 pub fn resolve_completion_model<'a>(
     caps: Arc<CodeAssistantCaps>,
     requested_model_id: &str,

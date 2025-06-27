@@ -102,7 +102,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-
   const { compressChat, compressChatRequest, isCompressing } =
     useCompressChat();
   const autoFocus = useAutoFocusOnce();
@@ -397,7 +396,6 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                   variant="ghost"
                   // TODO: last sent compression?
                   // color={
-
                   //   lastSentCompression === "high"
                   //     ? "red"
                   //     : lastSentCompression === "medium"

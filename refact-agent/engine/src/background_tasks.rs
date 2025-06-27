@@ -1,5 +1,4 @@
 use std::iter::IntoIterator;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::vec;
 use tokio::sync::RwLock as ARwLock;
@@ -39,12 +38,11 @@ impl BackgroundTasksHolder {
     }
 }
 
-pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>, config_dir: &PathBuf) -> BackgroundTasksHolder {
+pub async fn start_background_tasks(gcx: Arc<ARwLock<GlobalContext>>) -> BackgroundTasksHolder {
     let mut bg = BackgroundTasksHolder::new(vec![
         tokio::spawn(crate::files_in_workspace::files_in_workspace_init_task(gcx.clone())),
         tokio::spawn(crate::vecdb::vdb_highlev::vecdb_background_reload(gcx.clone())),   // this in turn can create global_context::vec_db
         tokio::spawn(crate::integrations::sessions::remove_expired_sessions_background_task(gcx.clone())),
-        tokio::spawn(crate::memories::memories_migration(gcx.clone(), config_dir.clone())),
         tokio::spawn(crate::git::cleanup::git_shadow_cleanup_background_task(gcx.clone())),
         tokio::spawn(crate::cloud::threads_sub::watch_threads_subscription(gcx.clone())),
     ]);

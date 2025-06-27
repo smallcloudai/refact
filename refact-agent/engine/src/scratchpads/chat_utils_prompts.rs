@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock as ARwLock;
 
-use crate::global_context::{try_load_caps_quickly_if_not_present, GlobalContext};
+use crate::global_context::GlobalContext;
 
 
 async fn _workspace_info(workspace_dirs: &[String], active_file_path: &Option<PathBuf>) -> String {
@@ -126,36 +126,22 @@ pub async fn system_prompt_add_extra_instructions(
         system_prompt = system_prompt.replace("%WORKSPACE_INFO%", &info);
     }
     if system_prompt.contains("%KNOWLEDGE_INSTRUCTIONS%") {
-        match try_load_caps_quickly_if_not_present(gcx.clone(), 0).await {
-            Ok(caps) => {
-                if caps.metadata.features.contains(&"knowledge".to_string()) {
-                    let cfg =
-                        crate::yaml_configs::customization_loader::load_customization_compiled_in();
-                    let mut knowledge_instructions = cfg
-                        .get("KNOWLEDGE_INSTRUCTIONS_META")
-                        .map(|x| x.as_str().unwrap_or("").to_string())
-                        .unwrap_or("".to_string());
-                    if let Some(core_memories) =
-                        crate::memories::memories_get_core(gcx.clone()).await.ok()
-                    {
-                        knowledge_instructions
-                            .push_str("\nThere are some pre-existing core memories:\n");
-                        for mem in core_memories {
-                            knowledge_instructions
-                                .push_str(&format!("🗃️\n{}\n\n", mem.iknow_memory));
-                        }
-                    }
-                    system_prompt =
-                        system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", &knowledge_instructions);
-                    tracing::info!("adding up extra knowledge instructions");
-                } else {
-                    system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
+        let active_group_id = gcx.read().await.active_group_id.clone();
+        if active_group_id.is_some() {
+            let cfg = crate::yaml_configs::customization_loader::load_customization_compiled_in();
+            let mut knowledge_instructions = cfg.get("KNOWLEDGE_INSTRUCTIONS_META")
+                .map(|x| x.as_str().unwrap_or("").to_string()).unwrap_or("".to_string());
+            if let Some(core_memories) = crate::cloud::memories_req::memories_get_core(gcx.clone()).await.ok() {
+                knowledge_instructions.push_str("\nThere are some pre-existing core memories:\n");
+                for mem in core_memories {
+                    knowledge_instructions.push_str(&format!("🗃️\n{}\n\n", mem.iknow_memory));
                 }
             }
-            Err(_) => {
-                system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
-            }
-        };
+            system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", &knowledge_instructions);
+            tracing::info!("adding up extra knowledge instructions");
+        } else {
+            system_prompt = system_prompt.replace("%KNOWLEDGE_INSTRUCTIONS%", "");
+        }
     }
 
     if system_prompt.contains("%PROJECT_SUMMARY%") {

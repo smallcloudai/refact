@@ -105,7 +105,7 @@ fn prepare_cursor_file(
 
     let line = file_text.line(cursor_pos.line as usize).to_string();
     output_lines.push_front(line.to_string());
-    tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+    tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0) as usize;
     if tokens_used > max_tokens {
         return Err("Tokens limit is too small to fit the cursor file".to_string());
     }
@@ -114,7 +114,7 @@ fn prepare_cursor_file(
     loop {
         if cursor_pos.line - line_idx_offset >= 0 {
             let line = file_text.line((cursor_pos.line - line_idx_offset) as usize).to_string();
-            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+            tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0) as usize;
             if tokens_used > max_tokens {
                 break;
             }
@@ -123,7 +123,7 @@ fn prepare_cursor_file(
         }
         if cursor_pos.line + line_idx_offset < file_text.len_lines() as i32 {
             let line = file_text.line((cursor_pos.line + line_idx_offset) as usize).to_string();
-            tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+            tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0) as usize;
             if tokens_used > max_tokens {
                 break;
             }
@@ -148,7 +148,7 @@ fn prepare_cursor_file(
         "File name:\n{}\nContent:\n```\n{file_text}\n```",
         file_name.to_string_lossy()
     );
-    let tokens_used = tokenizer.count_tokens(&data).unwrap_or(0) as usize;
+    let tokens_used = tokenizer.count_text_tokens_with_tokenizer(&data).unwrap_or(0) as usize;
     Ok((data, tokens_used, (line1, line2)))
 }
 
@@ -192,7 +192,7 @@ async fn prepare_subblock(
 
     let line = file_text.line(cursor_pos.line as usize).to_string();
     subblock.cursor_line = line.to_string();
-    tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+    tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0) as usize;
     if tokens_used > max_tokens {
         return Err("Tokens limit is too small to fit the code subblock".to_string());
     }
@@ -202,7 +202,7 @@ async fn prepare_subblock(
         for idx in symbol.full_line1().saturating_sub(1)..symbol.full_line2() + 1 {
             if idx < file_text.len_lines() {
                 let line = file_text.line(idx).to_string();
-                tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+                tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0) as usize;
                 if idx < cursor_pos.line as usize {
                     subblock.before_lines.push(line);
                 } else if idx > cursor_pos.line as usize {
@@ -220,7 +220,7 @@ async fn prepare_subblock(
                 if c >= min_rows_to_skip_caret && line.trim().is_empty() {
                     break;
                 }
-                tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+                tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0);
                 subblock.before_lines.insert(0, line);
                 if tokens_used > max_tokens {
                     return Err(
@@ -236,7 +236,7 @@ async fn prepare_subblock(
                 if c >= min_rows_to_skip_caret && line.trim().is_empty() {
                     break;
                 }
-                tokens_used += tokenizer.count_tokens(&line).unwrap_or(0) as usize;
+                tokens_used += tokenizer.count_text_tokens_with_tokenizer(&line).unwrap_or(0);
                 if tokens_used > max_tokens {
                     break;
                 }
@@ -689,7 +689,7 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         }
         prompt.push_str(self.token_esc.as_str());
 
-        let mut available_tokens = n_ctx.saturating_sub(self.t.count_tokens(prompt.as_str())? as usize);
+        let mut available_tokens = n_ctx.saturating_sub(self.t.count_text_tokens_with_tokenizer(prompt.as_str())? as usize);
         let rag_tokens_n = if use_rag {
             let rag_tokens_n = if self.post.rag_tokens_n > 0 {
                 self.post.rag_tokens_n
@@ -701,8 +701,8 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
         } else {
             0
         };
-        available_tokens = available_tokens.saturating_sub(2 + 2 * self.t.count_tokens(self.keyword_user.as_str())? as usize);
-        available_tokens = available_tokens.saturating_sub(1 + self.t.count_tokens(self.keyword_asst.as_str())? as usize);
+        available_tokens = available_tokens.saturating_sub(2 + 2 * self.t.count_text_tokens_with_tokenizer(self.keyword_user.as_str())? as usize);
+        available_tokens = available_tokens.saturating_sub(1 + self.t.count_text_tokens_with_tokenizer(self.keyword_asst.as_str())? as usize);
         let subblock_required_tokens = SUBBLOCK_REQUIRED_TOKENS;
         let cursor_file_available_tokens = available_tokens.saturating_sub(subblock_required_tokens);
         if cursor_file_available_tokens <= CURSORFILE_MIN_TOKENS {
@@ -768,7 +768,7 @@ impl ScratchpadAbstract for CodeCompletionReplaceScratchpad {
             info!("chat prompt\n{}", prompt);
             info!(
                 "chat re-encode whole prompt again gives {} tokens",
-                self.t.count_tokens(prompt.as_str())?
+                self.t.count_text_tokens_with_tokenizer(prompt.as_str())?
             );
         }
         Ok(prompt)
@@ -915,7 +915,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
             });
         }
         let mut available_tokens = n_ctx.saturating_sub(
-            self.t.count_tokens(&messages[0].content.content_text_only())? as usize + 3,
+            self.t.count_text_tokens_with_tokenizer(&messages[0].content.content_text_only())? as usize + 3,
         );
         let rag_tokens_n = if use_rag {
             let rag_tokens_n = if self.post.rag_tokens_n > 0 {
@@ -1008,7 +1008,7 @@ impl ScratchpadAbstract for CodeCompletionReplacePassthroughScratchpad {
         if DEBUG {
             info!(
                 "chat re-encode whole prompt again gives {} tokens",
-                self.t.count_tokens(prompt.as_str())?
+                self.t.count_text_tokens_with_tokenizer(prompt.as_str())?
             );
         }
         Ok(prompt)

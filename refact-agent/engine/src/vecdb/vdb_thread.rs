@@ -326,7 +326,7 @@ async fn vectorize_thread(
         }
 
         let file_splitter = AstBasedFileSplitter::new(constants.splitter_window_size);
-        let mut splits = file_splitter.vectorization_split(&doc, None, gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
+        let mut splits = file_splitter.vectorization_split(&doc, gcx.clone(), constants.embedding_model.base.n_ctx).await.unwrap_or_else(|err| {
             info!("{}", err);
             vec![]
         });

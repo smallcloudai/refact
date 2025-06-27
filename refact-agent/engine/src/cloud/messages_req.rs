@@ -8,9 +8,9 @@ use tracing::warn;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ThreadMessage {
     pub ftm_belongs_to_ft_id: String,
-    pub ftm_alt: i32,
-    pub ftm_num: i32,
-    pub ftm_prev_alt: i32,
+    pub ftm_alt: i64,
+    pub ftm_num: i64,
+    pub ftm_prev_alt: i64,
     pub ftm_role: String,
     pub ftm_content: Option<Value>,
     pub ftm_tool_calls: Option<Value>,
@@ -22,9 +22,10 @@ pub struct ThreadMessage {
 }
 
 pub async fn get_thread_messages(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
-    alt: i64,
+    alt: i64 ,
 ) -> Result<Vec<ThreadMessage>, String> {
     let query = r#"
     query GetThreadMessagesByAlt($thread_id: String!, $alt: Int!) {
@@ -51,17 +52,21 @@ pub async fn get_thread_messages(
         "thread_id": thread_id,
         "alt": alt
     });
-    
+
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };
 
+    tracing::info!("get_thread_messages: address={}, thread_id={}, alt={}",
+        config.address, thread_id, alt
+    );
     execute_graphql::<Vec<ThreadMessage>, _>(
-        config, 
-        query, 
-        variables, 
+        config,
+        query,
+        variables,
         "thread_messages_list"
     )
     .await
@@ -69,15 +74,16 @@ pub async fn get_thread_messages(
 }
 
 pub async fn create_thread_messages(
-    api_key: String,
+    cmd_address_url: &str,
+    api_key: &str,
     thread_id: &str,
     messages: Vec<ThreadMessage>,
 ) -> Result<(), String> {
     if messages.is_empty() {
         return Err("No messages provided".to_string());
     }
-    
     let mut input_messages = Vec::with_capacity(messages.len());
+    let messages_len = messages.len();
     for message in messages {
         if message.ftm_belongs_to_ft_id != thread_id {
             return Err(format!(
@@ -137,17 +143,20 @@ pub async fn create_thread_messages(
         }
     }
     "#;
-    
+
     let config = GraphQLRequestConfig {
-        api_key,
+        address: cmd_address_url.to_string(),
+        api_key: api_key.to_string(),
         user_agent: Some("refact-lsp".to_string()),
         additional_headers: None,
     };
-
+    tracing::info!("create_thread_messages: address={}, thread_id={}, messages_len={}",
+        config.address, thread_id, messages_len
+    );
     execute_graphql_no_result(
-        config, 
-        mutation, 
-        variables, 
+        config,
+        mutation,
+        variables,
         "thread_messages_create_multiple"
     )
     .await
@@ -184,9 +193,9 @@ pub fn convert_thread_messages_to_messages(
 
 pub fn convert_messages_to_thread_messages(
     messages: Vec<ChatMessage>,
-    alt: i32,
-    prev_alt: i32,
-    start_num: i32,
+    alt: i64,
+    prev_alt: i64,
+    start_num: i64,
     thread_id: &str,
     user_preferences: Option<Value>,
 ) -> Result<Vec<ThreadMessage>, String> {
@@ -196,7 +205,7 @@ pub fn convert_messages_to_thread_messages(
         delay_images.clear();
     };
     for (i, msg) in messages.into_iter().enumerate() {
-        let num = start_num + i as i32;
+        let num = start_num + i as i64;
         let mut delay_images = vec![];
         let mut messages = if msg.role == "tool" {
             let mut results = vec![];

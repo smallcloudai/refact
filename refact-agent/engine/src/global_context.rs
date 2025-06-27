@@ -194,7 +194,96 @@ pub async fn migrate_to_config_folder(
     Ok(())
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
+    use std::process::Command;
+    use rand::Rng;
+    
+    // Try multiple methods to get a unique machine identifier on macOS
+    let machine_id = {
+        // First attempt: Use system_profiler to get hardware UUID (most reliable)
+        let hardware_uuid = Command::new("system_profiler")
+            .args(&["SPHardwareDataType"])
+            .output()
+            .ok()
+            .and_then(|output| {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                // Extract Hardware UUID from system_profiler output
+                output_str.lines()
+                    .find(|line| line.contains("Hardware UUID"))
+                    .and_then(|line| {
+                        line.split(':')
+                            .nth(1)
+                            .map(|s| s.trim().to_string())
+                    })
+            });
+            
+        if let Some(uuid) = hardware_uuid {
+            if !uuid.trim().is_empty() {
+                return uuid;
+            }
+        }
+        
+        // Second attempt: Try to get the serial number
+        let serial_number = Command::new("system_profiler")
+            .args(&["SPHardwareDataType"])
+            .output()
+            .ok()
+            .and_then(|output| {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                output_str.lines()
+                    .find(|line| line.contains("Serial Number"))
+                    .and_then(|line| {
+                        line.split(':')
+                            .nth(1)
+                            .map(|s| s.trim().to_string())
+                    })
+            });
+            
+        if let Some(serial) = serial_number {
+            if !serial.trim().is_empty() {
+                return serial;
+            }
+        }
+        
+        // Third attempt: Try to get the MAC address using ifconfig
+        let mac_address = Command::new("ifconfig")
+            .args(&["en0"])
+            .output()
+            .ok()
+            .and_then(|output| {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                output_str.lines()
+                    .find(|line| line.contains("ether"))
+                    .and_then(|line| {
+                        line.split_whitespace()
+                            .nth(1)
+                            .map(|s| s.trim().replace(":", ""))
+                    })
+            });
+            
+        if let Some(mac) = mac_address {
+            if !mac.trim().is_empty() && mac != "000000000000" {
+                return mac;
+            }
+        }
+        
+        // Final fallback: Generate a random ID and store it persistently
+        // This is just a temporary solution in case all other methods fail
+        let mut rng = rand::thread_rng();
+        format!("macos-{:016x}", rng.gen::<u64>())
+    };
+
+    let folders = workspace_folders
+        .iter()
+        .map(|p| p.file_name().unwrap_or_default().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join(";");
+
+    format!("{}-{}", machine_id, folders)
+}
+
+#[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
 pub fn get_app_searchable_id(workspace_folders: &[PathBuf]) -> String {
     let mac = pnet_datalink::interfaces()
         .into_iter()

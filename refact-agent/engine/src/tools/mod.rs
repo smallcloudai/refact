@@ -12,8 +12,5 @@ mod tool_mv;
 mod tool_regex_search;
 mod tool_strategic_planning;
 mod tool_search;
-mod tool_knowledge;
 mod tool_locate_search;
-mod tool_create_knowledge;
-mod tool_create_memory_bank;
 pub mod file_edit;

@@ -16,8 +16,7 @@ use crate::at_commands::at_file::{file_repair_candidates, return_one_candidate_o
 use crate::files_correction::{canonicalize_normalized_path, get_project_dirs, preprocess_path_for_normalization}; 
 use crate::files_in_workspace::get_file_text_from_memory_or_disk; 
 use crate::postprocessing::pp_context_files::postprocess_context_files;
-use crate::tokens::count_text_tokens_with_fallback;
-
+use crate::tokens::count_text_tokens;
 
 pub struct ToolLocateSearch {
     pub config_path: String,
@@ -36,7 +35,7 @@ async fn _make_prompt(
     let tokens_extra_budget = (subchat_params.subchat_n_ctx as f32 * TOKENS_EXTRA_BUDGET_PERCENT) as usize;
     let mut tokens_budget: i64 = (subchat_params.subchat_n_ctx - subchat_params.subchat_max_new_tokens - subchat_params.subchat_tokens_for_rag - tokens_extra_budget) as i64;
     let final_message = problem_statement.to_string();
-    tokens_budget -= count_text_tokens_with_fallback(None, &final_message) as i64;
+    tokens_budget -= count_text_tokens(&final_message) as i64;
     let mut context = "".to_string();
     let mut context_files = vec![];
     for p in important_paths.iter() {
@@ -78,7 +77,7 @@ async fn _make_prompt(
                 continue;
             }
         };
-        let left_tokens = tokens_budget - count_text_tokens_with_fallback(None, &message_row) as i64;
+        let left_tokens = tokens_budget - count_text_tokens(&message_row) as i64;
         if left_tokens < 0 {
             continue;
         } else {
@@ -93,7 +92,6 @@ async fn _make_prompt(
         for context_file in postprocess_context_files(
             gcx.clone(),
             &mut context_files,
-            None,
             subchat_params.subchat_tokens_for_rag + tokens_budget.max(0) as usize,
             false, &pp_settings,).await { files_context.push_str(
                 &format!("📎 {}:{}-{}\n```\n{}```\n\n",

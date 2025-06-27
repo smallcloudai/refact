@@ -86,11 +86,10 @@ pub async fn handle_v1_trajectory_save(
     })?;
     let trajectory = compress_trajectory(gcx.clone(), &generate_random_hash(16), &post.messages)
         .await.map_err(|e| ScratchError::new(StatusCode::UNPROCESSABLE_ENTITY, e))?;
-    crate::memories::memories_add(
+    crate::cloud::memories_req::memories_add(
         gcx.clone(),
         "trajectory",
         &trajectory.as_str(),
-        false,
     ).await.map_err(|e| {
         ScratchError::new(StatusCode::INTERNAL_SERVER_ERROR, format!("{}", e))
     })?;
