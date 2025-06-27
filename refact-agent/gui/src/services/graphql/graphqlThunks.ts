@@ -42,7 +42,9 @@ import { setError } from "../../features/Errors/errorsSlice";
 import { AppDispatch, RootState } from "../../app/store";
 import {
   receiveDeltaStream,
+  receiveThread,
   receiveThreadMessages,
+  removeMessage,
   setThreadFtId,
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
@@ -114,6 +116,19 @@ export const messagesSub = createAsyncThunk<
       // TBD: do we hang up on errors?
       thunkApi.dispatch(setError(result.error.message));
     }
+
+    if (result.data?.comprehensive_thread_subs.news_payload_thread) {
+      thunkApi.dispatch(
+        receiveThread({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+          // TODO: odd type error :/ missing properties
+          news_payload_thread:
+            result.data.comprehensive_thread_subs.news_payload_thread,
+        }),
+      );
+    }
     if (result.data?.comprehensive_thread_subs.stream_delta) {
       thunkApi.dispatch(
         receiveDeltaStream({
@@ -123,7 +138,19 @@ export const messagesSub = createAsyncThunk<
           stream_delta: result.data.comprehensive_thread_subs.stream_delta,
         }),
       );
-    } else if (result.data) {
+    }
+
+    if (result.data?.comprehensive_thread_subs.news_action === "DELETE") {
+      thunkApi.dispatch(
+        removeMessage({
+          news_action: result.data.comprehensive_thread_subs.news_action,
+          news_payload_id:
+            result.data.comprehensive_thread_subs.news_payload_id,
+        }),
+      );
+    }
+
+    if (result.data) {
       thunkApi.dispatch(receiveThreadMessages(result.data));
     }
   });

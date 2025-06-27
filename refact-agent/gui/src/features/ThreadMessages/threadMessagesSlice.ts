@@ -95,13 +95,44 @@ export const threadMessagesSlice = createSlice({
   reducers: {
     receiveThread: (
       state,
-      _action: PayloadAction<{
+      action: PayloadAction<{
         news_action: string;
         news_payload_id: string;
-        thread: FThreadOutput;
+        news_payload_thread: FThreadOutput;
       }>,
     ) => {
-      return state;
+      if (state.thread === null && action.payload.news_action === "UPDATE") {
+        // TODO: some type error
+        state.thread = action.payload.news_payload_thread;
+      } else if (
+        state.thread &&
+        !action.payload.news_payload_id.startsWith(state.thread.ft_id)
+      ) {
+        return state;
+      }
+
+      if (
+        action.payload.news_payload_thread.ft_need_assistant &&
+        action.payload.news_payload_thread.ft_need_assistant !== -1
+      ) {
+        state.waitingBranches.push(
+          action.payload.news_payload_thread.ft_need_assistant,
+        );
+      }
+
+      if (
+        action.payload.news_payload_thread.ft_need_user &&
+        action.payload.news_payload_thread.ft_need_user !== -1
+      ) {
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== action.payload.news_payload_thread.ft_need_user,
+        );
+        state.streamingBranches = state.streamingBranches.filter(
+          (n) => n !== action.payload.news_payload_thread.ft_need_user,
+        );
+      }
+
+      // return state;
       // thread updates
     },
     receiveDeltaStream: (
@@ -152,6 +183,25 @@ export const threadMessagesSlice = createSlice({
         );
       }
     },
+
+    removeMessage: (
+      state,
+      action: PayloadAction<{ news_action: string; news_payload_id: string }>,
+    ) => {
+      if (action.payload.news_action !== "DELETE") return state;
+      const messages = Object.entries(state.messages).reduce<
+        typeof state.messages
+      >((acc, [key, value]) => {
+        if (key === action.payload.news_payload_id) {
+          return acc;
+        }
+        return { ...acc, [key]: value };
+      }, {});
+
+      state.messages = messages;
+      return state;
+    },
+
     receiveThreadMessages: (
       state,
       action: PayloadAction<MessagesSubscriptionSubscription>, // change this to FThreadMessageOutput
@@ -161,56 +211,6 @@ export const threadMessagesSlice = createSlice({
         action.payload.comprehensive_thread_subs.news_action,
         action.payload,
       );
-
-      if (
-        state.thread === null &&
-        action.payload.comprehensive_thread_subs.news_action === "UPDATE" &&
-        action.payload.comprehensive_thread_subs.news_payload_thread
-      ) {
-        // TODO: some type error
-        state.thread = action.payload.comprehensive_thread_subs
-          .news_payload_thread as FThreadOutput;
-      } else if (
-        state.thread &&
-        action.payload.comprehensive_thread_subs.news_payload_thread &&
-        !action.payload.comprehensive_thread_subs.news_payload_id.startsWith(
-          state.thread.ft_id,
-        )
-      ) {
-        return state;
-      }
-
-      if (
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_assistant &&
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          .ft_need_assistant !== -1
-      ) {
-        state.waitingBranches.push(
-          action.payload.comprehensive_thread_subs.news_payload_thread
-            .ft_need_assistant,
-        );
-      }
-
-      if (
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_user &&
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          .ft_need_user !== -1
-      ) {
-        state.waitingBranches = state.waitingBranches.filter(
-          (n) =>
-            n !==
-            action.payload.comprehensive_thread_subs.news_payload_thread
-              ?.ft_need_user,
-        );
-        state.streamingBranches = state.streamingBranches.filter(
-          (n) =>
-            n !==
-            action.payload.comprehensive_thread_subs.news_payload_thread
-              ?.ft_need_user,
-        );
-      }
 
       // TODO: are there other cases aside from update
       // actions: INITIAL_UPDATES_OVER | UPDATE | DELETE
@@ -241,24 +241,6 @@ export const threadMessagesSlice = createSlice({
             action.payload.comprehensive_thread_subs.news_payload_thread_message
               ?.ftm_alt,
         );
-      }
-
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "DELETE" &&
-        action.payload.comprehensive_thread_subs.news_payload_id
-      ) {
-        const msgs = Object.entries(state.messages).reduce<
-          typeof state.messages
-        >((acc, [key, value]) => {
-          if (
-            key === action.payload.comprehensive_thread_subs.news_payload_id
-          ) {
-            return acc;
-          }
-          return { ...acc, [key]: value };
-        }, {});
-
-        state.messages = msgs;
       }
     },
 
@@ -475,7 +457,9 @@ export const threadMessagesSlice = createSlice({
 
 export const {
   receiveDeltaStream,
+  receiveThread,
   receiveThreadMessages,
+  removeMessage,
   setThreadEnd,
   resetThread,
   setThreadFtId,
