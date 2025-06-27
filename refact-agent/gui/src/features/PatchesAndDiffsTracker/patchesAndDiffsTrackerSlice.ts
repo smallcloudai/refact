@@ -54,7 +54,6 @@ export const patchesAndDiffsTrackerSlice = createSlice({
       const toolCalls = lastMessage.ftm_tool_calls;
       if (!toolCalls) return state;
       const patches = toolCalls.reduce<PatchMeta[]>((acc, toolCall) => {
-        if (toolCall.id === undefined) return acc;
         if (toolCall.function.name !== "patch") return acc;
         const filePath = pathFromArgString(toolCall.function.arguments);
         if (!filePath) return acc;

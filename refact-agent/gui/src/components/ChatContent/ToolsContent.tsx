@@ -235,7 +235,6 @@ export const SingleModelToolContent: React.FC<{
               console.error("toolCall is null");
               return;
             }
-            if (toolCall.id === undefined) return;
             const key = `${toolCall.id}-${toolCall.index}`;
             return (
               <Box key={key} py="2">
@@ -256,7 +255,7 @@ export type ToolContentProps = {
 export const ToolContent: React.FC<ToolContentProps> = ({ toolCalls }) => {
   const features = useAppSelector(selectFeatures);
   const ids = toolCalls.reduce<string[]>((acc, cur) => {
-    if (cur.id !== undefined) return [...acc, cur.id];
+    if (cur.id) return [...acc, cur.id];
     return acc;
   }, []);
   // Chate this selector to use thread message list

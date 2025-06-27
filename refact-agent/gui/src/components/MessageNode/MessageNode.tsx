@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { UserInput } from "../ChatContent/UserInput";
 import { AssistantInput } from "../ChatContent/AssistantInput";
 import {
+  ChatContextFile,
   isAssistantMessage,
   isChatContextFileMessage,
   isChatMessage,
   isDiffMessage,
   isPlainTextMessage,
   isUserMessage,
+  ToolCall,
 } from "../../services/refact";
 import { PlainText } from "../ChatContent/PlainText";
 import { ContextFiles } from "../ChatContent/ContextFiles";
@@ -37,7 +39,7 @@ const ElementForNodeMessage: React.FC<{
 
     // TODO: why is this an error
     return (
-      <AssistantInput toolCalls={message.ftm_tool_calls}>
+      <AssistantInput toolCalls={message.ftm_tool_calls as ToolCall[]}>
         {message.ftm_content}
       </AssistantInput>
     );
@@ -49,7 +51,7 @@ const ElementForNodeMessage: React.FC<{
 
   if (isChatContextFileMessage(message)) {
     // TODO: why is this a linter error?
-    return <ContextFiles files={message.ftm_content} />;
+    return <ContextFiles files={message.ftm_content as ChatContextFile[]} />;
   }
 
   if (isDiffMessage(message)) {
