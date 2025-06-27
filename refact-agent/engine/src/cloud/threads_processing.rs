@@ -135,7 +135,7 @@ async fn initialize_thread(
         gcx.clone(), expert.fexp_system_prompt.clone(), HashSet::new()
     ).await;
     let output_thread_messages = vec![ThreadMessage {
-        ftm_belongs_to_ft_id: ft_fexp_id.to_string(),
+        ftm_belongs_to_ft_id: thread.ft_id.clone(),
         ftm_alt: 100,  // convention, system prompt always at num=0, alt=100
         ftm_num: 0,
         ftm_prev_alt: 100,
