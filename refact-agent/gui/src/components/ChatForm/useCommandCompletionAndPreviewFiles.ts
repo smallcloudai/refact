@@ -4,7 +4,7 @@ import { Checkboxes } from "./useCheckBoxes";
 import {
   useAppSelector,
   // useHasCaps,
-  useSendChatRequest,
+  // useSendChatRequest,
 } from "../../hooks";
 import { addCheckboxValuesToInput } from "./utils";
 import {
@@ -22,6 +22,7 @@ import {
 } from "../../features/Chat";
 import { selectIsStreaming } from "../../features/ThreadMessages";
 import { formatMessagesForLsp } from "../../features/Chat/Thread/utils";
+import { useMessageSubscription } from "../Chat/useMessageSubscription";
 
 function useGetCommandCompletionQuery(
   query: string,
@@ -81,7 +82,7 @@ function useGetCommandPreviewQuery(
   query: string,
 ): (ChatContextFile | string)[] {
   // const hasCaps = useHasCaps();
-  const { maybeAddImagesToQuestion } = useSendChatRequest();
+  const { maybeAddImagesToQuestion } = useMessageSubscription();
 
   const messages = useAppSelector(selectMessages);
   const chatId = useAppSelector(selectChatId);

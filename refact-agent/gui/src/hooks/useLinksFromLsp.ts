@@ -9,7 +9,7 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useAppSelector } from "./useAppSelector";
 // import { useGetCapsQuery } from "./useGetCapsQuery";
-import { useSendChatRequest } from "./useSendChatRequest";
+// import { useSendChatRequest } from "./useSendChatRequest";
 import {
   chatModeToLspMode,
   // selectAreFollowUpsEnabled,
@@ -31,6 +31,7 @@ import { setInformation } from "../features/Errors/informationSlice";
 import { debugIntegrations, debugRefact } from "../debugConfig";
 import { telemetryApi } from "../services/refact/telemetry";
 import { isAbsolutePath } from "../utils";
+import { useMessageSubscription } from "../components/Chat/useMessageSubscription";
 
 export function useGetLinksFromLsp() {
   const dispatch = useAppDispatch();
@@ -108,7 +109,8 @@ export function useGetLinksFromLsp() {
 export function useLinksFromLsp() {
   const dispatch = useAppDispatch();
   const { handleGoTo } = useGoToLink();
-  const { submit } = useSendChatRequest();
+  const { sendMessage, sendMultipleMessages } = useMessageSubscription();
+  // const { submit } = useSendChatRequest();
 
   const [applyCommit, _applyCommitResult] = linksApi.useSendCommitMutation();
 
@@ -203,9 +205,10 @@ export function useLinksFromLsp() {
       }
 
       if (link.link_action === "follow-up") {
-        submit({
-          question: link.link_text,
-        });
+        // submit({
+        //   question: link.link_text,
+        // });
+        void sendMessage(link.link_text);
         return;
       }
 
@@ -214,21 +217,22 @@ export function useLinksFromLsp() {
           dispatch(setIntegrationData({ path: link.link_summary_path }));
           // set the integration data
         }
-        submit({
-          question: link.link_text,
-          maybeMode: "PROJECT_SUMMARY",
-        });
+        void sendMessage(link.link_text);
+        // submit({
+        //   question: link.link_text,
+        //   maybeMode: "PROJECT_SUMMARY",
+        // });
         return;
       }
 
       // TBD: It should be safe to remove this now?
-      if (link.link_action === "regenerate-with-increased-context-size") {
-        dispatch(setIncreaseMaxTokens(true));
-        submit({
-          maybeDropLastMessage: true,
-        });
-        return;
-      }
+      // if (link.link_action === "regenerate-with-increased-context-size") {
+      //   dispatch(setIncreaseMaxTokens(true));
+      //   submit({
+      //     maybeDropLastMessage: true,
+      //   });
+      //   return;
+      // }
 
       if (isCommitLink(link)) {
         void applyCommit(link.link_payload)
@@ -268,17 +272,25 @@ export function useLinksFromLsp() {
         // should stop recommending integrations link be opening a chat?
         // maybe it's better to do something similar to commit link, by calling endpoint in the LSP
         debugRefact(`[DEBUG]: link messages: `, link.link_payload.messages);
-        submit({
-          maybeMode: link.link_payload.chat_meta.chat_mode,
-          maybeMessages: link.link_payload.messages,
-        });
+        // submit({
+        //   maybeMode: link.link_payload.chat_meta.chat_mode,
+        //   maybeMessages: link.link_payload.messages,
+        // });
+        void sendMultipleMessages(link.link_payload.messages);
         return;
       }
 
       // eslint-disable-next-line no-console
       console.warn(`unknown action: ${JSON.stringify(link)}`);
     },
-    [applyCommit, dispatch, handleGoTo, sendTelemetryEvent, submit],
+    [
+      applyCommit,
+      dispatch,
+      handleGoTo,
+      sendMessage,
+      sendMultipleMessages,
+      sendTelemetryEvent,
+    ],
   );
 
   const linksResult = useGetLinksFromLsp();

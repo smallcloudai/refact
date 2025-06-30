@@ -33,6 +33,7 @@ export {
 } from "../features/Chat/currentProject";
 export type { TextDocToolCall } from "../components/Tools/types";
 
+// here
 export type {
   UserMessage,
   ChatMessage,
@@ -40,6 +41,16 @@ export type {
   DiffChunk,
   ToolEditResult,
 } from "../services/refact";
+
+import { MessagesSubscriptionSubscription } from "../../generated/documents";
+
+export type ThreadMessage =
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"];
+
+export type {
+  FThreadMultipleMessagesInput,
+  FThreadMessageInput,
+} from "../../generated/documents";
 
 // TODO: re-exporting from redux seems to break things :/
 export type InitialState = {

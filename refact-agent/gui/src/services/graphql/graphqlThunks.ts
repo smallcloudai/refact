@@ -239,28 +239,8 @@ export function rejectToolUsageAction(
   return action;
 }
 
-export const createThreadWithMessage = createAsyncThunk<
-  MessageCreateMultipleMutation,
-  {
-    content: string;
-    expertId: string;
-    model: string;
-    tools: (Tool["spec"] | FCloudTool)[];
-  },
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string };
-  }
->("flexus/createThreadWithMessage", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const port = state.config.lspPort;
-  // TODO: where is current workspace set?
-  const workspace = state.config.currentWorkspaceName ?? "solar_root";
-
+async function fetchAppSearchableId(apiKey: string, port: number) {
   const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
-
   const appIdQuery = await fetch(appIdUrl, {
     credentials: "same-origin",
     redirect: "follow",
@@ -283,6 +263,31 @@ export const createThreadWithMessage = createAsyncThunk<
       };
     })
     .catch((error: Error) => ({ error: error, data: null }));
+
+  return appIdQuery;
+}
+
+export const createThreadWithMessage = createAsyncThunk<
+  MessageCreateMultipleMutation,
+  {
+    content: string;
+    expertId: string;
+    model: string;
+    tools: (Tool["spec"] | FCloudTool)[];
+  },
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("flexus/createThreadWithMessage", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+  const port = state.config.lspPort;
+  // TODO: where is current workspace set?
+  const workspace = state.config.currentWorkspaceName ?? "";
+
+  const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
   if (appIdQuery.error) {
     thunkAPI.rejectWithValue({ message: JSON.stringify(appIdQuery.error) });
@@ -342,6 +347,99 @@ export const createThreadWithMessage = createAsyncThunk<
     input: {
       ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
       messages: [createMessageArgs],
+    },
+  });
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message });
+  }
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({ message: "failed to create message" });
+  }
+  return thunkAPI.fulfillWithValue(result.data);
+});
+
+export const createThreadWitMultipleMessages = createAsyncThunk<
+  MessageCreateMultipleMutation,
+  {
+    messages: { ftm_role: string; ftm_content: unknown }[];
+    expertId: string;
+    model: string;
+    tools: (Tool["spec"] | FCloudTool)[];
+  },
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("flexus/createThreadWithMultipleMessages", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+  const port = state.config.lspPort;
+  // TODO: where is current workspace set?
+  const workspace = state.config.currentWorkspaceName ?? "";
+
+  const appIdQuery = await fetchAppSearchableId(apiKey, port);
+
+  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+
+  const threadQueryArgs: FThreadInput = {
+    ft_fexp_id: args.expertId, // TODO: user selected
+    ft_title: "", // TODO: generate the title
+    located_fgroup_id: workspace,
+    owner_shared: false,
+    ft_app_searchable: appIdQuery.data?.app_searchable_id,
+  };
+  const threadQuery = await client.mutation<
+    CreateThreadMutation,
+    CreateThreadMutationVariables
+  >(CreateThreadDocument, { input: threadQueryArgs });
+
+  if (threadQuery.error) {
+    return thunkAPI.rejectWithValue({ message: threadQuery.error.message });
+  }
+
+  if (!threadQuery.data) {
+    return thunkAPI.rejectWithValue({
+      message: "couldn't create flexus thread id",
+    });
+  }
+
+  if (state.threadMessages.ft_id === null) {
+    thunkAPI.dispatch(setThreadFtId(threadQuery.data.thread_create.ft_id));
+  }
+
+  const createMessageArgs: FThreadMessageInput[] = args.messages.map(
+    (message, index) => {
+      return {
+        ftm_app_specific: JSON.stringify(
+          appIdQuery.data?.app_searchable_id ?? "",
+        ),
+        ftm_belongs_to_ft_id: threadQuery.data?.thread_create.ft_id ?? "",
+        ftm_alt: 100,
+        ftm_num: index + 1,
+        ftm_call_id: "",
+        ftm_prev_alt: 100,
+        ftm_role: message.ftm_role,
+        ftm_content: JSON.stringify(message.ftm_content),
+        ftm_provenance: JSON.stringify(window.__REFACT_CHAT_VERSION__), // extra json data
+        ftm_tool_calls: "null", // optional
+        ftm_usage: "null", // optional
+        ftm_user_preferences: JSON.stringify({
+          model: args.model,
+          tools: args.tools,
+        }),
+      };
+    },
+  );
+
+  const result = await client.mutation<
+    MessageCreateMultipleMutation,
+    MessageCreateMultipleMutationVariables
+  >(MessageCreateMultipleDocument, {
+    input: {
+      ftm_belongs_to_ft_id: threadQuery.data.thread_create.ft_id,
+      messages: createMessageArgs,
     },
   });
 
