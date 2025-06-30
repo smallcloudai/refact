@@ -11,7 +11,6 @@ import { Tree } from "react-arborist";
 
 import { CustomTreeNode } from "./CustomTreeNode";
 import { ScrollArea } from "../../ScrollArea";
-import { AnimatePresence } from "framer-motion";
 
 import { useGroupTree } from "./useGroupTree";
 import styles from "./GroupTree.module.css";
