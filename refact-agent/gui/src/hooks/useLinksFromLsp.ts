@@ -20,7 +20,7 @@ import {
   selectMessages,
   // selectModel,
   selectThreadMode,
-  setIncreaseMaxTokens,
+  //setIncreaseMaxTokens,
   setIntegrationData,
   setIsNewChatSuggested,
 } from "../features/Chat";
