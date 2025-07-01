@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from "react";
 import {
-  PATCH_LIKE_FUNCTIONS,
   useAppDispatch,
   useAppSelector,
   // useSendChatRequest,
@@ -10,6 +9,15 @@ import { Card, Button, Text, Flex } from "@radix-ui/themes";
 import { Markdown } from "../Markdown";
 import styles from "./ToolConfirmation.module.css";
 import { isAssistantMessage, isToolCall } from "../../services/refact";
+
+const PATCH_LIKE_FUNCTIONS = [
+  "patch",
+  "text_edit",
+  "create_textdoc",
+  "update_textdoc",
+  "replace_textdoc",
+  "update_textdoc_regex",
+];
 
 import {
   selectThreadMessages,

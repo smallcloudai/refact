@@ -68,7 +68,7 @@ import { push } from "../../features/Pages/pagesSlice";
 import { AgentCapabilities } from "./AgentCapabilities/AgentCapabilities";
 import { TokensPreview } from "./TokensPreview";
 import classNames from "classnames";
-import { ArchiveIcon } from "@radix-ui/react-icons";
+
 import { ExpertSelect } from "../../features/ExpertsAndModels/Experts";
 import { ModelsForExpert } from "../../features/ExpertsAndModels";
 

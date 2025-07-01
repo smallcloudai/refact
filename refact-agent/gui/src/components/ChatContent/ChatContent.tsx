@@ -20,7 +20,7 @@ import {
 } from "../../features/ThreadMessages";
 
 // import { popBackTo } from "../../features/Pages/pagesSlice";
-import { ChatLinks, UncommittedChangesWarning } from "../ChatLinks";
+import { ChatLinks } from "../ChatLinks";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
 import { useUsageCounter } from "../UsageCounter/useUsageCounter.ts";

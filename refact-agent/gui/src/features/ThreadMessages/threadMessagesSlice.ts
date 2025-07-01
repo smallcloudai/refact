@@ -398,6 +398,24 @@ export const threadMessagesSlice = createSlice({
 
       return unresolved;
     },
+
+    selectToolConfirmationResponses: (state) => {
+      if (!state.thread) return [];
+      if (!Array.isArray(state.thread.ft_confirmation_response)) {
+        return [];
+      }
+
+      return state.thread.ft_confirmation_response.filter(
+        (s) => typeof s === "string",
+      );
+    },
+    selectPatchIsAutomatic: (state) => {
+      if (!state.thread) return false;
+      return (
+        Array.isArray(state.thread.ft_confirmation_response) &&
+        state.thread.ft_confirmation_response.includes("*")
+      );
+    },
     selectMessageByToolCallId: createSelector(
       [selectMessagesValues, (_messages, id: string) => id],
       (messages, id) => {
@@ -495,4 +513,6 @@ export const {
   selectThreadMeta,
   selectMessageByToolCallId,
   selectLastMessageForAlt,
+  selectPatchIsAutomatic,
+  selectToolConfirmationResponses,
 } = threadMessagesSlice.selectors;
