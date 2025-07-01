@@ -16,7 +16,7 @@ import {
   pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
 import { isToolMessage } from "../../events";
-import { isToolCall, ToolMessage } from "../../services/refact";
+import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
 
 // TODO: move this somewhere
 export type ToolConfirmationRequest = {
@@ -439,6 +439,14 @@ export const threadMessagesSlice = createSlice({
         return last;
       },
     ),
+
+    selectManyDiffMessageByIds: createSelector(
+      [selectMessagesValues, (_messages, ids: string[]) => ids],
+      (messages, ids) => {
+        const diffs = messages.filter(isDiffMessage);
+        return diffs.filter((message) => ids.includes(message.ftm_call_id));
+      },
+    ),
   },
 
   extraReducers(builder) {
@@ -515,4 +523,5 @@ export const {
   selectLastMessageForAlt,
   selectPatchIsAutomatic,
   selectToolConfirmationResponses,
+  selectManyDiffMessageByIds,
 } = threadMessagesSlice.selectors;

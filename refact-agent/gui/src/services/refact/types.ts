@@ -201,7 +201,7 @@ export type DiffChunk = {
   // chunk_id?: number;
 };
 
-export function isDiffChunk(json: unknown) {
+export function isDiffChunk(json: unknown): json is DiffChunk {
   if (!json) {
     return false;
   }
@@ -234,7 +234,11 @@ export interface DiffMessage extends BaseMessage {
   tool_call_id: string;
 }
 
-export function isUserMessage(message: ChatMessage): message is UserMessage {
+export function isUserMessage(message: unknown): message is UserMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "user";
 }
 
@@ -308,7 +312,11 @@ export function isToolMessage(message: unknown): message is ToolMessage {
   return message.ftm_role === "tool";
 }
 
-export function isDiffMessage(message: ChatMessage): message is DiffMessage {
+export function isDiffMessage(message: unknown): message is DiffMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "diff";
 }
 

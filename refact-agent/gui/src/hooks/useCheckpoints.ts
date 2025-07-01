@@ -15,21 +15,20 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import {
-  backUpMessages,
-  newChatAction,
-  selectMessages,
-} from "../features/Chat";
+import { newChatAction } from "../features/Chat";
 import { isUserMessage, telemetryApi } from "../services/refact";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
-import { selectThreadId } from "../features/ThreadMessages";
+import {
+  selectMessagesFromEndNode,
+  selectThreadId,
+} from "../features/ThreadMessages";
 
 // TODO: how will check points works?
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
-  const messages = useAppSelector(selectMessages);
+  const messages = useAppSelector(selectMessagesFromEndNode);
   const chatId = useAppSelector(selectThreadId);
   const configIdeHost = useAppSelector(selectConfig).host;
 
@@ -157,15 +156,16 @@ export const useCheckpoints = () => {
           // deleteChatById(chatId),
         ];
         actions.forEach((action) => dispatch(action));
-      } else {
-        const usefulMessages = messages.slice(0, maybeMessageIndex);
-        dispatch(
-          backUpMessages({
-            id: chatId ?? "",
-            messages: usefulMessages,
-          }),
-        );
       }
+      // else {
+      //   const usefulMessages = messages.slice(0, maybeMessageIndex);
+      //   dispatch(
+      //     backUpMessages({
+      //       id: chatId ?? "",
+      //       messages: usefulMessages,
+      //     }),
+      //   );
+      // }
     } catch (error) {
       void sendTelemetryEvent({
         scope: `rollbackChanges/failed`,
@@ -183,8 +183,6 @@ export const useCheckpoints = () => {
     configIdeHost,
     shouldNewChatBeStarted,
     maybeMessageIndex,
-    chatId,
-    messages,
     latestRestoredCheckpointsResult.current_checkpoints,
     latestRestoredCheckpointsResult.reverted_changes,
   ]);

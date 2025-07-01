@@ -3,15 +3,9 @@ import { selectSelectedSnippet } from "../../features/Chat/selectedSnippet";
 import { FileInfo, selectActiveFile } from "../../features/Chat/activeFile";
 import { useConfig, useAppSelector } from "../../hooks";
 import type { Checkbox } from "./ChatControls";
-import { selectMessages } from "../../features/Chat/Thread/selectors";
-import { createSelector } from "@reduxjs/toolkit";
 import { filename } from "../../utils";
 import { ideAttachFileToChat } from "../../hooks";
-
-const messageLengthSelector = createSelector(
-  [selectMessages],
-  (messages) => messages.length,
-);
+import { selectThreadMessagesIsEmpty } from "../../features/ThreadMessages";
 
 // TODO: add ide event here.
 
@@ -116,7 +110,7 @@ const useAttachSelectedSnippet = (
 ): [Checkbox, () => void] => {
   const { host } = useConfig();
   const snippet = useAppSelector(selectSelectedSnippet);
-  const messageLength = useAppSelector(messageLengthSelector);
+  const isThreadEmpty = useAppSelector(selectThreadMessagesIsEmpty);
   const markdown = useMemo(() => {
     return "```" + snippet.language + "\n" + snippet.code + "\n```\n";
   }, [snippet.language, snippet.code]);
@@ -133,7 +127,7 @@ const useAttachSelectedSnippet = (
   const [attachedSelectedSnippet, setAttachedSelectedSnippet] =
     useState<Checkbox>({
       name: "selected_lines",
-      checked: !!snippet.code && messageLength === 0,
+      checked: !!snippet.code && isThreadEmpty,
       label: label,
       value: markdown,
       disabled: !snippet.code,
@@ -178,7 +172,7 @@ const useAttachSelectedSnippet = (
   }, []);
 
   useEffect(() => {
-    if (messageLength > 0) {
+    if (!isThreadEmpty) {
       setAttachedSelectedSnippet((prev) => {
         return {
           ...prev,
@@ -187,7 +181,7 @@ const useAttachSelectedSnippet = (
         };
       });
     }
-  }, [messageLength]);
+  }, [isThreadEmpty]);
 
   return [attachedSelectedSnippet, onToggleAttachedSelectedSnippet];
 };

@@ -24,7 +24,6 @@ import { ToolUseSwitch } from "./ToolUseSwitch";
 import {
   ToolUse,
   selectCheckpointsEnabled,
-  selectMessages,
   selectToolUse,
   setEnabledCheckpoints,
   setToolUse,
@@ -34,6 +33,7 @@ import {
   selectIsWaiting,
   selectPatchIsAutomatic,
   selectThreadId,
+  selectThreadMessagesIsEmpty,
   selectToolConfirmationResponses,
 } from "../../features/ThreadMessages";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -346,7 +346,7 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   const dispatch = useAppDispatch();
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const messages = useAppSelector(selectMessages);
+  const isEmpty = useAppSelector(selectThreadMessagesIsEmpty);
   const toolUse = useAppSelector(selectToolUse);
   const onSetToolUse = useCallback(
     (value: ToolUse) => dispatch(setToolUse(value)),
@@ -354,8 +354,8 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   );
 
   const showControls = useMemo(
-    () => messages.length === 0 && !isStreaming && !isWaiting,
-    [isStreaming, isWaiting, messages],
+    () => isEmpty && !isStreaming && !isWaiting,
+    [isStreaming, isWaiting, isEmpty],
   );
 
   return (
