@@ -2,35 +2,16 @@ import React, { useCallback, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
 import { Flex } from "@radix-ui/themes";
-import {
-  useAppSelector,
-  // useAppDispatch,
-  // useSendChatRequest,
-  // useAutoSend,
-  // useCapsForToolUse,
-} from "../../hooks";
+import { useAppSelector } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
-import {
-  // enableSend,
-  // selectIsStreaming,
-  // selectPreventSend,
-  // selectChatId,
-  //  selectMessages,
-  // getSelectedToolUse,
-  selectThreadNewChatSuggested,
-} from "../../features/Chat/Thread";
-// import { ThreadHistoryButton } from "../Buttons";
-// import { push } from "../../features/Pages/pagesSlice";
+
 import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
-import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+// TODO: remove this?
+// import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
 import { useMessageSubscription } from "./useMessageSubscription";
 import { selectThreadId } from "../../features/ThreadMessages";
-// import {
-//   selectIsStreaming,
-//   // selectTotalMessagesInThread,
-// } from "../../features/ThreadMessages";
 
 export type ChatProps = {
   host: Config["host"];
@@ -57,7 +38,7 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
   // const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   // const chatToolUse = useAppSelector(getSelectedToolUse);
-  const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
+  // const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   //   const messages = useAppSelector(selectMessages);
   // const capsForToolUse = useCapsForToolUse();
 
@@ -102,12 +83,12 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 
-        <SuggestNewChat
+        {/* <SuggestNewChat
           shouldBeVisible={
             threadNewChatSuggested.wasSuggested &&
             !threadNewChatSuggested.wasRejectedByUser
           }
-        />
+        /> */}
 
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
