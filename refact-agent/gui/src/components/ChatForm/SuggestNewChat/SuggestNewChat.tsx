@@ -9,7 +9,7 @@ import classNames from "classnames";
 import {
   useAppDispatch,
   useAppSelector,
-  useCompressChat,
+  // useCompressChat,
   // useLastSentCompressionStop,
 } from "../../../hooks";
 import { popBackTo, push } from "../../../features/Pages/pagesSlice";
@@ -42,7 +42,7 @@ export const SuggestNewChat = ({
 
   const [isRendered, setIsRendered] = useState(shouldBeVisible);
   const [isAnimating, setIsAnimating] = useState(false);
-  const { isCompressing } = useCompressChat();
+  // const { isCompressing } = useCompressChat();
 
   useEffect(() => {
     if (shouldBeVisible) {
@@ -98,7 +98,7 @@ export const SuggestNewChat = ({
     return "For best results, consider starting a new chat when switching topics.";
   }, [isWarning, isContextOverflown]);
 
-  if (isCompressing) return null;
+  // if (isCompressing) return null;
 
   return (
     <Box

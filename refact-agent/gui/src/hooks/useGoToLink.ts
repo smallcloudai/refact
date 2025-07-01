@@ -1,17 +1,17 @@
 import { useCallback } from "react";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
-import { isAbsolutePath } from "../utils/isAbsolutePath";
+// import { isAbsolutePath } from "../utils/isAbsolutePath";
 import { useAppDispatch } from "./useAppDispatch";
 import { popBackTo, push } from "../features/Pages/pagesSlice";
-import { useAppSelector } from "./useAppSelector";
-import { selectIntegration } from "../features/Chat/Thread/selectors";
-import { debugIntegrations } from "../debugConfig";
+// import { useAppSelector } from "./useAppSelector";
+// import { selectIntegration } from "../features/Chat/Thread/selectors";
+// import { debugIntegrations } from "../debugConfig";
 import { newChatAction } from "../features/Chat/Thread/actions";
 
 export function useGoToLink() {
   const dispatch = useAppDispatch();
   const { queryPathThenOpenFile } = useEventsBusForIDE();
-  const maybeIntegration = useAppSelector(selectIntegration);
+  // const maybeIntegration = useAppSelector(selectIntegration);
 
   const handleGoTo = useCallback(
     ({ goto }: { goto?: string }) => {
@@ -24,33 +24,33 @@ export function useGoToLink() {
           void queryPathThenOpenFile({ file_path: payload });
           return;
         }
-        case "settings": {
-          const isFile = isAbsolutePath(payload);
-          debugIntegrations(`[DEBUG]: maybeIntegration: `, maybeIntegration);
-          if (!maybeIntegration) {
-            debugIntegrations(`[DEBUG]: integration data is not available.`);
-            return;
-          }
-          dispatch(
-            popBackTo({
-              name: "integrations page",
-              // projectPath: isFile ? payload : "",
-              integrationName:
-                !isFile && payload !== "DEFAULT"
-                  ? payload
-                  : maybeIntegration.name,
-              integrationPath: isFile ? payload : maybeIntegration.path,
-              projectPath: maybeIntegration.project,
-              shouldIntermediatePageShowUp:
-                payload !== "DEFAULT"
-                  ? maybeIntegration.shouldIntermediatePageShowUp
-                  : false,
-              wasOpenedThroughChat: true,
-            }),
-          );
-          // TODO: open in the integrations
-          return;
-        }
+        // case "settings": {
+        //   const isFile = isAbsolutePath(payload);
+        //   debugIntegrations(`[DEBUG]: maybeIntegration: `, maybeIntegration);
+        //   if (!maybeIntegration) {
+        //     debugIntegrations(`[DEBUG]: integration data is not available.`);
+        //     return;
+        //   }
+        //   dispatch(
+        //     popBackTo({
+        //       name: "integrations page",
+        //       // projectPath: isFile ? payload : "",
+        //       integrationName:
+        //         !isFile && payload !== "DEFAULT"
+        //           ? payload
+        //           : maybeIntegration.name,
+        //       integrationPath: isFile ? payload : maybeIntegration.path,
+        //       projectPath: maybeIntegration.project,
+        //       shouldIntermediatePageShowUp:
+        //         payload !== "DEFAULT"
+        //           ? maybeIntegration.shouldIntermediatePageShowUp
+        //           : false,
+        //       wasOpenedThroughChat: true,
+        //     }),
+        //   );
+        //   // TODO: open in the integrations
+        //   return;
+        // }
 
         case "newchat": {
           dispatch(newChatAction());
@@ -71,7 +71,7 @@ export function useGoToLink() {
       // maybeIntegration?.path,
       // maybeIntegration?.project,
       // maybeIntegration?.shouldIntermediatePageShowUp,
-      maybeIntegration,
+      // maybeIntegration,
       queryPathThenOpenFile,
     ],
   );

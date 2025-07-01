@@ -166,6 +166,8 @@ export function useMessageSubscription() {
       const enabledTools = allTools.filter((tool) => tool.enabled);
       const specs = enabledTools.map((tool) => tool.spec);
 
+      // TODO: add images
+
       if (leafMessage.endAlt === 0 && leafMessage.endNumber === 0) {
         void dispatch(
           createThreadWithMessage({

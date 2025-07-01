@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
 
-import { Flex, Card, Text, IconButton } from "@radix-ui/themes";
+import { Flex, Card, Text } from "@radix-ui/themes";
 import styles from "./ChatForm.module.css";
 
 import {
@@ -17,7 +17,7 @@ import {
   useConfig,
   // useCapsForToolUse,
   // useSendChatRequest,
-  useCompressChat,
+  // useCompressChat,
   useAutoFocusOnce,
   // useGetToolGroupsQuery,
 } from "../../hooks";
@@ -102,8 +102,9 @@ export const ChatForm: React.FC<ChatFormProps> = ({
 
   const threadToolUse = useAppSelector(selectThreadToolUse);
   const messagesAreEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-  const { compressChat, compressChatRequest, isCompressing } =
-    useCompressChat();
+  // TODO: compression removed?
+  // const { compressChat, compressChatRequest, isCompressing } =
+  //   useCompressChat();
   const autoFocus = useAutoFocusOnce();
   const attachedFiles = useAttachedFiles();
   const shouldShowBalanceLow = useAppSelector(showBalanceLowCallout);
@@ -391,7 +392,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 currentMessageQuery={attachedFiles.addFilesToInput(value)}
               />
               <Flex gap="2" align="center" justify="center">
-                <IconButton
+                {/* <IconButton
                   size="1"
                   variant="ghost"
                   // TODO: last sent compression?
@@ -409,7 +410,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                   loading={compressChatRequest.isLoading || isCompressing}
                 >
                   <ArchiveIcon />
-                </IconButton>
+                </IconButton> */}
                 {toolUse === "agent" && (
                   <AgentIntegrationsButton
                     title="Set up Agent Integrations"

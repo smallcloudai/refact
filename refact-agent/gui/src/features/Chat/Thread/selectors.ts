@@ -2,8 +2,6 @@ import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import { isDiffMessage, isToolMessage } from "../../../services/refact/types";
 
-export const selectThread = (state: RootState) => state.chat.thread;
-export const selectThreadTitle = (state: RootState) => state.chat.thread.title;
 export const selectChatId = (state: RootState) => state.chat.thread.id;
 export const selectModel = (state: RootState) => state.chat.thread.model;
 export const selectMessages = (state: RootState) => state.chat.thread.messages;
@@ -77,16 +75,6 @@ export const selectManyDiffMessageByIds = (ids: string[]) =>
 
 export const getSelectedToolUse = (state: RootState) =>
   state.chat.thread.tool_use;
-
-export const selectIntegration = createSelector(
-  selectThread,
-  (thread) => thread.integration,
-);
-
-export const selectThreadMode = createSelector(
-  selectThread,
-  (thread) => thread.mode,
-);
 
 export const selectLastSentCompression = createSelector(
   selectMessages,

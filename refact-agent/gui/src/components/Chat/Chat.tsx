@@ -14,7 +14,7 @@ import {
   // enableSend,
   // selectIsStreaming,
   // selectPreventSend,
-  selectChatId,
+  // selectChatId,
   //  selectMessages,
   // getSelectedToolUse,
   selectThreadNewChatSuggested,
@@ -26,6 +26,7 @@ import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
 import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
 import { useMessageSubscription } from "./useMessageSubscription";
+import { selectThreadId } from "../../features/ThreadMessages";
 // import {
 //   selectIsStreaming,
 //   // selectTotalMessagesInThread,
@@ -51,7 +52,7 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
   //   devModeChecks: { stabilityCheck: "never" },
   // });
 
-  const chatId = useAppSelector(selectChatId);
+  const chatId = useAppSelector(selectThreadId);
   // TODO: figure out features removed here
   // const { submit, abort, retryFromIndex } = useSendChatRequest();
 
@@ -97,7 +98,7 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
         justify="between"
         px="1"
       >
-        <ChatContent key={`chat-content-${chatId}`} />
+        <ChatContent key={`chat-content-${chatId ?? "new"}`} />
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 

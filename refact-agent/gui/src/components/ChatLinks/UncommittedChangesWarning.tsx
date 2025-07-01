@@ -1,6 +1,6 @@
 import React from "react";
-import { useAppSelector, useGetLinksFromLsp } from "../../hooks";
-import { Markdown } from "../Markdown";
+import { useAppSelector } from "../../hooks";
+
 import { Flex, Separator } from "@radix-ui/themes";
 import {
   // selectIsStreaming,
@@ -18,7 +18,7 @@ import { getInformationMessage } from "../../features/Errors/informationSlice";
 export const UncommittedChangesWarning: React.FC = () => {
   const isStreaming = useAppSelector(selectIsStreaming);
   const isWaiting = useAppSelector(selectIsWaiting);
-  const linksRequest = useGetLinksFromLsp();
+  // const linksRequest = useGetLinksFromLsp();
   const error = useAppSelector(getErrorMessage);
   const information = useAppSelector(getInformationMessage);
   const toolUse = useAppSelector(selectThreadToolUse);
@@ -33,10 +33,7 @@ export const UncommittedChangesWarning: React.FC = () => {
     messages.length !== 0 ||
     hasCallout ||
     isStreaming ||
-    isWaiting ||
-    linksRequest.isFetching ||
-    linksRequest.isLoading ||
-    !linksRequest.data?.uncommited_changes_warning
+    isWaiting
   ) {
     return false;
   }
@@ -44,7 +41,7 @@ export const UncommittedChangesWarning: React.FC = () => {
   return (
     <Flex py="4" gap="4" direction="column" justify="between">
       <Separator size="4" />
-      <Markdown>{linksRequest.data.uncommited_changes_warning}</Markdown>
+      {/* <Markdown>{linksRequest.data.uncommited_changes_warning}</Markdown> */}
     </Flex>
   );
 };
