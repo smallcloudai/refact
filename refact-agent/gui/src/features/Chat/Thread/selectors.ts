@@ -2,8 +2,6 @@ import { RootState } from "../../../app/store";
 import { createSelector } from "@reduxjs/toolkit";
 import { isDiffMessage } from "../../../services/refact/types";
 
-export const selectChatId = (state: RootState) => state.chat.thread.id;
-
 export const selectMessages = (state: RootState) => state.chat.thread.messages;
 export const selectToolUse = (state: RootState) => state.chat.tool_use;
 export const selectThreadToolUse = (state: RootState) =>
@@ -14,12 +12,6 @@ export const selectAutomaticPatch = (state: RootState) =>
 export const selectCheckpointsEnabled = (state: RootState) =>
   state.chat.checkpoints_enabled;
 
-export const selectThreadBoostReasoning = (state: RootState) =>
-  state.chat.thread.boost_reasoning;
-
-// TBD: only used when `/links` suggests a new chat.
-export const selectThreadNewChatSuggested = (state: RootState) =>
-  state.chat.thread.new_chat_suggested;
 export const selectThreadMaximumTokens = (state: RootState) =>
   state.chat.thread.currentMaximumContextTokens;
 export const selectThreadCurrentMessageTokens = (state: RootState) =>

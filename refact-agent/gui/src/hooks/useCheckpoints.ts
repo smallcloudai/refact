@@ -18,18 +18,19 @@ import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
 import {
   backUpMessages,
   newChatAction,
-  selectChatId,
   selectMessages,
 } from "../features/Chat";
 import { isUserMessage, telemetryApi } from "../services/refact";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
+import { selectThreadId } from "../features/ThreadMessages";
 
+// TODO: how will check points works?
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessages);
-  const chatId = useAppSelector(selectChatId);
+  const chatId = useAppSelector(selectThreadId);
   const configIdeHost = useAppSelector(selectConfig).host;
 
   const [sendTelemetryEvent] =
@@ -160,7 +161,7 @@ export const useCheckpoints = () => {
         const usefulMessages = messages.slice(0, maybeMessageIndex);
         dispatch(
           backUpMessages({
-            id: chatId,
+            id: chatId ?? "",
             messages: usefulMessages,
           }),
         );
