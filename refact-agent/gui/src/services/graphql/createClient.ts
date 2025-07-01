@@ -17,27 +17,27 @@ import {
 
 const THREE_MINUTES = 3 * 60 * 1000;
 
-export const createGraphqlClient = (_apiKey: string, signal: AbortSignal) => {
-  const apiKey = "sk_alice_123456";
-  // TODO: make this a build variable
-  const baseUrl = "localhost:8008/v1/graphql";
-  // const baseUrl = "app.refact.ai/v1/graphql";
-  // console.log("creating client");
-  // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
+export const createGraphqlClient = (
+  addressUrl: string,
+  apiKey: string,
+  signal: AbortSignal,
+) => {
+  const httpUrl = new URL(addressUrl);
+  httpUrl.pathname = "/v1/graphql";
 
-  // TODO: should be secure by default
-  const protocol = window.location.protocol === "https:" ? "https" : "http";
-  const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const wsUrl = new URL(addressUrl);
+  wsUrl.pathname = "/v1/graphql";
+  wsUrl.protocol = addressUrl.startsWith("http://") ? "ws" : "wss";
 
   const wsClient = createWSClient({
-    url: `${wsProtocol}://${baseUrl}`,
+    url: wsUrl.toString(),
     connectionParams: { apikey: apiKey },
     webSocketImpl: WebSocket,
     retryAttempts: 5,
   });
 
   const urqlClient = createClient({
-    url: `${protocol}://${baseUrl}`,
+    url: httpUrl.toString(),
     exchanges: [
       // TODO: only enable this during development
       // debugExchange,
@@ -74,6 +74,7 @@ export function createSubscription<
   T = unknown,
   Variables extends AnyVariables = AnyVariables,
 >(
+  addressUrl: string,
   apiKey: string,
   query: DocumentInput<T, Variables>,
   variables: Variables,
@@ -81,7 +82,7 @@ export function createSubscription<
   handleResult: (v: OperationResult<T, Variables>) => void,
   context?: Partial<OperationContext> | undefined,
 ) {
-  const client = createGraphqlClient(apiKey, signal);
+  const client = createGraphqlClient(apiKey, signal, addressUrl);
 
   const operation = client.subscription<T, Variables>(
     query,

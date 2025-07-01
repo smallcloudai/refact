@@ -58,17 +58,25 @@ export const threadsPageSub = createAsyncThunk<
 >("graphql/threadsPageSub", (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const address = state.config.addressURL ?? "https://app.refact.ai";
 
   createSubscription<
     ThreadsPageSubsSubscription,
     ThreadsPageSubsSubscriptionVariables
-  >(apiKey, ThreadsPageSubsDocument, args, thunkAPI.signal, (result) => {
-    if (result.data) {
-      thunkAPI.dispatch(handleThreadListSubscriptionData(result.data));
-    } else if (result.error) {
-      thunkAPI.dispatch(setError(result.error.message));
-    }
-  });
+  >(
+    address,
+    apiKey,
+    ThreadsPageSubsDocument,
+    args,
+    thunkAPI.signal,
+    (result) => {
+      if (result.data) {
+        thunkAPI.dispatch(handleThreadListSubscriptionData(result.data));
+      } else if (result.error) {
+        thunkAPI.dispatch(setError(result.error.message));
+      }
+    },
+  );
 });
 
 export const deleteThreadThunk = createAsyncThunk<
@@ -82,8 +90,9 @@ export const deleteThreadThunk = createAsyncThunk<
 >("graphql/deleteThread", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
   const result = await client.mutation<
     DeleteThreadMutation,
     DeleteThreadMutationVariables
@@ -104,68 +113,76 @@ export const messagesSub = createAsyncThunk<
 >("graphql/messageSubscription", (args, thunkApi) => {
   const state = thunkApi.getState();
   const apiKey = state.config.apiKey ?? "";
+  const address = state.config.addressURL ?? "https://app.refact.ai";
 
   const sub = createSubscription<
     MessagesSubscriptionSubscription,
     MessagesSubscriptionSubscriptionVariables
-  >(apiKey, MessagesSubscriptionDocument, args, thunkApi.signal, (result) => {
-    if (thunkApi.signal.aborted) {
-      // eslint-disable-next-line no-console
-      console.log("handleResult called after thunk signal is aborted");
+  >(
+    address,
+    apiKey,
+    MessagesSubscriptionDocument,
+    args,
+    thunkApi.signal,
+    (result) => {
+      if (thunkApi.signal.aborted) {
+        // eslint-disable-next-line no-console
+        console.log("handleResult called after thunk signal is aborted");
 
-      return thunkApi.fulfillWithValue({});
-    }
+        return thunkApi.fulfillWithValue({});
+      }
 
-    // console.log(result);
-    if (result.error) {
-      // TBD: do we hang up on errors?
-      thunkApi.dispatch(setError(result.error.message));
-    }
+      // console.log(result);
+      if (result.error) {
+        // TBD: do we hang up on errors?
+        thunkApi.dispatch(setError(result.error.message));
+      }
 
-    if (result.data?.comprehensive_thread_subs.news_payload_thread) {
-      thunkApi.dispatch(
-        receiveThread({
-          news_action: result.data.comprehensive_thread_subs.news_action,
-          news_payload_id:
-            result.data.comprehensive_thread_subs.news_payload_id,
-          news_payload_thread:
-            result.data.comprehensive_thread_subs.news_payload_thread,
-        }),
-      );
-    }
-    if (result.data?.comprehensive_thread_subs.stream_delta) {
-      thunkApi.dispatch(
-        receiveDeltaStream({
-          news_action: result.data.comprehensive_thread_subs.news_action,
-          news_payload_id:
-            result.data.comprehensive_thread_subs.news_payload_id,
-          stream_delta: result.data.comprehensive_thread_subs.stream_delta,
-        }),
-      );
-    }
+      if (result.data?.comprehensive_thread_subs.news_payload_thread) {
+        thunkApi.dispatch(
+          receiveThread({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+            news_payload_thread:
+              result.data.comprehensive_thread_subs.news_payload_thread,
+          }),
+        );
+      }
+      if (result.data?.comprehensive_thread_subs.stream_delta) {
+        thunkApi.dispatch(
+          receiveDeltaStream({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+            stream_delta: result.data.comprehensive_thread_subs.stream_delta,
+          }),
+        );
+      }
 
-    if (result.data?.comprehensive_thread_subs.news_action === "DELETE") {
-      thunkApi.dispatch(
-        removeMessage({
-          news_action: result.data.comprehensive_thread_subs.news_action,
-          news_payload_id:
-            result.data.comprehensive_thread_subs.news_payload_id,
-        }),
-      );
-    }
+      if (result.data?.comprehensive_thread_subs.news_action === "DELETE") {
+        thunkApi.dispatch(
+          removeMessage({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+          }),
+        );
+      }
 
-    if (result.data?.comprehensive_thread_subs.news_payload_thread_message) {
-      thunkApi.dispatch(
-        receiveThreadMessages({
-          news_action: result.data.comprehensive_thread_subs.news_action,
-          news_payload_id:
-            result.data.comprehensive_thread_subs.news_payload_id,
-          news_payload_thread_message:
-            result.data.comprehensive_thread_subs.news_payload_thread_message,
-        }),
-      );
-    }
-  });
+      if (result.data?.comprehensive_thread_subs.news_payload_thread_message) {
+        thunkApi.dispatch(
+          receiveThreadMessages({
+            news_action: result.data.comprehensive_thread_subs.news_action,
+            news_payload_id:
+              result.data.comprehensive_thread_subs.news_payload_id,
+            news_payload_thread_message:
+              result.data.comprehensive_thread_subs.news_payload_thread_message,
+          }),
+        );
+      }
+    },
+  );
 
   // TODO: duplicated call to unsubscribe
   thunkApi.signal.addEventListener("abort", () => {
@@ -190,8 +207,9 @@ export const createMessage = createAsyncThunk<
 >("graphql/createMessage", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
   const result = await client.mutation<
     MessageCreateMultipleMutation,
     MessageCreateMultipleMutationVariables
@@ -293,7 +311,9 @@ export const createThreadWithMessage = createAsyncThunk<
     thunkAPI.rejectWithValue({ message: JSON.stringify(appIdQuery.error) });
   }
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const threadQueryArgs: FThreadInput = {
     ft_fexp_id: args.expertId, // TODO: user selected
@@ -378,10 +398,10 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
   const workspace = state.config.currentWorkspaceName ?? "";
-
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const threadQueryArgs: FThreadInput = {
     ft_fexp_id: args.expertId, // TODO: user selected
@@ -479,7 +499,9 @@ export const pauseThreadThunk = createAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.mutation<
     ThreadPatchMutation,
@@ -508,7 +530,9 @@ export const getExpertsThunk = createAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.query<
     ExpertsForGroupQuery,
@@ -540,7 +564,9 @@ export const getModelsForExpertThunk = createAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.query<
     ModelsForExpertQuery,
@@ -608,7 +634,9 @@ export const toolConfirmationThunk = createAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
   const result = await client.mutation<
     ThreadConfirmationResponseMutation,
     ThreadConfirmationResponseMutationVariables
