@@ -92,7 +92,7 @@ export {
   ideClearActiveTeamsWorkspace,
 } from "../hooks/useEventBusForIDE";
 
-export { ideAttachFileToChat } from "../hooks/useEventBusForApp";
+export { ideAttachFileToChat, newChatAction } from "../hooks/useEventBusForApp";
 export { toPascalCase } from "../utils/toPascalCase";
 export const fim = {
   request,

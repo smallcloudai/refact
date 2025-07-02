@@ -9,17 +9,10 @@ import {
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import {
-  setToolUse,
-  newChatAction,
   chatError,
-  doneStreaming,
-  setPreventSend,
   newIntegrationChat,
   setIntegrationData,
-  setMaxNewTokens,
   setEnabledCheckpoints,
-  fixBrokenToolMessages,
-  setIsTitleGenerationEnabled,
   chatResponse,
 } from "./actions";
 import { formatChatResponse } from "./utils";
@@ -105,43 +98,6 @@ const createInitialState = ({
 const initialState = createInitialState({});
 
 export const chatReducer = createReducer(initialState, (builder) => {
-  builder.addCase(setToolUse, (state, action) => {
-    state.thread.tool_use = action.payload;
-    state.tool_use = action.payload;
-    state.thread.mode = chatModeToLspMode({ toolUse: action.payload });
-  });
-
-  builder.addCase(setPreventSend, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.prevent_send = true;
-  });
-
-  builder.addCase(setIsTitleGenerationEnabled, (state, action) => {
-    state.title_generation_enabled = action.payload;
-  });
-
-  builder.addCase(newChatAction, (state, action) => {
-    const next = createInitialState({
-      tool_use: state.tool_use,
-      maybeMode: state.thread.mode,
-    });
-    next.cache = { ...state.cache };
-    if (state.streaming || state.waiting_for_response) {
-      next.cache[state.thread.id] = { ...state.thread, read: false };
-    }
-    next.thread.model = state.thread.model;
-
-    next.checkpoints_enabled = state.checkpoints_enabled;
-    next.follow_ups_enabled = state.follow_ups_enabled;
-    next.title_generation_enabled = state.title_generation_enabled;
-    next.thread.boost_reasoning = state.thread.boost_reasoning;
-    // next.thread.automatic_patch = state.thread.automatic_patch;
-    if (action.payload?.messages) {
-      next.thread.messages = action.payload.messages;
-    }
-    return next;
-  });
-
   builder.addCase(chatResponse, (state, action) => {
     if (
       action.payload.id !== state.thread.id &&
@@ -183,13 +139,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.error = action.payload.message;
   });
 
-  builder.addCase(doneStreaming, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.streaming = false;
-    state.waiting_for_response = false;
-    state.thread.read = true;
-  });
-
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
   });
@@ -216,23 +165,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setIntegrationData, (state, action) => {
     state.thread.integration = action.payload;
-  });
-
-  // TBD: should be safe to remove?
-  builder.addCase(setMaxNewTokens, (state, action) => {
-    state.thread.currentMaximumContextTokens = action.payload;
-  });
-
-  builder.addCase(fixBrokenToolMessages, (state, action) => {
-    if (action.payload.id !== state.thread.id) return state;
-    if (state.thread.messages.length === 0) return state;
-    const lastMessage = state.thread.messages[state.thread.messages.length - 1];
-    if (!isToolCallMessage(lastMessage)) return state;
-    if (lastMessage.tool_calls.every(validateToolCall)) return state;
-    const validToolCalls = lastMessage.tool_calls.filter(validateToolCall);
-    const messages = state.thread.messages.slice(0, -1);
-    const newMessage = { ...lastMessage, tool_calls: validToolCalls };
-    state.thread.messages = [...messages, newMessage];
   });
 
   builder.addMatcher(

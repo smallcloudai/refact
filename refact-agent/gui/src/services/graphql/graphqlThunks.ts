@@ -286,7 +286,7 @@ async function fetchAppSearchableId(apiKey: string, port: number) {
 }
 
 export const createThreadWithMessage = createAsyncThunk<
-  MessageCreateMultipleMutation,
+  MessageCreateMultipleMutation & CreateThreadMutation,
   {
     content: string;
     expertId: string;
@@ -376,11 +376,11 @@ export const createThreadWithMessage = createAsyncThunk<
   if (!result.data) {
     return thunkAPI.rejectWithValue({ message: "failed to create message" });
   }
-  return thunkAPI.fulfillWithValue(result.data);
+  return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
 });
 
 export const createThreadWitMultipleMessages = createAsyncThunk<
-  MessageCreateMultipleMutation,
+  MessageCreateMultipleMutation & CreateThreadMutation,
   {
     messages: { ftm_role: string; ftm_content: unknown }[];
     expertId: string;
@@ -469,7 +469,7 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
   if (!result.data) {
     return thunkAPI.rejectWithValue({ message: "failed to create message" });
   }
-  return thunkAPI.fulfillWithValue(result.data);
+  return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
 });
 
 // TODO: stop is ft_error, set this and it'll stop

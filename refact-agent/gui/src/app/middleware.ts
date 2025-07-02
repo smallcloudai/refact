@@ -5,7 +5,6 @@ import {
   isRejected,
 } from "@reduxjs/toolkit";
 import {
-  doneStreaming,
   chatAskQuestionThunk,
   newIntegrationChat,
   // setIsWaitingForResponse,
@@ -48,6 +47,9 @@ import {
   threadMessagesSlice,
 } from "../features/ThreadMessages";
 import {
+  createMessage,
+  createThreadWithMessage,
+  createThreadWitMultipleMessages,
   rejectToolUsageAction,
   toolConfirmationThunk,
 } from "../services/graphql/graphqlThunks";
@@ -248,6 +250,7 @@ startListening({
       listenerApi.dispatch(setIsAuthError(isAuthError));
     }
 
+    // TODO: thread or message error?
     if (
       chatAskQuestionThunk.rejected.match(action) &&
       !action.meta.aborted &&
@@ -300,10 +303,28 @@ startListening({
 });
 
 startListening({
-  actionCreator: doneStreaming,
+  matcher: isAnyOf(
+    createMessage.fulfilled,
+    createThreadWithMessage.fulfilled,
+    createThreadWitMultipleMessages.fulfilled,
+  ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    if (action.payload.id === state.chat.thread.id) {
+    if (
+      createMessage.fulfilled.match(action) &&
+      action.meta.arg.input.ftm_belongs_to_ft_id ===
+        state.threadMessages.thread?.ft_id
+    ) {
+      listenerApi.dispatch(resetAttachedImagesSlice());
+    } else if (
+      createThreadWithMessage.fulfilled.match(action) &&
+      action.payload.thread_create.ft_id === state.threadMessages.ft_id
+    ) {
+      listenerApi.dispatch(resetAttachedImagesSlice());
+    } else if (
+      createThreadWitMultipleMessages.fulfilled.match(action) &&
+      action.payload.thread_create.ft_id !== state.threadMessages.ft_id
+    ) {
       listenerApi.dispatch(resetAttachedImagesSlice());
     }
   },
