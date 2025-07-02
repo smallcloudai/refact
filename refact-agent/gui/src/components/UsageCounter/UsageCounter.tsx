@@ -7,14 +7,10 @@ import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens
 import { ScrollArea } from "../ScrollArea";
 import { useUsageCounter } from "./useUsageCounter";
 
-import { selectAllImages } from "../../features/AttachedImages";
-import {
-  selectThreadCurrentMessageTokens,
-  selectThreadMaximumTokens,
-} from "../../features/Chat";
+// import { selectAllImages } from "../../features/AttachedImages";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 import {
-  useAppSelector,
+  // useAppSelector,
   useEffectOnce,
   useTotalCostForChat,
   useTotalTokenMeteringForChat,
@@ -153,27 +149,28 @@ const CoinsDisplay: React.FC<{
   );
 };
 
-const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
-  messageTokens,
-}) => {
-  const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
+// const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
+//   messageTokens,
+// }) => {
+//   // TODO: where do we get this info from now?
+//   // const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
 
-  return (
-    <Flex direction="column" align="start" gap="2">
-      {/* TODO: upsale logic might be implemented here to extend maximum context size */}
-      {maximumThreadContextTokens && (
-        <TokenDisplay
-          label="Thread maximum context tokens amount"
-          value={maximumThreadContextTokens}
-        />
-      )}
-      <TokenDisplay
-        label="Potential tokens amount for current message"
-        value={messageTokens}
-      />
-    </Flex>
-  );
-};
+//   return (
+//     <Flex direction="column" align="start" gap="2">
+//       {/* TODO: upsale logic might be implemented here to extend maximum context size */}
+//       {/* {maximumThreadContextTokens && (
+//         <TokenDisplay
+//           label="Thread maximum context tokens amount"
+//           value={maximumThreadContextTokens}
+//         />
+//       )} */}
+//       <TokenDisplay
+//         label="Potential tokens amount for current message"
+//         value={messageTokens}
+//       />
+//     </Flex>
+//   );
+// };
 
 const DefaultHoverCard: React.FC<{
   inputTokens: number;
@@ -277,18 +274,18 @@ const DefaultHoverCard: React.FC<{
   );
 };
 
-const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
-  messageTokens,
-}) => {
-  return (
-    <Flex align="center" gap="6px">
-      <Text size="1" color="gray" wrap="nowrap">
-        {formatNumberToFixed(messageTokens)}{" "}
-        {messageTokens === 1 ? "token" : "tokens"}
-      </Text>
-    </Flex>
-  );
-};
+// const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
+//   messageTokens,
+// }) => {
+//   return (
+//     <Flex align="center" gap="6px">
+//       <Text size="1" color="gray" wrap="nowrap">
+//         {formatNumberToFixed(messageTokens)}{" "}
+//         {messageTokens === 1 ? "token" : "tokens"}
+//       </Text>
+//     </Flex>
+//   );
+// };
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
@@ -314,19 +311,20 @@ const DefaultHoverTriggerContent: React.FC<{
 
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
-  isMessageEmpty,
+  // isMessageEmpty,
 }) => {
   const [open, setOpen] = useState(false);
-  const maybeAttachedImages = useAppSelector(selectAllImages);
+  // const maybeAttachedImages = useAppSelector(selectAllImages);
   const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
-  const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
+  //TODO: move this comes from command preview, store it some where
+  // const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
   const meteringTokens = useTotalTokenMeteringForChat();
 
-  const messageTokens = useMemo(() => {
-    if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
-    if (!currentMessageTokens) return 0;
-    return currentMessageTokens;
-  }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
+  // const messageTokens = useMemo(() => {
+  //   if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
+  //   if (!currentMessageTokens) return 0;
+  //   return currentMessageTokens;
+  // }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
 
   const inputMeteringTokens = useMemo(() => {
     if (meteringTokens === null) return null;
@@ -390,9 +388,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             [styles.isOverflown]: isOverflown,
           })}
         >
-          {isInline ? (
+          {/* {isInline ? (
             <InlineHoverTriggerContent messageTokens={messageTokens} />
           ) : (
+            <DefaultHoverTriggerContent
+              inputTokens={inputTokens}
+              outputTokens={outputTokens}
+            />
+          )} */}
+          {!isInline && (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
               outputTokens={outputTokens}
@@ -411,9 +415,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           side="top"
           hideWhenDetached
         >
-          {isInline ? (
+          {/* {isInline ? (
             <InlineHoverCard messageTokens={messageTokens} />
           ) : (
+            <DefaultHoverCard
+              inputTokens={inputTokens}
+              outputTokens={outputTokens}
+            />
+          )} */}
+          {!isInline && (
             <DefaultHoverCard
               inputTokens={inputTokens}
               outputTokens={outputTokens}

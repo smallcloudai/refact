@@ -82,7 +82,7 @@ export function createSubscription<
   handleResult: (v: OperationResult<T, Variables>) => void,
   context?: Partial<OperationContext> | undefined,
 ) {
-  const client = createGraphqlClient(apiKey, signal, addressUrl);
+  const client = createGraphqlClient(addressUrl, apiKey, signal);
 
   const operation = client.subscription<T, Variables>(
     query,

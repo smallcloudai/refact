@@ -12,16 +12,14 @@ import {
 } from "@radix-ui/themes";
 import { AgentRollbackSwitch, ApplyPatchSwitch } from "../ChatControls";
 import { useAppSelector } from "../../../hooks";
-import {
-  selectAutomaticPatch,
-  selectCheckpointsEnabled,
-} from "../../../features/Chat";
 import { Fragment, useMemo } from "react";
 import { ToolGroups } from "./ToolGroups";
+import { selectPatchIsAutomatic } from "../../../features/ThreadMessages";
 
 export const AgentCapabilities = () => {
-  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
-  const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
+  const isPatchAutomatic = useAppSelector(selectPatchIsAutomatic);
+  // TODO: enabling check points
+  // const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
   // const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
   const agenticFeatures = useMemo(() => {
@@ -33,8 +31,9 @@ export const AgentCapabilities = () => {
         switcher: <ApplyPatchSwitch />,
       },
       {
+        // TODO: enable this
         name: "Files rollback",
-        enabled: isAgentRollbackEnabled,
+        enabled: true,
         switcher: <AgentRollbackSwitch />,
       },
       // {
@@ -43,7 +42,7 @@ export const AgentCapabilities = () => {
       //   switcher: <FollowUpsSwitch />,
       // },
     ];
-  }, [isPatchAutomatic, isAgentRollbackEnabled]);
+  }, [isPatchAutomatic]);
 
   const enabledAgenticFeatures = useMemo(
     () =>

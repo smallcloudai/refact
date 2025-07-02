@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React from "react";
 import {
   Text,
   Flex,
@@ -19,21 +19,11 @@ import {
   LockOpen1Icon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
-import { useTourRefs } from "../../features/Tour";
-import { ToolUseSwitch } from "./ToolUseSwitch";
+
+import { setEnabledCheckpoints } from "../../features/Chat/Thread";
 import {
-  ToolUse,
-  selectCheckpointsEnabled,
-  selectToolUse,
-  setEnabledCheckpoints,
-  setToolUse,
-} from "../../features/Chat/Thread";
-import {
-  selectIsStreaming,
-  selectIsWaiting,
   selectPatchIsAutomatic,
   selectThreadId,
-  selectThreadMessagesIsEmpty,
   selectToolConfirmationResponses,
 } from "../../features/ThreadMessages";
 import { useAppSelector, useAppDispatch } from "../../hooks";
@@ -107,8 +97,10 @@ export const ApplyPatchSwitch: React.FC = () => {
 };
 export const AgentRollbackSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
-  const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
+  // TODO: checkpoints
+  const isAgentRollbackEnabled = true; // useAppSelector(selectCheckpointsEnabled);
 
+  // TODO: handle this
   const handleAgentRollbackChange = (checked: boolean) => {
     dispatch(setEnabledCheckpoints(checked));
   };
@@ -342,22 +334,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
   attachedFiles,
 }) => {
-  const refs = useTourRefs();
-  const dispatch = useAppDispatch();
-  const isStreaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
-  const isEmpty = useAppSelector(selectThreadMessagesIsEmpty);
-  const toolUse = useAppSelector(selectToolUse);
-  const onSetToolUse = useCallback(
-    (value: ToolUse) => dispatch(setToolUse(value)),
-    [dispatch],
-  );
-
-  const showControls = useMemo(
-    () => isEmpty && !isStreaming && !isWaiting,
-    [isStreaming, isWaiting, isEmpty],
-  );
-
   return (
     <Flex
       pt="2"
@@ -401,18 +377,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         >
           Attach: {attachedFiles.activeFile.name}
         </Button>
-      )}
-
-      {showControls && (
-        <Flex gap="2" direction="column">
-          <ToolUseSwitch
-            ref={(x) => refs.setUseTools(x)}
-            toolUse={toolUse}
-            setToolUse={onSetToolUse}
-          />
-          {/* <CapsSelect /> */}
-          {/* <PromptSelect /> */}
-        </Flex>
       )}
     </Flex>
   );
