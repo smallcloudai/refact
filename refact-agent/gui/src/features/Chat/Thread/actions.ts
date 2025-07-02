@@ -12,7 +12,7 @@ import {
   // ToolCall,
   // ToolMessage,
   type ChatMessages,
-  type ChatResponse,
+  // type ChatResponse,
 } from "../../../services/refact/types";
 import type { AppDispatch, RootState } from "../../../app/store";
 // import { formatMessagesForLsp, consumeStream } from "./utils";
@@ -32,10 +32,6 @@ export const newIntegrationChat = createAction<{
   messages: ChatMessages;
   request_attempt_id: string;
 }>("chatThread/newIntegrationChat");
-
-export const chatResponse = createAction<PayloadWithId & ChatResponse>(
-  "chatThread/response",
-);
 
 // TODO: add history actions to this, maybe not used any more
 export const chatError = createAction<PayloadWithId & { message: string }>(

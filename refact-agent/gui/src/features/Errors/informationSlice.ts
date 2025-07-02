@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import { chatResponse } from "../Chat";
 import { smallCloudApi } from "../../services/smallcloud";
+import { threadMessagesSlice } from "../ThreadMessages";
+import { isUsage } from "../../services/refact/chat";
 
 export type InformationSliceState = {
   message: string | null;
@@ -40,26 +41,31 @@ export const informationSlice = createSlice({
   },
 
   extraReducers: (builder) => {
-    builder.addMatcher(chatResponse.match, (state, action) => {
-      if (
-        state.dismissed &&
-        "metering_balance" in action.payload &&
-        typeof action.payload.metering_balance === "number" &&
-        action.payload.metering_balance > 2000
-      ) {
-        state.dismissed = false;
-      }
-      if (state.dismissed) return state;
-      if (state.message) return state;
-      if (!("metering_balance" in action.payload)) return state;
-      if (typeof action.payload.metering_balance !== "number") return state;
-      if (action.payload.metering_balance <= 2000) {
-        state.type = "balance";
-        state.message =
-          "Your account is running low on credits. Please top up your account to continue using the service.";
-      }
-      return state;
-    });
+    // TODO: update ballance
+    builder.addMatcher(
+      threadMessagesSlice.actions.receiveThreadMessages.match,
+      (state, action) => {
+        if (
+          !isUsage(action.payload.news_payload_thread_message.ftm_usage) ||
+          state.dismissed ||
+          state.message
+        ) {
+          return state;
+        }
+
+        if (
+          action.payload.news_payload_thread_message.ftm_usage.coins <= 2000
+        ) {
+          state.type = "balance";
+          state.message =
+            "Your account is running low on credits. Please top up your account to continue using the service.";
+        } else {
+          state.dismissed = false;
+        }
+
+        return state;
+      },
+    );
 
     builder.addMatcher(
       smallCloudApi.endpoints.getUser.matchFulfilled,

@@ -13,21 +13,20 @@ import {
   newIntegrationChat,
   setIntegrationData,
   setEnabledCheckpoints,
-  chatResponse,
 } from "./actions";
-import { formatChatResponse } from "./utils";
+// import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
   commandsApi,
   isAssistantMessage,
   isDiffMessage,
   // isMultiModalToolResult,
-  isToolCallMessage,
+  // isToolCallMessage,
   isToolMessage,
-  isUserResponse,
+  // isUserResponse,
   ToolCall,
   ToolMessage,
-  validateToolCall,
+  // validateToolCall,
 } from "../../../services/refact";
 
 const createChatThread = (
@@ -98,39 +97,40 @@ const createInitialState = ({
 const initialState = createInitialState({});
 
 export const chatReducer = createReducer(initialState, (builder) => {
-  builder.addCase(chatResponse, (state, action) => {
-    if (
-      action.payload.id !== state.thread.id &&
-      !(action.payload.id in state.cache)
-    ) {
-      return state;
-    }
+  // TODO: delete this
+  // builder.addCase(chatResponse, (state, action) => {
+  //   if (
+  //     action.payload.id !== state.thread.id &&
+  //     !(action.payload.id in state.cache)
+  //   ) {
+  //     return state;
+  //   }
 
-    if (action.payload.id in state.cache) {
-      const thread = state.cache[action.payload.id];
-      // TODO: this might not be needed any more, because we can mutate the last message.
-      const messages = formatChatResponse(thread.messages, action.payload);
-      thread.messages = messages;
-      return state;
-    }
+  //   if (action.payload.id in state.cache) {
+  //     const thread = state.cache[action.payload.id];
+  //     // TODO: this might not be needed any more, because we can mutate the last message.
+  //     const messages = formatChatResponse(thread.messages, action.payload);
+  //     thread.messages = messages;
+  //     return state;
+  //   }
 
-    const messages = formatChatResponse(state.thread.messages, action.payload);
+  //   const messages = formatChatResponse(state.thread.messages, action.payload);
 
-    state.thread.messages = messages;
-    state.streaming = true;
-    state.waiting_for_response = false;
+  //   state.thread.messages = messages;
+  //   state.streaming = true;
+  //   state.waiting_for_response = false;
 
-    if (
-      isUserResponse(action.payload) &&
-      action.payload.compression_strength &&
-      action.payload.compression_strength !== "absent"
-    ) {
-      state.thread.new_chat_suggested = {
-        wasRejectedByUser: false,
-        wasSuggested: true,
-      };
-    }
-  });
+  //   if (
+  //     isUserResponse(action.payload) &&
+  //     action.payload.compression_strength &&
+  //     action.payload.compression_strength !== "absent"
+  //   ) {
+  //     state.thread.new_chat_suggested = {
+  //       wasRejectedByUser: false,
+  //       wasSuggested: true,
+  //     };
+  //   }
+  // });
 
   builder.addCase(chatError, (state, action) => {
     state.streaming = false;

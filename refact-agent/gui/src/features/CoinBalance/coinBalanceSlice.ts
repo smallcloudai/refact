@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { smallCloudApi } from "../../services/smallcloud";
-import { chatResponse } from "../Chat";
-import { isChatResponseChoice } from "../../events";
+import { threadMessagesSlice } from "../ThreadMessages";
+import { isUsage } from "../../services/refact";
 
 type CoinBalance = {
   balance: number;
@@ -19,16 +19,17 @@ export const coinBallanceSlice = createSlice({
       (state, action) => {
         state.balance = action.payload.metering_balance;
       },
-    ),
-      builder.addMatcher(chatResponse.match, (state, action) => {
-        if (!isChatResponseChoice(action.payload)) return state;
-        if (
-          "metering_balance" in action.payload &&
-          typeof action.payload.metering_balance === "number"
-        ) {
-          state.balance = action.payload.metering_balance;
-        }
-      });
+    );
+    builder.addMatcher(
+      threadMessagesSlice.actions.receiveThreadMessages.match,
+      (state, action) => {
+        if (!isUsage(action.payload.news_payload_thread_message.ftm_usage))
+          return state;
+
+        state.balance =
+          action.payload.news_payload_thread_message.ftm_usage.coins;
+      },
+    );
   },
 
   selectors: {

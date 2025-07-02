@@ -10,7 +10,7 @@ import {
   // setIsWaitingForResponse,
   // upsertToolCall,
   // sendCurrentChatToLspAfterToolCallUpdate,
-  chatResponse,
+  // chatResponse,
   chatError,
 } from "../features/Chat/Thread";
 import { statisticsApi } from "../services/refact/statistics";
@@ -39,7 +39,12 @@ import {
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 
-import { isToolResponse, modelsApi, providersApi } from "../services/refact";
+import {
+  isToolMessage,
+  isToolResponse,
+  modelsApi,
+  providersApi,
+} from "../services/refact";
 import {
   selectLastMessageForAlt,
   selectMessageByToolCallId,
@@ -545,11 +550,11 @@ startListening({
 // JB file refresh
 // TBD: this could include diff messages to
 startListening({
-  actionCreator: chatResponse,
+  actionCreator: threadMessagesSlice.actions.receiveThreadMessages,
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
     if (state.config.host !== "jetbrains") return;
-    if (!isToolResponse(action.payload)) return;
+    if (!isToolMessage(action.payload.news_payload_thread_message)) return;
     if (!window.postIntellijMessage) return;
     window.postIntellijMessage(ideForceReloadProjectTreeFiles());
   },
