@@ -15,12 +15,12 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import { newChatAction } from "../features/Chat";
 import { isUserMessage, telemetryApi } from "../services/refact";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
 import {
+  resetThread,
   selectMessagesFromEndNode,
   selectThreadId,
 } from "../features/ThreadMessages";
@@ -149,9 +149,11 @@ export const useCheckpoints = () => {
         dispatch(setCheckpointsErrorLog(response.error_log));
         return;
       }
+      // TODO: new chat suggestion?
       if (shouldNewChatBeStarted || !maybeMessageIndex) {
         const actions = [
-          newChatAction(),
+          // newChatAction(),
+          resetThread(),
           // TODO: handle deleting chat?
           // deleteChatById(chatId),
         ];

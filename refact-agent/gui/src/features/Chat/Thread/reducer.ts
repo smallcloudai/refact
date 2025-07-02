@@ -8,36 +8,19 @@ import {
   chatModeToLspMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
-import { chatResponse, chatAskedQuestion } from ".";
 import {
   setToolUse,
-  enableSend,
-  clearChatError,
-  setChatModel,
   newChatAction,
-  backUpMessages,
   chatError,
   doneStreaming,
-  removeChatFromCache,
   setPreventSend,
-  saveTitle,
   newIntegrationChat,
-  setSendImmediately,
-  setChatMode,
   setIntegrationData,
-  setIsWaitingForResponse,
   setMaxNewTokens,
-  setAutomaticPatch,
-  setLastUserMessageId,
   setEnabledCheckpoints,
-  setBoostReasoning,
   fixBrokenToolMessages,
-  setIsNewChatSuggested,
-  setIsNewChatSuggestionRejected,
-  upsertToolCall,
-  setIncreaseMaxTokens,
-  setAreFollowUpsEnabled,
   setIsTitleGenerationEnabled,
+  chatResponse,
 } from "./actions";
 import { formatChatResponse } from "./utils";
 import {
@@ -133,26 +116,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.prevent_send = true;
   });
 
-  builder.addCase(enableSend, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.prevent_send = false;
-  });
-
-  builder.addCase(setAreFollowUpsEnabled, (state, action) => {
-    state.follow_ups_enabled = action.payload;
-  });
-
   builder.addCase(setIsTitleGenerationEnabled, (state, action) => {
     state.title_generation_enabled = action.payload;
-  });
-
-  builder.addCase(clearChatError, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.error = null;
-  });
-
-  builder.addCase(setChatModel, (state, action) => {
-    state.thread.model = action.payload;
   });
 
   builder.addCase(newChatAction, (state, action) => {
@@ -211,13 +176,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     }
   });
 
-  builder.addCase(backUpMessages, (state, action) => {
-    // TODO: should it also save to history?
-    state.error = null;
-    // state.previous_message_length = state.thread.messages.length;
-    state.thread.messages = action.payload.messages;
-  });
-
   builder.addCase(chatError, (state, action) => {
     state.streaming = false;
     state.prevent_send = true;
@@ -232,66 +190,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     state.thread.read = true;
   });
 
-  builder.addCase(setAutomaticPatch, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.automatic_patch = action.payload.value;
-  });
-
-  builder.addCase(setIsNewChatSuggested, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.new_chat_suggested = {
-      wasSuggested: action.payload.value,
-    };
-  });
-
-  builder.addCase(setIsNewChatSuggestionRejected, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.prevent_send = false;
-    state.thread.new_chat_suggested = {
-      ...state.thread.new_chat_suggested,
-      wasRejectedByUser: action.payload.value,
-    };
-  });
-
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
-  });
-
-  builder.addCase(setBoostReasoning, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.boost_reasoning = action.payload.value;
-  });
-
-  builder.addCase(setLastUserMessageId, (state, action) => {
-    if (state.thread.id !== action.payload.chatId) return state;
-    state.thread.last_user_message_id = action.payload.messageId;
-  });
-
-  builder.addCase(chatAskedQuestion, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.send_immediately = false;
-    state.waiting_for_response = true;
-    state.thread.read = false;
-    state.prevent_send = false;
-  });
-
-  builder.addCase(removeChatFromCache, (state, action) => {
-    if (!(action.payload.id in state.cache)) return state;
-
-    const cache = Object.entries(state.cache).reduce<
-      Record<string, ChatThread>
-    >((acc, cur) => {
-      if (cur[0] === action.payload.id) return acc;
-      return { ...acc, [cur[0]]: cur[1] };
-    }, {});
-    state.cache = cache;
-  });
-
-  // New builder to save chat title within the current thread and not only inside of a history thread
-  builder.addCase(saveTitle, (state, action) => {
-    if (state.thread.id !== action.payload.id) return state;
-    state.thread.title = action.payload.title;
-    state.thread.isTitleGenerated = action.payload.isTitleGenerated;
   });
 
   builder.addCase(newIntegrationChat, (state, action) => {
@@ -314,20 +214,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
     return next;
   });
 
-  builder.addCase(setSendImmediately, (state, action) => {
-    state.send_immediately = action.payload;
-  });
-
-  builder.addCase(setChatMode, (state, action) => {
-    state.thread.mode = action.payload;
-  });
-
   builder.addCase(setIntegrationData, (state, action) => {
     state.thread.integration = action.payload;
-  });
-
-  builder.addCase(setIsWaitingForResponse, (state, action) => {
-    state.waiting_for_response = action.payload;
   });
 
   // TBD: should be safe to remove?
@@ -345,29 +233,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
     const messages = state.thread.messages.slice(0, -1);
     const newMessage = { ...lastMessage, tool_calls: validToolCalls };
     state.thread.messages = [...messages, newMessage];
-  });
-
-  builder.addCase(upsertToolCall, (state, action) => {
-    // if (action.payload.toolCallId !== state.thread.id && !(action.payload.chatId in state.cache)) return state;
-    if (action.payload.chatId === state.thread.id) {
-      maybeAppendToolCallResultFromIdeToMessages(
-        state.thread.messages,
-        action.payload.toolCallId,
-        action.payload.accepted,
-      );
-    } else if (action.payload.chatId in state.cache) {
-      const thread = state.cache[action.payload.chatId];
-      maybeAppendToolCallResultFromIdeToMessages(
-        thread.messages,
-        action.payload.toolCallId,
-        action.payload.accepted,
-        action.payload.replaceOnly,
-      );
-    }
-  });
-
-  builder.addCase(setIncreaseMaxTokens, (state, action) => {
-    state.thread.increase_max_tokens = action.payload;
   });
 
   builder.addMatcher(

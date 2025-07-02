@@ -15,7 +15,6 @@ import {
   HomeIcon,
   PlusIcon,
 } from "@radix-ui/react-icons";
-import { newChatAction } from "../../events";
 import { restart, useTourRefs } from "../../features/Tour";
 import { popBackTo, push } from "../../features/Pages/pagesSlice";
 import {
@@ -157,7 +156,7 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
   const onCreateNewChat = useCallback(() => {
     setIsRenaming((prev) => (prev ? !prev : prev));
     // TODO: remove new chat action?
-    dispatch(newChatAction());
+    // dispatch(newChatAction());
     dispatch(resetThread());
     // clear out old chat
     handleNavigation("chat");
@@ -172,7 +171,8 @@ export const Toolbar = ({ activeTab }: ToolbarProps) => {
     (tab: Tab) => {
       if (tab.type === "dashboard") {
         dispatch(popBackTo({ name: "history" }));
-        dispatch(newChatAction());
+        dispatch(resetThread());
+        // dispatch(newChatAction());
       } else {
         if (shouldChatTabLinkBeNotClickable) return;
         // TODO: load the chat by passing ft_id to push

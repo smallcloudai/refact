@@ -36,11 +36,12 @@ export function useEventBusForApp() {
         dispatch(setSelectedSnippet(event.data.payload));
       }
 
+      // TODO: find if this is used.
       if (newChatAction.match(event.data)) {
         if (!isPageInHistory({ pages }, "chat")) {
           dispatch(push({ name: "chat" }));
         }
-        dispatch(newChatAction(event.data.payload));
+        // dispatch(newChatAction(event.data.payload));
       }
 
       if (setCurrentProjectInfo.match(event.data)) {

@@ -6,7 +6,6 @@ import {
 } from "@reduxjs/toolkit";
 import {
   doneStreaming,
-  newChatAction,
   chatAskQuestionThunk,
   newIntegrationChat,
   // setIsWaitingForResponse,
@@ -46,6 +45,7 @@ import {
   selectLastMessageForAlt,
   selectMessageByToolCallId,
   selectToolConfirmationRequests,
+  threadMessagesSlice,
 } from "../features/ThreadMessages";
 import {
   rejectToolUsageAction,
@@ -63,11 +63,12 @@ const startListening = listenerMiddleware.startListening.withTypes<
 
 startListening({
   // TODO: figure out why this breaks the tests when it's not a function :/
-  matcher: isAnyOf(
-    (d: unknown): d is ReturnType<typeof newChatAction> =>
-      newChatAction.match(d),
-    // (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
-  ),
+  // matcher: isAnyOf(
+  //   (d: unknown): d is ReturnType<typeof newChatAction> =>
+  //     newChatAction.match(d),
+  //   // (d: unknown): d is ReturnType<typeof restoreChat> => restoreChat.match(d),
+  // ),
+  actionCreator: threadMessagesSlice.actions.resetThread,
   effect: (_action, listenerApi) => {
     [
       // pingApi.util.resetApiState(),
@@ -77,6 +78,7 @@ startListening({
       toolsApi.util.resetApiState(),
       commandsApi.util.resetApiState(),
       resetAttachedImagesSlice(),
+      clearError(),
     ].forEach((api) => listenerApi.dispatch(api));
 
     listenerApi.dispatch(clearError());
@@ -310,8 +312,9 @@ startListening({
 startListening({
   matcher: isAnyOf(
     // restoreChat,
-    newChatAction,
+    // newChatAction,
     updateConfig,
+    threadMessagesSlice.actions.resetThread,
   ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
-import { Chat, newChatAction } from "./Chat";
+import { Chat } from "./Chat";
 import { selectIsStreaming, selectThreadId } from "./ThreadMessages";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
@@ -93,7 +93,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         maybeCurrentActiveGroup
       ) {
         dispatch(push({ name: "history" }));
-        dispatch(newChatAction());
         dispatch(push({ name: "chat" }));
       } else {
         dispatch(push({ name: "history" }));

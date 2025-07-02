@@ -7,7 +7,6 @@ import { push } from "../../features/Pages/pagesSlice";
 import completionGif from "../../../public/completion.gif";
 import commandsGif from "../../../public/commands.gif";
 import agentGif from "../../../public/agent.gif";
-import { newChatAction } from "../../events";
 
 export type TourProps = {
   page: string;
@@ -19,7 +18,6 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
   const refs = useTourRefs();
 
   const openChat = useCallback(() => {
-    dispatch(newChatAction());
     dispatch(push({ name: "chat" }));
   }, [dispatch]);
 

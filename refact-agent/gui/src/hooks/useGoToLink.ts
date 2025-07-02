@@ -1,12 +1,7 @@
 import { useCallback } from "react";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
-// import { isAbsolutePath } from "../utils/isAbsolutePath";
 import { useAppDispatch } from "./useAppDispatch";
 import { popBackTo, push } from "../features/Pages/pagesSlice";
-// import { useAppSelector } from "./useAppSelector";
-// import { selectIntegration } from "../features/Chat/Thread/selectors";
-// import { debugIntegrations } from "../debugConfig";
-import { newChatAction } from "../features/Chat/Thread/actions";
 
 export function useGoToLink() {
   const dispatch = useAppDispatch();
@@ -53,7 +48,6 @@ export function useGoToLink() {
         // }
 
         case "newchat": {
-          dispatch(newChatAction());
           dispatch(popBackTo({ name: "history" }));
           dispatch(push({ name: "chat" }));
           return;
