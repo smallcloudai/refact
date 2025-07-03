@@ -10,7 +10,6 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import {
   chatError,
-  newIntegrationChat,
   setIntegrationData,
   setEnabledCheckpoints,
 } from "./actions";
@@ -141,26 +140,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
 
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
-  });
-
-  builder.addCase(newIntegrationChat, (state, action) => {
-    // TODO: find out about tool use
-    // TODO: should be CONFIGURE ?
-    const next = createInitialState({
-      tool_use: "agent",
-      integration: action.payload.integration,
-      maybeMode: "CONFIGURE",
-    });
-    next.thread.last_user_message_id = action.payload.request_attempt_id;
-    next.thread.integration = action.payload.integration;
-    next.thread.messages = action.payload.messages;
-
-    next.thread.model = state.thread.model;
-    next.cache = { ...state.cache };
-    if (state.streaming) {
-      next.cache[state.thread.id] = { ...state.thread, read: false };
-    }
-    return next;
   });
 
   builder.addCase(setIntegrationData, (state, action) => {

@@ -6,7 +6,6 @@ import {
 } from "@reduxjs/toolkit";
 import {
   chatAskQuestionThunk,
-  newIntegrationChat,
   // setIsWaitingForResponse,
   // upsertToolCall,
   // sendCurrentChatToLspAfterToolCallUpdate,
@@ -39,12 +38,7 @@ import {
   ideForceReloadProjectTreeFiles,
 } from "../hooks/useEventBusForIDE";
 
-import {
-  isToolMessage,
-  isToolResponse,
-  modelsApi,
-  providersApi,
-} from "../services/refact";
+import { isToolMessage, modelsApi, providersApi } from "../services/refact";
 import {
   selectLastMessageForAlt,
   selectMessageByToolCallId,
@@ -58,6 +52,7 @@ import {
   rejectToolUsageAction,
   toolConfirmationThunk,
 } from "../services/graphql/graphqlThunks";
+import { push } from "../features/Pages/pagesSlice";
 
 const AUTH_ERROR_MESSAGE =
   "There is an issue with your API key. Check out your API Key or re-login";
@@ -88,19 +83,6 @@ startListening({
       clearError(),
     ].forEach((api) => listenerApi.dispatch(api));
 
-    listenerApi.dispatch(clearError());
-  },
-});
-
-// TODO: think about better cache invalidation approach instead of listening for an action dispatching globally
-startListening({
-  matcher: isAnyOf((d: unknown): d is ReturnType<typeof newIntegrationChat> =>
-    newIntegrationChat.match(d),
-  ),
-  effect: (_action, listenerApi) => {
-    [integrationsApi.util.resetApiState()].forEach((api) =>
-      listenerApi.dispatch(api),
-    );
     listenerApi.dispatch(clearError());
   },
 });
@@ -362,18 +344,17 @@ startListening({
   },
 });
 
+// An integration chat was started.
 startListening({
-  actionCreator: newIntegrationChat,
-  effect: async (_action, listenerApi) => {
-    const state = listenerApi.getState();
-    // TODO: set mode to configure ? or infer it later
-    // TODO: create a dedicated thunk for this.
-    await listenerApi.dispatch(
-      chatAskQuestionThunk({
-        messages: state.chat.thread.messages,
-        chatId: state.chat.thread.id,
-      }),
-    );
+  actionCreator: createThreadWitMultipleMessages.fulfilled,
+  effect: (action, listenerApi) => {
+    if (action.meta.arg.integration) {
+      listenerApi.dispatch(integrationsApi.util.resetApiState());
+      listenerApi.dispatch(clearError());
+      listenerApi.dispatch(
+        push({ name: "chat", ft_id: action.payload.thread_create.ft_id }),
+      );
+    }
   },
 });
 

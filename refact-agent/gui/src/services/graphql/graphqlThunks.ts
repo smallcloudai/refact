@@ -47,6 +47,7 @@ import {
   setThreadFtId,
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
+import { IntegrationMeta } from "../../features/Chat";
 
 export const threadsPageSub = createAsyncThunk<
   unknown,
@@ -303,7 +304,10 @@ export const createThreadWithMessage = createAsyncThunk<
   const apiKey = state.config.apiKey ?? "";
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
-  const workspace = state.config.currentWorkspaceName ?? "";
+  const workspace =
+    state.teams.workspace?.ws_root_group_id ??
+    state.config.currentWorkspaceName ??
+    "";
 
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
@@ -386,6 +390,7 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
     expertId: string;
     model: string;
     tools: (Tool["spec"] | FCloudTool)[];
+    integration?: IntegrationMeta;
   },
   {
     dispatch: AppDispatch;
@@ -397,7 +402,10 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
   const apiKey = state.config.apiKey ?? "";
   const port = state.config.lspPort;
   // TODO: where is current workspace set?
-  const workspace = state.config.currentWorkspaceName ?? "";
+  const workspace =
+    state.teams.workspace?.ws_root_group_id ??
+    state.config.currentWorkspaceName ??
+    "";
   const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
   const appIdQuery = await fetchAppSearchableId(apiKey, port);
 
@@ -448,6 +456,7 @@ export const createThreadWitMultipleMessages = createAsyncThunk<
         ftm_user_preferences: JSON.stringify({
           model: args.model,
           tools: args.tools,
+          ...(args.integration ? { integration: args.integration } : {}),
         }),
       };
     },

@@ -12,7 +12,7 @@ import { Skeleton } from "@radix-ui/themes";
 import { Select } from "../../components/Select";
 import { selectActiveGroup } from "../Teams";
 
-const useModelsForExpert = () => {
+export const useModelsForExpert = () => {
   const dispatch = useAppDispatch();
   const workspace = useAppSelector(selectActiveGroup);
   const selectedExpert = useAppSelector(selectCurrentExpert);

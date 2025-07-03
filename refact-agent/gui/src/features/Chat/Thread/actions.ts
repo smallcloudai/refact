@@ -27,12 +27,6 @@ import type { AppDispatch, RootState } from "../../../app/store";
 //   isDetailMessage,
 // } from "../../../services/refact";
 
-export const newIntegrationChat = createAction<{
-  integration: IntegrationMeta;
-  messages: ChatMessages;
-  request_attempt_id: string;
-}>("chatThread/newIntegrationChat");
-
 // TODO: add history actions to this, maybe not used any more
 export const chatError = createAction<PayloadWithId & { message: string }>(
   "chatThread/error",
