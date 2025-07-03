@@ -8,11 +8,7 @@ import {
   chatModeToLspMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
-import {
-  chatError,
-  setIntegrationData,
-  setEnabledCheckpoints,
-} from "./actions";
+import { setEnabledCheckpoints } from "./actions";
 // import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
@@ -131,19 +127,8 @@ export const chatReducer = createReducer(initialState, (builder) => {
   //   }
   // });
 
-  builder.addCase(chatError, (state, action) => {
-    state.streaming = false;
-    state.prevent_send = true;
-    state.waiting_for_response = false;
-    state.error = action.payload.message;
-  });
-
   builder.addCase(setEnabledCheckpoints, (state, action) => {
     state.checkpoints_enabled = action.payload;
-  });
-
-  builder.addCase(setIntegrationData, (state, action) => {
-    state.thread.integration = action.payload;
   });
 
   builder.addMatcher(

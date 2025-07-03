@@ -4,23 +4,12 @@ import {
   isAnyOf,
   isRejected,
 } from "@reduxjs/toolkit";
-import {
-  chatAskQuestionThunk,
-  // setIsWaitingForResponse,
-  // upsertToolCall,
-  // sendCurrentChatToLspAfterToolCallUpdate,
-  // chatResponse,
-  chatError,
-} from "../features/Chat/Thread";
+
 import { statisticsApi } from "../services/refact/statistics";
 import { integrationsApi } from "../services/refact/integrations";
 import { dockerApi } from "../services/refact/docker";
 import { toolsApi } from "../services/refact/tools";
-import {
-  commandsApi,
-  isDetailMessage,
-  isDetailMessageWithErrorType,
-} from "../services/refact/commands";
+import { commandsApi, isDetailMessage } from "../services/refact/commands";
 import { pathApi } from "../services/refact/path";
 import { pingApi } from "../services/refact/ping";
 import {
@@ -239,7 +228,9 @@ startListening({
 
     // TODO: thread or message error?
     if (
-      chatAskQuestionThunk.rejected.match(action) &&
+      (createThreadWitMultipleMessages.rejected.match(action) ||
+        createThreadWithMessage.rejected.match(action) ||
+        createMessage.rejected.match(action)) &&
       !action.meta.aborted &&
       typeof action.payload === "string"
     ) {
@@ -361,9 +352,6 @@ startListening({
 // Telemetry
 startListening({
   matcher: isAnyOf(
-    chatAskQuestionThunk.rejected.match,
-    chatAskQuestionThunk.fulfilled.match,
-    // give files api
     pathApi.endpoints.getFullPath.matchFulfilled,
     pathApi.endpoints.getFullPath.matchRejected,
     pathApi.endpoints.customizationPath.matchFulfilled,
@@ -375,46 +363,6 @@ startListening({
   ),
   effect: (action, listenerApi) => {
     const state = listenerApi.getState();
-    if (chatAskQuestionThunk.rejected.match(action) && !action.meta.condition) {
-      const { chatId, mode } = action.meta.arg;
-      const thread =
-        chatId in state.chat.cache
-          ? state.chat.cache[chatId]
-          : state.chat.thread;
-      const scope = `sendChat_${thread.model}_${mode}`;
-
-      if (isDetailMessageWithErrorType(action.payload)) {
-        const errorMessage = action.payload.detail;
-        listenerApi.dispatch(
-          action.payload.errorType === "GLOBAL"
-            ? setError(errorMessage)
-            : chatError({ id: chatId, message: errorMessage }),
-        );
-        const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-          scope,
-          success: false,
-          error_message: errorMessage,
-        });
-        void listenerApi.dispatch(thunk);
-      }
-    }
-
-    if (chatAskQuestionThunk.fulfilled.match(action)) {
-      const { chatId, mode } = action.meta.arg;
-      const thread =
-        chatId in state.chat.cache
-          ? state.chat.cache[chatId]
-          : state.chat.thread;
-      const scope = `sendChat_${thread.model}_${mode}`;
-
-      const thunk = telemetryApi.endpoints.sendTelemetryChatEvent.initiate({
-        scope,
-        success: true,
-        error_message: "",
-      });
-
-      void listenerApi.dispatch(thunk);
-    }
 
     if (pathApi.endpoints.getFullPath.matchFulfilled(action)) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
