@@ -37,10 +37,9 @@ pub struct BasicStuff {
     pub workspaces: Vec<Value>,
 }
 
-// XXX use xxx_subs::filter for ft_app_capture
 const THREADS_SUBSCRIPTION_QUERY: &str = r#"
-    subscription ThreadsPageSubs($located_fgroup_id: String!) {
-      threads_in_group(located_fgroup_id: $located_fgroup_id) {
+    subscription ThreadsPageSubs($located_fgroup_id: String!, $filter: [String!]) {
+      threads_in_group(located_fgroup_id: $located_fgroup_id, filter: $filter) {
         news_action
         news_payload_id
         news_payload {
@@ -78,19 +77,23 @@ pub async fn watch_threads_subscription(gcx: Arc<ARwLock<GlobalContext>>) {
             let restart_flag = gcx.read().await.threads_subscription_restart_flag.clone();
             restart_flag.store(false, Ordering::SeqCst);
         }
-        let located_fgroup_id = if let Some(located_fgroup_id) = gcx.read().await.active_group_id.clone() {
-            located_fgroup_id
-        } else {
-            warn!("no active group is set, skipping threads subscription");
-            tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
-            continue;
+        let (located_fgroup_id, app_searchable_id) = {
+            let gcx_locked = gcx.read().await;
+            let located_fgroup_id = if let Some(located_fgroup_id) = gcx_locked.active_group_id.clone() {
+                located_fgroup_id
+            } else {
+                warn!("no active group is set, skipping threads subscription");
+                tokio::time::sleep(Duration::from_secs(RECONNECT_DELAY_SECONDS)).await;
+                continue;
+            };
+            (located_fgroup_id, gcx_locked.app_searchable_id.clone())
         };
 
         info!(
-            "starting subscription for threads_in_group with fgroup_id=\"{}\"",
-            located_fgroup_id
+            "starting subscription for threads_in_group with fgroup_id=\"{}\" and app_searchable_id=\"{}\"",
+            located_fgroup_id, app_searchable_id
         );
-        let connection_result = initialize_connection(&address_url, &api_key, &located_fgroup_id).await;
+        let connection_result = initialize_connection(&address_url, &api_key, &located_fgroup_id, &app_searchable_id).await;
         let mut connection = match connection_result {
             Ok(conn) => conn,
             Err(err) => {
@@ -129,6 +132,7 @@ pub async fn initialize_connection(
     cmd_address_url: &str,
     api_key: &str,
     located_fgroup_id: &str,
+    app_searchable_id: &str,
 ) -> Result<
     futures::stream::SplitStream<
         tokio_tungstenite::WebSocketStream<
@@ -208,7 +212,8 @@ pub async fn initialize_connection(
         "payload": {
             "query": THREADS_SUBSCRIPTION_QUERY,
             "variables": {
-                "located_fgroup_id": located_fgroup_id
+                "located_fgroup_id": located_fgroup_id,
+                "filter": [format!("ft_app_searchable:eq:{}", app_searchable_id)]
             }
         }
     });
