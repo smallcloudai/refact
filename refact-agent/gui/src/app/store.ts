@@ -31,7 +31,7 @@ import { tipOfTheDaySlice } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
-import { chatReducer } from "../features/Chat/Thread/reducer";
+
 import { errorSlice } from "../features/Errors/errorsSlice";
 
 import { pagesSlice } from "../features/Pages/pagesSlice";
@@ -79,7 +79,7 @@ const rootReducer = combineSlices(
     active_file: activeFileReducer,
     current_project: currentProjectInfoReducer,
     selected_snippet: selectedSnippetReducer,
-    chat: chatReducer,
+
     [statisticsApi.reducerPath]: statisticsApi.reducer,
     [toolsApi.reducerPath]: toolsApi.reducer,
     [commandsApi.reducerPath]: commandsApi.reducer,
