@@ -392,6 +392,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
                 >
                   <ArchiveIcon />
                 </IconButton> */}
+                {/* TODO: enable this? */}
                 {/* {toolUse === "agent" && (
                   <AgentIntegrationsButton
                     title="Set up Agent Integrations"

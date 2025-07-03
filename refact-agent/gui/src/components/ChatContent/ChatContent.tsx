@@ -6,20 +6,15 @@ import styles from "./ChatContent.module.css";
 
 import { useAppDispatch, useDiffFileReload } from "../../hooks";
 import { useAppSelector } from "../../hooks";
-// import {
-//   selectIntegration,
-//   selectThread,
-// } from "../../features/Chat/Thread/selectors";
 import {
+  selectIntegrationMeta,
   selectIsStreaming,
   selectIsThreadRunning,
   selectIsWaiting,
   selectThreadId,
-  // selectThreadMeta,
   selectToolConfirmationRequests,
 } from "../../features/ThreadMessages";
 
-// import { popBackTo } from "../../features/Pages/pagesSlice";
 import { ChatLinks } from "../ChatLinks";
 import { PlaceHolderText } from "./PlaceHolderText";
 import { UsageCounter } from "../UsageCounter";
@@ -29,6 +24,7 @@ import { selectThreadMessageTrie } from "../../features/ThreadMessages";
 import { MessageNode } from "../MessageNode/MessageNode.tsx";
 import { isEmptyNode } from "../../features/ThreadMessages/makeMessageTrie.ts";
 import { pauseThreadThunk } from "../../services/graphql/graphqlThunks.ts";
+import { popBackTo } from "../../features/Pages/pagesSlice.ts";
 
 const usePauseThread = () => {
   const dispatch = useAppDispatch();
@@ -54,59 +50,43 @@ const usePauseThread = () => {
 };
 
 export const ChatContent: React.FC = () => {
-  // const dispatch = useAppDispatch();
+  const dispatch = useAppDispatch();
   // TODO: stays when creating a new chat :/
   const threadMessageTrie = useAppSelector(selectThreadMessageTrie);
   const isStreaming = useAppSelector(selectIsStreaming);
 
-  // const thread = useAppSelector(selectThread);
-  /// const thread = useAppSelector(selectThreadMeta);
-
   const { shouldShow } = useUsageCounter();
-  // const isConfig = thread.mode === "CONFIGURE";
   const isWaiting = useAppSelector(selectIsWaiting);
 
-  // const integrationMeta = useAppSelector(selectIntegration);
+  const integrationMeta = useAppSelector(selectIntegrationMeta);
   const toolConfirmationRequests = useAppSelector(
     selectToolConfirmationRequests,
   );
 
   const { shouldShowStopButton, handlePause } = usePauseThread();
 
-  // TODO: what are we doing with integration chats?
-  const handleReturnToConfigurationClick = useCallback(
-    () => {
-      // console.log(`[DEBUG]: going back to configuration page`);
-      // TBD: should it be allowed to run in the background?
-      // onStopStreaming();
-      // dispatch(
-      //   popBackTo({
-      //     name: "integrations page",
-      //     projectPath: thread.integration?.project,
-      //     integrationName: thread.integration?.name,
-      //     integrationPath: thread.integration?.path,
-      //     wasOpenedThroughChat: true,
-      //   }),
-      // );
-    },
-    [
-      // onStopStreaming,
-      // dispatch,
-      // thread.integration?.project,
-      // thread.integration?.name,
-      // thread.integration?.path,
-    ],
-  );
+  const handleReturnToConfigurationClick = useCallback(() => {
+    // console.log(`[DEBUG]: going back to configuration page`);
+    // TBD: should it be allowed to run in the background?
+    dispatch(
+      popBackTo({
+        name: "integrations page",
+        projectPath: integrationMeta?.project,
+        integrationName: integrationMeta?.name,
+        integrationPath: integrationMeta?.path,
+        wasOpenedThroughChat: true,
+      }),
+    );
+  }, [
+    dispatch,
+    integrationMeta?.name,
+    integrationMeta?.path,
+    integrationMeta?.project,
+  ]);
 
-  const shouldConfigButtonBeVisible = useMemo(
-    () => {
-      return false;
-      // return isConfig && !integrationMeta?.path?.includes("project_summary");
-    },
-    [
-      // isConfig, integrationMeta?.path
-    ],
-  );
+  const shouldConfigButtonBeVisible = useMemo(() => {
+    return !integrationMeta?.path?.includes("project_summary");
+  }, [integrationMeta?.path]);
 
   // Dedicated hook for handling file reloads
   useDiffFileReload();

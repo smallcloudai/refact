@@ -17,6 +17,11 @@ import {
 } from "../../services/graphql/graphqlThunks";
 import { isToolMessage } from "../../events";
 import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
+import {
+  isIntegrationMeta,
+  isMessageWithIntegrationMeta,
+  MessageWithIntegrationMeta,
+} from "../Chat";
 
 // TODO: move this somewhere
 export type ToolConfirmationRequest = {
@@ -447,6 +452,19 @@ export const threadMessagesSlice = createSlice({
         return diffs.filter((message) => ids.includes(message.ftm_call_id));
       },
     ),
+
+    selectIntegrationMeta: createSelector(selectMessagesValues, (messages) => {
+      const maybeIntegrationMeta = messages.find(
+        (message) => "integration" in message.ftm_user_preferences,
+      );
+      if (!maybeIntegrationMeta) return null;
+      if (!isMessageWithIntegrationMeta(maybeIntegrationMeta)) {
+        return null;
+      }
+      // TODO: any types are causing issues here
+      const message = maybeIntegrationMeta as MessageWithIntegrationMeta;
+      return message.ftm_user_preferences.integration;
+    }),
   },
 
   extraReducers(builder) {
@@ -524,4 +542,5 @@ export const {
   selectPatchIsAutomatic,
   selectToolConfirmationResponses,
   selectManyDiffMessageByIds,
+  selectIntegrationMeta,
 } = threadMessagesSlice.selectors;
