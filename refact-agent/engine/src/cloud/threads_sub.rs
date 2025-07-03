@@ -236,7 +236,6 @@ async fn actual_subscription_loop(
     located_fgroup_id: &str,
 ) -> Result<(), String> {
     info!("cloud threads subscription started, waiting for events...");
-    let app_searchable_id = gcx.read().await.app_searchable_id.clone();
     let basic_info = get_basic_info(cmd_address_url, api_key).await?;
     while let Some(msg) = connection.next().await {
         if gcx.clone().read().await.shutdown_flag.load(Ordering::SeqCst) {
@@ -271,11 +270,10 @@ async fn actual_subscription_loop(
                                 let basic_info_clone = basic_info.clone();
                                 let cmd_address_url_clone = cmd_address_url.to_string();
                                 let api_key_clone = api_key.to_string();
-                                let app_searchable_id_clone = app_searchable_id.clone();
                                 let located_fgroup_id_clone = located_fgroup_id.to_string();
                                 tokio::spawn(async move {
                                     crate::cloud::threads_processing::process_thread_event(
-                                        gcx_clone, payload_clone, basic_info_clone, cmd_address_url_clone, api_key_clone, app_searchable_id_clone, located_fgroup_id_clone
+                                        gcx_clone, payload_clone, basic_info_clone, cmd_address_url_clone, api_key_clone, located_fgroup_id_clone
                                     ).await
                                 });
                             } else {
