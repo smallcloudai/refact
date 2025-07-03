@@ -20,7 +20,6 @@ import {
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
 
-import { setEnabledCheckpoints } from "../../features/Chat/Thread";
 import {
   selectPatchIsAutomatic,
   selectThreadId,
@@ -95,15 +94,17 @@ export const ApplyPatchSwitch: React.FC = () => {
     </Flex>
   );
 };
+
+// TODO: figure out how this should work
 export const AgentRollbackSwitch: React.FC = () => {
-  const dispatch = useAppDispatch();
+  // const dispatch = useAppDispatch();
   // TODO: checkpoints
   const isAgentRollbackEnabled = true; // useAppSelector(selectCheckpointsEnabled);
 
   // TODO: handle this
-  const handleAgentRollbackChange = (checked: boolean) => {
-    dispatch(setEnabledCheckpoints(checked));
-  };
+  // const handleAgentRollbackChange = (checked: boolean) => {
+  //   dispatch(setEnabledCheckpoints(checked));
+  // };
 
   return (
     <Flex

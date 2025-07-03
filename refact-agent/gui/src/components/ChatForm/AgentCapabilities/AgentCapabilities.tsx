@@ -10,7 +10,10 @@ import {
   Separator,
   Text,
 } from "@radix-ui/themes";
-import { AgentRollbackSwitch, ApplyPatchSwitch } from "../ChatControls";
+import {
+  // AgentRollbackSwitch,
+  ApplyPatchSwitch,
+} from "../ChatControls";
 import { useAppSelector } from "../../../hooks";
 import { Fragment, useMemo } from "react";
 import { ToolGroups } from "./ToolGroups";
@@ -30,12 +33,12 @@ export const AgentCapabilities = () => {
         // TODO: this should set tool_response to : ["*"]
         switcher: <ApplyPatchSwitch />,
       },
-      {
-        // TODO: enable this
-        name: "Files rollback",
-        enabled: true,
-        switcher: <AgentRollbackSwitch />,
-      },
+      // {
+      //   // TODO: enable this
+      //   name: "Files rollback",
+      //   enabled: true,
+      //   switcher: <AgentRollbackSwitch />,
+      // },
       // {
       //   name: "Follow-Ups",
       //   enabled: areFollowUpsEnabled,

@@ -8,7 +8,6 @@ import {
   chatModeToLspMode,
 } from "./types";
 import { v4 as uuidv4 } from "uuid";
-import { setEnabledCheckpoints } from "./actions";
 // import { formatChatResponse } from "./utils";
 import {
   ChatMessages,
@@ -126,10 +125,6 @@ export const chatReducer = createReducer(initialState, (builder) => {
   //     };
   //   }
   // });
-
-  builder.addCase(setEnabledCheckpoints, (state, action) => {
-    state.checkpoints_enabled = action.payload;
-  });
 
   builder.addMatcher(
     commandsApi.endpoints.getCommandPreview.matchFulfilled,
