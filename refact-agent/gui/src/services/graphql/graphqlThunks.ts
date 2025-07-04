@@ -608,8 +608,9 @@ export const getToolsForGroupThunk = createAsyncThunk<
 >("flexus/tools", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const addressUrl = state.config.addressURL ?? "https://app.refact.ai";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.query<
     ToolsForGroupQuery,
