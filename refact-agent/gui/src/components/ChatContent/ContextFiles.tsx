@@ -1,7 +1,7 @@
 import React from "react";
 import { Flex, Container, Box, HoverCard, Text } from "@radix-ui/themes";
 import styles from "./ChatContent.module.css";
-import { ChatContextFile, ChatContextFileMessage } from "../../services/refact";
+import { ChatContextFile } from "../../services/refact";
 import classnames from "classnames";
 import { TruncateLeft, Small } from "../Text";
 import * as Collapsible from "@radix-ui/react-collapsible";

@@ -1,6 +1,6 @@
 import {
   // AssistantMessage,
-  ChatContextFile,
+  // ChatContextFile,
   ChatContextFileMessage,
   // ChatMessage,
   ChatMessages,
@@ -35,7 +35,6 @@ import {
   // Usage,
   LSPUserMessage,
 } from "../../../services/refact";
-import { parseOrElse } from "../../../utils";
 import { type LspChatMessage } from "../../../services/refact";
 
 export function formatMessagesForLsp(messages: ChatMessages): LspChatMessage[] {
@@ -116,10 +115,9 @@ export function formatMessagesForChat(
       message.role === "context_file" &&
       typeof message.content === "string"
     ) {
-      const files = parseOrElse<ChatContextFile[]>(message.content, []);
       const contextFileMessage: ChatContextFileMessage = {
         ftm_role: message.role,
-        ftm_content: files,
+        ftm_content: message.content,
       };
       return acc.concat(contextFileMessage);
     }
