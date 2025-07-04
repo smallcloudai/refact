@@ -98,8 +98,8 @@ export const TourProvider = ({ children }: TourContextProps) => {
   const [back, setBack] = useState<null | HTMLAnchorElement>(null);
   const [f1, setF1] = useState<null | HTMLButtonElement>(null);
   const [more, setMore] = useState<null | HTMLButtonElement>(null);
-  const [setupIntegrations, setSetupIntegrations] =
-    useState<null | HTMLButtonElement>(null);
+  // const [setupIntegrations, setSetupIntegrations] =
+  //   useState<null | HTMLButtonElement>(null);
 
   return (
     <TourContext.Provider
@@ -112,7 +112,7 @@ export const TourProvider = ({ children }: TourContextProps) => {
         back,
         f1,
         more,
-        setupIntegrations,
+        // setupIntegrations,
         setNewChat,
         // setUseTools,
         setUseModel,
@@ -121,7 +121,7 @@ export const TourProvider = ({ children }: TourContextProps) => {
         setBack,
         setF1,
         setMore,
-        setSetupIntegrations,
+        // setSetupIntegrations,
       }}
     >
       {children}

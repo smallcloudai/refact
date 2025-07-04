@@ -18,7 +18,6 @@ import {
 import { isToolMessage } from "../../events";
 import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
 import {
-  isIntegrationMeta,
   isMessageWithIntegrationMeta,
   MessageWithIntegrationMeta,
 } from "../Chat";

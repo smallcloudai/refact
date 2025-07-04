@@ -1,7 +1,5 @@
 import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
-// import { chatAskQuestionThunk, chatResponse } from "../Chat";
-// import { isAssistantMessage, isDiffResponse } from "../../events";
-import { parseOrElse, partition } from "../../utils";
+import { partition } from "../../utils";
 import { RootState } from "../../app/store";
 
 export type PatchMeta = {
@@ -128,17 +126,3 @@ export const selectCompletedPatchesFilePaths = createSelector(
 
 export const { setStartedByFilePaths, removePatchMetaByFileNameIfCompleted } =
   patchesAndDiffsTrackerSlice.actions;
-
-const pathFromArgString = (argString: string) => {
-  const args = parseOrElse<Record<string, unknown> | null>(argString, null);
-  if (
-    args &&
-    typeof args === "object" &&
-    "path" in args &&
-    typeof args.path === "string"
-  ) {
-    return args.path;
-  } else {
-    return null;
-  }
-};
