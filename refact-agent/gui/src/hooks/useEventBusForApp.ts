@@ -13,7 +13,6 @@ import {
 } from "../features/Pages/pagesSlice";
 import { ideToolCallResponse } from "./useEventBusForIDE";
 import { createAction } from "@reduxjs/toolkit/react";
-import { resetThread } from "../features/ThreadMessages";
 
 export const ideAttachFileToChat = createAction<string>("ide/attachFileToChat");
 
@@ -38,7 +37,6 @@ export function useEventBusForApp() {
         dispatch(setSelectedSnippet(event.data.payload));
       }
 
-      // TODO: find if this is used.
       if (newChatAction.match(event.data)) {
         if (!isPageInHistory({ pages }, "chat")) {
           dispatch(push({ name: "chat" }));

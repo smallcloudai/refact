@@ -14,7 +14,6 @@ import {
 } from "../features/ExpertsAndModels";
 import { useGetToolsLazyQuery } from "./useGetToolGroupsQuery";
 import { Tool } from "../services/refact";
-import { push } from "../features/Pages/pagesSlice";
 
 export function useSmartLinks() {
   const dispatch = useAppDispatch();

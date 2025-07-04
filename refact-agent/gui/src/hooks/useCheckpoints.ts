@@ -22,14 +22,13 @@ import { selectConfig } from "../features/Config/configSlice";
 import {
   resetThread,
   selectMessagesFromEndNode,
-  selectThreadId,
 } from "../features/ThreadMessages";
 
 // TODO: how will check points works?
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
   const messages = useAppSelector(selectMessagesFromEndNode);
-  const chatId = useAppSelector(selectThreadId);
+
   const configIdeHost = useAppSelector(selectConfig).host;
 
   const [sendTelemetryEvent] =
@@ -151,23 +150,9 @@ export const useCheckpoints = () => {
       }
       // TODO: new chat suggestion?
       if (shouldNewChatBeStarted || !maybeMessageIndex) {
-        const actions = [
-          // newChatAction(),
-          resetThread(),
-          // TODO: handle deleting chat?
-          // deleteChatById(chatId),
-        ];
+        const actions = [resetThread()];
         actions.forEach((action) => dispatch(action));
       }
-      // else {
-      //   const usefulMessages = messages.slice(0, maybeMessageIndex);
-      //   dispatch(
-      //     backUpMessages({
-      //       id: chatId ?? "",
-      //       messages: usefulMessages,
-      //     }),
-      //   );
-      // }
     } catch (error) {
       void sendTelemetryEvent({
         scope: `rollbackChanges/failed`,
