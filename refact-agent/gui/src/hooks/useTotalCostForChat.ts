@@ -6,11 +6,15 @@ import {
 import { useAppSelector } from "./useAppSelector";
 
 export const useTotalCostForChat = () => {
-  const messages = useAppSelector(selectThreadMessages);
+  const messages = useAppSelector(selectThreadMessages, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   return getTotalCostMeteringForMessages(messages);
 };
 
 export const useTotalTokenMeteringForChat = () => {
-  const messages = useAppSelector(selectThreadMessages);
+  const messages = useAppSelector(selectThreadMessages, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   return getTotalTokenMeteringForMessages(messages);
 };

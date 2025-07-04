@@ -32,6 +32,7 @@ const usePauseThread = () => {
   const threadId = useAppSelector(selectThreadId);
   const toolConfirmationRequests = useAppSelector(
     selectToolConfirmationRequests,
+    { devModeChecks: { stabilityCheck: "never" } },
   );
 
   const shouldShowStopButton = useMemo(() => {
@@ -61,6 +62,7 @@ export const ChatContent: React.FC = () => {
   const integrationMeta = useAppSelector(selectIntegrationMeta);
   const toolConfirmationRequests = useAppSelector(
     selectToolConfirmationRequests,
+    { devModeChecks: { stabilityCheck: "never" } },
   );
 
   const { shouldShowStopButton, handlePause } = usePauseThread();
@@ -86,7 +88,7 @@ export const ChatContent: React.FC = () => {
 
   const shouldConfigButtonBeVisible = useMemo(() => {
     if (!integrationMeta) return false;
-    return integrationMeta.path?.includes("project_summary");
+    return !integrationMeta.path?.includes("project_summary");
   }, [integrationMeta]);
 
   // Dedicated hook for handling file reloads

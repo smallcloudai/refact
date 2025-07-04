@@ -16,7 +16,9 @@ export const useModelsForExpert = () => {
   const dispatch = useAppDispatch();
   const workspace = useAppSelector(selectActiveGroup);
   const selectedExpert = useAppSelector(selectCurrentExpert);
-  const modelsForExpert = useAppSelector(selectModelsForExpert);
+  const modelsForExpert = useAppSelector(selectModelsForExpert, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   const modelsLoading = useAppSelector(selectModelsForExpertLoading);
   const selectedModel = useAppSelector(selectCurrentModel);
 

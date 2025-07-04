@@ -66,8 +66,6 @@ export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
   //   dispatch(push({ name: "thread history page", chatId }));
   // }, [chatId, dispatch]);
 
-  // useAutoSend();
-
   return (
     <DropzoneProvider asChild>
       <Flex

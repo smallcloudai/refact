@@ -453,13 +453,8 @@ export const threadMessagesSlice = createSlice({
     ),
 
     selectIntegrationMeta: createSelector(selectMessagesValues, (messages) => {
-      const maybeIntegrationMeta = messages.find(
-        (message) => "integration" in message.ftm_user_preferences,
-      );
+      const maybeIntegrationMeta = messages.find(isMessageWithIntegrationMeta);
       if (!maybeIntegrationMeta) return null;
-      if (!isMessageWithIntegrationMeta(maybeIntegrationMeta)) {
-        return null;
-      }
       // TODO: any types are causing issues here
       const message = maybeIntegrationMeta as MessageWithIntegrationMeta;
       return message.ftm_user_preferences.integration;

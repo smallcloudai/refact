@@ -27,7 +27,9 @@ import {
 // TODO: how will check points works?
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
-  const messages = useAppSelector(selectMessagesFromEndNode);
+  const messages = useAppSelector(selectMessagesFromEndNode, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
 
   const configIdeHost = useAppSelector(selectConfig).host;
 

@@ -77,6 +77,7 @@ export const ChatForm: React.FC<ChatFormProps> = ({
   const isOnline = useIsOnline();
   const toolConfirmationRequests = useAppSelector(
     selectToolConfirmationRequests,
+    { devModeChecks: { stabilityCheck: "never" } },
   );
   // const { retry } = useSendChatRequest();
 

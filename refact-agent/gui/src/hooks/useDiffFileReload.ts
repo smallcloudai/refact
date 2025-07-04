@@ -11,7 +11,9 @@ import { selectThreadMessages } from "../features/ThreadMessages";
  */
 // Note this won't work if the chat is in the cache.
 export function useDiffFileReload() {
-  const messages = useAppSelector(selectThreadMessages);
+  const messages = useAppSelector(selectThreadMessages, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
   const configIdeHost = useAppSelector(selectConfig).host;
   const { setForceReloadFileByPath } = useEventsBusForIDE();
 
