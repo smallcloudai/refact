@@ -99,7 +99,7 @@ export const ApplyPatchSwitch: React.FC = () => {
 export const AgentRollbackSwitch: React.FC = () => {
   // const dispatch = useAppDispatch();
   // TODO: checkpoints
-  const isAgentRollbackEnabled = true; // useAppSelector(selectCheckpointsEnabled);
+  // const isAgentRollbackEnabled = true; // useAppSelector(selectCheckpointsEnabled);
 
   // TODO: handle this
   // const handleAgentRollbackChange = (checked: boolean) => {
@@ -120,12 +120,13 @@ export const AgentRollbackSwitch: React.FC = () => {
         Changes rollback
       </Text>
       <Flex gap="2" align="center">
-        <Switch
+        {/** TODO: figure out what is happening with checkpoints */}
+        {/* <Switch
           size="1"
           title="Enable/disable changed rollback made by Agent"
           checked={isAgentRollbackEnabled}
           onCheckedChange={handleAgentRollbackChange}
-        />
+        /> */}
         <HoverCard.Root>
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />

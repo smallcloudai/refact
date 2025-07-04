@@ -39,11 +39,7 @@ export function useUsageCounter() {
   const totalInputTokens = useMemo(() => {
     return calculateUsageInputTokens({
       usage: currentThreadUsage,
-      keys: [
-        "prompt_tokens",
-        "cache_creation_input_tokens",
-        "cache_read_input_tokens",
-      ],
+      keys: ["tokens_prompt", "tokens_cache_creation", "tokens_cache_read"],
     });
   }, [currentThreadUsage]);
 

@@ -21,13 +21,7 @@ const MockedStore: React.FC<{
   isMessageEmpty?: boolean;
   threadMaximumContextTokens?: number;
   currentMessageContextTokens?: number;
-}> = ({
-  usage,
-  threadMaximumContextTokens,
-  currentMessageContextTokens,
-  isInline = false,
-  isMessageEmpty = false,
-}) => {
+}> = ({ usage, isInline = false, isMessageEmpty = false }) => {
   const store = setUpStore({
     config: {
       themeProps: {
@@ -36,34 +30,42 @@ const MockedStore: React.FC<{
       host: "web",
       lspPort: 8001,
     },
-    chat: {
-      streaming: false,
-      error: null,
-      waiting_for_response: false,
-      prevent_send: false,
-      send_immediately: false,
-      tool_use: "agent",
-      cache: {},
+    threadMessages: {
       thread: {
-        id: "test",
-        messages: [
-          {
-            ftm_role: "user",
-            ftm_content: "Hello, how are you?",
-          },
-          {
-            ftm_role: "assistant",
-            ftm_content: "Test content",
-            usage,
-          },
-        ],
-        model: "claude-3-5-sonnet",
-        mode: "AGENT",
-        new_chat_suggested: {
-          wasSuggested: false,
+        ft_id: "foo",
+        ft_need_user: -1,
+        ft_need_assistant: -1,
+        ft_fexp_id: "id:ask:1.0",
+        located_fgroup_id: "0000000",
+      },
+      ft_id: "foo",
+      streamingBranches: [],
+      waitingBranches: [],
+      endNumber: 2,
+      endAlt: 100,
+      endPrevAlt: 100,
+      messages: {
+        aa: {
+          ftm_num: 1,
+          ftm_alt: 100,
+          ftm_prev_alt: 100,
+          ftm_role: "user",
+          ftm_content: "Hello, how are you?",
+          ftm_belongs_to_ft_id: "foo",
+          ftm_call_id: "1",
+          ftm_created_ts: 0,
         },
-        currentMaximumContextTokens: threadMaximumContextTokens,
-        currentMessageContextTokens,
+        ab: {
+          ftm_num: 2,
+          ftm_alt: 100,
+          ftm_prev_alt: 100,
+          ftm_role: "assistant",
+          ftm_content: "Test content",
+          ftm_belongs_to_ft_id: "foo",
+          ftm_call_id: "1",
+          ftm_created_ts: 1,
+          ftm_usage: usage,
+        },
       },
     },
   });

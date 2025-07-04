@@ -8,7 +8,7 @@ import { Theme } from "../Theme";
 import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import {
   CHAT_CONFIG_THREAD,
-  CHAT_WITH_KNOWLEDGE_TOOL,
+  // CHAT_WITH_KNOWLEDGE_TOOL,
 } from "../../__fixtures__";
 
 import {
@@ -26,30 +26,22 @@ import { http, HttpResponse } from "msw";
 const Template: React.FC<{
   thread?: ChatThread;
   config?: RootState["config"];
-}> = ({ thread, config }) => {
-  const threadData = thread ?? {
-    id: "test",
-    model: "gpt-4o", // or any model from STUB CAPS REQUEst
-    messages: [],
-    new_chat_suggested: {
-      wasSuggested: false,
-    },
-  };
+}> = ({ config }) => {
   const store = setUpStore({
     tour: {
       type: "finished",
     },
-    chat: {
-      streaming: false,
-      prevent_send: false,
-      waiting_for_response: false,
-      max_new_tokens: 4096,
-      tool_use: "agent",
-      send_immediately: false,
-      error: null,
-      cache: {},
-      thread: threadData,
-    },
+    // chat: {
+    //   streaming: false,
+    //   prevent_send: false,
+    //   waiting_for_response: false,
+    //   max_new_tokens: 4096,
+    //   tool_use: "agent",
+    //   send_immediately: false,
+    //   error: null,
+    //   cache: {},
+    //   thread: threadData,
+    // },
     config,
   });
 
@@ -115,7 +107,7 @@ export const IDE: Story = {
 
 export const Knowledge: Story = {
   args: {
-    thread: CHAT_WITH_KNOWLEDGE_TOOL,
+    // thread: CHAT_WITH_KNOWLEDGE_TOOL,
     config: {
       host: "ide",
       lspPort: 8001,

@@ -87,9 +87,7 @@ export const Textdoc: StoryObj<typeof Template> = {
 
 export const Knowledge: StoryObj<typeof Template> = {
   args: {
-    node: makeMessageTrie(
-      chatMessagesToCMessages(CHAT_WITH_KNOWLEDGE_TOOL.messages),
-    ),
+    node: makeMessageTrie(CHAT_WITH_KNOWLEDGE_TOOL),
   },
 };
 
