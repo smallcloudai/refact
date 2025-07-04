@@ -1,5 +1,4 @@
 import { createGraphqlClient, createSubscription } from "./createClient";
-import { createAppAsyncThunk } from "./createAppAsyncThunk";
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
 import {
@@ -43,23 +42,35 @@ import {
 } from "../../features/ThreadMessages";
 import { Tool } from "../refact/tools";
 
-export const threadsPageSub = createAppAsyncThunk<
+export const threadsPageSub = createAsyncThunk<
   unknown,
-  ThreadsPageSubsSubscriptionVariables
+  ThreadsPageSubsSubscriptionVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+  }
 >("graphql/threadsPageSub", (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const address = state.config.addressURL ?? "https://app.refact.ai";
 
   createSubscription<
     ThreadsPageSubsSubscription,
     ThreadsPageSubsSubscriptionVariables
-  >(apiKey, ThreadsPageSubsDocument, args, thunkAPI.signal, (result) => {
-    if (result.data) {
-      thunkAPI.dispatch(handleThreadListSubscriptionData(result.data));
-    } else if (result.error) {
-      thunkAPI.dispatch(setError(result.error.message));
-    }
-  });
+  >(
+    address,
+    apiKey,
+    ThreadsPageSubsDocument,
+    args,
+    thunkAPI.signal,
+    (result) => {
+      if (result.data) {
+        thunkAPI.dispatch(handleThreadListSubscriptionData(result.data));
+      } else if (result.error) {
+        thunkAPI.dispatch(setError(result.error.message));
+      }
+    },
+  );
 });
 
 export const deleteThreadThunk = createAsyncThunk<
@@ -73,8 +84,9 @@ export const deleteThreadThunk = createAsyncThunk<
 >("graphql/deleteThread", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
   const result = await client.mutation<
     DeleteThreadMutation,
     DeleteThreadMutationVariables
@@ -95,25 +107,33 @@ export const messagesSub = createAsyncThunk<
 >("graphql/messageSubscription", (args, thunkApi) => {
   const state = thunkApi.getState();
   const apiKey = state.config.apiKey ?? "";
+  const address = state.config.addressURL ?? "https://app.refact.ai";
 
   const sub = createSubscription<
     MessagesSubscriptionSubscription,
     MessagesSubscriptionSubscriptionVariables
-  >(apiKey, MessagesSubscriptionDocument, args, thunkApi.signal, (result) => {
-    if (thunkApi.signal.aborted) {
-      // eslint-disable-next-line no-console
-      console.log("handleResult called after thunk signal is aborted");
+  >(
+    address,
+    apiKey,
+    MessagesSubscriptionDocument,
+    args,
+    thunkApi.signal,
+    (result) => {
+      if (thunkApi.signal.aborted) {
+        // eslint-disable-next-line no-console
+        console.log("handleResult called after thunk signal is aborted");
 
-      return thunkApi.fulfillWithValue({});
-    }
-    if (result.error) {
-      // TBD: do we hang up on errors?
-      thunkApi.dispatch(setError(result.error.message));
-    }
-    if (result.data) {
-      thunkApi.dispatch(receiveThreadMessages(result.data));
-    }
-  });
+        return thunkApi.fulfillWithValue({});
+      }
+      if (result.error) {
+        // TBD: do we hang up on errors?
+        thunkApi.dispatch(setError(result.error.message));
+      }
+      if (result.data) {
+        thunkApi.dispatch(receiveThreadMessages(result.data));
+      }
+    },
+  );
 
   // TODO: duplicated call to unsubscribe
   thunkApi.signal.addEventListener("abort", () => {
@@ -124,8 +144,8 @@ export const messagesSub = createAsyncThunk<
   // return thunkApi.fulfillWithValue({});
 });
 
-export const createMessage = createAppAsyncThunk<
-  unknown,
+export const createMessage = createAsyncThunk<
+  MessageCreateMultipleMutation,
   MessageCreateMultipleMutationVariables,
   {
     dispatch: AppDispatch;
@@ -138,8 +158,9 @@ export const createMessage = createAppAsyncThunk<
 >("graphql/createMessage", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
   const result = await client.mutation<
     MessageCreateMultipleMutation,
     MessageCreateMultipleMutationVariables
@@ -151,33 +172,44 @@ export const createMessage = createAppAsyncThunk<
       message: result.error.message,
       args,
     });
+  } else if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "create message: no data in response",
+      args,
+    });
   }
   // TODO: add the message to the message list
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const createThreadWithMessage = createAsyncThunk<
-  MessageCreateMultipleMutation,
-  {
-    content: string;
-    expertId: string;
-    model: string;
-    tools: (Tool["spec"] | FCloudTool)[];
-  },
-  {
-    dispatch: AppDispatch;
-    state: RootState;
-    rejectValue: { message: string };
-  }
->("flexus/createThreadWithMessage", async (args, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const apiKey = state.config.apiKey ?? "";
-  const port = state.config.lspPort;
-  // TODO: where is current workspace set?
-  const workspace = state.config.currentWorkspaceName ?? "solar_root";
+export function rejectToolUsageAction(
+  ids: string[],
+  ft_id: string,
+  endNumber: number,
+  endAlt: number,
+  endPrevAlt: number,
+) {
+  const messagesToSend: FThreadMessageInput[] = ids.map((id, index) => {
+    return {
+      ftm_role: "tool",
+      ftm_belongs_to_ft_id: ft_id,
+      ftm_content: JSON.stringify("The user rejected the changes."),
+      ftm_call_id: id,
+      ftm_num: endNumber + index + 1,
+      ftm_alt: endAlt,
+      ftm_prev_alt: endPrevAlt,
+      ftm_provenance: "null",
+    };
+  });
+  const action = createMessage({
+    input: { messages: messagesToSend, ftm_belongs_to_ft_id: ft_id },
+  });
 
+  return action;
+}
+
+async function fetchAppSearchableId(apiKey: string, port: number) {
   const appIdUrl = `http://127.0.0.1:${port}/v1/get-app-searchable-id`;
-
   const appIdQuery = await fetch(appIdUrl, {
     credentials: "same-origin",
     redirect: "follow",
@@ -201,11 +233,41 @@ export const createThreadWithMessage = createAsyncThunk<
     })
     .catch((error: Error) => ({ error: error, data: null }));
 
+  return appIdQuery;
+}
+
+export const createThreadWithMessage = createAsyncThunk<
+  MessageCreateMultipleMutation & CreateThreadMutation,
+  {
+    content: string;
+    expertId: string;
+    model: string;
+    tools: (Tool["spec"] | FCloudTool)[];
+  },
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: { message: string };
+  }
+>("flexus/createThreadWithMessage", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+  const port = state.config.lspPort;
+  // TODO: where is current workspace set?
+  const workspace =
+    state.teams.workspace?.ws_root_group_id ??
+    state.config.currentWorkspaceName ??
+    "";
+
+  const appIdQuery = await fetchAppSearchableId(apiKey, port);
+
   if (appIdQuery.error) {
     thunkAPI.rejectWithValue({ message: JSON.stringify(appIdQuery.error) });
   }
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const threadQueryArgs: FThreadInput = {
     ft_fexp_id: args.expertId, // TODO: user selected
@@ -268,7 +330,7 @@ export const createThreadWithMessage = createAsyncThunk<
   if (!result.data) {
     return thunkAPI.rejectWithValue({ message: "failed to create message" });
   }
-  return thunkAPI.fulfillWithValue(result.data);
+  return thunkAPI.fulfillWithValue({ ...result.data, ...threadQuery.data });
 });
 
 // TODO: stop is ft_error, set this and it'll stop
@@ -286,7 +348,7 @@ function isGetAppSearchableResponse(
   return typeof response.app_searchable_id === "string";
 }
 
-export const pauseThreadThunk = createAppAsyncThunk<
+export const pauseThreadThunk = createAsyncThunk<
   ThreadPatchMutation,
   { id: string },
   {
@@ -298,7 +360,9 @@ export const pauseThreadThunk = createAppAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.mutation<
     ThreadPatchMutation,
@@ -315,7 +379,7 @@ export const pauseThreadThunk = createAppAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const getExpertsThunk = createAppAsyncThunk<
+export const getExpertsThunk = createAsyncThunk<
   ExpertsForGroupQuery,
   ExpertsForGroupQueryVariables,
   {
@@ -327,7 +391,9 @@ export const getExpertsThunk = createAppAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.query<
     ExpertsForGroupQuery,
@@ -347,7 +413,7 @@ export const getExpertsThunk = createAppAsyncThunk<
   return thunkAPI.fulfillWithValue(result.data);
 });
 
-export const getModelsForExpertThunk = createAppAsyncThunk<
+export const getModelsForExpertThunk = createAsyncThunk<
   ModelsForExpertQuery,
   ModelsForExpertQueryVariables,
   {
@@ -359,7 +425,9 @@ export const getModelsForExpertThunk = createAppAsyncThunk<
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.query<
     ModelsForExpertQuery,
@@ -381,7 +449,7 @@ export const getModelsForExpertThunk = createAppAsyncThunk<
 });
 
 // Note: these could be moved into the slice https://redux-toolkit.js.org/api/createslice#createasyncthunk
-export const getToolsForGroupThunk = createAppAsyncThunk<
+export const getToolsForGroupThunk = createAsyncThunk<
   ToolsForGroupQuery,
   ToolsForGroupQueryVariables,
   {
@@ -392,8 +460,9 @@ export const getToolsForGroupThunk = createAppAsyncThunk<
 >("flexus/tools", async (args, thunkAPI) => {
   const state = thunkAPI.getState();
   const apiKey = state.config.apiKey ?? "";
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
 
-  const client = createGraphqlClient(apiKey, thunkAPI.signal);
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
 
   const result = await client.query<
     ToolsForGroupQuery,
@@ -409,5 +478,3 @@ export const getToolsForGroupThunk = createAppAsyncThunk<
 
   return thunkAPI.fulfillWithValue(result.data);
 });
-
-// TODO: patch thread tools
