@@ -1,9 +1,5 @@
 import { isUsage, Usage } from "../services/refact/chat";
-import {
-  AssistantMessage,
-  ChatMessages,
-  isAssistantMessage,
-} from "../services/refact/types";
+import { AssistantMessage, isAssistantMessage } from "../services/refact/types";
 
 // TODO: cap cost should be in the messages and fix types
 export function getTotalCostMeteringForMessages(messages: unknown[]) {
