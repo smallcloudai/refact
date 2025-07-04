@@ -85,8 +85,9 @@ export const ChatContent: React.FC = () => {
   ]);
 
   const shouldConfigButtonBeVisible = useMemo(() => {
-    return !integrationMeta?.path?.includes("project_summary");
-  }, [integrationMeta?.path]);
+    if (!integrationMeta) return false;
+    return integrationMeta.path?.includes("project_summary");
+  }, [integrationMeta]);
 
   // Dedicated hook for handling file reloads
   useDiffFileReload();
