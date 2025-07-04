@@ -1,7 +1,8 @@
-import type {
-  Usage,
-  PromptTokenDetails,
-  CompletionTokenDetails,
+import {
+  type Usage,
+  type PromptTokenDetails,
+  type CompletionTokenDetails,
+  isUsage,
 } from "../services/refact";
 
 /**
@@ -139,50 +140,85 @@ export const mergePromptTokensDetails = (
 export function mergeUsages(
   usages: (Usage | undefined | null)[],
 ): Usage | undefined {
-  const validUsages = usages.filter((usage): usage is Usage => !!usage);
+  const validUsages = usages.filter(isUsage);
 
   if (validUsages.length === 0) return undefined;
 
   const result: Usage = {
-    completion_tokens: 0,
-    prompt_tokens: 0,
-    total_tokens: 0,
-    completion_tokens_details: null,
-    prompt_tokens_details: null,
-    cache_creation_input_tokens: 0,
-    cache_read_input_tokens: 0,
+    // completion_tokens: 0,
+    // prompt_tokens: 0,
+    // total_tokens: 0,
+    // completion_tokens_details: null,
+    // prompt_tokens_details: null,
+    // cache_creation_input_tokens: 0,
+    // cache_read_input_tokens: 0,
+    coins: 0,
+    tokens_prompt: 0,
+    pp1000t_prompt: 0,
+    tokens_cache_read: 0,
+    tokens_completion: 0,
+    pp1000t_cache_read: 0,
+    pp1000t_completion: 0,
+    tokens_prompt_text: 0,
+    tokens_prompt_audio: 0,
+    tokens_prompt_image: 0,
+    tokens_prompt_cached: 0,
+    tokens_cache_creation: 0,
+    pp1000t_cache_creation: 0,
+    tokens_completion_text: 0,
+    tokens_completion_audio: 0,
+    tokens_completion_reasoning: 0,
+    pp1000t_completion_reasoning: 0,
   };
 
   for (const usage of validUsages) {
-    // Merge basic token counts
-    result.completion_tokens = sumValues(
-      result.completion_tokens,
-      usage.completion_tokens,
+    result.coins = usage.coins;
+    result.tokens_prompt = sumValues(result.tokens_prompt, usage.tokens_prompt);
+    result.pp1000t_prompt = usage.pp1000t_prompt;
+    result.tokens_cache_read = sumValues(
+      result.tokens_cache_read,
+      usage.tokens_cache_read,
     );
-    result.prompt_tokens = sumValues(result.prompt_tokens, usage.prompt_tokens);
-    result.total_tokens = sumValues(result.total_tokens, usage.total_tokens);
-
-    // Merge detailed token information
-    result.completion_tokens_details = mergeCompletionTokensDetails(
-      result.completion_tokens_details,
-      usage.completion_tokens_details,
+    result.tokens_completion = sumValues(
+      result.tokens_completion,
+      usage.tokens_completion,
     );
-
-    result.prompt_tokens_details = mergePromptTokensDetails(
-      result.prompt_tokens_details,
-      usage.prompt_tokens_details,
+    result.pp1000t_cache_read = usage.pp1000t_cache_read;
+    result.pp1000t_completion = usage.pp1000t_completion;
+    result.tokens_prompt_text = sumValues(
+      result.tokens_prompt_text,
+      usage.tokens_prompt_text,
     );
-
-    // Merge cache-related metrics
-    result.cache_creation_input_tokens = sumValues(
-      result.cache_creation_input_tokens,
-      usage.cache_creation_input_tokens,
+    result.tokens_prompt_audio = sumValues(
+      result.tokens_prompt_audio,
+      usage.tokens_prompt_audio,
     );
-
-    result.cache_read_input_tokens = sumValues(
-      result.cache_read_input_tokens,
-      usage.cache_read_input_tokens,
+    result.tokens_prompt_image = sumValues(
+      result.tokens_prompt_image,
+      usage.tokens_prompt_image,
     );
+    result.tokens_prompt_cached = sumValues(
+      result.tokens_prompt_cached,
+      usage.tokens_prompt_cached,
+    );
+    result.tokens_cache_creation = sumValues(
+      result.tokens_cache_creation,
+      usage.tokens_cache_creation,
+    );
+    result.pp1000t_cache_creation = usage.pp1000t_cache_creation;
+    result.tokens_completion_text = sumValues(
+      result.tokens_completion_text,
+      usage.tokens_completion_text,
+    );
+    result.tokens_completion_audio = sumValues(
+      result.tokens_completion_audio,
+      usage.tokens_completion_audio,
+    );
+    result.tokens_completion_reasoning = sumValues(
+      result.tokens_completion_reasoning,
+      usage.tokens_completion_reasoning,
+    );
+    result.pp1000t_completion_reasoning = usage.pp1000t_completion_reasoning;
   }
 
   return result;

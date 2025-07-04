@@ -26,12 +26,13 @@ import styles from "./Texdoc.module.css";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
 import { Reveal } from "../Reveal";
 import { useAppSelector, useHideScroll, useEventsBusForIDE } from "../../hooks";
-import { selectCanPaste, selectChatId } from "../../features/Chat";
+import { selectCanPaste } from "../../features/Chat";
 import { toolsApi } from "../../services/refact";
 import { ErrorCallout } from "../Callout";
 import { isRTKResponseErrorWithDetailMessage } from "../../utils";
 import { MarkdownCodeBlock } from "../Markdown/CodeBlock";
 import classNames from "classnames";
+import { selectThreadId } from "../../features/ThreadMessages";
 
 export const TextDocTool: React.FC<{
   toolCall: RawTextDocTool;
@@ -70,7 +71,7 @@ const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
       toolsApi.useDryRunForEditToolMutation();
     const [errorMessage, setErrorMessage] = useState<string>("");
     const canPaste = useAppSelector(selectCanPaste);
-    const chatId = useAppSelector(selectChatId);
+    const chatId = useAppSelector(selectThreadId);
 
     const clearErrorMessage = useCallback(() => setErrorMessage(""), []);
 
@@ -84,6 +85,7 @@ const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
 
     const handleReplace = useCallback(
       (content: string) => {
+        if (!chatId) return;
         diffPasteBack(content, chatId, toolCall.id);
       },
       [chatId, diffPasteBack, toolCall.id],
@@ -103,7 +105,7 @@ const TextDocHeader = forwardRef<HTMLDivElement, TextDocHeaderProps>(
         toolArgs: toolCall.function.arguments,
       })
         .then((results) => {
-          if (results.data) {
+          if (results.data && chatId) {
             sendToolCallToIde(toolCall, results.data, chatId);
           } else if (isRTKResponseErrorWithDetailMessage(results)) {
             setErrorMessage(results.error.data.detail);

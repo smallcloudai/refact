@@ -1,12 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Flex } from "@radix-ui/themes";
-import {
-  Chat,
-  newChatAction,
-  selectChatId,
-  // selectIsStreaming
-} from "./Chat";
-import { selectIsStreaming } from "./ThreadMessages";
+import { Chat } from "./Chat";
+import { selectIsStreaming, selectThreadId } from "./ThreadMessages";
 import { Sidebar } from "../components/Sidebar/Sidebar";
 import {
   useAppSelector,
@@ -71,7 +66,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     useEventsBusForIDE();
   const tourState = useAppSelector((state: RootState) => state.tour);
   const maybeCurrentActiveGroup = useAppSelector(selectActiveGroup);
-  const chatId = useAppSelector(selectChatId);
+  const chatId = useAppSelector(selectThreadId);
   useEventBusForWeb();
   useEventBusForApp();
   usePatchesAndDiffsEventsForIDE();
@@ -98,7 +93,6 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
         maybeCurrentActiveGroup
       ) {
         dispatch(push({ name: "history" }));
-        dispatch(newChatAction());
         dispatch(push({ name: "chat" }));
       } else {
         dispatch(push({ name: "history" }));
@@ -150,7 +144,7 @@ export const InnerApp: React.FC<AppProps> = ({ style }: AppProps) => {
     if (page.name === "chat") {
       return {
         type: "chat",
-        id: chatId,
+        id: chatId ?? "",
       };
     }
     if (page.name === "history") {

@@ -88,7 +88,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "benchmark1_0701/README.md",
           file_content:
@@ -96,7 +96,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
           line1: 1,
           line2: 75,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",
@@ -124,7 +124,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "VISUALIZATION.md",
           file_content:
@@ -132,7 +132,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
           line1: 1,
           line2: 154,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",
@@ -160,7 +160,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "benchmark1_0701/src/llm_load_test_runner.py",
           file_content:
@@ -168,7 +168,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
           line1: 1,
           line2: 356,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",
@@ -196,7 +196,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "benchmark1_0701/src/load_test.py",
           file_content:
@@ -204,7 +204,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
           line1: 1,
           line2: 1225,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",
@@ -232,7 +232,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "src/visualize_results.py",
           file_content:
@@ -240,7 +240,7 @@ export const MARKDOWN_ISSUE: ChatThread = {
           line1: 1,
           line2: 449,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",

@@ -16,7 +16,47 @@ import {
   pauseThreadThunk,
 } from "../../services/graphql/graphqlThunks";
 import { isToolMessage } from "../../events";
-import { ToolMessage } from "../../services/refact";
+import { isDiffMessage, isToolCall, ToolMessage } from "../../services/refact";
+import {
+  isMessageWithIntegrationMeta,
+  MessageWithIntegrationMeta,
+} from "../Chat";
+
+// TODO: move this somewhere
+export type ToolConfirmationRequest = {
+  rule: string; // "default"
+  command: string;
+  ftm_num: number;
+  tool_call_id: string;
+};
+
+function isToolConfirmationRequest(
+  toolReq: unknown,
+): toolReq is ToolConfirmationRequest {
+  if (!toolReq) return false;
+  if (typeof toolReq !== "object") return false;
+  if (!("rule" in toolReq)) return false;
+  if (typeof toolReq.rule !== "string") return false;
+  if (!("command" in toolReq)) return false;
+  if (typeof toolReq.command !== "string") return false;
+  if (!("ftm_num" in toolReq)) return false;
+  if (typeof toolReq.ftm_num !== "number") return false;
+  if (!("tool_call_id" in toolReq)) return false;
+  if (typeof toolReq.tool_call_id !== "string") return false;
+  return true;
+}
+
+type Thread = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread"]
+>;
+
+type Delta = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["stream_delta"]
+>;
+
+type Message = NonNullable<
+  MessagesSubscriptionSubscription["comprehensive_thread_subs"]["news_payload_thread_message"]
+>;
 
 type InitialState = {
   waitingBranches: number[]; // alt numbers
@@ -26,6 +66,7 @@ type InitialState = {
   endNumber: number;
   endAlt: number;
   endPrevAlt: number;
+  thread: Thread | null;
 };
 
 const initialState: InitialState = {
@@ -36,6 +77,7 @@ const initialState: InitialState = {
   endNumber: 0,
   endAlt: 0,
   endPrevAlt: 0,
+  thread: null,
 };
 
 const ID_REGEXP = /^(.*):(\d+):(\d+):(\d+)$/;
@@ -63,155 +105,144 @@ export const threadMessagesSlice = createSlice({
   name: "threadMessages",
   initialState,
   reducers: {
-    receiveThreadMessages: (
+    receiveThread: (
       state,
-      action: PayloadAction<MessagesSubscriptionSubscription>,
+      action: PayloadAction<{
+        news_action: string;
+        news_payload_id: string;
+        news_payload_thread: Thread;
+      }>,
     ) => {
-      // console.log(
-      //   "receiveMessages",
-      //   action.payload.comprehensive_thread_subs.news_action,
-      //   action.payload,
-      // );
+      if (state.thread === null && action.payload.news_action === "UPDATE") {
+        state.thread = action.payload.news_payload_thread;
+      } else if (
+        state.thread &&
+        action.payload.news_payload_id !== state.thread.ft_id
+      ) {
+        return state;
+      } else {
+        state.thread = action.payload.news_payload_thread;
+      }
+
       if (
-        state.ft_id &&
-        action.payload.comprehensive_thread_subs.news_payload_thread_message
-          ?.ftm_belongs_to_ft_id &&
-        !action.payload.comprehensive_thread_subs.news_payload_thread_message.ftm_belongs_to_ft_id.startsWith(
-          state.ft_id,
-        )
+        action.payload.news_payload_thread.ft_need_assistant &&
+        action.payload.news_payload_thread.ft_need_assistant !== -1
+      ) {
+        state.waitingBranches.push(
+          action.payload.news_payload_thread.ft_need_assistant,
+        );
+      }
+
+      if (
+        action.payload.news_payload_thread.ft_need_user &&
+        action.payload.news_payload_thread.ft_need_user !== -1
+      ) {
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== action.payload.news_payload_thread.ft_need_user,
+        );
+        state.streamingBranches = state.streamingBranches.filter(
+          (n) => n !== action.payload.news_payload_thread.ft_need_user,
+        );
+      }
+
+      // return state;
+      // thread updates
+    },
+    receiveDeltaStream: (
+      state,
+      action: PayloadAction<{
+        news_action: string;
+        news_payload_id: string;
+        stream_delta: Delta;
+      }>,
+    ) => {
+      if (action.payload.news_action !== "DELTA") return state;
+      if (
+        !state.thread?.ft_id ||
+        !action.payload.news_payload_id.startsWith(state.thread.ft_id)
       ) {
         return state;
       }
 
       if (
-        !state.ft_id &&
-        action.payload.comprehensive_thread_subs.news_payload_thread?.ft_id
+        action.payload.news_payload_id in state.messages &&
+        "ftm_content" in action.payload.stream_delta
       ) {
-        state.ft_id =
-          action.payload.comprehensive_thread_subs.news_payload_thread.ft_id;
+        // TODO: multimodal could break this
+        state.messages[action.payload.news_payload_id].ftm_content +=
+          action.payload.stream_delta.ftm_content;
+        return state;
       }
 
-      if (
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_assistant &&
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          .ft_need_assistant !== -1
-      ) {
-        state.waitingBranches.push(
-          action.payload.comprehensive_thread_subs.news_payload_thread
-            .ft_need_assistant,
-        );
+      const infoFromId = getInfoFromId(action.payload.news_payload_id);
+      if (!infoFromId) return state;
+      if (!(action.payload.news_payload_id in state.messages)) {
+        const msg: FTMMessage = {
+          ...infoFromId,
+          ftm_role: action.payload.stream_delta.ftm_role,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          ftm_content: action.payload.stream_delta.ftm_content,
+          // TODO: these
+          ftm_call_id: "",
+          ftm_created_ts: 0,
+        };
+        state.messages[action.payload.news_payload_id] = msg;
       }
 
-      if (
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          ?.ft_need_user &&
-        action.payload.comprehensive_thread_subs.news_payload_thread
-          .ft_need_user !== -1
-      ) {
+      if (!state.streamingBranches.includes(infoFromId.ftm_alt)) {
+        state.streamingBranches.push(infoFromId.ftm_alt);
         state.waitingBranches = state.waitingBranches.filter(
-          (n) =>
-            n !==
-            action.payload.comprehensive_thread_subs.news_payload_thread
-              ?.ft_need_user,
+          (n) => n !== infoFromId.ftm_alt,
         );
-        state.streamingBranches = state.streamingBranches.filter(
-          (n) =>
-            n !==
-            action.payload.comprehensive_thread_subs.news_payload_thread
-              ?.ft_need_user,
-        );
+      }
+    },
+
+    removeMessage: (
+      state,
+      action: PayloadAction<{ news_action: string; news_payload_id: string }>,
+    ) => {
+      if (action.payload.news_action !== "DELETE") return state;
+      const messages = Object.entries(state.messages).reduce<
+        typeof state.messages
+      >((acc, [key, value]) => {
+        if (key === action.payload.news_payload_id) {
+          return acc;
+        }
+        return { ...acc, [key]: value };
+      }, {});
+
+      state.messages = messages;
+      return state;
+    },
+
+    receiveThreadMessages: (
+      state,
+      action: PayloadAction<{
+        news_action: string;
+        news_payload_id: string;
+        news_payload_thread_message: Message;
+      }>, // change this to FThreadMessageOutput
+    ) => {
+      if (!state.thread) return state;
+
+      if (!action.payload.news_payload_id.startsWith(state.thread.ft_id)) {
+        return state;
       }
 
       // TODO: are there other cases aside from update
       // actions: INITIAL_UPDATES_OVER | UPDATE | DELETE
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "UPDATE" &&
-        action.payload.comprehensive_thread_subs.news_payload_id &&
-        action.payload.comprehensive_thread_subs.news_payload_thread_message
-      ) {
-        state.messages[
-          action.payload.comprehensive_thread_subs.news_payload_id
-        ] =
-          action.payload.comprehensive_thread_subs.news_payload_thread_message;
+      if (action.payload.news_action === "UPDATE") {
+        state.messages[action.payload.news_payload_id] =
+          action.payload.news_payload_thread_message;
       }
 
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "INSERT" &&
-        action.payload.comprehensive_thread_subs.news_payload_id &&
-        action.payload.comprehensive_thread_subs.news_payload_thread_message
-      ) {
-        state.messages[
-          action.payload.comprehensive_thread_subs.news_payload_id
-        ] =
-          action.payload.comprehensive_thread_subs.news_payload_thread_message;
-      }
+      if (action.payload.news_action === "INSERT") {
+        state.messages[action.payload.news_payload_id] =
+          action.payload.news_payload_thread_message;
 
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "DELETE" &&
-        action.payload.comprehensive_thread_subs.news_payload_id
-      ) {
-        const msgs = Object.entries(state.messages).reduce<
-          typeof state.messages
-        >((acc, [key, value]) => {
-          if (
-            key === action.payload.comprehensive_thread_subs.news_payload_id
-          ) {
-            return acc;
-          }
-          return { ...acc, [key]: value };
-        }, {});
-
-        state.messages = msgs;
-      }
-
-      const infoFromId = getInfoFromId(
-        action.payload.comprehensive_thread_subs.news_payload_id,
-      );
-
-      if (
-        action.payload.comprehensive_thread_subs.news_action === "DELTA" &&
-        action.payload.comprehensive_thread_subs.stream_delta
-      ) {
-        if (
-          action.payload.comprehensive_thread_subs.news_payload_id in
-            state.messages &&
-          "ftm_content" in action.payload.comprehensive_thread_subs.stream_delta
-        ) {
-          // TODO: multimodal could break this
-          state.messages[
-            action.payload.comprehensive_thread_subs.news_payload_id
-          ].ftm_content +=
-            action.payload.comprehensive_thread_subs.stream_delta.ftm_content;
-        } else if (
-          infoFromId &&
-          !(
-            action.payload.comprehensive_thread_subs.news_payload_id in
-            state.messages
-          )
-        ) {
-          const msg: FTMMessage = {
-            ...infoFromId,
-            ftm_role:
-              action.payload.comprehensive_thread_subs.stream_delta.ftm_role,
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            ftm_content:
-              action.payload.comprehensive_thread_subs.stream_delta.ftm_content,
-
-            // TODO: these
-            ftm_call_id: "",
-            ftm_created_ts: 0,
-          };
-          state.messages[
-            action.payload.comprehensive_thread_subs.news_payload_id
-          ] = msg;
-          if (!state.streamingBranches.includes(infoFromId.ftm_alt)) {
-            state.streamingBranches.push(infoFromId.ftm_alt);
-            state.waitingBranches = state.waitingBranches.filter(
-              (n) => n !== infoFromId.ftm_alt,
-            );
-          }
-        }
+        state.waitingBranches = state.waitingBranches.filter(
+          (n) => n !== action.payload.news_payload_thread_message.ftm_alt,
+        );
       }
     },
 
@@ -229,12 +260,14 @@ export const threadMessagesSlice = createSlice({
       return state;
     },
 
+    // TODO: check where this is used
     setThreadFtId: (state, action: PayloadAction<InitialState["ft_id"]>) => {
       state.ft_id = action.payload;
     },
   },
   selectors: {
-    selectThreadMessages: (state) => state.messages,
+    selectThreadMessages: (state) => Object.values(state.messages),
+    selectThreadMeta: (state) => state.thread,
     selectThreadId: (state) => state.ft_id,
     selectIsWaiting: (state) => {
       const maybeBranch = state.waitingBranches.find(
@@ -243,6 +276,7 @@ export const threadMessagesSlice = createSlice({
       return !!maybeBranch;
     },
     selectIsStreaming: (state) => {
+      if (state.streamingBranches.length === 0) return false;
       const maybeBranch = state.streamingBranches.find(
         (branch) => branch === state.endAlt,
       );
@@ -267,6 +301,7 @@ export const threadMessagesSlice = createSlice({
       return null;
     }),
 
+    // TODO: refactor this
     selectMessagesFromEndNode: createSelector(
       (state: InitialState) => {
         const { endNumber, endAlt, endPrevAlt, messages } = state;
@@ -338,6 +373,92 @@ export const threadMessagesSlice = createSlice({
         });
       },
     ),
+
+    selectToolConfirmationRequests: (state) => {
+      if (!state.thread) return [];
+      if (
+        Array.isArray(state.thread.ft_confirmation_response) &&
+        state.thread.ft_confirmation_response.includes("*")
+      ) {
+        return [];
+      }
+      const messages = Object.values(state.messages);
+      if (messages.length === 0) return [];
+      if (!state.thread.ft_confirmation_request) return [];
+      if (!Array.isArray(state.thread.ft_confirmation_request)) return [];
+      const responses = Array.isArray(state.thread.ft_confirmation_response)
+        ? state.thread.ft_confirmation_response
+        : [];
+      const toolRequests = state.thread.ft_confirmation_request.filter(
+        isToolConfirmationRequest,
+      );
+
+      const messageIds = messages.map((message) => message.ftm_call_id);
+      const unresolved = toolRequests.filter(
+        (req) =>
+          !responses.includes(req.tool_call_id) &&
+          !messageIds.includes(req.tool_call_id),
+      );
+
+      return unresolved;
+    },
+
+    selectToolConfirmationResponses: (state) => {
+      if (!state.thread) return [];
+      if (!Array.isArray(state.thread.ft_confirmation_response)) {
+        return [];
+      }
+
+      return state.thread.ft_confirmation_response.filter(
+        (s) => typeof s === "string",
+      );
+    },
+    selectPatchIsAutomatic: (state) => {
+      if (!state.thread) return false;
+      return (
+        Array.isArray(state.thread.ft_confirmation_response) &&
+        state.thread.ft_confirmation_response.includes("*")
+      );
+    },
+    selectMessageByToolCallId: createSelector(
+      [selectMessagesValues, (_messages, id: string) => id],
+      (messages, id) => {
+        return messages.find((message) => {
+          if (!Array.isArray(message.ftm_tool_calls)) return false;
+          return message.ftm_tool_calls
+            .filter(isToolCall)
+            .some((toolCall) => toolCall.id === id);
+        });
+      },
+    ),
+
+    selectLastMessageForAlt: createSelector(
+      [selectMessagesValues, (_messages, alt: number) => alt],
+      (messages, alt) => {
+        const messagesForAlt = messages.filter(
+          (message) => message.ftm_alt === alt,
+        );
+        if (messagesForAlt.length === 0) return null;
+        const last = messagesForAlt.sort((a, b) => b.ftm_num - a.ftm_num)[0];
+        return last;
+      },
+    ),
+
+    selectManyDiffMessageByIds: createSelector(
+      [selectMessagesValues, (_messages, ids: string[]) => ids],
+      (messages, ids) => {
+        const diffs = messages.filter(isDiffMessage);
+        return diffs.filter((message) => ids.includes(message.ftm_call_id));
+      },
+    ),
+
+    selectIntegrationMeta: createSelector(selectMessagesValues, (messages) => {
+      const maybeIntegrationMeta = messages.find(isMessageWithIntegrationMeta);
+      if (!maybeIntegrationMeta) return null;
+      // TODO: any types are causing issues here
+      const message = maybeIntegrationMeta as MessageWithIntegrationMeta;
+      return message.ftm_user_preferences.integration;
+    }),
   },
 
   extraReducers(builder) {
@@ -360,6 +481,7 @@ export const threadMessagesSlice = createSlice({
     builder.addCase(createThreadWithMessage.rejected, (state) => {
       state.waitingBranches = state.waitingBranches.filter((n) => n !== 100);
     });
+
     builder.addCase(createMessage.pending, (state, action) => {
       const { input } = action.meta.arg;
       if (input.ftm_belongs_to_ft_id !== state.ft_id) return state;
@@ -382,7 +504,10 @@ export const threadMessagesSlice = createSlice({
 });
 
 export const {
+  receiveDeltaStream,
+  receiveThread,
   receiveThreadMessages,
+  removeMessage,
   setThreadEnd,
   resetThread,
   setThreadFtId,
@@ -404,4 +529,12 @@ export const {
   selectIsThreadRunning,
   selectManyToolMessagesByIds,
   selectToolMessageById,
+  selectToolConfirmationRequests,
+  selectThreadMeta,
+  selectMessageByToolCallId,
+  selectLastMessageForAlt,
+  selectPatchIsAutomatic,
+  selectToolConfirmationResponses,
+  selectManyDiffMessageByIds,
+  selectIntegrationMeta,
 } = threadMessagesSlice.selectors;

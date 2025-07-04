@@ -32,7 +32,7 @@ export const SmartLink: FC<{
       return;
     }
     if (sl_chat) {
-      handleSmartLink(
+      void handleSmartLink(
         sl_chat,
         integrationName,
         integrationPath,

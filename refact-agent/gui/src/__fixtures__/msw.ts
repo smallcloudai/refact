@@ -4,7 +4,6 @@ import { TOOLS, CHAT_LINKS_URL } from "../services/refact/consts";
 import { STUB_TOOL_RESPONSE } from "./tools_response";
 import { GoodPollingResponse } from "../services/smallcloud/types";
 import type { LinksForChatResponse } from "../services/refact/links";
-import { ToolConfirmationResponse } from "../services/refact";
 
 export const goodPing: HttpHandler = http.get(
   "http://127.0.0.1:8001/v1/ping",
@@ -172,17 +171,5 @@ export const telemetryNetwork = http.post(
       retcode: "OK",
       status: "sent",
     });
-  },
-);
-
-export const ToolConfirmation = http.post(
-  "http://127.0.0.1:8001/v1/tools-check-if-confirmation-needed",
-  () => {
-    const response: ToolConfirmationResponse = {
-      pause: false,
-      pause_reasons: [],
-    };
-
-    return HttpResponse.json(response);
   },
 );

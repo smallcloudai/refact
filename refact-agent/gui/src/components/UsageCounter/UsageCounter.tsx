@@ -7,14 +7,10 @@ import { calculateUsageInputTokens } from "../../utils/calculateUsageInputTokens
 import { ScrollArea } from "../ScrollArea";
 import { useUsageCounter } from "./useUsageCounter";
 
-import { selectAllImages } from "../../features/AttachedImages";
-import {
-  selectThreadCurrentMessageTokens,
-  selectThreadMaximumTokens,
-} from "../../features/Chat";
+// import { selectAllImages } from "../../features/AttachedImages";
 import { formatNumberToFixed } from "../../utils/formatNumberToFixed";
 import {
-  useAppSelector,
+  // useAppSelector,
   useEffectOnce,
   useTotalCostForChat,
   useTotalTokenMeteringForChat,
@@ -47,16 +43,26 @@ const TokenDisplay: React.FC<{ label: string; value: number }> = ({
 );
 
 const TokensDisplay: React.FC<{
-  currentThreadUsage?: Usage | null;
+  currentThreadUsage?: Pick<
+    Usage,
+    | "tokens_cache_read"
+    | "tokens_cache_creation"
+    | "tokens_prompt"
+    | "tokens_completion_reasoning"
+  > | null;
   inputTokens: number;
   outputTokens: number;
 }> = ({ currentThreadUsage, inputTokens, outputTokens }) => {
   if (!currentThreadUsage) return;
+
   const {
-    cache_read_input_tokens,
-    cache_creation_input_tokens,
-    completion_tokens_details,
-    prompt_tokens,
+    tokens_cache_read,
+    tokens_cache_creation,
+    tokens_prompt,
+    tokens_completion_reasoning,
+    // cache_creation_input_tokens,
+    // completion_tokens_details,
+    // prompt_tokens,
   } = currentThreadUsage;
 
   return (
@@ -66,25 +72,25 @@ const TokensDisplay: React.FC<{
       </Text>
       <TokenDisplay label="Input tokens (in total)" value={inputTokens} />
 
-      <TokenDisplay label="Prompt tokens" value={prompt_tokens} />
+      <TokenDisplay label="Prompt tokens" value={tokens_prompt} />
 
-      {cache_read_input_tokens !== undefined && (
+      {tokens_cache_read && (
         <TokenDisplay
           label="Cache read input tokens"
-          value={cache_read_input_tokens}
+          value={tokens_cache_read}
         />
       )}
-      {cache_creation_input_tokens !== undefined && (
+      {tokens_cache_creation && (
         <TokenDisplay
           label="Cache creation input tokens"
-          value={cache_creation_input_tokens}
+          value={tokens_cache_creation}
         />
       )}
       <TokenDisplay label="Completion tokens" value={outputTokens} />
-      {completion_tokens_details?.reasoning_tokens !== null && (
+      {tokens_completion_reasoning && (
         <TokenDisplay
           label="Reasoning tokens"
-          value={completion_tokens_details?.reasoning_tokens ?? 0}
+          value={tokens_completion_reasoning}
         />
       )}
     </Flex>
@@ -143,27 +149,28 @@ const CoinsDisplay: React.FC<{
   );
 };
 
-const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
-  messageTokens,
-}) => {
-  const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
+// const InlineHoverCard: React.FC<{ messageTokens: number }> = ({
+//   messageTokens,
+// }) => {
+//   // TODO: where do we get this info from now?
+//   // const maximumThreadContextTokens = useAppSelector(selectThreadMaximumTokens);
 
-  return (
-    <Flex direction="column" align="start" gap="2">
-      {/* TODO: upsale logic might be implemented here to extend maximum context size */}
-      {maximumThreadContextTokens && (
-        <TokenDisplay
-          label="Thread maximum context tokens amount"
-          value={maximumThreadContextTokens}
-        />
-      )}
-      <TokenDisplay
-        label="Potential tokens amount for current message"
-        value={messageTokens}
-      />
-    </Flex>
-  );
-};
+//   return (
+//     <Flex direction="column" align="start" gap="2">
+//       {/* TODO: upsale logic might be implemented here to extend maximum context size */}
+//       {/* {maximumThreadContextTokens && (
+//         <TokenDisplay
+//           label="Thread maximum context tokens amount"
+//           value={maximumThreadContextTokens}
+//         />
+//       )} */}
+//       <TokenDisplay
+//         label="Potential tokens amount for current message"
+//         value={messageTokens}
+//       />
+//     </Flex>
+//   );
+// };
 
 const DefaultHoverCard: React.FC<{
   inputTokens: number;
@@ -205,13 +212,12 @@ const DefaultHoverCard: React.FC<{
 
   const renderContent = (optionValue: string) => {
     if (optionValue === "tokens" && meteringTokens && totalMetering !== null) {
-      const usage: Usage = {
-        prompt_tokens: meteringTokens.metering_prompt_tokens_n,
-        total_tokens: totalMetering,
-        cache_creation_input_tokens:
-          meteringTokens.metering_cache_creation_tokens_n,
-        cache_read_input_tokens: meteringTokens.metering_cache_read_tokens_n,
-        completion_tokens: meteringTokens.metering_generated_tokens_n,
+      const usage = {
+        tokens_prompt: meteringTokens.metering_prompt_tokens_n,
+        tokens_cache_creation: meteringTokens.metering_cache_creation_tokens_n,
+        tokens_cache_read: meteringTokens.metering_cache_read_tokens_n,
+        tokens_completion: meteringTokens.metering_generated_tokens_n,
+        tokens_completion_reasoning: meteringTokens.metering_generated_tokens_n,
       };
       return (
         <TokensDisplay
@@ -268,18 +274,18 @@ const DefaultHoverCard: React.FC<{
   );
 };
 
-const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
-  messageTokens,
-}) => {
-  return (
-    <Flex align="center" gap="6px">
-      <Text size="1" color="gray" wrap="nowrap">
-        {formatNumberToFixed(messageTokens)}{" "}
-        {messageTokens === 1 ? "token" : "tokens"}
-      </Text>
-    </Flex>
-  );
-};
+// const InlineHoverTriggerContent: React.FC<{ messageTokens: number }> = ({
+//   messageTokens,
+// }) => {
+//   return (
+//     <Flex align="center" gap="6px">
+//       <Text size="1" color="gray" wrap="nowrap">
+//         {formatNumberToFixed(messageTokens)}{" "}
+//         {messageTokens === 1 ? "token" : "tokens"}
+//       </Text>
+//     </Flex>
+//   );
+// };
 
 const DefaultHoverTriggerContent: React.FC<{
   inputTokens: number;
@@ -305,19 +311,20 @@ const DefaultHoverTriggerContent: React.FC<{
 
 export const UsageCounter: React.FC<UsageCounterProps> = ({
   isInline = false,
-  isMessageEmpty,
+  // isMessageEmpty,
 }) => {
   const [open, setOpen] = useState(false);
-  const maybeAttachedImages = useAppSelector(selectAllImages);
+  // const maybeAttachedImages = useAppSelector(selectAllImages);
   const { currentThreadUsage, isOverflown, isWarning } = useUsageCounter();
-  const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
+  //TODO: move this comes from command preview, store it some where
+  // const currentMessageTokens = useAppSelector(selectThreadCurrentMessageTokens);
   const meteringTokens = useTotalTokenMeteringForChat();
 
-  const messageTokens = useMemo(() => {
-    if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
-    if (!currentMessageTokens) return 0;
-    return currentMessageTokens;
-  }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
+  // const messageTokens = useMemo(() => {
+  //   if (isMessageEmpty && maybeAttachedImages.length === 0) return 0;
+  //   if (!currentMessageTokens) return 0;
+  //   return currentMessageTokens;
+  // }, [currentMessageTokens, maybeAttachedImages, isMessageEmpty]);
 
   const inputMeteringTokens = useMemo(() => {
     if (meteringTokens === null) return null;
@@ -335,15 +342,11 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
 
   const inputUsageTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
-    keys: [
-      "prompt_tokens",
-      "cache_creation_input_tokens",
-      "cache_read_input_tokens",
-    ],
+    keys: ["tokens_prompt", "tokens_cache_creation", "tokens_cache_read"],
   });
   const outputUsageTokens = calculateUsageInputTokens({
     usage: currentThreadUsage,
-    keys: ["completion_tokens"],
+    keys: ["tokens_completion"],
   });
 
   const inputTokens = useMemo(() => {
@@ -385,9 +388,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
             [styles.isOverflown]: isOverflown,
           })}
         >
-          {isInline ? (
+          {/* {isInline ? (
             <InlineHoverTriggerContent messageTokens={messageTokens} />
           ) : (
+            <DefaultHoverTriggerContent
+              inputTokens={inputTokens}
+              outputTokens={outputTokens}
+            />
+          )} */}
+          {!isInline && (
             <DefaultHoverTriggerContent
               inputTokens={inputTokens}
               outputTokens={outputTokens}
@@ -406,9 +415,15 @@ export const UsageCounter: React.FC<UsageCounterProps> = ({
           side="top"
           hideWhenDetached
         >
-          {isInline ? (
+          {/* {isInline ? (
             <InlineHoverCard messageTokens={messageTokens} />
           ) : (
+            <DefaultHoverCard
+              inputTokens={inputTokens}
+              outputTokens={outputTokens}
+            />
+          )} */}
+          {!isInline && (
             <DefaultHoverCard
               inputTokens={inputTokens}
               outputTokens={outputTokens}

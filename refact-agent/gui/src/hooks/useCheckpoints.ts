@@ -15,21 +15,22 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import {
-  backUpMessages,
-  newChatAction,
-  selectChatId,
-  selectMessages,
-} from "../features/Chat";
 import { isUserMessage, telemetryApi } from "../services/refact";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
+import {
+  resetThread,
+  selectMessagesFromEndNode,
+} from "../features/ThreadMessages";
 
+// TODO: how will check points works?
 export const useCheckpoints = () => {
   const dispatch = useAppDispatch();
-  const messages = useAppSelector(selectMessages);
-  const chatId = useAppSelector(selectChatId);
+  const messages = useAppSelector(selectMessagesFromEndNode, {
+    devModeChecks: { stabilityCheck: "never" },
+  });
+
   const configIdeHost = useAppSelector(selectConfig).host;
 
   const [sendTelemetryEvent] =
@@ -149,21 +150,10 @@ export const useCheckpoints = () => {
         dispatch(setCheckpointsErrorLog(response.error_log));
         return;
       }
+      // TODO: new chat suggestion?
       if (shouldNewChatBeStarted || !maybeMessageIndex) {
-        const actions = [
-          newChatAction(),
-          // TODO: handle deleting chat?
-          // deleteChatById(chatId),
-        ];
+        const actions = [resetThread()];
         actions.forEach((action) => dispatch(action));
-      } else {
-        const usefulMessages = messages.slice(0, maybeMessageIndex);
-        dispatch(
-          backUpMessages({
-            id: chatId,
-            messages: usefulMessages,
-          }),
-        );
       }
     } catch (error) {
       void sendTelemetryEvent({
@@ -182,8 +172,6 @@ export const useCheckpoints = () => {
     configIdeHost,
     shouldNewChatBeStarted,
     maybeMessageIndex,
-    chatId,
-    messages,
     latestRestoredCheckpointsResult.current_checkpoints,
     latestRestoredCheckpointsResult.reverted_changes,
   ]);

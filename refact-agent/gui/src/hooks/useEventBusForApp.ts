@@ -6,7 +6,6 @@ import { updateConfig } from "../features/Config/configSlice";
 import { setFileInfo } from "../features/Chat/activeFile";
 import { setSelectedSnippet } from "../features/Chat/selectedSnippet";
 import { setCurrentProjectInfo } from "../features/Chat/currentProject";
-import { newChatAction } from "../features/Chat/Thread/actions";
 import {
   isPageInHistory,
   push,
@@ -16,6 +15,8 @@ import { ideToolCallResponse } from "./useEventBusForIDE";
 import { createAction } from "@reduxjs/toolkit/react";
 
 export const ideAttachFileToChat = createAction<string>("ide/attachFileToChat");
+
+export const newChatAction = createAction<undefined>("chatThread/new");
 
 export function useEventBusForApp() {
   const config = useConfig();
@@ -40,7 +41,6 @@ export function useEventBusForApp() {
         if (!isPageInHistory({ pages }, "chat")) {
           dispatch(push({ name: "chat" }));
         }
-        dispatch(newChatAction(event.data.payload));
       }
 
       if (setCurrentProjectInfo.match(event.data)) {

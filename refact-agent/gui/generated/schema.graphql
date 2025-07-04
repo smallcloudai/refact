@@ -8,6 +8,7 @@ type BasicStuffResult {
   fuser_id: String!
   fuser_psystem: JSON
   invitations: [FWorkspaceInvitationOutput!]
+  is_oauth: Boolean!
   my_own_ws_id: String
   workspaces: [FWorkspaceOutput!]!
 }
@@ -24,6 +25,20 @@ type FApiKeyOutput {
   full_key_shown_once: String
 }
 
+type FAuditRecordOutput {
+  audit_counter: Int!
+  audit_fgroup_id: String
+  audit_fuser_id: String
+  audit_metadata: JSON
+  audit_op: String!
+  audit_payload_existing_json: JSON
+  audit_payload_id: String!
+  audit_payload_updated_json: JSON
+  audit_session_id: String
+  audit_table_name: String!
+  audit_ts: Float!
+}
+
 type FCloudTool {
   ctool_confirmed_exists_ts: Float
   ctool_description: String!
@@ -32,6 +47,24 @@ type FCloudTool {
   ctool_parameters: JSON!
   located_fgroup_id: String
   owner_fuser_id: String
+}
+
+type FEphemeralDocumentOutput {
+  edoc_icon: String!
+  edoc_id: String!
+  edoc_indexing_status: String!
+  edoc_mtime: Int!
+  edoc_size_bytes: Int!
+  edoc_title: String!
+  eds_id: String!
+  eds_type: String!
+  ws_id: String!
+}
+
+type FEphemeralSubs {
+  news_action: String!
+  news_payload: FEphemeralDocumentOutput
+  news_payload_id: String!
 }
 
 input FExpertInput {
@@ -83,8 +116,7 @@ type FExternalDataSourceOutput {
   eds_last_successful_scan_ts: Float!
   eds_modified_ts: Float!
   eds_name: String!
-  eds_scan_status: String!
-  eds_secret_id: Int
+  eds_scan_problem: String!
   eds_type: String!
   located_fgroup_id: String!
   owner_fuser_id: String!
@@ -94,9 +126,6 @@ input FExternalDataSourcePatch {
   eds_json: String!
   eds_last_successful_scan_ts: Float = null
   eds_name: String = null
-  eds_scan_status: String = null
-  eds_secret_id: Int = null
-  eds_type: String = null
   located_fgroup_id: String = null
 }
 
@@ -159,16 +188,55 @@ type FModelItem {
 type FPermissionOutput {
   fgroup_id: String!
   fuser_id: String!
-  perm_role: String!
+  perm_roles: Int!
 }
 
 input FPermissionPatch {
-  perm_role: String = null
+  perm_roles: Int!
 }
 
 type FPermissionSubs {
   news_action: String!
   news_payload: FPermissionOutput
+  news_payload_id: String!
+  news_pubsub: String!
+}
+
+input FPersonaInput {
+  located_fgroup_id: String!
+  persona_expert1_fexp_name: String = null
+  persona_expert2_fexp_name: String = null
+  persona_module: String!
+  persona_name: String!
+  persona_setup: String!
+}
+
+type FPersonaOutput {
+  located_fgroup_id: String!
+  owner_fuser_id: String!
+  persona_archived_ts: Float!
+  persona_created_ts: Float!
+  persona_expert1_fexp_name: String
+  persona_expert2_fexp_name: String
+  persona_id: String!
+  persona_module: String!
+  persona_name: String!
+  persona_setup: JSON!
+}
+
+input FPersonaPatch {
+  located_fgroup_id: String = null
+  persona_archived_ts: Float = null
+  persona_expert1_fexp_name: String = null
+  persona_expert2_fexp_name: String = null
+  persona_module: String = null
+  persona_name: String = null
+  persona_setup: String = null
+}
+
+type FPersonaSubs {
+  news_action: String!
+  news_payload: FPersonaOutput
   news_payload_id: String!
   news_pubsub: String!
 }
@@ -182,7 +250,7 @@ type FPluginOutput {
 input FStatsAddInput {
   fgroup_id: String! = ""
   st_chart: Int!
-  st_how_many: Int!
+  st_how_many: Union!
   st_involved_fexp_id: String! = ""
   st_involved_fuser_id: String! = ""
   st_involved_model: String! = ""
@@ -191,12 +259,13 @@ input FStatsAddInput {
 }
 
 type FStatsOutput {
-  st_how_many: Int!
+  fgroup_id: String
+  st_how_many: Union!
   st_involved_fexp_id: String
   st_involved_fuser_id: String
   st_involved_model: String
   st_timekey: String!
-  ws_id: String!
+  ws_id: String
 }
 
 type FThreadDelta {
@@ -301,7 +370,6 @@ input FThreadPatch {
   ft_confirmation_request: String = null
   ft_confirmation_response: String = null
   ft_error: String = null
-  ft_need_user: Int = null
   ft_title: String = null
   ft_toolset: String = null
   located_fgroup_id: String = null
@@ -317,11 +385,13 @@ type FThreadSubs {
 }
 
 type FUserProfileOutput {
+  fuser_experimental: Boolean!
   fuser_fullname: String!
   fuser_id: String!
 }
 
 input FUserProfilePatch {
+  fuser_experimental: Boolean = null
   fuser_fullname: String = null
 }
 
@@ -335,13 +405,13 @@ type FWorkspaceInvitationOutput {
   wsi_id: String!
   wsi_invite_fuser_id: String!
   wsi_invited_by_fuser_id: String!
-  wsi_role: String!
+  wsi_roles: Int!
 }
 
 type FWorkspaceOutput {
   have_admin: Boolean!
   have_coins_enough: Boolean!
-  have_coins_exactly: Int!
+  have_coins_exactly: Union!
   root_group_name: String!
   ws_archived_ts: Float!
   ws_created_ts: Float!
@@ -355,7 +425,7 @@ type FlexusGroup {
   fgroup_id: String!
   fgroup_name: String!
   fgroup_parent_id: String
-  my_role: String
+  my_roles: Int
   ws_id: String!
 }
 
@@ -369,7 +439,9 @@ input FlexusGroupPatch {
   fgroup_parent_id: String = null
 }
 
-"""The JSON scalar type represents JSON values as Python objects"""
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](https://ecma-international.org/wp-content/uploads/ECMA-404_2nd_edition_december_2017.pdf).
+"""
 scalar JSON
 
 type Mutation {
@@ -386,7 +458,7 @@ type Mutation {
   group_delete(fgroup_id: String!): String!
   group_patch(fgroup_id: String!, patch: FlexusGroupPatch!): FlexusGroup!
   invitation_accept(wsi_id: String!): Boolean!
-  invitation_create_multiple(emails: [String!]!, fgroup_id: String!, role: String!): [FMassInvitationOutput!]!
+  invitation_create_multiple(emails: [String!]!, fgroup_id: String!, roles: Int!): [FMassInvitationOutput!]!
   invitation_delete(wsi_fgroup_id: String!, wsi_invite_fuser_id: String!): Boolean!
   invitation_reject(wsi_id: String!): Boolean!
   knowledge_item_create(input: FKnowledgeItemInput!): FKnowledgeItemOutput!
@@ -396,6 +468,9 @@ type Mutation {
   password_change(new_password: String!, old_password: String!): Boolean!
   permission_delete(fgroup_id: String!, fuser_id: String!): Boolean!
   permission_patch(fgroup_id: String!, fuser_id: String!, patch: FPermissionPatch!): FPermissionOutput!
+  persona_create(input: FPersonaInput!): FPersonaOutput!
+  persona_delete(id: String!): Boolean!
+  persona_patch(id: String!, patch: FPersonaPatch!): FPersonaOutput!
   reset_password_execute(new_password: String!, token: String!): Boolean!
   reset_password_start(username: String!): Boolean!
   session_open(password: String!, username: String!): String!
@@ -420,6 +495,7 @@ type Mutation {
   user_register(input: RegisterInput!): Boolean!
   workspace_create(input: FWorkspaceCreateInput!): String!
   workspace_delete(dry_run: Boolean! = false, ws_id: String!): String!
+  workspace_leave(ws_id: String!): String!
 }
 
 type PasswordResetTokenInfo {
@@ -429,8 +505,8 @@ type PasswordResetTokenInfo {
 
 type Query {
   api_key_list: [FApiKeyOutput!]!
+  audit_list(limit: Int!, skip: Int!, ws_id: String!): [FAuditRecordOutput!]!
   cloud_tools_list(include_offline: Boolean! = false, located_fgroup_id: String!): [FCloudTool!]!
-  coins_how_much_I_have(ws_id: String!): Int!
   expert_choice_consequences(fexp_id: String!, inside_fgroup_id: String!): [FModelItem!]!
   expert_get(id: String!): FExpertOutput!
   expert_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FExpertOutput!]!
@@ -445,13 +521,13 @@ type Query {
   knowledge_item_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FKnowledgeItemOutput!]!
   knowledge_vecdb_search(fgroup_id: String!, q: String!, top_n: Int! = 5): [FKnowledgeItemOutput!]!
   permission_list(fgroup_id: String!): [FPermissionOutput!]!
+  persona_get(id: String!): FPersonaOutput!
+  persona_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FPersonaOutput!]!
   plugins_installed: [FPluginOutput!]!
   query_basic_stuff(want_invitations: Boolean! = false): BasicStuffResult!
   reset_password_token_info(token: String!): PasswordResetTokenInfo!
-  stats_query(breakdown_fexp_name: Boolean!, breakdown_fuser_id: Boolean!, breakdown_model: Boolean!, fgroup_id: String! = "", filter_fexp_id: [String!]! = [], filter_fuser_id: [String!]! = [], filter_model: [String!]! = [], filter_thing: [String!]! = [], st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String! = ""): [FStatsOutput!]!
-  stats_query_distinct(fgroup_id: String! = "", filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
-  stripe_topup(amount: Int!, customer_id: String!, email: String!, return_url: String!, subscription_id: String!): String!
-  stripe_update_subscription(customer_id: String!, email: String!, return_url: String!, subscription_id: String!): String!
+  stats_query(breakdown_fexp_name: [String!]!, breakdown_fuser_id: [String!]!, breakdown_model: [String!]!, fgroup_id: String! = "", filter_fexp_id: [String!]! = [], filter_fuser_id: [String!]! = [], filter_model: [String!]! = [], filter_thing: [String!]! = [], st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String! = ""): [FStatsOutput!]!
+  stats_query_distinct(fgroup_id: String!, filter_fexp_id: [String!]!, filter_fuser_id: [String!]!, filter_model: [String!]!, st_chart: Int!, st_span: String!, timekey_from: String!, timekey_to: String!, ws_id: String!): StatsDistinctOutput!
   tech_support_get_config(ws_id: String!): TechSupportSettingsOutput
   thread_get(id: String!): FThreadOutput!
   thread_list(limit: Int!, located_fgroup_id: String!, skip: Int!, sort_by: String! = ""): [FThreadOutput!]!
@@ -468,19 +544,21 @@ input RegisterInput {
 }
 
 type StatsDistinctOutput {
-  st_chart: Int!
-  st_involved_fexp_id: [String!]!
-  st_involved_fuser_id: [String!]!
-  st_involved_model: [String!]!
+  st_involved_fexp_id: JSON!
+  st_involved_fuser_id: JSON!
+  st_involved_model: JSON!
   st_thing: [String!]!
+  timekey_now: String!
 }
 
 type Subscription {
   comprehensive_thread_subs(ft_id: String!, want_deltas: Boolean!): FThreadMessageSubs!
+  ephemeral_subs(eds_id: String!): FEphemeralSubs!
   experts_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FExpertSubs!
   external_data_sources_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FExternalDataSourceSubs!
   knowledge_items_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FKnowledgeItemSubs!
   permissions_in_group_subs(fgroup_id: String!, limit: Int!, quicksearch: String!): FPermissionSubs!
+  personas_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FPersonaSubs!
   threads_in_group(filter: [String!]! = [], limit: Int! = 0, located_fgroup_id: String!, sort_by: [String!]! = []): FThreadSubs!
   tree_subscription(ws_id: String!): TreeUpdateSubs!
 }
@@ -505,8 +583,11 @@ type TreeUpdateSubs {
   treeupd_action: String!
   treeupd_id: String!
   treeupd_path: String!
-  treeupd_role: String
+  treeupd_roles: Int
   treeupd_tag: String!
   treeupd_title: String!
   treeupd_type: String!
 }
+
+"""BigInt field"""
+scalar Union

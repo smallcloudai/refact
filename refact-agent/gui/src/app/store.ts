@@ -19,7 +19,6 @@ import {
   integrationsApi,
   dockerApi,
   telemetryApi,
-  knowledgeApi,
   providersApi,
   modelsApi,
   teamsApi,
@@ -31,14 +30,13 @@ import { tipOfTheDaySlice } from "../features/TipOfTheDay";
 import { reducer as configReducer } from "../features/Config/configSlice";
 import { activeFileReducer } from "../features/Chat/activeFile";
 import { selectedSnippetReducer } from "../features/Chat/selectedSnippet";
-import { chatReducer } from "../features/Chat/Thread/reducer";
+
 import { errorSlice } from "../features/Errors/errorsSlice";
 
 import { pagesSlice } from "../features/Pages/pagesSlice";
 import mergeInitialState from "redux-persist/lib/stateReconciler/autoMergeLevel2";
 import { listenerMiddleware } from "./middleware";
 import { informationSlice } from "../features/Errors/informationSlice";
-import { confirmationSlice } from "../features/ToolConfirmation/confirmationSlice";
 import { attachedImagesSlice } from "../features/AttachedImages";
 import { teamsSlice } from "../features/Teams";
 import { userSurveySlice } from "../features/UserSurvey/userSurveySlice";
@@ -80,7 +78,7 @@ const rootReducer = combineSlices(
     active_file: activeFileReducer,
     current_project: currentProjectInfoReducer,
     selected_snippet: selectedSnippetReducer,
-    chat: chatReducer,
+
     [statisticsApi.reducerPath]: statisticsApi.reducer,
     [toolsApi.reducerPath]: toolsApi.reducer,
     [commandsApi.reducerPath]: commandsApi.reducer,
@@ -90,7 +88,6 @@ const rootReducer = combineSlices(
     [linksApi.reducerPath]: linksApi.reducer,
     [checkpointsApi.reducerPath]: checkpointsApi.reducer,
     [telemetryApi.reducerPath]: telemetryApi.reducer,
-    [knowledgeApi.reducerPath]: knowledgeApi.reducer,
     [teamsApi.reducerPath]: teamsApi.reducer,
     [providersApi.reducerPath]: providersApi.reducer,
     [modelsApi.reducerPath]: modelsApi.reducer,
@@ -100,7 +97,6 @@ const rootReducer = combineSlices(
   pagesSlice,
   integrationsApi,
   dockerApi,
-  confirmationSlice,
   attachedImagesSlice,
   userSurveySlice,
   teamsSlice,
@@ -179,7 +175,6 @@ export function setUpStore(preloadedState?: Partial<RootState>) {
             dockerApi.middleware,
             checkpointsApi.middleware,
             telemetryApi.middleware,
-            knowledgeApi.middleware,
             providersApi.middleware,
             modelsApi.middleware,
             teamsApi.middleware,

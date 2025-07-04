@@ -1,22 +1,17 @@
-import React, { useCallback, useMemo } from "react";
+import React from "react";
 import {
   Text,
   Flex,
   HoverCard,
   Link,
-  // Skeleton,
-  // Box,
   Switch,
   Badge,
   Button,
-  // DataList,
 } from "@radix-ui/themes";
-// import { Select, type SelectProps } from "../Select";
 import { type Config } from "../../features/Config/configSlice";
 import { TruncateLeft } from "../Text";
 import styles from "./ChatForm.module.css";
 import classNames from "classnames";
-// import { PromptSelect } from "./PromptSelect";
 import { Checkbox } from "../Checkbox";
 import {
   ExclamationTriangleIcon,
@@ -24,46 +19,34 @@ import {
   LockOpen1Icon,
   QuestionMarkCircledIcon,
 } from "@radix-ui/react-icons";
-import { useTourRefs } from "../../features/Tour";
-import { ToolUseSwitch } from "./ToolUseSwitch";
+
 import {
-  ToolUse,
-  selectAreFollowUpsEnabled,
-  selectAutomaticPatch,
-  selectChatId,
-  selectCheckpointsEnabled,
-  // selectIsStreaming,
-  selectIsTitleGenerationEnabled,
-  // selectIsWaiting,
-  selectMessages,
-  selectToolUse,
-  setAreFollowUpsEnabled,
-  setIsTitleGenerationEnabled,
-  setAutomaticPatch,
-  setEnabledCheckpoints,
-  setToolUse,
-} from "../../features/Chat/Thread";
-import {
-  selectIsStreaming,
-  selectIsWaiting,
+  selectPatchIsAutomatic,
+  selectThreadId,
+  selectToolConfirmationResponses,
 } from "../../features/ThreadMessages";
-import {
-  useAppSelector,
-  useAppDispatch,
-  // useCapsForToolUse
-} from "../../hooks";
+import { useAppSelector, useAppDispatch } from "../../hooks";
 import { useAttachedFiles } from "./useCheckBoxes";
-// import { toPascalCase } from "../../utils/toPascalCase";
-// import { Coin } from "../../images";
-// import { push } from "../../features/Pages/pagesSlice";
+import { toolConfirmationThunk } from "../../services/graphql/graphqlThunks";
 
 export const ApplyPatchSwitch: React.FC = () => {
   const dispatch = useAppDispatch();
-  const chatId = useAppSelector(selectChatId);
-  const isPatchAutomatic = useAppSelector(selectAutomaticPatch);
+  const chatId = useAppSelector(selectThreadId);
+  const isPatchAutomatic = useAppSelector(selectPatchIsAutomatic);
+  const toolConfirmationResponses = useAppSelector(
+    selectToolConfirmationResponses,
+  );
 
   const handleAutomaticPatchChange = (checked: boolean) => {
-    dispatch(setAutomaticPatch({ chatId, value: checked }));
+    const value = checked
+      ? toolConfirmationResponses.filter((res) => res !== "*")
+      : [...toolConfirmationResponses, "*"];
+
+    const action = toolConfirmationThunk({
+      ft_id: chatId,
+      confirmation_response: JSON.stringify(value),
+    });
+    void dispatch(action);
   };
 
   return (
@@ -111,13 +94,17 @@ export const ApplyPatchSwitch: React.FC = () => {
     </Flex>
   );
 };
-export const AgentRollbackSwitch: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const isAgentRollbackEnabled = useAppSelector(selectCheckpointsEnabled);
 
-  const handleAgentRollbackChange = (checked: boolean) => {
-    dispatch(setEnabledCheckpoints(checked));
-  };
+// TODO: figure out how this should work
+export const AgentRollbackSwitch: React.FC = () => {
+  // const dispatch = useAppDispatch();
+  // TODO: checkpoints
+  // const isAgentRollbackEnabled = true; // useAppSelector(selectCheckpointsEnabled);
+
+  // TODO: handle this
+  // const handleAgentRollbackChange = (checked: boolean) => {
+  //   dispatch(setEnabledCheckpoints(checked));
+  // };
 
   return (
     <Flex
@@ -133,12 +120,13 @@ export const AgentRollbackSwitch: React.FC = () => {
         Changes rollback
       </Text>
       <Flex gap="2" align="center">
-        <Switch
+        {/** TODO: figure out what is happening with checkpoints */}
+        {/* <Switch
           size="1"
           title="Enable/disable changed rollback made by Agent"
           checked={isAgentRollbackEnabled}
           onCheckedChange={handleAgentRollbackChange}
-        />
+        /> */}
         <HoverCard.Root>
           <HoverCard.Trigger>
             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
@@ -179,135 +167,70 @@ export const AgentRollbackSwitch: React.FC = () => {
     </Flex>
   );
 };
-export const FollowUpsSwitch: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
-  const handleFollowUpsEnabledChange = (checked: boolean) => {
-    dispatch(setAreFollowUpsEnabled(checked));
-  };
+// const FollowUpsSwitch: React.FC = () => {
+//   const dispatch = useAppDispatch();
+//   const areFollowUpsEnabled = useAppSelector(selectAreFollowUpsEnabled);
 
-  return (
-    <Flex
-      gap="4"
-      align="center"
-      wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
-      width="100%"
-      justify="between"
-    >
-      <Text size="2" mr="auto">
-        Follow-Ups messages
-      </Text>
-      <Flex gap="2" align="center">
-        <Switch
-          size="1"
-          title="Enable/disable follow-ups messages generation by Agent"
-          checked={areFollowUpsEnabled}
-          onCheckedChange={handleFollowUpsEnabledChange}
-        />
-        <HoverCard.Root>
-          <HoverCard.Trigger>
-            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
-          </HoverCard.Trigger>
-          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
-            <Flex direction="column" gap="2">
-              <Text as="p" size="1">
-                When enabled, Refact Agent will automatically generate related
-                follow-ups to the conversation
-              </Text>
-              <Badge
-                color="yellow"
-                asChild
-                style={{
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                <Flex gap="2" p="2" align="center">
-                  <ExclamationTriangleIcon
-                    width={16}
-                    height={16}
-                    style={{ flexGrow: 1, flexShrink: 0 }}
-                  />
-                  <Text as="p" size="1">
-                    Warning: may increase coins spending
-                  </Text>
-                </Flex>
-              </Badge>
-            </Flex>
-          </HoverCard.Content>
-        </HoverCard.Root>
-      </Flex>
-    </Flex>
-  );
-};
+//   const handleFollowUpsEnabledChange = (checked: boolean) => {
+//     dispatch(setAreFollowUpsEnabled(checked));
+//   };
 
-export const TitleGenerationSwitch: React.FC = () => {
-  const dispatch = useAppDispatch();
-  const isTitleGenerationEnabled = useAppSelector(
-    selectIsTitleGenerationEnabled,
-  );
-
-  const handleTitleGenerationEnabledChange = (checked: boolean) => {
-    dispatch(setIsTitleGenerationEnabled(checked));
-  };
-
-  return (
-    <Flex
-      gap="4"
-      align="center"
-      wrap="wrap"
-      flexGrow="1"
-      flexShrink="0"
-      width="100%"
-      justify="between"
-    >
-      <Text size="2" mr="auto">
-        Chat Titles
-      </Text>
-      <Flex gap="2" align="center">
-        <Switch
-          size="1"
-          title="Enable/disable chat titles generation by Agent"
-          checked={isTitleGenerationEnabled}
-          onCheckedChange={handleTitleGenerationEnabledChange}
-        />
-        <HoverCard.Root>
-          <HoverCard.Trigger>
-            <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
-          </HoverCard.Trigger>
-          <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
-            <Flex direction="column" gap="2">
-              <Text as="p" size="1">
-                When enabled, Refact Agent will automatically generate
-                summarized chat title for the conversation
-              </Text>
-              <Badge
-                color="yellow"
-                asChild
-                style={{
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                <Flex gap="2" p="2" align="center">
-                  <ExclamationTriangleIcon
-                    width={16}
-                    height={16}
-                    style={{ flexGrow: 1, flexShrink: 0 }}
-                  />
-                  <Text as="p" size="1">
-                    Warning: may increase coins spending
-                  </Text>
-                </Flex>
-              </Badge>
-            </Flex>
-          </HoverCard.Content>
-        </HoverCard.Root>
-      </Flex>
-    </Flex>
-  );
-};
+//   return (
+//     <Flex
+//       gap="4"
+//       align="center"
+//       wrap="wrap"
+//       flexGrow="1"
+//       flexShrink="0"
+//       width="100%"
+//       justify="between"
+//     >
+//       <Text size="2" mr="auto">
+//         Follow-Ups messages
+//       </Text>
+//       <Flex gap="2" align="center">
+//         <Switch
+//           size="1"
+//           title="Enable/disable follow-ups messages generation by Agent"
+//           checked={areFollowUpsEnabled}
+//           onCheckedChange={handleFollowUpsEnabledChange}
+//         />
+//         <HoverCard.Root>
+//           <HoverCard.Trigger>
+//             <QuestionMarkCircledIcon style={{ marginLeft: 4 }} />
+//           </HoverCard.Trigger>
+//           <HoverCard.Content side="top" align="end" size="1" maxWidth="280px">
+//             <Flex direction="column" gap="2">
+//               <Text as="p" size="1">
+//                 When enabled, Refact Agent will automatically generate related
+//                 follow-ups to the conversation
+//               </Text>
+//               <Badge
+//                 color="yellow"
+//                 asChild
+//                 style={{
+//                   whiteSpace: "pre-wrap",
+//                 }}
+//               >
+//                 <Flex gap="2" p="2" align="center">
+//                   <ExclamationTriangleIcon
+//                     width={16}
+//                     height={16}
+//                     style={{ flexGrow: 1, flexShrink: 0 }}
+//                   />
+//                   <Text as="p" size="1">
+//                     Warning: may increase coins spending
+//                   </Text>
+//                 </Flex>
+//               </Badge>
+//             </Flex>
+//           </HoverCard.Content>
+//         </HoverCard.Root>
+//       </Flex>
+//     </Flex>
+//   );
+// };
 
 type CheckboxHelp = {
   text: string;
@@ -413,22 +336,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
   host,
   attachedFiles,
 }) => {
-  const refs = useTourRefs();
-  const dispatch = useAppDispatch();
-  const isStreaming = useAppSelector(selectIsStreaming);
-  const isWaiting = useAppSelector(selectIsWaiting);
-  const messages = useAppSelector(selectMessages);
-  const toolUse = useAppSelector(selectToolUse);
-  const onSetToolUse = useCallback(
-    (value: ToolUse) => dispatch(setToolUse(value)),
-    [dispatch],
-  );
-
-  const showControls = useMemo(
-    () => messages.length === 0 && !isStreaming && !isWaiting,
-    [isStreaming, isWaiting, messages],
-  );
-
   return (
     <Flex
       pt="2"
@@ -472,18 +379,6 @@ export const ChatControls: React.FC<ChatControlsProps> = ({
         >
           Attach: {attachedFiles.activeFile.name}
         </Button>
-      )}
-
-      {showControls && (
-        <Flex gap="2" direction="column">
-          <ToolUseSwitch
-            ref={(x) => refs.setUseTools(x)}
-            toolUse={toolUse}
-            setToolUse={onSetToolUse}
-          />
-          {/* <CapsSelect /> */}
-          {/* <PromptSelect /> */}
-        </Flex>
       )}
     </Flex>
   );

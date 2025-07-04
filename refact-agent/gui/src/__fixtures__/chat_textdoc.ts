@@ -94,7 +94,7 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "frog.py",
           file_content:
@@ -102,7 +102,7 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
           line1: 1,
           line2: 39,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",
@@ -1003,7 +1003,7 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
     },
     {
       ftm_role: "context_file",
-      ftm_content: [
+      ftm_content: JSON.stringify([
         {
           file_name: "test_frog.py",
           file_content:
@@ -1011,7 +1011,7 @@ export const CHAT_WITH_TEXTDOC: ChatThread = {
           line1: 1,
           line2: 134,
         },
-      ],
+      ]),
     },
     {
       ftm_role: "assistant",

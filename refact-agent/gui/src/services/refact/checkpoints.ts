@@ -36,8 +36,8 @@ export const checkpointsApi = createApi({
         const port = state.config.lspPort as unknown as number;
         const url = `http://127.0.0.1:${port}${PREVIEW_CHECKPOINTS}`;
 
-        const chat_id = state.chat.thread.id;
-        const mode = state.chat.thread.mode;
+        const chat_id = state.threadMessages.thread?.ft_id;
+        // const mode = state.chat.thread.mode;
 
         const result = await baseQuery({
           url,
@@ -47,7 +47,7 @@ export const checkpointsApi = createApi({
           body: {
             meta: {
               chat_id,
-              chat_mode: mode ?? "EXPLORE",
+              // chat_mode: mode ?? "EXPLORE",
             },
             checkpoints,
           },
@@ -78,8 +78,8 @@ export const checkpointsApi = createApi({
         const port = state.config.lspPort as unknown as number;
         const url = `http://127.0.0.1:${port}${RESTORE_CHECKPOINTS}`;
 
-        const chat_id = state.chat.thread.id;
-        const mode = state.chat.thread.mode;
+        const chat_id = state.threadMessages.thread?.ft_id;
+        // const mode = state.chat.thread.mode;
 
         const result = await baseQuery({
           url,
@@ -89,7 +89,7 @@ export const checkpointsApi = createApi({
           body: {
             meta: {
               chat_id,
-              chat_mode: mode ?? "EXPLORE",
+              // chat_mode: mode ?? "EXPLORE",
             },
             checkpoints,
           },

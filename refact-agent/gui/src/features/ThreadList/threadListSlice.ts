@@ -83,7 +83,10 @@ export const threadListSlice = createSlice({
     // },
     selectThreadList: createSelector(
       (state: InitialState) => state.threads,
-      (threads) => Object.values(threads),
+      (threads) =>
+        Object.values(threads).sort(
+          (a, b) => b.ft_updated_ts - a.ft_updated_ts,
+        ),
     ),
 
     selectThreadListError: (state) => state.error,

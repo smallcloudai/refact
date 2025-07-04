@@ -31,23 +31,25 @@ export type ToolCall = {
   };
   index: number;
   type?: "function";
-  id?: string;
+  id: string;
   attached_files?: string[];
   subchat?: string;
 };
+
+export function isToolCall(toolCall: unknown): toolCall is ToolCall {
+  if (!toolCall) return false;
+  if (typeof toolCall !== "object") return false;
+  if (!("type" in toolCall)) return false;
+  if (typeof toolCall.type !== "string") return false;
+  if (!("id" in toolCall)) return false;
+  if (typeof toolCall.id !== "string") return false;
+  return toolCall.type === "function";
+}
 
 export type ToolUsage = {
   functionName: string;
   amountOfCalls: number;
 };
-
-function isToolCall(call: unknown): call is ToolCall {
-  if (!call) return false;
-  if (typeof call !== "object") return false;
-  if (!("function" in call)) return false;
-  if (!("index" in call)) return false;
-  return true;
-}
 
 export const validateToolCall = (toolCall: ToolCall) => {
   if (!isToolCall(toolCall)) return false;
@@ -133,7 +135,7 @@ interface BaseMessage {
 
 export interface ChatContextFileMessage extends BaseMessage {
   ftm_role: "context_file";
-  ftm_content: ChatContextFile[];
+  ftm_content: string; // ChatContextFile[];
 }
 
 export type UserImage = {
@@ -199,7 +201,7 @@ export type DiffChunk = {
   // chunk_id?: number;
 };
 
-export function isDiffChunk(json: unknown) {
+export function isDiffChunk(json: unknown): json is DiffChunk {
   if (!json) {
     return false;
   }
@@ -232,7 +234,11 @@ export interface DiffMessage extends BaseMessage {
   tool_call_id: string;
 }
 
-export function isUserMessage(message: ChatMessage): message is UserMessage {
+export function isUserMessage(message: unknown): message is UserMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "user";
 }
 
@@ -283,9 +289,7 @@ export type ChatMeta = {
 export function isChatContextFileMessage(
   message: ChatMessage,
 ): message is ChatContextFileMessage {
-  return (
-    message.ftm_role === "context_file" && Array.isArray(message.ftm_content)
-  );
+  return message.ftm_role === "context_file";
 }
 
 export function isAssistantMessage(
@@ -306,7 +310,11 @@ export function isToolMessage(message: unknown): message is ToolMessage {
   return message.ftm_role === "tool";
 }
 
-export function isDiffMessage(message: ChatMessage): message is DiffMessage {
+export function isDiffMessage(message: unknown): message is DiffMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "diff";
 }
 
@@ -333,8 +341,12 @@ export function isPlainTextMessage(
 }
 
 export function isCDInstructionMessage(
-  message: ChatMessage,
+  message: unknown,
 ): message is CDInstructionMessage {
+  if (!message) return false;
+  if (typeof message !== "object") return false;
+  if (!("ftm_role" in message)) return false;
+  if (typeof message.ftm_role !== "string") return false;
   return message.ftm_role === "cd_instruction";
 }
 

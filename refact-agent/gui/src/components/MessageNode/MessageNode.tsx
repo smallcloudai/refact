@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo } from "react";
 import { UserInput } from "../ChatContent/UserInput";
 import { AssistantInput } from "../ChatContent/AssistantInput";
 import {
+  ChatContextFile,
   isAssistantMessage,
   isChatContextFileMessage,
   isChatMessage,
@@ -21,6 +22,7 @@ import {
 import { useAppDispatch } from "../../hooks/useAppDispatch";
 import { type NodeSelectButtonsProps } from "../ChatContent/UserInput";
 import { useAppSelector } from "../../hooks";
+import { parseOrElse } from "../../utils";
 
 const ElementForNodeMessage: React.FC<{
   message: FTMessageNode["value"];
@@ -49,9 +51,12 @@ const ElementForNodeMessage: React.FC<{
   }
 
   if (isChatContextFileMessage(message)) {
-    // TODO: why is this a linter error?
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    return <ContextFiles files={message.ftm_content} />;
+    const files = parseOrElse<ChatContextFile[]>(
+      // TODO: narrow the types for messages.
+      message.ftm_content as string,
+      [],
+    );
+    return <ContextFiles files={files} />;
   }
 
   if (isDiffMessage(message)) {

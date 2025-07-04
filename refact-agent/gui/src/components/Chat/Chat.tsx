@@ -1,70 +1,44 @@
 import React, { useCallback, useState } from "react";
 import { ChatForm, ChatFormProps } from "../ChatForm";
 import { ChatContent } from "../ChatContent";
-import {
-  Flex,
-  Button,
-  // Text,
-  Card,
-} from "@radix-ui/themes";
-import {
-  useAppSelector,
-  useAppDispatch,
-  // useSendChatRequest,
-  // useAutoSend,
-  // useCapsForToolUse,
-} from "../../hooks";
+import { Flex } from "@radix-ui/themes";
+import { useAppSelector } from "../../hooks";
 import { type Config } from "../../features/Config/configSlice";
-import {
-  enableSend,
-  // selectIsStreaming,
-  selectPreventSend,
-  selectChatId,
-  //  selectMessages,
-  // getSelectedToolUse,
-  selectThreadNewChatSuggested,
-} from "../../features/Chat/Thread";
-// import { ThreadHistoryButton } from "../Buttons";
-// import { push } from "../../features/Pages/pagesSlice";
+
 import { DropzoneProvider } from "../Dropzone";
 import { useCheckpoints } from "../../hooks/useCheckpoints";
 import { Checkpoints } from "../../features/Checkpoints";
-import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
+// TODO: remove this?
+// import { SuggestNewChat } from "../ChatForm/SuggestNewChat";
 import { useMessageSubscription } from "./useMessageSubscription";
-import {
-  selectIsStreaming,
-  // selectTotalMessagesInThread,
-} from "../../features/ThreadMessages";
+import { selectThreadId } from "../../features/ThreadMessages";
 
 export type ChatProps = {
   host: Config["host"];
   tabbed: Config["tabbed"];
   backFromChat: () => void;
   style?: React.CSSProperties;
-  unCalledTools: boolean;
+
   maybeSendToSidebar: ChatFormProps["onClose"];
 };
 
-export const Chat: React.FC<ChatProps> = ({
-  style,
-  unCalledTools,
-  maybeSendToSidebar,
-}) => {
-  const dispatch = useAppDispatch();
+export const Chat: React.FC<ChatProps> = ({ style, maybeSendToSidebar }) => {
+  // const dispatch = useAppDispatch();
+  // const unCalledTools = useAppSelector(selectBranchHasUncalledTools);
 
   const [isViewingRawJSON, setIsViewingRawJSON] = useState(false);
-  const isStreaming = useAppSelector(selectIsStreaming);
+  // const isStreaming = useAppSelector(selectIsStreaming);
   const { sendMessage } = useMessageSubscription();
   // const totalMessages = useAppSelector(selectTotalMessagesInThread, {
   //   devModeChecks: { stabilityCheck: "never" },
   // });
 
-  const chatId = useAppSelector(selectChatId);
+  const chatId = useAppSelector(selectThreadId);
   // TODO: figure out features removed here
   // const { submit, abort, retryFromIndex } = useSendChatRequest();
 
   // const chatToolUse = useAppSelector(getSelectedToolUse);
-  const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
+  // const threadNewChatSuggested = useAppSelector(selectThreadNewChatSuggested);
   //   const messages = useAppSelector(selectMessages);
   // const capsForToolUse = useCapsForToolUse();
 
@@ -73,8 +47,8 @@ export const Chat: React.FC<ChatProps> = ({
   // const [isDebugChatHistoryVisible, setIsDebugChatHistoryVisible] =
   //   useState(false);
 
-  const preventSend = useAppSelector(selectPreventSend);
-  const onEnableSend = () => dispatch(enableSend({ id: chatId }));
+  // const preventSend = useAppSelector(selectPreventSend);
+  // const onEnableSend = () => dispatch(enableSend({ id: chatId }));
 
   const handleSummit = useCallback(
     (value: string) => {
@@ -92,8 +66,6 @@ export const Chat: React.FC<ChatProps> = ({
   //   dispatch(push({ name: "thread history page", chatId }));
   // }, [chatId, dispatch]);
 
-  // useAutoSend();
-
   return (
     <DropzoneProvider asChild>
       <Flex
@@ -105,32 +77,21 @@ export const Chat: React.FC<ChatProps> = ({
         justify="between"
         px="1"
       >
-        <ChatContent key={`chat-content-${chatId}`} />
+        <ChatContent key={`chat-content-${chatId ?? "new"}`} />
 
         {shouldCheckpointsPopupBeShown && <Checkpoints />}
 
-        <SuggestNewChat
+        {/* <SuggestNewChat
           shouldBeVisible={
             threadNewChatSuggested.wasSuggested &&
             !threadNewChatSuggested.wasRejectedByUser
           }
-        />
-        {!isStreaming && preventSend && unCalledTools && (
-          <Flex py="4">
-            <Card style={{ width: "100%" }}>
-              <Flex direction="column" align="center" gap="2" width="100%">
-                Chat was interrupted with uncalled tools calls.
-                <Button onClick={onEnableSend}>Resume</Button>
-              </Flex>
-            </Card>
-          </Flex>
-        )}
+        /> */}
 
         <ChatForm
           key={chatId} // TODO: think of how can we not trigger re-render on chatId change (checkboxes)
           onSubmit={handleSummit}
           onClose={maybeSendToSidebar}
-          unCalledTools={unCalledTools}
         />
 
         {/* <Flex justify="between" pl="1" pr="1" pt="1"> */}

@@ -108,7 +108,7 @@ export const CHAT_CONFIG_THREAD: Chat = {
       },
       {
         ftm_role: "context_file",
-        ftm_content: [
+        ftm_content: JSON.stringify([
           {
             file_name: "frog.py",
             file_content:
@@ -116,7 +116,7 @@ export const CHAT_CONFIG_THREAD: Chat = {
             line1: 1,
             line2: 39,
           },
-        ],
+        ]),
       },
       {
         ftm_role: "assistant",

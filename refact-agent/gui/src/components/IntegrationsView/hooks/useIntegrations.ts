@@ -2,7 +2,6 @@ import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import isEqual from "lodash.isequal";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { debugIntegrations } from "../../../debugConfig";
-import { setIntegrationData } from "../../../features/Chat";
 import { selectConfig } from "../../../features/Config/configSlice";
 import {
   clearError,
@@ -599,7 +598,6 @@ export const useIntegrations = ({
     dispatch(clearError());
     setCurrentIntegration(null);
     setCurrentNotConfiguredIntegration(null);
-    dispatch(setIntegrationData(null));
   }, [dispatch, goBack]);
 
   const handleNotSetupIntegrationShowUp = useCallback(

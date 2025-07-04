@@ -7,7 +7,6 @@ import { push } from "../../features/Pages/pagesSlice";
 import completionGif from "../../../public/completion.gif";
 import commandsGif from "../../../public/commands.gif";
 import agentGif from "../../../public/agent.gif";
-import { newChatAction } from "../../events";
 
 export type TourProps = {
   page: string;
@@ -19,13 +18,12 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
   const refs = useTourRefs();
 
   const openChat = useCallback(() => {
-    dispatch(newChatAction());
     dispatch(push({ name: "chat" }));
   }, [dispatch]);
 
-  const openHistory = useCallback(() => {
-    dispatch(push({ name: "history" }));
-  }, [dispatch]);
+  // const openHistory = useCallback(() => {
+  //   dispatch(push({ name: "history" }));
+  // }, [dispatch]);
 
   const step = state.type === "in_progress" ? state.step : 0;
 
@@ -47,7 +45,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
     }
   }, [state.type, step, page, dispatch]);
 
-  const chatWidth = "calc(100% - 20px)";
+  // const chatWidth = "calc(100% - 20px)";
 
   // TODO: Did the Popover or HoverCard components not work for this?
   return (
@@ -69,7 +67,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
           src={agentGif}
         />
       </TourBubble>
-      <TourBubble
+      {/* <TourBubble
         title="Integrations"
         text={
           "In order for agent to work properly you need to set up integrations. Just click on this button and follow the instructions."
@@ -83,7 +81,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
         bubbleContainerStyles={{
           alignSelf: "flex-end",
         }}
-      />
+      /> */}
       <TourBubble
         title="Chat modes / models"
         text={`Our chat allows you to\n- use images to give more context\n- specify context use @commands, write @help to view`}
@@ -101,7 +99,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
           src={commandsGif}
         />
       </TourBubble>
-      <TourBubble
+      {/* <TourBubble
         title="Difference in Quick / Explore / Agent"
         text={`Switch inside of the chat let you to choose the chat mode:\n- Quick for immediate answers, no tools and context access\n- Explore for ideating and learning, chat can access the context but all changes are performed manually\n- Agent for tasks where you expect chat to make changes autonomously`}
         step={4}
@@ -115,7 +113,7 @@ export const Tour: React.FC<TourProps> = ({ page }) => {
           maxWidth: 550,
           alignSelf: "start",
         }}
-      />
+      /> */}
       <TourBubble
         title="Code completion"
         text={`- we use context from your entire repository\n- you can adjust the number of output tokens in Plugin settings`}
