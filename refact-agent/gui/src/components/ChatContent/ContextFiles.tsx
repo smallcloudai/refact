@@ -141,7 +141,7 @@ const ContextFilesContent: React.FC<{
 };
 
 export const ContextFiles: React.FC<{
-  files: ChatContextFileMessage["ftm_content"];
+  files: ChatContextFile[];
 }> = ({ files }) => {
   const [open, setOpen] = React.useState(false);
   const { queryPathThenOpenFile } = useEventsBusForIDE();

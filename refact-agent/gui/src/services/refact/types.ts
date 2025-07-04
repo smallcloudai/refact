@@ -135,7 +135,7 @@ interface BaseMessage {
 
 export interface ChatContextFileMessage extends BaseMessage {
   ftm_role: "context_file";
-  ftm_content: ChatContextFile[];
+  ftm_content: string; // ChatContextFile[];
 }
 
 export type UserImage = {
@@ -289,9 +289,7 @@ export type ChatMeta = {
 export function isChatContextFileMessage(
   message: ChatMessage,
 ): message is ChatContextFileMessage {
-  return (
-    message.ftm_role === "context_file" && Array.isArray(message.ftm_content)
-  );
+  return message.ftm_role === "context_file";
 }
 
 export function isAssistantMessage(
