@@ -3,6 +3,7 @@ import {
   createClient,
   cacheExchange,
   fetchExchange,
+  // debugExchange,
   subscriptionExchange,
 } from "urql";
 import { createClient as createWSClient } from "graphql-ws";
@@ -14,31 +15,41 @@ import { selectConfig } from "./src/features/Config/configSlice";
 export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // const apiKey = useAppSelector(selectConfig).apiKey;
-  // const baseUrl = "test-teams-v1.smallcloud.ai/v1/graphql";
-  // const baseUrl = "localhost:8008/v1/graphql";
-  // const apiKey = "sk_alice_123456";
   const apiKey = useAppSelector(selectConfig).apiKey;
-  const baseUrl = "app.refact.ai/v1/graphql";
+  const addressUrl =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    useAppSelector(selectConfig).addressURL || `https://app.refact.ai`;
 
-  const protocol = "http";
-  const wsProtocol = "ws";
+  const httpUrl = new URL(addressUrl);
+  httpUrl.pathname = "/v1/graphql";
+  const httpUrlString = useMemo(() => {
+    const httpUrl = new URL(addressUrl);
+    httpUrl.pathname = "/v1/graphql";
+    return httpUrl.toString();
+  }, [addressUrl]);
+
+  const wsUrLString = useMemo(() => {
+    const wsUrl = new URL(addressUrl);
+    wsUrl.protocol = addressUrl.startsWith("http://") ? "ws" : "wss";
+    wsUrl.pathname = "/v1/graphql";
+    return wsUrl.toString();
+  }, [addressUrl]);
 
   const wsClient = useMemo(
     () =>
       createWSClient({
-        url: `${wsProtocol}://${baseUrl}`,
+        url: wsUrLString,
         connectionParams: { apikey: apiKey },
         webSocketImpl: WebSocket,
         retryAttempts: 5,
       }),
-    [baseUrl, apiKey, wsProtocol],
+    [apiKey, wsUrLString],
   );
 
   const urqlClient = useMemo(
     () =>
       createClient({
-        url: `${protocol}://${baseUrl}`,
+        url: httpUrlString,
         exchanges: [
           // TODO: only enable this during development
           // debugExchange,
@@ -71,7 +82,7 @@ export const UrqlProvider: React.FC<{ children: React.ReactNode }> = ({
           },
         }),
       }),
-    [baseUrl, apiKey, wsClient, protocol],
+    [httpUrlString, wsClient, apiKey],
   );
 
   return <Provider value={urqlClient}>{children}</Provider>;
