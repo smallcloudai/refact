@@ -132,8 +132,6 @@ export const messagesSub = createAsyncThunk<
 
         return thunkApi.fulfillWithValue({});
       }
-
-      // console.log(result);
       if (result.error) {
         // TBD: do we hang up on errors?
         thunkApi.dispatch(setError(result.error.message));
