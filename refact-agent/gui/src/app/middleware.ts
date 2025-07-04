@@ -362,8 +362,6 @@ startListening({
     pathApi.endpoints.integrationsPath.matchRejected,
   ),
   effect: (action, listenerApi) => {
-    const state = listenerApi.getState();
-
     if (pathApi.endpoints.getFullPath.matchFulfilled(action)) {
       const thunk = telemetryApi.endpoints.sendTelemetryNetEvent.initiate({
         url: FULL_PATH_URL,
