@@ -53,6 +53,7 @@ import {
   expertsAndModelsMiddleWare,
 } from "../features/ExpertsAndModels";
 import { toolsSlice } from "../features/Tools";
+import { basicStuffSlice } from "../features/BasicStuff";
 
 const tipOfTheDayPersistConfig = {
   key: "totd",
@@ -106,6 +107,7 @@ const rootReducer = combineSlices(
   threadMessagesSlice,
   expertsSlice,
   toolsSlice,
+  basicStuffSlice,
 );
 
 const rootPersistConfig = {

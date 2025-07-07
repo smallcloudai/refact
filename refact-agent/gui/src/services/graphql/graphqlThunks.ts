@@ -35,6 +35,9 @@ import {
   ThreadConfirmationResponseMutation,
   ThreadConfirmationResponseMutationVariables,
   ThreadConfirmationResponseDocument,
+  BasicStuffQuery,
+  BasicStuffQueryVariables,
+  BasicStuffDocument,
 } from "../../../generated/documents";
 import { handleThreadListSubscriptionData } from "../../features/ThreadList";
 import { setError } from "../../features/Errors/errorsSlice";
@@ -655,6 +658,42 @@ export const toolConfirmationThunk = createAsyncThunk<
   } else if (!result.data) {
     return thunkAPI.rejectWithValue({
       message: "failed to confirm tools",
+      args,
+    });
+  }
+
+  return thunkAPI.fulfillWithValue(result.data);
+});
+
+export const queryBasicStuffThunk = createAsyncThunk<
+  BasicStuffQuery,
+  BasicStuffQueryVariables,
+  {
+    dispatch: AppDispatch;
+    state: RootState;
+    rejectValue: {
+      message: string;
+      args: BasicStuffQueryVariables;
+    };
+  }
+>("flexus/queryBasicStuff", async (args, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const apiKey = state.config.apiKey ?? "";
+
+  const addressUrl = state.config.addressURL ?? `https://app.refact.ai`;
+  const client = createGraphqlClient(addressUrl, apiKey, thunkAPI.signal);
+
+  const result = await client.query<BasicStuffQuery, BasicStuffQueryVariables>(
+    BasicStuffDocument,
+    args,
+  );
+
+  if (result.error) {
+    return thunkAPI.rejectWithValue({ message: result.error.message, args });
+  }
+  if (!result.data) {
+    return thunkAPI.rejectWithValue({
+      message: "No data when querying for basic stuff.",
       args,
     });
   }

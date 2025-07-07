@@ -1,14 +1,14 @@
 import { useCallback, useState, useEffect } from "react";
-import { useGetUser } from "./useGetUser";
+import { useBasicStuffQuery } from "./useBasicStuffQuery";
 
 export function useStartPollingForUser() {
-  const user = useGetUser();
+  const user = useBasicStuffQuery();
   const [pollingForUser, setPollingForUser] = useState<boolean>(false);
 
   useEffect(() => {
     let timer: NodeJS.Timeout | undefined = undefined;
 
-    if (pollingForUser && !user.isFetching && !user.isLoading) {
+    if (pollingForUser && !user.loading) {
       const refetchUser = () => {
         user.refetch();
       };
@@ -17,9 +17,8 @@ export function useStartPollingForUser() {
 
     if (
       pollingForUser &&
-      !user.isFetching &&
-      !user.isLoading &&
-      !user.isError &&
+      !user.loading &&
+      !user.error &&
       user.data // && user.data.plan === "PRO"
     ) {
       clearTimeout(timer);

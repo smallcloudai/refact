@@ -2,12 +2,12 @@ import React, { /*useCallback,*/ useEffect, useMemo, useState } from "react";
 import { selectHost, type Config } from "../../features/Config/configSlice";
 import { useTourRefs } from "../../features/Tour";
 import {
-  useGetUser,
   useLogout,
   useAppSelector,
   useAppDispatch,
   // useStartPollingForUser,
   useEventsBusForIDE,
+  useBasicStuffQuery,
 } from "../../hooks";
 import { useOpenUrl } from "../../hooks/useOpenUrl";
 import {
@@ -85,7 +85,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const refs = useTourRefs();
-  const user = useGetUser();
+  const user = useBasicStuffQuery();
   const host = useAppSelector(selectHost);
   const dispatch = useAppDispatch();
   // TODO: check how much of this is still used.
