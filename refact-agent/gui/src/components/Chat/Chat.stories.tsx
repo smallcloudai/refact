@@ -5,7 +5,6 @@ import { ChatThread } from "../../features/Chat/Thread/types";
 import { RootState, setUpStore } from "../../app/store";
 import { Provider } from "react-redux";
 import { Theme } from "../Theme";
-import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import {
   CHAT_CONFIG_THREAD,
   // CHAT_WITH_KNOWLEDGE_TOOL,
@@ -49,16 +48,14 @@ const Template: React.FC<{
     <Provider store={store}>
       <Theme>
         <TourProvider>
-          <AbortControllerProvider>
-            <Flex direction="column" align="stretch" height="100dvh">
-              <Chat
-                host="web"
-                tabbed={false}
-                backFromChat={() => ({})}
-                maybeSendToSidebar={() => ({})}
-              />
-            </Flex>
-          </AbortControllerProvider>
+          <Flex direction="column" align="stretch" height="100dvh">
+            <Chat
+              host="web"
+              tabbed={false}
+              backFromChat={() => ({})}
+              maybeSendToSidebar={() => ({})}
+            />
+          </Flex>
         </TourProvider>
       </Theme>
     </Provider>

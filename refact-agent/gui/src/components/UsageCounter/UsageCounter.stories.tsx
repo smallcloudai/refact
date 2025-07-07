@@ -4,7 +4,6 @@ import { Provider } from "react-redux";
 
 import { setUpStore } from "../../app/store";
 import { Theme } from "../Theme";
-import { AbortControllerProvider } from "../../contexts/AbortControllers";
 
 import { UsageCounter } from ".";
 import { Usage } from "../../services/refact";
@@ -72,13 +71,11 @@ const MockedStore: React.FC<{
 
   return (
     <Provider store={store}>
-      <AbortControllerProvider>
-        <Theme accentColor="gray">
-          <Flex align="center" justify="center" width="50dvw" height="100dvh">
-            <UsageCounter isInline={isInline} isMessageEmpty={isMessageEmpty} />
-          </Flex>
-        </Theme>
-      </AbortControllerProvider>
+      <Theme accentColor="gray">
+        <Flex align="center" justify="center" width="50dvw" height="100dvh">
+          <UsageCounter isInline={isInline} isMessageEmpty={isMessageEmpty} />
+        </Flex>
+      </Theme>
     </Provider>
   );
 };

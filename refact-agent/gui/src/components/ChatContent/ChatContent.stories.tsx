@@ -4,7 +4,6 @@ import { ChatContent } from ".";
 import { Provider } from "react-redux";
 import { setUpStore } from "../../app/store";
 import { Theme } from "../Theme";
-import { AbortControllerProvider } from "../../contexts/AbortControllers";
 import { MarkdownMessage } from "../../__fixtures__/markdown";
 import type { ChatMessages } from "../../services/refact";
 import type { ChatThread } from "../../features/Chat/Thread";
@@ -40,9 +39,7 @@ const MockedStore: React.FC<{
   return (
     <Provider store={store}>
       <Theme>
-        <AbortControllerProvider>
-          <ChatContent />
-        </AbortControllerProvider>
+        <ChatContent />
       </Theme>
     </Provider>
   );
