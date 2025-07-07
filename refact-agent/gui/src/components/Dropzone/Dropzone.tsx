@@ -4,7 +4,7 @@ import { Cross1Icon, ImageIcon } from "@radix-ui/react-icons";
 import { DropzoneInputProps, FileRejection, useDropzone } from "react-dropzone";
 import { useAttachedImages } from "../../hooks/useAttachedImages";
 import { TruncateLeft } from "../Text";
-import { telemetryApi } from "../../services/refact/telemetry";
+
 // import { useCapsForToolUse } from "../../hooks";
 import { useAttachedFiles } from "../ChatForm/useCheckBoxes";
 
@@ -81,8 +81,6 @@ export const DropzoneProvider: React.FC<
 export const DropzoneConsumer = FileUploadContext.Consumer;
 
 export const AttachImagesButton = () => {
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
   const attachFileOnClick = useCallback(
     (
       event: { preventDefault: () => void; stopPropagation: () => void },
@@ -91,13 +89,8 @@ export const AttachImagesButton = () => {
       event.preventDefault();
       event.stopPropagation();
       open();
-      void sendTelemetryEvent({
-        scope: `addImage/button`, // add drag&drop and clipboard
-        success: true,
-        error_message: "",
-      });
     },
-    [sendTelemetryEvent],
+    [],
   );
   return (
     <DropzoneConsumer>

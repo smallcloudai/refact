@@ -15,7 +15,7 @@ import {
 import { useAppDispatch } from "./useAppDispatch";
 import { useRestoreCheckpoints } from "./useRestoreCheckpoints";
 import { Checkpoint, FileChanged } from "../features/Checkpoints/types";
-import { isUserMessage, telemetryApi } from "../services/refact";
+import { isUserMessage } from "../services/refact";
 import { usePreviewCheckpoints } from "./usePreviewCheckpoints";
 import { useEventsBusForIDE } from "./useEventBusForIDE";
 import { selectConfig } from "../features/Config/configSlice";
@@ -32,9 +32,6 @@ export const useCheckpoints = () => {
   });
 
   const configIdeHost = useAppSelector(selectConfig).host;
-
-  const [sendTelemetryEvent] =
-    telemetryApi.useLazySendTelemetryChatEventQuery();
 
   const { setForceReloadFileByPath } = useEventsBusForIDE();
 
@@ -76,13 +73,8 @@ export const useCheckpoints = () => {
   }, [isCheckpointsPopupVisible, isUndoingCheckpoints]);
 
   const handleUndo = useCallback(() => {
-    void sendTelemetryEvent({
-      scope: `rollbackChanges/undo`,
-      success: true,
-      error_message: "",
-    });
     dispatch(setIsUndoingCheckpoints(true));
-  }, [dispatch, sendTelemetryEvent]);
+  }, [dispatch]);
 
   const handlePreview = useCallback(
     async (checkpoints: Checkpoint[] | null, messageIndex: number) => {
@@ -92,11 +84,7 @@ export const useCheckpoints = () => {
       try {
         const previewedChanges =
           await previewChangesFromCheckpoints(checkpoints).unwrap();
-        void sendTelemetryEvent({
-          scope: `rollbackChanges/preview`,
-          success: true,
-          error_message: "",
-        });
+
         const actions = [
           dispatch(setIsUndoingCheckpoints(false)),
           setLatestCheckpointResult({
@@ -111,16 +99,10 @@ export const useCheckpoints = () => {
         ];
         actions.forEach((action) => dispatch(action));
       } catch (error) {
-        void sendTelemetryEvent({
-          scope: `rollbackChanges/failed`,
-          success: false,
-          error_message: `rollback: failed to preview from checkpoints. checkpoints ${JSON.stringify(
-            checkpoints,
-          )}`,
-        });
+        /* empty */
       }
     },
-    [dispatch, previewChangesFromCheckpoints, sendTelemetryEvent, messages],
+    [dispatch, previewChangesFromCheckpoints, messages],
   );
 
   const handleFix = useCallback(async () => {
@@ -129,12 +111,6 @@ export const useCheckpoints = () => {
         latestRestoredCheckpointsResult.current_checkpoints,
       ).unwrap();
       if (response.success) {
-        void sendTelemetryEvent({
-          scope: `rollbackChanges/confirmed`,
-          success: true,
-          error_message: "",
-        });
-
         if (configIdeHost === "jetbrains") {
           const files =
             latestRestoredCheckpointsResult.reverted_changes.flatMap(
@@ -156,17 +132,10 @@ export const useCheckpoints = () => {
         actions.forEach((action) => dispatch(action));
       }
     } catch (error) {
-      void sendTelemetryEvent({
-        scope: `rollbackChanges/failed`,
-        success: false,
-        error_message: `rollback: failed to apply previewed changes from checkpoints. checkpoints: ${JSON.stringify(
-          latestRestoredCheckpointsResult.current_checkpoints,
-        )}`,
-      });
+      /* empty */
     }
   }, [
     dispatch,
-    sendTelemetryEvent,
     setForceReloadFileByPath,
     restoreChangesFromCheckpoints,
     configIdeHost,
